@@ -5,8 +5,6 @@ public interface BootstrapHostMBean {
 	
 	int getPortalWorkerGroupCount();
 	
-	int getPortalWorkerExecGroupCount();
-	
 	int getPortalClientExecutorActiveCount();
 
 	int getPortalClientExecutorLargestPoolSize();

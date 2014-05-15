@@ -43,8 +43,7 @@ public class MySqlPortal implements MySqlPortalService {
 	
 	private NioEventLoopGroup bossGroup;
 	private NioEventLoopGroup workerGroup;
-	
-	private DefaultEventExecutorGroup workerExecGroup;
+
 	private ThreadPoolExecutor clientExecutorService;
 
 	public MySqlPortal(Properties props) throws PEException {
@@ -65,7 +64,6 @@ public class MySqlPortal implements MySqlPortalService {
 			catalog.close();
 		}
 
-		workerExecGroup = new DefaultEventExecutorGroup(8, new PEDefaultThreadFactory("msp-encoder"));
 		clientExecutorService = new PEThreadPoolExecutor(max_concurrent,
 				max_concurrent,
 				30L, TimeUnit.SECONDS,
@@ -86,7 +84,7 @@ public class MySqlPortal implements MySqlPortalService {
                     if (PACKET_LOGGER)
                         ch.pipeline().addFirst(new LoggingHandler(LogLevel.INFO));
 					ch.pipeline()
-					.addLast(workerExecGroup, MSPEncoder.getInstance())
+					.addLast(MSPEncoder.getInstance())
                     .addLast(MSPProtocolDecoder.class.getSimpleName(), new MSPProtocolDecoder(MSPProtocolDecoder.MyDecoderState.READ_CLIENT_AUTH))
 					.addLast(new MSPAuthenticateHandlerV10())
                     .addLast(MSPCommandHandler.class.getSimpleName(), new MSPCommandHandler(clientExecutorService))
@@ -112,8 +110,6 @@ public class MySqlPortal implements MySqlPortalService {
 			workerGroup.shutdownGracefully();
 		if ( clientExecutorService != null )
 			clientExecutorService.shutdown();
-
-		workerExecGroup.shutdownGracefully();
 	}
 
 	public static void start(Properties props) throws PEException {
@@ -148,7 +144,7 @@ public class MySqlPortal implements MySqlPortalService {
 	
 	@Override
     public int getWorkerExecGroupCount() {
-		return workerExecGroup.executorCount();
+		return 0;
 	}
 	
 	@Override

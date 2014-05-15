@@ -350,12 +350,6 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
         MySqlPortalService portal = Singletons.lookup(MySqlPortalService.class);
         return portal == null ? 0 : portal.getWorkerGroupCount();
 	}
-	
-	@Override
-	public int getPortalWorkerExecGroupCount() {
-        MySqlPortalService portal = Singletons.lookup(MySqlPortalService.class);
-        return portal == null ? 0 : portal.getWorkerExecGroupCount();
-	}
 		
 	@Override
 	public int getPortalClientExecutorActiveCount() {
