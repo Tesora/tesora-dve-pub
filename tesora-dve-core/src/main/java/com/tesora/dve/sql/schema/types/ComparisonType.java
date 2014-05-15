@@ -1,0 +1,82 @@
+// OS_STATUS: public
+package com.tesora.dve.sql.schema.types;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.tesora.dve.common.catalog.UserColumn;
+import com.tesora.dve.db.NativeType;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.infoschema.persist.CatalogColumnEntity;
+import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.util.Functional;
+
+public class ComparisonType extends TextType {
+
+	String comparisonClass;
+	
+	public ComparisonType(NativeType nt, short flags, int size,
+			UnqualifiedName charset, UnqualifiedName collation, String comparisonClass) {
+		super(nt, flags, size, charset, collation);
+		this.comparisonClass = comparisonClass;
+	}
+	
+	@Override
+	public String getComparison() {
+		return comparisonClass;
+	}
+	
+	@Override
+	public void addColumnTypeModifiers(UserColumn uc) {
+		super.addColumnTypeModifiers(uc);
+		String ntmod = uc.getNativeTypeModifiers();
+		List<String> entries = new ArrayList<String>();
+		if (ntmod != null)
+			entries.add(ntmod);
+		entries.add(COMPARISON_TAG + " " + comparisonClass);
+		if (!entries.isEmpty())
+			uc.setNativeTypeModifiers(Functional.join(entries, " "));
+		else if (uc.getId() != 0)
+			uc.setNativeTypeModifiers(null);
+	}
+	
+	@Override
+	public void addColumnTypeModifiers(CatalogColumnEntity cce) throws PEException {
+		super.addColumnTypeModifiers(cce);
+		String ntmod = cce.getNativeTypeModifiers();
+		List<String> entries = new ArrayList<String>();
+		if (ntmod != null)
+			entries.add(ntmod);
+		entries.add(COMPARISON_TAG + " " + comparisonClass);
+		if (!entries.isEmpty())
+			cce.setNativeTypeModifiers(Functional.join(entries, " "));
+	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result
+				+ ((comparisonClass == null) ? 0 : comparisonClass.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ComparisonType other = (ComparisonType) obj;
+		if (comparisonClass == null) {
+			if (other.comparisonClass != null)
+				return false;
+		} else if (!comparisonClass.equals(other.comparisonClass))
+			return false;
+		return true;
+	}
+
+	
+}

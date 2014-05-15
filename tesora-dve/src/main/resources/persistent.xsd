@@ -1,0 +1,51 @@
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+	<xs:element name="persistentConfig" type="PersistentConfig" />
+
+	<xs:complexType name="PersistentConfig">
+		<xs:sequence>
+			<xs:element name="persistentSites" type="PersistentSiteCfgList" minOccurs="1" />
+			<xs:element name="persistentGroups" type="PersistentGroupCfgList" minOccurs="0" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="PersistentSiteCfgList">
+		<xs:sequence>
+			<xs:element name="site" maxOccurs="unbounded" minOccurs="1">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="siteInstance" maxOccurs="unbounded" minOccurs="1">
+							<xs:complexType>
+								<xs:attribute type="xs:string" name="name" use="required" />
+								<xs:attribute type="xs:string" name="url" use="required" />
+								<xs:attribute type="xs:string" name="user" use="required" />
+								<xs:attribute type="xs:string" name="password" use="required" />
+								<xs:attribute type="xs:boolean" name="enabled" use="optional" default="true" />
+								<xs:attribute type="xs:boolean" name="master" use="optional" />
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute type="xs:string" name="haMode" use="required" />
+					<xs:attribute type="xs:string" name="name" use="required" />
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="PersistentGroupCfgList">
+		<xs:sequence>
+			<xs:element name="group" maxOccurs="unbounded" minOccurs="1">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element type="xs:string" name="site" maxOccurs="unbounded" minOccurs="1" />
+					</xs:sequence>
+					<xs:attribute type="xs:string" name="name" use="required" />
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute type="xs:string" name="defaultGroup" use="optional" />
+	</xs:complexType>
+
+</xs:schema>
+
+

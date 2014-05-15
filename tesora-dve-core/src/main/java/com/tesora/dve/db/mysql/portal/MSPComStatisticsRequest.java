@@ -1,0 +1,70 @@
+// OS_STATUS: public
+package com.tesora.dve.db.mysql.portal;
+
+import java.util.concurrent.ExecutorService;
+
+import com.tesora.dve.db.mysql.portal.protocol.MSPMessage;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
+import io.netty.channel.ChannelHandlerContext;
+
+import com.tesora.dve.comms.client.messages.ResponseMessage;
+import com.tesora.dve.db.mysql.MysqlNativeConstants;
+import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
+import com.tesora.dve.db.mysql.libmy.MyResponseMessage;
+import com.tesora.dve.db.mysql.libmy.MyStatisticsResponse;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.worker.agent.Envelope;
+import com.tesora.dve.server.statistics.manager.GetStatisticsRequest;
+import com.tesora.dve.server.statistics.manager.GetStatisticsResponse;
+
+
+public class MSPComStatisticsRequest extends MSPActionBase {
+
+	final static MSPComStatisticsRequest INSTANCE = new MSPComStatisticsRequest();
+	
+	@Override
+	public void execute(ExecutorService clientExecutorService, ChannelHandlerContext ctx,
+                        SSConnection ssCon, MSPMessage protocolMessage) throws PEException {
+        byte sequenceId = protocolMessage.getSequenceID();
+		MyResponseMessage respMsg = null;
+
+		try {
+			GetStatisticsRequest req = new GetStatisticsRequest();
+            Envelope e = ssCon.newEnvelope(req).to(Singletons.require(HostService.class).getStatisticsManagerAddress());
+			ResponseMessage rm = ssCon.sendAndReceive(e);
+
+			MyStatisticsResponse statResp = new MyStatisticsResponse();
+			statResp.withPacketNumber(1);
+
+            HostService hostService = Singletons.require(HostService.class);
+
+			statResp.setThreads(Long.valueOf(hostService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_THREAD_COUNT)));
+			statResp.setUptime(Long.valueOf(hostService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_UPTIME)));
+			statResp.setQuestions(Long.valueOf(hostService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_QUESTIONS)));
+			//			statResp.setSlowQueries(Long.valueOf(Host.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_SLOW_QUERIES)));
+
+			// we are going to use QPS over the last minute for now as it is all
+			// that we have 
+			statResp.setQueriesPerSecAvg(((GetStatisticsResponse) rm).getStats().getGlobalQuery().getOneMin().getTransactionsPerSecond());
+			respMsg = statResp;
+		} catch (PEException e) {
+			respMsg = new MyErrorResponse(e.rootCause());
+			respMsg.setPacketNumber(sequenceId + 1);
+		} catch (Throwable t) {
+			respMsg = new MyErrorResponse(new Exception(t.getMessage()));
+			respMsg.setPacketNumber(sequenceId + 1);
+		}
+
+		ctx.channel().write(respMsg);
+	}
+
+	@Override
+	public byte getMysqlMessageType() {
+		return (byte) 0x09;
+	}
+
+
+
+}

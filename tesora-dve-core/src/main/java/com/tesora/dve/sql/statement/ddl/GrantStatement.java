@@ -1,0 +1,111 @@
+// OS_STATUS: public
+package com.tesora.dve.sql.statement.ddl;
+
+import java.util.List;
+
+import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.schema.GrantScope;
+import com.tesora.dve.sql.schema.PEDatabase;
+import com.tesora.dve.sql.schema.PEPriviledge;
+import com.tesora.dve.sql.schema.PEStorageGroup;
+import com.tesora.dve.sql.schema.PEUser;
+import com.tesora.dve.sql.schema.Persistable;
+import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
+import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.execution.ExecutionStep;
+import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
+import com.tesora.dve.sql.util.Functional;
+
+public class GrantStatement extends DDLStatement {
+
+	private PEPriviledge privilege;
+	
+	public GrantStatement(PEPriviledge privilege) {
+		super(false);
+		this.privilege = privilege;
+	}
+
+	public GrantScope getGrantScope() {
+		return privilege.getGrantScope();
+	}
+	
+	public String getPrivileges() {
+		return "ALL";
+	}
+
+	public PEUser getUser() {
+		return privilege.getUser();
+	}
+	
+	@Override
+	public Action getAction() {
+		return Action.ALTER;
+	}
+
+	@Override
+	public Persistable<?, ?> getRoot() {
+		return privilege;
+	}
+
+	@Override
+	public List<CatalogEntity> getCatalogObjects(SchemaContext pc) throws PEException {
+		pc.beginSaveContext();
+		try {
+			privilege.persistTree(pc);
+			return Functional.toList(pc.getSaveContext().getObjects());
+		} finally {
+			pc.endSaveContext();
+		}
+	}
+	
+	@Override
+	public PEDatabase getDatabase(SchemaContext pc) {
+		// the database for a grant statement is the database the grant is on - not whatever is current
+		if (privilege.getDatabase() != null)
+			return privilege.getDatabase();
+		else if (privilege.getTenant() != null)
+			return privilege.getTenant().getDatabase(pc);
+		// if it's a global grant, return null
+		return null;
+	}
+	
+	@Override	
+	public PEStorageGroup getStorageGroup(SchemaContext pc) {
+		// use the default persistent group of the database, or if no database, use the all sites group
+		PEDatabase pedb = getDatabase(pc);
+		if (pedb != null)
+			return pedb.getDefaultStorage(pc);
+		else
+			return buildAllSitesGroup(pc);
+	}
+		
+	@Override
+	protected ExecutionStep buildStep(SchemaContext pc) throws PEException {
+		String sql = "";
+		if (privilege.isGlobal() || true) {
+			StringBuilder buf = new StringBuilder();
+            Singletons.require(HostService.class).getDBNative().getEmitter().emitGrantStatement(this, buf);
+			sql = buf.toString();
+		}
+		return new SimpleDDLExecutionStep(getDatabase(pc), getStorageGroup(pc), getRoot(), getAction(), new SQLCommand(sql),
+				getDeleteObjects(pc), getCatalogObjects(pc), getInvalidationRecord(pc));
+	}
+
+	@Override
+	public CacheInvalidationRecord getInvalidationRecord(SchemaContext sc) {
+		// only additive, so nothing to invalidate, I don't think
+		return null;
+	}
+
+	@Override
+	public StatementType getStatementType() {
+		return StatementType.GRANT;
+	}
+
+}

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VariableConfig>
+	<VariableList>
+		<Variable name="sql_mode" defaultValue="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="group_service" defaultValue="Localhost" handler="com.tesora.dve.variable.GroupServiceVariableHandler"/>
+		<Variable name="hostname" defaultValue="HostName" handler="com.tesora.dve.variable.ServerVariableHandler"/>
+		<Variable name="version" defaultValue="5.5.10" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="version_comment" defaultValue="DveServerVersionComment" handler="com.tesora.dve.variable.ServerVariableHandler"/>
+
+		<Variable name="default_time_zone" defaultValue="+00:00" handler="com.tesora.dve.variable.ConfigVariableHandler"/>
+
+		<Variable name="default_persistent_group" handler="com.tesora.dve.variable.ProjectVariableHandler"/>
+		<Variable name="default_dynamic_policy" handler="com.tesora.dve.variable.ProjectVariableHandler"/>
+
+		<Variable name="plan_cache_limit" defaultValue="400" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="raw_plan_cache_limit" defaultValue="0" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="cache_limit" defaultValue="10000" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="scope_cache_limit" defaultValue="10000" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="tenant_cache_limit" defaultValue="500" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="table_cache_limit" defaultValue="400" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="template_cache_limit" defaultValue="100" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="max_prepared_stmt_count" defaultValue="16382" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="statistics_interval" defaultValue="0" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="adaptive_cleanup_interval" defaultValue="10000" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="max_cached_plan_literals" defaultValue="100" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="stepwise_statistics" defaultValue="0" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="cost_based_planning" defaultValue="yes" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="large_insert_threshold" defaultValue="1048576" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="dve_mysql_emulate_limit" defaultValue="0" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="sql_logging" defaultValue="no" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="slow_query_log" defaultValue="0" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="long_query_time" defaultValue="10.0" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="long_plan_step_time" defaultValue="3.0" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="innodb_lock_wait_timeout" defaultValue="3" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="wait_timeout" defaultValue="28800" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="redist_max_columns" defaultValue="1000" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="redist_max_size" defaultValue="16000000" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="group_concat_max_len" defaultValue="1024" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+
+		<Variable name="template_mode" defaultValue="REQUIRED" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+
+		<Variable name="max_connections" defaultValue="1000" handler="com.tesora.dve.variable.MaxConnectionsVariableHandler"/>
+		<Variable name="connection_mem_requirement" defaultValue="1000000" handler="com.tesora.dve.variable.MinMemoryVariableHandler"/>
+		<Variable name="max_concurrent" defaultValue="100" handler="com.tesora.dve.variable.MaxConcurrentVariableHandler"/>
+
+		<Variable name="auto_increment_min_block_size" defaultValue="10" handler="com.tesora.dve.variable.AutoIncrementVariableHandler"/>
+		<Variable name="auto_increment_max_block_size" defaultValue="1000" handler="com.tesora.dve.variable.AutoIncrementVariableHandler"/>
+		<Variable name="auto_increment_prefetch_threshold" defaultValue="50" handler="com.tesora.dve.variable.AutoIncrementVariableHandler"/>
+		
+		<Variable name="balance_persistent_groups" defaultValue="no" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		<Variable name="balance_persistent_groups_prefix" defaultValue="" handler="com.tesora.dve.variable.GlobalConfigVariableHandler"/>
+		
+		<Variable name="debug_context" defaultValue="no" handler="com.tesora.dve.variable.DebugContextVariableHandler"/>
+        <Variable name="performance_trace" defaultValue="no" handler="com.tesora.dve.variable.PerformanceTimingVariableHandler"/>
+
+	</VariableList>
+</VariableConfig>

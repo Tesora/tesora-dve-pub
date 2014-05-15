@@ -1,0 +1,35 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<parent>
+		<groupId>com.tesora</groupId>
+		<artifactId>tesora-dve-parent-product</artifactId>
+		<version>1.5.1-SNAPSHOT</version>
+		<relativePath>../tesora-dve-parent-product</relativePath>
+	</parent>
+
+	<modelVersion>4.0.0</modelVersion>
+	<artifactId>tesora-dve-message-api</artifactId>
+	<name>Message API</name>
+	<description>Messaging interface to Tesora DVE server</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.tesora</groupId>
+			<artifactId>tesora-dve-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.tesora</groupId>
+			<artifactId>tesora-dve-common</artifactId>
+			<scope>test</scope>
+			<classifier>tests</classifier>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-all</artifactId>
+		</dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>14.0</version>
+        </dependency>
+	</dependencies>
+</project>

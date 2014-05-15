@@ -1,0 +1,49 @@
+// OS_STATUS: public
+package com.tesora.dve.sql.statement;
+
+public enum StatementType {
+
+	// dml
+	SELECT,
+	UPDATE,
+	DELETE,
+	INSERT,
+	INSERT_INTO_SELECT,
+	UNION,
+	TRUNCATE,
+	LOCK_TABLES,
+	UNLOCK_TABLES,
+	
+	// ddl
+	CREATE_DB,
+	CREATE_TABLE,
+	CREATE_INDEX,
+	CREATE_USER,
+	DROP_DB,
+	DROP_TABLE,
+	DROP_INDEX,
+	GRANT,
+	
+	// txnal,
+	BEGIN,
+	COMMIT,
+	ROLLBACK,
+	
+	SHOW_GRANTS,
+	SHOW_PROCESSLIST,
+	SHOW_MASTER_STATUS,
+	SHOW_SLAVE_STATUS,
+	SHOW_PLUGINS,
+	
+	// other stuff
+	EXPLAIN,
+	PREPARE,
+	EXEC_PREPARE,
+	CLOSE_PREPARE,
+	ANALYZE_TABLE,
+	CHECK_TABLE,
+	OPTIMIZE_TABLE,
+	
+	// should be last
+	UNIMPORTANT;
+}

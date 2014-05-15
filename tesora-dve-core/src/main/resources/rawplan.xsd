@@ -1,0 +1,155 @@
+<?xml version="1.0"?>
+
+<xsd:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+	<xsd:element name="rawplan">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="insql" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+				<xsd:element name="parameter" type="ParameterType" minOccurs="0" maxOccurs="unbounded"/>
+				<xsd:element name="dyngroup" type="DynamicGroupType" minOccurs="0" maxOccurs="unbounded"/>
+				<xsd:element name="step" type="StepType" minOccurs="1" maxOccurs="unbounded"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	
+	<xsd:complexType name="ParameterType">
+		<xsd:attribute name="name" type="xsd:string" use="required"/>
+		<xsd:attribute name="type" type="LiteralType" use="required"/>
+	</xsd:complexType>
+	
+	<xsd:simpleType name="LiteralType">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="string" />
+			<xsd:enumeration value="integral" />
+			<xsd:enumeration value="decimal" />
+			<xsd:enumeration value="hex" />
+		</xsd:restriction>
+	</xsd:simpleType>
+	
+	<xsd:complexType name="DynamicGroupType">
+		<xsd:attribute name="name" type="xsd:string" use="required"/>
+		<xsd:attribute name="size" type="GroupScaleType" use="required"/>
+	</xsd:complexType>
+	
+	<xsd:simpleType name="GroupScaleType">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="aggregate" />
+			<xsd:enumeration value="small" />
+			<xsd:enumeration value="medium" />
+			<xsd:enumeration value="large" />
+		</xsd:restriction>
+	</xsd:simpleType>
+	
+	<xsd:complexType name="StepType">
+	</xsd:complexType>
+
+	<xsd:complexType name="TransactionStepType">
+		<xsd:complexContent>
+			<xsd:extension base="StepType">
+				<xsd:sequence>
+					<xsd:element name="kind" type="TransactionActionType" minOccurs="1" maxOccurs="1"/>
+				</xsd:sequence>
+			</xsd:extension>
+		</xsd:complexContent>
+	</xsd:complexType>
+
+	<xsd:simpleType name="TransactionActionType">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="begin" />
+			<xsd:enumeration value="commit" />
+			<xsd:enumeration value="rollback" />
+		</xsd:restriction>
+	</xsd:simpleType>
+
+	<xsd:complexType name="DMLStepType">
+		<xsd:complexContent>
+			<xsd:extension base="StepType">
+				<xsd:sequence>
+					<xsd:element name="srcsql" type="xsd:string" minOccurs="1" maxOccurs="1"/>
+					<xsd:element name="distkey" type="DistKeyValue" minOccurs="0" maxOccurs="1"/>
+				</xsd:sequence>
+				<xsd:attribute name="action" type="DMLType" use="required"/>
+				<xsd:attribute name="srcmod" type="ModelType" use="required"/>
+				<xsd:attribute name="srcgrp" type="xsd:string" use="required"/>
+			</xsd:extension>
+		</xsd:complexContent> 
+	</xsd:complexType>
+
+	<xsd:simpleType name="DMLType">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="update"/>
+			<xsd:enumeration value="delete"/>
+			<xsd:enumeration value="projecting"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+
+	<!-- for deleteAll, updateAll, deleteByKey, updateByKey -->
+	<xsd:complexType name="UpdateStepType">
+		<xsd:complexContent>
+			<xsd:extension base="DMLStepType">
+				<xsd:sequence>
+					<xsd:element name="table" type="TargetTableType" minOccurs="1" maxOccurs="1"/>
+				</xsd:sequence>
+			</xsd:extension>
+		</xsd:complexContent>
+	</xsd:complexType>
+	
+	<!-- for select, union, with optional redist -->
+	<xsd:complexType name="ProjectingStepType">
+		<xsd:complexContent>
+			<xsd:extension base="DMLStepType">
+				<xsd:sequence>
+					<xsd:element name="target" type="TargetTableType" minOccurs="0" maxOccurs="1"/>
+				</xsd:sequence>
+			</xsd:extension>
+		</xsd:complexContent>
+	</xsd:complexType>
+	
+	<xsd:simpleType name="ModelType">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="broadcast" />
+			<xsd:enumeration value="random" />
+			<xsd:enumeration value="static" />
+			<xsd:enumeration value="range" />
+		</xsd:restriction>
+	</xsd:simpleType>
+	
+	<xsd:complexType name="TargetTableType">
+		<xsd:sequence>
+			<xsd:element name="decl" type="xsd:string" minOccurs="0" maxOccurs="1"/>
+			<!-- dist vect not needed when target is not temp -->
+			<xsd:element name="distvect" type="DistributionType" minOccurs="0" maxOccurs="1"/>			
+		</xsd:sequence>
+		<xsd:attribute name="name" type="xsd:string" use="required"/>
+		<xsd:attribute name="temp" type="xsd:boolean" use="required"/>
+		<xsd:attribute name="group" type="xsd:string" use="required"/>
+	</xsd:complexType>
+	
+	<xsd:complexType name="DistributionType">
+		<xsd:sequence>
+			<xsd:element name="column" type="DistVectColumn" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="model" type="ModelType" use="required"/>
+		<xsd:attribute name="range" type="xsd:string" />
+	</xsd:complexType>
+	
+	<xsd:complexType name="DistKeyValue">
+		<xsd:sequence>
+			<xsd:element name="value" type="DistKeyColumnValue" minOccurs="1" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="table" type="xsd:string" use="required"/>
+	</xsd:complexType>
+	
+	<xsd:complexType name="DistKeyColumnValue">
+		<xsd:attribute name="position" type="xsd:int" use="required"/>
+		<!-- one of the Paramters -->
+		<xsd:attribute name="param" type="xsd:string" use="required"/>
+	</xsd:complexType>
+
+	<xsd:complexType name="DistVectColumn">
+		<xsd:attribute name="name" type="xsd:string" use="required"/>
+		<xsd:attribute name="position" type="xsd:int" use="required"/>
+	</xsd:complexType>	
+
+</xsd:schema>

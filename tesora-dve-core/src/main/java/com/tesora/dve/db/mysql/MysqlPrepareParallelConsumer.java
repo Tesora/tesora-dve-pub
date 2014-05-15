@@ -1,0 +1,168 @@
+// OS_STATUS: public
+package com.tesora.dve.db.mysql;
+
+import com.tesora.dve.db.mysql.libmy.*;
+import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
+
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+
+import java.util.List;
+
+import com.tesora.dve.exceptions.PESQLStateException;
+import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.concurrent.PEFuture;
+import com.tesora.dve.concurrent.PEPromise;
+import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PECodingException;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.resultset.ColumnSet;
+import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.server.messaging.SQLCommand;
+
+public abstract class MysqlPrepareParallelConsumer implements DBResultConsumer {
+
+	boolean successful = false;
+	
+	final MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt =
+			new MyPreparedStatement<MysqlGroupedPreparedStatementId>(new MysqlGroupedPreparedStatementId());
+	
+	private int numParams = 0;
+	private short warnings = 0;
+	private int numCols = 0;
+	private ChannelHandlerContext ctxToConsume = null;
+	private boolean executeImmediately = false;
+
+	@Override
+	public PEFuture<Boolean> writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
+		MysqlCommand cmd = new MysqlStmtPrepareCommand(sql.getSQL(), this, promise);
+		cmd.setExecuteImmediately(executeImmediately);
+		channel.write(cmd);
+		return promise;
+	}
+
+	public void header(ChannelHandlerContext ctx, MyPrepareOKResponse prepareOK) {
+		pstmt.getStmtId().addStmtId(ctx.channel(), (int)prepareOK.getStmtId());
+		synchronized (this) {
+			if (ctxToConsume == null) {
+				ctxToConsume  = ctx;
+				//			stmtId = wholePacket.readInt();
+				numCols = prepareOK.getNumColumns();
+				numParams = prepareOK.getNumParams();
+				warnings = (short) prepareOK.getWarningCount();
+				successful = true;
+				consumeHeader(prepareOK);
+			}
+		}
+	}
+
+	@Override
+	public void rollback() {
+		numParams = 0;
+		numCols = 0;
+		warnings = 0;
+	}
+
+    abstract void consumeHeader(MyPrepareOKResponse prepareOK);
+
+	public void paramDef(ChannelHandlerContext ctx, MyFieldPktResponse paramDef) throws PEException {
+		if (ctx == ctxToConsume){
+			consumeParamDef(paramDef);
+        }
+	}
+
+    abstract void consumeParamDef(MyFieldPktResponse paramDef) throws PEException;
+
+	public void paramDefEOF(ChannelHandlerContext ctx, MyEOFPktResponse paramEof) {
+		if (ctx == ctxToConsume) {
+			consumeParamDefEOF(paramEof);
+		}
+	}
+
+    abstract void consumeParamDefEOF(MyEOFPktResponse paramEof);
+
+	public void colDef(ChannelHandlerContext ctx, MyFieldPktResponse columnDef) {
+		if (ctx == ctxToConsume) {
+			consumeColDef(columnDef);
+		}
+	}
+
+    abstract void consumeColDef(MyFieldPktResponse colDef);
+
+	public void colDefEOF(ChannelHandlerContext ctx, MyEOFPktResponse colEof) {
+		if (ctx == ctxToConsume) {
+			consumeColDefEOF(colEof);
+		}
+	}
+
+    abstract void consumeColDefEOF(MyEOFPktResponse colEof);
+
+	public void errorResponse(ChannelHandlerContext ctx, MyErrorResponse error) throws PESQLStateException {
+		consumeError(error);
+	}
+
+    abstract void consumeError(MyErrorResponse error) throws PESQLStateException;
+
+	@Override
+	public void setSenderCount(int senderCount) {
+	}
+
+	@Override
+	public boolean hasResults() {
+		return false;
+	}
+
+	@Override
+	public long getUpdateCount() {
+		return 0;
+	}
+
+	@Override
+	public void setResultsLimit(long resultsLimit) {
+	}
+
+	@Override
+	public void inject(ColumnSet metadata, List<ResultRow> rows)
+			throws PEException {
+		throw new PECodingException(this.getClass().getSimpleName()+".inject not implemented");
+	}
+
+	@Override
+	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
+	}
+
+	@Override
+	public void setNumRowsAffected(long rowcount) {
+	}
+
+	@Override
+	public boolean isSuccessful() {
+		return successful;
+	}
+
+	public short getWarnings() {
+		return warnings;
+	}
+
+	public int getNumParams() {
+		return numParams;
+	}
+
+	public int getNumCols() {
+		return numCols;
+	}
+
+	public MyPreparedStatement<MysqlGroupedPreparedStatementId> getPreparedStatement() {
+		return pstmt;
+	}
+
+	public boolean isExecuteImmediately() {
+		return executeImmediately;
+	}
+
+	public void setExecuteImmediately(boolean executeImmediately) {
+		this.executeImmediately = executeImmediately;
+	}
+
+}

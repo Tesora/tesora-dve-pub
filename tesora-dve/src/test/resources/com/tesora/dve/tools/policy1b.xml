@@ -1,0 +1,21 @@
+<policyConfig name="Policy1" strict="false" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <aggregation>
+     	<provider>AnotherProvider</provider>
+     	<pool>test</pool>
+     	<count>1</count>
+    </aggregation>
+    <small>
+     	<provider>AnotherProvider</provider>
+     	<pool>test</pool>
+     	<count>2</count>
+    </small>
+    <medium>
+     	<provider>YetAnotherProvider</provider>
+     	<count>3</count>
+    </medium>
+    <large>
+     	<provider>YetAnotherProvider</provider>
+     	<count>5</count>
+    </large>
+</policyConfig>
+

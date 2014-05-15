@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE hibernate-configuration PUBLIC
+    "-//Hibernate/Hibernate Configuration DTD//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+
+	<session-factory>
+
+		<property name="hibernate.cache.hazelcast.instance_name">dve</property>
+
+        <class-cache class="com.tesora.dve.common.catalog.PersistentGroup" usage="read-write"/>
+        <collection-cache collection="com.tesora.dve.common.catalog.PersistentGroup.generations" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.StorageGroupGeneration" usage="read-write"/>
+        <collection-cache collection="com.tesora.dve.common.catalog.StorageGroupGeneration.groupMembers" usage="read-write"/>
+
+        <class-cache class="com.tesora.dve.common.catalog.UserTable" usage="read-write"/>
+        <collection-cache collection="com.tesora.dve.common.catalog.UserTable.userColumns" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.UserColumn" usage="read-write"/>
+
+        <class-cache class="com.tesora.dve.common.catalog.UserDatabase" usage="read-write"/>
+        <collection-cache collection="com.tesora.dve.common.catalog.UserDatabase.userTables" usage="read-write"/>
+
+        <class-cache class="com.tesora.dve.common.catalog.User" usage="read-write"/>
+        <collection-cache collection="com.tesora.dve.common.catalog.User.priviledges" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.Priviledge" usage="read-write"/>
+
+        <class-cache class="com.tesora.dve.common.catalog.PersistentSite" usage="read-write"/>
+        <collection-cache collection="com.tesora.dve.common.catalog.PersistentSite.siteInstances" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.SiteInstance" usage="read-write"/>
+
+        <class-cache class="com.tesora.dve.distribution.DistributionRange" usage="read-write"/>
+        <collection-cache collection="com.tesora.dve.distribution.DistributionRange.rangeGenerations" usage="read-write"/>
+        <class-cache class="com.tesora.dve.distribution.GenerationKeyRange" usage="read-write"/>
+
+        <class-cache class="com.tesora.dve.common.catalog.DistributionModel" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.DynamicPolicy" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.ExternalService" usage="read-write"/>
+        <class-cache class="com.tesora.dve.variable.GlobalConfig" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.Project" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.Provider" usage="read-write"/>
+        <class-cache class="com.tesora.dve.distribution.RangeTableRelationship" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.Shape" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.Tenant" usage="read-write"/>
+
+        <collection-cache collection="com.tesora.dve.common.catalog.Tenant.visibility" usage="read-write"/>
+
+    </session-factory>
+
+</hibernate-configuration>

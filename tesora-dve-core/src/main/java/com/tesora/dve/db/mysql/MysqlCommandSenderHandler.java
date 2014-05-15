@@ -1,0 +1,224 @@
+// OS_STATUS: public
+package com.tesora.dve.db.mysql;
+
+import com.tesora.dve.charset.NativeCharSetCatalog;
+import com.tesora.dve.clock.*;
+import com.tesora.dve.common.DBType;
+import com.tesora.dve.common.PEThreadContext;
+import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
+import com.tesora.dve.exceptions.PECommunicationsException;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.singleton.Singletons;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
+
+import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
+import io.netty.util.ReferenceCountUtil;
+import org.apache.log4j.Logger;
+
+public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
+
+	private static final Logger logger = Logger.getLogger(MysqlCommandSenderHandler.class);
+
+    final String socketDesc;
+    TimingService timingService = Singletons.require(TimingService.class, NoopTimingService.SERVICE);
+
+    public MysqlCommandSenderHandler(String socketDesc) {
+        this.socketDesc = socketDesc;
+    }
+
+    enum TimingDesc {BACKEND_ROUND_TRIP, BACKEND_RESPONSE_PROCESSING}
+
+	List<MysqlCommand> cmdList = Collections.synchronizedList(new LinkedList<MysqlCommand>());
+
+	Charset serverCharset = null;
+
+	@Override
+	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+		if (!(msg instanceof MysqlCommand)){
+            logger.warn("Don't know how to handle message, passing downstream :" + (msg) );
+            ctx.write(msg); //see if someone downstream can handle this.
+            return;
+        }
+
+		MysqlCommand cast = (MysqlCommand) msg;
+
+        if (logger.isDebugEnabled())
+            logger.debug(ctx.channel() + " flush rec'd cmd " + cast);
+
+        Timer commandTimer = cast.frontendTimer.newSubTimer(TimingDesc.BACKEND_ROUND_TRIP);
+        cast.commandTimer = commandTimer;
+        Timer previouslyAttached = timingService.attachTimerOnThread(cast.frontendTimer);
+        boolean noResponse = false;
+        try {
+            if (cast.getResultHandler() != null) {
+                noResponse = cast.getResultHandler().isDone(ctx);//finished before we started, no responses will get processed.
+                if (cast.isExecuteImmediately()) {
+                    synchronized (cmdList) {
+                        int insertPos = 0;
+                        for (; insertPos < cmdList.size(); ++insertPos) {
+                            MysqlCommand pendingCmd = cmdList.get(insertPos);
+                            if (pendingCmd.isPreemptable())
+                                break;
+                        }
+                        cmdList.add(insertPos, cast);
+                        if (logger.isDebugEnabled())
+                            logger.debug(ctx.channel() + ": cmd registered for immediate execution: " + cast);
+                    }
+                } else {
+                    cmdList.add(cast);
+                    if (logger.isDebugEnabled())
+                        logger.debug(ctx.channel() + ": cmd registered: " + cast);
+                }
+            }
+            // System.out.println("Executing " + cmd);
+            cast.executeInContext(ctx, getServerCharset(ctx));
+            if (noResponse){
+                commandTimer.end(
+                    cast.getClass().getName(),
+                    cast.getResultHandler().getClass().getName()
+                );
+            }
+            lookupActiveCommand(ctx);//quick check to see if request is already done, (IE stmt close)
+        } catch (Exception e) {
+            logger.error("Connection " + ctx.channel() + "to " + ctx.channel().remoteAddress()
+                    + " closed due to exception", e);
+            ctx.close();
+            cast.getResultHandler().failure(e);
+        } finally {
+            timingService.attachTimerOnThread(previouslyAttached);
+        }
+
+    }
+
+	private Charset getServerCharset(ChannelHandlerContext ctx) {
+		if (serverCharset == null)
+			serverCharset = ctx.channel().attr(MysqlClientAuthenticationHandler.HANDSHAKE_KEY).get().getServerCharset( NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL) );
+		return serverCharset;
+	}
+
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        if (msg instanceof MyMessage){
+            MyMessage message = (MyMessage)msg;
+            dispatch(ctx,message);
+        } else {
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("unexpected message type, %s", (msg == null ? "null" : msg.getClass().getName())));
+            }
+            ctx.fireChannelRead(msg);
+        }
+
+    }
+
+    protected void dispatch(ChannelHandlerContext ctx, MyMessage message) throws Exception {
+        MysqlCommand cmd = null;
+        Timer responseProcessing = null;
+        try {
+            cmd = lookupActiveCommand(ctx);
+            if (cmd == null){
+                logger.warn(String.format("Received message %s, but no active command registered, discarding.", message.getClass().getName()));
+                ReferenceCountUtil.release(message);
+                return;
+            }
+            PEThreadContext.inherit(cmd.debugContext.copy());
+            PEThreadContext.pushFrame(getClass().getName())
+                    .put("command", cmd);
+
+            cmd.incrementResultsProcessedCount();
+
+            if (logger.isDebugEnabled() && cmd.resultsProcessedCount() == 1)
+                logger.debug(ctx.channel() + ": results received for cmd " + cmd);
+
+            MysqlCommandResultsProcessor resultHandler = cmd.getResultHandler();
+
+            responseProcessing = cmd.commandTimer.newSubTimer(TimingDesc.BACKEND_RESPONSE_PROCESSING);
+            timingService.attachTimerOnThread(cmd.commandTimer);
+            resultHandler.processPacket(ctx, message);
+            responseProcessing.end(
+                    socketDesc,
+                    cmd.getClass().getName(),
+                    resultHandler.getClass().getName()
+            );
+            lookupActiveCommand(ctx);//fast triggers removal of finished commands to get accurate completion time.
+
+        } catch (PEException e) {
+            cmd.getResultHandler().failure(e);
+        } catch (Exception e) {
+            String errorMsg = String.format("encountered problem processing %s via %s, failing command.\n", (message.getClass().getName()), (cmd == null ? "null" : cmd.getClass().getName()));
+            if (cmd==null || logger.isDebugEnabled())
+                logger.warn(errorMsg,e);
+            else
+                logger.warn(errorMsg);
+            if (cmd != null)
+                cmd.getResultHandler().failure(e);
+        } finally {
+            timingService.detachTimerOnThread();
+            PEThreadContext.clear();
+            if (responseProcessing != null)
+                responseProcessing.end();
+        }
+    }
+
+    protected MysqlCommand lookupActiveCommand(ChannelHandlerContext ctx) {
+        synchronized(cmdList){
+            for (;;){
+                if (cmdList.isEmpty())
+                    return null;
+
+                MysqlCommand cmd = cmdList.get(0);
+                if (cmd.getResultHandler().isDone(ctx)) {
+                    cmd.commandTimer.end( socketDesc,
+                            cmd.getClass().getName(),
+                            cmd.getResultHandler().getClass().getName()
+                    );
+                    cmdList.remove(0);
+                    if (logger.isDebugEnabled())
+                        logger.debug(ctx.channel() + ": "+cmd.resultsProcessedCount()+" results received for deregistered cmd " + cmd);
+
+                    continue;
+                } else
+                    return cmd;
+            }
+        }
+    }
+
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+        if ( ! cmdList.isEmpty() ){
+            cmdList.get(0).getResultHandler().packetStall(ctx);
+        }
+        super.channelReadComplete(ctx);
+    }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        if (!cmdList.isEmpty()) {
+            //premature closure, we had outstanding commands.
+            failAllCommands(ctx, null);
+        }
+        super.channelInactive(ctx);
+    }
+
+
+
+    private void failAllCommands(ChannelHandlerContext ctx, Exception cause) {
+        if (!cmdList.isEmpty()) {
+            for (MysqlCommand cmd : cmdList) {
+                PEException communicationsFailureException =
+                        new PECommunicationsException("Connection closed before completing command: " + cmd);
+                if (cause != null)
+                    communicationsFailureException.initCause(cause);
+                cmd.getResultHandler().failure(communicationsFailureException);
+            }
+        }
+    }
+
+}

@@ -1,0 +1,13 @@
+<onPremiseSiteProviderConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <pool name="LOCAL" alternatePool="REMOTE">
+        <site name="site1" url="${jdbc.mysql.url}" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" maxQueries="-1" />
+        <site name="site2" url="${jdbc.mysql.url}" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" maxQueries="-1" />
+        <site name="site3" url="${jdbc.mysql.url}" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" maxQueries="-1" />
+    </pool>
+    <pool name="REMOTE" >
+        <site name="inst1" url="jdbc:mysql://url1:3307" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" maxQueries="-1" />
+        <site name="inst2" url="jdbc:mysql://url2:3307" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" maxQueries="-1" />
+        <site name="inst3" url="jdbc:mysql://url3:3307" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" maxQueries="10" />
+    </pool>
+</onPremiseSiteProviderConfig>
+

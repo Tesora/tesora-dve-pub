@@ -1,0 +1,23 @@
+<persistentConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <persistentSites>
+                <site haMode="MasterMaster" name="site1">
+                        <siteInstance name="inst1" url="${jdbc.mysql.url}" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" />
+                        <siteInstance name="inst2" url="${jdbc.mysql.url}" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" />
+                </site>
+                <site haMode="MasterMaster" name="site2">
+                        <siteInstance name="inst3" url="${jdbc.mysql.url}" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" />
+                        <siteInstance name="inst4" url="${jdbc.mysql.url}" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" />
+                </site>
+                <site haMode="MasterMaster" name="site3">
+                        <siteInstance name="inst5" url="${jdbc.mysql.url}" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" />
+                        <siteInstance name="inst6" url="${jdbc.mysql.url}" user="${jdbc.mysql.user}" password="${jdbc.mysql.password}" />
+                </site>
+        </persistentSites>
+        <persistentGroups defaultGroup="Group1">
+                <group name="Group1">
+                        <site>site1</site>
+                        <site>site2</site>
+                        <site>site3</site>
+                </group>
+        </persistentGroups>
+</persistentConfig>

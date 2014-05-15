@@ -1,0 +1,293 @@
+// OS_STATUS: public
+package com.tesora.dve.common.catalog;
+
+import java.util.List;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
+import javax.persistence.Transient;
+
+import org.apache.commons.lang.BooleanUtils;
+import org.apache.log4j.Logger;
+
+import org.hibernate.annotations.ForeignKey;
+
+import com.tesora.dve.common.PECryptoUtils;
+import com.tesora.dve.common.ShowSchema;
+import com.tesora.dve.common.SiteInstanceStatus;
+import com.tesora.dve.exceptions.PEAlreadyExistsException;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.resultset.ColumnSet;
+import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.infoschema.annos.ColumnView;
+import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
+import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
+import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.annos.TableView;
+import com.tesora.dve.worker.UserAuthentication;
+
+@InfoSchemaTable(logicalName="site_instance",
+views={
+		@TableView(view=InfoView.SHOW, name="persistent instance", pluralName="persistent instances", 
+				columnOrder={ShowSchema.SiteInstance.NAME, ShowSchema.SiteInstance.PERSISTENT_SITE, 
+				ShowSchema.SiteInstance.URL, ShowSchema.SiteInstance.USER, ShowSchema.SiteInstance.PASSWORD, ShowSchema.SiteInstance.IS_MASTER, ShowSchema.SiteInstance.STATUS},
+				extension=true, priviledged=true),
+		@TableView(view=InfoView.INFORMATION, name="site_instance", pluralName="",
+				columnOrder={"name", "storage_site", "instance_url", "user", "password", "is_master", "status"},
+				extension=true, priviledged=true)})
+@Entity
+@Table(name="site_instance")
+public class SiteInstance implements ISiteInstance {
+	private static Logger logger = Logger.getLogger(SiteInstance.class);
+
+	private static final long serialVersionUID = 1L;
+	
+	@Id
+	@GeneratedValue
+	int id;
+	
+	@Column( name="name", nullable=false, unique=true )
+	String name;
+	
+	@ForeignKey(name="fk_site_instance_site")
+	@ManyToOne
+	@JoinColumn(name="storage_site_id")
+	PersistentSite storageSite;
+	
+	@Column( name="instance_url", nullable=false )
+	String instanceURL;
+	
+	@Column( name="is_master", nullable = false)
+	int isMaster;
+
+	@Enumerated(EnumType.STRING)
+	@Column( name="status", nullable = false)
+	SiteInstanceStatus status;
+	
+	@Column(name="user", nullable = false)
+	String user;
+	
+	@Column(name="password", nullable = false)
+	String password;
+	
+	@Transient
+	String decryptedPassword;
+
+	public SiteInstance() {
+		super();
+	}
+
+	public SiteInstance(String name, String url, String user, String password) {
+		this(name, url, user, password, false, SiteInstanceStatus.ONLINE.name());
+	}
+
+	public SiteInstance(String name, String url, String user, String password, boolean isMaster, String status) {
+		this.name = name;
+		this.instanceURL = url;
+		this.user = user;
+		
+		setDecryptedPassword(password);
+		setMaster(isMaster);
+		setStatus(status);
+	}
+
+	public void setStorageSite(PersistentSite storageSite) throws PEAlreadyExistsException {
+		if (this.storageSite != null)
+			throw new PEAlreadyExistsException("SiteInstance " + this + " is already in " + storageSite.getClass().getSimpleName()
+					+ " " + storageSite);
+		this.storageSite = storageSite;
+	}
+
+	public void clearStorageSite() {
+		this.storageSite = null;
+	}
+	
+	@InfoSchemaColumn(logicalName="storage_site", fieldName="storageSite",
+			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
+			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.PERSISTENT_SITE),
+				   @ColumnView(view=InfoView.INFORMATION,name="storage_site")})
+	public PersistentSite getStorageSite() {
+		return storageSite;
+	}
+
+	@InfoSchemaColumn(logicalName="instance_url", fieldName="instanceURL",
+			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
+			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.URL),
+				   @ColumnView(view=InfoView.INFORMATION,name="instance_url")})
+	public String getInstanceURL() {
+		return instanceURL;
+	}
+
+	public void setInstanceURL(String instanceURL) {
+		this.instanceURL = instanceURL;
+	}
+	
+	@InfoSchemaColumn(logicalName="user", fieldName="user",
+			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
+			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.USER),
+				   @ColumnView(view=InfoView.INFORMATION,name="user")})
+	public String getUser() {
+		return user;
+	}
+	
+	public void setUser(String user) {
+		this.user = user;
+	}
+	
+	@InfoSchemaColumn(logicalName="password", fieldName="password",
+			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
+			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.PASSWORD),
+				   @ColumnView(view=InfoView.INFORMATION,name="password")})
+	public String getEncryptedPassword() {
+		return password;
+	}
+	
+	public void setEncryptedPassword(String password) {
+		this.password = password;
+	}
+	
+	public UserAuthentication getAuthentication() {
+		return new UserAuthentication(user, getDecryptedPassword(), false);
+	}
+	
+	public String getDecryptedPassword() {
+		if(decryptedPassword == null) {
+			try {
+				decryptedPassword = PECryptoUtils.decrypt(password);
+			} catch(Exception e) {
+				logger.error("Failed to decrypt password for site instance '" + name + "'", e);
+
+				decryptedPassword = password;
+			}
+		}
+		return decryptedPassword;	
+	}
+	
+	public void setDecryptedPassword(String password) {
+		decryptedPassword = password;
+
+		try {
+			this.password = PECryptoUtils.encrypt(password);
+		} catch (Exception e) {
+			logger.error("Failed to encrypt password for site instance '" + name + "'", e);
+			this.password = password;
+		}	
+	}
+
+	@Override
+	public int getId() {
+		return id;
+	}
+
+	@InfoSchemaColumn(logicalName="name",fieldName="name",
+			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
+			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.SiteInstance.NAME,orderBy=true,ident=true),
+			       @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	@InfoSchemaColumn(logicalName="is_master", fieldName="isMaster", sqlType=java.sql.Types.VARCHAR,
+			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.IS_MASTER),
+				   @ColumnView(view=InfoView.INFORMATION,name="is_master")})
+	public Boolean schemaIsMaster() {
+		return BooleanUtils.toBooleanObject(isMaster);
+	}
+	public boolean isMaster() {
+		return isMaster == 1;
+	}
+
+	public void setMaster(boolean isMaster) {
+		this.isMaster = isMaster ? 1 : 0;
+	}
+
+	@InfoSchemaColumn(logicalName="status", fieldName="status",
+			sqlType=java.sql.Types.VARCHAR,
+			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.STATUS),
+				   @ColumnView(view=InfoView.INFORMATION,name="status")})
+	public String getStatus() {
+		return status.name();
+	}
+	
+	public boolean isEnabled() {
+		return status == SiteInstanceStatus.ONLINE;
+	}
+	
+	public void failSiteInstance() {
+		this.status = SiteInstanceStatus.FAILED;
+	}
+
+	public void setStatus(String status) {
+		this.status = SiteInstanceStatus.fromString(status);
+	}
+
+	@Override
+	public ColumnSet getShowColumnSet(CatalogQueryOptions cqo)
+			throws PEException {
+		return null;
+	}
+
+	@Override
+	public ResultRow getShowResultRow(CatalogQueryOptions cqo)
+			throws PEException {
+		return null;
+	}
+
+	@Override
+	public void removeFromParent() throws Throwable {
+	}
+
+	@Override
+	public List<? extends CatalogEntity> getDependentEntities(CatalogDAO c)
+			throws Throwable {
+		return null;
+	}
+
+	@Override
+	public void onUpdate() {
+	}
+
+	@Override
+	public void onDrop() {
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + id;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		SiteInstance other = (SiteInstance) obj;
+		if (id != other.id)
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "SiteInstance [name=" + name + ", url=" + instanceURL + ", user=" + user 
+				+ ", isMaster=" + isMaster + ", status=" + status + "]";
+	}
+
+}

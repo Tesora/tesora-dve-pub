@@ -1,0 +1,136 @@
+// OS_STATUS: public
+package com.tesora.dve.sql;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
+import com.tesora.dve.sql.util.DBHelperConnectionResource;
+import com.tesora.dve.sql.util.PEDDL;
+import com.tesora.dve.sql.util.ProjectDDL;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
+import com.tesora.dve.sql.util.StorageGroupDDL;
+import com.tesora.dve.standalone.PETest;
+
+public class GroupPolicyDDLTest extends SchemaTest {
+	
+	private static final ProjectDDL checkDDL =
+		new PEDDL("checkdb",
+				new StorageGroupDDL("check",1,"checkg"),
+				"schema");
+
+	@BeforeClass
+	public static void setup() throws Exception {
+		PETest.projectSetup(checkDDL);
+		PETest.bootHost = BootstrapHost.startServices(PETest.class);
+	}
+
+	private static final String userName = "regular";
+	private static final String userAccess = "localhost";
+	
+	protected ProxyConnectionResource conn;
+	protected ProxyConnectionResource userConn;
+	protected DBHelperConnectionResource dbh;
+	
+	@Before
+	public void connect() throws Throwable {
+		conn = new ProxyConnectionResource();
+		checkDDL.create(conn);
+		dbh = new DBHelperConnectionResource();
+		removeUser(conn,userName,userAccess);
+		conn.execute("create user '" + userName + "'@'" + userAccess + "' identified by '" + userName + "'");
+		userConn = new ProxyConnectionResource(userName,userName);
+	}
+	
+	@After
+	public void disconnect() throws Throwable {
+		if(userConn != null) {
+			userConn.disconnect();
+			userConn = null;
+		}
+		if(conn != null) {
+			removeUser(conn,userName,userAccess);
+
+			conn.disconnect();
+			conn = null;
+		}
+		if(dbh != null) {
+			dbh.disconnect();
+			dbh = null;
+		}
+	}
+	
+	@Test
+	public void test() throws Throwable {
+		conn.execute("create dynamic site policy ftpol (aggregate count 1 provider 'OnPremise' pool 'poolconf') strict=off");
+		conn.assertResults("show dynamic site policies like 'ftpol'",
+				br(nr,"ftpol",Boolean.FALSE,
+						"poolconf",new Integer(1),OnPremiseSiteProvider.DEFAULT_NAME,
+						null,null,null,
+						null,null,null,
+						null,null,null));
+		conn.execute("alter dynamic site policy ftpol change aggregate count 2 provider 'OnPremise' pool 'poolconf'");
+		conn.assertResults("show dynamic site policies like 'ftpol'",
+				br(nr,"ftpol",Boolean.FALSE,
+						"poolconf",new Integer(2),OnPremiseSiteProvider.DEFAULT_NAME,
+						null,null,null,
+						null,null,null,
+						null,null,null));
+		conn.execute("alter dynamic site policy ftpol change large count 15 provider 'OnPremise' pool 'excessive'");
+		conn.assertResults("show dynamic site policies like 'ftpol'",
+				br(nr,"ftpol",Boolean.FALSE,
+						"poolconf",new Integer(2),OnPremiseSiteProvider.DEFAULT_NAME,
+						null,null,null,
+						null,null,null,
+						"excessive",new Integer(15),OnPremiseSiteProvider.DEFAULT_NAME));
+		conn.execute("alter dynamic site policy ftpol set strict=on change large count 3 provider 'OnPremise' pool 'restrained', small count 15 provider 'OnPremise' pool 'retained'");
+		conn.assertResults("show dynamic site policies like 'ftpol'",
+				br(nr,"ftpol",Boolean.TRUE,
+						"poolconf",new Integer(2),OnPremiseSiteProvider.DEFAULT_NAME,
+						"retained",new Integer(15),OnPremiseSiteProvider.DEFAULT_NAME,
+						null,null,null,
+						"restrained",new Integer(3),OnPremiseSiteProvider.DEFAULT_NAME));
+		conn.execute("drop dynamic site policy ftpol");
+		conn.assertResults("show dynamic site policy ftpol",br());
+		conn.execute("create dynamic site policy rgpol (large count 1000 provider 'Loaded', aggregate count 1 provider 'Loaded', small count 10 provider 'Loaded', medium count 100 provider 'Loaded') strict=ON");
+		conn.assertResults("show dynamic site policy rgpol", 
+				br(nr,"rgpol",Boolean.TRUE,
+						null,new Integer(1),"Loaded",
+						null,new Integer(10),"Loaded",
+						null,new Integer(100),"Loaded",
+						null,new Integer(1000),"Loaded"));
+		conn.execute("create dynamic site policy empty () strict=on");
+		conn.assertResults("show dynamic site policy empty",
+				br(nr,"empty",Boolean.TRUE,
+						null,null,null,
+						null,null,null,
+						null,null,null,
+						null,null,null));
+		try {
+			userConn.execute("show dynamic site policies");
+		} catch (PEException e) {
+			assertSchemaException(e,"You do not have permission to query policies");
+		}
+		try {
+			userConn.execute("create dynamic site policy mine () strict = off");
+		} catch (PEException e) {
+			assertSchemaException(e,"You do not have permission to create a dynamic site policy");
+		}
+		try {
+			userConn.execute("alter dynamic site policy mine change aggregate count 1");
+		} catch (PEException e) {
+			assertSchemaException(e,"You do not have permission to alter a dynamic site policy");
+		}
+		try {
+			userConn.execute("drop dynamic site policy empty");
+		} catch (PEException e) {
+			assertSchemaException(e,"You do not have permission to drop a dynamic site policy");
+		}
+		
+	}
+			
+}

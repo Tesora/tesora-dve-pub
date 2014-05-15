@@ -1,0 +1,23 @@
+<policyConfig name="Policy1" strict="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <aggregation>
+     	<provider>OnPremise</provider>
+     	<pool>none</pool>
+     	<count>1</count>
+    </aggregation>
+    <small>
+     	<provider>OnPremise</provider>
+     	<pool>none</pool>
+     	<count>1</count>
+    </small>
+    <medium>
+     	<provider>OnPremise</provider>
+     	<pool>none</pool>
+     	<count>2</count>
+    </medium>
+    <large>
+     	<provider>OnPremise</provider>
+     	<pool>none</pool>
+     	<count>3</count>
+    </large>
+</policyConfig>
+

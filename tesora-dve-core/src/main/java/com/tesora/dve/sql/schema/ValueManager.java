@@ -1,0 +1,288 @@
+// OS_STATUS: public
+package com.tesora.dve.sql.schema;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.node.expression.AutoIncrementLiteralExpression;
+import com.tesora.dve.sql.node.expression.ConstantExpression;
+import com.tesora.dve.sql.node.expression.DelegatingLiteralExpression;
+import com.tesora.dve.sql.node.expression.Parameter;
+import com.tesora.dve.sql.node.expression.ValueSource;
+import com.tesora.dve.sql.parser.ExtractedLiteral;
+import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
+import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
+import com.tesora.dve.sql.schema.cache.IParameter;
+import com.tesora.dve.sql.schema.types.Type;
+import com.tesora.dve.sql.util.ResizableArray;
+
+public class ValueManager implements ValueSource {
+
+	// we store the original literal expression so that we can get the type off of them
+	// when we reset the literal values we'll use the types in the expressions to figure out
+	// how to interpret them
+	private ResizableArray<IDelegatingLiteralExpression> literals = new ResizableArray<IDelegatingLiteralExpression>();
+	// for inserts, the literal type needs to be used as well - we'll convert it on the way back out if known
+	private ResizableArray<Type> literalTypes = new ResizableArray<Type>();
+	
+	private ResizableArray<IParameter> parameters = new ResizableArray<IParameter>();
+	
+	private LateSortedInsert lsi = null;
+	
+	private ConnectionValues values = null;
+
+    public enum CacheStatus { CACHEABLE, NOCACHE_TOO_MANY_LITERALS, NOCACHE_DYNAMIC_FUNCTION}
+    private CacheStatus cacheStatus = CacheStatus.CACHEABLE;
+	
+	private boolean frozen = false;
+
+	// this is set for bad characters - but not during pstmt execution
+	private final boolean passDownParameters;
+	
+	public ValueManager() {
+		passDownParameters = false;
+	}
+	
+	public ValueManager(SchemaContext sc, List<Object> nonPrepParams) {
+		if (nonPrepParams == null || nonPrepParams.isEmpty())
+			passDownParameters = false;
+		else {
+			passDownParameters = true;
+			ConnectionValues cv = getValues(sc,false);
+			cv.setParameters(nonPrepParams);
+		}
+	}
+	
+	public void setFrozen() {
+		if (isCacheable()) {
+			// swap out existing objects for cache objects
+			for(int i = 0; i < literals.size(); i++) {
+				IDelegatingLiteralExpression idle = literals.get(i);
+				if (idle == null) continue;
+				literals.set(i, (IDelegatingLiteralExpression) idle.getCacheExpression());
+			}
+			for(int i = 0; i < parameters.size(); i++) {
+				IParameter ip = parameters.get(i);
+				if (ip == null) continue;
+				parameters.set(i, (IParameter)ip.getCacheExpression());
+			}
+		}
+		if (values != null) {
+			values = values.makeCopy();
+		}
+		
+		frozen = true;
+	}
+	
+	private ConnectionValues getValues(SchemaContext sc) {
+		return getValues(sc,true);
+	}
+	
+	private ConnectionValues getValues(SchemaContext sc, boolean check) {
+		ConnectionValues cv = sc._getValues();
+		if (cv == null) {
+			values = new ConnectionValues();
+			cv = values;
+			sc.setValues(values);
+		} else if (check && cv.getNumberOfLiterals() < literals.size()) {
+			throw new SchemaException(Pass.REWRITER, "invalid cached literals.  require " + literals.size() + " but found " + cv.getNumberOfLiterals());
+		}
+		return cv;
+	}
+	
+	public boolean hasPassDownParams() {
+		return passDownParameters;
+	}
+	
+	@Override
+	public Object getValue(SchemaContext sc, IParameter p) {
+		return getValues(sc).getParameterValue(p.getPosition());
+	}
+	
+	public int getNumberOfLiterals() {
+		return literals.size();
+	}
+
+	public List<IDelegatingLiteralExpression> getRawLiterals() {
+		ArrayList<IDelegatingLiteralExpression> out = new ArrayList<IDelegatingLiteralExpression>(literals.size());
+		for(int i = 0; i < literals.size(); i++) {
+			out.add(literals.get(i));
+		}
+		return out;
+	}
+	
+	public String getOriginalLiteralText(int i) {
+		DelegatingLiteralExpression dle = (DelegatingLiteralExpression) literals.get(i);
+		return dle.getSourceLocation().getText();
+	}
+	
+	@Override
+	public Object getLiteral(SchemaContext sc, IDelegatingLiteralExpression dle) {
+		return getLiteral(sc, dle.getPosition());
+	}
+
+	public Object getLiteral(SchemaContext sc, int index) {
+		try {
+			Type any = literalTypes.get(index);
+			Object value = getValues(sc).getLiteralValue(index);
+			if (any != null && value != null)
+                return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(value, any);
+			return value;
+		} catch (Throwable t) {
+			throw new SchemaException(Pass.PLANNER, "Literal for index " + index + " is invalid",t);
+		}
+	}
+	
+	private void checkFrozen(String message) {
+		if (frozen) throw new SchemaException(Pass.PLANNER, "Attempt to modify existing cached plan: " + message);
+	}
+	
+	public void markUncacheable(CacheStatus status) {
+        cacheStatus = status;
+	}
+	
+	public boolean isCacheable() {
+        return cacheStatus == CacheStatus.CACHEABLE;
+	}
+
+    public CacheStatus getCacheStatus(){
+        return cacheStatus;
+    }
+	
+	public void addLiteralValue(SchemaContext sc, int i, Object v, DelegatingLiteralExpression dle) {
+		checkFrozen("add new literal value");
+		IDelegatingLiteralExpression already = literals.get(i);
+		if (already != null) throw new SchemaException(Pass.SECOND, "Duplicate delegating literal");
+		literals.set(i, dle);
+		getValues(sc,false).setLiteralValue(i, v);
+	}
+	
+	public void setLiteralType(DelegatingLiteralExpression dle, Type t) {
+		checkFrozen("set literal type");
+		if (dle instanceof AutoIncrementLiteralExpression) {
+		} else {
+			literalTypes.set(dle.getPosition(), t);
+		}
+	}
+	
+	public void registerParameter(SchemaContext sc, Parameter p) {
+		checkFrozen("add a new parameter");
+		IParameter already = parameters.get(p.getPosition());
+		if (already != null)
+			throw new SchemaException(Pass.PLANNER, "Duplicate parameter at position " + p.getPosition());
+		parameters.set(p.getPosition(), p);
+	}
+	
+	public int getNumberOfParameters() {
+		return parameters.size();
+	}
+	
+	@Override
+	public Object getTenantID(SchemaContext sc) {
+		return getValues(sc).getTenantID();
+	}
+	
+	public void setTenantID(SchemaContext sc, Long v) {
+		getValues(sc,false).setTenantID(v);
+	}
+	
+	public void allocateAutoIncBlock(SchemaContext sc, TableKey tk) {
+		checkFrozen("allocate autoincrement values");
+		getValues(sc).allocateAutoIncBlock(this, tk);
+	}
+	
+	public AutoIncrementLiteralExpression allocateAutoInc(SchemaContext sc) {
+		checkFrozen("allocate autoincrement value");
+		return getValues(sc).allocateAutoInc();
+	}
+	
+	public void registerSpecifiedAutoinc(SchemaContext sc, ConstantExpression dle) {
+		checkFrozen("register explicit autoincrement value");
+		getValues(sc).registerSpecifiedAutoinc(dle);
+	}
+	
+	public void registerLateSortedInsert(LateSortedInsert lsi) {
+		checkFrozen("register late sorted insert");
+		if (this.lsi != null)
+			throw new SchemaException(Pass.PLANNER, "Already specified a late sorted insert block");
+		this.lsi = lsi;
+	}
+	
+	@Override
+	public Object getAutoincValue(SchemaContext sc,
+			IAutoIncrementLiteralExpression exp) {
+		return getValues(sc).getAutoincValue(exp);
+	}
+	
+	public Long getLastInsertId(SchemaContext sc) {
+		return getValues(sc).getLastInsertId();
+	}
+
+	public void resetForNewPStmtExec(SchemaContext sc, List<?> params) throws PEException {
+		ConnectionValues cv = basicReset(sc);
+		cv.setParameters(params);		
+		cv.handleAutoincrementValues(sc);
+		handleLateSortedInsert(sc);
+	}
+	
+	public void resetForNewPlan(SchemaContext sc, List<ExtractedLiteral> literalValues) throws PEException {
+		ConnectionValues cv = basicReset(sc);
+		for(int i = 0; i < literalValues.size(); i++) {
+			IDelegatingLiteralExpression dle = literals.get(i);
+            Object intermediate = Singletons.require(HostService.class).getDBNative().getValueConverter().convertLiteral(literalValues.get(i).getText(), dle.getValueType());
+			cv.setLiteralValue(i, intermediate);
+		}
+		cv.handleAutoincrementValues(sc);
+		handleLateSortedInsert(sc);
+	}	
+
+	private ConnectionValues basicReset(SchemaContext sc) throws PEException {
+		ConnectionValues cv = (values == null ? new ConnectionValues() : values.makeCopy());
+		sc.setValues(cv);
+		sc.setValueManager(this);
+		cv.setTenantID(sc.getPolicyContext().getTenantID(false));
+		cv.resetTempTables(sc);
+		cv.resetTempGroups(sc);
+		cv.resetTenantID(sc);
+		cv.resetCurrentTimestamp(sc);
+		return cv;
+	}
+	
+	public void handleAutoincrementValues(SchemaContext sc) {
+		getValues(sc,false).handleAutoincrementValues(sc);
+	}
+	
+	public void handleLateSortedInsert(SchemaContext sc) throws PEException {
+		if (lsi == null) return;
+		List<JustInTimeInsert> computed = lsi.resolve(sc); 
+		getValues(sc,false).setLateSortedInsert(computed);
+	}
+	
+	public List<JustInTimeInsert> getLateSortedInsert(SchemaContext sc) {
+		return getValues(sc).getLateSortedInserts();
+	}
+	
+	public int allocateTempTableName(SchemaContext sc) {
+		checkFrozen("allocate temp table");
+		return getValues(sc).allocateTempTableName(sc);
+	}
+	
+	public int allocatePlaceholderGroup(SchemaContext sc, PEStorageGroup dynGroup) {
+		checkFrozen("allocate placeholder persistent group");
+		return getValues(sc).allocatePlaceholderGroup(dynGroup);
+	}
+	
+	public PEStorageGroup getPlaceholderGroup(SchemaContext sc, int index) {
+		return getValues(sc).getPlaceholderGroup(index);
+	}
+	
+	public long getCurrentTimestamp(SchemaContext sc) {
+		return getValues(sc).getCurrentTimestamp(sc);
+	}
+}

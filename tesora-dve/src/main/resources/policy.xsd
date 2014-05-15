@@ -1,0 +1,28 @@
+<xs:schema attributeFormDefault="unqualified"
+	elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+	<xs:element name="policyConfig" type="PolicyConfig" />
+
+	<xs:complexType name="PolicyConfig">
+		<xs:sequence>
+			<xs:element name="aggregation" type="PolicyItem"
+				minOccurs="1" />
+			<xs:element name="small" type="PolicyItem" minOccurs="1" />
+			<xs:element name="medium" type="PolicyItem" minOccurs="1" />
+			<xs:element name="large" type="PolicyItem" minOccurs="1" />
+		</xs:sequence>
+		<xs:attribute type="xs:string" name="name" use="required" />
+		<xs:attribute type="xs:boolean" name="strict" use="optional" />
+	</xs:complexType>
+
+	<xs:complexType name="PolicyItem">
+		<xs:sequence>
+			<xs:element name="provider" type="xs:string" minOccurs="1" />
+			<xs:element name="pool" type="xs:string" minOccurs="0" />
+			<xs:element name="count" type="xs:int" minOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+
+</xs:schema>
+
+

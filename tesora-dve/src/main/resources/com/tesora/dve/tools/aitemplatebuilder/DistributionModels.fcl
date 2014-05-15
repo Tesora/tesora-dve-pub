@@ -1,0 +1,173 @@
+/**
+ * Broadcast distribution schema.
+ */
+FUNCTION_BLOCK BroadcastDistribution
+
+/**
+ * Define the input parameters.
+ */
+VAR_INPUT
+    sorts : REAL;
+    cardinality : REAL;
+END_VAR
+
+/**
+ * Define the output "desirability" score parameter.
+ */
+VAR_OUTPUT
+    desirability : REAL;
+END_VAR
+
+/**
+ * Fuzzy Linguistic Value set definitions.
+ */
+
+/** sorts */
+FUZZIFY sorts
+    TERM low := (0, 1) (20, 1) (50, 0);
+    TERM moderate := trian 20 50 80;
+    TERM high := (50, 0) (80, 1) (100, 1);
+END_FUZZIFY
+
+/** cardinality */
+FUZZIFY cardinality
+    TERM low := (0, 1) (60, 1) (70, 0);
+    TERM moderate := (60, 0) (70, 1) (80, 1) (90, 0);
+    TERM high := (80, 0) (90, 1) (100, 1);
+END_FUZZIFY
+
+/** desirability */
+DEFUZZIFY desirability
+    TERM undesirable := (0, 1) (25, 1) (50, 0);
+    TERM applicable := trian 25 50 75;
+    TERM desirable := (50, 0) (75, 1) (100, 1);
+    
+    METHOD : COG;  // Use 'Center Of Gravity' defuzzification method - best available
+    DEFAULT := 0;  // Default value is 0 (if no rule activates defuzzifier)
+END_DEFUZZIFY
+
+/**
+ * Fuzzy inference rules.
+ */
+RULEBLOCK rules
+    AND : MIN;   // Use 'min' for 'and' (also implicit use 'max' for 'or' to fulfill DeMorgan's Law)
+    ACT : MIN;   // Use 'min' activation method
+    ACCU : MAX;  // Use 'max' accumulation method
+        
+    /* Order By performance characteristics. */
+    RULE 1 : IF sorts IS low THEN desirability IS desirable;
+    RULE 2 : IF sorts IS moderate THEN desirability IS desirable;
+    RULE 3 : IF sorts IS high THEN desirability IS desirable;
+    
+    /* Cardinality characteristics. */
+    RULE 4 : IF cardinality IS low THEN desirability IS desirable;
+    RULE 5 : IF cardinality IS moderate THEN desirability IS applicable;
+    RULE 6 : IF cardinality IS high THEN desirability IS undesirable;
+                
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK
+
+/**
+ * Range distribution schema.
+ */
+FUNCTION_BLOCK RangeDistribution
+
+VAR_INPUT
+    sorts : REAL;
+    cardinality : REAL;
+END_VAR
+
+VAR_OUTPUT
+    desirability : REAL;
+END_VAR
+
+FUZZIFY sorts
+    TERM low := (0, 1) (20, 1) (50, 0);
+    TERM moderate := trian 20 50 80;
+    TERM high := (50, 0) (80, 1) (100, 1);
+END_FUZZIFY
+
+FUZZIFY cardinality
+    TERM low := (0, 1) (60, 1) (70, 0);
+    TERM moderate := (60, 0) (70, 1) (80, 1) (90, 0);
+    TERM high := (80, 0) (90, 1) (100, 1);
+END_FUZZIFY
+
+DEFUZZIFY desirability
+    TERM undesirable := (0, 1) (25, 1) (50, 0);
+    TERM applicable := trian 25 50 75;
+    TERM desirable := (50, 0) (75, 1) (100, 1);
+    
+    METHOD : COG;
+    DEFAULT := 0;
+END_DEFUZZIFY
+
+RULEBLOCK rules
+    AND : MIN;
+    ACT : MIN;
+    ACCU : MAX;
+    
+    RULE 1 : IF sorts IS low THEN desirability IS desirable;
+    RULE 2 : IF sorts IS moderate THEN desirability IS applicable;
+    RULE 3 : IF sorts IS high THEN desirability IS undesirable;
+    
+    RULE 4 : IF cardinality IS low THEN desirability IS applicable;
+    RULE 5 : IF cardinality IS moderate THEN desirability IS desirable;
+    RULE 6 : IF cardinality IS high THEN desirability IS desirable;
+                
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK
+
+/**
+ * Range model.
+ */
+FUNCTION_BLOCK RangeModel
+
+VAR_INPUT
+    joinFrequency : REAL;
+    joinCardinality : REAL;
+END_VAR
+
+VAR_OUTPUT
+    desirability : REAL;
+END_VAR
+ 
+FUZZIFY joinFrequency
+    TERM low := (0.0, 1) (33.33, 1) (100.0, 0);
+    TERM moderate := trian 33.33 100.0 166.66;
+    TERM high := (100.0, 0) (166.66, 1) (200.0, 1);
+END_FUZZIFY
+
+FUZZIFY joinCardinality
+    TERM low := (0, 1) (60, 1) (70, 0);
+    TERM moderate := (60, 0) (70, 1) (80, 1) (90, 0);
+    TERM high := (80, 0) (90, 1) (100, 1);
+END_FUZZIFY
+
+DEFUZZIFY desirability
+    TERM undesirable := (0, 1) (25, 1) (50, 0);
+    TERM applicable := trian 25 50 75;
+    TERM desirable := (50, 0) (75, 1) (100, 1);
+    
+    METHOD : COG;
+    DEFAULT := 0;
+END_DEFUZZIFY
+
+RULEBLOCK rules
+    AND : MIN;
+    ACT : MIN;
+    ACCU : MAX;
+    
+    RULE 1 : IF joinFrequency IS low THEN desirability IS undesirable;
+    RULE 2 : IF joinFrequency IS moderate THEN desirability IS applicable WITH 0.80;
+    RULE 3 : IF joinFrequency IS high THEN desirability IS desirable WITH 0.50;
+    
+    RULE 4 : IF joinCardinality IS low THEN desirability IS undesirable;
+    RULE 5 : IF joinCardinality IS moderate THEN desirability IS applicable;
+    RULE 6 : IF joinCardinality IS high THEN desirability IS desirable;
+                
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK

@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<ruleset name="Tesora DVE ruleset" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 http://pmd.sourceforge.net/ruleset_2_0_0.xsd"
+	xsi:noNamespaceSchemaLocation="http://pmd.sourceforge.net/ruleset_2_0_0.xsd">
+	<description>
+  A wrapper rules to include the subset of rules that we care about
+  </description>
+
+	<rule ref="rulesets/basic.xml">
+		<exclude name="EmptyCatchBlock" />
+		<exclude name="EmptyIfStmt" />
+		<exclude name="CollapsibleIfStatements" />
+		<exclude name="EmptyStatementNotInLoop" />
+	</rule>
+	<rule ref="rulesets/clone.xml" />
+	<rule ref="rulesets/coupling.xml">
+		<exclude name="ExcessiveImports" />
+	</rule>
+	<rule ref="rulesets/design.xml">
+		<exclude name="UncommentedEmptyMethod" />
+		<exclude name="UncommentedEmptyConstructor" />
+		<exclude name="ConfusingTernary" />
+		<exclude name="CloseResource" />
+		<exclude name="ConstructorCallsOverridableMethod" />
+		<exclude name="EmptyMethodInAbstractClassShouldBeAbstract" />
+		<exclude name="AvoidConstantsInterface" />
+		<exclude name="ImmutableField" />
+		<exclude name="TooFewBranchesForASwitchStatement" />
+		<exclude name="NonStaticInitializer" />
+		<exclude name="AccessorClassGeneration" />
+		<exclude name="UseCollectionIsEmpty" />
+		<exclude name="SimplifyBooleanExpressions" />
+		<exclude name="UnusedFormalParameter" />
+		<exclude name="UseSingleton" />
+		<exclude name="AvoidInstanceofChecksInCatchClause" />
+		<exclude name="OptimizableToArrayCall" />
+		<exclude name="AvoidReassigningParameters" />
+		<exclude name="SingularField" />
+		<exclude name="AvoidSynchronizedAtMethodLevel" />
+		<exclude name="UseNotifyAllInsteadOfNotify" />
+		<exclude name="UnnecessaryLocalBeforeReturn" />
+		<exclude name="AvoidDeeplyNestedIfStmts" />
+	</rule>
+	<rule ref="rulesets/finalizers.xml" />
+	<rule ref="rulesets/imports.xml" />
+	<rule ref="rulesets/optimizations.xml">
+		<exclude name="LocalVariableCouldBeFinal" />
+		<exclude name="MethodArgumentCouldBeFinal" />
+		<exclude name="AvoidInstantiatingObjectsInLoops" />
+		<exclude name="UseStringBufferForStringAppends" />
+	</rule>
+	<rule ref="rulesets/strictexception.xml">
+		<exclude name="SignatureDeclareThrowsException" />
+		<exclude name="AvoidCatchingThrowable" />
+		<exclude name="AvoidThrowingRawExceptionTypes" />
+		<exclude name="AvoidRethrowingException" />
+	</rule>
+	<rule ref="rulesets/strings.xml">
+		<exclude name="AvoidDuplicateLiterals" />
+	</rule>
+	<rule ref="rulesets/typeresolution.xml">
+		<exclude name="SignatureDeclareThrowsException" />
+	</rule>
+	<rule ref="rulesets/unusedcode.xml">
+		<exclude name="UnusedFormalParameter" />
+	</rule>
+</ruleset>

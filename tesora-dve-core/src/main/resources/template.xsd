@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+
+<xsd:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+
+	<xsd:element name="template">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="requirement" type="RequirementType" maxOccurs="unbounded" minOccurs="0"/>
+				<xsd:element name="tabletemplate" type="TableTemplateType" maxOccurs="unbounded" minOccurs="1"/>
+			</xsd:sequence>
+			<xsd:attribute name="name" type="xsd:string" />
+			<xsd:attribute name="fkmode" type="FkModeType" use="optional" />
+			<xsd:attribute name="comment" type="xsd:string" use="optional" />
+			<xsd:attribute name="match" type="xsd:string" use="optional" />
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:complexType name="RequirementType">
+		<xsd:sequence>
+			<xsd:element name="declaration" type="xsd:string" />
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:complexType name="TableTemplateType">
+		<xsd:sequence>
+			<xsd:element name="column" type="xsd:string" minOccurs="0" maxOccurs="unbounded" />
+			<xsd:element name="discriminator" type="xsd:string" minOccurs="0" maxOccurs="unbounded" />
+		</xsd:sequence>
+		<xsd:attribute name="match" type="xsd:string" use="required" />
+		<xsd:attribute name="model" type="ModelType" use="optional" />
+		<xsd:attribute name="range" type="xsd:string" use="optional" />
+		<xsd:attribute name="container" type="xsd:string" use="optional" />
+	</xsd:complexType>
+
+	<xsd:simpleType name="ModelType">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="Broadcast" />
+			<xsd:enumeration value="Random" />
+			<xsd:enumeration value="Static" />
+			<xsd:enumeration value="Range" />
+			<xsd:enumeration value="Container" />
+		</xsd:restriction>
+	</xsd:simpleType>
+
+	<xsd:simpleType name="FkModeType">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="strict" />
+			<xsd:enumeration value="ignore" />
+			<xsd:enumeration value="emulate" />
+		</xsd:restriction>
+	</xsd:simpleType>
+</xsd:schema>

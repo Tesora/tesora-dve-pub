@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<VariableConfig>
+    <VariableList>
+        <Variable handler="com.tesora.dve.variable.ConfigVariableHandler" defaultValue="defvalue" name="tvar2"/>
+        <Variable handler="com.tesora.dve.variable.ConfigVariableHandler" defaultValue="defvalue" name="tvar"/>
+    </VariableList>
+</VariableConfig>

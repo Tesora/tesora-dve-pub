@@ -1,0 +1,183 @@
+// OS_STATUS: public
+package com.tesora.dve.db.mysql.portal.protocol;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import java.nio.ByteOrder;
+
+public abstract class BaseMSPMessage<S> implements MSPMessage {
+    public static final int INITIAL_CAPACITY = 256;
+
+    byte sequenceID;
+    private S state;
+    private ByteBuf buffer;
+
+    public BaseMSPMessage(){
+        this.sequenceID = 0;
+        this.state = null;
+        this.buffer = null;
+    }
+
+    public BaseMSPMessage(byte sequence, S state){
+        this.sequenceID = sequence;
+        this.set(state);
+    }
+
+    public BaseMSPMessage(byte sequence, byte[] heapData){
+        this.sequenceID = sequence;
+        this.set(Unpooled.wrappedBuffer(heapData));
+    }
+
+    public BaseMSPMessage(byte sequence, ByteBuf buffer){
+        this.sequenceID = sequence;
+        this.set(buffer);
+    }
+
+    public BaseMSPMessage(byte sequence, S state, ByteBuf buffer){
+        this.sequenceID = sequence;
+        this.set(state,buffer);
+    }
+
+    @Override
+    public abstract byte getMysqlMessageType();
+
+    @Override
+    public abstract MSPMessage newPrototype(byte sequenceID, ByteBuf source);
+
+    protected S unmarshall(ByteBuf source) {
+        throw new UnsupportedOperationException();
+    }
+
+    protected void marshall(S state, ByteBuf destination) {
+        throw new UnsupportedOperationException();
+    }
+
+    public void writeTo(ByteBuf destination){
+        defaultWriteTo(destination, false);
+    }
+
+    protected void defaultWriteTo(ByteBuf destination, boolean supressType) {
+        ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
+        int payloadSizeIndex = leBuf.writerIndex();
+        leBuf.writeMedium(0);
+        leBuf.writeByte(this.getSequenceID());
+        int payloadStart = leBuf.writerIndex();
+        if (!supressType && !(this instanceof MSPUntypedMessage))
+            leBuf.writeByte(this.getMysqlMessageType());
+        leBuf.writeBytes(this.readBuffer().slice());
+        leBuf.setMedium(payloadSizeIndex, leBuf.writerIndex() - payloadStart);//patch up the length field.
+    }
+
+    protected S readState() {
+        if (isStateSet())
+            return this.state;
+
+        if (isBufferSet()){
+            S newState = this.unmarshall(this.buffer.slice().order(ByteOrder.LITTLE_ENDIAN));
+            this.set(newState,this.buffer);
+            return this.state;
+        }
+
+        throw new IllegalStateException(String.format("Cannot access state of %s, no fields or buffer provided.",this.getClass().getSimpleName()));
+    }
+
+    protected ByteBuf readBuffer() {
+        if (isBufferSet())
+            return this.buffer;
+
+        if (isStateSet()){
+            ByteBuf container = Unpooled.buffer(INITIAL_CAPACITY).order(ByteOrder.LITTLE_ENDIAN);
+            marshall(this.state,container);
+            this.set(state,container);
+            return this.buffer;
+        }
+
+        throw new IllegalStateException(String.format("Cannot access buffer of %s, no fields or buffer provided.",this.getClass().getSimpleName()));
+    }
+
+    @Override
+    public byte getSequenceID() {
+        return sequenceID;
+    }
+
+    @Override
+    public void setSequenceID(byte newSeq){
+        this.sequenceID = newSeq;
+    }
+
+    @Override
+    public ByteBuf unwrap() {
+        if (buffer != null)
+            return buffer;
+        else
+            return Unpooled.EMPTY_BUFFER;
+    }
+
+    public String toString(){
+        return String.format("%s[buffer.length=%s]",this.getClass().getSimpleName(),buffer.readableBytes());
+    }
+
+    private void set(ByteBuf buffer) {
+        this.set(this.state,buffer);
+    }
+
+    protected void set(S state) {
+        this.set(state,this.buffer);
+    }
+
+    private void set(S state, ByteBuf buffer) {
+        this.state = state;
+        if (this.buffer != buffer){
+            if (this.buffer != null)
+                this.buffer.release();
+            this.buffer = buffer;
+        }
+    }
+
+    public boolean isStateSet(){
+        return this.state != null;
+    }
+
+    public boolean isBufferSet(){
+        return this.buffer != null;
+    }
+
+    @Override
+    public int refCnt() {
+        if (buffer != null)
+            return buffer.refCnt();
+        else
+            return 0;
+    }
+
+    @Override
+    public BaseMSPMessage<S> retain() {
+        if (buffer != null)
+            buffer.retain();
+        return this;
+    }
+
+    @Override
+    public BaseMSPMessage<S> retain(int increment) {
+        if (buffer != null)
+            buffer.retain(increment);
+        return this;
+    }
+
+    @Override
+    public boolean release() {
+        if (buffer != null)
+            return buffer.release();
+        else
+            return true;
+    }
+
+    @Override
+    public boolean release(int decrement) {
+        if (buffer != null)
+            return buffer.release(decrement);
+        else
+            return true;
+    }
+
+}

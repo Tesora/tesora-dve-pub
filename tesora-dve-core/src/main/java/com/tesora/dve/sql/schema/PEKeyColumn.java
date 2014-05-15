@@ -1,0 +1,147 @@
+// OS_STATUS: public
+package com.tesora.dve.sql.schema;
+
+import java.util.List;
+import java.util.Set;
+
+import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.ConstraintType;
+import com.tesora.dve.common.catalog.Key;
+import com.tesora.dve.common.catalog.KeyColumn;
+import com.tesora.dve.exceptions.PEException;
+
+public class PEKeyColumn extends Persistable<PEKeyColumn, KeyColumn> {
+
+	protected Integer length;
+	protected PEColumn column;
+	protected PEKey ofKey;	
+	protected long cardinality;
+	
+	public PEKeyColumn(PEColumn c, Integer l, long card) {
+		this(null, c, l, card);
+	}
+	
+	public PEKeyColumn(PEKey key, PEColumn column, Integer length, long card) {
+		super(null);
+		this.column = column;
+		this.length = length;
+		this.ofKey = key;
+		this.cardinality = card;
+	}
+	
+	public PEColumn getColumn() {
+		return this.column;
+	}
+	
+	public void setKey(PEKey k) {
+		ofKey = k;
+		if (ofKey.getConstraint() == ConstraintType.PRIMARY)
+			column.setPrimaryKeyPart();
+		else if (ofKey.getConstraint() == ConstraintType.UNIQUE)
+			column.setUniqueKeyPart();
+		else if (ofKey.getConstraint() == null)
+			column.setKeyPart();
+	}
+	
+	public PEKey getKey() {
+		return ofKey;
+	}
+	
+	public Integer getLength() {
+		return length;
+	}
+	
+	public long getCardinality() {
+		return cardinality;
+	}
+	
+	public static PEKeyColumn load(KeyColumn kc, SchemaContext sc, PETable enclosingTable) {
+		PEKeyColumn pec = null;
+		if (pec == null) {
+			if (kc.getKey().isForeignKey())
+				pec = new PEForeignKeyColumn(sc,kc, enclosingTable);
+			else
+				pec = new PEKeyColumn(sc,kc, enclosingTable);
+		}
+		return pec;
+	}
+	
+	protected PEKeyColumn(SchemaContext sc, KeyColumn kc, PETable enclosingTable) {
+		super(null);
+		sc.startLoading(this, kc);
+		column = PEColumn.load(kc.getSourceColumn(), sc, enclosingTable);
+		length = kc.getLength();
+		cardinality = (kc.getCardinality() == null ? -1 : kc.getCardinality());
+		setPersistent(sc,kc,kc.getId());
+		sc.finishedLoading(this, kc);
+	}
+	
+	@Override
+	protected Class<? extends CatalogEntity> getPersistentClass() {
+		return KeyColumn.class;
+	}
+
+	@Override
+	protected int getID(KeyColumn p) {
+		return p.getId();
+	}
+
+	@Override
+	protected KeyColumn lookup(SchemaContext sc) throws PEException {
+		Key k = ofKey.persistTree(sc);
+		for(KeyColumn kc : k.getColumns()) {
+			if (kc.getSourceColumn().getName().equals(column.getName().getUnquotedName().get()))
+				return kc;
+		}
+		return null;
+	}
+
+	@Override
+	protected KeyColumn createEmptyNew(SchemaContext sc) throws PEException {
+		int offset = ofKey.getPositionOf(sc, this);
+		KeyColumn kc = new KeyColumn(column.persistTree(sc),this.length,offset,(getKey().isForeign() ? null : cardinality));
+		sc.getSaveContext().add(this,kc);
+		return kc;
+	}
+
+	@Override
+	protected void populateNew(SchemaContext sc, KeyColumn p)
+			throws PEException {
+	}
+
+	@Override
+	protected Persistable<PEKeyColumn, KeyColumn> load(SchemaContext sc,
+			KeyColumn p) throws PEException {
+		return new PEKeyColumn(sc, p, null);
+	}
+
+	@Override
+	protected String getDiffTag() {
+		return "KeyColumn";
+	}
+
+	@Override
+	public boolean collectDifferences(SchemaContext sc, List<String> messages, Persistable<PEKeyColumn, KeyColumn> other, 
+			boolean first, @SuppressWarnings("rawtypes") Set<Persistable> visited) {
+		PEKeyColumn oth = other.get();
+
+		if (visited.contains(this) && visited.contains(oth)) {
+			return false;
+		}
+		visited.add(this);
+		visited.add(oth);
+		
+		if (maybeBuildDiffMessage(sc,messages, "column", getColumn(), oth.getColumn(), first, visited))
+			return true;
+		return false;
+	}
+	
+	public PEKeyColumn copy(SchemaContext sc, PETable containingTable) {
+		PEColumn inTab = (PEColumn) column.getIn(sc, containingTable);
+		return new PEKeyColumn(inTab,null,cardinality);
+	}
+	
+	public Integer getIndexSize() {
+		return column.getIndexSize();
+	}
+}

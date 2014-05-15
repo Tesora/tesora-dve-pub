@@ -1,0 +1,38 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.tesora</groupId>
+		<artifactId>tesora-dve-parent-product</artifactId>
+		<version>1.5.1-SNAPSHOT</version>
+		<relativePath>../tesora-dve-parent-product</relativePath>
+	</parent>
+	
+	<artifactId>tesora-dve-tools-core</artifactId>
+	<name>Tools Core</name>
+	<description>Common functionality and dependencies used in various tools</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.tesora</groupId>
+			<artifactId>tesora-dve-common</artifactId>
+			<scope>test</scope>
+			<classifier>tests</classifier>
+		</dependency>
+		<dependency>
+			<groupId>com.tesora</groupId>
+			<artifactId>tesora-dve-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.martiansoftware</groupId>
+			<artifactId>jsap</artifactId>
+			<version>2.1</version>
+		</dependency>
+		<dependency>
+			<groupId>jline</groupId>
+			<artifactId>jline</artifactId>
+			<version>0.9.94</version>
+			<type>jar</type>
+			<optional>false</optional>
+		</dependency>
+	</dependencies>
+</project>

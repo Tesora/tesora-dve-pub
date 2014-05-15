@@ -1,0 +1,206 @@
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+	<xsd:element name="dbAnalyzerReport">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="analyzer" type="AnalyzerType" />
+				<xsd:element name="databaseInformation" type="DatabaseInformationType" />
+				<xsd:element name="databases" type="DatabasesType" />
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:element name="dbAnalyzerCorpus">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="population" type="StatementPopulationType" minOccurs="0" maxOccurs="unbounded" />
+				<xsd:element name="nonDml" type="StatementNonDMLType" minOccurs="0" maxOccurs="unbounded" />
+			</xsd:sequence>
+			<xsd:attribute name="description" type="xsd:string" />
+		</xsd:complexType>
+	</xsd:element>
+
+	<xsd:complexType name="AnalyzerType">
+		<xsd:sequence>
+			<xsd:element name="connection">
+				<xsd:complexType>
+					<xsd:attribute name="url" type="xsd:string" />
+					<xsd:attribute name="user" type="xsd:string" />
+					<xsd:attribute name="password" type="xsd:string" />
+				</xsd:complexType>
+			</xsd:element>
+			<xsd:element name="options">
+				<xsd:complexType>
+					<xsd:sequence>
+						<xsd:element name="option" minOccurs="0" maxOccurs="unbounded">
+							<xsd:complexType>
+								<xsd:attribute name="key" type="xsd:string" />
+								<xsd:attribute name="value" type="xsd:string" />
+							</xsd:complexType>
+						</xsd:element>
+					</xsd:sequence>
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:complexType name="DatabaseInformationType">
+		<xsd:sequence>
+			<xsd:element name="majorVersion" type="xsd:int" />
+			<xsd:element name="minorVersion" type="xsd:int" />
+			<xsd:element name="productName" type="xsd:string" />
+			<xsd:element name="productVersion" type="xsd:string" />
+			<xsd:element name="defaultTxnIsolation" type="xsd:string" />
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:complexType name="DatabasesType">
+		<xsd:sequence>
+			<xsd:element name="database" minOccurs="0" maxOccurs="unbounded">
+				<xsd:complexType>
+					<xsd:sequence>
+						<xsd:element name="tables" type="TablesType" />
+						<xsd:element name="procedures" type="ProceduresType" />
+					</xsd:sequence>
+					<xsd:attribute name="name" type="xsd:string" use="required" />
+					<xsd:attribute name="tableCount" type="xsd:int" use="required" />
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:complexType name="ProceduresType">
+		<xsd:sequence>
+			<xsd:element name="procedure" minOccurs="0" maxOccurs="unbounded">
+				<xsd:complexType>
+					<xsd:attribute name="name" type="xsd:string" use="required" />
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:complexType name="TablesType">
+		<xsd:sequence>
+			<xsd:element name="table" minOccurs="0" maxOccurs="unbounded">
+				<xsd:complexType>
+					<xsd:sequence>
+						<xsd:element name="columns" type="ColumnsType" />
+						<xsd:element name="keys" type="KeysType" />
+						<xsd:element name="indexes" type="IndexesType" />
+						<xsd:element name="scts" type="xsd:string" minOccurs="0" />
+					</xsd:sequence>
+					<xsd:attribute name="name" type="xsd:string" use="required" />
+					<xsd:attribute name="rowCount" type="xsd:int" use="required" />
+					<xsd:attribute name="view" type="xsd:boolean"/>
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:complexType name="ColumnsType">
+		<xsd:sequence>
+			<xsd:element name="column" minOccurs="0" maxOccurs="unbounded">
+				<xsd:complexType>
+					<xsd:attribute name="name" type="xsd:string" use="required" />
+					<xsd:attribute name="type" type="xsd:string" use="required" />
+					<xsd:attribute name="size" type="xsd:int" />
+					<xsd:attribute name="defVal" type="xsd:string" />
+					<xsd:attribute name="nullable" type="xsd:boolean" />
+					<xsd:attribute name="autoIncr" type="xsd:boolean" />
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:complexType name="IndexesType">
+		<xsd:sequence>
+			<xsd:element name="index" minOccurs="0" maxOccurs="unbounded">
+				<xsd:complexType>
+					<xsd:attribute name="name" type="xsd:string" use="required" />
+					<xsd:attribute name="sequence" type="xsd:int" use="required" />
+					<xsd:attribute name="column" type="xsd:string" use="required" />
+					<xsd:attribute name="nonUnique" type="xsd:boolean" use="required" />
+					<xsd:attribute name="ascending" type="xsd:boolean" use="required" />
+					<xsd:attribute name="type" type="IndexType" use="required" />
+					<xsd:attribute name="cardinality" type="xsd:int" use="required" />
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:simpleType name="IndexType">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="Statistic" />
+			<xsd:enumeration value="Clustered" />
+			<xsd:enumeration value="Hashed" />
+			<xsd:enumeration value="Other" />
+		</xsd:restriction>
+	</xsd:simpleType>
+
+	<xsd:complexType name="KeysType">
+		<xsd:sequence>
+			<xsd:element name="primaryKey" minOccurs="0" maxOccurs="unbounded">
+				<xsd:complexType>
+					<xsd:attribute name="column" type="xsd:string" use="required" />
+					<xsd:attribute name="name" type="xsd:string" />
+					<xsd:attribute name="sequence" type="xsd:int" use="required" />
+				</xsd:complexType>
+			</xsd:element>
+			<xsd:element name="foreignKey" minOccurs="0" maxOccurs="unbounded">
+				<xsd:complexType>
+					<xsd:attribute name="column" type="xsd:string" use="required" />
+					<xsd:attribute name="name" type="xsd:string" />
+					<xsd:attribute name="sequence" type="xsd:int" use="required" />
+					<xsd:attribute name="refTable" type="xsd:string" use="required" />
+					<xsd:attribute name="refColumn" type="xsd:string" use="required" />
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+
+	<xsd:complexType name="StatementPopulationType">
+		<xsd:attribute name="db" type="xsd:string" use="required" />
+		<xsd:attribute name="kind" type="xsd:string" use="required" />
+		<!-- in the case of insert into values, this the number of times for a given insert prefix -->
+		<xsd:attribute name="freq" type="xsd:int" use="required" />
+	</xsd:complexType>
+
+	<xsd:complexType name="StatementNonInsertType">
+		<xsd:complexContent>
+			<xsd:extension base="StatementPopulationType">
+				<xsd:sequence>
+					<xsd:element name="stmt" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:extension>
+		</xsd:complexContent>
+	</xsd:complexType>
+
+	<xsd:complexType name="InsertTuples">
+		<!-- how many tuples were present -->
+		<xsd:attribute name="tupleCount" type="xsd:int" use="required" />
+		<!-- how many times we saw an insert with tupleCount tuples -->
+		<xsd:attribute name="tuplePop" type="xsd:int" use="required" />
+	</xsd:complexType>
+
+	<xsd:complexType name="StatementInsertIntoValuesType">
+		<xsd:complexContent>
+			<xsd:extension base="StatementPopulationType">
+				<xsd:sequence>
+					<!-- insertPrefix is insert into table (columns) -->
+					<xsd:element name="insertPrefix" type="xsd:string" />
+					<!-- mostly for the counter -->
+					<xsd:element name="colWidth" type="xsd:int" />
+					<xsd:element name="population" type="InsertTuples" minOccurs="1" maxOccurs="unbounded" />
+				</xsd:sequence>
+			</xsd:extension>
+		</xsd:complexContent>
+	</xsd:complexType>
+
+	<xsd:complexType name="StatementNonDMLType">
+		<xsd:sequence>
+			<xsd:element name="stmt" type="xsd:string" />
+		</xsd:sequence>
+		<xsd:attribute name="freq" type="xsd:int" use="required" />
+	</xsd:complexType>
+
+</xsd:schema>

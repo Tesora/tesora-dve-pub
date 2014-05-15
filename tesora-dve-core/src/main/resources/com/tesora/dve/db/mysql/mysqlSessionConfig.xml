@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VariableConfig>
+	<VariableList>
+		<Variable name="sql_mode" handler="com.tesora.dve.variable.SqlModeSessionVariableHandler"/>
+		<Variable name="storage_engine" defaultValue="InnoDB" handler="com.tesora.dve.variable.DBSessionVariableHandler"/>
+		<Variable name="autocommit" defaultValue="1" handler="com.tesora.dve.variable.AutoCommitVariableHandler"/>
+		<Variable name="big_tables" defaultValue="0" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="character_set_client" defaultValue="utf8" handler="com.tesora.dve.variable.ClientCharSetSessionVariableHandler"/>
+		<Variable name="character_set_connection" defaultValue="utf8" handler="com.tesora.dve.variable.SessionVariableHandler"/>
+		<Variable name="character_set_results" defaultValue="utf8" handler="com.tesora.dve.variable.SessionVariableHandler"/>
+		<Variable name="tx_isolation" defaultValue="READ-COMMITTED" handler="com.tesora.dve.variable.DBSessionVariableHandler"/>
+		<Variable name="collation_connection" defaultValue="utf8_general_ci" handler="com.tesora.dve.variable.CollationSessionVariableHandler"/>
+		<Variable name="dve_metadata_extensions" defaultValue="false" handler="com.tesora.dve.variable.BooleanSessionVariableHandler"/>
+		<Variable name="dve_omit_comments" defaultValue="false" handler="com.tesora.dve.variable.BooleanSessionVariableHandler"/>
+		<Variable name="dve_repl_slave_insert_id" defaultValue="0" handler="com.tesora.dve.variable.SessionVariableHandler"/>
+		<Variable name="dve_repl_slave_timestamp" defaultValue="0" handler="com.tesora.dve.variable.SessionVariableHandler"/>
+		<Variable name="dynamic_policy" defaultValue="default_dynamic_policy" handler="com.tesora.dve.variable.DynamicPolicySessionVariableHandler"/>
+		<Variable name="persistent_group" defaultValue="default_persistent_group" handler="com.tesora.dve.variable.StorageGroupSessionVariableHandler"/>
+		<Variable name="version" defaultValue="version" handler="com.tesora.dve.variable.GlobalReadOnlySessionVariableHandler"/>
+		<Variable name="version_comment" defaultValue="version_comment" handler="com.tesora.dve.variable.GlobalReadOnlySessionVariableHandler"/>
+		<Variable name="sql_select_limit" defaultValue="DEFAULT" handler="com.tesora.dve.variable.SessionVariableHandler"/>
+		<Variable name="insert_id" defaultValue="0" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="last_insert_id" defaultValue="0" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="rand_seed1" defaultValue="0" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="rand_seed2" defaultValue="0" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="auto_increment_increment" defaultValue="1" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="time_zone" defaultValue="default_time_zone" handler="com.tesora.dve.variable.LiteralSessionShadowVariableHandler"/>
+		<Variable name="sql_quote_show_create" defaultValue="1" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="collation_database" defaultValue="utf8_general_ci" handler="com.tesora.dve.variable.CollationSessionVariableHandler"/>
+		<Variable name="unique_checks" defaultValue="1" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="foreign_key_checks" defaultValue="1" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="sql_notes" defaultValue="1" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+		<Variable name="charset" defaultValue="utf8" handler="com.tesora.dve.variable.SessionVariableHandler"/>
+		<Variable name="innodb_lock_wait_timeout" handler="com.tesora.dve.variable.PerSessionGlobalVariableHandler"/>
+ 		<Variable name="have_innodb" defaultValue="YES" handler="com.tesora.dve.variable.LiteralSessionVariableHandler"/>
+ 		<Variable name="sql_auto_is_null" defaultValue="0" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+ 		<Variable name="wait_timeout" defaultValue="wait_timeout" handler="com.tesora.dve.variable.PerSessionGlobalVariableHandler"/>
+		<Variable name="redist_max_columns" handler="com.tesora.dve.variable.PerSessionGlobalVariableHandler"/>
+		<Variable name="redist_max_size" handler="com.tesora.dve.variable.PerSessionGlobalVariableHandler"/>
+		<Variable name="slow_query_log" defaultValue="0" handler="com.tesora.dve.variable.PerSessionGlobalVariableHandler"/>
+		<Variable name="long_query_time" defaultValue="10.0" handler="com.tesora.dve.variable.PerSessionGlobalVariableHandler"/>
+		<Variable name="group_concat_max_len" defaultValue="1024" handler="com.tesora.dve.variable.DBIntSessionVariableHandler"/>
+ 	</VariableList>
+</VariableConfig>

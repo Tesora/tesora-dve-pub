@@ -1,0 +1,49 @@
+// OS_STATUS: public
+package com.tesora.dve.upgrade.versions;
+
+import java.sql.SQLException;
+import java.util.Collection;
+import java.util.Collections;
+
+import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.upgrade.CatalogVersion;
+import com.tesora.dve.upgrade.InfoSchemaUpgrader;
+
+public abstract class BasicCatalogVersion implements CatalogVersion {
+
+	protected final boolean infoSchemaUpgrade;
+	protected final int version;
+
+	public BasicCatalogVersion(int version, boolean infoSchemaUpgrade) {
+		this.infoSchemaUpgrade = infoSchemaUpgrade;
+		this.version = version;
+	}
+
+	@Override
+	public boolean hasInfoSchemaUpgrade() {
+		return infoSchemaUpgrade;
+	}
+
+	@Override
+	public int getSchemaVersion() {
+		return this.version;
+	}
+	
+	protected void clearInfoSchema(DBHelper helper) throws PEException {
+		int gid = InfoSchemaUpgrader.getInfoSchemaGroupID(helper);
+		InfoSchemaUpgrader.clearCurrentInfoSchema(helper, gid);
+	}
+	
+	protected void dropVariables(DBHelper helper, Collection<String> varNames) throws PEException {
+		if (varNames == null || varNames.isEmpty()) return;
+		try {
+			helper.prepare("delete from config where name = ?");
+			for(String s : varNames) {
+				helper.executePrepared(Collections.singletonList((Object)s));
+			}
+		} catch (SQLException sqle) {
+			throw new PEException("Unable to drop variables",sqle);
+		}
+	}
+}

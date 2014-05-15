@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<QueryPlan>
+	<QueryStep>
+		<StorageGroup>
+			<name>DefaultGroup</name>
+			<StorageSite>
+				<name>site1</name>
+				<jdbcURL>${jdbc.mysql.url}/parelastic</jdbcURL>
+			</StorageSite>
+			<StorageSite>
+				<name>site2</name>
+				<jdbcURL>${jdbc.mysql.url}/parelastic</jdbcURL>
+			</StorageSite>
+		</StorageGroup>
+		<ExecuteOperation xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			xsi:type="QueryStepResultOperation">
+			<DatabaseName>TestDB</DatabaseName>
+			<SqlCommand>select * from foo where id = 1</SqlCommand>
+		</ExecuteOperation>
+	</QueryStep>
+</QueryPlan>
