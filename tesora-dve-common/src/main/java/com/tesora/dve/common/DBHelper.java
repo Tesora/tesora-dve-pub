@@ -299,6 +299,7 @@ public class DBHelper {
 
 	public void executeFromStream(InputStream is) throws SQLException {
 		final String cmdDelimeter = ";";
+		final String comment = "--";
 		String command = "";
 		String separator = "";
 
@@ -313,7 +314,10 @@ public class DBHelper {
 					break;
 				}
 
-				if (line.trim().endsWith(cmdDelimeter)) {
+				String trimmed = line.trim();
+				if (trimmed.startsWith(comment))
+					continue;
+				if (trimmed.endsWith(cmdDelimeter)) {
 					command = command + separator + line;
 					try {
 						executeQuery(command);

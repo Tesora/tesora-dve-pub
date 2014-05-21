@@ -45,6 +45,7 @@ public class UpgradeTestUtils {
 		if (is == null)
 			throw new PEException("Missing file " + fileName + " for catalog version " + version);
 		final String cmdDelimeter = ";";
+		final String comment = "--";
 
 		ArrayList<String> out = new ArrayList<String>();
 		
@@ -54,6 +55,8 @@ public class UpgradeTestUtils {
 
 			String line = null;
 			while ((line = reader.readLine()) != null) {
+				if (line.startsWith(comment))
+					continue;
 				if (line.endsWith(cmdDelimeter)) {
 					// strip off the separator
 					out.add(line.substring(0,line.length() - 1));

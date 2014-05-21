@@ -176,6 +176,7 @@ public class NonMirrorBugsTest extends SchemaTest {
 	
 	public static List<String> importTest(Class<?> relativeTo, String srcFile, String givenJDBCUrl, String actualJDBCUrl) throws Throwable {
 		ArrayList<String> out = new ArrayList<String>();
+		final String comment = "--";
 		InputStream is = relativeTo.getResourceAsStream(srcFile);
 		String creds = "user='" + TestCatalogHelper.getInstance().getCatalogUser() + "' password='" + TestCatalogHelper.getInstance().getCatalogPassword() + "'";
 		try {
@@ -187,7 +188,7 @@ public class NonMirrorBugsTest extends SchemaTest {
 				if (line != null) {
 
 					line = line.trim();
-					if (line.isEmpty()) {
+					if (line.isEmpty() || line.startsWith(comment)) {
 						continue;
 					}
 					if (line.indexOf(givenJDBCUrl) > -1) {

@@ -1,3 +1,23 @@
+---
+-- #%L
+-- Tesora Inc.
+-- Database Virtualization Engine
+-- %%
+-- Copyright (C) 2011 - 2014 Tesora Inc.
+-- %%
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU Affero General Public License, version 3,
+-- as published by the Free Software Foundation.
+-- 
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+-- GNU Affero General Public License for more details.
+-- 
+-- You should have received a copy of the GNU Affero General Public License
+-- along with this program. If not, see <http://www.gnu.org/licenses/>.
+-- #L%
+---
 insert into user_table (table_id, name, distribution_model_id, persistent_group_id, user_database_id, engine, table_type)
 select 100, "t1", dist.id, sg.persistent_group_id, db.user_database_id, "InnoDB", "BASE TABLE"
 from dve_catalog.distribution_model dist, dve_catalog.persistent_group sg, dve_catalog.user_database db
