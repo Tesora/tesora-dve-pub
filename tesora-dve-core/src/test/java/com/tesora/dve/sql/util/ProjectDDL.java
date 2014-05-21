@@ -10,6 +10,8 @@ import com.tesora.dve.sql.util.UnaryFunction;
 
 public abstract class ProjectDDL extends TestDDL {
 
+	boolean throwIfSingleDB = true;
+	
 	protected List<DatabaseDDL> dbs = new ArrayList<DatabaseDDL>();
 	
 	public ProjectDDL() {
@@ -54,7 +56,7 @@ public abstract class ProjectDDL extends TestDDL {
 	}
 	
 	protected DatabaseDDL getSingleDB() {
-		if (dbs.size() != 1)
+		if (isThrowIfSingleDB() && dbs.size() != 1)
 			throw new IllegalStateException("More than one database found");
 		return dbs.get(0);
 	}
@@ -73,5 +75,13 @@ public abstract class ProjectDDL extends TestDDL {
 		for(DatabaseDDL ddl : dbs)
 			ddl.clearCreated();
 		super.clearCreated();
+	}
+
+	public boolean isThrowIfSingleDB() {
+		return throwIfSingleDB;
+	}
+
+	public void setThrowIfSingleDB(boolean throwIfSingleDB) {
+		this.throwIfSingleDB = throwIfSingleDB;
 	}
 }
