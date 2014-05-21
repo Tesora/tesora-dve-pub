@@ -255,7 +255,21 @@
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
 					<artifactId>license-maven-plugin</artifactId>
-					<version>1.4</version>
+					<version>1.7</version>
+					<configuration>
+					  <inceptionYear>2010</inceptionYear>
+					  <licenseName>tesoraLicense</licenseName>
+					  <licenseResolver>${project.baseUri}/tesora-dve/src/license/tesora_license</licenseResolver>
+					</configuration>
+					<executions>
+					  <execution>
+					    <id>first</id>
+					    <goals>
+					      <goal>update-file-header</goal>
+					    </goals>
+					    <phase>process-sources</phase>
+					  </execution>
+					</executions>
 				</plugin>
 
 				<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself. -->
