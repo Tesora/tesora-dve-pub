@@ -1,4 +1,3 @@
-// OS_STATUS: public
 package com.tesora.dve.locking.impl;
 
 /*

@@ -1,4 +1,3 @@
-// OS_STATUS: public
 /*
  * Heavily modified JMH microbench provided by Netty under the following license:
  *
