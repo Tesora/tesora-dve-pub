@@ -264,6 +264,7 @@
 					  <descriptionTemplate>./tesora-dve/src/license/tesora_license/tesora/tesora_license.ftl</descriptionTemplate>
 					  <excludes>
 					    <exclude>**/*license*/**</exclude>
+                                            <exclude>**/ResourceLeakDetector.java</exclude>
 					  </excludes>
 					</configuration>
 					<executions>
