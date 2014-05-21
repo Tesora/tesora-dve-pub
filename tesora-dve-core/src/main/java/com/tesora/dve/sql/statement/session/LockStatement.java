@@ -5,6 +5,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -32,7 +33,7 @@ public class LockStatement extends SessionStatement {
 	}	
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		// Both LOCK and UNLOCK will do implicit commits
 		// and likely for safety we should wrap them in something that freezes the worker set.  A user txn
 		// does not work, because the explicit begin transaction followed by a LOCK results in one of the XAER_*

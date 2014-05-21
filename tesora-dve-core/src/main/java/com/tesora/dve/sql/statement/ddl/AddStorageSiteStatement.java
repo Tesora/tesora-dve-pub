@@ -351,6 +351,14 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 			if (op == null) return;
 			op.execute(conn, wg, resultConsumer);
 		}
+
+		@Override
+		public void prepareNested(SSConnection conn, CatalogDAO c,
+				WorkerGroup wg, DBResultConsumer resultConsumer)
+				throws PEException {
+			// TODO Auto-generated method stub
+			
+		}
 		
 	}
 

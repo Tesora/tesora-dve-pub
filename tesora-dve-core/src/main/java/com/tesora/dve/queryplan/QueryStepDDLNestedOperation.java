@@ -4,6 +4,7 @@ package com.tesora.dve.queryplan;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -21,6 +22,12 @@ public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
 	protected void executeAction(SSConnection conn, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		nestedOp.executeNested(conn, wg, resultConsumer);
 	}
+
+	@Override
+	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+		nestedOp.prepareNested(ssCon, c, wg, resultConsumer);
+	}
+
 	
 	@Override
 	public boolean requiresWorkers() {
@@ -31,6 +38,8 @@ public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
 	public interface NestedOperationDDLCallback extends DDLCallback {
 		
 		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable;
+
+		public void prepareNested(SSConnection conn, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException;
 		
 	}
 	

@@ -17,6 +17,7 @@ import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
@@ -77,7 +78,7 @@ public class TableMaintenanceStatement extends SessionStatement {
 	}
 
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		StringBuilder buf = new StringBuilder();
         Singletons.require(HostService.class).getDBNative().getEmitter().emitTableMaintenanceStatement(pc, this, buf, -1);
 		// we only allow on a single Persistent Group, so grab the first one

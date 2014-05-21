@@ -9,7 +9,7 @@ import com.tesora.dve.sql.node.structural.FromTableReference;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;
 import com.tesora.dve.sql.statement.dml.TruncateStatement;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeaturePlannerFilter;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 
 /**

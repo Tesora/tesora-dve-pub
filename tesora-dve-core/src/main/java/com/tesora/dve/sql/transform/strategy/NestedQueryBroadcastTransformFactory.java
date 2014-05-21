@@ -17,7 +17,7 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.behaviors.ComplexFeaturePlannerFilter;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeaturePlannerFilter;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;

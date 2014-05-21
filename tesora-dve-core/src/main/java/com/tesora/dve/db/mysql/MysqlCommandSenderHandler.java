@@ -5,7 +5,6 @@ import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.clock.*;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEThreadContext;
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 import com.tesora.dve.exceptions.PECommunicationsException;

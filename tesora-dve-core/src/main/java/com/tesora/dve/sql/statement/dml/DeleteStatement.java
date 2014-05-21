@@ -26,17 +26,6 @@ import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
-import com.tesora.dve.sql.transform.strategy.ContainerBaseTableRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.DegenerateExecuteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.DeleteRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.DistributionKeyExecuteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.NestedQueryBroadcastTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SessionRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SingleSiteStorageGroupTransformFactory;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
-import com.tesora.dve.sql.transform.strategy.ViewRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.nested.NestedQueryRewriteTransformFactory;
 
 public class DeleteStatement extends MultiTableDMLStatement {
 
@@ -140,22 +129,6 @@ public class DeleteStatement extends MultiTableDMLStatement {
 				distKeyExplain);
 	}
 	
-	@Override
-	public TransformFactory[] getTransformers() {
-		return new TransformFactory[] {
-				new InformationSchemaRewriteTransformFactory(),
-				new SessionRewriteTransformFactory(),
-				new ViewRewriteTransformFactory(),
-				new ContainerBaseTableRewriteTransformFactory(),
-				new SingleSiteStorageGroupTransformFactory(),
-				new NestedQueryBroadcastTransformFactory(),
-				new NestedQueryRewriteTransformFactory(),
-				new DeleteRewriteTransformFactory(),
-				new DistributionKeyExecuteTransformFactory(),
-				new DegenerateExecuteTransformFactory()
-		};
-	}
-
 	@Override
 	public DistKeyOpType getKeyOpType() {
 		return DistKeyOpType.UPDATE;

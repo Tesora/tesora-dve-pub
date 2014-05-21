@@ -8,6 +8,7 @@ import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.CacheableStatement;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
 import com.tesora.dve.sql.util.ListSet;
@@ -44,7 +45,7 @@ public class TransactionStatement extends SessionStatement implements CacheableS
 	}
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		// I suppose we could make these things cacheable if we remembered the literals
 		if (es.getPlan() != null && (getXAXid() == null))
 			es.getPlan().setCacheable(true);

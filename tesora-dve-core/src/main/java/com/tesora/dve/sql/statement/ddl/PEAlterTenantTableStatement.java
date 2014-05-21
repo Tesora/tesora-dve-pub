@@ -29,6 +29,7 @@ import com.tesora.dve.sql.schema.mt.AdaptiveMTDDLPlannerUtils.LateFKFixup;
 import com.tesora.dve.sql.schema.mt.AdaptiveMTDDLPlannerUtils.LazyAllocatedTable;
 import com.tesora.dve.sql.schema.mt.AdaptiveMTDDLPlannerUtils.TableFlip;
 import com.tesora.dve.sql.schema.mt.AdaptiveMTDDLPlannerUtils.CompositeNestedOperation;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -58,7 +59,7 @@ public class PEAlterTenantTableStatement extends PEAlterTableStatement {
 	}
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		PETable subjectTable = getTable();
 		PETable newCopy = subjectTable.recreate(sc, getTable().getDeclaration(), new LockInfo(LockType.EXCLUSIVE, "alter tenant table"));
 		alterTable(sc, newCopy, null);

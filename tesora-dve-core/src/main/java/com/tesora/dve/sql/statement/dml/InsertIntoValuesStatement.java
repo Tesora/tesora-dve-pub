@@ -45,13 +45,13 @@ import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.session.TransactionStatement;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.InsertExecutionStep;
 import com.tesora.dve.sql.transform.execution.LateSortingInsertExecutionStep;
 import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.UnaryFunction;
@@ -89,11 +89,6 @@ public class InsertIntoValuesStatement extends InsertStatement {
 	
 	public void setHiddenUpdateCount() {
 		hiddenUpdateCount = true;
-	}
-	
-	@Override
-	public TransformFactory[] getTransformers() {
-		throw new IllegalStateException("InsertIntoValuesStatement does not use transformers");
 	}
 	
 	@Override
@@ -349,7 +344,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 	}
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence ges) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence ges, BehaviorConfiguration config) throws PEException {
 		planInternal(sc, ges);
 	}
 

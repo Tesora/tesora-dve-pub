@@ -2,6 +2,7 @@
 package com.tesora.dve.sql.transform.strategy;
 
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.util.ListSet;
 
 public class PlannerContext {
@@ -11,8 +12,8 @@ public class PlannerContext {
 	private boolean usesAggSite = false;
 	private final ListSet<FeaturePlannerIdentifier> applied;
 	
-	public PlannerContext(SchemaContext sc) {
-		this.fixed = new FixedPlannerContext(sc);
+	public PlannerContext(SchemaContext sc, BehaviorConfiguration config) {
+		this.fixed = new FixedPlannerContext(sc, config);
 		this.applied = new ListSet<FeaturePlannerIdentifier>();
 	}
 
@@ -63,5 +64,9 @@ public class PlannerContext {
 	
 	public TempTableSanity getTempTableSanity() {
 		return fixed.getTempTableSanity();
+	}
+	
+	public BehaviorConfiguration getBehaviorConfiguration() {
+		return fixed.getBehaviorConfiguration();
 	}
 }

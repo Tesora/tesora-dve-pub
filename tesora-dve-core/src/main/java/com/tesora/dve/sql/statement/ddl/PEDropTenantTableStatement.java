@@ -38,6 +38,7 @@ import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.schema.mt.AdaptiveMTDDLPlannerUtils.DropTenantScope;
 import com.tesora.dve.sql.schema.mt.AdaptiveMTDDLPlannerUtils.CompositeNestedOperation;
 import com.tesora.dve.sql.schema.mt.TableScope.ScopeCacheKey;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
@@ -66,7 +67,7 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 	// in that case xlock the shape, figure out whether the table is still referenced, then drop it if possible.
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		if (tenant == null) {
 			planLandlordDropTable(sc,es);
 		} else {

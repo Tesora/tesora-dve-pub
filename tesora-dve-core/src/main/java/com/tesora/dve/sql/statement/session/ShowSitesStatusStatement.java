@@ -30,6 +30,7 @@ import com.tesora.dve.server.statistics.SiteStatKey.SiteType;
 import com.tesora.dve.sql.schema.PEProvider;
 import com.tesora.dve.sql.schema.PEStorageSite;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
 import com.tesora.dve.worker.WorkerGroup;
@@ -43,7 +44,7 @@ public class ShowSitesStatusStatement extends SessionStatement {
 	}
 
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		for(PEStorageSite p : pc.findAllPersistentSites())
 			allSites.put(SiteType.PERSISTENT.name() + p.getName(), 
 					new TimingSet(new SiteStatKey(SiteType.PERSISTENT, p.getName().get(), OperationClass.TOTAL)));

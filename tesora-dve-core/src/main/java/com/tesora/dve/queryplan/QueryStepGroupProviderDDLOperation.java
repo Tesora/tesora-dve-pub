@@ -27,7 +27,7 @@ public class QueryStepGroupProviderDDLOperation extends QueryStepDDLOperation {
 
 	// allow derived classes to step in
 	@Override
-	protected void prepareAction(CatalogDAO c) throws PEException {
+	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		if (target == null) {
 			// we don't know if this particular site manager has ever been
 			// created before, so we're going to

@@ -253,6 +253,10 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 		setFlag(AUTO_INCREMENT);
 	}
 	
+	public void clearAutoIncrement() {
+		clearFlag(AUTO_INCREMENT);
+	}
+	
 	// alter support
 	public void setDefaultValue(LiteralExpression litex) {
 		defaultValue = litex;

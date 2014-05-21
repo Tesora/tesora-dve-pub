@@ -12,6 +12,7 @@ import com.tesora.dve.server.connectionmanager.ConnectionInfo;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DDLQueryExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 
@@ -34,7 +35,7 @@ public class ShowProcesslistStatement extends SessionStatement {
 	}
 
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		ColumnSet cs = new ColumnSet();
 		cs.addColumn("Id", 11, "bigint", java.sql.Types.BIGINT);
 		cs.addColumn("User", 48, "varchar", java.sql.Types.VARCHAR);

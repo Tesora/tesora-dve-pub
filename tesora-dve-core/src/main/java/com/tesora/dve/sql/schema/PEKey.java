@@ -4,12 +4,10 @@ package com.tesora.dve.sql.schema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.common.catalog.IndexType;
 import com.tesora.dve.common.catalog.Key;
@@ -20,60 +18,34 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
-import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.validate.SimpleValidateResult;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
-import com.tesora.dve.sql.transform.MatchableKey;
 import com.tesora.dve.sql.transform.constraints.KeyConstraint;
 import com.tesora.dve.sql.transform.constraints.PlanningConstraint;
-import com.tesora.dve.sql.transform.constraints.PlanningConstraintType;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.UnaryFunction;
 
-public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEKey>, MatchableKey, HasComment {
+public class PEKey extends PEKeyBase { 
 
-	protected IndexType type;
 	protected List<PEKeyColumn> columns;
-	protected SchemaEdge<PETable> table;
-	protected Comment comment;
-	protected ConstraintType constraint;
-	protected UnqualifiedName symbol;
-	private boolean synthetic;
-	protected boolean persisted;
-	protected boolean hidden;
-	protected Long cardRatio = null;
 
 	public PEKey(Name n, IndexType k, List<PEKeyColumn> cols, Comment anyComment) {
 		this(n,k,cols,anyComment,false);
 	}
 	
 	public PEKey(Name n, IndexType k, List<PEKeyColumn> cols, Comment anyComment, boolean synthetic) {
-		super(null);
-		setName(n);
-		type = k;
+		super(n,k,anyComment,synthetic);
 		columns = cols;
 		for(PEKeyColumn peks : columns)
 			peks.setKey(this);
-		comment = anyComment;
-		this.synthetic = synthetic;
-		this.hidden = false;
-		persisted = true; // default
 	}
 
 	protected PEKey(Name n, IndexType k, List<PEKeyColumn> cols, ConstraintType cons, UnqualifiedName sym, Comment com, boolean synthetic, boolean hidden) {
-		super(null);
-		setName(n);
-		type = k;
+		super(n,k,cons,sym,com,synthetic,hidden);
 		columns = cols;
 		for(PEKeyColumn peks : columns)
 			peks.setKey(this);
-		constraint = cons;
-		symbol = sym;
-		comment = com;
-		this.synthetic = synthetic;
-		this.hidden = hidden;
-		persisted = true; // default
 	}
 	
 	@Override
@@ -89,19 +61,8 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 				
 			}) + "}";
 	}
-	
-	public PETable getTable(SchemaContext sc) {
-		return table.get(sc);
-	}
-	
-	public void setTable(SchemaEdge<PETable> tab) {
-		table = tab;
-	}
 
-	public ConstraintType getConstraint() {
-		return constraint;
-	}
-
+	// override so that we can set flags on column
 	public void setConstraint(ConstraintType ct) {
 		constraint = ct;
 		if (ct == ConstraintType.PRIMARY) {
@@ -110,50 +71,6 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 				c.makeNotNullable();
 			}
 		}
-	}
-	
-	public UnqualifiedName getSymbol() {
-		return symbol;
-	}
-	
-	public void setSymbol(Name symbol) {
-		this.symbol = (symbol == null ? null : symbol.getUnqualified());
-	}
-	
-	public boolean isUnique() {
-		return constraint == ConstraintType.UNIQUE || constraint == ConstraintType.PRIMARY;
-	}
-	
-	public boolean isForeign() {
-		return constraint == ConstraintType.FOREIGN;
-	}
-	
-	public boolean isPrimary() {
-		return constraint == ConstraintType.PRIMARY;
-	}
-		
-	public boolean isSynthetic() {
-		return synthetic;
-	}
-	
-	public void setSynthetic() {
-		synthetic = true;
-	}
-	
-	public boolean isPersisted() {
-		return persisted;
-	}
-	
-	public void setPersisted(boolean v) {
-		persisted = v;
-	}
-	
-	public boolean isHidden() {
-		return hidden;
-	}
-	
-	public void setHidden(boolean v) {
-		hidden = v;
 	}
 	
 	public boolean isValidFkTarget(final SchemaContext sc) {
@@ -194,7 +111,7 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 	}
 	
 	protected PEKey(SchemaContext sc, Key k, PETable enclosingTable) {
-		super(null);
+		super();
 		sc.startLoading(this, k);
 		if (k.getName() != null)
 			setName(new UnqualifiedName(k.getName()));
@@ -217,27 +134,6 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 		sc.finishedLoading(this, k);
 	}
 	
-	public IndexType getType() {
-		return type;
-	}
-	
-	public PlanningConstraintType getPlanningType() {
-		if (constraint == ConstraintType.PRIMARY)
-			return PlanningConstraintType.PRIMARY;
-		if (constraint == ConstraintType.UNIQUE)
-			return PlanningConstraintType.UNIQUE;
-		return PlanningConstraintType.REGULAR;
-	}
-	
-	@Override
-	public PEKey getIn(SchemaContext pc, PEAbstractTable<?> tab) {
-		for(PEKey k : tab.getKeys(pc)) {
-			if (getName().equals(k.getName()))
-				return k;
-		}
-		return null;
-	}
-
 	public long getCardinality() {
 		long max = -1;
 		for(PEKeyColumn pekc : getKeyColumns()) {
@@ -280,21 +176,6 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 		}
 		return -1;
 	}
-	
-	@Override
-	public boolean isComplete(SchemaContext sc, Set<PEColumn> cols, boolean partialOk) {
-		boolean partial = partialOk && (getCardRatio(sc) > -1);
-		List<PEColumn> keyCols = getColumns(sc);
-		HashSet<PEColumn> mycols = new HashSet<PEColumn>(keyCols);
-		mycols.removeAll(cols);
-		if (mycols.isEmpty())
-			return true;
-		if (partial) 
-			return mycols.size() < keyCols.size();
-		return false;
-	}
-	
-
 	
 	@Override
 	public void take(SchemaContext pc, PEKey targ) {
@@ -363,33 +244,6 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 	}
 
 	
-	@Override
-	protected Class<? extends CatalogEntity> getPersistentClass() {
-		return Key.class;
-	}
-
-	@Override
-	protected int getID(Key p) {
-		return p.getId();
-	}
-
-	@Override
-	protected Key lookup(SchemaContext sc) throws PEException {
-		UserTable ut = table.get(sc).persistTree(sc);
-		for(Key k : ut.getKeys()) {
-			if (getConstraint() == k.getConstraint() && getType() == k.getType()) {
-				if (getConstraint() == ConstraintType.FOREIGN) {
-					if (getSymbol() != null && getSymbol().getUnquotedName().get().equals(k.getSymbol()))
-						return k;
-				} else { 
-					if (getName().getUnquotedName().get().equals(k.getName()))
-						return k;
-				}
-			}
-		}
-		return null;
-	}
-
 	@Override
 	protected Key createEmptyNew(SchemaContext sc) throws PEException {
 		UserTable ut = table.get(sc).persistTree(sc);
@@ -462,11 +316,6 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 	}
 
 	@Override
-	protected String getDiffTag() {
-		return "PEKey";
-	}	
-
-	@Override
 	public boolean collectDifferences(SchemaContext sc, List<String> messages, Persistable<PEKey, Key> oth,
 			boolean first, @SuppressWarnings("rawtypes") Set<Persistable> visited) {
 		PEKey other = oth.get();
@@ -517,16 +366,6 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 		}
 	}
 
-	@Override
-	public void setComment(Comment c) {
-		comment = c;
-	}
-
-	@Override
-	public Comment getComment() {
-		return comment;
-	}
-	
 	public Integer getIndexSize() {
 		int acc = 0;
 		for(PEKeyColumn pekc : getKeyColumns()) {
@@ -545,6 +384,9 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 		return combo.toArray(new String[0]);
 	}
 
-	
+	@Override
+	public boolean isForwardKey() {
+		return false;
+	}
 	
 }

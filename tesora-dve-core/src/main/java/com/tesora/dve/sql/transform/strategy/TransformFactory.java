@@ -9,8 +9,9 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeaturePlannerFilter;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.FeaturePlannerFilter;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
@@ -58,9 +59,9 @@ public abstract class TransformFactory implements FeaturePlanner {
 	public static FeatureStep buildPlan(DMLStatement statement, PlannerContext context, FeaturePlannerFilter filter) throws PEException {
 		statement.normalize(context.getContext());
 		FeatureStep out = null;
-		for(TransformFactory t : statement.getTransformers()) {
-			if (!filter.canApply(context, t.getFeaturePlannerID())) continue;
-			out = t.plan(statement, context);
+		for(FeaturePlanner fp : context.getBehaviorConfiguration().getFeaturePlanners(context, statement)) {
+			if (!filter.canApply(context, fp.getFeaturePlannerID())) continue;
+			out = fp.plan(statement, context);
 			if (out != null)
 				break;
 		}
@@ -69,11 +70,12 @@ public abstract class TransformFactory implements FeaturePlanner {
 		return out;
 	}
 
-	public static void featurePlan(SchemaContext sc, DMLStatement stmt, ExecutionSequence sequence) throws PEException {
-		PlannerContext pc = new PlannerContext(sc);
+	public static void featurePlan(SchemaContext sc, DMLStatement stmt, ExecutionSequence sequence, BehaviorConfiguration config) throws PEException {
+		PlannerContext pc = new PlannerContext(sc,config);
 		FeatureStep fp = buildPlan(stmt,pc,DefaultFeaturePlannerFilter.INSTANCE);
 		if (fp == null)
 			throw new PEException("No applicable planning for '" + stmt.getSQL(sc) + "'");
+		fp = pc.getBehaviorConfiguration().getPostPlanningTransformer(pc, stmt).transform(pc, stmt, fp);
 		pc.getTempGroupManager().plan(sc);
 		maintainInvariants(sc,stmt,fp.getPlannedStatement());
 		fp.schedule(pc, sequence, new HashSet<FeatureStep>());

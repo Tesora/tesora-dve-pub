@@ -18,6 +18,7 @@ import com.tesora.dve.sql.schema.cache.PlanCacheKey;
 import com.tesora.dve.sql.schema.cache.RegularCachedPlan;
 import com.tesora.dve.sql.schema.cache.SchemaCache;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DDLQueryExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -34,7 +35,7 @@ public class ShowPlanCacheStatement extends SchemaQueryStatement {
 	}
 
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		SchemaCache global = SchemaSourceFactory.peekGlobalCache();
 		ArrayList<ResultRow> rows = new ArrayList<ResultRow>();
 		Accumulator acc = new Accumulator(pc,stats, rows);

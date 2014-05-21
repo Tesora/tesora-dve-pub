@@ -32,6 +32,7 @@ import com.tesora.dve.sql.schema.mt.AdaptiveMTDDLPlannerUtils.CompositeNestedOpe
 import com.tesora.dve.sql.schema.mt.PETenant.TenantCacheKey;
 import com.tesora.dve.sql.schema.validate.ForeignKeyValidateResult;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -95,7 +96,7 @@ public class PECreateTenantTableStatement extends PECreateTableStatement {
 	}
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es)
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config)
 			throws PEException {
 		PETable tab = getTable();
 		// this is probably completely unecessary if the table is well formed and already exists

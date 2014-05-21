@@ -28,11 +28,6 @@ import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
-import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SingleSiteStorageGroupTransformFactory;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
-import com.tesora.dve.sql.transform.strategy.UnionRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.ViewRewriteTransformFactory;
 import com.tesora.dve.sql.util.ListSet;
 
 public class UnionStatement extends ProjectingStatement {
@@ -82,16 +77,6 @@ public class UnionStatement extends ProjectingStatement {
 		// so, this is used when we determine that the entire thing is on a single site - so I guess this is just
 		// a regular select?
 		throw new PEException("union buildSingleKeyStep?");
-	}
-
-	@Override
-	public TransformFactory[] getTransformers() {
-		return new TransformFactory[] {
-			new InformationSchemaRewriteTransformFactory(),
-			new ViewRewriteTransformFactory(),
-			new SingleSiteStorageGroupTransformFactory(),
-			new UnionRewriteTransformFactory()	
-		};
 	}
 
 	@Override

@@ -50,6 +50,7 @@ import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.schema.mt.TableScope.ScopeCacheKey;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
@@ -82,6 +83,8 @@ public class SchemaContext {
 	private Boolean mutableSourceOverride;
 
 	private SchemaPolicyContext perms;
+
+	private BehaviorConfiguration configuration;
 		
 	private long tableCounter;
 	private long objectCounter = 0;
@@ -310,6 +313,10 @@ public class SchemaContext {
 
 	public TransientSessionState getIntraStmtState() {
 		return tss;
+	}
+	
+	public BehaviorConfiguration getBehaviorConfiguration() {
+		return configuration;
 	}
 	
 	public Database<?> getCurrentDatabase(boolean mustExist, boolean domtchecks) {

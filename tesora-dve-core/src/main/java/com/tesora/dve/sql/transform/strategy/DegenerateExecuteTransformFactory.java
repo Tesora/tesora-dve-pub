@@ -15,7 +15,7 @@ import com.tesora.dve.sql.statement.dml.InsertIntoValuesStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.TruncateStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeatureStepBuilder;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;

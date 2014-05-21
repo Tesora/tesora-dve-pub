@@ -40,7 +40,7 @@ import com.tesora.dve.sql.transform.AggFunCollector;
 import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.behaviors.ComplexFeaturePlannerFilter;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeaturePlannerFilter;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.strategy.ApplyOption;
 import com.tesora.dve.sql.transform.strategy.CollapsingMutator;
 import com.tesora.dve.sql.transform.strategy.ColumnMutator;

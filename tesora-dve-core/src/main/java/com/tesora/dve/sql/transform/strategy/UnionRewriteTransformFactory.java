@@ -25,7 +25,7 @@ import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.transform.CopyContext;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.behaviors.ComplexFeaturePlannerFilter;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeatureStepBuilder;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;

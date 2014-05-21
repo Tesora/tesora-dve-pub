@@ -44,7 +44,7 @@ import com.tesora.dve.sql.statement.dml.ReplaceIntoValuesStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.CopyContext;
 import com.tesora.dve.sql.transform.CopyVisitor;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeaturePlannerFilter;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.execution.CreateTempTableExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.FilterExecutionStep.LateBindingOperationFilter;
@@ -225,11 +225,11 @@ public class ReplaceIntoTransformFactory extends TransformFactory {
 							deleteLookupTable.getStorageGroup(sc.getContext()), 
 							deleteLookupTable));
 					// next we schedule the pop insert
-					popInsert.plan(sc.getContext(),es);
+					popInsert.plan(sc.getContext(),es,sc.getBehaviorConfiguration());
 					// this is where our magic happens
 					LateBindingOperationFilter.schedule(sc, getSelfChildren().get(0), es, scheduled, new LateBindingUpdateCountAccumulator());
 				}
-				finalInsert.plan(sc.getContext(), es);
+				finalInsert.plan(sc.getContext(), es,sc.getBehaviorConfiguration());
 			}
 			
 			@Override

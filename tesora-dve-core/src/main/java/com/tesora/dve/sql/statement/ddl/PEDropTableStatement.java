@@ -27,6 +27,7 @@ import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DropTableExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -179,7 +180,7 @@ public class PEDropTableStatement extends
 	}
 	
 	@Override
-	public void plan(SchemaContext pc,ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc,ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		if (!tableKeys.isEmpty())
 			es.append(buildStep(pc));
 		else 

@@ -36,6 +36,7 @@ import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.sql.statement.CacheableStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.transform.SchemaMapper;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -223,15 +224,13 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 
 	public static final DMLExplainRecord distKeyExplain = DMLExplainReason.DISTRIBUTION_KEY_MATCHED.makeRecord(); 
 	
-	public abstract TransformFactory[] getTransformers();
-
-	protected static void planViaTransforms(SchemaContext sc, DMLStatement dmls, ExecutionSequence es) throws PEException {
+	protected static void planViaTransforms(SchemaContext sc, DMLStatement dmls, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		// for now, we're going to say dml statements are cacheable - we'll override this later
 		// don't cache plans with parameters yet - won't work right for reuse
 		if (es.getPlan() != null && !sc.getValueManager().hasPassDownParams()) 
 			es.getPlan().setCacheable(true);
 		try {
-			TransformFactory.featurePlan(sc, dmls, es);
+			TransformFactory.featurePlan(sc, dmls, es, config);
 		} catch (Throwable t) {
 			// see if we can emit something useful here
 			StringBuilder buf = new StringBuilder();
@@ -267,8 +266,8 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 	}
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
-		planViaTransforms(sc, this,es);
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
+		planViaTransforms(sc, this,es, config);
 	}
 		
 	public abstract DistKeyOpType getKeyOpType();

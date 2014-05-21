@@ -7,6 +7,7 @@ import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
 import com.tesora.dve.worker.WorkerGroup;
@@ -26,7 +27,7 @@ public class UseDatabaseStatement extends UseStatement {
 	}	
 	
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		es.append(new TransientSessionExecutionStep(getSQL(pc),new AdhocOperation() {
 			@Override
 			public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {

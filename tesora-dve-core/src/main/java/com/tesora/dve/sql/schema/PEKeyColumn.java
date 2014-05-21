@@ -4,29 +4,22 @@ package com.tesora.dve.sql.schema;
 import java.util.List;
 import java.util.Set;
 
-import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.common.catalog.Key;
 import com.tesora.dve.common.catalog.KeyColumn;
 import com.tesora.dve.exceptions.PEException;
 
-public class PEKeyColumn extends Persistable<PEKeyColumn, KeyColumn> {
+public class PEKeyColumn extends PEKeyColumnBase {
 
-	protected Integer length;
 	protected PEColumn column;
-	protected PEKey ofKey;	
-	protected long cardinality;
 	
 	public PEKeyColumn(PEColumn c, Integer l, long card) {
 		this(null, c, l, card);
 	}
 	
 	public PEKeyColumn(PEKey key, PEColumn column, Integer length, long card) {
-		super(null);
+		super(key,length,card);
 		this.column = column;
-		this.length = length;
-		this.ofKey = key;
-		this.cardinality = card;
 	}
 	
 	public PEColumn getColumn() {
@@ -43,18 +36,6 @@ public class PEKeyColumn extends Persistable<PEKeyColumn, KeyColumn> {
 			column.setKeyPart();
 	}
 	
-	public PEKey getKey() {
-		return ofKey;
-	}
-	
-	public Integer getLength() {
-		return length;
-	}
-	
-	public long getCardinality() {
-		return cardinality;
-	}
-	
 	public static PEKeyColumn load(KeyColumn kc, SchemaContext sc, PETable enclosingTable) {
 		PEKeyColumn pec = null;
 		if (pec == null) {
@@ -67,7 +48,7 @@ public class PEKeyColumn extends Persistable<PEKeyColumn, KeyColumn> {
 	}
 	
 	protected PEKeyColumn(SchemaContext sc, KeyColumn kc, PETable enclosingTable) {
-		super(null);
+		super();
 		sc.startLoading(this, kc);
 		column = PEColumn.load(kc.getSourceColumn(), sc, enclosingTable);
 		length = kc.getLength();
@@ -76,16 +57,6 @@ public class PEKeyColumn extends Persistable<PEKeyColumn, KeyColumn> {
 		sc.finishedLoading(this, kc);
 	}
 	
-	@Override
-	protected Class<? extends CatalogEntity> getPersistentClass() {
-		return KeyColumn.class;
-	}
-
-	@Override
-	protected int getID(KeyColumn p) {
-		return p.getId();
-	}
-
 	@Override
 	protected KeyColumn lookup(SchemaContext sc) throws PEException {
 		Key k = ofKey.persistTree(sc);
@@ -116,11 +87,6 @@ public class PEKeyColumn extends Persistable<PEKeyColumn, KeyColumn> {
 	}
 
 	@Override
-	protected String getDiffTag() {
-		return "KeyColumn";
-	}
-
-	@Override
 	public boolean collectDifferences(SchemaContext sc, List<String> messages, Persistable<PEKeyColumn, KeyColumn> other, 
 			boolean first, @SuppressWarnings("rawtypes") Set<Persistable> visited) {
 		PEKeyColumn oth = other.get();
@@ -143,5 +109,11 @@ public class PEKeyColumn extends Persistable<PEKeyColumn, KeyColumn> {
 	
 	public Integer getIndexSize() {
 		return column.getIndexSize();
+	}
+	
+	@Override
+	public boolean isForwardKeyColumn() {
+		// always, even for forward fks - this is more about whether the column has been declared yet or not
+		return false;
 	}
 }

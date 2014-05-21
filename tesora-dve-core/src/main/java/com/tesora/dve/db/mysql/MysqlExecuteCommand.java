@@ -3,7 +3,6 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
-import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.nio.charset.Charset;

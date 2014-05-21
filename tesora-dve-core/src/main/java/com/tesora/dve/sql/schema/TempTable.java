@@ -188,8 +188,14 @@ public final class TempTable extends PETable {
 		return rowCount > -1;
 	}
 	
+	@Override
 	public boolean isExplicitlyDeclared() {
 		return explicitlyDeclared;
+	}
+	
+	@Override
+	public boolean mustBeCreated() {
+		return true;
 	}
 	
 	@Override

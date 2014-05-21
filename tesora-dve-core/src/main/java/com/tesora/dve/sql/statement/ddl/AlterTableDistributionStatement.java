@@ -40,6 +40,7 @@ import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.InsertIntoSelectStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
@@ -113,7 +114,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 	
 	// we have our own stmt because we have nontrivial planning involved
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		normalize(sc);
 		// the dist vect is already in the appropriate context, let's get to work
 		// only one ddl step can actually be executed using the current  
@@ -135,14 +136,14 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		TableKey newTableKey = new TableKey(newTab,sc.getNextTable());
 		// new table in hand, I can create it
 		PECreateTableStatement createNew = new PECreateTableStatement(newTab,false);
-		createNew.plan(sc,es);
+		createNew.plan(sc,es, config);
 		// a callback here to do the actual copy
 		es.append(new ComplexDDLExecutionStep(oldTab.getPEDatabase(sc),oldTab.getStorageGroup(sc),
 				null,Action.ALTER,new CopyTable((TableCacheKey)oldTab.getCacheKey(),
 						(TableCacheKey)PETable.getTableKey(oldTab.getPEDatabase(sc), newTab.getName()))));
 		@SuppressWarnings("unchecked")
 		PEDropTableStatement dropTab = new PEDropTableStatement(sc,Collections.singletonList(oldTableKey),Collections.EMPTY_LIST,null);
-		dropTab.plan(sc,es);
+		dropTab.plan(sc,es, config);
 		AlterTableAction ata = new RenameTableAction(oldTab.getName(),false);
 		PEAlterTableStatement alter = new PEAlterTableStatement(sc,newTableKey,Collections.singletonList(ata));
 		es.append(new ComplexDDLExecutionStep(oldTab.getPEDatabase(sc),oldTab.getStorageGroup(sc),
@@ -215,7 +216,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 
 			iiss.normalize(sc);
 			ExecutionSequence es = new ExecutionSequence(null);
-			iiss.plan(sc,es);
+			iiss.plan(sc,es, sc.getBehaviorConfiguration());
 			List<QueryStep> steps = new ArrayList<QueryStep>();
 			es.schedule(null, steps, null, sc);
 			dml = steps;
@@ -275,6 +276,14 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 
 		@Override
 		public void postCommitAction(CatalogDAO c) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void prepareNested(SSConnection conn, CatalogDAO c,
+				WorkerGroup wg, DBResultConsumer resultConsumer)
+				throws PEException {
 			// TODO Auto-generated method stub
 			
 		}

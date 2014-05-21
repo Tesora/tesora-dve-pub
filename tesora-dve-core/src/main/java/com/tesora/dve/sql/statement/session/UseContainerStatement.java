@@ -18,6 +18,7 @@ import com.tesora.dve.sql.schema.PEContainer;
 import com.tesora.dve.sql.schema.PEContainerTenant;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
 import com.tesora.dve.sql.util.Pair;
@@ -97,7 +98,7 @@ public class UseContainerStatement extends SessionStatement {
 	}
 	
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		es.append(new TransientSessionExecutionStep(getSQL(pc),new AdhocOperation() {
 			@Override
 			public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {

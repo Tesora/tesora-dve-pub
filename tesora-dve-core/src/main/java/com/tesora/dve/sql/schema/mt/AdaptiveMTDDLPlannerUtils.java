@@ -130,7 +130,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			PEAlterTableStatement peats = new PEAlterTableStatement(sc,ntk,ata);
 			PEAlterTenantTableStatement peatts = new PEAlterTenantTableStatement(sc, peats,
 					sc.getPolicyContext().getOfTenant(nkp.getFirst().getPersistent(sc)),onTenant);
-			peatts.plan(sc, es);
+			peatts.plan(sc, es, sc.getBehaviorConfiguration());
 			forwarding.put(nsp.getSecond().getSymbol(),new LateFKFixup(nsp.getSecond().getSymbol(),peatts.getFinalTableName(),"add nontenant key for set null fk"));
 		}
 	}
@@ -661,6 +661,14 @@ public final class AdaptiveMTDDLPlannerUtils {
 				throw new PEException(description(),pe);
 			}
 		}
+
+		@Override
+		public void prepareNested(SSConnection conn, CatalogDAO c,
+				WorkerGroup wg, DBResultConsumer resultConsumer)
+				throws PEException {
+			// TODO Auto-generated method stub
+			
+		}
 		
 	}
 	
@@ -745,10 +753,10 @@ public final class AdaptiveMTDDLPlannerUtils {
 			mspc.applyDegenerateMultitenantFilter(srcSelect, LiteralExpression.makeAutoIncrLiteral(scope.getTenant(sc).getTenantID()));
 			InsertIntoSelectStatement iiss = 
 				new InsertIntoSelectStatement(targti,targColumns,srcSelect,false,null,(AliasInformation)null,null);
-			iiss.plan(sc, es);
+			iiss.plan(sc, es, sc.getBehaviorConfiguration());
 			
 			DeleteStatement ds = AdaptiveMultitenantSchemaPolicyContext.buildTenantDeleteFromTableStatement(sc, currentTable, scope);
-			ds.plan(sc,es);
+			ds.plan(sc,es, sc.getBehaviorConfiguration());
 			
 			List<QueryStep> allsteps = new ArrayList<QueryStep>();
 			es.schedule(null, allsteps, null, sc);
@@ -1007,7 +1015,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 
 			ExecutionSequence es = new ExecutionSequence(null);
 			DeleteStatement ds = AdaptiveMultitenantSchemaPolicyContext.buildTenantDeleteFromTableStatement(sc, actualScope.getTable(sc), actualScope);
-			ds.plan(sc,es);
+			ds.plan(sc,es, sc.getBehaviorConfiguration());
 			es.schedule(null, dml, null, sc);
 			
 			sc.beginSaveContext();

@@ -44,6 +44,7 @@ import com.tesora.dve.sql.schema.cache.CachedPreparedStatement;
 import com.tesora.dve.sql.schema.cache.PlanCacheKey;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.PrePlanner;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -161,7 +162,7 @@ public abstract class Statement extends StatementNode {
 	public abstract void normalize(SchemaContext sc);
 	
 	@SuppressWarnings("unchecked")
-	public static PlanningResult prepare(SchemaContext sc, Statement s, String pstmtID, String origSQL) throws PEException {
+	public static PlanningResult prepare(SchemaContext sc, Statement s, BehaviorConfiguration config, String pstmtID, String origSQL) throws PEException {
 		if (!(s instanceof CacheableStatement)) {
 			throw new PEException("Invalid statement for prepare - " + s.getClass().getSimpleName());
 		} 
@@ -200,7 +201,7 @@ public abstract class Statement extends StatementNode {
 		// look up the execution plan in the plan cache; if it doesn't exist then we'll go ahead and plan, otherwise not so much.
 		CachedPreparedStatement pstmtPlan = sc.getSource().getPreparedStatement(pck);
 		if (pstmtPlan == null) {
-			pstmtPlan = new CachedPreparedStatement(pck, getExecutionPlan(sc, s,origSQL), tableKeys, logFormat);
+			pstmtPlan = new CachedPreparedStatement(pck, getExecutionPlan(sc, s, config, origSQL), tableKeys, logFormat);
 		}
 		return new PreparePlanningResult(currentPlan, pstmtPlan, origSQL);		
 	}
@@ -213,10 +214,14 @@ public abstract class Statement extends StatementNode {
 	}
 	
 	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s) throws PEException {
-		return getExecutionPlan(sc, s,null);
+		return getExecutionPlan(sc, s, sc.getBehaviorConfiguration());
 	}
 	
-	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, String origSQL) throws PEException {
+	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config) throws PEException {
+		return getExecutionPlan(sc, s,config,null);
+	}
+	
+	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config, String origSQL) throws PEException {
 		ProjectionInfo projection = s.getProjectionMetadata(sc);
 		ExecutionPlan ep = new ExecutionPlan(projection,sc.getValueManager(), s.getStatementType());
 
@@ -227,17 +232,17 @@ public abstract class Statement extends StatementNode {
 
 		Statement ps = PrePlanner.transform(sc,s);
 		if (ps.isExplain()) {
-			ExecutionPlan expep = ps.buildExplain(sc);
+			ExecutionPlan expep = ps.buildExplain(sc, config);
 			ep.getSequence().append(expep.generateExplain(sc,ps,origSQL));
 		} else {
-			ps.planStmt(sc, ep.getSequence(),false);
+			ps.planStmt(sc, ep.getSequence(), config, false);
 		}
 		return ep;
 	}
 	
-	protected ExecutionPlan buildExplain(SchemaContext sc) throws PEException {
+	protected ExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
 		ExecutionPlan expep = new ExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
-		planStmt(sc, expep.getSequence(),true);
+		planStmt(sc, expep.getSequence(),config, true);
 		return expep;
 	}
 	
@@ -245,9 +250,9 @@ public abstract class Statement extends StatementNode {
 	}
 	
 	// made this final so that we always run preplan
-	protected final void planStmt(SchemaContext sc, ExecutionSequence es, boolean explain) throws PEException {
+	protected final void planStmt(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config, boolean explain) throws PEException {
 		preplan(sc, es,explain);
-		plan(sc, es);
+		plan(sc, es, config);
 	}
 
 	// warnings support
@@ -259,7 +264,7 @@ public abstract class Statement extends StatementNode {
 		return null;
 	}
 	
-	public abstract void plan(SchemaContext sc, ExecutionSequence es) throws PEException;
+	public abstract void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException;
 
 	public StatementType getStatementType() {
 		return StatementType.UNIMPORTANT;

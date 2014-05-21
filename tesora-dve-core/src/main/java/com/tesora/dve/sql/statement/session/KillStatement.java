@@ -11,6 +11,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteKillRequest;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
 import com.tesora.dve.worker.WorkerGroup;
@@ -31,7 +32,7 @@ public class KillStatement extends SessionStatement {
 	}
 
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 
 		if (null == PerHostConnectionManager.INSTANCE.getConnectionInfo(connectionId))
 			throw new PESQLException("Unknown thread id: " + connectionId);

@@ -11,6 +11,7 @@ import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.PlanningResult;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 
@@ -25,7 +26,7 @@ public class ExecutePStmtStatement extends PStmtStatement {
 	
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		List<String> values = new ArrayList<String>();
 		for(VariableInstance vi : vars) {
 			String v = sc.getConnection().getVariableValue(vi.buildAccessor());

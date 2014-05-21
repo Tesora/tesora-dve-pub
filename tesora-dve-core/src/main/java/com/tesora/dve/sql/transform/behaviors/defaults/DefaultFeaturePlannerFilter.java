@@ -1,6 +1,7 @@
 // OS_STATUS: public
-package com.tesora.dve.sql.transform.behaviors;
+package com.tesora.dve.sql.transform.behaviors.defaults;
 
+import com.tesora.dve.sql.transform.behaviors.FeaturePlannerFilter;
 import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 

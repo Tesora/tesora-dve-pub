@@ -9,6 +9,7 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
 
@@ -59,7 +60,7 @@ public class ShowPassthroughStatement extends SessionStatement {
 	}
 	
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		// definitely not a passthrough - instead we want to send this down to all persistent sites
 		// or maybe all sites
 		PEStorageGroup sg = (allSites ? buildAllSitesGroup(pc,command.getOverridePrivilege()) : buildOneSiteGroup(pc,command.getOverridePrivilege()));

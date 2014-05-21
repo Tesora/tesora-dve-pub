@@ -32,6 +32,7 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.FilterExecutionStep;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
@@ -58,7 +59,7 @@ public class AnalyzeKeysStatement extends SessionStatement {
 	}
 	
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		// sort the table instances by database
 		MultiMap<Database<?>,PETable> bydb = new MultiMap<Database<?>,PETable>();
 		for(TableInstance ti : tables) {
