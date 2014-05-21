@@ -264,7 +264,6 @@
 					  <descriptionTemplate>./tesora-dve/src/license/tesora_license/tesora/tesora_license.ftl</descriptionTemplate>
 					  <excludes>
 					    <exclude>**/*license*/**</exclude>
-				            <exclude>**/*.sql</exclude>
 					  </excludes>
 					</configuration>
 					<executions>
