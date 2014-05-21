@@ -263,8 +263,8 @@
 					  <licenseResolver>file:./tesora-dve/src/license/tesora_license</licenseResolver>
 					  <descriptionTemplate>./tesora-dve/src/license/tesora_license/tesora/tesora_license.ftl</descriptionTemplate>
 					  <excludes>
-					    <exclude>**/*.sql</exclude>
 					    <exclude>**/*license*/**</exclude>
+				            <exclude>**/*.sql</exclude>
 					  </excludes>
 					</configuration>
 					<executions>
@@ -311,6 +311,19 @@
 									<action>
 										<ignore />
 									</action>
+								</pluginExecution>
+								<pluginExecution>
+								  <pluginExecutionFilter>
+								    <groupId>org.codehaus.mojo</groupId>
+								    <artifactId>license-maven-plugin</artifactId>
+								    <versionRange>[1.7,)</versionRange>
+								    <goals>
+								      <goal>update-file-header</goal>
+								    </goals>
+								  </pluginExecutionFilter>
+								  <action>
+								    <ignore />
+								  </action>
 								</pluginExecution>
 							</pluginExecutions>
 						</lifecycleMappingMetadata>
