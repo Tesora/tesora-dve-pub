@@ -27,8 +27,8 @@ import java.util.List;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.AutoIncrementLiteralExpression;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
@@ -270,7 +270,8 @@ public class ValueManager implements ValueSource {
 		cv.resetTempTables(sc);
 		cv.resetTempGroups(sc);
 		cv.resetTenantID(sc);
-		cv.resetCurrentTimestamp(sc);
+		cv.clearCurrentTimestamp();
+
 		return cv;
 	}
 	
