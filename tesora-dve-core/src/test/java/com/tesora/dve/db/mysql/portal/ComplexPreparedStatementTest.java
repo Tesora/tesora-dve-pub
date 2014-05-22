@@ -31,12 +31,12 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.common.TwoDimensionalMap;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaMirrorTest;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
 import com.tesora.dve.sql.util.DatabaseDDL;
-import com.tesora.dve.sql.util.MapOfMaps;
 import com.tesora.dve.sql.util.MirrorFun;
 import com.tesora.dve.sql.util.MirrorProc;
 import com.tesora.dve.sql.util.MirrorTest;
@@ -325,7 +325,7 @@ public class ComplexPreparedStatementTest extends SchemaMirrorTest {
 		
 	private static class PreparedStatementRegistry {
 		
-		private MapOfMaps<TestResource, String, Object> stmts = new MapOfMaps<TestResource,String,Object>();
+		private TwoDimensionalMap<TestResource, String, Object> stmts = new TwoDimensionalMap<TestResource,String,Object>();
 		
 		public PreparedStatementRegistry() {
 		}

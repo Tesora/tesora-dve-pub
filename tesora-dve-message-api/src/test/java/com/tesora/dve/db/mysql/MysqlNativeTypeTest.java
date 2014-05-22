@@ -34,6 +34,7 @@ import org.junit.Test;
 
 import com.tesora.dve.common.PEBaseTest;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
 public class MysqlNativeTypeTest extends PEBaseTest {
@@ -157,7 +158,7 @@ public class MysqlNativeTypeTest extends PEBaseTest {
 	}
 
 	@SuppressWarnings("unused")
-	@Test(expected = PEException.class)
+	@Test(expected = PECodingException.class)
 	public void testUnknownMysqlNativeType() throws PEException {
 		new MysqlNativeType(MysqlType.UNKNOWN);
 	}

@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.tesora.dve.common.LinkedHashSetFactory;
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
@@ -232,7 +233,7 @@ public class ConstraintCollector {
 			HashSet<PEColumn> buf = new HashSet<PEColumn>(mk.getColumns(context));
 			buf.removeAll(have);
 			if (!buf.isEmpty())
-				needed.put(mk, buf);
+				needed.putAll(mk, buf);
 		}
 		return needed;
 	}
@@ -415,14 +416,14 @@ public class ConstraintCollector {
 			// (a = 1 or a = 2) and (b = 3 or b = 4) {a,b} (4 keys)
 			// all of the above, where the result is still not complete due to missing tenant column
 			
-			MultiMap<Part,PEColumn> needed = new MultiMap<Part,PEColumn>(new MultiMap.HashedCollectionFactory<PEColumn>());
+			MultiMap<Part,PEColumn> needed = new MultiMap<Part,PEColumn>(new LinkedHashSetFactory<PEColumn>());
 			MultiMap<ColumnKey, Part> classified = new MultiMap<ColumnKey, Part>();
 			for(Part p : incompletes.values()) {
 				ListSet<ColumnKey> has = new ListSet<ColumnKey>();
 				has.addAll(p.getColumns());
 				MultiMap<MatchableKey,PEColumn> subn = parent.getNeeded(has, p.getKeys());
 				for(MatchableKey mk : subn.keySet()) {
-					needed.put(p, subn.get(mk));
+					needed.putAll(p, subn.get(mk));
 				}
 				for(ColumnKey ck : has) {
 					classified.put(ck, p);

@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import com.tesora.dve.common.MultiMap;
+import com.tesora.dve.common.TwoDimensionalMap;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.Key;
 import com.tesora.dve.common.catalog.KeyColumn;
@@ -57,7 +58,6 @@ import com.tesora.dve.sql.transform.execution.FilterExecutionStep;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.sql.util.MapOfMaps;
 
 public class AnalyzeKeysStatement extends SessionStatement {
 
@@ -147,7 +147,7 @@ public class AnalyzeKeysStatement extends SessionStatement {
 		public void filter(SSConnection ssCon, ColumnSet columnSet,	List<ArrayList<String>> rowData, DBResultConsumer results)
 				throws Throwable {
 			// table_name, index_name, <column_name, cardinality>>
-			MapOfMaps<String,String,MultiMap<String,Long>> lookup = new MapOfMaps<String,String, MultiMap<String,Long>>();
+			TwoDimensionalMap<String,String,MultiMap<String,Long>> lookup = new TwoDimensionalMap<String,String, MultiMap<String,Long>>();
 			for(List<String> row : rowData) {
 				// recall that the column set is:
 				// table name, index name, column name, cardinality

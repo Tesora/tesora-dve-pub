@@ -22,6 +22,7 @@ package com.tesora.dve.sql.raw;
  */
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -29,10 +30,11 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.tesora.dve.common.MultiMap;
+import com.tesora.dve.common.TreeMapFactory;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ProjectionInfo;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.GeneralCollectingTraversal;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -67,6 +69,7 @@ import com.tesora.dve.sql.raw.jaxb.UpdateStepType;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.DistributionKeyTemplate;
 import com.tesora.dve.sql.schema.DistributionVector;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -76,7 +79,6 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.ValueManager;
-import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.cache.NonMTCachedPlan;
 import com.tesora.dve.sql.schema.cache.PlanCacheKey;
 import com.tesora.dve.sql.schema.cache.RegularCachedPlan;
@@ -182,7 +184,7 @@ public class RawToExecConverter {
 		String orig = raw.getInsql();
 		// to build the cache key replace params with the original contents, then shrink that.
 		String working = orig;
-		MultiMap<Integer,ParameterType> sorted = new MultiMap<Integer,ParameterType>(new MultiMap.OrderedMapFactory<Integer, ParameterType>());
+		MultiMap<Integer, ParameterType> sorted = new MultiMap<Integer, ParameterType>(new TreeMapFactory<Integer, Collection<ParameterType>>());
 		for(ParameterType pt : raw.getParameter()) {
 			sorted.put(pt.getName().length(), pt);
 		}

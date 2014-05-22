@@ -326,7 +326,7 @@ public abstract  class KeyCollector {
 			for(Part p : incompletes) {
 				ListSet<ColumnKey> has = new ListSet<ColumnKey>();
 				has.addAll(p.getColumns());
-				needed.put(p, parent.getNeeded(has));
+				needed.putAll(p, parent.getNeeded(has));
 				for(ColumnKey ck : has) {
 					classified.put(ck, p);
 				}

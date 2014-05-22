@@ -1,4 +1,3 @@
-// OS_STATUS: public
 parser grammar PE;
 
 /*

@@ -52,9 +52,9 @@ public class MultiMapLookup<T extends Object> extends AbstractLookup<Collection<
 	@Override
 	protected void store(boolean cap, Name n, Collection<T> o) {
 		if (cap) {
-			capObjects.put(n, o);
+			capObjects.putAll(n, o);
 		} else {
-			objects.put(n, o);
+			objects.putAll(n, o);
 		}
 	}
 	
