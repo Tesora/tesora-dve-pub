@@ -1,4 +1,3 @@
-// OS_STATUS: public
 /*
  * Copyright 2013 The Netty Project
  *

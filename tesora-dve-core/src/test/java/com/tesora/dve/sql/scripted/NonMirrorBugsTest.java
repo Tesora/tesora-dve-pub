@@ -1,5 +1,25 @@
-// OS_STATUS: public
 package com.tesora.dve.sql.scripted;
+
+/*
+ * #%L
+ * Tesora Inc.
+ * Database Virtualization Engine
+ * %%
+ * Copyright (C) 2011 - 2014 Tesora Inc.
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License, version 3,
+ * as published by the Free Software Foundation.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * #L%
+ */
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -155,6 +175,7 @@ public class NonMirrorBugsTest extends SchemaTest {
 	
 	public static List<String> importTest(Class<?> relativeTo, String srcFile, String givenJDBCUrl, String actualJDBCUrl) throws Throwable {
 		ArrayList<String> out = new ArrayList<String>();
+		final String comment = "--";
 		InputStream is = relativeTo.getResourceAsStream(srcFile);
 		String creds = "user='" + TestCatalogHelper.getInstance().getCatalogUser() + "' password='" + TestCatalogHelper.getInstance().getCatalogPassword() + "'";
 		try {
@@ -166,7 +187,7 @@ public class NonMirrorBugsTest extends SchemaTest {
 				if (line != null) {
 
 					line = line.trim();
-					if (line.isEmpty()) {
+					if (line.isEmpty() || line.startsWith(comment)) {
 						continue;
 					}
 					if (line.indexOf(givenJDBCUrl) > -1) {

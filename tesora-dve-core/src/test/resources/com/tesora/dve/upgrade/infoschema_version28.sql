@@ -1,3 +1,23 @@
+---
+-- #%L
+-- Tesora Inc.
+-- Database Virtualization Engine
+-- %%
+-- Copyright (C) 2011 - 2014 Tesora Inc.
+-- %%
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU Affero General Public License, version 3,
+-- as published by the Free Software Foundation.
+-- 
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+-- GNU Affero General Public License for more details.
+-- 
+-- You should have received a copy of the GNU Affero General Public License
+-- along with this program. If not, see <http://www.gnu.org/licenses/>.
+-- #L%
+---
 INSERT INTO `user_database` (`user_database_id`, `default_character_set_name`, `default_collation_name`, `multitenant_mode`, `name`, `default_group_id`, `fk_mode`) VALUES (1, 'utf8', 'utf8_general_ci', 'off', 'INFORMATION_SCHEMA', 1001, 'strict');
 INSERT INTO `user_database` (`user_database_id`, `default_character_set_name`, `default_collation_name`, `multitenant_mode`, `name`, `default_group_id`, `fk_mode`) VALUES (2, 'utf8', 'utf8_general_ci', 'off', 'mysql', 1001, 'strict');
 INSERT INTO `user_table` (`table_id`, `name`, `distribution_model_id`, `persistent_group_id`, `user_database_id`, `engine`) VALUES (3, 'tables', 2002, 1001, 1, 'MEMORY');
