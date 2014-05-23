@@ -33,6 +33,7 @@ import java.util.TreeMap;
 
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.common.TwoDimensionalMap;
 import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -124,7 +125,6 @@ import com.tesora.dve.sql.statement.session.UseDatabaseStatement;
 import com.tesora.dve.sql.statement.session.UseStatement;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.sql.util.MapOfMaps;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.variable.SchemaVariableConstants;
@@ -167,7 +167,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	private String tempTableKern;
 	private int tempTableCounter;
 	
-	private MapOfMaps<VariableScopeKind, String, String> variables;
+	private TwoDimensionalMap<VariableScopeKind, String, String> variables;
 	
 	
 	private IPETenant currentTenant = null; 
@@ -202,8 +202,8 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		}
 	}
 
-	public static MapOfMaps<VariableScopeKind,String,String> buildDefaultVariables() {
-		MapOfMaps<VariableScopeKind,String,String> out = new MapOfMaps<VariableScopeKind,String,String>();
+	public static TwoDimensionalMap<VariableScopeKind,String,String> buildDefaultVariables() {
+		TwoDimensionalMap<VariableScopeKind,String,String> out = new TwoDimensionalMap<VariableScopeKind,String,String>();
         VariableConfig<SessionVariableHandler>  config = Singletons.require(HostService.class).getSessionConfigTemplate();
 		for(VariableInfo<SessionVariableHandler> vi : config.getInfoValues()) {
 			String varname = vi.getName();
@@ -755,7 +755,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		throw new PEException("No support for getVariables in TransientExecutionEngine");
 	}
 
-	public MapOfMaps<VariableScopeKind, String, String> getVariables() {
+	public TwoDimensionalMap<VariableScopeKind, String, String> getVariables() {
 		return variables;
 	}
 

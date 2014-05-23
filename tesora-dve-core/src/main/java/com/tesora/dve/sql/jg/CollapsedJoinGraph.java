@@ -30,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import com.tesora.dve.common.LinkedHashSetFactory;
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.sql.SchemaException;
@@ -266,7 +267,7 @@ public class CollapsedJoinGraph extends JoinGraph {
 	}
 
 	public MultiMap<ColumnKey,ColumnKey> getRestrictionPropagationMap() {
-		MultiMap<ColumnKey,ColumnKey> out = new MultiMap<ColumnKey,ColumnKey>(new MultiMap.HashedCollectionFactory<ColumnKey>());
+		MultiMap<ColumnKey,ColumnKey> out = new MultiMap<ColumnKey,ColumnKey>(new LinkedHashSetFactory<ColumnKey>());
 		for(JoinEdge je : getJoins()) 
 			collectJoinMapping(je,out);
 		for(DPart dp : getPartitions()) {

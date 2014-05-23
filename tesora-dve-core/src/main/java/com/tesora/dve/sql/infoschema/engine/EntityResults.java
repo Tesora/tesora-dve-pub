@@ -30,6 +30,7 @@ import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.SyntheticLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 
@@ -56,7 +57,7 @@ public class EntityResults {
 					AbstractInformationSchemaColumnView c = pt.get(0);
 					if (!c.isSynthetic()) {
 						CatalogInformationSchemaColumn cisc = (CatalogInformationSchemaColumn) c.getLogicalColumn();
-						rr.addResultColumn(cisc.getValue(sc, ce,c));
+						rr.addResultColumn(cisc.getValue(sc, ce));
 					} else {
 						SyntheticLogicalInformationSchemaColumn cisc = (SyntheticLogicalInformationSchemaColumn) c.getLogicalColumn();
 						rr.addResultColumn(cisc.getValue());
@@ -66,12 +67,11 @@ public class EntityResults {
 					for(int i = 0; i < pt.size(); i++) {
 						AbstractInformationSchemaColumnView c = pt.get(i);
 						boolean last = (i == (pt.size() - 1));
-						CatalogInformationSchemaColumn cisc = (CatalogInformationSchemaColumn) c.getLogicalColumn();
-						if (last) {
-							rr.addResultColumn(cisc.getValue(sc, ent, c));
-						}
-						else
-							ent = (CatalogEntity) cisc.getValue(sc, ent, c);
+						Object res = c.getLogicalColumn().getValue(sc, ent);
+						if (last)
+							rr.addResultColumn(res);
+						else 
+							ent = (CatalogEntity) res;
 					}
 				}
 			}

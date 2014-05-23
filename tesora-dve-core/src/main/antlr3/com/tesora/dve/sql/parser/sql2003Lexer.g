@@ -1,4 +1,3 @@
-// OS_STATUS: public
 lexer grammar sql2003Lexer;
 
 options

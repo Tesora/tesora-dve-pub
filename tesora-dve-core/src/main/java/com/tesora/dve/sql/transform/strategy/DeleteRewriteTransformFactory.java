@@ -157,7 +157,7 @@ public class DeleteRewriteTransformFactory extends TransformFactory {
 				// we need unique columns in order to build the join
 				throw new PEException("Degenerate delete case: no dist key and no primary key");
 			}
-			requiredColumns.put(ti,ucolumns);
+			requiredColumns.putAll(ti,ucolumns);
 		}
 		SelectStatement ss = DMLStatementUtils.convertDeleteToSelect(copy,requiredColumns);
 		ss.normalize(sc);

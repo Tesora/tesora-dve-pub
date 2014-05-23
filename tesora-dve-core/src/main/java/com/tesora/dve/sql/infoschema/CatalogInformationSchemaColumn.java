@@ -129,7 +129,8 @@ public class CatalogInformationSchemaColumn extends LogicalInformationSchemaColu
 	}
 	
 	// for raw entity queries
-	public Object getValue(SchemaContext sc, CatalogEntity ce, AbstractInformationSchemaColumnView originalColumn) {
+	@Override
+	public Object getValue(SchemaContext sc, CatalogEntity ce) {
 		if (ce == null) return null;
 		
 		Object r = getRawValue(sc,ce);

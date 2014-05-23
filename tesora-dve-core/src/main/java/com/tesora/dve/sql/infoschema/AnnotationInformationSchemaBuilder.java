@@ -28,6 +28,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.tesora.dve.common.TwoDimensionalMap;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.CharacterSets;
 import com.tesora.dve.common.catalog.Collations;
@@ -64,6 +65,7 @@ import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.annos.TableView;
+import com.tesora.dve.sql.infoschema.info.InfoSchemaColumnsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.CatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.ColumnCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.DatabaseCatalogInformationSchemaTable;
@@ -84,7 +86,6 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.BasicType;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.util.Functional;
-import com.tesora.dve.sql.util.MapOfMaps;
 
 public class AnnotationInformationSchemaBuilder implements
 		InformationSchemaBuilder {
@@ -99,7 +100,7 @@ public class AnnotationInformationSchemaBuilder implements
 		new InfoTableConfig(PersistentGroup.class),
 		new InfoTableConfig(PersistentSite.class),
 		new InfoTableConfig(Tenant.class),
-		new InfoTableConfig(UserColumn.class).withLogical(ColumnCatalogInformationSchemaTable.class).withShow(ShowColumnInformationSchemaTable.class),
+		new InfoTableConfig(UserColumn.class).withLogical(ColumnCatalogInformationSchemaTable.class).withShow(ShowColumnInformationSchemaTable.class).withInfo(InfoSchemaColumnsInformationSchemaTable.class),
 		new InfoTableConfig(StorageGroupGeneration.class),
 		new InfoTableConfig(DistributionModel.class),
 		new InfoTableConfig(User.class),
@@ -175,7 +176,7 @@ public class AnnotationInformationSchemaBuilder implements
 			}
 		}
 		// per-view, also maintain a map of view column name to view column
-		MapOfMaps<InfoView, String, InformationSchemaColumnView> viewColumns = new MapOfMaps<InfoView, String, InformationSchemaColumnView>();
+		TwoDimensionalMap<InfoView, String, InformationSchemaColumnView> viewColumns = new TwoDimensionalMap<InfoView, String, InformationSchemaColumnView>();
 
 		// try to obtain the table name via introspection.
 		Method[] methods = c.getDeclaredMethods();
@@ -271,7 +272,6 @@ public class AnnotationInformationSchemaBuilder implements
 			return this;
 		}
 		
-		@SuppressWarnings("unused")
 		public InfoTableConfig withInfo(Class<?> c) {
 			infoSchemaClass = c;
 			return this;

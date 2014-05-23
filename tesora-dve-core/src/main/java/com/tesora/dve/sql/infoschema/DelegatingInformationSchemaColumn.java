@@ -24,9 +24,11 @@ package com.tesora.dve.sql.infoschema;
 import java.util.Collections;
 import java.util.List;
 
+import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public class DelegatingInformationSchemaColumn extends LogicalInformationSchemaColumn {
@@ -62,4 +64,15 @@ public class DelegatingInformationSchemaColumn extends LogicalInformationSchemaC
 		return current;
 	}
 	
+	public Object getValue(SchemaContext sc, CatalogEntity ce) {
+		Object current = ce;
+		for(LogicalInformationSchemaColumn lisc : pathToActual) {
+			if (current instanceof CatalogEntity)
+				current = lisc.getValue(sc, (CatalogEntity)current);
+			else
+				break;
+		}
+		return current;
+	}
+
 }

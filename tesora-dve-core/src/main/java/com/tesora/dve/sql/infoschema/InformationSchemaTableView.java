@@ -121,7 +121,7 @@ public class InformationSchemaTableView implements
 		validate(view);
 	}
 
-	protected final void freeze() {
+	protected void freeze() {
 		frozen = true;
 	}
 	
@@ -145,8 +145,9 @@ public class InformationSchemaTableView implements
 	public void inject(SchemaView view, DBNative dbn) {
 		ArrayList<AbstractInformationSchemaColumnView> acc = new ArrayList<AbstractInformationSchemaColumnView>();
 		collectInjected(view, this, acc);
-		for(AbstractInformationSchemaColumnView iscv : acc)
+		for(AbstractInformationSchemaColumnView iscv : acc) {
 			addColumn(null, iscv);
+		}
 	}
 	
 	@Override

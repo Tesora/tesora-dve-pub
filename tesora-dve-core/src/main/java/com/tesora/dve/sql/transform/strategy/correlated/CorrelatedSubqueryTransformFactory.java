@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.List;
 
 import com.tesora.dve.common.MultiMap;
+import com.tesora.dve.common.TreeMapFactory;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionPath;
@@ -36,10 +37,10 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.Subquery;
 import com.tesora.dve.sql.node.test.EdgeTest;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.TempTable;
-import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.TempTableCreateOptions;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
@@ -187,7 +188,7 @@ abstract class CorrelatedSubqueryTransformFactory extends TransformFactory {
 		
 		ListSet<ProjectingStatement> notActuallyCorrelated = new ListSet<ProjectingStatement>();
 		MultiMap<Integer,CorrelatedSubquery> corsubs = 
-				new MultiMap<Integer,CorrelatedSubquery>(new MultiMap.OrderedMapFactory<Integer,CorrelatedSubquery>());
+				new MultiMap<Integer, CorrelatedSubquery>(new TreeMapFactory<Integer, Collection<CorrelatedSubquery>>());
 		while(orderQueries(pc.getContext(), copy, corsubs, notActuallyCorrelated)) {
 			corsubs.clear();
 			notActuallyCorrelated.clear();

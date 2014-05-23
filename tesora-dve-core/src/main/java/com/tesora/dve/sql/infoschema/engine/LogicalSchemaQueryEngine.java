@@ -223,7 +223,7 @@ public class LogicalSchemaQueryEngine {
 		if (ci instanceof ScopedColumnInstance) {
 			ScopedColumnInstance sci = (ScopedColumnInstance) ci;
 			accumulateSelectorPath(acc,sci.getRelativeTo());
-		}
+		} 
 		acc.add((AbstractInformationSchemaColumnView) ci.getColumn());
 	}
 	

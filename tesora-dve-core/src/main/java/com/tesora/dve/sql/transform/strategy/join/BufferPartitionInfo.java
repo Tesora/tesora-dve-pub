@@ -44,11 +44,11 @@ class BufferPartitionInfo {
 	}
 	
 	public void add(BufferEntry be, ListSet<TableKey> tk) {
-		partitionsForEntries.put(be, lookup.getPartitionsFor(tk));
+		partitionsForEntries.putAll(be, lookup.getPartitionsFor(tk));
 	}
 
 	public void add(BufferEntry be, Collection<DPart> parts) {
-		partitionsForEntries.put(be, parts);
+		partitionsForEntries.putAll(be, parts);
 	}
 	
 	public List<DPart> getPartitionsForEntry(BufferEntry be) {

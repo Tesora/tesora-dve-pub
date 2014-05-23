@@ -32,8 +32,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -54,6 +52,8 @@ import com.tesora.dve.db.mysql.libmy.TestColumnDef;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.TestHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.standalone.PETest;
 
 public class MysqlNativeTest {
@@ -838,7 +838,6 @@ public class MysqlNativeTest {
 			assertNotNull(mnt);
 			assertEquals("Invalid map of field type - loop index is: " + i,
 					rec.mt.name(), NativeType.fixNameForType(mnt.getTypeName()));
-			//			System.out.println(mft.name() + ":" + mnt);
 			i++;
 		}
 	}

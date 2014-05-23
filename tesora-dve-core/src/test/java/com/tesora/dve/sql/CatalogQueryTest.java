@@ -775,4 +775,20 @@ public class CatalogQueryTest extends SchemaTest {
 		conn.execute("set autocommit=1");
 
 	}
+	
+	@Test
+	public void testPE1502Partial() throws Throwable {
+		conn.execute("use " + project.getDatabaseName());
+		conn.execute("create table pe1502(id int auto_increment, fid varchar(32), sid decimal(10,5), primary key (id), key (fid)) broadcast distribute");
+		
+		String sql = 
+				String.format("select table_catalog, table_schema, column_name, column_type, column_key, privileges from information_schema.columns where table_schema = '%s' and table_name = '%s'",
+						project.getDatabaseName(),"pe1502");
+		
+		conn.assertResults(sql,
+				br(nr,"def","cqtdb","id","int(11)","PRI","",
+				   nr,"def","cqtdb","fid","varchar(32)","","",
+				   nr,"def","cqtdb","sid","decimal(10,5)","",""));		
+	}
+	
 }
