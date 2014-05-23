@@ -26,6 +26,7 @@ import java.sql.Types;
 
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.NativeTypeAlias;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
 public class MysqlNativeType extends NativeType {
@@ -218,10 +219,9 @@ public class MysqlNativeType extends NativeType {
 	 * Main constructor, based on the MysqlType enum
 	 * 
 	 * @param mysqlType
-	 * @throws PEException
 	 */
-	public MysqlNativeType(MysqlType mysqlType) throws PEException {
-		super(mysqlType.toString(), (int) mysqlType.getMysqlFieldType().getByteValue(), mysqlType.getSqlType(), mysqlType.isJdbcType(), mysqlType.getAliases());
+	public MysqlNativeType(MysqlType mysqlType) {
+		super(mysqlType.toString(), mysqlType.getMysqlFieldType().getByteValue(), mysqlType.getSqlType(), mysqlType.isJdbcType(), mysqlType.getAliases());
 		this.mysqlType = mysqlType;
 
 		// all mysql types are nullable
@@ -230,7 +230,7 @@ public class MysqlNativeType extends NativeType {
 		setProperUnsignedAttribute();
 
 		if (mysqlType == MysqlType.UNKNOWN) {
-			throw new PEException("Type name " + mysqlType + " is not a valid MySQL type");
+			throw new PECodingException("Type name " + mysqlType + " is not a valid MySQL type");
 		}
 	}
 

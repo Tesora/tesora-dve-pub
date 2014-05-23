@@ -23,8 +23,8 @@ package com.tesora.dve.sql.transform.strategy.join;
 
 import java.util.Collection;
 
+import com.tesora.dve.common.LinkedHashSetFactory;
 import com.tesora.dve.common.MultiMap;
-import com.tesora.dve.common.MultiMap.HashedCollectionFactory;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.PEColumn;
@@ -36,7 +36,7 @@ import com.tesora.dve.sql.util.Functional;
 
 public class IndexCollector {
 
-	private MultiMap<PETable,PEColumn> collector = new MultiMap<PETable,PEColumn>(new HashedCollectionFactory<PEColumn>());
+	private MultiMap<PETable,PEColumn> collector = new MultiMap<PETable,PEColumn>(new LinkedHashSetFactory<PEColumn>());
 	
 	public IndexCollector() {
 		

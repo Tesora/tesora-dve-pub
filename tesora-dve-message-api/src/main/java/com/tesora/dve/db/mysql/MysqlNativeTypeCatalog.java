@@ -24,16 +24,25 @@ package com.tesora.dve.db.mysql;
 import static com.tesora.dve.db.mysql.MysqlNativeConstants.MYSQL_CHARSET_BINARY;
 import static com.tesora.dve.db.mysql.MysqlNativeConstants.MYSQL_CHARSET_UTF8;
 
+import java.util.Collections;
+
+import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.NativeTypeCatalog;
+import com.tesora.dve.db.NativeTypeCatalog.NativeTypeByPrecisionLookup.MyFieldDataKind;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
 public class MysqlNativeTypeCatalog extends NativeTypeCatalog {
 
 	private static final long serialVersionUID = 1L;
+	private static final NativeType PARAMETER = ((MysqlNativeType) new MysqlNativeType(MysqlType.PARAMETER)
+			.withPrecision(0))
+			.withCharSet(MYSQL_CHARSET_BINARY)
+			.withFieldTypeFlags(MysqlNativeConstants.FLDPKT_FLAG_BINARY);
 
 	@Override
-	public void load() throws PEException {
+	protected void addTypes() throws PEException {
 		// a NULL type is used for some special result sets (i.e. SELECT DATABASE()
 		// we shouldn't use this type as the database during CREATE operations
 		addType(new MysqlNativeType(MysqlType.NULL).withCharSet(MysqlNativeConstants.MYSQL_CHARSET_UTF8).withUsedInCreate(false));
@@ -167,8 +176,7 @@ public class MysqlNativeTypeCatalog extends NativeTypeCatalog {
 		addType(((MysqlNativeType) new MysqlNativeType(MysqlType.YEAR).withQuoteCharacter("'").withPrecision(4).withSupportsPrecision(
 				true)).withCharSet(MYSQL_CHARSET_BINARY).withFieldTypeFlags(MysqlNativeConstants.FLDPKT_FLAG_BINARY));
 
-		addType(((MysqlNativeType) new MysqlNativeType(MysqlType.PARAMETER).withPrecision(0)).withCharSet(MYSQL_CHARSET_BINARY).withFieldTypeFlags(
-				MysqlNativeConstants.FLDPKT_FLAG_BINARY));
+		addType(PARAMETER);
 
 		/* Spatial types. */
 		addType(((MysqlNativeType) new MysqlNativeType(MysqlType.GEOMETRY).withQuoteCharacter("'").withPrecision(65535)).withCharSet(MYSQL_CHARSET_BINARY)
@@ -196,8 +204,33 @@ public class MysqlNativeTypeCatalog extends NativeTypeCatalog {
 //		addType(((MysqlNativeType) new MysqlNativeType(MysqlType.REAL_UNUSED).withPrecision(10).withSupportsPrecision(true).withSupportsScale(
 //				true).withAutoIncrement(true).withMinimumScale(-308).withMaximumScale(308)).withCharSet(MYSQL_CHARSET_BINARY).withFieldTypeFlags(
 //				MysqlNativeConstants.FLDPKT_FLAG_NONE).withComparable(false).withUsedInCreate(false));
+	}
 
-		setNumTypesLoaded(typesByName.size());
-		sortNativeTypeIdLists();
+	@Override
+	public MysqlNativeType findType(final MyFieldType mft, final int flags, final long maxLength, final boolean except) throws PEException {
+
+		MyFieldDataKind dataKind = null;
+
+		// special handling for BLOB/TEXT and CHAR/BINARY and VARCHAR/VARBINARY
+		if (mft.isBinaryFlagDependent()) {
+			final boolean keepText = (flags & MysqlNativeConstants.FLDPKT_FLAG_BINARY) == 0;
+			if (keepText) {
+				dataKind = MyFieldDataKind.TEXT;
+			} else {
+				dataKind = MyFieldDataKind.BINARY;
+			}
+		} else {
+			dataKind = MyFieldDataKind.ANY;
+		}
+
+		// make sure that our internal PARAMETER type doesn't get returned
+		final NativeType type = findSmallestSuitableType(mft.getByteValue(), dataKind, maxLength,
+				(maxLength == 0) ? Collections.<NativeType> singleton(PARAMETER) : Collections.EMPTY_SET);
+
+		if (type == null) {
+			throw new PECodingException("Cannot find native type for field type " + mft + " with flags " + flags + " and length " + maxLength);
+		}
+
+		return (MysqlNativeType) type;
 	}
 }

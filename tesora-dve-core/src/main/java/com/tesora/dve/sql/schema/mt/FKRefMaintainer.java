@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.tesora.dve.common.LinkedHashSetFactory;
 import com.tesora.dve.common.MultiMap;
-import com.tesora.dve.common.MultiMap.HashedCollectionFactory;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
@@ -261,7 +261,7 @@ public abstract class FKRefMaintainer {
 		final HashMap<PETable,TableScope> scopes;
 		
 		public DependencyTree(PETenant onTenant) {
-			deps = new MultiMap<PETable, TaggedFK>(new HashedCollectionFactory<TaggedFK>());
+			deps = new MultiMap<PETable, TaggedFK>(new LinkedHashSetFactory<TaggedFK>());
 			this.tenant = onTenant;
 			this.scopes = new HashMap<PETable,TableScope>();
 		}

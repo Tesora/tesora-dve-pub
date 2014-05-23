@@ -28,6 +28,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.tesora.dve.common.TwoDimensionalMap;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.CharacterSets;
 import com.tesora.dve.common.catalog.Collations;
@@ -85,7 +86,6 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.BasicType;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.util.Functional;
-import com.tesora.dve.sql.util.MapOfMaps;
 
 public class AnnotationInformationSchemaBuilder implements
 		InformationSchemaBuilder {
@@ -176,7 +176,7 @@ public class AnnotationInformationSchemaBuilder implements
 			}
 		}
 		// per-view, also maintain a map of view column name to view column
-		MapOfMaps<InfoView, String, InformationSchemaColumnView> viewColumns = new MapOfMaps<InfoView, String, InformationSchemaColumnView>();
+		TwoDimensionalMap<InfoView, String, InformationSchemaColumnView> viewColumns = new TwoDimensionalMap<InfoView, String, InformationSchemaColumnView>();
 
 		// try to obtain the table name via introspection.
 		Method[] methods = c.getDeclaredMethods();

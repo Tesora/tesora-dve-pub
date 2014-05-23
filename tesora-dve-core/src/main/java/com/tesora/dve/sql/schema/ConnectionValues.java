@@ -25,14 +25,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.AutoIncrementLiteralExpression;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
+import com.tesora.dve.sql.parser.TimestampVariableUtils;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.util.ResizableArray;
-import com.tesora.dve.sql.parser.TimestampVariableUtils;
 
 public class ConnectionValues {
 
@@ -217,7 +217,11 @@ public class ConnectionValues {
 		return lateSortedInsert;
 	}
 	
-	public void resetCurrentTimestamp(SchemaContext sc) {
+	public void clearCurrentTimestamp() {
+		this.currentTimestamp = 0;
+	}
+
+	private void resetCurrentTimestamp(SchemaContext sc) {
 		this.currentTimestamp = TimestampVariableUtils.getCurrentUnixTime(sc);
 	}
 }

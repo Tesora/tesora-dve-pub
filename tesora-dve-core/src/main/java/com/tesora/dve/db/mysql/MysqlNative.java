@@ -26,16 +26,10 @@ import java.sql.ParameterMetaData;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-
-import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
-import com.tesora.dve.server.global.HostService;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -52,7 +46,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
-import com.tesora.dve.exceptions.PECodingException;
+import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ColumnAttribute;
@@ -60,6 +54,7 @@ import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.types.Type;
@@ -124,55 +119,9 @@ public class MysqlNative extends DBNative {
 	}
 
 	public MysqlNativeType getNativeTypeFromMyFieldType(MyFieldType mft, int flags, long maxLen) throws PEException {
-		MysqlNativeType nativeType = null;
-
-        List<NativeType> nativeTypeList = (List<NativeType>) Singletons.require(HostService.class).getDBNative().getTypeCatalog().findMatchingTypes(mft.getByteValue(), true);
-
-		// special handling for BLOB/TEXT and CHAR/BINARY and VARCHAR/VARBINARY
-		if ( nativeTypeList.size() > 1 && mft.isBinaryFlagDependent() ) {
-			nativeTypeList = new ArrayList<NativeType>(nativeTypeList);
-			Iterator<NativeType> iter = nativeTypeList.iterator();
-			boolean keepText = (flags & MysqlNativeConstants.FLDPKT_FLAG_BINARY) == 0;
-			while ( iter.hasNext() ) {
-				MysqlNativeType mnt = (MysqlNativeType) iter.next();
-				if ( keepText ) { 
-					if ( !mnt.isStringType() ) { // remove all non-string types from the list
-						iter.remove();
-						continue;
-					}
-				} else if ( !mnt.isBinaryType() ) { // remove all non-binary types from the list
-					iter.remove();
-					continue;
-				}
-			}	
-		}
-		
-		if ( nativeTypeList.isEmpty() )
-			throw new PEException("Cannot find native type for field type " + mft 
-					+ " with flags " + flags + " and length " + maxLen);
-
-		if ( nativeTypeList.size() > 1 ) {  
-			// try to use the field length to find it
-			for ( NativeType nt : nativeTypeList ) {
-				// make sure that our internal PARAMETER type doesn't get returned
-				if ( maxLen == 0 && ((MysqlNativeType) nt).getMysqlType() == MysqlType.PARAMETER )
-					continue;
-				if ( maxLen <= nt.getPrecision() ) {
-					nativeType = (MysqlNativeType) nt;
-					break;
-				}
-			}
-		} else {
-			nativeType = (MysqlNativeType) nativeTypeList.get(0);
-		}
-		
-		if ( nativeType == null )
-			throw new PECodingException("Cannot find native type for field type " + mft 
-					+ " with flags " + flags + " and length " + maxLen);
-
-		return nativeType;
+		final MysqlNativeTypeCatalog typeCatalog = (MysqlNativeTypeCatalog) Singletons.require(HostService.class).getDBNative().getTypeCatalog();
+		return typeCatalog.findType(mft, flags, maxLen, true);
 	}
-	
 
 	@Override 
 	public String getColumnDefForQuery(UserColumn uc) throws PEException {

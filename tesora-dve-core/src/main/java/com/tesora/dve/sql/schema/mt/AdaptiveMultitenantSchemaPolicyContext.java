@@ -548,19 +548,19 @@ public class AdaptiveMultitenantSchemaPolicyContext extends SchemaPolicyContext 
 							intersectedDeps.retainAll(deps);
 						}
 					}
-					filtered.put(in, intersectedDeps);
+					filtered.putAll(in, intersectedDeps);
 				} else {
 					// any others, set all child deps on this node
 					HashSet<ColumnKey> deps = new HashSet<ColumnKey>();
 					if (fc.getParameters().isEmpty())
-						filtered.put(in, givenColumns.keySet());
+						filtered.putAll(in, givenColumns.keySet());
 					for(LanguageNode ln : fc.getParameters()) {
 						Collection<ColumnKey> subdeps = filtered.get(ln);
 						if (subdeps == null || subdeps.isEmpty()) continue;
 						deps.addAll(subdeps);
 					}
 					
-					filtered.put(in, deps);
+					filtered.putAll(in, deps);
 				}
 			}
 			return in;

@@ -22,34 +22,30 @@ package com.tesora.dve.common;
  */
 
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
-public class MultiMap<K, V> {
+public final class MultiMap<K, V> {
 
 	private final Map<K, Collection<V>> backing;
-	private final CollectionFactory<V> factory; 
+	private final CollectionFactory<V> valueStorageFactory;
+
+	public MultiMap(final MapFactory<K, Collection<V>> mapFactory, final CollectionFactory<V> valueStorageFactory) {
+		this.backing = mapFactory.create();
+		this.valueStorageFactory = valueStorageFactory;
+	}
 	
-	public MultiMap(MapFactory<K, V> backingFactory, CollectionFactory<V> subFactory) {
-		backing = backingFactory.create();
-		factory = subFactory;
+	public MultiMap(final MapFactory<K, Collection<V>> mapFactory) {
+		this(mapFactory, new ArrayListFactory<V>());
+	}
+
+	public MultiMap(final CollectionFactory<V> valueStorageFactory) {
+		this(new LinkedHashMapFactory<K, Collection<V>>(), valueStorageFactory);
 	}
 	
 	public MultiMap() {
-		this(new MapFactory<K, V>(), new CollectionFactory<V>());
-	}
-	
-	public MultiMap(CollectionFactory<V> cf) {
-		this(new MapFactory<K, V>(), cf);
-	}
-	
-	public MultiMap(MapFactory<K, V> backingFactory) {
-		this(backingFactory, new CollectionFactory<V>());
+		this(new LinkedHashMapFactory<K, Collection<V>>(), new ArrayListFactory<V>());
 	}
 	
 	public boolean isEmpty() {
@@ -60,60 +56,68 @@ public class MultiMap<K, V> {
 		return backing.containsKey(key);
 	}
 
-	public Collection<V> get(K key) {
+	public Collection<V> get(final K key) {
 		return backing.get(key);
 	}
 	
-	public boolean put(K key, V value) {
-		Collection<V> sub = backing.get(key);
-		if (sub == null) {
-			sub = factory.create();
-			backing.put(key, sub);
+	public boolean put(final K key, final V value) {
+		final Collection<V> valueStorage = locateInternalValueStorage(key);
+		return valueStorage.add(value);
+	}
+	
+	public boolean putAll(final K key, final Collection<V> values) {
+		final Collection<V> valueStorage = locateInternalValueStorage(key);
+		return valueStorage.addAll(values);
+	}
+	
+	private Collection<V> locateInternalValueStorage(final K key) {
+		Collection<V> valueStorage = backing.get(key);
+		if (valueStorage == null) {
+			valueStorage = valueStorageFactory.create();
+			backing.put(key, valueStorage);
 		}
-		return sub.add(value);
+
+		return valueStorage;
 	}
-	
-	public <C extends Collection<V>> boolean put(K key, C values) {
-		Collection<V> sub = backing.get(key);
-		if (sub == null) {
-			sub = factory.create();
-			backing.put(key, sub);
+
+	public boolean contains(final K key, final V value) {
+		final Collection<V> valueStorage = get(key);
+		if ((valueStorage != null) && (!valueStorage.isEmpty())) {
+			return valueStorage.contains(value);
 		}
-		return sub.addAll(values);
+
+		return false;
 	}
 	
-	public boolean contains(K key, V value) {
-		Collection<V> sub = get(key);
-		if (sub == null || sub.isEmpty())
+	public boolean remove(final K key, final V value) {
+		final Collection<V> valueStorage = get(key);
+		if (valueStorage == null) {
 			return false;
-		return sub.contains(value);
-	}
-	
-	public boolean remove(K key, V value) {
-		Collection<V> sub = get(key);
-		if (sub == null)
-			return false;
-		else if (sub.isEmpty()) {
+		} else if (valueStorage.isEmpty()) {
 			backing.remove(key);
 			return false;
-		} 
-		boolean retval = sub.remove(value);
-		if (sub.isEmpty()) {
+		}
+
+		final boolean removed = valueStorage.remove(value);
+		if (valueStorage.isEmpty()) {
 			backing.remove(key);
 			return true;
 		}
-		return retval;
+
+		return removed;
 	}
 
-	public boolean remove(K key) {
-		Collection<V> sub = get(key);
-		if (sub == null)
+	public boolean remove(final K key) {
+		final Collection<V> valueStorage = get(key);
+		if (valueStorage == null) {
 			return false;
-		else if (sub.isEmpty()) {
+		} else if (valueStorage.isEmpty()) {
 			backing.remove(key);
 			return false;
 		}
+
 		backing.remove(key);
+
 		return true;
 	}
 	
@@ -126,36 +130,11 @@ public class MultiMap<K, V> {
 	}
 
 	public Collection<V> values() {
-		Collection<V> buf = factory.create();
-		for(Collection<V> v : backing.values()) 
-			buf.addAll(v);
-		return buf;
-	}
-	
-	public static class MapFactory<K, V> {
-		
-		public Map<K, Collection<V>> create() {
-			return new LinkedHashMap<K, Collection<V>>();
+		final Collection<V> values = valueStorageFactory.create();
+		for (final Collection<V> valueStorage : backing.values()) {
+			values.addAll(valueStorage);
 		}
-	}
 
-	public static class OrderedMapFactory<K, V> extends MapFactory<K, V> {
-		@Override
-		public Map<K, Collection<V>> create() {
-			return new TreeMap<K, Collection<V>>();
-		}
+		return values;
 	}
-	
-	public static class CollectionFactory<V> {
-		public Collection<V> create() {
-			return new ArrayList<V>();
-		}
-	}
-
-	public static class HashedCollectionFactory<V> extends CollectionFactory<V> {
-		@Override
-		public Collection<V> create() {
-			return new LinkedHashSet<V>();
-		}
-	}	
 }
