@@ -256,10 +256,14 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 			// see if we can emit something useful here
 			StringBuilder buf = new StringBuilder();
 			buf.append("Exception encountered planning statement: ").append(PEConstants.LINE_SEPARATOR);
-			buf.append(dmls.getSQL(sc)).append(PEConstants.LINE_SEPARATOR);
-			buf.append("Involving table defs").append(PEConstants.LINE_SEPARATOR);
-			HashSet<PEAbstractTable<?>> tabs = new HashSet<PEAbstractTable<?>>();
-			emitTables(sc,dmls.getDerivedInfo().getAllTableKeys(),tabs,buf);
+			try {
+				buf.append(dmls.getSQL(sc)).append(PEConstants.LINE_SEPARATOR);
+				buf.append("Involving table defs").append(PEConstants.LINE_SEPARATOR);
+				HashSet<PEAbstractTable<?>> tabs = new HashSet<PEAbstractTable<?>>();
+				emitTables(sc,dmls.getDerivedInfo().getAllTableKeys(),tabs,buf);
+			} catch (Throwable it) {
+				throw new PEException(t);
+			}
 			throw new PEException(buf.toString(), t);
 		}		
 	}

@@ -64,6 +64,7 @@ import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.annos.TableView;
+import com.tesora.dve.sql.infoschema.info.InfoSchemaColumnsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.CatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.ColumnCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.DatabaseCatalogInformationSchemaTable;
@@ -99,7 +100,7 @@ public class AnnotationInformationSchemaBuilder implements
 		new InfoTableConfig(PersistentGroup.class),
 		new InfoTableConfig(PersistentSite.class),
 		new InfoTableConfig(Tenant.class),
-		new InfoTableConfig(UserColumn.class).withLogical(ColumnCatalogInformationSchemaTable.class).withShow(ShowColumnInformationSchemaTable.class),
+		new InfoTableConfig(UserColumn.class).withLogical(ColumnCatalogInformationSchemaTable.class).withShow(ShowColumnInformationSchemaTable.class).withInfo(InfoSchemaColumnsInformationSchemaTable.class),
 		new InfoTableConfig(StorageGroupGeneration.class),
 		new InfoTableConfig(DistributionModel.class),
 		new InfoTableConfig(User.class),
@@ -271,7 +272,6 @@ public class AnnotationInformationSchemaBuilder implements
 			return this;
 		}
 		
-		@SuppressWarnings("unused")
 		public InfoTableConfig withInfo(Class<?> c) {
 			infoSchemaClass = c;
 			return this;

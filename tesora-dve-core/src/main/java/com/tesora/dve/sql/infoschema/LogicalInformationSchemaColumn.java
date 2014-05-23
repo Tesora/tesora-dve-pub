@@ -22,6 +22,7 @@ package com.tesora.dve.sql.infoschema;
  */
 
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBNative;
@@ -31,6 +32,7 @@ import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.infoschema.persist.CatalogTableEntity;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.Type;
 
@@ -156,4 +158,8 @@ public class LogicalInformationSchemaColumn implements Column<LogicalInformation
 		position = v;
 	}
 
+	// for catalog entities
+	public Object getValue(SchemaContext sc, CatalogEntity ce) {
+		return ce;
+	}
 }

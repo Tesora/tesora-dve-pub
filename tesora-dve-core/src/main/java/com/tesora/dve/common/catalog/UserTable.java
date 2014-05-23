@@ -447,7 +447,7 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	
 	@InfoSchemaColumn(logicalName="database",fieldName="userDatabase",
 			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="table_schema"),
+			views={@ColumnView(view=InfoView.INFORMATION,name="table_schema",injected=true),
 				   @ColumnView(view=InfoView.SHOW,name="database",visible=false,injected=true)},
 			injected=true)
 	public UserDatabase getDatabase() {
