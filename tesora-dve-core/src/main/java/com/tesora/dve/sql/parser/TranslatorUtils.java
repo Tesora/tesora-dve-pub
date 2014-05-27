@@ -183,6 +183,7 @@ import com.tesora.dve.sql.schema.SubqueryTable;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.TableComponent;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.UnresolvedDistributionVector;
 import com.tesora.dve.sql.schema.UserScope;
 import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.schema.VariableScope;
@@ -947,7 +948,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public Statement buildCreateTable(Name tableName,
-			List<TableComponent<?>> fieldsAndKeys, DistributionVector indv,
+			List<TableComponent<?>> fieldsAndKeys, UnresolvedDistributionVector indv,
 			Name groupName, List<TableModifier> modifiers, Boolean ine, 
 			Pair<UnqualifiedName,List<UnqualifiedName>> discriminator,
 			ProjectingStatement ctas) {
@@ -967,7 +968,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				pecs = new PECreateTableStatement(ti.getAbstractTable().asTable(), ine, true);
 			} 
 		}
-		DistributionVector dv = indv;
 		PEPersistentGroup pesg = null;
 		if (groupName != null) {
 			pesg = pc.findStorageGroup(groupName);
@@ -1043,6 +1043,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		} else {
 			actualFieldsAndKeys = fieldsAndKeys;
 		}
+		
+		// resolve the distribution vector
+		DistributionVector dv = null;
+		if (indv != null)
+			dv = indv.resolve(pc, this);
 		
 		if (pecs == null) {
 			// unpack the dbstuff
@@ -1605,17 +1610,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return c;
 	}
 
-	public DistributionVector buildDistributionVector(
+	public UnresolvedDistributionVector buildDistributionVector(
 			DistributionVector.Model model, List<Name> columnNames,
 			Name rangeOrContainer) {
-		final List<PEColumn> columns = new ArrayList<PEColumn>();
-		if (columnNames != null) {
-			for (final Name n : columnNames) {
-				columns.add(lookupInProcessColumn(n, false));
-			}
-		}
-
-		return DistributionVector.buildDistributionVector(pc, model, columns, rangeOrContainer);
+		return new UnresolvedDistributionVector(model,columnNames,rangeOrContainer);
 	}
 
 	public ColumnModifier buildColumnModifier(ColumnModifierKind tag) {
@@ -3057,8 +3055,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return wrapAlterAction(new ChangeTableModifierAction(tm));
 	}
 	
-	public List<AlterTableAction> buildModifyDistributionAction(DistributionVector ndv) {
-		return wrapAlterAction(new ChangeTableDistributionAction(ndv));
+	public List<AlterTableAction> buildModifyDistributionAction(UnresolvedDistributionVector ndv) {
+		return wrapAlterAction(new ChangeTableDistributionAction(ndv.resolve(pc, this)));
 	}
 	
 	@SuppressWarnings("rawtypes")

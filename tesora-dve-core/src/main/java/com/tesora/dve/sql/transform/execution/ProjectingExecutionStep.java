@@ -351,7 +351,7 @@ public final class ProjectingExecutionStep extends DirectExecutionStep {
 				}
 				if (distKey.usesColumns(sc)) {
 					if (Model.RANGE.equals(distKey.getModel(sc)))
-						qsrdo.distributeOn(distKey.getColumnNames(), distKey.getTable().getPersistent(sc));
+						qsrdo.distributeOn(distKey.getColumnNames(), distKey.getTable().asTable().getPersistentTable(sc));
 					else
 						qsrdo.distributeOn(distKey.getColumnNames());
 				}

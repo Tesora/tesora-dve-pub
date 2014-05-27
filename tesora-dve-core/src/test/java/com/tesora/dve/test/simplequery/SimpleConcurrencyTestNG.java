@@ -121,7 +121,7 @@ public class SimpleConcurrencyTestNG extends PETest /* do not change this to a S
 
 		for (int i = 0; i < READ_COUNT; ++i) {
 			int currentId = READ_COUNT % 5 + 1;
-			KeyValue distValue = foo.getDistValue();
+			KeyValue distValue = foo.getDistValue(catalogDAO);
 			distValue.get("id").setValue(new Integer(currentId));
 
 			QueryPlan plan = new QueryPlan();
@@ -178,7 +178,7 @@ public class SimpleConcurrencyTestNG extends PETest /* do not change this to a S
 
 		for (int i = 0; i < WRITE_COUNT; ++i) {
 			int currentId = WRITE_COUNT % 5 + 1;
-			KeyValue distValue = foo.getDistValue();
+			KeyValue distValue = foo.getDistValue(catalogDAO);
 			distValue.get("id").setValue(new Integer(currentId));
 
 			QueryPlan plan = new QueryPlan();

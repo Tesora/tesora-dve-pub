@@ -361,7 +361,7 @@ public class BootstrapTest extends PETest {
 			}
 
 			for (int i = 0; i < 20; ++i) {
-				KeyValue dv = foo.getDistValue();
+				KeyValue dv = foo.getDistValue(ssConnection.getCatalogDAO());
 				dv.get("id").setValue(i);
 				qso = new QueryStepSelectByKeyOperation(db, dv,
 						"select * from " + foo.getNameAsIdentifier() + " where id = " + i);
@@ -480,7 +480,7 @@ public class BootstrapTest extends PETest {
 		}
 		
 		for (int i = 0; i < 10; ++i) {
-			KeyValue dv = foo.getDistValue();
+			KeyValue dv = foo.getDistValue(ssConnection.getCatalogDAO());
 			dv.get("id").setValue(i);
 			QueryStepOperation qso = new QueryStepSelectByKeyOperation(db, dv, 
 					"select * from " + foo.getNameAsIdentifier() + " foo, " + foobar.getNameAsIdentifier() + " foobar where foo.id=foobar.id and foo.id = " + i);
@@ -540,7 +540,7 @@ public class BootstrapTest extends PETest {
 			}
 
 			for (int i = 0; i < 20; ++i) {
-				KeyValue dv = foo.getDistValue();
+				KeyValue dv = foo.getDistValue(ssConnection.getCatalogDAO());
 				dv.get("id").setValue(i);
 				QueryStepOperation qso = new QueryStepSelectByKeyOperation(db, dv, 
 						"select * from " + foo.getNameAsIdentifier() + " where id = " + i);
@@ -566,7 +566,7 @@ public class BootstrapTest extends PETest {
 	}
 	
 	private void utilInsertTableTwoColumns(int id, UserTable ut, WorkerGroup wg, UserDatabase db, DBResultConsumer results) throws Throwable {
-		KeyValue dv = ut.getDistValue();
+		KeyValue dv = ut.getDistValue(ssConnection.getCatalogDAO());
 		dv.get("id").setValue(id);
 		QueryStepOperation qso = 
 				new QueryStepInsertByKeyOperation(db, dv,

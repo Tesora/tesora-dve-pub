@@ -1044,7 +1044,7 @@ default_persistent_group options {k=1;}:
   DEFAULT PERSISTENT GROUP unqualified_identifier // -> ^(DEFAULT PERSISTENT GROUP identifier)
   ;
 
-distribution_declaration_target returns [DistributionVector dv] options {k=1;}:
+distribution_declaration_target returns [UnresolvedDistributionVector dv] options {k=1;}:
   BROADCAST DISTRIBUTE { $dv = utils.buildDistributionVector(DistributionVector.Model.BROADCAST,null,null); }
   | RANDOM DISTRIBUTE { $dv = utils.buildDistributionVector(DistributionVector.Model.RANDOM,null,null); }
   | STATIC DISTRIBUTE distribution_columns { $dv = utils.buildDistributionVector(DistributionVector.Model.STATIC, $distribution_columns.l, null); } 
@@ -1060,7 +1060,7 @@ container_distribution_declaration returns [Pair p] options {k=1;}:
   | RANGE DISTRIBUTE USING unqualified_identifier { $p = new Pair(DistributionVector.Model.RANGE,$unqualified_identifier.n); }
   ;
 
-distribution_declaration returns [DistributionVector dv] options {k=1;}:
+distribution_declaration returns [UnresolvedDistributionVector dv] options {k=1;}:
   distribution_declaration_target { $dv = $distribution_declaration_target.dv; }
   ;
 

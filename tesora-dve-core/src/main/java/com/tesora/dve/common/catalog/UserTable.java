@@ -52,8 +52,11 @@ import org.hibernate.annotations.ForeignKey;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
+import com.tesora.dve.distribution.ContainerDistributionModel;
+import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.distribution.KeyTemplate;
 import com.tesora.dve.distribution.KeyValue;
+import com.tesora.dve.distribution.RangeDistributionModel;
 import com.tesora.dve.distribution.RangeTableRelationship;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -177,7 +180,8 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	transient StorageGroup storageGroup = null;
 	transient Map<String,UserColumn> userColumnMap = null;
 	transient ColumnSet showColumnSet = null;
-
+	transient Integer rangeID = null;
+	
 	@ForeignKey(name="fk_table_container")
 	@ManyToOne(optional = true)
 	@JoinColumn(name = "container_id")
@@ -499,8 +503,8 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		return distKey;
 	}
 	
-	public KeyValue getDistValue() {
-		KeyValue dv = new KeyValue(this);
+	public KeyValue getDistValue(CatalogDAO c) throws PEException {
+		KeyValue dv = new KeyValue(this,getRangeID(c));
 		for (UserColumn col : getDistKey()) {
 			dv.addColumnTemplate(col);
 		}
@@ -818,5 +822,21 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	@Override
 	public int getNumberOfColumns() {
 		return getUserColumns().size();
+	}
+	
+	public Integer getRangeID(CatalogDAO c) throws PEException {
+		if (rangeID == null) synchronized(this){
+			if (distributionModel.getName().equals(ContainerDistributionModel.MODEL_NAME)) {
+				DistributionRange dr = getContainer().getRange();
+				if (dr != null)
+					rangeID = dr.getId();
+			} else if (distributionModel.getName().equals(RangeDistributionModel.MODEL_NAME)) {
+				rangeID = c.findRangeForTable(this).getId();
+			}
+			if (rangeID == null)
+				rangeID = -1;
+		}
+		if (rangeID == -1) return null;
+		return rangeID;
 	}
 }

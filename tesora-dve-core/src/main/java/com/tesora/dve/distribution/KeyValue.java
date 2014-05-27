@@ -36,6 +36,7 @@ import javax.xml.datatype.XMLGregorianCalendar;
 
 import com.sun.org.apache.xerces.internal.jaxp.datatype.XMLGregorianCalendarImpl;
 import com.tesora.dve.common.PEStringUtils;
+import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentColumn;
 import com.tesora.dve.common.catalog.PersistentTable;
@@ -53,19 +54,23 @@ public class KeyValue extends LinkedHashMap<String, ColumnDatum> implements IKey
 
 	private static final long serialVersionUID = 1L;
 	private PersistentTable userTable;
+	private Integer rangeID;
 	
-	public KeyValue(PersistentTable ut) {
+	public KeyValue(PersistentTable ut, Integer rangeID) {
 		userTable = ut;
+		this.rangeID = rangeID;
 	}
 	
 	public KeyValue(KeyValue k) {
 		for (String key : k.keySet())
 			put(key, new ColumnDatum(k.get(key)));
 		userTable = k.userTable;
+		rangeID = k.rangeID;
 	}
 	
-	public KeyValue(PersistentTable targetTable, List<String> distColumns) throws PEException {
+	public KeyValue(PersistentTable targetTable, Integer rangeID, List<String> distColumns) throws PEException {
 		userTable = targetTable;
+		this.rangeID = rangeID;
 		for (String colName : distColumns) {
 			PersistentColumn col = userTable.getUserColumn(colName);
 			if (col == null)
@@ -110,7 +115,7 @@ public class KeyValue extends LinkedHashMap<String, ColumnDatum> implements IKey
 	
 	public void populateFromResultSet(ResultSet results) throws SQLException {
 		for (ColumnDatum cd : this.values()) {
-			cd.setValue(results.getObject(cd.getColumnName()));
+			cd.setValue(results.getObject(cd.getColumn().getPersistentName()));
 		}
 	}
 
@@ -296,6 +301,11 @@ public class KeyValue extends LinkedHashMap<String, ColumnDatum> implements IKey
 					+" to "+ rangeLimit.toString());
 		}
 		return result;		
+	}
+
+	@Override
+	public Integer getRangeId() {
+		return rangeID;
 	}
 
 }

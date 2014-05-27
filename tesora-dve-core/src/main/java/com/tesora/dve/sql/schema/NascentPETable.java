@@ -66,6 +66,13 @@ public class NascentPETable extends PETable {
 		return true;
 	}
 	
+	@Override
+	public PersistentTable getPersistentTable(SchemaContext sc) {
+		if (cached == null)
+			cached = new CachedPETable(sc,this);
+		return cached;
+	}
+
 	public TempTableGenerator getTableGenerator(SchemaContext sc) {
 		return new CTATableGenerator(sc);
 	}

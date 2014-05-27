@@ -102,6 +102,21 @@ public abstract class SchemaMirrorTest extends SchemaTest {
 				onConnect(tr);
 	}
 
+	public ConnectionResource getMultiConnection() {
+		if (sysResource == null) return null;
+		return sysResource.getConnection();
+	}
+	
+	public ConnectionResource getSingleConnection() {
+		if (checkResource == null) return null;
+		return checkResource.getConnection();
+	}
+	
+	public ConnectionResource getNativeConnection() {
+		if (nativeResource == null) return null;
+		return nativeResource.getConnection();
+	}
+	
 	protected ConnectionResource createConnection(ProjectDDL p) throws Throwable {
 		if (p == getNativeDDL()) 
 			return new DBHelperConnectionResource(); 

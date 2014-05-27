@@ -77,7 +77,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 	// they have to be distributed the same way as the original table was deleted, and for that we need to know what
 	// table they should be distributed like.  in particular, if the table they should be distributed like is range distributed
 	// we have to use the range distributed table, because the temp table won't have the right relationships in the catalog.
-	UserTable distributeTempTableLike;
+	PersistentTable distributeTempTableLike;
 	
 	PersistentTable targetTable;
 	TableHints tableHints = TableHints.EMPTY_HINT;
@@ -143,7 +143,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		return this;
 	}
 
-	public QueryStepMultiTupleRedistOperation distributeOn(List<String> columnNames, UserTable distributeLike) {
+	public QueryStepMultiTupleRedistOperation distributeOn(List<String> columnNames, PersistentTable distributeLike) {
 		this.targetDistModel = null;
 		this.distColumns = columnNames;
 		this.distributeTempTableLike = distributeLike;
@@ -304,7 +304,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			SQLCommand givenCommand,
 			IKeyValue givenSpecifiedDistKeyValue, 
 			List<String> givenDistColumns, 
-			UserTable givenDistributeTempTableLike,
+			PersistentTable givenDistributeTempTableLike,
 			WorkerGroup targetWG, 
 			PersistentDatabase givenTargetUserDatabase, 
 			DistributionModel givenTargetDistModel, 
@@ -395,7 +395,11 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 
 			// Start the redistribution
 			PersistentTable distributeTableLike = (givenDistributeTempTableLike == null ? givenTargetTable : givenDistributeTempTableLike);
-			KeyValue dv = (givenDistColumns == null) ? distributeTableLike.getDistValue() : new KeyValue(distributeTableLike, givenDistColumns);
+			KeyValue dv = null;
+			if (givenDistColumns == null)
+				dv = distributeTableLike.getDistValue(ssCon.getCatalogDAO());
+			else 
+				dv = new KeyValue(distributeTableLike,distributeTableLike.getRangeID(c),givenDistColumns);
 			MysqlRedistTupleForwarder redistForwarder = 
 					new MysqlRedistTupleForwarder(
 							ssCon.getNonTransactionalContext(), c, targetWG,

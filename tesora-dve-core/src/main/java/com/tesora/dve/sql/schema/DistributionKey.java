@@ -235,7 +235,8 @@ public class DistributionKey implements PlanningConstraint {
 				externalValues = new LinkedHashMap<String,TColumnDatum>();
 				for(PEColumn c : columnOrder) {
 					TColumnDatum tcd = values.get(c);
-					if (tcd != null) externalValues.put(tcd.getColumnName(),tcd);
+					if (tcd != null) externalValues.put(
+							tcd.getColumn().getPersistentName(),tcd);
 				}
 			}
 			return externalValues;
@@ -261,6 +262,11 @@ public class DistributionKey implements PlanningConstraint {
 		@Override
 		public String toString() {
 			return PEStringUtils.toString(table.getName(context).getUnquotedName().get(), getValues());
+		}
+
+		@Override
+		public Integer getRangeId() {
+			return table.getDistributionVector(context).getRangeID(context);
 		}
 		
 	}

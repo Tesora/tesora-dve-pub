@@ -151,7 +151,7 @@ public class QueryStepBasicTest extends PETest {
 	@Test
 	public void insertOneRecord() throws Throwable {
 		UserTable t = db.getTableByName("foo"); 
-		KeyValue distValue = t.getDistValue();
+		KeyValue distValue = t.getDistValue(ssConnection.getCatalogDAO());
 		distValue.get("id").setValue(new Integer(currentId));
 
 		QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(db, distValue, "insert into foo values ("+currentId+", 'Hello')");
@@ -167,7 +167,7 @@ public class QueryStepBasicTest extends PETest {
 	@Test
 	public void setupStep() throws Throwable {
 		UserTable t = db.getTableByName("foo"); 
-		KeyValue distValue = t.getDistValue();
+		KeyValue distValue = t.getDistValue(ssConnection.getCatalogDAO());
 		distValue.get("id").setValue(new Integer(currentId));
 		
 		QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(db, distValue,
@@ -314,7 +314,7 @@ public class QueryStepBasicTest extends PETest {
 		
 		// insert a record
 		QueryPlan insertPlan = new QueryPlan();
-		KeyValue distValue = ut.getDistValue();
+		KeyValue distValue = ut.getDistValue(ssConnection.getCatalogDAO());
 		distValue.get("col1").setValue(new Integer(currentId));
 		QueryStepOperation step2op1 = new QueryStepInsertByKeyOperation(db, distValue, "insert into foobar values ("+currentId+", 'Hello', 1)");
 		QueryStep step2 = new QueryStep(sg, step2op1);

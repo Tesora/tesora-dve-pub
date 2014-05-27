@@ -298,8 +298,8 @@ public class Key implements CatalogEntity {
 		return out;
 	}
 	
-	public KeyValue getTemplate() {
-		KeyValue colSet = new KeyValue(userTable);
+	public KeyValue getTemplate(CatalogDAO c) throws PEException {
+		KeyValue colSet = new KeyValue(userTable, userTable.getRangeID(c));
 		for (KeyColumn kc : columns) 
 			colSet.addColumnTemplate(kc.getSourceColumn());
 		return colSet;

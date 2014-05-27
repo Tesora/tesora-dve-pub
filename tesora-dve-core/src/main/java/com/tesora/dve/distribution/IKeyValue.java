@@ -23,6 +23,7 @@ package com.tesora.dve.distribution;
 
 import java.util.Map;
 
+import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.exceptions.PEException;
@@ -30,6 +31,9 @@ import com.tesora.dve.exceptions.PEException;
 public interface IKeyValue {
 
 	public int getUserTableId();
+	
+	// if the table is range distributed, the id of the range
+	public Integer getRangeId();
 	
 	public String getQualifiedTableName();
 

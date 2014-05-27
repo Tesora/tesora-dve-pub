@@ -27,6 +27,7 @@ import java.util.List;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.MirrorProc;
 import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
@@ -179,7 +180,7 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 	}
 	
 	@Test
-	public void testImplicitA() throws Throwable {
+	public void testA() throws Throwable {
 		try {
 			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
 			for(int i = 0; i < srctabs.length; i++) {
@@ -197,7 +198,7 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 	}
 	
 	@Test
-	public void testMixedA() throws Throwable {
+	public void testB() throws Throwable {
 		try {
 			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
 			for(int i = 0; i < srctabs.length; i++) {
@@ -217,7 +218,7 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 	}
 	
 	@Test
-	public void testExplicitOnly() throws Throwable {
+	public void testC() throws Throwable {
 		try {
 			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
 			for(int i = 0; i < srctabs.length; i++) {
@@ -231,6 +232,29 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 						targtabs[i])));						
 			}
 			runTest(tests);
+		} finally {
+			cleanup(targtabs);
+		}
+	}
+	
+	@Test
+	public void testD() throws Throwable {
+		try {
+			String infoqkern = 
+					"select model_type, model_name, column_name, vector_position "
+							+"from information_schema.distributions "
+							+"where database_name = '%s' and table_name = '%s'";
+			ConnectionResource conn = getMultiConnection();
+			for(int i = 0; i < srctabs.length; i++) {
+				conn.execute(
+						String.format(
+								"create table %s range distribute on (id) using oner as select * from %s",
+								//"create table %s static distribute on (id) as select * from %s",
+								//"create table %s broadcast distribute as select * from %s",
+								targtabs[i],srctabs[i]));
+				System.out.println(conn.printResults(String.format(infoqkern,"ctadb",targtabs[i])));
+				System.out.println(conn.printResults("select @dve_sitename, * from " + targtabs[i]));
+			}
 		} finally {
 			cleanup(targtabs);
 		}

@@ -325,9 +325,13 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 			ProjectingFeatureStep last = (ProjectingFeatureStep) existingPlan;
 			SelectStatement ss = (SelectStatement) last.getPlannedStatement();
 			
+			HashMap<PEColumn, Integer> dvOffsets = new HashMap<PEColumn,Integer>();
+			
 			for(Pair<PEColumn,Integer> p : projOffsets) {
 				ExpressionNode en = ss.getProjectionEdge().get(p.getSecond());
 				PEColumn c = p.getFirst();
+				if (c.isPartOfDistributionVector())
+					dvOffsets.put(c, p.getSecond());
 				if (en instanceof ExpressionAlias) {
 					ExpressionAlias ea = (ExpressionAlias) en;
 					ea.setAlias(c.getName().getUnqualified());
@@ -338,10 +342,16 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 				}
 			}
 			
+			List<Integer> dv = new ArrayList<Integer>();
+			for(PEColumn pec : getTable().getDistributionVector(pc.getContext()).getColumns(pc.getContext())) {
+				Integer offset = dvOffsets.get(pec);
+				dv.add(offset);
+			}
+			
 			FeatureStep out = new RedistFeatureStep(new AdhocFeaturePlanner(),
 					last,new TableKey(getTable(),0),
 					getTable().getStorageGroup(pc.getContext()),
-					Collections.<Integer> emptyList(),
+					dv,
 					new RedistributionFlags().withRowCount(true)
 						.withAutoIncColumn(unspecifiedAutoinc)
 						.withExistingAutoInc(specifiedAutoIncOffset));

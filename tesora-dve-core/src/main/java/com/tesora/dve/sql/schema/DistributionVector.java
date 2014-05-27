@@ -358,11 +358,17 @@ public class DistributionVector extends Persistable<DistributionVector, Distribu
 		return kt;
 	}
 	
+	public Integer getRangeID(SchemaContext pc) {
+		VectorRange vr = getRangeDistribution();
+		if (vr == null) return null;
+		return vr.getDistribution(pc).getPersistentID();
+	}
+	
 	public KeyValue buildEmptyKeyValue(SchemaContext pc) {
 		// only for models that don't use columns
 		if (usesColumns(pc))
 			return null;
-		return new KeyValue(ofTable.getPersistent(pc));
+		return new KeyValue(ofTable.getPersistent(pc), getRangeID(pc));
 	}
 	
 	public List<PEColumn> getDistributionTemplate(SchemaContext sc) {
@@ -440,7 +446,7 @@ public class DistributionVector extends Persistable<DistributionVector, Distribu
 			throw new SchemaException(Pass.PLANNER, "Too many values");
 		else if (ofTable == null)
 			throw new SchemaException(Pass.PLANNER, "No table for distribution vector");
-		KeyValue kv = new KeyValue(ofTable.getPersistent(pc));
+		KeyValue kv = new KeyValue(ofTable.getPersistent(pc), getRangeID(pc));
 		PEColumn single = getColumns(pc).iterator().next();
 		kv.put(single.getPersistent(pc).getName(), new ColumnDatum(single, v));
 		return kv;
@@ -615,6 +621,11 @@ public class DistributionVector extends Persistable<DistributionVector, Distribu
 		public DistributionModel getContainerDistributionModel() {
 			if (!dv.isContainer()) return null;
 			return ((ContainerDistributionVector) dv).getContainerDistributionModel(context).getSingleton();
+		}
+
+		@Override
+		public Integer getRangeId() {
+			return dv.getRangeID(context);
 		}
 
 
