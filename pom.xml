@@ -23,9 +23,9 @@
 		</license>
 	</licenses>
 	<scm>
-		<connection>scm:git:git://github.com/ParElastic/parelastic.git</connection>
-		<developerConnection>scm:git:ssh://git@github.com/ParElastic/parelastic.git</developerConnection>
-		<url>https://github.com/ParElastic/parelastic</url>
+		<connection>scm:git:git://github.com/Tesora/tesora-dve-pub.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com/Tesora/tesora-dve-pub.git</developerConnection>
+		<url>https://github.com/Tesora/tesora-dve-pub</url>
 		<tag>HEAD</tag>
 	</scm>
 
@@ -765,16 +765,6 @@
 
 	<repositories>
 		<repository>
-			<id>pesnapshot</id>
-			<name>Tesora Snapshot</name>
-			<url>http://jenkins.parelastic.com:8081/nexus/content/repositories/snapshots</url>
-		</repository>
-		<repository>
-			<id>pe3rdparty</id>
-			<name>Tesora 3rd Party</name>
-			<url>http://jenkins.parelastic.com:8081/nexus/content/repositories/thirdparty</url>
-		</repository>
-		<repository>
 			<id>java.net.m2</id>
 			<name>java.net m2 repo</name>
 			<url>http://download.java.net/maven/2</url>
@@ -789,14 +779,14 @@
 
 	<distributionManagement>
 		<snapshotRepository>
-			<id>pesnapshot</id>
-			<name>Tesora Snapshot</name>
-			<url>http://jenkins.parelastic.com:8081/nexus/content/repositories/snapshots</url>
+			<id>${distMgmt.snapshotrepo.id}</id>
+			<name>${distMgmt.snapshotrepo.name}</name>
+			<url>${distMgmt.snapshotrepo.url}</url>
 		</snapshotRepository>
 		<repository>
-			<id>perelease</id>
-			<name>Tesora Release</name>
-			<url>http://jenkins.parelastic.com:8081/nexus/content/repositories/releases</url>
+			<id>${distMgmt.repo.id}</id>
+			<name>${distMgmt.repo.name}</name>
+			<url>${distMgmt.repo.url}</url>
 		</repository>
 	</distributionManagement>
 </project>
