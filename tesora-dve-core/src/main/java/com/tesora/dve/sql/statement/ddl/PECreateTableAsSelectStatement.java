@@ -26,8 +26,10 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -53,6 +55,7 @@ import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.NameAlias;
+import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.NascentPETable;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.PEColumn;
@@ -60,7 +63,9 @@ import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
+import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
@@ -77,6 +82,7 @@ import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.DelegatingBehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.FeaturePlanTransformerBehavior;
@@ -92,18 +98,26 @@ import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.RedistributionFlags;
 import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.ListOfPairs;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.WorkerGroup;
 
-public class PECreateTableAsSelectStatement extends PECreateTableStatement implements FeaturePlanTransformerBehavior {
+public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 
 	private ProjectingStatement srcStmt;
+	private ListOfPairs<PEColumn,Integer> projOffsets;
+	private PEColumn unspecifiedAutoinc;
+	private int specifiedAutoIncOffset;
 	
 	public PECreateTableAsSelectStatement(Persistable<PETable, UserTable> targ,
-			Boolean ine, boolean exists, ProjectingStatement src) {
+			Boolean ine, boolean exists, ProjectingStatement src, ListOfPairs<PEColumn,Integer> projectionOffsets) {
 		super(targ, ine, exists);
 		srcStmt = src;
+		this.projOffsets = projectionOffsets;
+		this.unspecifiedAutoinc = null;
+		specifiedAutoIncOffset = -1;
 	}
 
 	public ProjectingStatement getSourceStatement() {
@@ -123,8 +137,51 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement imple
 		ExecutionSequence subes = new ExecutionSequence(null);
 		maybeDeclareDatabase(pc,subes);
 		
+		// TODO:
+		// make this test better
+		SelectStatement select = (SelectStatement) CopyVisitor.copy(srcStmt);
+		
+		SQLMode sqlMode = SchemaVariables.getSQLMode(pc);
+		
+		HashMap<PEColumn,Integer> columnOffsets = new HashMap<PEColumn,Integer>();
+		for(Pair<PEColumn,Integer> p : projOffsets)
+			columnOffsets.put(p.getFirst(),p.getSecond());
+		for(PEColumn pec : getTable().getColumns(pc)) {
+			Integer exists = columnOffsets.get(pec);
+			if (exists == null) {
+				if (pec.isAutoIncrement()) {
+					unspecifiedAutoinc = pec;
+					continue;
+				}
+				exists = select.getProjectionEdge().size();
+				ExpressionNode value = null;
+				ExpressionNode defaultValue = pec.getDefaultValue();
+				if (defaultValue == null) {
+					if (pec.isNullable())
+						value = LiteralExpression.makeNullLiteral();
+					// TODO: how does this iteract?
+//					else if (!sqlMode.isStrictMode()) 
+					else
+						value = pec.getType().getZeroValueLiteral();					
+				} else {
+					value = (ExpressionNode) defaultValue.copy(null);
+				}
+				ExpressionAlias ea = new ExpressionAlias(value, new NameAlias(pec.getName().getUnqualified()),false);
+				select.getProjectionEdge().add(ea);
+				columnOffsets.put(pec,exists);
+			} else if (pec.isAutoIncrement())
+				specifiedAutoIncOffset = exists;
+		}
+		
+		
 		// we need to use the delegator here to get the right behavior
-		srcStmt.plan(pc, subes, new PlannerConfiguration(pc.getBehaviorConfiguration(),this));
+		ParserOptions opts = pc.getOptions();
+		try {
+			pc.setOptions(opts.setForceSessionPushdown());
+			select.plan(pc, subes, new PlannerConfiguration(pc.getBehaviorConfiguration()));
+		} finally {
+			pc.setOptions(opts);
+		}
 		
 		ArrayList<QueryStep> steps = new ArrayList<QueryStep>();
 		subes.schedule(null, steps, null, pc);
@@ -132,12 +189,6 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement imple
 		es.append(new ComplexDDLExecutionStep(getTable().getPEDatabase(pc),getTable().getStorageGroup(pc),getTable(),
 				Action.CREATE, new CreateTableViaRedistCallback((NascentPETable)getTable(),steps,
 						new CacheInvalidationRecord(getTable().getCacheKey(),InvalidationScope.LOCAL))));
-		
-		/*
-		 * 	public ComplexDDLExecutionStep(PEDatabase db, PEStorageGroup tsg,
-			Persistable<?, ?> root, Action act, DDLCallback callback) {
-
-		 */
 		
 		
 		/*
@@ -158,19 +209,16 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement imple
 		*/		
 	}
 
-	private static class PlannerConfiguration extends DelegatingBehaviorConfiguration {
+	private class PlannerConfiguration extends DelegatingBehaviorConfiguration {
 
-		private final FeaturePlanTransformerBehavior myTransformer;
-		
-		public PlannerConfiguration(BehaviorConfiguration target, FeaturePlanTransformerBehavior xform) {
+		public PlannerConfiguration(BehaviorConfiguration target) {
 			super(target);
-			myTransformer = xform;
 		}
 
 		@Override
 		public FeaturePlanTransformerBehavior getPostPlanningTransformer(
 				PlannerContext pc, DMLStatement original) {
-			return myTransformer;
+			return new FinalStepTransformer(getTarget());
 		}
 		
 	}
@@ -253,38 +301,52 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement imple
 		}
 	}
 
-	@Override
-	public FeatureStep transform(PlannerContext pc, DMLStatement stmt,
-			FeatureStep existingPlan) throws PEException {
-		// do our own redist first, then call the default
-		// the last step in the plan will be select, so just create a redist step now
-		// if the target table uses columns for distribution, we need to figure out the offsets
-		ProjectingFeatureStep last = (ProjectingFeatureStep) existingPlan;
-		SelectStatement ss = (SelectStatement) last.getPlannedStatement();
+	private class FinalStepTransformer implements FeaturePlanTransformerBehavior {
+
+		private final BehaviorConfiguration defaultBehavior;
 		
-		int width = getTable().getColumns(pc.getContext()).size();
-		
-		for(int i = 0; i < width; i++) {
-			PEColumn c = getTable().getColumns(pc.getContext()).get(i);
-			ExpressionNode en = ss.getProjectionEdge().get(i);
-			if (en instanceof ExpressionAlias) {
-				ExpressionAlias ea = (ExpressionAlias) en;
-				ea.setAlias(c.getName().getUnqualified());
-			} else {
-				Edge<?,ExpressionNode> pedge = en.getParentEdge();
-				ExpressionAlias ea = new ExpressionAlias(en, new NameAlias(c.getName().getUnqualified()),false);
-				pedge.set(ea);
-			}
+		public FinalStepTransformer(BehaviorConfiguration superImpl) {
+			this.defaultBehavior = superImpl;
 		}
 		
-		FeatureStep out = new RedistFeatureStep(new AdhocFeaturePlanner(),
-				last,new TableKey(getTable(),0),
-				getTable().getStorageGroup(pc.getContext()),
-				Collections.EMPTY_LIST,
-				new RedistributionFlags().withRowCount(true));
 		
-		return DefaultPostPlanningFeaturePlanTransformer.INSTANCE.transform(pc, stmt, out);
+		@Override
+		public FeatureStep transform(PlannerContext pc, DMLStatement stmt,
+				FeatureStep existingPlan) throws PEException {
+			// do our own redist first, then call the default
+			// the last step in the plan will be select, so just create a redist step now
+			// if the target table uses columns for distribution, we need to figure out the offsets
+
+			ProjectingFeatureStep last = (ProjectingFeatureStep) existingPlan;
+			SelectStatement ss = (SelectStatement) last.getPlannedStatement();
+			
+			for(Pair<PEColumn,Integer> p : projOffsets) {
+				ExpressionNode en = ss.getProjectionEdge().get(p.getSecond());
+				PEColumn c = p.getFirst();
+				if (en instanceof ExpressionAlias) {
+					ExpressionAlias ea = (ExpressionAlias) en;
+					ea.setAlias(c.getName().getUnqualified());
+				} else {
+					Edge<?,ExpressionNode> pedge = en.getParentEdge();
+					ExpressionAlias ea = new ExpressionAlias(en, new NameAlias(c.getName().getUnqualified()),false);
+					pedge.set(ea);
+				}
+			}
+			
+			FeatureStep out = new RedistFeatureStep(new AdhocFeaturePlanner(),
+					last,new TableKey(getTable(),0),
+					getTable().getStorageGroup(pc.getContext()),
+					Collections.<Integer> emptyList(),
+					new RedistributionFlags().withRowCount(true)
+						.withAutoIncColumn(unspecifiedAutoinc)
+						.withExistingAutoInc(specifiedAutoIncOffset));
+			
+			return defaultBehavior.getPostPlanningTransformer(pc, stmt).transform(pc, stmt, out);
+		}
+
+		
 	}
+	
 
 	private static class CreateTableViaRedistCallback implements NestedOperationDDLCallback {
 

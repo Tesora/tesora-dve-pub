@@ -25,6 +25,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -976,7 +977,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		
 		List<TableComponent<?>> actualFieldsAndKeys = null;
 		
+		ListOfPairs<PEColumn,Integer> ctaProjectionOffsets = null;
+		
 		if (ctas != null) {
+			ctaProjectionOffsets = new ListOfPairs<PEColumn,Integer>();
 			// the columns are ordered like so:
 			// first all the columns that are declared in the table def
 			// then all the columns in the projection that aren't already declared
@@ -995,12 +999,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				ColumnInfo ci = pmd.getColumnInfo(i);
 				UnqualifiedName cname = new UnqualifiedName(ci.getAlias());
 				PEColumn matching = lookupInProcessColumn(cname, true);
-				if (matching != null)
+				if (matching != null) {
+					ctaProjectionOffsets.add(matching,offset);
 					continue;
+				}
 				// declare the column with a placeholder type
 				PEColumn viaCTA = PECreateTableAsSelectStatement.createColumnFromExpression(pc,ci,ctas.getProjections().get(0).get(offset));
 				scope.registerColumn(viaCTA);
 				actualFieldsAndKeys.add(viaCTA);
+				ctaProjectionOffsets.add(viaCTA, offset);
 			}
 			// now we have all columns declared, resolve anything that was forward
 			for(Iterator<TableComponent<?>> iter = fieldsAndKeys.iterator(); iter.hasNext();) {
@@ -1027,7 +1034,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			// we want to inject when both the dist vect and the discriminator are null; if either is non-null the dist info
 			// was specified
 			if (dv == null && discriminator == null) {
-				newTab = buildTable(tableName, actualFieldsAndKeys, null, pesg, modifiers, ctas != null);
+				newTab = buildTable(tableName, actualFieldsAndKeys, null, pesg, modifiers, ctaProjectionOffsets != null);
 				if (pc == null || (opts != null && opts.isOmitMetadataInjection())) {
 					dv = new DistributionVector(pc, null, DistributionVector.Model.RANDOM);
 					newTab.setDistributionVector(pc,dv);				
@@ -1044,7 +1051,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						throw new SchemaException(Pass.SECOND, e);
 					}
 			} else if (dv != null) {
-				newTab = buildTable(tableName, actualFieldsAndKeys, dv, pesg, modifiers, ctas != null);
+				newTab = buildTable(tableName, actualFieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null);
 			} else if (discriminator != null) {
 				// newTab will be the base table on the container - so change the dist vect on it to be the container
 				PEContainer container = pc.findContainer(discriminator.getFirst());
@@ -1056,7 +1063,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				}
 
 				dv = new ContainerDistributionVector(pc,container,false);
-				newTab = buildTable(tableName, fieldsAndKeys, dv, pesg, modifiers, ctas != null);
+				newTab = buildTable(tableName, fieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null);
 				// newTab is actually the container base table - so go resolve the columns now and so mark them
 				List<UnqualifiedName> colNames = discriminator.getSecond();
 				for(int i = 0; i < colNames.size(); i++) {
@@ -1073,7 +1080,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			if (ctas == null)
 				pecs = new PECreateTableStatement(newTab, ine, false);
 			else
-				pecs = new PECreateTableAsSelectStatement(newTab, ine, false, ctas);
+				pecs = new PECreateTableAsSelectStatement(newTab, ine, false, ctas, ctaProjectionOffsets);
 		}
 		Statement out = pecs;
 		if (pc != null && !pc.getOptions().isTSchema()) {

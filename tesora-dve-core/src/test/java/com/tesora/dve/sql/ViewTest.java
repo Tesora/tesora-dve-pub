@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
+import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProjectDDL;
@@ -94,7 +95,10 @@ public class ViewTest extends SchemaTest {
     protected void viewTest(boolean ignoreOrder, String plain, String view) throws Throwable {
 		ResourceResponse plainResponse = conn.fetch(plain);
 		ResourceResponse viewResponse = rconn.fetch(view);
-		plainResponse.assertEqualResults("", ignoreOrder, true, viewResponse);    	
+		ComparisonOptions options = ComparisonOptions.DEFAULT.withIgnoreMD();
+		if (ignoreOrder)
+			options = options.withIgnoreOrder();
+		plainResponse.assertEqualResults("", viewResponse, options);    	
     }
  
     @Test

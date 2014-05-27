@@ -41,11 +41,11 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 	private static final int SITES = 5;
 
 	private static ProjectDDL sysDDL =
-		new PEDDL("sysdb",
+		new PEDDL("ctadb",
 				new StorageGroupDDL("sys",SITES,"sysg"),
 				"schema");
 	private static NativeDDL nativeDDL =
-		new NativeDDL("cdb");
+		new NativeDDL("ctadb");
 	
 	@Override
 	protected ProjectDDL getMultiDDL() {
@@ -63,13 +63,22 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 		setup(sysDDL, null, nativeDDL, getPopulate());
 	}
 
-	private static String[] schema = new String[] {
+	private static final String[] schema = new String[] {
 		"create table broadsrc (id int auto_increment, sid int, whatsup varchar(32) not null, primary key(id)) /*#dve broadcast distribute */",
 		"create table randsrc (id int, fid int, price decimal(15,5), primary key(id), foreign key (fid) references broadsrc (id)) /*#dve random distribute */",
 		"create table ransrc (id int, fid int not null, primary key(id)) /*#dve range distribute on (id) using oner */",
 		"create table statsrc (id int, fid int, hula varchar(32), primary key (id)) /*#dve static distribute on (id) */"
 	};
-				
+
+	private static final String[] srctabs = new String[] {
+		"broadsrc", 
+		// "randsrc", "ransrc", "statsrc"
+	};
+	
+	private static final String[] targtabs = new String[] {
+		"amherst", "deerfield", "conway", "sunderland"
+	};
+		
 	private static List<MirrorTest> getPopulate() {
 		ArrayList<MirrorTest> out = new ArrayList<MirrorTest>();
 		// declare a couple of ranges, and some tables (for the src side)
@@ -151,15 +160,72 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 		runTest(drops);
 	}
 	
+	// simplest test possible, just recreate the columns
 	@Test
 	public void simpleTest() throws Throwable {
-		String[] srctabs = new String[] { "broadsrc", "ransrc", "randsrc", "statsrc" };
-		String[] targtabs = new String[] { "salmon", "roughy", "tuna", "swordfish" };
 		try {
 			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
 			for(int i = 0; i < srctabs.length; i++) {
 				tests.add(new StatementMirrorProc(String.format("create table %s as select * from %s",targtabs[i],srctabs[i])));
-				tests.add(new StatementMirrorProc(String.format("select * from %s order by id",targtabs[i])));
+				tests.add(new StatementMirrorFun(String.format("select * from %s order by id",targtabs[i])));
+				tests.add(new StatementMirrorFun(false,true,"select table_name from information_schema.tables where table_schema = 'ctadb'"));
+				tests.add(new StatementMirrorFun(false,true,String.format("select column_name from information_schema.columns where table_name = '%s' and table_schema = 'ctadb'",targtabs[i])));
+			}
+			runTest(tests);
+		} finally {
+			cleanup(targtabs);
+		}
+	}
+	
+	@Test
+	public void testImplicitA() throws Throwable {
+		try {
+			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+			for(int i = 0; i < srctabs.length; i++) {
+				tests.add(new StatementMirrorProc(String.format("create table %s as select *, 1 as extra from %s",targtabs[i],srctabs[i])));
+				tests.add(new StatementMirrorFun(String.format("select * from %s order by id",targtabs[i])));
+				tests.add(new StatementMirrorFun(false,true,String.format(
+						"select column_name from information_schema.columns where table_name = '%s' and table_schema = 'ctadb'",
+						targtabs[i])));
+			}
+			runTest(tests);
+		} finally {
+			cleanup(targtabs);
+		}
+	}
+	
+	@Test
+	public void testMixedA() throws Throwable {
+		try {
+			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+			for(int i = 0; i < srctabs.length; i++) {
+				tests.add(new StatementMirrorProc(
+						String.format("create table %s (tid int, primary key (id)) as select * from %s",
+								targtabs[i],srctabs[i])));
+				tests.add(new StatementMirrorFun(String.format("select * from %s order by id",targtabs[i])));
+				tests.add(new StatementMirrorFun(false,true,String.format(
+						"select column_name from information_schema.columns where table_name = '%s' and table_schema = 'ctadb'",
+						targtabs[i])));						
+			}
+			runTest(tests);
+		} finally {
+			cleanup(targtabs);
+		}
+	}
+	
+	@Test
+	public void testExplicitOnly() throws Throwable {
+		try {
+			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+			for(int i = 0; i < srctabs.length; i++) {
+				tests.add(new StatementMirrorProc(
+						String.format("create table %s (id int, fid int, sid int) default charset=utf8 as select 1 as fid",
+								targtabs[i], srctabs[i])));
+				tests.add(new ShowCreateTable(targtabs[i]));
+				tests.add(new StatementMirrorFun(String.format("select * from %s order by id",targtabs[i])));
+				tests.add(new StatementMirrorFun(false,true,String.format(
+						"select column_name from information_schema.columns where table_name = '%s' and table_schema = 'ctadb'",
+						targtabs[i])));						
 			}
 			runTest(tests);
 		} finally {

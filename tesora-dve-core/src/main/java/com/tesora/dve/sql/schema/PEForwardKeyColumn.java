@@ -37,6 +37,11 @@ public class PEForwardKeyColumn extends PEKeyColumnBase {
 		return new PEKeyColumn(actual,getLength(),getCardinality());
 	}
 	
+	@Override
+	public Name getName() {
+		return forwardName;
+	}
+	
 	
 	@Override
 	protected KeyColumn lookup(SchemaContext sc) throws PEException {

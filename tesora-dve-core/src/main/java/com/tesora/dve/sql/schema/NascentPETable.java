@@ -52,10 +52,9 @@ import com.tesora.dve.worker.WorkerGroup;
 // This is used in create table as select support.
 public class NascentPETable extends PETable {
 
-	// we use table generator at runtime
-	
 	public NascentPETable(SchemaContext pc, Name name, 
-			List<TableComponent<?>> fieldsAndKeys, DistributionVector dv, List<TableModifier> modifier, 
+			List<TableComponent<?>> fieldsAndKeys,
+			DistributionVector dv, List<TableModifier> modifier, 
 			PEPersistentGroup defStorage, PEDatabase db,
 			TableState theState) {
 		super(pc,name,fieldsAndKeys,dv,modifier,defStorage,db,theState);

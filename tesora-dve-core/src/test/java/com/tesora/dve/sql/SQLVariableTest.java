@@ -42,6 +42,7 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
@@ -150,7 +151,7 @@ public class SQLVariableTest extends SchemaTest {
 	public void testShowVariablesFilter() throws Throwable {
 		ResourceResponse unfiltered = conn.fetch("show variables");
 		ResourceResponse filtered = conn.fetch("show variables where Variable_name = 'version_comment'");
-		unfiltered.assertEqualResults("testShowVariablesFilter", true, false, filtered);
+		unfiltered.assertEqualResults("testShowVariablesFilter", filtered, ComparisonOptions.DEFAULT.withIgnoreOrder());
 	}
 	
 	@Test

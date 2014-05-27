@@ -75,39 +75,6 @@ public class TypeNormalizationTest extends ProxySchemaMirrorTest {
 		setup(sysDDL,null,nativeDDL,Collections.EMPTY_LIST);
 	}
 
-	// the purpose of this test is to verify that we normalize the same way - and we verify via the
-	// show create table stmt.  however, we need to omit the distribution information - so we create a special
-	// mirror fun for getting the create table stmt that edits the resource response for the pe side to remove
-	// the distribution information
-	private static class ShowCreateTable extends StatementMirrorFun {
-
-		public ShowCreateTable(String tabName) {
-			super("show create table " + tabName);
-		}
-		
-		@Override
-		public ResourceResponse execute(TestResource mr) throws Throwable {
-			if (mr == null) return null;
-			ResourceResponse rr = mr.getConnection().fetch(command);
-			if (!mr.getDDL().isNative()) {
-				// note: we're relying on the fact that getRows returns the actual rows
-				ResultRow firstRow = rr.getResults().get(0);
-				// second field
-				ResultColumn rc = firstRow.getResultColumn(2);
-				String cts = (String) rc.getColumnValue();
-				int marker = cts.indexOf("/*#dve");
-				if (marker > -1) {
-					int endMarker = cts.indexOf("*/", marker);
-					StringBuilder nc = new StringBuilder();
-					nc.append(cts.substring(0, marker - 1));
-					nc.append(cts.substring(endMarker + 2));
-					rc.setColumnValue(nc.toString());
-				}
-			}
-			return rr;
-		}
-
-	}
 	
 	@Test
 	public void testIntegralNormalization() throws Throwable {

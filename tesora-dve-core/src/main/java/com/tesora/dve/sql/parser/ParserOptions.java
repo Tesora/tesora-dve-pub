@@ -31,7 +31,8 @@ public final class ParserOptions {
 		TRACEPARSER, TRACELEXER, TRACETRANSLATOR, FAILEARLY, RESOLVE, DEBUGLOG, DIAGNOSING_EXCEPTIONS,
 		ALLOW_DUPLICATES, ALLOW_TENANT_COLUMN, TSCHEMA, PREPARE, OMIT_METADATA_INJECTION, ACTUAL_LITERALS,
 		RAW_PLAN_STEP, DISABLE_MT_LOOKUP_CHECKS, OMIT_TENANT_COLUMN_INJECTION,
-		INHIBIT_SINGLE_SITE_OPTIMIZATION, IGNORE_MISSING_USER, DO_NOT_LOCK, LOCK_OVERRIDE
+		INHIBIT_SINGLE_SITE_OPTIMIZATION, IGNORE_MISSING_USER, DO_NOT_LOCK, LOCK_OVERRIDE,
+		SESSION_REWRITE_FORCE_PUSHDOWN
 	}
 	
 	public static final ParserOptions NONE = new ParserOptions();
@@ -164,6 +165,10 @@ public final class ParserOptions {
 		return addSetting(Option.LOCK_OVERRIDE, lockInfo);
 	}
 	
+	public ParserOptions setForceSessionPushdown() {
+		return addSetting(Option.SESSION_REWRITE_FORCE_PUSHDOWN, Boolean.TRUE);
+	}
+	
 	public boolean isTraceParser() {
 		return hasSetting(Option.TRACEPARSER);
 	}
@@ -239,6 +244,11 @@ public final class ParserOptions {
 	public LockInfo getLockOverride() {
 		return (LockInfo) getSetting(Option.LOCK_OVERRIDE);
 	}
+
+	public boolean isForceSessionPushdown() {
+		return hasSetting(Option.SESSION_REWRITE_FORCE_PUSHDOWN);
+	}
+
 	
 	public String toString() {
 		StringBuilder buf = new StringBuilder();

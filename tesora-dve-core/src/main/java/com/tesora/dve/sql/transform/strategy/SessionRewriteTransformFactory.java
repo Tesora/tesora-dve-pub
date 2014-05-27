@@ -22,6 +22,7 @@ package com.tesora.dve.sql.transform.strategy;
  */
 
 
+import java.util.Collections;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.lang.StringEscapeUtils;
@@ -47,7 +48,10 @@ import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.node.test.EngineToken;
 import com.tesora.dve.sql.parser.TokenTypes;
+import com.tesora.dve.sql.schema.DistributionVector;
+import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -182,7 +186,7 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 		}
 		FeatureStep root = null;
 
-		if (tca.isComplex()) {
+		if (tca.isComplex() || incontext.getContext().getOptions().isForceSessionPushdown()) {
 			// we must push it down as a regular statement
 			if (copy instanceof ProjectingStatement) {
 				root = DefaultFeatureStepBuilder.INSTANCE.buildProjectingStep(context,
@@ -190,8 +194,9 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 						(ProjectingStatement)copy, 
 						new ExecutionCost(false,false,null,-1), 
 						context.getContext().getSessionStatementStorageGroup(), 
-						context.getContext().getCurrentPEDatabase(false), 
-						null,null,
+						context.getContext().getCurrentPEDatabase(false),
+						new DistributionVector(incontext.getContext(), Collections.<PEColumn> emptyList(), Model.BROADCAST),
+						null,
 						tooComplexExplain);
 			} else {
 				root = DefaultFeatureStepBuilder.INSTANCE.buildStep(context,

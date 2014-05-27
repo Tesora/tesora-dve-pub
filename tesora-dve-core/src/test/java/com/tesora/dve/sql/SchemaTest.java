@@ -34,6 +34,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+import org.apache.commons.lang.ObjectUtils;
+
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.TemplateMode;
@@ -54,6 +56,7 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.util.ColumnChecker;
+import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.MirrorApply;
 import com.tesora.dve.sql.util.MirrorFun;
@@ -61,6 +64,7 @@ import com.tesora.dve.sql.util.MirrorProc;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.TestResource;
+import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.variable.SchemaVariableConstants;
 
@@ -395,6 +399,65 @@ public class SchemaTest extends PETest {
 		
 	}
 
+	// use this statement mirror fun to validate via show create table - this will remove the dist vect decl
+	protected static class ShowCreateTable extends StatementMirrorFun {
+
+		public ShowCreateTable(String tabName) {
+			super("show create table " + tabName);
+		}
+		
+		@Override
+		public void execute(TestResource checkdb, TestResource sysdb) throws Throwable {
+			ResourceResponse cr = execute(checkdb);
+			ResourceResponse sr = execute(sysdb);
+			if (sysdb == null) return;
+			if (cr != null && sr != null) {
+				try {
+					cr.assertEqualResponse(getContext(), sr);
+					cr.assertEqualResults(getContext(), sr, ComparisonOptions.DEFAULT.withCheckerMutator(columnCheckerMutator)); 
+				} catch (AssertionError ae) {
+					// annotate if we actually can get the underlying statement, otherwise don't bother
+					if (explainOnFailure)
+						throw SchemaTest.annotateFailureWithPlan(ae,getContext(),checkdb,sysdb,null);
+					throw ae;
+				}
+			}
+		}
+
+		
+		
+		private static final UnaryFunction<List<ColumnChecker>,List<ColumnChecker>> columnCheckerMutator =
+				new UnaryFunction<List<ColumnChecker>,List<ColumnChecker>>() {
+
+					@Override
+					public List<ColumnChecker> evaluate(
+							List<ColumnChecker> object) {
+						ArrayList<ColumnChecker> out = new ArrayList<ColumnChecker>();
+						out.add(object.get(0));
+						out.add(new ColumnChecker() {
+							
+							protected String equalObjects(Object expected, Object actual) {
+								String actct = (String) actual;
+								int marker = actct.indexOf("/*#dve");
+								if (marker > -1) {
+									int endMarker = actct.indexOf("*/", marker);
+									StringBuilder nc = new StringBuilder();
+									nc.append(actct.substring(0, marker - 1));
+									nc.append(actct.substring(endMarker + 2));
+									actual = nc.toString();
+								}
+								return super.equalObjects(expected, actual);
+							}
+
+						});
+						return out;
+					}
+			
+		};
+		
+	}
+
+	
 	protected static class StatementMirrorApply extends MirrorApply {
 		
 		private String command;
