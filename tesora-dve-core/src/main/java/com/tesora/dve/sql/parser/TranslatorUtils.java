@@ -323,6 +323,7 @@ import com.tesora.dve.sql.transform.execution.PassThroughCommand.Command;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
+import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variable.GlobalConfigVariableHandler;
@@ -982,17 +983,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (ctas != null) {
 			ctaProjectionOffsets = new ListOfPairs<PEColumn,Integer>();
 			// the columns are ordered like so:
-			// first all the columns that are declared in the table def
-			// then all the columns in the projection that aren't already declared
+			// first all columns that are only explicitly declared
+			// then all columns that are only implicitly or both declared
 			// we will determine projection column types at runtime, and use a placeholder in the meantime
-			actualFieldsAndKeys = new ArrayList<TableComponent<?>>();
-			for(Iterator<TableComponent<?>> iter = fieldsAndKeys.iterator(); iter.hasNext();) {
-				TableComponent<?> tc = iter.next();
-				if (tc instanceof PEColumn || tc instanceof PEKey) {
-					actualFieldsAndKeys.add(tc);
-					iter.remove();
-				}
-			}
+			
+			ListSet<PEColumn> inproj = new ListSet<PEColumn>();
+
 			ProjectionInfo pmd = ctas.getProjectionMetadata(pc);
 			for(int i = 1; i <= pmd.getWidth(); i++) {
 				int offset = i - 1;
@@ -1001,28 +997,48 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				PEColumn matching = lookupInProcessColumn(cname, true);
 				if (matching != null) {
 					ctaProjectionOffsets.add(matching,offset);
+					inproj.add(matching);
 					continue;
 				}
 				// declare the column with a placeholder type
 				PEColumn viaCTA = PECreateTableAsSelectStatement.createColumnFromExpression(pc,ci,ctas.getProjections().get(0).get(offset));
 				scope.registerColumn(viaCTA);
-				actualFieldsAndKeys.add(viaCTA);
 				ctaProjectionOffsets.add(viaCTA, offset);
+				inproj.add(viaCTA);
 			}
+			
+			actualFieldsAndKeys = new ArrayList<TableComponent<?>>();
+			// first do the decl only bits
+			for(Iterator<TableComponent<?>> iter = fieldsAndKeys.iterator(); iter.hasNext();) {
+				TableComponent<?> tc = iter.next();
+				if (tc instanceof PEKeyBase)
+					continue;
+				PEColumn pec = (PEColumn) tc;
+				if (!inproj.contains(pec)) 
+					actualFieldsAndKeys.add(pec);
+				iter.remove();
+			}
+			// now all the projection fields
+			actualFieldsAndKeys.addAll(inproj);
 			// now we have all columns declared, resolve anything that was forward
 			for(Iterator<TableComponent<?>> iter = fieldsAndKeys.iterator(); iter.hasNext();) {
-				PEForwardKey pefk = (PEForwardKey) iter.next();
-				List<PEKeyColumn> resolved = new ArrayList<PEKeyColumn>();
-				for(PEKeyColumnBase pekcb : pefk.getKeyColumns()) {
-					if (pekcb.isForwardKeyColumn()) {
-						PEForwardKeyColumn fc = (PEForwardKeyColumn) pekcb;
-						PEColumn any = lookupInProcessColumn(fc.getName(),false);
-						resolved.add(fc.resolve(any));
-					} else {
-						resolved.add((PEKeyColumn)pekcb);
+				TableComponent<?> tc = iter.next();
+				if (tc instanceof PEForwardKey) {
+					PEForwardKey pefk = (PEForwardKey) tc;
+					List<PEKeyColumn> resolved = new ArrayList<PEKeyColumn>();
+					for(PEKeyColumnBase pekcb : pefk.getKeyColumns()) {
+						if (pekcb.isForwardKeyColumn()) {
+							PEForwardKeyColumn fc = (PEForwardKeyColumn) pekcb;
+							PEColumn any = lookupInProcessColumn(fc.getName(),false);
+							resolved.add(fc.resolve(any));
+						} else {
+							resolved.add((PEKeyColumn)pekcb);
+						}
 					}
+					actualFieldsAndKeys.add(pefk.resolve(resolved));
+				} else {
+					actualFieldsAndKeys.add(tc);
 				}
-				actualFieldsAndKeys.add(pefk.resolve(resolved));	
 			}
 		} else {
 			actualFieldsAndKeys = fieldsAndKeys;

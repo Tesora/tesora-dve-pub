@@ -38,6 +38,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
+import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.schema.validate.SimpleValidateResult;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
 import com.tesora.dve.sql.transform.constraints.KeyConstraint;

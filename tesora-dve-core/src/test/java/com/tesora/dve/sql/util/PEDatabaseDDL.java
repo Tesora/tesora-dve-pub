@@ -38,7 +38,11 @@ public class PEDatabaseDDL extends DatabaseDDL {
 	private StorageGroupDDL persGroup;
 	
 	public PEDatabaseDDL(String name, String tag) {
-		super(name,tag);
+		this(name,tag,null,null);
+	}
+	
+	public PEDatabaseDDL(String name, String tag, String charset, String collation) {
+		super(name,tag, charset, collation);
 	}
 	
 	public PEDatabaseDDL(String name) {
@@ -91,6 +95,10 @@ public class PEDatabaseDDL extends DatabaseDDL {
 		if (mtmode != null && mtmode.isMT())
 			out.append(" multitenant ");
 		out.append(dbtag).append(" if not exists ").append(dbn);
+		if (charset != null)
+			out.append(" default character set " + charset);
+		if (collation != null)
+			out.append(" default collate " + collation);
 		if (persGroup != null)
 			out.append(" default persistent group ").append(persGroup.getName());
 		if (template != null) {

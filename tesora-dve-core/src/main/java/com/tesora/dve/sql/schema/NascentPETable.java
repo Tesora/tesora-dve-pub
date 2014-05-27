@@ -43,6 +43,7 @@ import com.tesora.dve.server.messaging.ConditionalWorkerRequest.GuardFunction;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.types.TempColumnType;
 import com.tesora.dve.worker.Worker;

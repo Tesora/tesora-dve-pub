@@ -291,7 +291,12 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 			PEColumn copy = (PEColumn) pec.copy(pc, null);
 			if (copy.isAutoIncrement()) {
 				copy.clearAutoIncrement();
+				copy.setDefaultValue(LiteralExpression.makeStringLiteral("0"));
+			} else if (pec.isPrimaryKeyPart()) {
+				if (copy.getDefaultValue() == null)
+					copy.setDefaultValue(LiteralExpression.makeStringLiteral("0"));
 			}
+			copy.normalize();
 			copy.setName(new UnqualifiedName(info.getAlias()));
 			return copy;
 		} else {

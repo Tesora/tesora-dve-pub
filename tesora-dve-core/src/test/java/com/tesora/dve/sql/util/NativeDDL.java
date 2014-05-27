@@ -34,7 +34,12 @@ public class NativeDDL extends ProjectDDL {
 		super();
 		withDatabase(new NativeDatabaseDDL(dbn));
 	}
-
+	
+	public NativeDDL(NativeDatabaseDDL db) {
+		super();
+		withDatabase(db);
+	}
+	
 	@Override
 	public List<String> getCreateStatements() throws Exception {
 		ArrayList<String> buf = new ArrayList<String>();

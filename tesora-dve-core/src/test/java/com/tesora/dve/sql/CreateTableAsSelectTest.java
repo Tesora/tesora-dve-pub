@@ -30,6 +30,7 @@ import org.junit.Test;
 import com.tesora.dve.sql.util.MirrorProc;
 import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
+import com.tesora.dve.sql.util.NativeDatabaseDDL;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ResourceResponse;
@@ -43,9 +44,9 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 	private static ProjectDDL sysDDL =
 		new PEDDL("ctadb",
 				new StorageGroupDDL("sys",SITES,"sysg"),
-				"schema");
+				"schema","utf8",null);
 	private static NativeDDL nativeDDL =
-		new NativeDDL("ctadb");
+		new NativeDDL(new NativeDatabaseDDL("ctadb","database","utf8",null));
 	
 	@Override
 	protected ProjectDDL getMultiDDL() {
@@ -71,8 +72,7 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 	};
 
 	private static final String[] srctabs = new String[] {
-		"broadsrc", 
-		// "randsrc", "ransrc", "statsrc"
+		"broadsrc", "randsrc", "ransrc", "statsrc"
 	};
 	
 	private static final String[] targtabs = new String[] {
@@ -167,6 +167,7 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
 			for(int i = 0; i < srctabs.length; i++) {
 				tests.add(new StatementMirrorProc(String.format("create table %s as select * from %s",targtabs[i],srctabs[i])));
+				tests.add(new ShowCreateTable(targtabs[i]));
 				tests.add(new StatementMirrorFun(String.format("select * from %s order by id",targtabs[i])));
 				tests.add(new StatementMirrorFun(false,true,"select table_name from information_schema.tables where table_schema = 'ctadb'"));
 				tests.add(new StatementMirrorFun(false,true,String.format("select column_name from information_schema.columns where table_name = '%s' and table_schema = 'ctadb'",targtabs[i])));
@@ -183,6 +184,7 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
 			for(int i = 0; i < srctabs.length; i++) {
 				tests.add(new StatementMirrorProc(String.format("create table %s as select *, 1 as extra from %s",targtabs[i],srctabs[i])));
+				tests.add(new ShowCreateTable(targtabs[i]));
 				tests.add(new StatementMirrorFun(String.format("select * from %s order by id",targtabs[i])));
 				tests.add(new StatementMirrorFun(false,true,String.format(
 						"select column_name from information_schema.columns where table_name = '%s' and table_schema = 'ctadb'",
@@ -200,8 +202,9 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
 			for(int i = 0; i < srctabs.length; i++) {
 				tests.add(new StatementMirrorProc(
-						String.format("create table %s (tid int, primary key (id)) as select * from %s",
+						String.format("create table %s (tid int, primary key (id)) default charset=utf8  as select * from %s",
 								targtabs[i],srctabs[i])));
+				tests.add(new ShowCreateTable(targtabs[i]));
 				tests.add(new StatementMirrorFun(String.format("select * from %s order by id",targtabs[i])));
 				tests.add(new StatementMirrorFun(false,true,String.format(
 						"select column_name from information_schema.columns where table_name = '%s' and table_schema = 'ctadb'",
@@ -219,7 +222,7 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 			ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
 			for(int i = 0; i < srctabs.length; i++) {
 				tests.add(new StatementMirrorProc(
-						String.format("create table %s (id int, fid int, sid int) default charset=utf8 as select 1 as fid",
+						String.format("create table %s (id int, fid int, sid int default '15') default charset=utf8 as select 1 as fid",
 								targtabs[i], srctabs[i])));
 				tests.add(new ShowCreateTable(targtabs[i]));
 				tests.add(new StatementMirrorFun(String.format("select * from %s order by id",targtabs[i])));

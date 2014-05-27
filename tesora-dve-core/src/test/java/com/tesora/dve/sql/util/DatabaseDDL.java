@@ -27,10 +27,14 @@ public abstract class DatabaseDDL extends TestDDL {
 
 	protected String dbn;
 	protected String dbtag;
-
-	public DatabaseDDL(String dbname, String dbtag) {
+	protected String charset = null;
+	protected String collation = null;
+	
+	public DatabaseDDL(String dbname, String dbtag, String charset, String collation) {
 		this.dbn = dbname;
 		this.dbtag = dbtag;
+		this.charset = charset;
+		this.collation = collation;
 	}
 
 	public abstract boolean isNative();
