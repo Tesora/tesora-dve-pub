@@ -21,7 +21,6 @@
 		<module>../tesora-dve-tools-core</module>
 		<module>../tesora-dve-parlb</module>
 		<module>../tesora-dve-examples</module>
-        <module>../tesora-dve-microbench</module>
 	</modules>
 
 	<build>
