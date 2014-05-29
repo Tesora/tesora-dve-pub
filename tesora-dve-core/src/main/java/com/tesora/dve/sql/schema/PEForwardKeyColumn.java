@@ -23,6 +23,8 @@ package com.tesora.dve.sql.schema;
 
 import com.tesora.dve.common.catalog.KeyColumn;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 
 public class PEForwardKeyColumn extends PEKeyColumnBase {
 
@@ -38,7 +40,7 @@ public class PEForwardKeyColumn extends PEKeyColumnBase {
 	}
 	
 	@Override
-	public Name getName() {
+	public UnqualifiedName getName() {
 		return forwardName;
 	}
 	
@@ -69,10 +71,24 @@ public class PEForwardKeyColumn extends PEKeyColumnBase {
 		return null;
 	}
 
-
 	@Override
-	public boolean isForwardKeyColumn() {
-		return true;
+	public PEColumn getColumn() {
+		throw new SchemaException(Pass.SECOND, "Attempt to get column of unresolved key column");
 	}
 
+	@Override
+	public Integer getIndexSize() {
+		throw new SchemaException(Pass.SECOND, "Attempt to get index size of unresolved key column");
+	}
+
+	@Override
+	public PEKeyColumnBase copy(SchemaContext sc, PETable containingTable) {
+		throw new SchemaException(Pass.SECOND, "Attempt to copy unresolved key column");
+	}
+
+	@Override
+	public boolean isUnresolved() {
+		return true;
+	}
+	
 }

@@ -34,15 +34,19 @@ import java.util.Map;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
+import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.server.messaging.ConditionalWorkerRequest.GuardFunction;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
@@ -60,6 +64,7 @@ import com.tesora.dve.sql.schema.NascentPETable;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEDatabase;
+import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
@@ -69,6 +74,7 @@ import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
+import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.modifiers.ColumnKeyModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnModifierKind;
@@ -79,9 +85,12 @@ import com.tesora.dve.sql.schema.modifiers.TypeModifierKind;
 import com.tesora.dve.sql.schema.types.BasicType;
 import com.tesora.dve.sql.schema.types.TempColumnType;
 import com.tesora.dve.sql.schema.types.Type;
+import com.tesora.dve.sql.schema.validate.ValidateResult;
+import com.tesora.dve.sql.statement.ddl.PECreateTableStatement.DelayedFKDrop;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.DelegatingBehaviorConfiguration;
@@ -90,6 +99,7 @@ import com.tesora.dve.sql.transform.behaviors.defaults.DefaultPostPlanningFeatur
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.strategy.AdhocFeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
@@ -102,6 +112,7 @@ import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.worker.MysqlTextResultCollector;
+import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
@@ -126,22 +137,38 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 
 	@Override
 	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
+		
+		if (srcStmt instanceof UnionStatement) {
+			// unsupported for now
+			throw new PEException("create table as ... select ... union currently not supported");
+		}
+		
 		// normalize the table decl as usual
 		normalize(pc);
-		// we may just need a single step, but we may not - figure that out
 		if (alreadyExists) {
 			es.append(new EmptyExecutionStep(0,"already exists - " + getSQL(pc)));
 			return;
 		}
-		// ignore the fk junk for right now.
+		
+		// if we can't do the one step plan on this, give up.  it's not clear right now how that would work.
+		boolean immediate = !pc.isPersistent() ||
+				Functional.all(related, new UnaryPredicate<DelayedFKDrop>() {
+
+					@Override
+					public boolean test(DelayedFKDrop object) {
+						return object.getKeyIDs().isEmpty();
+					}
+					
+				});
+		if (!immediate)
+			throw new PEException("create table as select with dangling fks in relaxed mode not supported yet");
+		
 		ExecutionSequence subes = new ExecutionSequence(null);
 		maybeDeclareDatabase(pc,subes);
 		
-		// TODO:
-		// make this test better
 		SelectStatement select = (SelectStatement) CopyVisitor.copy(srcStmt);
 		
-		SQLMode sqlMode = SchemaVariables.getSQLMode(pc);
+//		SQLMode sqlMode = SchemaVariables.getSQLMode(pc);
 		
 		HashMap<PEColumn,Integer> columnOffsets = new HashMap<PEColumn,Integer>();
 		for(Pair<PEColumn,Integer> p : projOffsets)
@@ -185,28 +212,32 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		
 		ArrayList<QueryStep> steps = new ArrayList<QueryStep>();
 		subes.schedule(null, steps, null, pc);
-		
-		es.append(new ComplexDDLExecutionStep(getTable().getPEDatabase(pc),getTable().getStorageGroup(pc),getTable(),
-				Action.CREATE, new CreateTableViaRedistCallback((NascentPETable)getTable(),steps,
-						new CacheInvalidationRecord(getTable().getCacheKey(),InvalidationScope.LOCAL))));
-		
-		
-		/*
-		boolean immediate = !pc.isPersistent() ||
-				Functional.all(related, new UnaryPredicate<DelayedFKDrop>() {
+		int redistOffset = steps.size() - 1;
 
-					@Override
-					public boolean test(DelayedFKDrop object) {
-						return object.getKeyIDs().isEmpty();
-					}
-					
-				});
-		if (immediate) {
-			oneStepPlan(pc,es);
-		} else {
-			manyStepPlan(pc,es);
+		boolean mustRebuildCTS = false;
+		List<ValidateResult> results = getTable().validate(pc,false);
+		for(ValidateResult vr : results) {
+			if (vr.isError()) continue;
+			if (vr.getSubject() instanceof PEForeignKey) {
+				PEForeignKey pefk = (PEForeignKey) vr.getSubject();
+				pefk.setPersisted(false);
+				addIgnoredFKMessage(pc,vr);
+				mustRebuildCTS = true;
+			}
 		}
-		*/		
+		if (mustRebuildCTS) 
+			// we need to rebuild the create table stmt
+			getTable().setDeclaration(pc, getTable());
+		ListOfPairs<SchemaCacheKey<?>,InvalidationScope> clears = new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
+		clears.add(getTable().getCacheKey(),InvalidationScope.LOCAL);
+		for(DelayedFKDrop dfd : related)
+			clears.add(dfd.getTable().getCacheKey(),InvalidationScope.LOCAL);
+		for(TableCacheKey tck : alsoClear)
+			clears.add(tck, InvalidationScope.LOCAL);
+
+		es.append(new ComplexDDLExecutionStep(getTable().getPEDatabase(pc),getTable().getStorageGroup(pc),getTable(),
+				Action.CREATE, new CreateTableViaRedistCallback((NascentPETable)getTable(),steps,redistOffset,
+						new CacheInvalidationRecord(clears))));		
 	}
 
 	private class PlannerConfiguration extends DelegatingBehaviorConfiguration {
@@ -363,9 +394,10 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 	}
 	
 
-	private static class CreateTableViaRedistCallback implements NestedOperationDDLCallback {
+	private class CreateTableViaRedistCallback implements NestedOperationDDLCallback, GuardFunction {
 
 		private final List<QueryStep> toExecute;
+		private final int redistOffset;
 		private final NascentPETable nascent;
 		
 		private final CacheInvalidationRecord record;
@@ -373,12 +405,18 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		private List<CatalogEntity> updates;
 		private List<CatalogEntity> deletes;
 		
-		public CreateTableViaRedistCallback(NascentPETable tab, List<QueryStep> steps, CacheInvalidationRecord record) {
+		private boolean redistCompleted = false;
+		
+		public CreateTableViaRedistCallback(NascentPETable tab, List<QueryStep> steps,
+				int redistOffset,
+				CacheInvalidationRecord record) {
 			this.nascent = tab;
 			this.toExecute = steps;
 			this.updates = null;
 			this.deletes = null;
 			this.record = record;
+			this.redistOffset = redistOffset;
+			tab.setCreationGuard(this);
 		}
 		
 		@Override
@@ -395,14 +433,19 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 
 			updates = new ArrayList<CatalogEntity>();
 			deletes = Collections.emptyList();
-			
+
 			sc.beginSaveContext();
 			try {
 				nascent.persistTree(sc);
+				sc.getSource().setLoaded(nascent, nascent.getCacheKey());
+				for(DelayedFKDrop dfd : related) {
+					dfd.getTable().persistTree(sc);
+				}
 				updates.addAll(sc.getSaveContext().getObjects());
 			} finally {
 				sc.endSaveContext();
 			}
+			
 		}
 
 		@Override
@@ -461,17 +504,46 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 
 		@Override
 		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
+				final WorkerGroup wg, DBResultConsumer resultConsumer)
 				throws PEException {
 			try {
-				for(Iterator<QueryStep> iter = toExecute.iterator(); iter.hasNext();) {
-					QueryStep qs = iter.next();
-					qs.getOperation().execute(conn, wg,  
-							(iter.hasNext() ? new MysqlTextResultCollector() : resultConsumer));
+				// we have to recreate slightly what QueryStep.executeOperation does -
+				// we have to do the worker group management junk, but arrange to not 
+				// return our given group (it was allocated in our parent step, which is the nested ddl step)
+				int last = toExecute.size() - 1;
+				for(int i = 0; i < toExecute.size(); i++) {
+					QueryStep qs = toExecute.get(i);
+					QueryStepOperation qso = qs.getOperation();
+					WorkerGroup cwg = wg;
+					try {
+						if (qso.requiresWorkers() && !qs.getSourceGroup().equals(wg.getGroup())) {
+							cwg = conn.getWorkerGroupAndPushContext(qs.getSourceGroup(),qso.getContextDatabase());
+						}
+						DBResultConsumer consumer = (i == last ? resultConsumer : DBEmptyTextResultConsumer.INSTANCE);
+						if (redistOffset == i) {
+							// this is always a multituple redist (for now) - indicate that the given wg is our preallocated wg
+							QueryStepMultiTupleRedistOperation rd = (QueryStepMultiTupleRedistOperation) qso;
+							rd.setPreallocatedTargetWorkerGroup(wg);
+							qso.execute(conn, cwg, consumer);
+						} else {
+							qso.execute(conn, cwg, consumer);
+						}						
+					} finally {
+						if (cwg != wg) {
+							conn.returnWorkerGroupAndPopContext(cwg);
+						}
+					}
 				}
+				redistCompleted = true;
 			} catch (Throwable t) {
 				throw new PEException(t);
 			}
+		}
+
+		@Override
+		public boolean proceed(Worker w, DBResultConsumer consumer)
+				throws PEException {
+			return !redistCompleted;
 		}
 		
 	}

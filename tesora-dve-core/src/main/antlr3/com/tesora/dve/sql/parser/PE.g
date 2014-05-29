@@ -354,13 +354,13 @@ table_define_field returns [List l] options {k=1;}
     | key_definition { $l.add($key_definition.tc); }
     ;
 
-key_definition returns [PEKeyBase tc] options {k=1;}:
+key_definition returns [PEKey tc] options {k=1;}:
   (fulltext_key_def { $tc = $fulltext_key_def.tc; })
   | ((INDEX | KEY) regular_key_def { $tc = $regular_key_def.tc; })
   | (constraint_definition { $tc = $constraint_definition.tc; })
   ;
 
-constraint_definition returns [PEKeyBase tc] options {k=1;}:
+constraint_definition returns [PEKey tc] options {k=1;}:
   (CONSTRAINT cn=keyword_simple_identifier1)?
   anonymous_constraint_definition
   { $tc = $anonymous_constraint_definition.tc;
@@ -369,7 +369,7 @@ constraint_definition returns [PEKeyBase tc] options {k=1;}:
   }
   ;
   
-anonymous_constraint_definition returns [PEKeyBase tc] options {k=1;}:
+anonymous_constraint_definition returns [PEKey tc] options {k=1;}:
   ((PRIMARY KEY (io=key_index_option)? kl=key_list akl=all_key_option_list)
    { $tc = utils.withConstraint(ConstraintType.PRIMARY, utils.buildName("PRIMARY"), utils.buildKey($io.it, utils.buildName("PRIMARY"), $kl.l, $akl.l)); })
   |((UNIQUE (INDEX | KEY)? regular_key_def)
@@ -377,12 +377,12 @@ anonymous_constraint_definition returns [PEKeyBase tc] options {k=1;}:
   |(foreign_key_def { $tc = utils.withConstraint(ConstraintType.FOREIGN, null, $foreign_key_def.tc); }) 
   ;
 
-fulltext_key_def returns [PEKeyBase tc] options {k=1;}:
+fulltext_key_def returns [PEKey tc] options {k=1;}:
   FULLTEXT (KEY | INDEX)? (n=unqualified_identifier)? kl=key_list akl=all_key_option_list
   { $tc = utils.buildKey(IndexType.FULLTEXT, $n.n, $kl.l, $akl.l); }
   ;
 
-regular_key_def returns [PEKeyBase tc] options {k=1;}:
+regular_key_def returns [PEKey tc] options {k=1;}:
   (n=unqualified_identifier)? (io=key_index_option)? kl=key_list akl=all_key_option_list
   { $tc = utils.buildKey($io.it, $n.n, $kl.l, $akl.l); }
   ;

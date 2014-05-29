@@ -46,6 +46,7 @@ public class PEKeyColumn extends PEKeyColumnBase {
 		return this.column;
 	}
 	
+	@Override
 	public void setKey(PEKey k) {
 		ofKey = k;
 		if (ofKey.getConstraint() == ConstraintType.PRIMARY)
@@ -132,8 +133,18 @@ public class PEKeyColumn extends PEKeyColumnBase {
 	}
 	
 	@Override
-	public boolean isForwardKeyColumn() {
-		// always, even for forward fks - this is more about whether the column has been declared yet or not
+	public UnqualifiedName getName() {
+		return column.getName().getUnqualified();
+	}
+	
+	@Override
+	public boolean isUnresolved() {
 		return false;
 	}
+
+	@Override
+	public PEKeyColumnBase resolve(PEColumn actual) {
+		return this;
+	}
+	
 }

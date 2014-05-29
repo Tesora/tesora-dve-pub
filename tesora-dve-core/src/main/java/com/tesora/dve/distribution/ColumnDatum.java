@@ -36,8 +36,6 @@ public class ColumnDatum implements Serializable, IColumnDatum {
 	private static final long serialVersionUID = 1L;
 	
 	
-	int columnId;
-	
 	transient PersistentColumn userColumn;
 	
 	Object value = null;
@@ -45,7 +43,6 @@ public class ColumnDatum implements Serializable, IColumnDatum {
 	String comparatorClassName;
 
 	public ColumnDatum(PersistentColumn col) {
-//		columnId = col.getId();
 		userColumn = col;
 	}
 
@@ -55,7 +52,6 @@ public class ColumnDatum implements Serializable, IColumnDatum {
 	}
 	
 	public ColumnDatum(ColumnDatum other) {
-//		this.columnId = other.columnId;
 		this.value = other.value;
 		this.userColumn = other.userColumn;
 	}
@@ -64,13 +60,6 @@ public class ColumnDatum implements Serializable, IColumnDatum {
 		return userColumn;
 	}
 
-	/*
-	@Override
-	public String getColumnName() {
-		return userColumn.getPersistentName();
-	}
-	*/
-	
 	public void setValue(Object object) {
 		value = object;
 	}
@@ -125,15 +114,9 @@ public class ColumnDatum implements Serializable, IColumnDatum {
 	
 	@Override
 	public String toString() {
-		return columnId + "/" + (value == null ? "null" : value.toString());
+		return getColumn() + "/" + (value == null ? "null" : value.toString());
 	}
 
-	/*
-	@Override
-	public int getColumnId() {
-		return columnId;
-	}
-*/
 	@Override
 	public String getComparatorClassName() {
 		return comparatorClassName;

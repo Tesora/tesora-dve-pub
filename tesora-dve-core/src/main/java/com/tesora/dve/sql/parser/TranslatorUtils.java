@@ -155,10 +155,9 @@ import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEExternalService;
 import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
-import com.tesora.dve.sql.schema.PEForwardKey;
+import com.tesora.dve.sql.schema.PEForwardForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEForwardKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
-import com.tesora.dve.sql.schema.PEKeyBase;
 import com.tesora.dve.sql.schema.PEKeyColumn;
 import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
@@ -1011,7 +1010,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			// first do the decl only bits
 			for(Iterator<TableComponent<?>> iter = fieldsAndKeys.iterator(); iter.hasNext();) {
 				TableComponent<?> tc = iter.next();
-				if (tc instanceof PEKeyBase)
+				if (tc instanceof PEKey)
 					continue;
 				PEColumn pec = (PEColumn) tc;
 				if (!inproj.contains(pec)) 
@@ -1023,19 +1022,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			// now we have all columns declared, resolve anything that was forward
 			for(Iterator<TableComponent<?>> iter = fieldsAndKeys.iterator(); iter.hasNext();) {
 				TableComponent<?> tc = iter.next();
-				if (tc instanceof PEForwardKey) {
-					PEForwardKey pefk = (PEForwardKey) tc;
-					List<PEKeyColumn> resolved = new ArrayList<PEKeyColumn>();
-					for(PEKeyColumnBase pekcb : pefk.getKeyColumns()) {
-						if (pekcb.isForwardKeyColumn()) {
-							PEForwardKeyColumn fc = (PEForwardKeyColumn) pekcb;
-							PEColumn any = lookupInProcessColumn(fc.getName(),false);
-							resolved.add(fc.resolve(any));
-						} else {
-							resolved.add((PEKeyColumn)pekcb);
-						}
-					}
-					actualFieldsAndKeys.add(pefk.resolve(resolved));
+				if (tc instanceof PEKey) {
+					PEKey pek = (PEKey) tc;
+					actualFieldsAndKeys.add(pek.resolve(pc,scope));
 				} else {
 					actualFieldsAndKeys.add(tc);
 				}
@@ -1768,7 +1757,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		for(ColumnKeyModifier ckm : inlineKeys) {
 			// first build the key
 			@SuppressWarnings("unchecked")
-			PEKeyBase pek = buildKey(null,null,Collections.singletonList((PEKeyColumnBase)new PEKeyColumn(nc,null,-1L)),Collections.EMPTY_LIST);
+			PEKey pek = buildKey(null,null,Collections.singletonList((PEKeyColumnBase)new PEKeyColumn(nc,null,-1L)),Collections.EMPTY_LIST);
 			if (ckm.getConstraint() != null)
 				pek = withConstraint(ckm.getConstraint(), null, pek);
 			out.add(pek);
@@ -1776,7 +1765,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return out;
 	}
 
-	public PEKeyBase buildKey(IndexType type, Name name, List<PEKeyColumnBase> cols, List<Object> options) {
+	public PEKey buildKey(IndexType type, Name name, List<PEKeyColumnBase> cols, List<Object> options) {
 		// unpack the options in case we have anything lurking
 		IndexType postSpecifiedType = null;
 		Comment anyComment = null;
@@ -1791,24 +1780,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		IndexType actualType = type;
 		if (actualType == null) actualType = postSpecifiedType;
 		if (actualType == null) actualType = IndexType.BTREE;
-		// if any of the columns is forward build a forward key instead
-		List<PEKeyColumn> keyCols = new ArrayList<PEKeyColumn>();
-		boolean forward = false;
-		for(PEKeyColumnBase kc : cols) {
-			if (kc.isForwardKeyColumn()) {
-				forward = true;
-				break;
-			} else {
-				keyCols.add((PEKeyColumn) kc);
-			}
-		}
-		if (forward)
-			return new PEForwardKey(name, cols, actualType, null, null, anyComment);
-		else
-			return new PEKey(name,actualType,keyCols, anyComment);
+		return new PEKey(name,actualType,cols, anyComment);
 	}
 	
-	public PEKeyBase withConstraint(ConstraintType ct, Name symbolName, PEKeyBase pek) {
+	public PEKey withConstraint(ConstraintType ct, Name symbolName, PEKey pek) {
 		pek.setConstraint(ct);
 		if (symbolName != null)
 			pek.setSymbol(symbolName.getUnqualified());
@@ -1825,13 +1800,13 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		long keyCardinality = (cardinality == null ? -1L : asIntegralLiteral(cardinality));
 		
 		if (c == null)
-			return new PEForwardKeyColumn(null, identifier.getUnqualified(), keyLength, keyCardinality);
+			return new PEForwardKeyColumn(null,identifier.getUnqualified(), keyLength, keyCardinality);
 		else
 			return new PEKeyColumn(c,keyLength,keyCardinality);		
 	}
 
 	@SuppressWarnings("cast")
-	public PEForeignKey buildForeignKey(Name name, List<PEKeyColumn> mycols, Name targetTableName, List<UnqualifiedName> targetColumns,
+	public PEKey buildForeignKey(Name name, List<PEKeyColumnBase> mycols, Name targetTableName, List<UnqualifiedName> targetColumns,
 			ForeignKeyAction deleteAction, ForeignKeyAction updateAction) {
 		// are unknown tables ok?
 		boolean required = (pc != null && SchemaVariables.hasForeignKeyChecks(pc));
@@ -1875,18 +1850,24 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		// regardless of whether the target table is known, we need to convert the PEKeyColumns to PEForeignKeyColumns
 		if (mycols.size() != targetColumns.size())
 			throw new SchemaException(Pass.FIRST,"Invalid foreign key declaration: source table names " + mycols.size() + " columns but references " + targetColumns.size());
-		List<PEKeyColumn> fkcols = new ArrayList<PEKeyColumn>();
+		List<PEKeyColumnBase> fkcols = new ArrayList<PEKeyColumnBase>();
 		for(int i = 0; i < mycols.size(); i++) {
-			PEKeyColumn mine = mycols.get(i);
+			PEKeyColumnBase mine = mycols.get(i);
 			UnqualifiedName targName = targetColumns.get(i);
-			PEForeignKeyColumn pefk = null;
+			PEKeyColumnBase pefk = null;
 			if (targetTab == null) {
-				pefk = new PEForeignKeyColumn(mine.getColumn(), targName);
+				if (mine.isUnresolved())
+					pefk = new PEForwardForeignKeyColumn(null,mine.getName(),targName);
+				else
+					pefk = new PEForeignKeyColumn(mine.getColumn(), targName);
 			} else {
 				PEColumn targCol = targetTab.lookup(pc, targName);
 				if (targCol == null)
 					throw new SchemaException(Pass.SECOND, "No such column " + targName + " in " + targetTableName);
-				pefk = new PEForeignKeyColumn(mine.getColumn(), targCol);
+				if (mine.isUnresolved()) 
+					pefk = new PEForwardForeignKeyColumn(null,mine.getName(),targCol);
+				else
+					pefk = new PEForeignKeyColumn(mine.getColumn(), targCol);
 			}
 			fkcols.add(pefk);
 		}
@@ -3030,8 +3011,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				(LiteralExpression) litex));
 	}
 
-	public List<AlterTableAction> buildAddIndexAction(PEKeyBase newIndex) {
-		if (newIndex.isForwardKey())
+	public List<AlterTableAction> buildAddIndexAction(PEKey newIndex) {
+		if (newIndex.isUnresolved())
 			throw new SchemaException(Pass.FIRST, "Invalid forward key during alter");
 		return wrapAlterAction(new AddIndexAction((PEKey)newIndex));
 	}

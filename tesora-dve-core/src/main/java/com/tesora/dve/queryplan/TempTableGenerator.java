@@ -63,8 +63,15 @@ public class TempTableGenerator {
 
 		// We can't execute DDL on the targetWG if it is in a transaction
 		WorkerGroup wgForDDL = targetWG;
+		// if targetWG was cloned, it may not have active connections at this point
+		// and if that is the case, activeTransactionCount will cause the connections to become active
 		if (wgForDDL.activeTransactionCount() > 0)
 			wgForDDL = WorkerGroupFactory.newInstance(ssCon, targetWG.getGroup(), database);
+		else {
+			if (requireSessVarsOnDDLGroup())
+				// make sure the sess vars are set!
+				wgForDDL.assureSessionVariables(ssCon);
+		}
 
 		try {
 			if (!useSystemTempTable || suppressTempDeletMode) {
@@ -109,5 +116,9 @@ public class TempTableGenerator {
 							).onDatabase(database));
 		}
 	}		
+	
+	public boolean requireSessVarsOnDDLGroup() {
+		return false;
+	}
 	
 }

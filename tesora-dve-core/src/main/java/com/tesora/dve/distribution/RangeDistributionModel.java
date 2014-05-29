@@ -63,8 +63,6 @@ import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 @DiscriminatorValue(RangeDistributionModel.MODEL_NAME)
 public class RangeDistributionModel extends DistributionModel {
 	
-	static Cache<Integer, Integer> rangeForTableCache = CacheBuilder.newBuilder().maximumSize(1000).build();
-	
 	static Cache<Integer, DistributionRange> rangeCache = CacheBuilder.newBuilder().build();
 
 	private abstract class BinaryFunction<O, I> {
@@ -101,22 +99,6 @@ public class RangeDistributionModel extends DistributionModel {
 	private static DistributionRange findDistributionRange(final CatalogDAO c, final IKeyValue key) throws PEException {
 		Integer distRangeID = key.getRangeId();
 		DistributionRange dr = null;
-		/*
-		try {
-			distRangeID = rangeForTableCache.get(key.getUserTableId(), 
-					new Callable<Integer>() {
-						@Override
-						public Integer call() throws Exception {
-							DistributionRange distRange = c.findRangeForTableByName(
-									key.getQualifiedTableName(),
-									key.getUserTableId());
-							return distRange.getId();
-						}
-			});
-		} catch (ExecutionException e) {
-			throw new PEException("Cannot map key to range for table " + key.getQualifiedTableName(), e);
-		}
-		*/
 		if (distRangeID == null)
 			throw new PEException("No range found for table " + key.getQualifiedTableName());
 		final int distid = distRangeID; 
@@ -242,7 +224,6 @@ public class RangeDistributionModel extends DistributionModel {
 	
 	public static void clearCache() {
 		rangeCache.invalidateAll();
-		rangeForTableCache.invalidateAll();
 	}
 	
 	public static void clearCacheEntry(int distributionRangeId) {

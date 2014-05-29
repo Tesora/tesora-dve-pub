@@ -48,6 +48,7 @@ import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKeyColumn;
+import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETemplate;
 import com.tesora.dve.sql.schema.QualifiedName;
@@ -172,7 +173,7 @@ public abstract class Analyzer {
 								if (tti != null) {
 									final PETable targetTable = tti.getAbstractTable().asTable();
 									fk.setTargetTable(context, targetTable);
-									for (final PEKeyColumn keyColumn : fk.getKeyColumns()) {
+									for (final PEKeyColumnBase keyColumn : fk.getKeyColumns()) {
 										final PEForeignKeyColumn fkColumn = (PEForeignKeyColumn) keyColumn;
 										final Name targetColumnName = fkColumn.getTargetColumnName();
 										final PEColumn targetColumn = targetTable.lookup(context, targetColumnName);

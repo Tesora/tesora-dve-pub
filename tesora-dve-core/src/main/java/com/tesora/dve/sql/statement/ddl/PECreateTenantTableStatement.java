@@ -37,6 +37,7 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumn;
+import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaVariables;
@@ -150,7 +151,7 @@ public class PECreateTenantTableStatement extends PECreateTableStatement {
 				PEForeignKey pefk = (PEForeignKey) pek;
 				if (!pefk.isForward()) continue;
 				if (pefk.getTargetTableName(sc).equals(logicalName)) {
-					for(PEKeyColumn pekc : pefk.getKeyColumns()) {
+					for(PEKeyColumnBase pekc : pefk.getKeyColumns()) {
 						PEForeignKeyColumn pefkc = (PEForeignKeyColumn)pekc;
 						PEColumn tc = target.lookup(sc, pefkc.getTargetColumnName());
 						if (tc == null && required) {
@@ -201,7 +202,7 @@ public class PECreateTenantTableStatement extends PECreateTableStatement {
 					PEForeignKey pefk = (PEForeignKey) pek;
 					if (!pefk.isForward()) continue;
 					if (pefk.getTargetTableName(sc).equals(logicalName)) {
-						for(PEKeyColumn pekc : pefk.getKeyColumns()) {
+						for(PEKeyColumnBase pekc : pefk.getKeyColumns()) {
 							PEForeignKeyColumn pefkc = (PEForeignKeyColumn)pekc;
 							PEColumn tc = newTab.lookup(sc, pefkc.getTargetColumnName());
 							if (tc == null && required) {

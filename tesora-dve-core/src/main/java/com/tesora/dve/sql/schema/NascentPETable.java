@@ -53,6 +53,8 @@ import com.tesora.dve.worker.WorkerGroup;
 // This is used in create table as select support.
 public class NascentPETable extends PETable {
 
+	private GuardFunction guard = null;
+	
 	public NascentPETable(SchemaContext pc, Name name, 
 			List<TableComponent<?>> fieldsAndKeys,
 			DistributionVector dv, List<TableModifier> modifier, 
@@ -64,6 +66,10 @@ public class NascentPETable extends PETable {
 	@Override
 	public boolean mustBeCreated() {
 		return true;
+	}
+	
+	public void setCreationGuard(GuardFunction f) {
+		guard = f;
 	}
 	
 	@Override
@@ -118,22 +124,14 @@ public class NascentPETable extends PETable {
 							ssCon.getNonTransactionalContext(), 
 							UserTable.getDropTableStmt(theTable.getName(), false)).onDatabase(database);
 			cleanupWG.addCleanupStep(
-					new ConditionalWorkerRequest(wer,
-							new GuardFunction() {
-
-								@Override
-								public boolean proceed(Worker w,
-										DBResultConsumer consumer)
-										throws PEException {
-									// we should make this dependent on the execution!
-									return false;
-								}
-						
-					}));
+					new ConditionalWorkerRequest(wer, guard));
 			
 		}		
 
-		
+		@Override
+		public boolean requireSessVarsOnDDLGroup() {
+			return true;
+		}
 	}
 	
 }

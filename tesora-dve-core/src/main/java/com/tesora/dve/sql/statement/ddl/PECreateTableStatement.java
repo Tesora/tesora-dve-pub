@@ -60,6 +60,7 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumn;
+import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.QualifiedName;
@@ -116,7 +117,7 @@ public class PECreateTableStatement extends
 		return ((PETable)getRoot());
 	}
 
-	private static void addIgnoredFKMessage(SchemaContext sc, ValidateResult vr) {
+	protected static void addIgnoredFKMessage(SchemaContext sc, ValidateResult vr) {
 		sc.getConnection().getMessageManager().addWarning(vr.getMessage(sc) + " - not persisted");
 	}
 	
@@ -166,7 +167,7 @@ public class PECreateTableStatement extends
 					if (pek.isForeign()) {
 						PEForeignKey pefk = (PEForeignKey) pek;
 						if (pefk.isForward() && pefk.getTargetTableName(sc).equals(tabName)) {
-							for(PEKeyColumn pekc : pefk.getKeyColumns()) {
+							for(PEKeyColumnBase pekc : pefk.getKeyColumns()) {
 								PEForeignKeyColumn pefkc = (PEForeignKeyColumn)pekc;
 								PEColumn tc = newTab.lookup(sc, pefkc.getTargetColumnName());
 								if (tc != null) {
@@ -314,6 +315,9 @@ public class PECreateTableStatement extends
 					}
 					
 				});
+		
+		maybeDeclareDatabase(pc,es);
+
 		if (immediate) {
 			oneStepPlan(pc,es);
 		} else {
@@ -322,7 +326,6 @@ public class PECreateTableStatement extends
 	}
 	
 	protected void manyStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {
-		maybeDeclareDatabase(pc,es);
 		List<TableCacheKey> modded = new ArrayList<TableCacheKey>();
 		PETable tab = getTable();
 		// we always do the drops beforehand
@@ -340,7 +343,6 @@ public class PECreateTableStatement extends
 	}
 	
 	protected void oneStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {
-		maybeDeclareDatabase(pc,es);
 		// so - we need to go back and finalize the normalization
 		PETable tab = getTable();
 		boolean mustRebuildCTS = false;

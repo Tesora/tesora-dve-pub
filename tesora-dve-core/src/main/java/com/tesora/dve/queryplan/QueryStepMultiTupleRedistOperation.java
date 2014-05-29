@@ -101,6 +101,13 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 	private boolean insertIgnore = false;
 	
 	private TempTableGenerator tempTableGenerator = TempTableGenerator.DEFAULT_GENERATOR;
+	// well, this is a bit of a hack - for the case where the target group is not the same as the source group
+	// if there is alread a worker group allocated - use this one, not the one we would get
+	private WorkerGroup preallocatedTargetWorkerGroup;
+	
+	public void setPreallocatedTargetWorkerGroup(WorkerGroup wg) {
+		preallocatedTargetWorkerGroup = wg;
+	}
 	
 	public QueryStepMultiTupleRedistOperation(PersistentDatabase execCtxDB, SQLCommand command, DistributionModel sourceDistModel) {
 		super(execCtxDB);
@@ -201,7 +208,10 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		// determine the source and dest worker groups
 		if (!targetGroup.equals(wg.getGroup())) {
 			sourceWG = wg;
-			allocatedWG = ssCon.getWorkerGroup(targetGroup,getContextDatabase());
+			if (preallocatedTargetWorkerGroup != null && preallocatedTargetWorkerGroup.getGroup().equals(targetGroup))
+				allocatedWG = preallocatedTargetWorkerGroup;
+			else
+				allocatedWG = ssCon.getWorkerGroup(targetGroup,getContextDatabase());
 			if (logger.isDebugEnabled())
 				logger.debug("Redist allocates for different storage group: " + allocatedWG);
 			targetWG = allocatedWG;
@@ -213,7 +223,6 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 					tableHints, tempHints, insertOptions, allocatedWG, /* cleanupWG */ null,
 					tempTableGenerator);
 		} else if (ssCon.hasActiveTransaction() && wg.isModified() && targetTable != null) {
-			
 			// Here we want to redistribute from a persistent group back into itself, within the context
 			// of a transaction.  However, we must both read within the context of the transaction, and
 			// write within the context of a transaction, but we can't both read and write on the same

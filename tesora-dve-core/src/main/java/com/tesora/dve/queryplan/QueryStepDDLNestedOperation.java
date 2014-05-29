@@ -62,5 +62,5 @@ public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
 		public void prepareNested(SSConnection conn, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException;
 		
 	}
-	
+
 }

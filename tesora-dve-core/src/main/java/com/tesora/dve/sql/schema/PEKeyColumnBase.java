@@ -84,6 +84,20 @@ public abstract class PEKeyColumnBase extends Persistable<PEKeyColumn, KeyColumn
 		return "KeyColumn";
 	}
 
-	public abstract boolean isForwardKeyColumn();
+	public void setKey(PEKey k) {
+		ofKey = k;
+	}
+	
+	public abstract UnqualifiedName getName();
+	
+	public abstract PEColumn getColumn();
+	
+	public abstract Integer getIndexSize();
+	
+	public abstract PEKeyColumnBase copy(SchemaContext sc, PETable containingTable);
+
+	public abstract boolean isUnresolved();
+
+	public abstract PEKeyColumnBase resolve(PEColumn actual);
 	
 }
