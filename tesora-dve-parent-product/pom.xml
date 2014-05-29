@@ -31,7 +31,7 @@
 				<filtering>true</filtering>
 			</resource>
 			<resource>
-				<directory>${project.build.directory}/shared-resources</directory>
+				<directory>../tesora-dve-shared-resources/src/main/resources</directory>
 				<filtering>true</filtering>
 				<includes>
 					<include>COPYRIGHT.txt</include>
@@ -45,27 +45,6 @@
 				<filtering>true</filtering>
 			</testResource>
 		</testResources>
-
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-remote-resources-plugin</artifactId>
-				<executions>
-					<execution>
-						<goals>
-							<goal>process</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<resourceBundles>
-						<resourceBundle>com.tesora:tesora-dve-shared-resources:${project.version}</resourceBundle>
-					</resourceBundles>
-					<attached>false</attached>
-					<outputDirectory>${project.build.directory}/shared-resources</outputDirectory>
-				</configuration>
-			</plugin>
-		</plugins>
 	</build>
 
 	<dependencyManagement>
