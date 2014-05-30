@@ -46,7 +46,7 @@ If you have questions post them to the [Developer Forum](https://groups.google.c
 Talk to us on our IRC channel `#Tesora-DVE` (freenode).
 
 ### Links
-Find out more about [Tesora](www.tesora.com).
+Find out more about [Tesora](https://www.tesora.com).
 
 Follow us [@tesoracorp](https://twitter.com/tesoracorp).
 
