@@ -32,7 +32,7 @@ while only provisioning, consuming and paying for the capacity that you need at 
 	            </activation>
 	            <properties>
 	                <jdbc.mysql.user>root</jdbc.mysql.user>
-	                <jdbc.mysql.password>ZYFvbxfjlE/gPQlL2yLtXA==passwor</jdbc.mysql.password>
+	                <jdbc.mysql.password>ZYFvbxfjlE/gPQlL2yLtXA==</jdbc.mysql.password>
 	                <log4j.logger.com.parelastic>WARN</log4j.logger.com.parelastic>
 	            </properties>
 	       </profile>

@@ -73,16 +73,6 @@
 			    <arguments>
 			      <argument>${passwordToEncrypt}</argument>
 			    </arguments>
-
-<!--
-                            <executable>java</executable>
-			    <arguments>
-			      <argument>-classpath</argument>
-			      <classpath />
-			      <argument>com.tesora.dve.common.PECryptoUtils</argument>
-			      <argument>${passwordToEncrypt}</argument>
-			    </arguments>
--->
 			  </configuration>
 			</plugin>
 
