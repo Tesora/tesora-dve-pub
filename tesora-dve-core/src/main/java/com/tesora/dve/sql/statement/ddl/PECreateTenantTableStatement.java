@@ -37,6 +37,7 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumn;
+import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaVariables;
@@ -52,6 +53,7 @@ import com.tesora.dve.sql.schema.mt.AdaptiveMTDDLPlannerUtils.CompositeNestedOpe
 import com.tesora.dve.sql.schema.mt.PETenant.TenantCacheKey;
 import com.tesora.dve.sql.schema.validate.ForeignKeyValidateResult;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -115,7 +117,7 @@ public class PECreateTenantTableStatement extends PECreateTableStatement {
 	}
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es)
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config)
 			throws PEException {
 		PETable tab = getTable();
 		// this is probably completely unecessary if the table is well formed and already exists
@@ -149,7 +151,7 @@ public class PECreateTenantTableStatement extends PECreateTableStatement {
 				PEForeignKey pefk = (PEForeignKey) pek;
 				if (!pefk.isForward()) continue;
 				if (pefk.getTargetTableName(sc).equals(logicalName)) {
-					for(PEKeyColumn pekc : pefk.getKeyColumns()) {
+					for(PEKeyColumnBase pekc : pefk.getKeyColumns()) {
 						PEForeignKeyColumn pefkc = (PEForeignKeyColumn)pekc;
 						PEColumn tc = target.lookup(sc, pefkc.getTargetColumnName());
 						if (tc == null && required) {
@@ -200,7 +202,7 @@ public class PECreateTenantTableStatement extends PECreateTableStatement {
 					PEForeignKey pefk = (PEForeignKey) pek;
 					if (!pefk.isForward()) continue;
 					if (pefk.getTargetTableName(sc).equals(logicalName)) {
-						for(PEKeyColumn pekc : pefk.getKeyColumns()) {
+						for(PEKeyColumnBase pekc : pefk.getKeyColumns()) {
 							PEForeignKeyColumn pefkc = (PEForeignKeyColumn)pekc;
 							PEColumn tc = newTab.lookup(sc, pefkc.getTargetColumnName());
 							if (tc == null && required) {

@@ -41,6 +41,7 @@ import com.tesora.dve.common.catalog.Key;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.expression.ScopeStack;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.jg.DunPart;
 import com.tesora.dve.sql.jg.JoinEdge;
@@ -65,7 +66,7 @@ public class PEForeignKey extends PEKey {
 	private UnqualifiedName physicalSymbol;
 	
 	@SuppressWarnings("unchecked")
-	public PEForeignKey(SchemaContext pc, Name n, PETable tab, Name missingTableName, List<PEKeyColumn> cols, 
+	public PEForeignKey(SchemaContext pc, Name n, PETable tab, Name missingTableName, List<PEKeyColumnBase> cols, 
 			ForeignKeyAction updateAction, ForeignKeyAction deleteAction) {
 		super(n, IndexType.BTREE, cols, null);
 		setConstraint(ConstraintType.FOREIGN);
@@ -132,7 +133,7 @@ public class PEForeignKey extends PEKey {
 	}
 	
 	private void revertToForwardInternal(SchemaContext sc) {
-		for(PEKeyColumn pekc : getKeyColumns()) {
+		for(PEKeyColumnBase pekc : getKeyColumns()) {
 			PEForeignKeyColumn pefkc = (PEForeignKeyColumn) pekc;
 			pefkc.revertToForward(sc);
 		}
@@ -166,7 +167,7 @@ public class PEForeignKey extends PEKey {
 	public List<PEColumn> getTargetColumns(SchemaContext sc) {
 		if (isForward()) return null;
 		List<PEColumn> out = new ArrayList<PEColumn>();
-		for(PEKeyColumn pekc : getKeyColumns()) {
+		for(PEKeyColumnBase pekc : getKeyColumns()) {
 			PEForeignKeyColumn pefkc = (PEForeignKeyColumn) pekc;
 			out.add(pefkc.getTargetColumn(sc));
 		}
@@ -199,12 +200,35 @@ public class PEForeignKey extends PEKey {
 	}
 	
 	public PEKey buildPrefixKey(SchemaContext sc, PETable inTable) {
-		List<PEKeyColumn> cols = new ArrayList<PEKeyColumn>();
-		for(PEKeyColumn c : getKeyColumns()) {
+		List<PEKeyColumnBase> cols = new ArrayList<PEKeyColumnBase>();
+		for(PEKeyColumnBase c : getKeyColumns()) {
 			cols.add(new PEKeyColumn(c.getColumn(),null,-1));
 		}
 		return new PEKey(null,IndexType.BTREE,cols,null,true);
 	}
+
+	@Override
+	public PEKey resolve(SchemaContext pc, ScopeStack stack) {
+		List<PEKeyColumnBase> resolved = new ArrayList<PEKeyColumnBase>();
+		boolean any = false;
+		for(PEKeyColumnBase pekcb : getKeyColumns()) {
+			if (pekcb.isUnresolved()) {
+				PEColumn found = stack.lookupInProcessColumn(pekcb.getName());
+				if (found == null)
+					throw new SchemaException(Pass.SECOND, "Cannot resolve column " + pekcb.getName());
+				resolved.add(pekcb.resolve(found));
+				any = true;
+			} else {
+				resolved.add(pekcb);
+			}
+		}
+		if (!any)
+			return this;
+		return new PEForeignKey(pc, getName(),
+				(targetTable == null ? null : targetTable.get(pc)),
+				targetTableName, resolved, updateAction, deleteAction);
+	}
+
 	
 	public static PEForeignKey load(Key k, SchemaContext sc, PETable enclosingTable) {
 		PEForeignKey p = (PEForeignKey) sc.getLoaded(k,null);
@@ -270,7 +294,7 @@ public class PEForeignKey extends PEKey {
 		PETable rightTab = getTargetTable(sc);
 		if (rightTab == null) return false;
 		Map<PEColumn,PEColumn> mapping = new HashMap<PEColumn,PEColumn>();
-		for(PEKeyColumn pekc : getKeyColumns()) {
+		for(PEKeyColumnBase pekc : getKeyColumns()) {
 			PEForeignKeyColumn pefkc = (PEForeignKeyColumn) pekc;
 			mapping.put(pefkc.getColumn(), pefkc.getTargetColumn(sc));
 		}
@@ -334,8 +358,8 @@ public class PEForeignKey extends PEKey {
 
 	@Override
 	public PEKey copy(SchemaContext sc, PETable containingTable) {
-		List<PEKeyColumn> contained = new ArrayList<PEKeyColumn>();
-		for(PEKeyColumn p : getKeyColumns()) {
+		List<PEKeyColumnBase> contained = new ArrayList<PEKeyColumnBase>();
+		for(PEKeyColumnBase p : getKeyColumns()) {
 			contained.add(p.copy(sc, containingTable));
 		}
 		PETable targetTab = (targetTable != null ? targetTable.get(sc) : null);

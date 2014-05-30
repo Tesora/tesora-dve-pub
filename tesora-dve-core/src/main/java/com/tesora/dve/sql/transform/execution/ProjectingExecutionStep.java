@@ -45,6 +45,7 @@ import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSelectByKeyOperation;
 import com.tesora.dve.queryplan.TableHints;
 import com.tesora.dve.queryplan.TempTableDeclHints;
+import com.tesora.dve.queryplan.TempTableGenerator;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -182,7 +183,8 @@ public final class ProjectingExecutionStep extends DirectExecutionStep {
 	
 	public static ProjectingExecutionStep build(SchemaContext sc, Database<?> db, PEStorageGroup srcGroup, DistributionVector sourceDV,
 			ProjectingStatement sql, PEStorageGroup targetGroup, PETable redistToTable,
-			TableScope redistToScopedTable, DistributionKeyTemplate dv,
+			TableScope redistToScopedTable,
+			DistributionKeyTemplate dv,
 			PEColumn missingAutoInc,
 			Integer offsetToExistingAutoInc,
 			List<ExpressionNode> onDupKey,
@@ -331,26 +333,25 @@ public final class ProjectingExecutionStep extends DirectExecutionStep {
 		if (targetTable != null) {
 			QueryStepMultiTupleRedistOperation qsrdo = null;
 			
-			if (targetTable.isTempTable()) {
-				TempTable tt = (TempTable) targetTable;
+			if (targetTable.mustBeCreated()) {
 				qsrdo = new QueryStepMultiTupleRedistOperation(getPersistentDatabase(), getCommand(sc),	getDistributionModel(sc));
-				if (tt.isExplicitlyDeclared()) {
+				if (targetTable.isExplicitlyDeclared()) {
 					// need to create a new context to avoid leaking
 					SchemaContext mutableContext = SchemaContext.makeMutableIndependentContext(sc);
 					mutableContext.setValues(sc._getValues());
 					mutableContext.beginSaveContext();
 					try {
-						UserTable ut = tt.getPersistent(mutableContext);
+						UserTable ut = targetTable.getPersistent(mutableContext);
 						qsrdo.toUserTable(targetGroup.getPersistent(sc), ut, declarationHints, true);
 					} finally {
 						mutableContext.endSaveContext();
 					}
 				} else {
-					qsrdo.toTempTable(targetGroup.getPersistent(sc), getPersistentDatabase(), tt.getName(sc).get(), true);
+					qsrdo.toTempTable(targetGroup.getPersistent(sc), getPersistentDatabase(), targetTable.getName(sc).get(), true);
 				}
 				if (distKey.usesColumns(sc)) {
 					if (Model.RANGE.equals(distKey.getModel(sc)))
-						qsrdo.distributeOn(distKey.getColumnNames(), distKey.getTable().getPersistent(sc));
+						qsrdo.distributeOn(distKey.getColumnNames(), distKey.getTable().asTable().getPersistentTable(sc));
 					else
 						qsrdo.distributeOn(distKey.getColumnNames());
 				}
@@ -374,7 +375,7 @@ public final class ProjectingExecutionStep extends DirectExecutionStep {
 					}
 						
 					qsrdo = new QueryStepMultiTupleRedistOperation(getPersistentDatabase(), getCommand(sc), getDistributionModel(sc))
-							.toUserTable(targetTable.getPersistentStorage(sc).getPersistent(sc), targetTable.getPersistentTable(), hints, true);
+							.toUserTable(targetTable.getPersistentStorage(sc).getPersistent(sc), targetTable.getPersistentTable(sc), hints, true);
 				} finally {
 					sc.endSaveContext();
 				}
@@ -386,6 +387,9 @@ public final class ProjectingExecutionStep extends DirectExecutionStep {
 				qsrdo.setSpecifiedDistKeyValue(dk.getDetachedKey(sc));
 			qsrdo.setEnforceScalarValue(enforceScalarValue);
 			qsrdo.setInsertIgnore(insertIgnore);
+			TempTableGenerator generator = targetTable.getTableGenerator(sc);
+			if (generator != null)
+				qsrdo.withTableGenerator(generator);
 			qso = qsrdo;
 		} else {
 			long inMem = getInMemLimit(sc);

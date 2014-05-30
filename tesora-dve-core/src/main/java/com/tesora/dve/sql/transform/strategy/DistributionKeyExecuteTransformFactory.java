@@ -43,7 +43,7 @@ import com.tesora.dve.sql.transform.DistKeyCollector;
 import com.tesora.dve.sql.transform.TransformKey;
 import com.tesora.dve.sql.transform.TransformKey.TransformKeySeries;
 import com.tesora.dve.sql.transform.TransformKey.TransformKeySimple;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeatureStepBuilder;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder;
 import com.tesora.dve.sql.transform.constraints.PlanningConstraint;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;

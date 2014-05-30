@@ -79,6 +79,8 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 		this.explainHelp = splain;
 	}
 
+	// TODO:
+	// should consider applying multitenant as a post-plan transform
 	protected static void maybeApplyMultitenant(SchemaContext sc, DMLStatement dmls) throws PEException {
 		sc.getPolicyContext().applyDegenerateMultitenantFilter(dmls);
 	}

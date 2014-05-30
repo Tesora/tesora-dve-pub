@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.transform.behaviors;
+package com.tesora.dve.sql.transform.behaviors.defaults;
 
 /*
  * #%L
@@ -21,15 +21,21 @@ package com.tesora.dve.sql.transform.behaviors;
  * #L%
  */
 
-import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
+import com.tesora.dve.sql.statement.dml.DMLStatement;
+import com.tesora.dve.sql.transform.behaviors.FeaturePlanTransformerBehavior;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 
-public final class DefaultFeaturePlannerFilter implements FeaturePlannerFilter {
+// eventually this will do the wide result set transform
+public final class DefaultPostPlanningFeaturePlanTransformer implements
+		FeaturePlanTransformerBehavior {
 
-	public static final FeaturePlannerFilter INSTANCE = new DefaultFeaturePlannerFilter();
+	public static final FeaturePlanTransformerBehavior INSTANCE = new DefaultPostPlanningFeaturePlanTransformer();
 	
-	public boolean canApply(PlannerContext pc, FeaturePlannerIdentifier id) {
-		return !pc.getApplied().contains(id);
+	@Override
+	public FeatureStep transform(PlannerContext pc, DMLStatement stmt,
+			FeatureStep existingPlan) {
+		return existingPlan;
 	}
-	
+
 }

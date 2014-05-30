@@ -49,12 +49,14 @@ public abstract class ResourceResponse {
 	
 	public abstract long getNumRowsAffected();
 
-	public void assertEqualResults(String cntxt, boolean ignoreOrder, boolean ignoreMD, ResourceResponse other) throws Throwable {
-		if (!ignoreMD) assertEqualMetadata(cntxt, other);
+	public void assertEqualResults(String cntxt, ResourceResponse other, ComparisonOptions opts) throws Throwable {
+		if (!opts.isIgnoreMD()) assertEqualMetadata(cntxt,other);
 		List<ResultRow> myResults = getResults();
 		List<ResultRow> yourResults = other.getResults();
 		List<ColumnChecker> colchecks = getColumnCheckers();
-		if (ignoreOrder)
+		if (opts.getCheckerMutator() != null) 
+			colchecks = opts.getCheckerMutator().evaluate(colchecks);
+		if (opts.isIgnoreOrder())
 			assertResultsEqualUnordered(cntxt, myResults, yourResults, colchecks);
 		else
 			assertResultsEqual(cntxt, myResults, yourResults, colchecks);

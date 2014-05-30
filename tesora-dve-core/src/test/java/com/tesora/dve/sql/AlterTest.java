@@ -609,7 +609,7 @@ public class AlterTest extends SchemaTest {
 		conn.execute("DROP DATABASE IF EXISTS " + template3.getName());
 		try {
 			conn.execute("CREATE DATABASE " + template3.getName() + " DEFAULT PERSISTENT GROUP " + groupName);
-			assertTemplate(template3.getName(), template3.toTemplate(), TemplateMode.getCurrentDefault(), Collections.EMPTY_SET);
+			assertTemplate(template3.getName(), template3.toTemplate(), TemplateMode.getCurrentDefault(), Collections.<String> emptySet());
 		} finally {
 			dropOnCleanup(conn, template3.getName());
 		}
@@ -642,7 +642,7 @@ public class AlterTest extends SchemaTest {
 			conn.execute("DROP DATABASE IF EXISTS " + nonExistingTemplateName);
 			try {
 				conn.execute("CREATE DATABASE " + nonExistingTemplateName + " DEFAULT PERSISTENT GROUP " + groupName);
-				assertTemplate(nonExistingTemplateName, null, TemplateMode.OPTIONAL, Collections.EMPTY_SET);
+				assertTemplate(nonExistingTemplateName, null, TemplateMode.OPTIONAL, Collections.<String> emptySet());
 			} finally {
 				dropOnCleanup(conn, nonExistingTemplateName);
 			}
@@ -685,11 +685,11 @@ public class AlterTest extends SchemaTest {
 			conn.execute("CREATE TABLE t1 (id INT NOT NULL, data TEXT)");
 			conn.execute("CREATE TABLE t2 (id INT NOT NULL, data TEXT)");
 			conn.execute("CREATE TABLE t3 (id INT NOT NULL, data TEXT)");
-			assertTemplate(dbName, template1.toTemplate(), TemplateMode.getCurrentDefault(), Collections.EMPTY_SET);
+			assertTemplate(dbName, template1.toTemplate(), TemplateMode.getCurrentDefault(), Collections.<String> emptySet());
 
 			// OK, we are in a non-STRICT mode, make it Random.
 			conn.execute("CREATE TABLE t4 (id INT NOT NULL, data TEXT)");
-			assertTableDistributionModel(dbName, "t4", ModelType.RANDOM, Collections.EMPTY_LIST);
+			assertTableDistributionModel(dbName, "t4", ModelType.RANDOM, Collections.<String> emptyList());
 
 			conn.execute("ALTER DATABASE " + dbName + " USING TEMPLATE " + template2.getName() + " STRICT");
 			assertTemplate(dbName, template2.toTemplate(), TemplateMode.STRICT, Collections.singleton("non_existing_table"));
@@ -704,19 +704,19 @@ public class AlterTest extends SchemaTest {
 
 			// Template mode changes, table distributions don't.
 			conn.execute("ALTER DATABASE " + dbName + " USING TEMPLATE OPTIONAL");
-			assertTemplate(dbName, null, TemplateMode.OPTIONAL, Collections.EMPTY_SET);
+			assertTemplate(dbName, null, TemplateMode.OPTIONAL, Collections.<String> emptySet());
 			assertDatabaseDistribution(dbName, template2.toTemplate(), Collections.singleton("non_existing_table"));
-			assertTableDistributionModel(dbName, "t4", ModelType.RANDOM, Collections.EMPTY_LIST);
+			assertTableDistributionModel(dbName, "t4", ModelType.RANDOM, Collections.<String> emptyList());
 
 			// OK, we are in a non-STRICT mode, make it Random.
 			conn.execute("CREATE TABLE t5 (id INT NOT NULL, data TEXT)");
-			assertTableDistributionModel(dbName, "t5", ModelType.RANDOM, Collections.EMPTY_LIST);
+			assertTableDistributionModel(dbName, "t5", ModelType.RANDOM, Collections.<String> emptyList());
 
 			// OK, ALTER distribution of the two added tables. The other tables
 			// should keep their distribution models from template #2.
 			// No mode => use default.
 			conn.execute("ALTER DATABASE " + dbName + " USING TEMPLATE " + template4.getName());
-			assertTemplate(dbName, template4.toTemplate(), TemplateMode.getCurrentDefault(), Collections.EMPTY_SET);
+			assertTemplate(dbName, template4.toTemplate(), TemplateMode.getCurrentDefault(), Collections.<String> emptySet());
 			assertDatabaseDistribution(dbName, template2.toTemplate(), Collections.singleton("non_existing_table"));
 
 			final TemplateBuilder template5 = new TemplateBuilder("pe855temp5", dbName);
@@ -729,7 +729,7 @@ public class AlterTest extends SchemaTest {
 
 			// OK, the template should get matched.
 			conn.execute("ALTER DATABASE " + dbName + " USING TEMPLATE OPTIONAL");
-			assertTemplate(dbName, template5.toTemplate(), TemplateMode.OPTIONAL, Collections.EMPTY_SET);
+			assertTemplate(dbName, template5.toTemplate(), TemplateMode.OPTIONAL, Collections.<String> emptySet());
 
 			// Fail - such template does not exist.
 			// No mode => use default.

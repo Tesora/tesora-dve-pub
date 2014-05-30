@@ -63,7 +63,7 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 	}
 		
 	// allow derived classes to step in
-	protected void prepareAction(CatalogDAO c) throws PEException {
+	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		// does nothing
 	}
 	
@@ -128,7 +128,7 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 				List<CatalogEntity> entitiesToNotifyOfUpdate = new ArrayList<CatalogEntity>();
 				List<CatalogEntity> entitiesToNotifyOfDrop = new ArrayList<CatalogEntity>();
 
-				prepareAction(c);
+				prepareAction(ssCon,c, wg, resultConsumer);
 
 				// do the changes to the catalog first because we may be able to  
 				// restore the data if the ddl operation fails on the actual database

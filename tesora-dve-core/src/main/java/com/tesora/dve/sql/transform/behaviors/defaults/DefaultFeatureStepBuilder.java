@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.transform.behaviors;
+package com.tesora.dve.sql.transform.behaviors.defaults;
 
 /*
  * #%L
@@ -21,6 +21,7 @@ package com.tesora.dve.sql.transform.behaviors;
  * #L%
  */
 
+
 import java.util.List;
 
 import com.tesora.dve.sql.ParserException.Pass;
@@ -41,6 +42,7 @@ import com.tesora.dve.sql.statement.dml.InsertIntoSelectStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
 import com.tesora.dve.sql.transform.ColumnInstanceCollector;
+import com.tesora.dve.sql.transform.behaviors.FeatureStepBuilder;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.strategy.ExecutionCost;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;

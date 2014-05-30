@@ -33,5 +33,6 @@ public interface PersistentColumn {
 	
 	public int getHashPosition();
 	
-	
+	@Override
+	public boolean equals(Object o);
 }

@@ -44,6 +44,7 @@ import com.tesora.dve.sql.statement.ddl.alter.ChangeTableDistributionAction;
 import com.tesora.dve.sql.template.TemplateManager;
 import com.tesora.dve.sql.template.jaxb.ModelType;
 import com.tesora.dve.sql.template.jaxb.TableTemplateType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.util.Pair;
@@ -83,7 +84,7 @@ public class AlterDatabaseTemplateStatement extends PEAlterStatement<PEDatabase>
 	}
 
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		final ExecutionStep alterDatabaseTemplate = buildStep(sc);
 		es.append(alterDatabaseTemplate);
 
@@ -91,7 +92,7 @@ public class AlterDatabaseTemplateStatement extends PEAlterStatement<PEDatabase>
 		if (this.templateName != null) {
 			final Set<PEAlterStatement<PETable>> alterTableStatements = buildAlterTableDistributionStmts(sc);
 			for (final PEAlterStatement<PETable> stmt : alterTableStatements) {
-				stmt.plan(sc, es);
+				stmt.plan(sc, es, config);
 			}
 		}
 	}

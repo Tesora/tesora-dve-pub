@@ -47,8 +47,8 @@ public class QueryStepExternalServiceOperation extends QueryStepDDLOperation {
 	}
 
 	@Override
-	protected void prepareAction(CatalogDAO c) throws PEException {
-		super.prepareAction(c);
+	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+		super.prepareAction(ssCon,c,wg,resultConsumer);
 		
 		switch(action) {
 		case DROP:

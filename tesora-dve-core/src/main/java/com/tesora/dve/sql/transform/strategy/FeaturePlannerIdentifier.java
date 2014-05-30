@@ -51,5 +51,6 @@ public enum FeaturePlannerIdentifier {
 	NULL_LITERAL,
 	JOIN_SIMPLIFICATION,
 	VIEW,
-	TRUNCATE_MT_TABLE;
+	TRUNCATE_MT_TABLE,
+	ADHOC;
 }

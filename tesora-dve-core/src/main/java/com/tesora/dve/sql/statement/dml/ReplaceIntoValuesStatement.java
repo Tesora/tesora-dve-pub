@@ -32,11 +32,8 @@ import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.Table;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
-import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.ReplaceIntoTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SessionRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
 
 public class ReplaceIntoValuesStatement extends InsertIntoValuesStatement {
 
@@ -51,7 +48,7 @@ public class ReplaceIntoValuesStatement extends InsertIntoValuesStatement {
 	}
 	
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence ges) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence ges, BehaviorConfiguration config) throws PEException {
 		Table<?> table = getPrimaryTable().getTable();
 		if (table.isInfoSchema()) 
 			throw new PEException("Cannot insert into info schema table " + intoTable.get().getTable().getName());
@@ -64,16 +61,7 @@ public class ReplaceIntoValuesStatement extends InsertIntoValuesStatement {
 		else if (pet.getUniqueKeys(pc).isEmpty())
 			planInternal(pc,ges);
 		else
-			DMLStatement.planViaTransforms(pc,this, ges);
-	}
-
-	@Override
-	public TransformFactory[] getTransformers() {
-		return new TransformFactory[] {
-			new InformationSchemaRewriteTransformFactory(),
-				new SessionRewriteTransformFactory(),
-			new ReplaceIntoTransformFactory()
-		};
+			DMLStatement.planViaTransforms(pc,this, ges, config);
 	}
 
 	// we need access of this for efficiency purposes

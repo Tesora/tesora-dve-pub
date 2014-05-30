@@ -299,7 +299,7 @@ public class InvokeParser {
 		if (pr.getStatements().size() > 1)
 			throw new PEException("Cannot prepare more than one statement at a time");
 		Statement toPrepare = pr.getStatements().get(0);
-		return Statement.prepare(pc, toPrepare, pstmtID, input.getCommand());
+		return Statement.prepare(pc, toPrepare, pc.getBehaviorConfiguration(), pstmtID, input.getCommand());
 	}
 	
 	public static PlanningResult buildPlan(SchemaContext pc, InputState input, ParserOptions options, PlanCacheCallback ipcb) throws PEException {
@@ -327,7 +327,7 @@ public class InvokeParser {
 					explain = true;
 					plans.add(buildExplainPlan(pc,s,input.getCommand()));
 				} else {
-					plans.add(Statement.getExecutionPlan(pc,s,input.getCommand()));
+					plans.add(Statement.getExecutionPlan(pc,s,pc.getBehaviorConfiguration(),input.getCommand()));
 				}
 			}
 			if (pcb != null && input.getCommand() != null && !explain)
@@ -367,7 +367,7 @@ public class InvokeParser {
 			}
 		}
 		// if we're still here - we have to build the old fashioned way
-		return Statement.getExecutionPlan(sc,s,origSQL);
+		return Statement.getExecutionPlan(sc,s,sc.getBehaviorConfiguration(),origSQL);
 	}
 	
 	// continuation version
@@ -404,7 +404,7 @@ public class InvokeParser {
 			List<Statement> stmts = pr.getStatements();
 			List<ExecutionPlan> plans = new ArrayList<ExecutionPlan>();
 			for (Statement s : stmts) {
-				plans.add(Statement.getExecutionPlan(pc,s,lineStr));
+				plans.add(Statement.getExecutionPlan(pc,s,pc.getBehaviorConfiguration(),lineStr));
 			}
 			result = new PlanningResult(plans, pr.getInputState(),lineStr);
 		} else {

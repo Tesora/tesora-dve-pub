@@ -36,6 +36,7 @@ import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
@@ -65,7 +66,7 @@ public class PECreateUserStatement extends
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		if (alreadyExists) return;
 		PEStorageGroup sg = buildAllSitesGroup(pc);
 		getCatalogObjects(pc);

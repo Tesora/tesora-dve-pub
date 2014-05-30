@@ -36,7 +36,7 @@ import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.TempTableCreateOptions;
 import com.tesora.dve.sql.statement.dml.DMLStatementUtils;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeatureStepBuilder;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.strategy.ExecutionCost;

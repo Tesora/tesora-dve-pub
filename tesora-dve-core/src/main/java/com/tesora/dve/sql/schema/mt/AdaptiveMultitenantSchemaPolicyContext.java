@@ -80,6 +80,7 @@ import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.ddl.PEAlterTableStatement;
 import com.tesora.dve.sql.statement.ddl.PEAlterTenantTableStatement;
+import com.tesora.dve.sql.statement.ddl.PECreateTableAsSelectStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTenantTableStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropTableStatement;
@@ -653,6 +654,8 @@ public class AdaptiveMultitenantSchemaPolicyContext extends SchemaPolicyContext 
 	@Override
 	public Statement modifyCreateTable(PECreateTableStatement stmt) {
 		checkAllowedLandlord("create a table");
+		if (stmt instanceof PECreateTableAsSelectStatement)
+			throw new SchemaException(Pass.PLANNER, "Currently unsupported in mt mode - create table as select");
 		PETable newTable = (PETable) stmt.getRoot();
 		PETenant currentTenant = getCurrentTenant(true);
 		PETable existingTable = currentTenant.lookup(getSchemaContext(),newTable.getName(), new LockInfo(LockType.EXCLUSIVE, "create table"));

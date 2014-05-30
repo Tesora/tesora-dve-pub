@@ -24,6 +24,7 @@ package com.tesora.dve.sql.statement;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 
@@ -49,7 +50,7 @@ public class EmptyStatement extends Statement {
 	}
 
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		es.append(new EmptyExecutionStep(0,text));
 	}
 

@@ -31,6 +31,7 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExternalServiceExecutionStep;
@@ -52,7 +53,7 @@ public class PEDropExternalServiceStatement extends
 	}
 
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		// drop the storage database if necessary
 		ExternalService externalService = (ExternalService) pc.getBacking(getTarget());
 		if (externalService.usesDataStore()) {
@@ -66,10 +67,10 @@ public class PEDropExternalServiceStatement extends
 			Statement dropDbStatement = pc.getPolicyContext()
 					.buildDropDatabaseStatement(dataStoreName, isIfExists(),
 							isMT, tag);
-			dropDbStatement.plan(pc,es);
+			dropDbStatement.plan(pc,es, config);
 		}
 
 		// add drop of external service
-		super.plan(pc,es);
+		super.plan(pc,es, config);
 	}
 }

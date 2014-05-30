@@ -36,6 +36,7 @@ import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.template.TemplateManager;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
@@ -51,7 +52,7 @@ public class PECreateDatabaseStatement extends PECreateStatement<PEDatabase, Use
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		if (alreadyExists) {
 			es.append(new EmptyExecutionStep(0,"already exists - " + getSQL(pc)));
 		} else {
@@ -59,7 +60,7 @@ public class PECreateDatabaseStatement extends PECreateStatement<PEDatabase, Use
 			if (peds.getTemplateName() != null) {
 				List<Statement> prereqs = TemplateManager.adaptPrereqs(pc,peds);
 				for(Statement s : prereqs) {
-					s.plan(pc,es);
+					s.plan(pc,es, config);
 				}
 			}
 			es.append(buildStep(pc));

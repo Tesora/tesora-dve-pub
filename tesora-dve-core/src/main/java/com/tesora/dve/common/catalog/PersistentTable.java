@@ -22,6 +22,7 @@ package com.tesora.dve.common.catalog;
  */
 
 import com.tesora.dve.distribution.KeyValue;
+import com.tesora.dve.exceptions.PEException;
 
 public interface PersistentTable {
 
@@ -35,11 +36,13 @@ public interface PersistentTable {
 
 	public int getNumberOfColumns();
 	
-	public KeyValue getDistValue();
+	public KeyValue getDistValue(CatalogDAO c) throws PEException;
 
 	public StorageGroup getPersistentGroup();
 	
 	public DistributionModel getDistributionModel();
+
+	public Integer getRangeID(CatalogDAO c) throws PEException;
 	
 	public int getId();
 	

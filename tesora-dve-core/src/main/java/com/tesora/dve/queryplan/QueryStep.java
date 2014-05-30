@@ -255,4 +255,8 @@ public class QueryStep {
 	boolean hasDependents() {
 		return dependencySteps.isEmpty() == false;
 	}
+	
+	public StorageGroup getSourceGroup() {
+		return storageGroup;
+	}
 }

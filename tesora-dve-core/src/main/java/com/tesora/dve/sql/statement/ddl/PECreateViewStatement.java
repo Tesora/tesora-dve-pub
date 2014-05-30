@@ -502,6 +502,14 @@ public class PECreateViewStatement extends
 			// TODO Auto-generated method stub
 			
 		}
+
+		@Override
+		public void prepareNested(SSConnection conn, CatalogDAO c,
+				WorkerGroup wg, DBResultConsumer resultConsumer)
+				throws PEException {
+			// TODO Auto-generated method stub
+			
+		}
 		
 	}
 	

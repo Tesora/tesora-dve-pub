@@ -34,7 +34,7 @@ public class RedistributionFlags {
 	private Boolean useRowCount = false;
 	private boolean mustEnforceScalarValue = false;
 	private boolean insertIgnore = false;
-
+	
 	public RedistributionFlags() {
 	}
 

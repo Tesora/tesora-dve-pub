@@ -89,28 +89,12 @@ import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
-import com.tesora.dve.sql.transform.strategy.DegenerateExecuteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.DistributionKeyExecuteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.GroupByRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.HavingRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.NullLiteralColumnTransformFactory;
-import com.tesora.dve.sql.transform.strategy.OrderByLimitRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SessionRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SingleSiteStorageGroupTransformFactory;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
-import com.tesora.dve.sql.transform.strategy.ViewRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.aggregation.GenericAggRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.correlated.ProjectionCorrelatedSubqueryTransformFactory;
-import com.tesora.dve.sql.transform.strategy.correlated.WhereClauseCorrelatedSubqueryTransformFactory;
-import com.tesora.dve.sql.transform.strategy.join.JoinRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.joinsimplification.JoinSimplificationTransformFactory;
-import com.tesora.dve.sql.transform.strategy.nested.NestedQueryRewriteTransformFactory;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.ListSetMap;
 
@@ -547,28 +531,6 @@ public class SelectStatement extends ProjectingStatement {
 	}
 
 	@Override
-	public TransformFactory[] getTransformers() {
-		return new TransformFactory[] {
-				new InformationSchemaRewriteTransformFactory(),
-				new SessionRewriteTransformFactory(),
-				new ViewRewriteTransformFactory(),
-				new SingleSiteStorageGroupTransformFactory(),
-				new NullLiteralColumnTransformFactory(),
-				new OrderByLimitRewriteTransformFactory(),
-				new ProjectionCorrelatedSubqueryTransformFactory(),
-				new NestedQueryRewriteTransformFactory(),
-				new HavingRewriteTransformFactory(),
-				new GenericAggRewriteTransformFactory(),
-				new GroupByRewriteTransformFactory(),
-				new WhereClauseCorrelatedSubqueryTransformFactory(),
-				new JoinSimplificationTransformFactory(),
-				new JoinRewriteTransformFactory(),
-				new DistributionKeyExecuteTransformFactory(),
-				new DegenerateExecuteTransformFactory()
-		};				
-	}
-	
-	@Override
 	public DistKeyOpType getKeyOpType() {
 		return isLocking() ? DistKeyOpType.SELECT_FOR_UPDATE : DistKeyOpType.QUERY;
 	}
@@ -693,7 +655,7 @@ public class SelectStatement extends ProjectingStatement {
 	}
 
 	@Override
-	protected ExecutionPlan buildExplain(SchemaContext sc) throws PEException {
+	protected ExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
 		boolean noplan = 
 				explain.hasSetting(ExplainOption.NOPLAN);		
 		if (noplan) {
@@ -705,7 +667,8 @@ public class SelectStatement extends ProjectingStatement {
 			expep.getSequence().append(ses);
 			return expep;
 		}
-		return super.buildExplain(sc);
+		// we would check for alternate configuration here, but not quite yet
+		return super.buildExplain(sc, config);
 	}
 
 	@Override

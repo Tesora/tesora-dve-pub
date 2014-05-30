@@ -27,6 +27,7 @@ import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
 
@@ -78,7 +79,7 @@ public class SessionStatement extends Statement {
 	}
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		if (isPassthrough()) {
 			es.append(new SessionExecutionStep(getDatabase(sc), getStorageGroup(sc), getSQL(sc)));
 		} else {

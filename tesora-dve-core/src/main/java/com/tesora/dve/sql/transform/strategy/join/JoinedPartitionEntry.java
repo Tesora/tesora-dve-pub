@@ -51,7 +51,7 @@ import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeatureStepBuilder;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.strategy.ExecutionCost;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;

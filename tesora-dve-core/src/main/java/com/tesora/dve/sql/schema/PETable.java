@@ -31,12 +31,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 
+import com.tesora.dve.queryplan.TempTableGenerator;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.codec.binary.Hex;
 
 import com.tesora.dve.common.PECharsetUtils;
 import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.Key;
@@ -93,9 +95,9 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	private boolean loaded;
 	
 	// cache object; used to avoid some catalog access issues in the engine
-	private final CachedPETable cached;
+	// also used for cta support
+	protected CachedPETable cached;
 	
-	@SuppressWarnings("unchecked")
 	public PETable(SchemaContext pc, Name name, 
 			List<TableComponent<?>> fieldsAndKeys, DistributionVector dv, List<TableModifier> modifier, 
 			PEPersistentGroup defStorage, PEDatabase db,
@@ -911,7 +913,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return PEConstants.DEFAULT_TABLE_TYPE;
 	}
 
-	public PersistentTable getPersistentTable() {
+	public PersistentTable getPersistentTable(SchemaContext sc) {
 		return cached;
 	}
 
@@ -921,6 +923,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		private final PersistentDatabase db;
 		private final StorageGroup pg;
 		private final PersistentContainer container;
+		private final Integer rangeID;
 
 		public CachedPETable(SchemaContext sc, PETable tab) {
 			this.table = tab;
@@ -930,6 +933,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 				this.pg = null;
 			else
 				this.pg = tab.getPersistentStorage(sc).getScheduledGroup(sc);
+			rangeID = tab.getDistributionVector(sc).getRangeID(sc);
 		}
 		
 		@Override
@@ -960,8 +964,8 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		}
 
 		@Override
-		public KeyValue getDistValue() {
-			KeyValue dv = new KeyValue(this);
+		public KeyValue getDistValue(CatalogDAO c) {
+			KeyValue dv = new KeyValue(this,rangeID);
 			TreeMap<Integer,PersistentColumn> sorted =new TreeMap<Integer,PersistentColumn>();
 			for(PEColumn pec : table.getColumns(null))
 				if (pec.getHashPosition() > 0)
@@ -1002,6 +1006,11 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		public PersistentColumn getUserColumn(String name) {
 			return table.lookup(null, name);
 		}
+
+		@Override
+		public Integer getRangeID(CatalogDAO c) throws PEException {
+			return rangeID;
+		}
 		
 	}
 	
@@ -1026,5 +1035,17 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 			if (pek.getCardinality() == -1) return false;
 		}
 		return true;
+	}
+	
+	public TempTableGenerator getTableGenerator(SchemaContext sc) {
+		return null;
+	}
+
+	public boolean isExplicitlyDeclared() {
+		return false;
+	}
+	
+	public boolean mustBeCreated() {
+		return false;
 	}
 }

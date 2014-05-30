@@ -23,6 +23,7 @@ package com.tesora.dve.sql.schema;
 
 import org.apache.commons.lang.ArrayUtils;
 
+import com.tesora.dve.common.catalog.PersistentColumn;
 import com.tesora.dve.db.ValueConverter;
 import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.distribution.IColumnDatum;
@@ -42,7 +43,8 @@ public class TColumnDatum implements IColumnDatum {
 		column = col;
 		this.value = value;
 	}
-	
+
+	/*
 	@Override
 	public String getColumnName() {
 		return column.getName().getUnquotedName().get();
@@ -52,6 +54,7 @@ public class TColumnDatum implements IColumnDatum {
 	public int getColumnId() {
 		return column.getPersistentID();
 	}
+	*/
 
 	@Override
 	public Object getValue() {
@@ -107,6 +110,11 @@ public class TColumnDatum implements IColumnDatum {
 	
 	@Override
 	public String toString() {
-		return getColumnId() + "/" + (value == null ? "null" : value.toString());
+		return column.getId() + "/" + (value == null ? "null" : value.toString());
+	}
+
+	@Override
+	public PersistentColumn getColumn() {
+		return column;
 	}
 }

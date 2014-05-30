@@ -295,16 +295,47 @@ sql_schema_query_statement returns [Statement s] options {k=1;}:
   | sql_schema_describe_statement { $s = $sql_schema_describe_statement.s; }
   ;
 
+// table <if not exists> name
+// [1] (fields & keys) <table_opts> select_statement
+// [2] | like name
+// [3] | (like name)
+// [4] | () <table_opts> select_statement
+// [5] | <table_opts> select statement
+
 table_definition returns [Statement s] options {k=1;}:
-  ((TABLE push_scope if_not_exists tn=qualified_identifier) Left_Paren?  
-   ( ( table_define_fields Right_Paren db_table_options? partition? (PERSISTENT GROUP sgn=unqualified_identifier)? (distribution_declaration | container_discriminator)? 
-       { $s = utils.buildCreateTable($tn.n, $table_define_fields.l, $distribution_declaration.dv, $sgn.n, $db_table_options.l, 
-                               $if_not_exists.b, $container_discriminator.p); utils.popScope(); })
-     | ( LIKE on=qualified_identifier Right_Paren?
-       { $s = utils.buildCreateTable($tn.n, $on.n, $if_not_exists.b); utils.popScope(); })
+  TABLE push_scope if_not_exists tn=qualified_identifier
+  (
+    // [2]
+    ( LIKE npon=qualified_identifier 
+      { $s = utils.buildCreateTable($tn.n, $npon.n, $if_not_exists.b); utils.popScope(); } )
+    |
+    // [5]
+    ( (cta_dto=db_table_options)? partition?
+      (PERSISTENT GROUP ctasgn=unqualified_identifier)?
+      ((ctadist=distribution_declaration) | (ctacont=container_discriminator))?
+      AS? (ctasel=select_statement)
+      { $s = utils.buildCreateTable($tn.n, Collections.EMPTY_LIST, $ctadist.dv, $ctasgn.n, $cta_dto.l,
+                                $if_not_exists.b, $ctacont.p, $ctasel.s); utils.popScope(); }
+     )
+     |
+     ( Left_Paren
+        (
+          // [3]
+          ( LIKE pon=qualified_identifier Right_Paren 
+            { $s = utils.buildCreateTable($tn.n, $pon.n, $if_not_exists.b); utils.popScope(); } )
+          |
+          // [1] & [4]
+          ( table_define_fields? Right_Paren (nt_dto=db_table_options)? partition? 
+            (PERSISTENT GROUP sgn=unqualified_identifier)?
+            ((ntdist=distribution_declaration) | (ntcont=container_discriminator))?
+            (AS? ntsel=select_statement)?
+            { $s = utils.buildCreateTable($tn.n, $table_define_fields.l, $ntdist.dv, $sgn.n, $nt_dto.l, 
+                                    $if_not_exists.b, $ntcont.p, $ntsel.s); utils.popScope(); }
+           )
+        )
+      )
    )
-  )
-  ;
+   ;
 
 container_discriminator returns [Pair p] options {k=1;}:
   DISCRIMINATE distribution_columns USING CONTAINER unqualified_identifier
@@ -601,7 +632,8 @@ key_list returns [List l] options {k=1;}:
   { $l = new ArrayList(); }
   Left_Paren lkps=key_part_spec { $l.add($lkps.c); }(Comma tkps=key_part_spec { $l.add($tkps.c); })* Right_Paren
   ;
-key_part_spec returns [PEKeyColumn c] options {k=1;}:  
+  
+key_part_spec returns [PEKeyColumnBase c] options {k=1;}:  
   unqualified_identifier (Left_Paren unsigned_integral_literal Right_Paren)? (ASC | DESC)? key_cardinality?
   { $c = utils.buildPEKeyColumn($unqualified_identifier.n, $unsigned_integral_literal.expr, $key_cardinality.expr); }
   ;
@@ -1012,7 +1044,7 @@ default_persistent_group options {k=1;}:
   DEFAULT PERSISTENT GROUP unqualified_identifier // -> ^(DEFAULT PERSISTENT GROUP identifier)
   ;
 
-distribution_declaration_target returns [DistributionVector dv] options {k=1;}:
+distribution_declaration_target returns [UnresolvedDistributionVector dv] options {k=1;}:
   BROADCAST DISTRIBUTE { $dv = utils.buildDistributionVector(DistributionVector.Model.BROADCAST,null,null); }
   | RANDOM DISTRIBUTE { $dv = utils.buildDistributionVector(DistributionVector.Model.RANDOM,null,null); }
   | STATIC DISTRIBUTE distribution_columns { $dv = utils.buildDistributionVector(DistributionVector.Model.STATIC, $distribution_columns.l, null); } 
@@ -1028,7 +1060,7 @@ container_distribution_declaration returns [Pair p] options {k=1;}:
   | RANGE DISTRIBUTE USING unqualified_identifier { $p = new Pair(DistributionVector.Model.RANGE,$unqualified_identifier.n); }
   ;
 
-distribution_declaration returns [DistributionVector dv] options {k=1;}:
+distribution_declaration returns [UnresolvedDistributionVector dv] options {k=1;}:
   distribution_declaration_target { $dv = $distribution_declaration_target.dv; }
   ;
 

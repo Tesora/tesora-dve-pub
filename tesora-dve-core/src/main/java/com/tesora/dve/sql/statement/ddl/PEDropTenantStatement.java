@@ -46,6 +46,7 @@ import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
@@ -73,13 +74,13 @@ public class PEDropTenantStatement extends
 	}
 
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		// for the target tenant, delete from all the tables that are visible
 		PETenant tenant = (PETenant) getTarget();
 		ArrayList<TableScope> scopes = new ArrayList<TableScope>(tenant.getTableScopes(pc));
 		for(TableScope ts : scopes) {
 			DeleteStatement ds = AdaptiveMultitenantSchemaPolicyContext.buildTenantDeleteFromTableStatement(pc, ts.getTable(pc), ts);
-			ds.plan(pc,es);
+			ds.plan(pc,es, config);
 		}
 		es.append(new ComplexDDLExecutionStep(tenant.getDatabase(pc),tenant.getDatabase(pc).getDefaultStorage(pc),tenant, Action.DROP, 
 				new DropTenantCallback(pc,tenant)));

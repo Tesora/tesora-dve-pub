@@ -47,6 +47,7 @@ import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.CopyContext;
 import com.tesora.dve.sql.transform.CopyVisitor;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.FilterExecutionStep;
@@ -76,7 +77,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 	}
 	
 	@Override
-	public void plan(SchemaContext pc,ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc,ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		normalize(pc);
 		// we have 7 cases:
 		// [1] a txn isolation set - this just gets pushed down

@@ -28,7 +28,11 @@ import java.util.List;
 public class NativeDatabaseDDL extends DatabaseDDL {
 
 	public NativeDatabaseDDL(String dbname, String dbtag) {
-		super(dbname, dbtag);
+		this(dbname,dbtag,null,null);
+	}
+	
+	public NativeDatabaseDDL(String dbname, String dbtag, String charset, String collation) {
+		super(dbname, dbtag, charset, collation);
 	}
 
 	public NativeDatabaseDDL(String dbname) {
@@ -50,7 +54,9 @@ public class NativeDatabaseDDL extends DatabaseDDL {
 		ArrayList<String> buf = new ArrayList<String>();
 		if (isCreated())
 			buf.add("drop database if exists " + getDatabaseName());
-		buf.add("create database if not exists " + getDatabaseName());
+		buf.add("create database if not exists " + getDatabaseName() +
+				(charset == null ? "" : " default character set " + charset) + 
+				(collation == null ? "" : " default collate " + collation));
 		setCreated();
 		buf.add("use " + getDatabaseName());
 		return buf;

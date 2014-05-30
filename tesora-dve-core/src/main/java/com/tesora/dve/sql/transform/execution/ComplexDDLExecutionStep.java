@@ -40,7 +40,7 @@ public class ComplexDDLExecutionStep extends CatalogModificationExecutionStep {
 
 	private DDLCallback cb;
 	private Boolean commitOverride = null;
-
+	
 	public ComplexDDLExecutionStep(PEDatabase db, PEStorageGroup tsg,
 			Persistable<?, ?> root, Action act, DDLCallback callback) {
 		super(db, tsg, root, act);

@@ -29,12 +29,8 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.Table;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
-import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.ReplaceIntoTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SessionRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
-import com.tesora.dve.sql.transform.strategy.ViewRewriteTransformFactory;
 
 public class ReplaceIntoSelectStatement extends InsertIntoSelectStatement {
 
@@ -49,24 +45,12 @@ public class ReplaceIntoSelectStatement extends InsertIntoSelectStatement {
 	}
 
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence ges) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence ges, BehaviorConfiguration config) throws PEException {
 		TableInstance ti = getTableInstance();
 		Table<?> table = ti.getTable();
 		if (table.isInfoSchema()) 
 			throw new PEException("Cannot insert into info schema table " + intoTable.get().getTable().getName());
-		DMLStatement.planViaTransforms(sc, this, ges);		
+		DMLStatement.planViaTransforms(sc, this, ges, config);		
 	}
-
-	
-	@Override
-	public TransformFactory[] getTransformers() {
-		return new TransformFactory[] {
-			new InformationSchemaRewriteTransformFactory(),
-				new SessionRewriteTransformFactory(),
-			new ViewRewriteTransformFactory(),
-			new ReplaceIntoTransformFactory()
-		};
-	}
-
 	
 }

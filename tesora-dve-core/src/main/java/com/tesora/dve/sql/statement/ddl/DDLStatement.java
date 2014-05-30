@@ -39,6 +39,7 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.CacheType;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -81,7 +82,7 @@ public abstract class DDLStatement extends Statement {
 	public abstract CacheInvalidationRecord getInvalidationRecord(SchemaContext sc);
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		normalize(sc);
 		ExecutionStep s = buildStep(sc);
 		if (s == null) s = new EmptyExecutionStep(0,"already exists - " + getSQL(sc));

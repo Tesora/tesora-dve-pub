@@ -52,6 +52,7 @@ import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.statement.StatementTraits;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
@@ -60,9 +61,6 @@ import com.tesora.dve.sql.transform.execution.FilterExecutionStep;
 import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.LateBindingUpdateCountFilter.LateBindingUpdateCounter;
-import com.tesora.dve.sql.transform.strategy.DegenerateExecuteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
-import com.tesora.dve.sql.transform.strategy.TruncateStatementMTTransformFactory;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class TruncateStatement extends UnaryTableDMLStatement {
@@ -158,6 +156,14 @@ public class TruncateStatement extends UnaryTableDMLStatement {
 			}
 		}
 
+		@Override
+		public void prepareNested(SSConnection conn, CatalogDAO c,
+				WorkerGroup wg, DBResultConsumer resultConsumer)
+				throws PEException {
+			// TODO Auto-generated method stub
+			
+		}
+
 	}
 
 	public TruncateStatement(TableInstance tab, SourceLocation loc) {
@@ -194,8 +200,8 @@ public class TruncateStatement extends UnaryTableDMLStatement {
 	 * for MyISAM and InnoDB, which normally do not reuse sequence values.
 	 */
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
-		planViaTransforms(pc, this, es);
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
+		planViaTransforms(pc, this, es, config);
 
 		/*
 		 * TRUNCATE always returns 0 update count.
@@ -221,14 +227,6 @@ public class TruncateStatement extends UnaryTableDMLStatement {
 	@Override
 	public ExecutionType getExecutionType() {
 		return ExecutionType.DELETE;
-	}
-
-	@Override
-	public TransformFactory[] getTransformers() {
-		return new TransformFactory[] {
-				new TruncateStatementMTTransformFactory(),
-				new DegenerateExecuteTransformFactory()
-		};
 	}
 
 	@Override

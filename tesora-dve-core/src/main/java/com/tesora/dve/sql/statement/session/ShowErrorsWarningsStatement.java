@@ -25,6 +25,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.infomessage.Level;
 import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DDLQueryExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 
@@ -51,7 +52,7 @@ public class ShowErrorsWarningsStatement extends SessionStatement {
 	}	
 	
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		es.append(new DDLQueryExecutionStep(level.getSQLName(),pc.getConnection().getMessageManager().buildShow(level)));
 	}
 	

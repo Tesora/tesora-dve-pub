@@ -253,9 +253,9 @@ public class DistributionTest extends PETest{
 		StorageGroupGeneration gen = sg.getGenerations().get(0);
 		DistributionRange dr = catalogDAO.findRangeForTable(tRangeGen2);
 
-		KeyValue dvStart = tRangeGen2.getDistValue();
+		KeyValue dvStart = tRangeGen2.getDistValue(catalogDAO);
 		dvStart.get("id").setValue(1);
-		KeyValue dvEnd= tRangeGen2.getDistValue();
+		KeyValue dvEnd= tRangeGen2.getDistValue(catalogDAO);
 		dvEnd.get("id").setValue(5);
 
 		catalogDAO.begin();
@@ -365,9 +365,9 @@ public class DistributionTest extends PETest{
 		StorageGroupGeneration gen = sg.getGenerations().get(0);
 		DistributionRange dr = catalogDAO.findRangeForTable(tRangeGen3);
 
-		KeyValue dvStart = tRangeGen3.getDistValue();
+		KeyValue dvStart = tRangeGen3.getDistValue(catalogDAO);
 		dvStart.get("id").setValue(1);
-		KeyValue dvEnd= tRangeGen3.getDistValue();
+		KeyValue dvEnd= tRangeGen3.getDistValue(catalogDAO);
 		dvEnd.get("id").setValue(5);
 
 		catalogDAO.begin();
@@ -405,7 +405,7 @@ public class DistributionTest extends PETest{
 	}
 
 	public void selectByKey(UserTable t, int recId) throws Throwable {
-		KeyValue dv = t.getDistValue();
+		KeyValue dv = t.getDistValue(catalogDAO);
 		dv.get("id").setValue(recId);
 		selectByKey(t, dv, recId);
 	}
@@ -433,7 +433,7 @@ public class DistributionTest extends PETest{
 
 	public void selectItemIdMismatch(UserTable t, int recId, int expectedCount)
 			throws Throwable {
-		KeyValue dv = t.getDistValue();
+		KeyValue dv = t.getDistValue(catalogDAO);
 		dv.get("id").setValue(recId);
 		selectByKey(t, dv, recId+1, expectedCount);
 	}
@@ -465,7 +465,7 @@ public class DistributionTest extends PETest{
 	}
 
 	public void insertOneRecord(UserTable t, int recId) throws Throwable {
-		KeyValue dv = t.getDistValue();
+		KeyValue dv = t.getDistValue(catalogDAO);
 		dv.get("id").setValue(recId);
 
 		insertRecord(t, dv, recId, "Hello");
@@ -487,7 +487,7 @@ public class DistributionTest extends PETest{
 
 	public void updateOne(UserTable t, int recId, String value)
 			throws Throwable {
-		KeyValue dv = t.getDistValue();
+		KeyValue dv = t.getDistValue(catalogDAO);
 		dv.get("id").setValue(recId);
 
 		updateRecord(t, dv, recId, value);
@@ -541,7 +541,7 @@ public class DistributionTest extends PETest{
 
 	protected void insertAndDelete(UserTable t, int recId, String value)
 			throws Throwable {
-		KeyValue distValue = t.getDistValue();
+		KeyValue distValue = t.getDistValue(catalogDAO);
 		distValue.get("id").setValue(recId);
 
 		insertRecord(t, distValue, recId, value);

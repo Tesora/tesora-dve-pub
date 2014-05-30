@@ -99,6 +99,7 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumn;
+import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEPolicy;
 import com.tesora.dve.sql.schema.PEProject;
@@ -651,7 +652,7 @@ public abstract class Emitter {
 		}
 		buf.append("(");
 		boolean first = true;
-		for(PEKeyColumn pekc : key.getKeyColumns()) {
+		for(PEKeyColumnBase pekc : key.getKeyColumns()) {
 			PEForeignKeyColumn pefkc = (PEForeignKeyColumn) pekc;
 			if (first) first = false;
 			else buf.append(", ");
@@ -664,7 +665,7 @@ public abstract class Emitter {
 			emitTable(sc,key.getTargetTable(sc),key.getTable(sc).getPEDatabase(sc),buf);
 		buf.append(" (");
 		first = true;
-		for(PEKeyColumn pekc : key.getKeyColumns()) {
+		for(PEKeyColumnBase pekc : key.getKeyColumns()) {
 			PEForeignKeyColumn pefkc = (PEForeignKeyColumn) pekc;
 			if (first) first = false;
 			else buf.append(", ");
@@ -699,11 +700,11 @@ public abstract class Emitter {
 			buf.append("USING ").append(key.getType().getSQL()).append(" ");
 
 		buf.append("(");
-		Functional.join(key.getKeyColumns(),	buf, ", ", new BinaryProcedure<PEKeyColumn, StringBuilder>() {
+		Functional.join(key.getKeyColumns(),	buf, ", ", new BinaryProcedure<PEKeyColumnBase, StringBuilder>() {
 
 			@Override
-			public void execute(PEKeyColumn aobj, StringBuilder bobj) {
-				bobj.append(aobj.getColumn().getName().getQuotedName().getSQL());
+			public void execute(PEKeyColumnBase aobj, StringBuilder bobj) {
+				bobj.append(aobj.getName().getQuotedName().getSQL());
 				if (aobj.getLength() != null)
 					bobj.append("(").append(aobj.getLength()).append(")");
 			}

@@ -25,17 +25,20 @@ import com.tesora.dve.sql.SchemaTest;
 
 public abstract class MirrorFun extends MirrorTest {
 	
-	protected boolean ignoreOrder = false;
+	protected ComparisonOptions options;
+	
 	protected boolean explainOnFailure = true;
-	protected boolean omitMetadataChecks = false;
 	
 	public MirrorFun(boolean expl) {
 		this(false,expl);
 	}
 
 	public MirrorFun(boolean unordered, boolean ignoreMD, boolean explain) {
-		ignoreOrder = unordered;
-		omitMetadataChecks = ignoreMD;
+		options = ComparisonOptions.DEFAULT;
+		if (unordered)
+			options = options.withIgnoreOrder();
+		if (ignoreMD)
+			options = options.withIgnoreMD();
 		explainOnFailure = explain;
 	}
 	
@@ -57,7 +60,7 @@ public abstract class MirrorFun extends MirrorTest {
 		if (cr != null && sr != null) {
 			try {
 				cr.assertEqualResponse(getContext(), sr);
-				cr.assertEqualResults(getContext(), ignoreOrder, omitMetadataChecks, sr);
+				cr.assertEqualResults(getContext(), sr, options);
 			} catch (AssertionError ae) {
 				// annotate if we actually can get the underlying statement, otherwise don't bother
 				if (explainOnFailure)

@@ -36,6 +36,7 @@ import com.tesora.dve.sql.parser.PreparePlanningResult;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -53,7 +54,7 @@ public class PreparePStmtStatement extends PStmtStatement {
 	}
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		final SchemaContext indep = SchemaContext.createContext(sc);
 		final PreparePlanningResult prepResult = 
 				(PreparePlanningResult) InvokeParser.preparePlan(indep, new InitialInputState(stmt), sc.getOptions(), getName().get());

@@ -44,17 +44,6 @@ import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionStep;
-import com.tesora.dve.sql.transform.strategy.ContainerBaseTableRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.DegenerateExecuteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.DistributionKeyExecuteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.NestedQueryBroadcastTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SessionRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SingleSiteStorageGroupTransformFactory;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
-import com.tesora.dve.sql.transform.strategy.UpdateRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.ViewRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.nested.NestedQueryRewriteTransformFactory;
 
 public class UpdateStatement extends MultiTableDMLStatement {
 	
@@ -118,22 +107,6 @@ public class UpdateStatement extends MultiTableDMLStatement {
 	public ExecutionStep buildSingleKeyStep(SchemaContext sc, TableKey tk, DistributionKey kv, DMLStatement sql) throws PEException {
 		return UpdateExecutionStep.build(sc,getDatabase(sc), getStorageGroup(sc), tk.getAbstractTable().asTable(), kv, sql,
 				getDerivedInfo().doSetTimestampVariable(), distKeyExplain);
-	}
-
-	@Override
-	public TransformFactory[] getTransformers() {
-		return new TransformFactory[] {
-				new InformationSchemaRewriteTransformFactory(),
-				new SessionRewriteTransformFactory(),
-				new ViewRewriteTransformFactory(),
-				new ContainerBaseTableRewriteTransformFactory(),
-				new SingleSiteStorageGroupTransformFactory(),
-				new NestedQueryBroadcastTransformFactory(),
-				new NestedQueryRewriteTransformFactory(),
-				new UpdateRewriteTransformFactory(),
-				new DistributionKeyExecuteTransformFactory(),
-				new DegenerateExecuteTransformFactory()
-		};
 	}
 
 	@Override

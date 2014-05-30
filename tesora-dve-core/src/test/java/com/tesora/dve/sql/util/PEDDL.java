@@ -160,10 +160,14 @@ public class PEDDL extends ProjectDDL {
 	
 	// these are all compatibility constructors and functions
 	public PEDDL(String dbname, StorageGroupDDL persGroup, String dbtag) {
+		this(dbname,persGroup,dbtag,null,null);
+	}
+	
+	public PEDDL(String dbname, StorageGroupDDL persGroup, String dbtag, String charset, String collation) {
 		super();
 		persGroups = new ArrayList<StorageGroupDDL>();
 		withStorageGroup(persGroup);
-		withDatabase(new PEDatabaseDDL(dbname,dbtag).withStorageGroup(persGroup));
+		withDatabase(new PEDatabaseDDL(dbname,dbtag,charset,collation).withStorageGroup(persGroup));		
 	}
 	
 	public PEDDL withTemplate(String temp, boolean strict) {

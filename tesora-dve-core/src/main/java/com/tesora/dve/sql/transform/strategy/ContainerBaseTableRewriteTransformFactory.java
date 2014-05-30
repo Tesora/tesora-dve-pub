@@ -65,7 +65,7 @@ import com.tesora.dve.sql.transform.KeyCollector.AndedParts;
 import com.tesora.dve.sql.transform.KeyCollector.EqualityPart;
 import com.tesora.dve.sql.transform.KeyCollector.OredParts;
 import com.tesora.dve.sql.transform.KeyCollector.Part;
-import com.tesora.dve.sql.transform.behaviors.DefaultFeaturePlannerFilter;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
@@ -221,6 +221,14 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 
 		@Override
 		public void postCommitAction(CatalogDAO c) {
+		}
+
+		@Override
+		public void prepareNested(SSConnection conn, CatalogDAO c,
+				WorkerGroup wg, DBResultConsumer resultConsumer)
+				throws PEException {
+			// TODO Auto-generated method stub
+			
 		}
 
 	}

@@ -384,6 +384,16 @@ public class WorkerGroup {
 		execute(MappingSolution.AllWorkers, new WorkerCreateDatabaseRequest(ssCon.getTransactionalContext(),uvd,true),
 				DBEmptyTextResultConsumer.INSTANCE);
 	}		
+	
+	// unconditionally sets the session variables for the connection on the worker group
+	public void assureSessionVariables(SSConnection ssCon) throws PEException {
+		// Set all the session variables on the new workers
+		String sessionContext = ssCon.getSessionVariableSetStatement();
+
+		execute(MappingSolution.AllWorkers,
+				new WorkerPreambleRequest(ssCon.getNonTransactionalContext(), new SQLCommand(sessionContext)),
+				DBEmptyTextResultConsumer.INSTANCE);	
+	}
 		
 	public void setDatabase(SSConnection ssCon, final PersistentDatabase uvd) throws PEException {
 		if (group.isTemporaryGroup()) {
@@ -679,7 +689,7 @@ public class WorkerGroup {
 			try {
 				if (ctxDB != null) 
 					wg.setDatabase(ssCon, ctxDB);
-				setSessionVariables(ssCon, wg);
+				wg.assureSessionVariables(ssCon);
 			} catch (PEException e) {
 				if (logger.isDebugEnabled())
 					logger.debug("NPE: WorkerGroupFactory.newInstance() calls releaseWorkers() on "+ wg);
@@ -689,17 +699,6 @@ public class WorkerGroup {
 			if (wg.workerMap == null)
 				throw new PECodingException("WorkerGroupFactory.newInstance() returns previously closed worker group");
 			return wg;
-		}
-
-		private static void setSessionVariables(SSConnection ssCon,
-				WorkerGroup wg) throws PEException {
-			// Set all the session variables on the new workers
-			String sessionContext = ssCon.getSessionVariableSetStatement();
-
-			//			wg.sendToAllWorkers(ssCon, new WorkerSetEncodingRequest(ssCon.getNonTransactionalContext(), ssCon.getSessionVariable(SessionVariableHandler.VARIABLE_NAME)));
-			wg.execute(MappingSolution.AllWorkers,
-					new WorkerPreambleRequest(ssCon.getNonTransactionalContext(), new SQLCommand(sessionContext)),
-					DBEmptyTextResultConsumer.INSTANCE);
 		}
 
 		public static void returnInstance(final SSConnection ssCon, final WorkerGroup wg) throws PEException {

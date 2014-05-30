@@ -66,6 +66,7 @@ import com.tesora.dve.sql.statement.ddl.alter.AlterTableAction.ClonableAlterTabl
 import com.tesora.dve.sql.statement.ddl.alter.ConvertToAction;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -251,11 +252,11 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 	}
 	
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		final Set<ConvertToAction> complexPlanningActions = getAllActionsOfType(ConvertToAction.class);
 
 		if (complexPlanningActions.isEmpty()) {
-			super.plan(sc, es);
+			super.plan(sc, es, config);
 		}
 
 		for (final ConvertToAction convertAction : complexPlanningActions) {
@@ -450,6 +451,14 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			final SchemaContext sc = SchemaContext.createContext(conn);
 			this.alterTargetTableStatement.getCatalogEntries(sc);
 			this.alterTargetTableStatement.getDeleteObjects(sc);
+		}
+
+		@Override
+		public void prepareNested(SSConnection conn, CatalogDAO c,
+				WorkerGroup wg, DBResultConsumer resultConsumer)
+				throws PEException {
+			// TODO Auto-generated method stub
+			
 		}
 	}
 }

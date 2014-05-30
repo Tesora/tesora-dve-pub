@@ -55,6 +55,9 @@ public class MirrorFunction extends MirrorApply {
 		// from now on, only if we have both
 		if (checkResponse == null || sysResponse == null || ignoreResponse)
 			return;
-		checkResponse.assertEqualResults(message, unorderedCompare, false, sysResponse);
+		ComparisonOptions options = ComparisonOptions.DEFAULT;
+		if (unorderedCompare)
+			options = options.withIgnoreOrder();
+		checkResponse.assertEqualResults(message, sysResponse, options);
 	}		
 }

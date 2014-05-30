@@ -67,6 +67,7 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumn;
+import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
@@ -150,18 +151,18 @@ public final class AdaptiveMTDDLPlannerUtils {
 			PEAlterTableStatement peats = new PEAlterTableStatement(sc,ntk,ata);
 			PEAlterTenantTableStatement peatts = new PEAlterTenantTableStatement(sc, peats,
 					sc.getPolicyContext().getOfTenant(nkp.getFirst().getPersistent(sc)),onTenant);
-			peatts.plan(sc, es);
+			peatts.plan(sc, es, sc.getBehaviorConfiguration());
 			forwarding.put(nsp.getSecond().getSymbol(),new LateFKFixup(nsp.getSecond().getSymbol(),peatts.getFinalTableName(),"add nontenant key for set null fk"));
 		}
 	}
 	
 	public static Pair<PEForeignKey,PEKey> maybeRequiresNewKey(final SchemaContext sc, PEForeignKey pefk) {
 		PETable target = pefk.getTargetTable(sc);
-		List<PEKeyColumn> keyCols = pefk.getKeyColumns();
-		List<PEForeignKeyColumn> pefkcs = Functional.apply(keyCols, new UnaryFunction<PEForeignKeyColumn,PEKeyColumn>() {
+		List<PEKeyColumnBase> keyCols = pefk.getKeyColumns();
+		List<PEForeignKeyColumn> pefkcs = Functional.apply(keyCols, new UnaryFunction<PEForeignKeyColumn,PEKeyColumnBase>() {
 
 			@Override
-			public PEForeignKeyColumn evaluate(PEKeyColumn object) {
+			public PEForeignKeyColumn evaluate(PEKeyColumnBase object) {
 				return (PEForeignKeyColumn)object;
 			}
 			
@@ -185,7 +186,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 		if (matching == null) {
 			// have to alter the target table to add an index
-			List<PEKeyColumn> nkc = Functional.apply(pefkcs, new UnaryFunction<PEKeyColumn,PEForeignKeyColumn>() {
+			List<PEKeyColumnBase> nkc = Functional.apply(pefkcs, new UnaryFunction<PEKeyColumnBase,PEForeignKeyColumn>() {
 
 				@Override
 				public PEKeyColumn evaluate(PEForeignKeyColumn object) {
@@ -202,11 +203,11 @@ public final class AdaptiveMTDDLPlannerUtils {
 	}
 
 	public static Pair<PEForeignKey,PEKey> maybeRequiresNewKey(final SchemaContext sc, PEForeignKey pefk, PETable target) {
-		List<PEKeyColumn> keyCols = pefk.getKeyColumns();
-		List<PEForeignKeyColumn> pefkcs = Functional.apply(keyCols, new UnaryFunction<PEForeignKeyColumn,PEKeyColumn>() {
+		List<PEKeyColumnBase> keyCols = pefk.getKeyColumns();
+		List<PEForeignKeyColumn> pefkcs = Functional.apply(keyCols, new UnaryFunction<PEForeignKeyColumn,PEKeyColumnBase>() {
 
 			@Override
-			public PEForeignKeyColumn evaluate(PEKeyColumn object) {
+			public PEForeignKeyColumn evaluate(PEKeyColumnBase object) {
 				return (PEForeignKeyColumn)object;
 			}
 			
@@ -230,7 +231,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 		if (matching == null) {
 			// have to alter the target table to add an index
-			List<PEKeyColumn> nkc = new ArrayList<PEKeyColumn>();
+			List<PEKeyColumnBase> nkc = new ArrayList<PEKeyColumnBase>();
 			for(PEForeignKeyColumn pefkc : pefkcs) {
 				UnqualifiedName unq = pefkc.getTargetColumnName();
 				PEColumn pec = target.lookup(sc, unq);
@@ -681,6 +682,14 @@ public final class AdaptiveMTDDLPlannerUtils {
 				throw new PEException(description(),pe);
 			}
 		}
+
+		@Override
+		public void prepareNested(SSConnection conn, CatalogDAO c,
+				WorkerGroup wg, DBResultConsumer resultConsumer)
+				throws PEException {
+			// TODO Auto-generated method stub
+			
+		}
 		
 	}
 	
@@ -765,10 +774,10 @@ public final class AdaptiveMTDDLPlannerUtils {
 			mspc.applyDegenerateMultitenantFilter(srcSelect, LiteralExpression.makeAutoIncrLiteral(scope.getTenant(sc).getTenantID()));
 			InsertIntoSelectStatement iiss = 
 				new InsertIntoSelectStatement(targti,targColumns,srcSelect,false,null,(AliasInformation)null,null);
-			iiss.plan(sc, es);
+			iiss.plan(sc, es, sc.getBehaviorConfiguration());
 			
 			DeleteStatement ds = AdaptiveMultitenantSchemaPolicyContext.buildTenantDeleteFromTableStatement(sc, currentTable, scope);
-			ds.plan(sc,es);
+			ds.plan(sc,es, sc.getBehaviorConfiguration());
 			
 			List<QueryStep> allsteps = new ArrayList<QueryStep>();
 			es.schedule(null, allsteps, null, sc);
@@ -1027,7 +1036,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 
 			ExecutionSequence es = new ExecutionSequence(null);
 			DeleteStatement ds = AdaptiveMultitenantSchemaPolicyContext.buildTenantDeleteFromTableStatement(sc, actualScope.getTable(sc), actualScope);
-			ds.plan(sc,es);
+			ds.plan(sc,es, sc.getBehaviorConfiguration());
 			es.schedule(null, dml, null, sc);
 			
 			sc.beginSaveContext();
@@ -1159,7 +1168,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			
 			if (revertToForward == null) {
 				PETable newTarget = newTargetTable.getTable(sc);
-				for(PEKeyColumn pekc : constraint.getKeyColumns()) {
+				for(PEKeyColumnBase pekc : constraint.getKeyColumns()) {
 					PEForeignKeyColumn pefkc = (PEForeignKeyColumn) pekc;
 					pefkc.setTargetColumn(newTarget.lookup(sc, pefkc.getTargetColumnName()));
 				}
@@ -1192,7 +1201,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			if (revertToForward == null) {
 				UserTable nut = newTargetTable.getTable(sc).getPersistent(sc);
 				k.setReferencedTable(nut);
-				for(PEKeyColumn pekc : constraint.getKeyColumns()) {
+				for(PEKeyColumnBase pekc : constraint.getKeyColumns()) {
 					PEForeignKeyColumn pefkc = (PEForeignKeyColumn) pekc;
 					KeyColumn kc = pefkc.getPersistent(sc);
 					kc.setTargetColumn(nut.getUserColumn(pefkc.getTargetColumnName().getUnquotedName().get()));

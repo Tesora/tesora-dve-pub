@@ -63,8 +63,6 @@ import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 @DiscriminatorValue(RangeDistributionModel.MODEL_NAME)
 public class RangeDistributionModel extends DistributionModel {
 	
-	static Cache<Integer, Integer> rangeForTableCache = CacheBuilder.newBuilder().maximumSize(1000).build();
-	
 	static Cache<Integer, DistributionRange> rangeCache = CacheBuilder.newBuilder().build();
 
 	private abstract class BinaryFunction<O, I> {
@@ -99,22 +97,8 @@ public class RangeDistributionModel extends DistributionModel {
 	}
 
 	private static DistributionRange findDistributionRange(final CatalogDAO c, final IKeyValue key) throws PEException {
-		Integer distRangeID = null;
+		Integer distRangeID = key.getRangeId();
 		DistributionRange dr = null;
-		try {
-			distRangeID = rangeForTableCache.get(key.getUserTableId(), 
-					new Callable<Integer>() {
-						@Override
-						public Integer call() throws Exception {
-							DistributionRange distRange = c.findRangeForTableByName(
-									key.getQualifiedTableName(),
-									key.getUserTableId());
-							return distRange.getId();
-						}
-			});
-		} catch (ExecutionException e) {
-			throw new PEException("Cannot map key to range for table " + key.getQualifiedTableName(), e);
-		}
 		if (distRangeID == null)
 			throw new PEException("No range found for table " + key.getQualifiedTableName());
 		final int distid = distRangeID; 
@@ -190,7 +174,7 @@ public class RangeDistributionModel extends DistributionModel {
 
 	private KeyValue getRangeKey(SSConnection ssCon, DistributionRange dr, WorkerGroup wg, UserTable ut, final String order,
 			BinaryFunction<KeyValue, KeyValue> chooser) throws PEException {
-		KeyValue keyValue = ut.getDistValue();
+		KeyValue keyValue = ut.getDistValue(ssCon.getCatalogDAO());
 		KeyValue retValue = null;
 
 		String orderColList = Functional.apply(keyValue.keySet(), new UnaryFunction<String, String>() {
@@ -216,7 +200,7 @@ public class RangeDistributionModel extends DistributionModel {
 				DistributionRange.decodeSignatureIntoNativeTypeComparatorMap(dr.getSignature());
 		ColumnSet columnSet = results.getColumnSet();
 		for (List<String> row : results.getRowData()) {
-			keyValue = ut.getDistValue();
+			keyValue = ut.getDistValue(ssCon.getCatalogDAO());
 			for (int i = 0; i < keyValue.size(); ++i) {
 				ColumnMetadata columnMetadata = columnSet.getColumn(i+1);
 				DataTypeValueFunc typeReader = DBTypeBasedUtils.getMysqlTypeFunc(MyFieldType.fromByte(
@@ -240,7 +224,6 @@ public class RangeDistributionModel extends DistributionModel {
 	
 	public static void clearCache() {
 		rangeCache.invalidateAll();
-		rangeForTableCache.invalidateAll();
 	}
 	
 	public static void clearCacheEntry(int distributionRangeId) {

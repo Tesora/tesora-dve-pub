@@ -25,6 +25,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -66,6 +67,8 @@ import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockManager;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
+import com.tesora.dve.resultset.ColumnInfo;
+import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.UserXid;
 import com.tesora.dve.server.global.HostService;
@@ -144,6 +147,7 @@ import com.tesora.dve.sql.schema.LoadDataInfileLineOption;
 import com.tesora.dve.sql.schema.LoadDataInfileModifier;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.NascentPETable;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEContainer;
@@ -151,8 +155,11 @@ import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEExternalService;
 import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
+import com.tesora.dve.sql.schema.PEForwardForeignKeyColumn;
+import com.tesora.dve.sql.schema.PEForwardKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumn;
+import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEPolicy;
 import com.tesora.dve.sql.schema.PEPolicyClassConfig;
@@ -175,6 +182,7 @@ import com.tesora.dve.sql.schema.SubqueryTable;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.TableComponent;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.UnresolvedDistributionVector;
 import com.tesora.dve.sql.schema.UserScope;
 import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.schema.VariableScope;
@@ -228,6 +236,7 @@ import com.tesora.dve.sql.statement.ddl.PECreateRawPlanStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateSiteInstanceStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStorageSiteStatement;
+import com.tesora.dve.sql.statement.ddl.PECreateTableAsSelectStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateUserStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateViewStatement;
@@ -314,12 +323,14 @@ import com.tesora.dve.sql.transform.execution.PassThroughCommand.Command;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
+import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variable.GlobalConfigVariableHandler;
 import com.tesora.dve.variable.VariableScopeKind;
 import com.tesora.dve.worker.SiteManagerCommand;
 import com.tesora.dve.worker.WorkerGroup;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 
 // holds the bridge methods from antlr tree nodes to our nodes
 public class TranslatorUtils extends Utils implements ValueSource {
@@ -936,9 +947,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public Statement buildCreateTable(Name tableName,
-			List<TableComponent<?>> fieldsAndKeys, DistributionVector indv,
+			List<TableComponent<?>> fieldsAndKeys, UnresolvedDistributionVector indv,
 			Name groupName, List<TableModifier> modifiers, Boolean ine, 
-			Pair<UnqualifiedName,List<UnqualifiedName>> discriminator) {
+			Pair<UnqualifiedName,List<UnqualifiedName>> discriminator,
+			ProjectingStatement ctas) {
 		if ( tableName == null ) {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
@@ -955,7 +967,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				pecs = new PECreateTableStatement(ti.getAbstractTable().asTable(), ine, true);
 			} 
 		}
-		DistributionVector dv = indv;
 		PEPersistentGroup pesg = null;
 		if (groupName != null) {
 			pesg = pc.findStorageGroup(groupName);
@@ -963,13 +974,77 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				throw new SchemaException(Pass.SECOND,
 						"No such persistent group: " + groupName.getSQL());
 		}
+		
+		List<TableComponent<?>> actualFieldsAndKeys = null;
+		
+		ListOfPairs<PEColumn,Integer> ctaProjectionOffsets = null;
+		
+		if (ctas != null) {
+			ctaProjectionOffsets = new ListOfPairs<PEColumn,Integer>();
+			// the columns are ordered like so:
+			// first all columns that are only explicitly declared
+			// then all columns that are only implicitly or both declared
+			// we will determine projection column types at runtime, and use a placeholder in the meantime
+			
+			ListSet<PEColumn> inproj = new ListSet<PEColumn>();
+
+			ProjectionInfo pmd = ctas.getProjectionMetadata(pc);
+			for(int i = 1; i <= pmd.getWidth(); i++) {
+				int offset = i - 1;
+				ColumnInfo ci = pmd.getColumnInfo(i);
+				UnqualifiedName cname = new UnqualifiedName(ci.getAlias());
+				PEColumn matching = lookupInProcessColumn(cname, true);
+				if (matching != null) {
+					ctaProjectionOffsets.add(matching,offset);
+					inproj.add(matching);
+					continue;
+				}
+				// declare the column with a placeholder type
+				PEColumn viaCTA = PECreateTableAsSelectStatement.createColumnFromExpression(pc,ci,ctas.getProjections().get(0).get(offset));
+				scope.registerColumn(viaCTA);
+				ctaProjectionOffsets.add(viaCTA, offset);
+				inproj.add(viaCTA);
+			}
+			
+			actualFieldsAndKeys = new ArrayList<TableComponent<?>>();
+			// first do the decl only bits
+			for(Iterator<TableComponent<?>> iter = fieldsAndKeys.iterator(); iter.hasNext();) {
+				TableComponent<?> tc = iter.next();
+				if (tc instanceof PEKey)
+					continue;
+				PEColumn pec = (PEColumn) tc;
+				if (!inproj.contains(pec)) 
+					actualFieldsAndKeys.add(pec);
+				iter.remove();
+			}
+			// now all the projection fields
+			actualFieldsAndKeys.addAll(inproj);
+			// now we have all columns declared, resolve anything that was forward
+			for(Iterator<TableComponent<?>> iter = fieldsAndKeys.iterator(); iter.hasNext();) {
+				TableComponent<?> tc = iter.next();
+				if (tc instanceof PEKey) {
+					PEKey pek = (PEKey) tc;
+					actualFieldsAndKeys.add(pek.resolve(pc,scope));
+				} else {
+					actualFieldsAndKeys.add(tc);
+				}
+			}
+		} else {
+			actualFieldsAndKeys = fieldsAndKeys;
+		}
+		
+		// resolve the distribution vector
+		DistributionVector dv = null;
+		if (indv != null)
+			dv = indv.resolve(pc, this);
+		
 		if (pecs == null) {
 			// unpack the dbstuff
 			PETable newTab = null;
 			// we want to inject when both the dist vect and the discriminator are null; if either is non-null the dist info
 			// was specified
 			if (dv == null && discriminator == null) {
-				newTab = buildTable(tableName, fieldsAndKeys, null, pesg, modifiers);
+				newTab = buildTable(tableName, actualFieldsAndKeys, null, pesg, modifiers, ctaProjectionOffsets != null);
 				if (pc == null || (opts != null && opts.isOmitMetadataInjection())) {
 					dv = new DistributionVector(pc, null, DistributionVector.Model.RANDOM);
 					newTab.setDistributionVector(pc,dv);				
@@ -986,8 +1061,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						throw new SchemaException(Pass.SECOND, e);
 					}
 			} else if (dv != null) {
-				newTab = buildTable(tableName, fieldsAndKeys, dv, pesg,
-						modifiers);
+				newTab = buildTable(tableName, actualFieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null);
 			} else if (discriminator != null) {
 				// newTab will be the base table on the container - so change the dist vect on it to be the container
 				PEContainer container = pc.findContainer(discriminator.getFirst());
@@ -999,7 +1073,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				}
 
 				dv = new ContainerDistributionVector(pc,container,false);
-				newTab = buildTable(tableName, fieldsAndKeys, dv, pesg, modifiers);
+				newTab = buildTable(tableName, fieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null);
 				// newTab is actually the container base table - so go resolve the columns now and so mark them
 				List<UnqualifiedName> colNames = discriminator.getSecond();
 				for(int i = 0; i < colNames.size(); i++) {
@@ -1013,7 +1087,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			} else {
 				throw new SchemaException(Pass.SECOND, "Unable to determine declared distribution for table " + tableName.getSQL());
 			}
-			pecs = new PECreateTableStatement(newTab, ine, false);
+			if (ctas == null)
+				pecs = new PECreateTableStatement(newTab, ine, false);
+			else
+				pecs = new PECreateTableAsSelectStatement(newTab, ine, false, ctas, ctaProjectionOffsets);
 		}
 		Statement out = pecs;
 		if (pc != null && !pc.getOptions().isTSchema()) {
@@ -1512,27 +1589,20 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				PERSISTENT_GROUP_TAG, false);
 	}
 
-	public PEColumn lookupInProcessColumn(Name n) {
+	public PEColumn lookupInProcessColumn(Name n, boolean missingOk) {
 		PEColumn c = scope.lookupInProcessColumn(n);
 		if (c == null)
 			c = scope.lookupInProcessColumn(n.getCapitalized());
-		if (c == null)
+		if (c == null && !missingOk)
 			throw new SchemaException(Pass.SECOND, "No such column: "
 					+ n.getSQL());
 		return c;
 	}
 
-	public DistributionVector buildDistributionVector(
+	public UnresolvedDistributionVector buildDistributionVector(
 			DistributionVector.Model model, List<Name> columnNames,
 			Name rangeOrContainer) {
-		final List<PEColumn> columns = new ArrayList<PEColumn>();
-		if (columnNames != null) {
-			for (final Name n : columnNames) {
-				columns.add(lookupInProcessColumn(n));
-			}
-		}
-
-		return DistributionVector.buildDistributionVector(pc, model, columns, rangeOrContainer);
+		return new UnresolvedDistributionVector(model,columnNames,rangeOrContainer);
 	}
 
 	public ColumnModifier buildColumnModifier(ColumnModifierKind tag) {
@@ -1687,7 +1757,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		for(ColumnKeyModifier ckm : inlineKeys) {
 			// first build the key
 			@SuppressWarnings("unchecked")
-			PEKey pek = buildKey(null,null,Collections.singletonList(new PEKeyColumn(nc,null,-1L)),Collections.EMPTY_LIST);
+			PEKey pek = buildKey(null,null,Collections.singletonList((PEKeyColumnBase)new PEKeyColumn(nc,null,-1L)),Collections.EMPTY_LIST);
 			if (ckm.getConstraint() != null)
 				pek = withConstraint(ckm.getConstraint(), null, pek);
 			out.add(pek);
@@ -1695,7 +1765,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return out;
 	}
 
-	public PEKey buildKey(IndexType type, Name name, List<PEKeyColumn> cols, List<Object> options) {
+	public PEKey buildKey(IndexType type, Name name, List<PEKeyColumnBase> cols, List<Object> options) {
 		// unpack the options in case we have anything lurking
 		IndexType postSpecifiedType = null;
 		Comment anyComment = null;
@@ -1724,16 +1794,19 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new ColumnKeyModifier(ct);
 	}
 	
-	public PEKeyColumn buildPEKeyColumn(Name identifier, ExpressionNode length, ExpressionNode cardinality) {
-		PEColumn c = lookupInProcessColumn(identifier);
-		return new PEKeyColumn(c, 
-				(length == null ? null : asIntegralLiteral(length)),
-				(cardinality == null ? -1L : asIntegralLiteral(cardinality))
-				);
+	public PEKeyColumnBase buildPEKeyColumn(Name identifier, ExpressionNode length, ExpressionNode cardinality) {
+		PEColumn c = lookupInProcessColumn(identifier, true);
+		Integer keyLength = (length == null ? null : asIntegralLiteral(length));
+		long keyCardinality = (cardinality == null ? -1L : asIntegralLiteral(cardinality));
+		
+		if (c == null)
+			return new PEForwardKeyColumn(null,identifier.getUnqualified(), keyLength, keyCardinality);
+		else
+			return new PEKeyColumn(c,keyLength,keyCardinality);		
 	}
 
 	@SuppressWarnings("cast")
-	public PEForeignKey buildForeignKey(Name name, List<PEKeyColumn> mycols, Name targetTableName, List<UnqualifiedName> targetColumns,
+	public PEKey buildForeignKey(Name name, List<PEKeyColumnBase> mycols, Name targetTableName, List<UnqualifiedName> targetColumns,
 			ForeignKeyAction deleteAction, ForeignKeyAction updateAction) {
 		// are unknown tables ok?
 		boolean required = (pc != null && SchemaVariables.hasForeignKeyChecks(pc));
@@ -1777,18 +1850,24 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		// regardless of whether the target table is known, we need to convert the PEKeyColumns to PEForeignKeyColumns
 		if (mycols.size() != targetColumns.size())
 			throw new SchemaException(Pass.FIRST,"Invalid foreign key declaration: source table names " + mycols.size() + " columns but references " + targetColumns.size());
-		List<PEKeyColumn> fkcols = new ArrayList<PEKeyColumn>();
+		List<PEKeyColumnBase> fkcols = new ArrayList<PEKeyColumnBase>();
 		for(int i = 0; i < mycols.size(); i++) {
-			PEKeyColumn mine = mycols.get(i);
+			PEKeyColumnBase mine = mycols.get(i);
 			UnqualifiedName targName = targetColumns.get(i);
-			PEForeignKeyColumn pefk = null;
+			PEKeyColumnBase pefk = null;
 			if (targetTab == null) {
-				pefk = new PEForeignKeyColumn(mine.getColumn(), targName);
+				if (mine.isUnresolved())
+					pefk = new PEForwardForeignKeyColumn(null,mine.getName(),targName);
+				else
+					pefk = new PEForeignKeyColumn(mine.getColumn(), targName);
 			} else {
 				PEColumn targCol = targetTab.lookup(pc, targName);
 				if (targCol == null)
 					throw new SchemaException(Pass.SECOND, "No such column " + targName + " in " + targetTableName);
-				pefk = new PEForeignKeyColumn(mine.getColumn(), targCol);
+				if (mine.isUnresolved()) 
+					pefk = new PEForwardForeignKeyColumn(null,mine.getName(),targCol);
+				else
+					pefk = new PEForeignKeyColumn(mine.getColumn(), targCol);
 			}
 			fkcols.add(pefk);
 		}
@@ -1801,7 +1880,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	public PETable buildTable(Name tableName,
 			List<TableComponent<?>> fieldsAndKeys, DistributionVector dv,
-			PEPersistentGroup sg, List<TableModifier> modifiers) {
+			PEPersistentGroup sg, List<TableModifier> modifiers,
+			boolean nascent) {
 		if ( tableName == null ) {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
@@ -1830,7 +1910,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 								+ cdb.getName() + "'");
 		}
 		// the dv should have the container here, if applicable
-		PETable newtab = new PETable(pc, unqualifiedTableName, fieldsAndKeys,
+		PETable newtab = null;
+		if (nascent)
+			newtab = new NascentPETable(pc, unqualifiedTableName, fieldsAndKeys,
+				dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED);
+		else
+			newtab = new PETable(pc, unqualifiedTableName, fieldsAndKeys,
 				dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED);
 		if (pc != null) {
 			pc.getPolicyContext().modifyTablePart(newtab);
@@ -2683,7 +2768,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			}
 
 			@Override
-			public void plan(SchemaContext sc, ExecutionSequence es) throws PEException {
+			public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 				es.append(new TransientSessionExecutionStep("RELOAD LOGGING", new AdhocOperation() {
 
 
@@ -2927,7 +3012,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public List<AlterTableAction> buildAddIndexAction(PEKey newIndex) {
-		return wrapAlterAction(new AddIndexAction(newIndex));
+		if (newIndex.isUnresolved())
+			throw new SchemaException(Pass.FIRST, "Invalid forward key during alter");
+		return wrapAlterAction(new AddIndexAction((PEKey)newIndex));
 	}
 
 	public List<AlterTableAction> buildDropIndexAction(ConstraintType kt, Name indexName) {
@@ -2949,8 +3036,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return wrapAlterAction(new ChangeTableModifierAction(tm));
 	}
 	
-	public List<AlterTableAction> buildModifyDistributionAction(DistributionVector ndv) {
-		return wrapAlterAction(new ChangeTableDistributionAction(ndv));
+	public List<AlterTableAction> buildModifyDistributionAction(UnresolvedDistributionVector ndv) {
+		return wrapAlterAction(new ChangeTableDistributionAction(ndv.resolve(pc, this)));
 	}
 	
 	@SuppressWarnings("rawtypes")

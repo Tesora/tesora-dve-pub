@@ -60,6 +60,7 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumn;
+import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.QualifiedName;
@@ -72,6 +73,7 @@ import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.ddl.alter.DropIndexAction;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
@@ -115,7 +117,7 @@ public class PECreateTableStatement extends
 		return ((PETable)getRoot());
 	}
 
-	private static void addIgnoredFKMessage(SchemaContext sc, ValidateResult vr) {
+	protected static void addIgnoredFKMessage(SchemaContext sc, ValidateResult vr) {
 		sc.getConnection().getMessageManager().addWarning(vr.getMessage(sc) + " - not persisted");
 	}
 	
@@ -165,7 +167,7 @@ public class PECreateTableStatement extends
 					if (pek.isForeign()) {
 						PEForeignKey pefk = (PEForeignKey) pek;
 						if (pefk.isForward() && pefk.getTargetTableName(sc).equals(tabName)) {
-							for(PEKeyColumn pekc : pefk.getKeyColumns()) {
+							for(PEKeyColumnBase pekc : pefk.getKeyColumns()) {
 								PEForeignKeyColumn pefkc = (PEForeignKeyColumn)pekc;
 								PEColumn tc = newTab.lookup(sc, pefkc.getTargetColumnName());
 								if (tc != null) {
@@ -279,7 +281,7 @@ public class PECreateTableStatement extends
 	}
 	
 	
-	private List<TableCacheKey> computeRefdTables(SchemaContext pc) {
+	protected List<TableCacheKey> computeRefdTables(SchemaContext pc) {
 		List<TableCacheKey> out = new ArrayList<TableCacheKey>();
 		for(PEKey pek : getTable().getKeys(pc)) {
 			if (!pek.isForeign()) continue;
@@ -297,7 +299,7 @@ public class PECreateTableStatement extends
 	// then execute the original create and regenerate the ents in a ddl callback
 	
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		normalize(pc);
 		// we may just need a single step, but we may not - figure that out
 		if (alreadyExists) {
@@ -313,6 +315,9 @@ public class PECreateTableStatement extends
 					}
 					
 				});
+		
+		maybeDeclareDatabase(pc,es);
+
 		if (immediate) {
 			oneStepPlan(pc,es);
 		} else {
@@ -320,8 +325,7 @@ public class PECreateTableStatement extends
 		}		
 	}
 	
-	private void manyStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {
-		maybeDeclareDatabase(pc,es);
+	protected void manyStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {
 		List<TableCacheKey> modded = new ArrayList<TableCacheKey>();
 		PETable tab = getTable();
 		// we always do the drops beforehand
@@ -338,8 +342,7 @@ public class PECreateTableStatement extends
 				new CreateTableCallback(tab,alsoClear,modded)));		
 	}
 	
-	private void oneStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {
-		maybeDeclareDatabase(pc,es);
+	protected void oneStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {
 		// so - we need to go back and finalize the normalization
 		PETable tab = getTable();
 		boolean mustRebuildCTS = false;
@@ -379,7 +382,7 @@ public class PECreateTableStatement extends
 				new CacheInvalidationRecord(clears)));
 	}
 	
-	private void maybeDeclareDatabase(SchemaContext sc, ExecutionSequence es) throws PEException {
+	protected void maybeDeclareDatabase(SchemaContext sc, ExecutionSequence es) throws PEException {
 		// when the storage group specified on the table is not the database default, the database might not actually
 		// have been declared on the storage group.  in that case, we need to send along a create database (without the 
 		// ddl callback) so that the create table will work.  this used to be transparent because we always were doing a
@@ -421,7 +424,7 @@ public class PECreateTableStatement extends
 		return false;
 	}
 
-	private static class KeyID {
+	static class KeyID {
 		
 		private ConstraintType constraintType;
 		private UnqualifiedName symbol;
@@ -449,7 +452,7 @@ public class PECreateTableStatement extends
 		
 	}
 	
-	private static class DelayedFKDrop implements NestedOperationDDLCallback {
+	static class DelayedFKDrop implements NestedOperationDDLCallback {
 		
 		private PETable enclosingTable;
 		private List<KeyID> keysToDrop;
@@ -610,9 +613,17 @@ public class PECreateTableStatement extends
 			// TODO Auto-generated method stub
 			
 		}
+
+		@Override
+		public void prepareNested(SSConnection conn, CatalogDAO c,
+				WorkerGroup wg, DBResultConsumer resultConsumer)
+				throws PEException {
+			// TODO Auto-generated method stub
+			
+		}
 	}
 		
-	private static class CreateTableCallback implements DDLCallback {
+	static class CreateTableCallback implements DDLCallback {
 
 		private PETable builtVersion;
 		private CacheInvalidationRecord record;

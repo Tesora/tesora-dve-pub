@@ -62,9 +62,13 @@ public class ContainerDistributionVector extends DistributionVector {
 	@Override
 	public RangeDistribution getDistributedWhollyOnTenantColumn(SchemaContext sc) {
 		// a container is distributed wholly on the tenant column if the backing container is range distributed
-		return getContainer(sc).getRange(sc);
+		return getRange(sc);
 	}
 
+	protected RangeDistribution getRange(SchemaContext sc) {
+		return getContainer(sc).getRange(sc);
+	}
+	
 	@Override
 	protected void persistForTable(PEAbstractTable<?> pet, UserTable targ, SchemaContext sc) throws PEException {
 		PEContainer cont = getContainer(sc);
@@ -151,5 +155,12 @@ public class ContainerDistributionVector extends DistributionVector {
 		if (maybeBuildDiffMessage(sc,messages, "container", getContainer(sc), other.getContainer(sc), first, visited))
 			return true;
 		return false;
+	}
+	
+	@Override
+	public Integer getRangeID(SchemaContext pc) {
+		RangeDistribution rd = getRange(pc);
+		if (rd == null) return null;
+		return rd.getPersistentID();
 	}
 }

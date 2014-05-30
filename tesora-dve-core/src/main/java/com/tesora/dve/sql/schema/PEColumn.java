@@ -273,6 +273,10 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 		setFlag(AUTO_INCREMENT);
 	}
 	
+	public void clearAutoIncrement() {
+		clearFlag(AUTO_INCREMENT);
+	}
+	
 	// alter support
 	public void setDefaultValue(LiteralExpression litex) {
 		defaultValue = litex;
@@ -653,7 +657,7 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 		if (!isKeyPart()) return out;
 		for(PEKey pek : getTable().getKeys(sc)) {
 			if (pek.getConstraint() == ConstraintType.FOREIGN) continue;
-			for(PEKeyColumn pekc : pek.getKeyColumns()) {
+			for(PEKeyColumnBase pekc : pek.getKeyColumns()) {
 				if (pekc.getColumn().equals(this)) {
 					out.add(pek);
 					break;

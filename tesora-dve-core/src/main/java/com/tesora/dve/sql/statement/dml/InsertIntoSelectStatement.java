@@ -43,12 +43,6 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
-import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.InsertIntoTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SessionRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.SingleSiteStorageGroupTransformFactory;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
-import com.tesora.dve.sql.transform.strategy.ViewRewriteTransformFactory;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
@@ -87,17 +81,6 @@ public class InsertIntoSelectStatement extends InsertStatement {
 		return sourceSelect;
 	}
 	
-	@Override
-	public TransformFactory[] getTransformers() {
-		return new TransformFactory[] {
-				new InformationSchemaRewriteTransformFactory(),
-				new SessionRewriteTransformFactory(),
-				new ViewRewriteTransformFactory(),
-				new InsertIntoTransformFactory(),
-				new SingleSiteStorageGroupTransformFactory(),
-		};
-	}
-
 	@Override
 	public void normalize(SchemaContext sc) {
 		sourceSelect.get().normalize(sc);

@@ -142,7 +142,7 @@ public final class TempTable extends PETable {
 	}
 	
 	private void addKey(SchemaContext sc, List<PEColumn> onCols) {
-		List<PEKeyColumn> kc = new ArrayList<PEKeyColumn>();
+		List<PEKeyColumnBase> kc = new ArrayList<PEKeyColumnBase>();
 		for(PEColumn pec : onCols) {
 			if (pec.getType().getBaseType() == null || pec.getType().isStringType() || pec.getType().isBinaryType())
 				continue;
@@ -176,7 +176,7 @@ public final class TempTable extends PETable {
 	}
 	
 	public void addConstraint(SchemaContext sc, ConstraintType type, List<PEColumn> onCols) {
-		final List<PEKeyColumn> kc = new ArrayList<PEKeyColumn>();
+		final List<PEKeyColumnBase> kc = new ArrayList<PEKeyColumnBase>();
 		for (final PEColumn pec : onCols) {
 			kc.add(new PEKeyColumn(pec, null, -1L));
 		}
@@ -208,8 +208,14 @@ public final class TempTable extends PETable {
 		return rowCount > -1;
 	}
 	
+	@Override
 	public boolean isExplicitlyDeclared() {
 		return explicitlyDeclared;
+	}
+	
+	@Override
+	public boolean mustBeCreated() {
+		return true;
 	}
 	
 	@Override

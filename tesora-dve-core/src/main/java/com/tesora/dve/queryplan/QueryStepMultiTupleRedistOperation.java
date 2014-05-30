@@ -64,8 +64,6 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 
 	static Logger logger = Logger.getLogger( QueryStepMultiTupleRedistOperation.class );
 	
-	static final boolean suppressTempDeletMode = Boolean.getBoolean("QueryStepMultiTupleRedistOperation.suppressTempDelete");
-
 	final SQLCommand command;
 	final SQLCommand preFetchCommand = null;
 	SQLCommand insertOptions = null;
@@ -79,7 +77,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 	// they have to be distributed the same way as the original table was deleted, and for that we need to know what
 	// table they should be distributed like.  in particular, if the table they should be distributed like is range distributed
 	// we have to use the range distributed table, because the temp table won't have the right relationships in the catalog.
-	UserTable distributeTempTableLike;
+	PersistentTable distributeTempTableLike;
 	
 	PersistentTable targetTable;
 	TableHints tableHints = TableHints.EMPTY_HINT;
@@ -101,6 +99,15 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 
 	private boolean enforceScalarValue;
 	private boolean insertIgnore = false;
+	
+	private TempTableGenerator tempTableGenerator = TempTableGenerator.DEFAULT_GENERATOR;
+	// well, this is a bit of a hack - for the case where the target group is not the same as the source group
+	// if there is alread a worker group allocated - use this one, not the one we would get
+	private WorkerGroup preallocatedTargetWorkerGroup;
+	
+	public void setPreallocatedTargetWorkerGroup(WorkerGroup wg) {
+		preallocatedTargetWorkerGroup = wg;
+	}
 	
 	public QueryStepMultiTupleRedistOperation(PersistentDatabase execCtxDB, SQLCommand command, DistributionModel sourceDistModel) {
 		super(execCtxDB);
@@ -143,7 +150,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		return this;
 	}
 
-	public QueryStepMultiTupleRedistOperation distributeOn(List<String> columnNames, UserTable distributeLike) {
+	public QueryStepMultiTupleRedistOperation distributeOn(List<String> columnNames, PersistentTable distributeLike) {
 		this.targetDistModel = null;
 		this.distColumns = columnNames;
 		this.distributeTempTableLike = distributeLike;
@@ -160,6 +167,11 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		return this;
 	}
 
+	public QueryStepMultiTupleRedistOperation withTableGenerator(TempTableGenerator generator) {
+		this.tempTableGenerator = generator;
+		return this;
+	}
+	
 	/**
 	 * Called by <b>QueryStep</b> to do the redistribution operation.
 	 * <p/>
@@ -196,7 +208,10 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		// determine the source and dest worker groups
 		if (!targetGroup.equals(wg.getGroup())) {
 			sourceWG = wg;
-			allocatedWG = ssCon.getWorkerGroup(targetGroup,getContextDatabase());
+			if (preallocatedTargetWorkerGroup != null && preallocatedTargetWorkerGroup.getGroup().equals(targetGroup))
+				allocatedWG = preallocatedTargetWorkerGroup;
+			else
+				allocatedWG = ssCon.getWorkerGroup(targetGroup,getContextDatabase());
 			if (logger.isDebugEnabled())
 				logger.debug("Redist allocates for different storage group: " + allocatedWG);
 			targetWG = allocatedWG;
@@ -205,9 +220,9 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 					sourceWG, database, sourceDistModel, command,
 					specifiedDistKeyValue, distColumns, distributeTempTableLike,
 					targetWG, targetUserDatabase, targetDistModel, targetTable, 
-					tableHints, tempHints, insertOptions, allocatedWG, /* cleanupWG */ null);
+					tableHints, tempHints, insertOptions, allocatedWG, /* cleanupWG */ null,
+					tempTableGenerator);
 		} else if (ssCon.hasActiveTransaction() && wg.isModified() && targetTable != null) {
-			
 			// Here we want to redistribute from a persistent group back into itself, within the context
 			// of a transaction.  However, we must both read within the context of the transaction, and
 			// write within the context of a transaction, but we can't both read and write on the same
@@ -226,14 +241,16 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 						/* sourceWG */ wg, database, sourceDistModel, command,
 						specifiedDistKeyValue, distColumns, /* distributeTempTableLike */ null,
 						/* targetWG */ cacheWG, targetUserDatabase, BroadcastDistributionModel.SINGLETON, /* targetTable */ null, 
-						tableHints, /* tempHints */ null, /* insertOptions */ null, /* allocatedWG */ null, /* cleanupWG */ null);
+						tableHints, /* tempHints */ null, /* insertOptions */ null, /* allocatedWG */ null, /* cleanupWG */ null,
+						TempTableGenerator.DEFAULT_GENERATOR);
 				
 				SQLCommand tempQuery = new SQLCommand("select * from " + tempTable.getNameAsIdentifier());
 				doRedistribution(ssCon, resultConsumer, /* useSystemTempTable */ false, tempTableName,
 						cacheWG, targetUserDatabase, BroadcastDistributionModel.SINGLETON, tempQuery,
 						/* specifiedDistKeyValue */ null, /* distColumns */ null, distributeTempTableLike,
 						/* targetWG */ wg, targetUserDatabase, targetDistModel, targetTable, 
-						/* tableHints */ TableHints.EMPTY_HINT, tempHints, insertOptions, /* allocatedWG */ null, /* cleanupWG */ null);
+						/* tableHints */ TableHints.EMPTY_HINT, tempHints, insertOptions, /* allocatedWG */ null, /* cleanupWG */ null,
+						tempTableGenerator);
 			} catch (Exception e) {
 				cacheWG.markForPurge();
 				throw e;
@@ -278,19 +295,35 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 					sourceWG, database, sourceDistModel, command,
 					specifiedDistKeyValue, distColumns, distributeTempTableLike,
 					targetWG, targetUserDatabase, targetDistModel, targetTable, 
-					tableHints, tempHints, insertOptions, allocatedWG, cleanupWG);
+					tableHints, tempHints, insertOptions, allocatedWG, cleanupWG,
+					tempTableGenerator);
 		}
 
 		endExecution(totalRows);
 	}
 
 
-	private PersistentTable doRedistribution(final SSConnection ssCon, DBResultConsumer resultConsumer, boolean useSystemTempTable, String tempTableName,
-			WorkerGroup sourceWG, PersistentDatabase sourceDatabase, DistributionModel sourceDistModel, SQLCommand command,
-			IKeyValue specifiedDistKeyValue, List<String> distColumns, UserTable distributeTempTableLike,
-			WorkerGroup targetWG, PersistentDatabase targetUserDatabase, DistributionModel targetDistModel, PersistentTable targetTable, 
-			TableHints tableHints, TempTableDeclHints tempHints, SQLCommand insertOptions, WorkerGroup allocatedWG,WorkerGroup cleanupWG
-			) throws PEException {
+	private PersistentTable doRedistribution(final SSConnection ssCon, 
+			DBResultConsumer resultConsumer, 
+			boolean useSystemTempTable, 
+			String givenTempTableName,
+			WorkerGroup sourceWG, 
+			PersistentDatabase sourceDatabase, 
+			DistributionModel givenSourceDistModel, 
+			SQLCommand givenCommand,
+			IKeyValue givenSpecifiedDistKeyValue, 
+			List<String> givenDistColumns, 
+			PersistentTable givenDistributeTempTableLike,
+			WorkerGroup targetWG, 
+			PersistentDatabase givenTargetUserDatabase, 
+			DistributionModel givenTargetDistModel, 
+			PersistentTable givenTargetTable, 
+			TableHints givenTableHints, 
+			TempTableDeclHints givenTempHints, 
+			SQLCommand givenInsertOptions, 
+			WorkerGroup allocatedWG,
+			WorkerGroup cleanupWG,
+			TempTableGenerator tableGenerator) throws PEException {
 		
 		CatalogDAO c = ssCon.getCatalogDAO();
 		
@@ -309,38 +342,38 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			// Prepare the source query
 			MysqlPrepareStatementCollector selectCollector = new MysqlPrepareStatementCollector();
 			MappingSolution sourceWorkerMapping = null;
-			if (specifiedDistKeyValue != null) {
-				sourceWorkerMapping = sourceDistModel.mapKeyForQuery(
+			if (givenSpecifiedDistKeyValue != null) {
+				sourceWorkerMapping = givenSourceDistModel.mapKeyForQuery(
 						ssCon.getCatalogDAO(), sourceWG.getGroup(),
-						specifiedDistKeyValue,
+						givenSpecifiedDistKeyValue,
 						DistKeyOpType.QUERY);
 			} else {
-				sourceWorkerMapping = sourceDistModel.mapForQuery(sourceWG, command);
+				sourceWorkerMapping = givenSourceDistModel.mapForQuery(sourceWG, givenCommand);
 			}
 			//			MappingSolution sourceWorkerMapping = sourceDistModel.mapForQuery(wg, command);
 			WorkerExecuteRequest redistQueryRequest = 
-					new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), command).onDatabase(sourceDatabase);
+					new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), givenCommand).onDatabase(sourceDatabase);
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: preparing source query " + redistQueryRequest);
 			sourceWG.execute(sourceWorkerMapping, redistQueryRequest, selectCollector);
 
 			// Create the temp table
-			final ColumnSet resultMetadata = tableHints.addAutoIncMetadata(selectCollector.getResultColumns());
+			final ColumnSet resultMetadata = givenTableHints.addAutoIncMetadata(selectCollector.getResultColumns());
 
-			if (targetTable == null) {
+			if (givenTargetTable == null) {
 				if (cleanupWG == null)
 					cleanupWG = targetWG;
-				targetTable = createTempTable(ssCon, targetWG, cleanupWG,
-						tempHints, useSystemTempTable, tempTableName,
-						targetUserDatabase, resultMetadata, targetDistModel);
+				givenTargetTable = tableGenerator.createTable(ssCon, targetWG, cleanupWG,
+						givenTempHints, useSystemTempTable, givenTempTableName,
+						givenTargetUserDatabase, resultMetadata, givenTargetDistModel);
 				if (logger.isDebugEnabled())
-					logger.debug(ssCon + ": Redist: Created temp table " + targetTable);
+					logger.debug(ssCon + ": Redist: Created temp table " + givenTargetTable);
 				//				WorkerExecuteRequest lockReq = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), new SQLCommand("LOCK TABLES " + targetTable.getNameAsIdentifier() + " WRITE"));
 				//				targetWG.execute(MappingSolution.AllWorkers, lockReq, DBEmptyTextResultConsumer.INSTANCE);
 			}
 
 			// Use a thread to build the default insert statement (assuming we'll need it more often than not)
-			final PersistentTable tableForInsertStatement = targetTable;
+			final PersistentTable tableForInsertStatement = givenTargetTable;
 			final int tableColumnCount = tableForInsertStatement.getNumberOfColumns(); 
 			final int maxColumnCount = Integer.parseInt(ssCon.getSessionVariable("redist_max_columns"));
 			final int maxTupleCount = (maxColumnCount > tableColumnCount) ? (maxColumnCount / tableColumnCount) : 1;
@@ -362,20 +395,24 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			////			System.out.println("insertCollector A " + insertCollector.getPreparedStatement());
 
 			// Set up the update consumer on the target WG to accept updates
-			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(insertStatementFuture, insertOptions, targetTable, maxTupleCount, maxDataSize, targetWG);
+			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
 			updateConsumer.setInsertIgnore(insertIgnore);
-			WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(targetUserDatabase);
+			WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(givenTargetUserDatabase);
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: Setting up the update consumer on target group: " + emptyRequest);
 			targetWG.execute(MappingSolution.AllWorkers, emptyRequest, updateConsumer);
 
 			// Start the redistribution
-			PersistentTable distributeTableLike = (distributeTempTableLike == null ? targetTable : distributeTempTableLike);
-			KeyValue dv = (distColumns == null) ? distributeTableLike.getDistValue() : new KeyValue(distributeTableLike, distColumns);
+			PersistentTable distributeTableLike = (givenDistributeTempTableLike == null ? givenTargetTable : givenDistributeTempTableLike);
+			KeyValue dv = null;
+			if (givenDistColumns == null)
+				dv = distributeTableLike.getDistValue(ssCon.getCatalogDAO());
+			else 
+				dv = new KeyValue(distributeTableLike,distributeTableLike.getRangeID(c),givenDistColumns);
 			MysqlRedistTupleForwarder redistForwarder = 
 					new MysqlRedistTupleForwarder(
 							ssCon.getNonTransactionalContext(), c, targetWG,
-							distributeTableLike.getDistributionModel(), dv, tableHints,
+							distributeTableLike.getDistributionModel(), dv, givenTableHints,
 							useResultSetAliases, selectCollector.getPreparedStatement(), updateConsumer.getHandlerFuture());
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: starting redistribution: " + redistForwarder);
@@ -401,8 +438,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			//				targetWG.execute(MappingSolution.AllWorkers, lockReq, DBEmptyTextResultConsumer.INSTANCE);
 			//			}
 
-			if (!targetWG.isTemporaryGroup() && targetTable.getDistributionModel() != null) {
-				long adjustedRowCount = targetTable.getDistributionModel().getInsertAdjuster().adjust(recordsInserted, targetWG.size());
+			if (!targetWG.getGroup().isTemporaryGroup() && givenTargetTable.getDistributionModel() != null) {
+				long adjustedRowCount = givenTargetTable.getDistributionModel().getInsertAdjuster().adjust(recordsInserted, targetWG.size());
 				resultConsumer.setNumRowsAffected(adjustedRowCount);
 				rowcount = adjustedRowCount;
 			}
@@ -436,54 +473,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		
 		totalRows += rowcount;
 		
-		return targetTable;
-	}
-
-	private UserTable createTempTable(SSConnection ssCon, WorkerGroup targetWG, WorkerGroup cleanupWG,
-			TempTableDeclHints tempHints, boolean useSystemTempTable, String tempTableName,
-			PersistentDatabase database, ColumnSet metadata, DistributionModel tempDist) throws PEException {
-		UserTable tempTable = UserTable.newTempTable((database instanceof UserDatabase ? (UserDatabase)database : null), metadata, tempTableName, tempDist);
-		if (tempHints != null) tempHints.modify(tempTable);
-		StorageGroup tempTableSG = targetWG.getGroup();
-		tempTable.setStorageGroup(tempTableSG);
-//		System.out.println(tempTable.getName() + ".useSystemTempTable = " + useSystemTempTable + " on " + targetWG);
-		String sqlCommand = tempTable.getCreateTableStmt(true, useSystemTempTable && !suppressTempDeletMode);
-//		System.out.println(sqlCommand);
-		WorkerRequest req = 
-				new WorkerExecuteRequest(
-						ssCon.getNonTransactionalContext(), new SQLCommand(sqlCommand)
-						).onDatabase(database).forDDL();
-		ExecutionLogger logger = ssCon.getExecutionLogger().getNewLogger("CreateTempTable");
-
-		// We can't execute DDL on the targetWG if it is in a transaction
-		WorkerGroup wgForDDL = targetWG;
-		if (wgForDDL.activeTransactionCount() > 0)
-			wgForDDL = WorkerGroupFactory.newInstance(ssCon, tempTableSG, database);
-
-		try {
-			if (!useSystemTempTable || suppressTempDeletMode) {
-				WorkerRequest preCleanupReq = 
-						new WorkerExecuteRequest(
-								ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(tempTableName, true)
-								).onDatabase(database).forDDL();
-				wgForDDL.execute(MappingSolution.AllWorkers, preCleanupReq, DBEmptyTextResultConsumer.INSTANCE);
-			}
-			Collection<Future<Worker>> f = wgForDDL.submit(MappingSolution.AllWorkers, req, DBEmptyTextResultConsumer.INSTANCE);
-			if (!suppressTempDeletMode) {
-				cleanupWG.addCleanupStep(
-						new WorkerExecuteRequest(
-								ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(tempTable.getName(), false)
-								).onDatabase(database));
-			}
-			WorkerGroup.syncWorkers(f);
-		} finally {
-			if (wgForDDL != targetWG)
-				WorkerGroupFactory.returnInstance(ssCon, wgForDDL);
-			logger.end();
-		}
-
-		ssCon.setTempCleanupRequired(true);
-		return tempTable;
+		return givenTargetTable;
 	}
 
 	static public SQLCommand getTableInsertStatement(PersistentTable targetTable, SQLCommand insertOptions, ColumnSet targetTableColumns, int tupleCount, boolean ignore) throws NumberFormatException, PEException {

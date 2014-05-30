@@ -23,11 +23,11 @@ package com.tesora.dve.distribution;
 
 import java.io.Serializable;
 
+import com.tesora.dve.common.catalog.PersistentColumn;
+
 public interface IColumnDatum extends Serializable {
 
-	public String getColumnName();
-	
-	public int getColumnId();
+	public PersistentColumn getColumn();
 	
 	public Object getValue();
 	
