@@ -34,7 +34,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.common.primitives.Bytes;
-import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.ConnectionResource;
@@ -545,12 +544,6 @@ public class InsertTest extends SchemaMirrorTest {
 	 * client. When inserting a duplicate primary key into a BC table. The
 	 * client correctly throws an "Duplicate entry for key 'PRIMARY'" error, but
 	 * loses connection on the subsequent statement.
-	 * 
-	 * Running with "-DMysqlPortal.packetLogger=true" you can see that we send
-	 * the error response multiple times.
-	 * 
-	 * The test "unfortunately" passes, most likely because the JDBC driver is
-	 * able to handle the the case.
 	 */
 	@Test
 	public void testPE1193() throws Throwable {
@@ -559,15 +552,14 @@ public class InsertTest extends SchemaMirrorTest {
 			connection.execute("CREATE TABLE IF NOT EXISTS pe1193 (id INT NOT NULL, PRIMARY KEY (id)) BROADCAST DISTRIBUTE");
 			connection.execute("INSERT INTO pe1193 VALUES (1)");
 
-			final ExpectedExceptionTester exceptionTester = new ExpectedExceptionTester() {
+			new ExpectedExceptionTester() {
 				@Override
 				public void test() throws Throwable {
 					connection.execute("INSERT INTO pe1193 VALUES (1)");
 				}
-			};
+			}.assertException(Exception.class, "Duplicate entry '1' for key 'PRIMARY'");
 
-			exceptionTester.assertException(MySQLIntegrityConstraintViolationException.class, "Duplicate entry '1' for key 'PRIMARY'");
-			//		exceptionTester.assertException(MySQLIntegrityConstraintViolationException.class, "Duplicate entry '1' for key 'PRIMARY'");
+			connection.execute("INSERT INTO pe1193 VALUES (2)");
 		}
 	}
 

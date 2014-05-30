@@ -39,8 +39,6 @@ import javax.persistence.OrderBy;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-import com.tesora.dve.groupmanager.GroupTopicPublisher;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.ShowSchema;
@@ -48,11 +46,13 @@ import com.tesora.dve.common.UserVisibleDatabase;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.SiteFailureMessage;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.server.statistics.SiteStatKey.SiteType;
+import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.infoschema.annos.ColumnView;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
@@ -248,6 +248,10 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 
 	protected Worker.Factory getWorkerFactory() {
 		return getWorkerFactory(getHAType());
+	}
+
+	public static void addWorkerFactory(String haType, Worker.Factory factory) {
+		workerFactoryMap.put(haType, factory);
 	}
 
 	public static boolean isValidHAType(String haType) {
