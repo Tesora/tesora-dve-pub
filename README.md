@@ -11,11 +11,9 @@ while only provisioning, consuming and paying for the capacity that you need at 
 1. Install [Oracle](http://www.oracle.com/technetwork/java/javase/downloads/index.html) or [OpenJDK](http://openjdk.java.net/install/index.html) Java SDK 7.
 2. Install Maven 3.0.3 or later.
 3. Download the following library [jFuzzyLogic V3.0](http://sourceforge.net/projects/jfuzzylogic/files/jfuzzylogic/jFuzzyLogic_v3.0.jar/download).  Add the jFuzzyLogic library to the local Maven repository using the following command.
-
 	```
  	mvn install:install-file -Dfile=jFuzzyLogic_v3.0.jar -DgroupId=net.sourceforge -DartifactId=jFuzzyLogic -Dversion=3.0 -Dpackaging=jar
  	```
- 	
 4. Obtain the source code from the git repository.
 5. Run `mvn install -DskipTests` to build the project and place the newly built jar files in the local Maven repository.
 
