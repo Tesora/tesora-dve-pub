@@ -22,9 +22,11 @@ package com.tesora.dve.worker;
  */
 
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -66,6 +68,14 @@ public class UserCredentials implements com.tesora.dve.db.mysql.common.SimpleCre
 		this.isCleartext = isCleartext;
 	}
 
+	// used in tests
+	public UserCredentials(Properties props) {
+		super();
+		this.name = props.getProperty(DBHelper.CONN_USER);
+		this.password = props.getProperty(DBHelper.CONN_PASSWORD);
+		this.isCleartext = true;
+	}
+	
 	public User authenticate(SSConnection ssConn) throws PEException { 
 		// get the appropriate User object from the catalog
 		List<User> candidates = ssConn.getCatalogDAO().findUsers(name, null);

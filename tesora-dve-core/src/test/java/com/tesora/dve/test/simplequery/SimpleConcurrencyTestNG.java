@@ -112,7 +112,7 @@ public class SimpleConcurrencyTestNG extends PETest /* do not change this to a S
 		SSConnectionProxy conProxy = new SSConnectionProxy();
 		SSConnection ssConnection = SSConnectionAccessor.getSSConnection(conProxy);
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
 		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
 		UserDatabase db = ssConnection.getPersistentDatabase();
 		PersistentGroup sg = db.getDefaultStorageGroup();
@@ -169,7 +169,7 @@ public class SimpleConcurrencyTestNG extends PETest /* do not change this to a S
 		SSConnectionProxy conProxy = new SSConnectionProxy();
 		SSConnection ssConnection = SSConnectionAccessor.getSSConnection(conProxy);
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
 		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
 		UserDatabase db = ssConnection.getPersistentDatabase();
 		PersistentGroup sg = db.getDefaultStorageGroup();

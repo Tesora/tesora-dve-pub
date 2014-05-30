@@ -164,7 +164,7 @@ public class GenerationSitesTest extends SchemaTest {
         DBConnectionParameters dbParams = new DBConnectionParameters(Singletons.require(HostService.class).getProperties());
 		SSConnection ssConnection = SSConnectionAccessor.getSSConnection(new SSConnectionProxy());
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(PETest.bootHost.getProperties()));
 		Map<String, Connection> jdbcConnection = new HashMap<String, Connection>();
 		for (PersistentSite site : catalogDAO.findAllPersistentSites()) {
 			MysqlDataSource ds = new MysqlDataSource();
@@ -285,7 +285,7 @@ public class GenerationSitesTest extends SchemaTest {
 		catalogDAO = CatalogDAOFactory.newInstance();
 		ssConnection = SSConnectionAccessor.getSSConnection(new SSConnectionProxy());
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(PETest.bootHost.getProperties()));
 		jdbcConnection = new HashMap<String, Connection>();
 		for (PersistentSite site : catalogDAO.findAllPersistentSites()) {
 			MysqlDataSource ds = new MysqlDataSource();
