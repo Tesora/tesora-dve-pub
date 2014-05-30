@@ -96,8 +96,15 @@ public final class PECryptoUtils {
 	}
 
 	public static void main(String[] args) {
+		if (args.length == 0) {
+			System.out.println("Usage: " + PECryptoUtils.class.getName() + " <password>");
+			return;
+		}
+			
 		try {
-			System.out.println(encrypt("password"));
+			System.out.println();
+			System.out.println("  " + args[0] + " ==> " + encrypt(args[0]));
+			System.out.println();
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}

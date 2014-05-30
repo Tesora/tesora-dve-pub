@@ -89,7 +89,7 @@ public class VariableTest extends PETest {
 		conProxy = new SSConnectionProxy();
 		ssConnection = SSConnectionAccessor.getSSConnection(conProxy);
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
 		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
 		db = ssConnection.getPersistentDatabase();
 		sg = db.getDefaultStorageGroup();
@@ -379,7 +379,7 @@ public class VariableTest extends PETest {
 		try {
 			SSConnection ssConnection = SSConnectionAccessor.getSSConnection(conProxy);
 			SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-			ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+			ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
 			assertEquals("-09:00", ssConnection.getSessionVariable("time_zone"));
 		} finally {
 			conProxy.close();

@@ -26,6 +26,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.exceptions.PEException;
@@ -54,24 +55,32 @@ public class UserAuthenticationTest extends PETest {
 		ssConnProxy.close();
 	}
 
+	private String getPassword() {
+		return bootHost.getProperties().getProperty(DBHelper.CONN_PASSWORD);
+	}
+	
+	private String getUser() {
+		return bootHost.getProperties().getProperty(DBHelper.CONN_USER);
+	}
+	
 	@Test
 	public void testSuccessWithPlaintext() throws PEException {
-		new UserCredentials("root", "password").authenticate(ssConn);
+		new UserCredentials(getUser(), getPassword()).authenticate(ssConn);
 	}
 
 	@Test (expected=PEException.class)
 	public void testUserFailureWithPlaintext() throws PEException {
-		new UserCredentials("baduser", "password").authenticate(ssConn);
+		new UserCredentials("x" + getUser(), getPassword()).authenticate(ssConn);
 	}
 
 	@Test (expected=PEException.class)
 	public void testPwdFailureWithPlaintext() throws PEException {
-		new UserCredentials("root", "badpassword").authenticate(ssConn);
+		new UserCredentials(getUser(), "x" + getPassword()).authenticate(ssConn);
 	}
 
 	@Test
 	public void testSuccessWithHashed() throws Exception {
-		String hashPass = MSPAuthenticateV10MessageMessage.computeSecurePasswordString("password", ssConn.getHandshake().getSalt());
+		String hashPass = MSPAuthenticateV10MessageMessage.computeSecurePasswordString(getPassword(), ssConn.getHandshake().getSalt());
 
 		new UserCredentials("root", hashPass, false).authenticate(ssConn);
 	}

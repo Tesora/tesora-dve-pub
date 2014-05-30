@@ -104,7 +104,7 @@ public class QueryStepBasicTest extends PETest {
 		conProxy = new SSConnectionProxy();
 		ssConnection = SSConnectionAccessor.getSSConnection(conProxy);
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
 		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
 		db = ssConnection.getPersistentDatabase();
 		sg = db.getDefaultStorageGroup();
