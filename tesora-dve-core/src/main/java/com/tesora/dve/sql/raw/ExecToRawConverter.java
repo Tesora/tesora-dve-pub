@@ -53,12 +53,14 @@ import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.transform.execution.AbstractProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
+import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
 import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionStep;
 import com.tesora.dve.sql.util.UnaryProcedure;
@@ -167,8 +169,8 @@ public final class ExecToRawConverter {
 		for(ExecutionStep es : stepsInOrder) {
 			PEStorageGroup src = es.getPEStorageGroup();
 			maybeAccDynGroup(src);
-			if (es instanceof ProjectingExecutionStep) {
-				ProjectingExecutionStep pes = (ProjectingExecutionStep) es;
+			if (es instanceof RedistributionExecutionStep) {
+				RedistributionExecutionStep pes = (RedistributionExecutionStep) es;
 				maybeAccDynGroup(pes.getTargetGroup(sc));
 			}
 		}
@@ -177,8 +179,8 @@ public final class ExecToRawConverter {
 		}
 		for(ExecutionStep es : stepsInOrder) {
 			StepType out = null;
-			if (es instanceof ProjectingExecutionStep) {
-				out = buildProjectingStep((ProjectingExecutionStep)es);
+			if (es instanceof AbstractProjectingExecutionStep) {
+				out = buildProjectingStep((AbstractProjectingExecutionStep)es);
 			} else if (es instanceof UpdateExecutionStep || es instanceof DeleteExecutionStep) {
 				out = buildUpdateStep((DirectExecutionStep)es);
 			} else if (es instanceof TransactionExecutionStep) {
@@ -205,11 +207,12 @@ public final class ExecToRawConverter {
 		}
 	}
 	
-	private StepType buildProjectingStep(ProjectingExecutionStep pes) {
+	private StepType buildProjectingStep(AbstractProjectingExecutionStep pes) {
 		ProjectingStepType out = new ProjectingStepType();
-		PETable target = pes.getTargetTable();
-		if (target != null)
-			out.setTarget(buildTargetTable(target));
+		if (pes instanceof RedistributionExecutionStep) {
+			RedistributionExecutionStep redist = (RedistributionExecutionStep) pes;
+			out.setTarget(buildTargetTable(redist.getTargetTable()));
+		}
 		fillDML(out, pes, DMLType.PROJECTING);
 		return out;
 	}

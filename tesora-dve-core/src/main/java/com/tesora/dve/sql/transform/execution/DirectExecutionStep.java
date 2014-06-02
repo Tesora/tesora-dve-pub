@@ -242,4 +242,12 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 				t.addColumns(rr);
 		}
 	}
+	
+    protected String explainExplainHint(SchemaContext sc) {
+    	if (explainHelp == null)
+    		return null;
+    	return explainHelp.toString();
+    }
+    
+
 }

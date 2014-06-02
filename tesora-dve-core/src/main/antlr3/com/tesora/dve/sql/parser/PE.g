@@ -303,7 +303,7 @@ sql_schema_query_statement returns [Statement s] options {k=1;}:
 // [5] | <table_opts> select statement
 
 table_definition returns [Statement s] options {k=1;}:
-  TABLE push_scope if_not_exists tn=qualified_identifier
+  TEMPORARY? TABLE push_scope if_not_exists tn=qualified_identifier
   (
     // [2]
     ( LIKE npon=qualified_identifier 

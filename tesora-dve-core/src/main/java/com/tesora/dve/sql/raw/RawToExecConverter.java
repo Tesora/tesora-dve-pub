@@ -94,6 +94,7 @@ import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
+import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
 import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionStep;
 import com.tesora.dve.sql.transform.strategy.TempGroupManager.TempGroupPlaceholder;
@@ -337,8 +338,8 @@ public class RawToExecConverter {
 			}
 			
 			try {
-				ProjectingExecutionStep pes =
-						ProjectingExecutionStep.build(variablesContext, ondb, srcGroup, srcDV,
+				RedistributionExecutionStep pes =
+						RedistributionExecutionStep.build(variablesContext, ondb, srcGroup, srcDV,
 								ps, findGroup(ttt.getGroup()), tt, 
 								/*redistToScopedTable=*/null, 
 								/*dv=*/dkt, //DistributionKeyTemplate

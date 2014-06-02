@@ -21,7 +21,6 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import java.util.LinkedHashMap;
 import java.util.List;
 
 import com.tesora.dve.common.catalog.DistributionModel;
@@ -30,7 +29,6 @@ import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.TempTableDeclHints;
 import com.tesora.dve.queryplan.TempTableGenerator;
@@ -43,10 +41,8 @@ import com.tesora.dve.server.messaging.ConditionalWorkerRequest.GuardFunction;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.types.TempColumnType;
-import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerGroup;
 
 // A nascent pe table is one which we need to act like it's already persistent, even though it's not

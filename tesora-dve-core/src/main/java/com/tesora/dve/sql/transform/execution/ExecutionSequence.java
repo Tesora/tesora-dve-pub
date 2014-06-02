@@ -204,11 +204,8 @@ public class ExecutionSequence extends ExecutionStep {
 		this.analyze(new UnaryProcedure<DirectExecutionStep>() {
 			@Override
 			public void execute(final DirectExecutionStep object) {
-				if (object instanceof ProjectingExecutionStep) {
-					final ProjectingExecutionStep step = (ProjectingExecutionStep) object;
-					if (step.getRedistTable(sc) != null) {
-						counter.incrementAndGet();
-					}
+				if (object instanceof RedistributionExecutionStep) {
+					counter.incrementAndGet();
 				}
 			}
 

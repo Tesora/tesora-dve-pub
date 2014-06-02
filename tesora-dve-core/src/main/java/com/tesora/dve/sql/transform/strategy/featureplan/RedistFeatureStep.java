@@ -39,6 +39,7 @@ import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
+import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
 import com.tesora.dve.sql.transform.strategy.ExecutionCost;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 
@@ -80,7 +81,7 @@ public class RedistFeatureStep extends FeatureStep {
 			dkt.addColumn(projection.get(i.intValue()), counter++);
 		}
 		RedistributionFlags rf = (flags == null ? missingFlags : flags);
-		es.append(ProjectingExecutionStep.build(pc.getContext(),
+		es.append(RedistributionExecutionStep.build(pc.getContext(),
 				source.getDatabase(pc),
 				source.getSourceGroup(),
 				source.getDistributionVector(),
