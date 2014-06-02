@@ -81,6 +81,8 @@ public final class RedistributionExecutionStep extends
 	boolean enforceScalarValue = false;
 	boolean insertIgnore = false;
 
+	// any table generator
+	protected TempTableGenerator generator;
 
 	public static RedistributionExecutionStep build(SchemaContext sc, Database<?> db, PEStorageGroup srcGroup, DistributionVector sourceDV,
 			ProjectingStatement sql, PEStorageGroup targetGroup, PETable redistToTable,
@@ -92,10 +94,12 @@ public final class RedistributionExecutionStep extends
 			Boolean rc, DistributionKey dk,
 			boolean mustEnforceScalarValue,
 			boolean insertIgnore,
+			TempTableGenerator tempTableGenerator,
 			DMLExplainRecord splain) throws PEException {
 		maybeApplyMultitenant(sc,sql);
 		return new RedistributionExecutionStep(sc, db, srcGroup, sourceDV, sql, targetGroup, redistToTable,
-				redistToScopedTable, dv, missingAutoInc, offsetToExistingAutoInc, onDupKey, rc, dk, mustEnforceScalarValue, insertIgnore, splain);
+				redistToScopedTable, dv, missingAutoInc, offsetToExistingAutoInc, 
+				onDupKey, rc, dk, mustEnforceScalarValue, insertIgnore, tempTableGenerator, splain);
 	}
 	
 	public static RedistributionExecutionStep build(SchemaContext sc, Database<?> db, PEStorageGroup storageGroup, String sql, DistributionVector sourceVect,
@@ -123,6 +127,7 @@ public final class RedistributionExecutionStep extends
 			Boolean rc,
 			DistributionKey dk, boolean mustEnforceScalarValue,
 			boolean insertIgnore,
+			TempTableGenerator tempTableGenerator,
 			DMLExplainRecord splain) throws PEException {
 		super(db, srcGroup, sourceDV, dk, sql.getGenericSQL(sc, false, true), splain);
 		effectiveType = sql.getExecutionType();
@@ -146,6 +151,7 @@ public final class RedistributionExecutionStep extends
 		}
 		this.enforceScalarValue = mustEnforceScalarValue;
 		this.insertIgnore = insertIgnore;
+		this.generator = tempTableGenerator;
 	}
 
 	private RedistributionExecutionStep(SchemaContext sc, Database<?> db, PEStorageGroup storageGroup, String sql, DistributionVector sourceVect,
@@ -224,7 +230,6 @@ public final class RedistributionExecutionStep extends
 			qsrdo.setSpecifiedDistKeyValue(dk.getDetachedKey(sc));
 		qsrdo.setEnforceScalarValue(enforceScalarValue);
 		qsrdo.setInsertIgnore(insertIgnore);
-		TempTableGenerator generator = targetTable.getTableGenerator(sc);
 		if (generator != null)
 			qsrdo.withTableGenerator(generator);
 		qsrdo.setStatistics(getStepStatistics(sc));

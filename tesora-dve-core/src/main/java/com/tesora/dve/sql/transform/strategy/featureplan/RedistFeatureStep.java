@@ -97,6 +97,7 @@ public class RedistFeatureStep extends FeatureStep {
 				source.getDistributionKey(),
 				rf.isMustEnforceScalarValue(),
 				rf.isInsertIgnore(),
+				rf.getGenerator(),
 				getExplainRecord()));
 		
 	}

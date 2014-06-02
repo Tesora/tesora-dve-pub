@@ -30,6 +30,9 @@ import java.util.HashMap;
 import java.util.List;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.DistributionModel;
+import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
@@ -39,11 +42,18 @@ import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
+import com.tesora.dve.queryplan.TempTableDeclHints;
+import com.tesora.dve.queryplan.TempTableGenerator;
 import com.tesora.dve.resultset.ColumnInfo;
+import com.tesora.dve.resultset.ColumnMetadata;
+import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.ConditionalWorkerRequest.GuardFunction;
+import com.tesora.dve.server.messaging.ConditionalWorkerRequest;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.server.messaging.WorkerExecuteRequest;
+import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
@@ -56,7 +66,7 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.NameAlias;
 import com.tesora.dve.sql.parser.ParserOptions;
-import com.tesora.dve.sql.schema.NascentPETable;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEForeignKey;
@@ -103,12 +113,13 @@ import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerGroup;
 
-public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
+public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 
 	private ProjectingStatement srcStmt;
 	private ListOfPairs<PEColumn,Integer> projOffsets;
 	private PEColumn unspecifiedAutoinc;
 	private int specifiedAutoIncOffset;
+	private InhibitTableDrop inhibitor;
 	
 	public PECreateTableAsSelectStatement(Persistable<PETable, UserTable> targ,
 			Boolean ine, boolean exists, ProjectingStatement src, ListOfPairs<PEColumn,Integer> projectionOffsets) {
@@ -117,6 +128,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		this.projOffsets = projectionOffsets;
 		this.unspecifiedAutoinc = null;
 		specifiedAutoIncOffset = -1;
+		inhibitor = new InhibitTableDrop();
 	}
 
 	public ProjectingStatement getSourceStatement() {
@@ -223,9 +235,14 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		for(TableCacheKey tck : alsoClear)
 			clears.add(tck, InvalidationScope.LOCAL);
 
+		CreateTableViaRedistCallback cb =
+				new CreateTableViaRedistCallback((ComplexPETable)getTable(),steps,redistOffset,
+						new CacheInvalidationRecord(clears));
+		
+		inhibitor.setCallback(cb);
+		
 		es.append(new ComplexDDLExecutionStep(getTable().getPEDatabase(pc),getTable().getStorageGroup(pc),getTable(),
-				Action.CREATE, new CreateTableViaRedistCallback((NascentPETable)getTable(),steps,redistOffset,
-						new CacheInvalidationRecord(clears))));		
+				Action.CREATE, cb));		
 	}
 
 	private class PlannerConfiguration extends DelegatingBehaviorConfiguration {
@@ -373,7 +390,8 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 					dv,
 					new RedistributionFlags().withRowCount(true)
 						.withAutoIncColumn(unspecifiedAutoinc)
-						.withExistingAutoInc(specifiedAutoIncOffset));
+						.withExistingAutoInc(specifiedAutoIncOffset)
+						.withTableGenerator(new CTATableGenerator(pc.getContext(),inhibitor)));
 			
 			return defaultBehavior.getPostPlanningTransformer(pc, stmt).transform(pc, stmt, out);
 		}
@@ -382,11 +400,11 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 	}
 	
 
-	private class CreateTableViaRedistCallback implements NestedOperationDDLCallback, GuardFunction {
+	private class CreateTableViaRedistCallback implements NestedOperationDDLCallback {
 
 		private final List<QueryStep> toExecute;
 		private final int redistOffset;
-		private final NascentPETable nascent;
+		private final ComplexPETable target;
 		
 		private final CacheInvalidationRecord record;
 		
@@ -395,16 +413,15 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		
 		private boolean redistCompleted = false;
 		
-		public CreateTableViaRedistCallback(NascentPETable tab, List<QueryStep> steps,
+		public CreateTableViaRedistCallback(ComplexPETable tab, List<QueryStep> steps,
 				int redistOffset,
 				CacheInvalidationRecord record) {
-			this.nascent = tab;
+			this.target = tab;
 			this.toExecute = steps;
 			this.updates = null;
 			this.deletes = null;
 			this.record = record;
 			this.redistOffset = redistOffset;
-			tab.setCreationGuard(this);
 		}
 		
 		@Override
@@ -424,8 +441,8 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 
 			sc.beginSaveContext();
 			try {
-				nascent.persistTree(sc);
-				sc.getSource().setLoaded(nascent, nascent.getCacheKey());
+				target.persistTree(sc);
+				sc.getSource().setLoaded(target, target.getCacheKey());
 				for(DelayedFKDrop dfd : related) {
 					dfd.getTable().persistTree(sc);
 				}
@@ -528,10 +545,79 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 			}
 		}
 
+		protected boolean isRedistComplete() {
+			return redistCompleted;
+		}
+		
+	}
+	
+	protected class CTATableGenerator extends TempTableGenerator {
+		
+		protected final SchemaContext context;
+		protected final GuardFunction guard;
+		
+		public CTATableGenerator(SchemaContext cntxt, GuardFunction f) {
+			this.context = cntxt;
+			this.guard = f;
+		}
+		
+		public UserTable createTableFromMetadata(WorkerGroup targetWG, 
+				TempTableDeclHints tempHints, String tempTableName,
+				PersistentDatabase database, ColumnSet metadata, DistributionModel tempDist) throws PEException {
+
+			PETable target = getTable();
+			
+			for(ColumnMetadata cm : metadata.getColumnList()) {
+				UserColumn uc = new UserColumn(cm);
+				if ( cm.usingAlias() ) 
+					uc.setName(cm.getAliasName());
+				PEColumn pec = PEColumn.build(context,uc);
+				PEColumn existing = target.lookup(context,pec.getName());
+				if (existing != null && existing.getType().equals(TempColumnType.TEMP_TYPE))
+					existing.setType(pec.getType());
+			}
+
+			context.beginSaveContext();
+			try {
+				return target.getPersistent(context);
+			} finally {
+				context.endSaveContext();
+			}
+			
+		}
+		
+		public String buildCreateTableStatement(UserTable theTable, boolean useSystemTempTable) throws PEException {
+			String out = Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(context, getTable());
+			return out;
+		}
+		
+		public void addCleanupStep(SSConnection ssCon, UserTable theTable, PersistentDatabase database, WorkerGroup cleanupWG) {
+			WorkerRequest wer = new WorkerExecuteRequest(
+							ssCon.getNonTransactionalContext(), 
+							UserTable.getDropTableStmt(theTable.getName(), false)).onDatabase(database);
+			cleanupWG.addCleanupStep(
+					new ConditionalWorkerRequest(wer, guard));
+			
+		}		
+
+		@Override
+		public boolean requireSessVarsOnDDLGroup() {
+			return true;
+		}
+	}
+
+	private class InhibitTableDrop implements GuardFunction {
+		
+		private CreateTableViaRedistCallback cb;
+
 		@Override
 		public boolean proceed(Worker w, DBResultConsumer consumer)
 				throws PEException {
-			return !redistCompleted;
+			return !cb.isRedistComplete();
+		}
+		
+		protected void setCallback(CreateTableViaRedistCallback cb) {
+			this.cb = cb;
 		}
 		
 	}

@@ -1037,10 +1037,6 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return true;
 	}
 	
-	public TempTableGenerator getTableGenerator(SchemaContext sc) {
-		return null;
-	}
-
 	public boolean isExplicitlyDeclared() {
 		return false;
 	}

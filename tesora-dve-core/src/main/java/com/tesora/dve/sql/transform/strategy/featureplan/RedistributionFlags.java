@@ -23,6 +23,7 @@ package com.tesora.dve.sql.transform.strategy.featureplan;
 
 import java.util.List;
 
+import com.tesora.dve.queryplan.TempTableGenerator;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.PEColumn;
 
@@ -34,6 +35,7 @@ public class RedistributionFlags {
 	private Boolean useRowCount = false;
 	private boolean mustEnforceScalarValue = false;
 	private boolean insertIgnore = false;
+	private TempTableGenerator generator = null;
 	
 	public RedistributionFlags() {
 	}
@@ -68,6 +70,11 @@ public class RedistributionFlags {
 		return this;
 	}
 
+	public RedistributionFlags withTableGenerator(TempTableGenerator gen) {
+		generator = gen;
+		return this;
+	}
+	
 	public PEColumn getMissingAutoIncrement() {
 		return missingAutoIncrement;
 	}
@@ -92,5 +99,8 @@ public class RedistributionFlags {
 		return insertIgnore;
 	}
 	
+	public TempTableGenerator getGenerator() {
+		return generator;
+	}
 	
 }

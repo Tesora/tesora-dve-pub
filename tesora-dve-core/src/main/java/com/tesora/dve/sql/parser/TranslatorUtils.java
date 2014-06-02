@@ -131,6 +131,7 @@ import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.Comment;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.ContainerDistributionVector;
 import com.tesora.dve.sql.schema.ContainerPolicyContext;
 import com.tesora.dve.sql.schema.Database;
@@ -146,7 +147,6 @@ import com.tesora.dve.sql.schema.LoadDataInfileLineOption;
 import com.tesora.dve.sql.schema.LoadDataInfileModifier;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.schema.NascentPETable;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEContainer;
@@ -1910,9 +1910,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 		// the dv should have the container here, if applicable
 		PETable newtab = null;
-		if (nascent)
-			newtab = new NascentPETable(pc, unqualifiedTableName, fieldsAndKeys,
-				dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED);
+		if (nascent) {
+			newtab = new ComplexPETable(pc, unqualifiedTableName, fieldsAndKeys,
+				dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED)
+				.withBehavior(new ComplexPETable.CTATableType());
+		}
 		else
 			newtab = new PETable(pc, unqualifiedTableName, fieldsAndKeys,
 				dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED);

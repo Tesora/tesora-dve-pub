@@ -350,6 +350,7 @@ public class RawToExecConverter {
 								/*dk=*/null, // DistributionKey
 								/*mustEnforceScalarValue=*/false,
 								/*insertIgnore=*/false,
+								/*tempTableGenerator=*/null,
 								rawExplain);
 				plan.getSequence().append(pes);
 			} catch (PEException pe) {
