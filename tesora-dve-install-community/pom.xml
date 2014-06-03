@@ -1,0 +1,71 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>com.tesora</groupId>
+        <artifactId>tesora-dve-parent-product</artifactId>
+        <version>1.5.1-SNAPSHOT</version>
+        <relativePath>../tesora-dve-parent-product</relativePath>
+    </parent>
+
+	<modelVersion>4.0.0</modelVersion>
+	<artifactId>tesora-dve-install-community</artifactId>
+	<packaging>pom</packaging>
+	<name>Install - Community</name>
+	<description>Create install for the Tesora DVE Community Edition Server</description>
+
+	<properties>
+		<assembly.name>tesora-dve-${tesora.dve.version}</assembly.name>
+		<assembly.path>${project.build.directory}/${assembly.name}</assembly.path>
+		<jdbc.portal.url>${profile.portal.url}</jdbc.portal.url>
+		<jdbc.mysql.url>${profile.mysql.url}</jdbc.mysql.url>
+		<jdbc.mysql.user>${profile.mysql.user}</jdbc.mysql.user>
+		<jdbc.mysql.password>${profile.mysql.password}</jdbc.mysql.password>
+		<hibernate.default_schema>${profile.hibernate.default_schema}</hibernate.default_schema>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.tesora</groupId>
+			<artifactId>tesora-dve</artifactId>
+			<type>jar</type>
+		</dependency>
+		<dependency>
+			<groupId>com.tesora</groupId>
+			<artifactId>tesora-dve-parlb</artifactId>
+			<type>jar</type>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>stage-assembly</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<configuration>
+							<descriptors>
+								<descriptor>${project.basedir}/src/main/assembly/src.xml</descriptor>
+							</descriptors>
+							<finalName>${assembly.name}</finalName>
+							<appendAssemblyId>false</appendAssemblyId>
+							<attach>false</attach>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>license-maven-plugin</artifactId>
+				<version>1.7</version>
+				<configuration>
+					<licenseResolver>file:${project.basedir}/../tesora-dve/src/license/tesora_license</licenseResolver>
+					<descriptionTemplate>${project.basedir}/../tesora-dve/src/license/tesora_license/tesora/tesora_license.ftl</descriptionTemplate>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>
