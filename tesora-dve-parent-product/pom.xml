@@ -21,6 +21,7 @@
 		<module>../tesora-dve-tools-core</module>
 		<module>../tesora-dve-parlb</module>
 		<module>../tesora-dve-examples</module>
+		<module>../tesora-dve-install-community</module>
 	</modules>
 
 	<build>
