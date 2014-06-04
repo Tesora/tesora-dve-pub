@@ -60,5 +60,5 @@ Find out more about [Tesora](http://www.tesora.com).
 Follow us [@tesoracorp](http://twitter.com/tesoracorp).
 
 ### License
-DVE is available under AGPL version 3.  See [COPYING](github.com/Tesora/tesora-dve-pub/blob/master/COPYING).
+DVE is available under AGPL version 3.  See [COPYING](COPYING).
 
