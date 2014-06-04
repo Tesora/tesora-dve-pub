@@ -35,6 +35,7 @@ import com.tesora.dve.sql.util.UnaryPredicate;
 // behaviors.
 public class ComplexPETable extends PETable {
 
+	// for a temporary table I think we want to use a qualified name here maybe
 	public ComplexPETable(SchemaContext pc, Name name,
 			List<TableComponent<?>> fieldsAndKeys, DistributionVector dv,
 			List<TableModifier> modifier, PEPersistentGroup defStorage,
@@ -45,14 +46,36 @@ public class ComplexPETable extends PETable {
 
 	private ListSet<ComplexTableType> types = new ListSet<ComplexTableType>();
 
-	
-	public ComplexPETable withBehavior(ComplexTableType ctt) {
-		types.add(ctt);
+	public ComplexPETable withTemporaryTable() {
+		types.add(new TemporaryTableType());
 		return this;
 	}
 	
+	public ComplexPETable withCTA() {
+		types.add(new CTATableType());
+		return this;
+	}
+	
+	@Override
 	public boolean mustBeCreated() {
 		return Functional.any(types, ComplexTableType.created);
+	}
+	
+	@Override
+	public Database<?> getDatabase(SchemaContext sc) {
+		if (Functional.all(types, ComplexTableType.enclosed))
+			return db.get(sc);
+		return null;
+	}
+
+	@Override
+	public boolean hasDatabase(SchemaContext sc) {
+		if (Functional.all(types, ComplexTableType.enclosed))
+			return false;
+		if (db == null) {
+			return false;
+		}
+		return (db.get(sc) != null);
 	}
 	
 	@Override
@@ -71,6 +94,9 @@ public class ComplexPETable extends PETable {
 		
 		public abstract boolean mustBeCreated();
 
+		// does the table 'live' in a database
+		public abstract boolean isEnclosed();
+		
 		public static final UnaryPredicate<ComplexTableType> persistentTable = new UnaryPredicate<ComplexTableType>() {
 
 			@Override
@@ -88,6 +114,15 @@ public class ComplexPETable extends PETable {
 			}
 			
 		};
+
+		public static final UnaryPredicate<ComplexTableType> enclosed = new UnaryPredicate<ComplexTableType>() {
+
+			@Override
+			public boolean test(ComplexTableType object) {
+				return object.isEnclosed();
+			}
+			
+		};
 		
 	}
 	
@@ -102,8 +137,33 @@ public class ComplexPETable extends PETable {
 		public boolean mustBeCreated() {
 			return true;
 		}
+
+		@Override
+		public boolean isEnclosed() {
+			return true;
+		}
 		
 		
 	}
 
+	public static class TemporaryTableType extends ComplexTableType {
+
+		@Override
+		public boolean hasPersistentTable() {
+			return true;
+		}
+
+		@Override
+		public boolean mustBeCreated() {
+			return false;
+		}
+
+		@Override
+		public boolean isEnclosed() {
+			return false;
+		}
+		
+		
+	}
+	
 }

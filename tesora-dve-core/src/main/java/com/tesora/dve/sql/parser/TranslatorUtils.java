@@ -949,7 +949,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			List<TableComponent<?>> fieldsAndKeys, UnresolvedDistributionVector indv,
 			Name groupName, List<TableModifier> modifiers, Boolean ine, 
 			Pair<UnqualifiedName,List<UnqualifiedName>> discriminator,
-			ProjectingStatement ctas) {
+			ProjectingStatement ctas,
+			boolean temporary) {
 		if ( tableName == null ) {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
@@ -1043,7 +1044,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			// we want to inject when both the dist vect and the discriminator are null; if either is non-null the dist info
 			// was specified
 			if (dv == null && discriminator == null) {
-				newTab = buildTable(tableName, actualFieldsAndKeys, null, pesg, modifiers, ctaProjectionOffsets != null);
+				newTab = buildTable(tableName, actualFieldsAndKeys, null, pesg, modifiers, ctaProjectionOffsets != null, temporary);
 				if (pc == null || (opts != null && opts.isOmitMetadataInjection())) {
 					dv = new DistributionVector(pc, null, DistributionVector.Model.RANDOM);
 					newTab.setDistributionVector(pc,dv);				
@@ -1060,7 +1061,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						throw new SchemaException(Pass.SECOND, e);
 					}
 			} else if (dv != null) {
-				newTab = buildTable(tableName, actualFieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null);
+				newTab = buildTable(tableName, actualFieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null, temporary);
 			} else if (discriminator != null) {
 				// newTab will be the base table on the container - so change the dist vect on it to be the container
 				PEContainer container = pc.findContainer(discriminator.getFirst());
@@ -1072,7 +1073,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				}
 
 				dv = new ContainerDistributionVector(pc,container,false);
-				newTab = buildTable(tableName, fieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null);
+				newTab = buildTable(tableName, fieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null, temporary);
 				// newTab is actually the container base table - so go resolve the columns now and so mark them
 				List<UnqualifiedName> colNames = discriminator.getSecond();
 				for(int i = 0; i < colNames.size(); i++) {
@@ -1880,7 +1881,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public PETable buildTable(Name tableName,
 			List<TableComponent<?>> fieldsAndKeys, DistributionVector dv,
 			PEPersistentGroup sg, List<TableModifier> modifiers,
-			boolean nascent) {
+			boolean nascent, 
+			boolean temporary) {
 		if ( tableName == null ) {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
@@ -1910,10 +1912,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 		// the dv should have the container here, if applicable
 		PETable newtab = null;
-		if (nascent) {
-			newtab = new ComplexPETable(pc, unqualifiedTableName, fieldsAndKeys,
-				dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED)
-				.withBehavior(new ComplexPETable.CTATableType());
+		if (nascent || temporary) {
+			ComplexPETable ctab =
+					new ComplexPETable(pc, unqualifiedTableName, fieldsAndKeys,
+							dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED);
+			if (nascent)
+				ctab.withCTA();
+			if (temporary)
+				ctab.withTemporaryTable();
+			newtab = ctab;
 		}
 		else
 			newtab = new PETable(pc, unqualifiedTableName, fieldsAndKeys,
