@@ -14,6 +14,7 @@
 	<description>This is the parent POM for building the entire Tesora DVE project</description>
 
 	<modules>
+	<module>../tesora-dve-shared-resources</module>
         <module>../tesora-dve</module>
 		<module>../tesora-dve-common</module>
 		<module>../tesora-dve-message-api</module>
