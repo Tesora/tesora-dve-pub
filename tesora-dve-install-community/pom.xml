@@ -13,7 +13,7 @@
 	<description>Create install for the Tesora DVE Community Edition Server</description>
 
 	<properties>
-		<assembly.name>tesora-dve-${tesora.dve.version}</assembly.name>
+		<assembly.name>tesora-dve-install-community-${tesora.dve.version}</assembly.name>
 		<assembly.path>${project.build.directory}/${assembly.name}</assembly.path>
 		<jdbc.portal.url>${profile.portal.url}</jdbc.portal.url>
 		<jdbc.mysql.url>${profile.mysql.url}</jdbc.mysql.url>
