@@ -5,7 +5,7 @@
 	<groupId>com.tesora</groupId>
 	<artifactId>tesora-dve-parent</artifactId>
 	<packaging>pom</packaging>
-	<version>1.5.1-SNAPSHOT</version>
+	<version>1.6.1-SNAPSHOT</version>
 
 	<name>Parent POM</name>
 	<description>This is the parent POM for building the entire Tesora DVE project </description>
