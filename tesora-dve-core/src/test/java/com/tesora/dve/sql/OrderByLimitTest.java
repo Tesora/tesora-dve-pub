@@ -123,7 +123,7 @@ public class OrderByLimitTest extends SchemaMirrorTest {
 		for(int i = 1; i <= 1000; i++) {
 			rows.add("(" + i + "," + i+ ")");
 		}
-		// now we're going to randomize the insert order - we're trying to exploit the pk ordering shit
+		// now we're going to randomize the insert order - we're trying to exploit the pk ordering
 		ArrayList<String> reordered = new ArrayList<String>();
 		while(!rows.isEmpty()) {
 			int ith = Agent.getRandom(rows.size());

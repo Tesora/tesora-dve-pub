@@ -1,4 +1,4 @@
-# Tesora Database Virtualization Engine
+# Tesora<sup>&#8482;</sup> Database Virtualization Engine<sup>&reg;</sup>
 
 The Tesora Database Virtualization Engine (DVE) lets you scale on demand with 
 the power of multiple database servers acting as one.  Tesora's Database Virtualization Engine 

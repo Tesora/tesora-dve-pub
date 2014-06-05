@@ -176,7 +176,7 @@ public class AggTest extends SchemaMirrorTest {
 			}
 		}
 		// do the randomization thing too
-		// now we're going to randomize the insert order - we're trying to exploit the pk ordering shit
+		// now we're going to randomize the insert order - we're trying to exploit the pk ordering
 		reordered.clear();
 		while(!tuples.isEmpty()) {
 			int ith = Agent.getRandom(tuples.size());
