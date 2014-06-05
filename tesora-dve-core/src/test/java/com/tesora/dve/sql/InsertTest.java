@@ -754,4 +754,34 @@ public class InsertTest extends SchemaMirrorTest {
 
 		runTest(tests);
 	}
+	
+	@Test
+	public void testPE1547() throws Throwable {
+		ResourceResponse.BLOB_COLUMN.useFormatedOutput(false);
+		try {
+			final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+			tests.add(new StatementMirrorProc(
+					"CREATE TABLE `pe1547` ("
+							+ "`cid` varchar(255) NOT NULL DEFAULT '' COMMENT 'Primary Key: Unique cache ID.',"
+							+ "`data` longblob COMMENT 'A collection of data to cache.',"
+							+ "`expire` int(11) NOT NULL DEFAULT '0' COMMENT 'A Unix timestamp indicating when the cache entry should expire, or 0 for never.',"
+							+ "`created` int(11) NOT NULL DEFAULT '0' COMMENT 'A Unix timestamp indicating when the cache entry was created.',"
+							+ "`serialized` smallint(6) NOT NULL DEFAULT '0' COMMENT 'A flag to indicate whether content is serialized (1) or not (0).',"
+							+ "PRIMARY KEY (`cid`),"
+							+ "KEY `expire` (`expire`)"
+							+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Cache table used to store node entity records.';"));
+
+			tests.add(new StatementMirrorProc(
+					"INSERT INTO `pe1547` VALUES ('3','jícama jícama',0,1400117996,1)"));
+			tests.add(new StatementMirrorProc(
+					"INSERT INTO `pe1547` VALUES ('4','jícama jícama',0,1400117996,1),('5','xxx',0,1400117996,1)"));
+
+			tests.add(new StatementMirrorFun("SELECT * FROM pe1547 ORDER BY cid"));
+
+			runTest(tests);
+		} finally {
+			ResourceResponse.BLOB_COLUMN.useFormatedOutput(true);
+		}
+	}
+	
 }
