@@ -1,0 +1,30 @@
+#! /bin/sh
+#
+# Copyright © ${build.copyright.date} Tesora Corporation.  All Rights Reserved.
+#
+# All use, reproduction, transfer, publication or disclosure is prohibited
+# except as may be expressly permitted in the applicable license agreement.
+#
+
+#set -x
+
+SELF_DIR=$(cd $(dirname "$0"); pwd)
+. $SELF_DIR/common.sh
+
+JAVA_GC_ARGS="-XX:+UseG1GC -XX:NewRatio=1"
+#JAVA_GC_ARGS="-XX:+UseConcMarkSweepGC -XX:NewRatio=1"
+
+PROC_DESC="Tesora (TM) Database Virtualization Engine (TM)"
+PROC_SHORTDESC=dvelauncher
+PROC_MAINCLASS=com.tesora.dve.standalone.Main
+	
+INSTALL_ROOT=`echo $INSTALL_DIR | sed -e "s/server//"`
+
+CLASSPATH="$CLASSPATH:$INSTALL_ROOT/ui/lib/*"
+
+PROC_JAVA_ARGS="$JAVA_GC_ARGS -Dhazelcast.logging.type=log4j -Dtesora.dve.install=$INSTALL_ROOT"
+    
+_daemon_run $1 "$PROC_DESC" $PROC_SHORTDESC $PROC_MAINCLASS "$PROC_JAVA_ARGS"
+
+exit 0
+

@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>com.tesora</groupId>
 		<artifactId>tesora-dve-parent-product</artifactId>
-		<version>1.5.1-SNAPSHOT</version>
+		<version>1.6.1-SNAPSHOT</version>
 		<relativePath>../tesora-dve-parent-product</relativePath>
 	</parent>
 	
