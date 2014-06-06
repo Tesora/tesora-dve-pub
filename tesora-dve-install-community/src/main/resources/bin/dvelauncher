@@ -27,7 +27,7 @@ SELF_DIR=$(cd $(dirname "$0"); pwd)
 JAVA_GC_ARGS="-XX:+UseG1GC -XX:NewRatio=1"
 #JAVA_GC_ARGS="-XX:+UseConcMarkSweepGC -XX:NewRatio=1"
 
-PROC_DESC="Tesora (TM) Database Virtualization Engine (TM)"
+PROC_DESC="Tesora (TM) Database Virtualization Engine (R)"
 PROC_SHORTDESC=dvelauncher
 PROC_MAINCLASS=com.tesora.dve.standalone.Main
 	
