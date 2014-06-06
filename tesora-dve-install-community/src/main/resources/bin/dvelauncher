@@ -1,0 +1,43 @@
+#! /bin/sh
+###
+# #%L
+# Tesora Inc.
+# Database Virtualization Engine
+# %%
+# Copyright (C) 2011 - 2014 Tesora Inc.
+# %%
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License, version 3,
+# as published by the Free Software Foundation.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# #L%
+
+#set -x
+
+SELF_DIR=$(cd $(dirname "$0"); pwd)
+. $SELF_DIR/common.sh
+
+JAVA_GC_ARGS="-XX:+UseG1GC -XX:NewRatio=1"
+#JAVA_GC_ARGS="-XX:+UseConcMarkSweepGC -XX:NewRatio=1"
+
+PROC_DESC="Tesora (TM) Database Virtualization Engine (R)"
+PROC_SHORTDESC=dvelauncher
+PROC_MAINCLASS=com.tesora.dve.standalone.Main
+	
+INSTALL_ROOT=`echo $INSTALL_DIR | sed -e "s/server//"`
+
+CLASSPATH="$CLASSPATH:$INSTALL_ROOT/ui/lib/*"
+
+PROC_JAVA_ARGS="$JAVA_GC_ARGS -Dhazelcast.logging.type=log4j -Dtesora.dve.install=$INSTALL_ROOT"
+    
+_daemon_run $1 "$PROC_DESC" $PROC_SHORTDESC $PROC_MAINCLASS "$PROC_JAVA_ARGS"
+
+exit 0
+

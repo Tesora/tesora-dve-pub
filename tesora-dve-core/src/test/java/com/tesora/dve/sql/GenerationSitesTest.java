@@ -25,29 +25,31 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.UserDatabase;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.StorageGroupDDL;
@@ -55,8 +57,6 @@ import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.worker.DBConnectionParameters;
 import com.tesora.dve.worker.UserCredentials;
 
-
-//@Ignore
 public class GenerationSitesTest extends SchemaTest {
 	protected ProxyConnectionResource conn = null;
 
@@ -91,6 +91,7 @@ public class GenerationSitesTest extends SchemaTest {
 		conn = null;
 	}
 
+	@SuppressWarnings("resource")
 	@Test
 	public void basicGenerationAddTest() throws Throwable {
 		conn.execute("create range arange (int) persistent group " + testDDL.getPersistentGroup().getName());
@@ -164,14 +165,11 @@ public class GenerationSitesTest extends SchemaTest {
         DBConnectionParameters dbParams = new DBConnectionParameters(Singletons.require(HostService.class).getProperties());
 		SSConnection ssConnection = SSConnectionAccessor.getSSConnection(new SSConnectionProxy());
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(PETest.bootHost.getProperties()));
 		Map<String, Connection> jdbcConnection = new HashMap<String, Connection>();
 		for (PersistentSite site : catalogDAO.findAllPersistentSites()) {
-			MysqlDataSource ds = new MysqlDataSource();
-			ds.setUser(dbParams.getUserid());
-			ds.setPassword(dbParams.getPassword());
-			ds.setUrl(site.getMasterUrl());
-			jdbcConnection.put(site.getName(), ds.getConnection());
+			final Connection siteConn = DriverManager.getConnection(site.getMasterUrl(), dbParams.getUserid(), dbParams.getPassword());
+			jdbcConnection.put(site.getName(), siteConn);
 		}
 
 		// make sure they didn't go all into the same site, and that the total count is correct
@@ -285,14 +283,11 @@ public class GenerationSitesTest extends SchemaTest {
 		catalogDAO = CatalogDAOFactory.newInstance();
 		ssConnection = SSConnectionAccessor.getSSConnection(new SSConnectionProxy());
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(PETest.bootHost.getProperties()));
 		jdbcConnection = new HashMap<String, Connection>();
 		for (PersistentSite site : catalogDAO.findAllPersistentSites()) {
-			MysqlDataSource ds = new MysqlDataSource();
-			ds.setUser(dbParams.getUserid());
-			ds.setPassword(dbParams.getPassword());
-			ds.setUrl(site.getMasterUrl());
-			jdbcConnection.put(site.getName(), ds.getConnection());
+			final Connection siteConn = DriverManager.getConnection(site.getMasterUrl(), dbParams.getUserid(), dbParams.getPassword());
+			jdbcConnection.put(site.getName(), siteConn);
 		}
 		db = catalogDAO.findDatabase(testDDL.getDatabaseName());
 		persistGroup = catalogDAO.findPersistentGroup(testDDL.getPersistentGroup().getName());

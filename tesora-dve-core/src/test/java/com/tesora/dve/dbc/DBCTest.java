@@ -28,12 +28,14 @@ import static org.junit.Assert.assertNotNull;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.Properties;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.dbc.ServerDBConnection;
@@ -60,7 +62,10 @@ public class DBCTest extends PETest {
 
 	@Before
 	public void setupTest() throws Exception {
-		conn = new ServerDBConnection(PEConstants.ROOT, PEConstants.PASSWORD, null);
+		Properties props = bootHost.getProperties();
+		conn = new ServerDBConnection(props.getProperty(DBHelper.CONN_USER),
+				props.getProperty(DBHelper.CONN_PASSWORD),
+				null);
 		SchemaTest.setTemplateModeOptional();
 	}
 

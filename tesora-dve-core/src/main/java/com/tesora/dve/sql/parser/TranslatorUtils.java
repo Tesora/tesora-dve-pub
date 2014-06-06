@@ -2023,7 +2023,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			PEUser peu = pc.getCurrentUser().get(pc);
 			if (peu == null)
 				return LiteralExpression.makeNullLiteral();
-			// not entirely correct, but wtf cares
+			// not entirely correct
 			return LiteralExpression.makeStringLiteral(peu.getUserScope().getSQL());
 		} else if (EngineConstant.FUNCTION.has(fc, EngineConstant.UUID)) {
 			forceUncacheable(ValueManager.CacheStatus.NOCACHE_DYNAMIC_FUNCTION);

@@ -103,7 +103,7 @@ public class DistributionTest extends PETest{
 		ssConnProxy = new SSConnectionProxy();
 		ssConnection = SSConnectionAccessor.getSSConnection(ssConnProxy);
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
 		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
 		UserDatabase db = ssConnection.getPersistentDatabase();
 

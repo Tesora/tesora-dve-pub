@@ -40,6 +40,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.DistributionModel;
@@ -126,7 +127,7 @@ public class BootstrapTest extends PETest {
 		ssConnection = new SSConnection();
 	
 		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
-		ssConnection.startConnection(new UserCredentials(PEConstants.ROOT, PEConstants.PASSWORD));
+		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
 		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
 	}
 	

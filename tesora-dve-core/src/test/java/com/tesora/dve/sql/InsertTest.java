@@ -34,7 +34,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.common.primitives.Bytes;
-import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.ConnectionResource;
@@ -545,12 +544,6 @@ public class InsertTest extends SchemaMirrorTest {
 	 * client. When inserting a duplicate primary key into a BC table. The
 	 * client correctly throws an "Duplicate entry for key 'PRIMARY'" error, but
 	 * loses connection on the subsequent statement.
-	 * 
-	 * Running with "-DMysqlPortal.packetLogger=true" you can see that we send
-	 * the error response multiple times.
-	 * 
-	 * The test "unfortunately" passes, most likely because the JDBC driver is
-	 * able to handle the the case.
 	 */
 	@Test
 	public void testPE1193() throws Throwable {
@@ -559,15 +552,14 @@ public class InsertTest extends SchemaMirrorTest {
 			connection.execute("CREATE TABLE IF NOT EXISTS pe1193 (id INT NOT NULL, PRIMARY KEY (id)) BROADCAST DISTRIBUTE");
 			connection.execute("INSERT INTO pe1193 VALUES (1)");
 
-			final ExpectedExceptionTester exceptionTester = new ExpectedExceptionTester() {
+			new ExpectedExceptionTester() {
 				@Override
 				public void test() throws Throwable {
 					connection.execute("INSERT INTO pe1193 VALUES (1)");
 				}
-			};
+			}.assertException(Exception.class, "Duplicate entry '1' for key 'PRIMARY'");
 
-			exceptionTester.assertException(MySQLIntegrityConstraintViolationException.class, "Duplicate entry '1' for key 'PRIMARY'");
-			//		exceptionTester.assertException(MySQLIntegrityConstraintViolationException.class, "Duplicate entry '1' for key 'PRIMARY'");
+			connection.execute("INSERT INTO pe1193 VALUES (2)");
 		}
 	}
 
@@ -762,4 +754,34 @@ public class InsertTest extends SchemaMirrorTest {
 
 		runTest(tests);
 	}
+	
+	@Test
+	public void testPE1547() throws Throwable {
+		ResourceResponse.BLOB_COLUMN.useFormatedOutput(false);
+		try {
+			final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+			tests.add(new StatementMirrorProc(
+					"CREATE TABLE `pe1547` ("
+							+ "`cid` varchar(255) NOT NULL DEFAULT '' COMMENT 'Primary Key: Unique cache ID.',"
+							+ "`data` longblob COMMENT 'A collection of data to cache.',"
+							+ "`expire` int(11) NOT NULL DEFAULT '0' COMMENT 'A Unix timestamp indicating when the cache entry should expire, or 0 for never.',"
+							+ "`created` int(11) NOT NULL DEFAULT '0' COMMENT 'A Unix timestamp indicating when the cache entry was created.',"
+							+ "`serialized` smallint(6) NOT NULL DEFAULT '0' COMMENT 'A flag to indicate whether content is serialized (1) or not (0).',"
+							+ "PRIMARY KEY (`cid`),"
+							+ "KEY `expire` (`expire`)"
+							+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Cache table used to store node entity records.';"));
+
+			tests.add(new StatementMirrorProc(
+					"INSERT INTO `pe1547` VALUES ('3','jícama jícama',0,1400117996,1)"));
+			tests.add(new StatementMirrorProc(
+					"INSERT INTO `pe1547` VALUES ('4','jícama jícama',0,1400117996,1),('5','xxx',0,1400117996,1)"));
+
+			tests.add(new StatementMirrorFun("SELECT * FROM pe1547 ORDER BY cid"));
+
+			runTest(tests);
+		} finally {
+			ResourceResponse.BLOB_COLUMN.useFormatedOutput(true);
+		}
+	}
+	
 }

@@ -65,7 +65,7 @@ public abstract class ResourceResponse {
 	public void assertResults(String cntxt, Object[] values) throws Throwable {
 		List<ResultRow> results = getResults();
 		if (results.size() != values.length) {			
-			System.out.println("wtf?");
+			System.out.println("Mismatched number of rows");
 			System.out.println(displayRows(cntxt,false));
 		}
 		assertEquals(cntxt + " result size mismatch", values.length, results.size());
@@ -216,8 +216,6 @@ public abstract class ResourceResponse {
 		
 	private void assertRowEquals(String cntxt, ResultRow rr, Object[] values, List<ColumnChecker> checkers) {
 		List<ResultColumn> row = rr.getRow();
-//		if (row.size() != values.length)
-//			System.out.println("wtf?");
 		assertEquals(cntxt + " row width",row.size(),values.length);
 		assertEquals(row.size(), checkers.size());
 		for(int i = 0; i < values.length; i++) {

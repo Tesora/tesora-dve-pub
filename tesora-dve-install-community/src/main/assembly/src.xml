@@ -1,0 +1,151 @@
+<!--
+  #%L
+  Tesora Inc.
+  Database Virtualization Engine
+  %%
+  Copyright (C) 2011 - 2014 Tesora Inc.
+  %%
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License, version 3,
+  as published by the Free Software Foundation.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Affero General Public License for more details.
+  
+  You should have received a copy of the GNU Affero General Public License
+  along with this program. If not, see <http://www.gnu.org/licenses/>.
+  #L%
+  -->
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+	<id>bin</id>
+
+	<formats>
+		<format>tar.gz</format>
+		<format>dir</format>
+	</formats>
+
+	<includeBaseDirectory>true</includeBaseDirectory>
+	<baseDirectory>tesora/dve/server</baseDirectory>
+
+	<files>
+		<file>
+			<source>../tesora-dve-shared-resources/src/main/resources/BUILD.txt</source>
+			<outputDirectory></outputDirectory>
+			<destName>BUILD-${pom.version}-${buildNumber}.txt</destName>
+			<filtered>true</filtered>
+			<fileMode>0644</fileMode>
+		</file>
+		<file>
+			<source>../COPYING</source>
+			<outputDirectory></outputDirectory>
+			<fileMode>0644</fileMode>
+		</file>
+		<file>
+			<source>../tesora-dve/target/classes/com/tesora/dve/standalone/dve.properties</source>
+			<outputDirectory>config/com/tesora/dve/standalone</outputDirectory>
+			<fileMode>0644</fileMode>
+		</file>
+	</files>
+
+	<fileSets>
+		<fileSet>
+			<directory>../tesora-dve-shared-resources/src/main/resources</directory>
+			<outputDirectory></outputDirectory>
+			<fileMode>0644</fileMode>
+			<directoryMode>0755</directoryMode>
+			<filtered>true</filtered>
+			<includes>
+				<include>RELNOTES.txt</include>
+				<include>3RD-PARTY-LICENSES.txt</include>
+			</includes>
+		</fileSet>
+		<fileSet>
+			<directory>../tesora-dve-shared-resources/src/main/resources/license</directory>
+			<outputDirectory>license</outputDirectory>
+			<fileMode>0644</fileMode>
+			<directoryMode>0755</directoryMode>
+		</fileSet>
+		<fileSet>
+		  	<directory>../tesora-dve/target/classes</directory>
+			<outputDirectory>config</outputDirectory>
+			<fileMode>0644</fileMode>
+			<directoryMode>0755</directoryMode>
+			<includes>
+				<include>*log4j.properties</include>
+				<include>server.properties</include>
+			</includes>
+		</fileSet>
+		<fileSet>
+			<directory>src/main/resources/bin</directory>
+			<outputDirectory>bin</outputDirectory>
+			<fileMode>0755</fileMode>
+			<directoryMode>0755</directoryMode>
+			<filtered>true</filtered>
+			<excludes>
+				<exclude>**.xml</exclude>
+				<exclude>**/.gitignore</exclude>
+			</excludes>
+		</fileSet>
+		<fileSet>
+			<directory>src/main/resources/etc</directory>
+			<outputDirectory>config</outputDirectory>
+			<fileMode>0644</fileMode>
+			<directoryMode>0755</directoryMode>
+			<filtered>true</filtered>
+		</fileSet>
+		<fileSet>
+			<directory>src/main/resources/samples</directory>
+			<outputDirectory>samples</outputDirectory>
+			<fileMode>0644</fileMode>
+			<directoryMode>0755</directoryMode>
+			<excludes>
+				<exclude>**/.gitignore</exclude>
+			</excludes>
+		</fileSet>
+
+		<!-- The following entries simply create empty directories in the assembly -->
+		<fileSet>
+			<directory>src/main/assembly</directory>
+			<outputDirectory>logs</outputDirectory>
+			<directoryMode>0755</directoryMode>
+			<excludes>
+				<exclude>*</exclude>
+			</excludes>
+		</fileSet>
+		<fileSet>
+			<directory>src/main/assembly</directory>
+			<outputDirectory>lib/ext</outputDirectory>
+			<directoryMode>0755</directoryMode>
+			<excludes>
+				<exclude>*</exclude>
+			</excludes>
+		</fileSet>
+	</fileSets>
+
+	<dependencySets>
+		<dependencySet>
+			<outputDirectory>lib</outputDirectory>
+			<useProjectArtifact>false</useProjectArtifact>
+			<outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+			<directoryMode>0755</directoryMode>
+			<unpack>false</unpack>
+			<includes>
+				<include>*:tesora-dve*:jar</include>
+			</includes>
+		</dependencySet>
+		<dependencySet>
+			<outputDirectory>lib/thirdparty</outputDirectory>
+			<useProjectArtifact>false</useProjectArtifact>
+			<outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+			<directoryMode>0755</directoryMode>
+			<unpack>false</unpack>
+			<excludes>
+				<exclude>*:tesora-dve*:jar</exclude>
+				<exclude>*:mysql*:jar</exclude>
+			</excludes>
+		</dependencySet>
+	</dependencySets>
+</assembly>
