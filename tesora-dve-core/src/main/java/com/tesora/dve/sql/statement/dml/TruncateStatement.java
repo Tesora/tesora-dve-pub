@@ -65,7 +65,7 @@ import com.tesora.dve.worker.WorkerGroup;
 
 public class TruncateStatement extends UnaryTableDMLStatement {
 
-	public static class ResetAutoIncrementTrackerCallback implements NestedOperationDDLCallback {
+	public static class ResetAutoIncrementTrackerCallback extends NestedOperationDDLCallback {
 
 		private final PETable table;
 		private final TableScope scope;
@@ -73,32 +73,6 @@ public class TruncateStatement extends UnaryTableDMLStatement {
 		public ResetAutoIncrementTrackerCallback(final TableKey tk) {
 			this.table = tk.getAbstractTable().asTable();
 			this.scope = (tk instanceof MTTableKey) ? ((MTTableKey) tk).getScope() : null;
-		}
-
-		@Override
-		public void beforeTxn(SSConnection conn, CatalogDAO c, WorkerGroup wg) throws PEException {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
-		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
-			// TODO Auto-generated method stub
-		}
-
-		@Override
-		public List<CatalogEntity> getUpdatedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public List<CatalogEntity> getDeletedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
 		}
 
 		@Override
@@ -131,12 +105,6 @@ public class TruncateStatement extends UnaryTableDMLStatement {
 		}
 
 		@Override
-		public void postCommitAction(CatalogDAO c) throws PEException {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
 		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 			final SchemaContext sc = SchemaContext.createContext(conn);
 			if (table.hasAutoInc()) {
@@ -154,14 +122,6 @@ public class TruncateStatement extends UnaryTableDMLStatement {
 					ait.reset(sc.getCatalog().getDAO());
 				}
 			}
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
 		}
 
 	}

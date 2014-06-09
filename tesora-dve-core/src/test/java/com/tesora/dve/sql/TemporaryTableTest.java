@@ -22,6 +22,7 @@ package com.tesora.dve.sql;
  */
 
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.server.bootstrap.BootstrapHost;
@@ -54,7 +55,12 @@ public class TemporaryTableTest extends SchemaTest {
 		
 		try (final DBHelperConnectionResource conn = new PortalDBHelperConnectionResource()) {
 			conn.execute("use " + sysDDL.getDatabaseName());
+			conn.execute("start transaction");
 			conn.execute("create temporary table foo (id int, fid int) broadcast distribute");
+			conn.execute("insert into foo (id, fid) values (1,1),(2,2),(3,3)");
+			conn.execute("commit");
+			System.out.println(conn.printResults("select * from foo"));
+			System.out.println("waiting");
 		}
 	}
 }

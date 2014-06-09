@@ -25,8 +25,11 @@ import java.util.List;
 
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.TableState;
+import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.IsInstance;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryPredicate;
 
@@ -46,8 +49,10 @@ public class ComplexPETable extends PETable {
 
 	private ListSet<ComplexTableType> types = new ListSet<ComplexTableType>();
 
-	public ComplexPETable withTemporaryTable() {
-		types.add(new TemporaryTableType());
+	public ComplexPETable withTemporaryTable(SchemaContext sc) {
+		TemporaryTableType ttt = new TemporaryTableType();
+		ttt.setDatabaseName(super.getDatabaseName(sc));
+		types.add(ttt);
 		return this;
 	}
 	
@@ -57,25 +62,24 @@ public class ComplexPETable extends PETable {
 	}
 	
 	@Override
-	public boolean mustBeCreated() {
-		return Functional.any(types, ComplexTableType.created);
+	public Name getDatabaseName(SchemaContext sc) {
+		for(ComplexTableType ctt : types) {
+			Name n = ctt.getDatabaseName();
+			if (n != null)
+				return n;
+		}
+		return super.getDatabaseName(sc);
+	}
+
+	public void setDatabaseName(Name n) {
+		for(ComplexTableType ctt : types) {
+			ctt.setDatabaseName(n);
+		}
 	}
 	
 	@Override
-	public Database<?> getDatabase(SchemaContext sc) {
-		if (Functional.all(types, ComplexTableType.enclosed))
-			return db.get(sc);
-		return null;
-	}
-
-	@Override
-	public boolean hasDatabase(SchemaContext sc) {
-		if (Functional.all(types, ComplexTableType.enclosed))
-			return false;
-		if (db == null) {
-			return false;
-		}
-		return (db.get(sc) != null);
+	public boolean mustBeCreated() {
+		return Functional.any(types, ComplexTableType.created);
 	}
 	
 	@Override
@@ -88,14 +92,34 @@ public class ComplexPETable extends PETable {
 		return cached;
 	}
 	
+	@Override
+	public UserTable persistTree(SchemaContext sc, boolean forRefresh) throws PEException {
+		if (isUserlandTemporaryTable())
+			return null;
+		return super.persistTree(sc, forRefresh);
+	}
+	
+	private static final IsInstance<ComplexTableType> isTemporaryTable = 
+			new IsInstance<ComplexTableType>(TemporaryTableType.class);
+			
+	@Override
+	public boolean isUserlandTemporaryTable() {
+		return Functional.any(types, isTemporaryTable);
+	}
+	
 	public static abstract class ComplexTableType {
 		
 		public abstract boolean hasPersistentTable();
 		
 		public abstract boolean mustBeCreated();
-
-		// does the table 'live' in a database
-		public abstract boolean isEnclosed();
+		
+		public void setDatabaseName(Name n) {
+			// default does nothing
+		}
+		
+		public Name getDatabaseName() {
+			return null;
+		}
 		
 		public static final UnaryPredicate<ComplexTableType> persistentTable = new UnaryPredicate<ComplexTableType>() {
 
@@ -115,15 +139,6 @@ public class ComplexPETable extends PETable {
 			
 		};
 
-		public static final UnaryPredicate<ComplexTableType> enclosed = new UnaryPredicate<ComplexTableType>() {
-
-			@Override
-			public boolean test(ComplexTableType object) {
-				return object.isEnclosed();
-			}
-			
-		};
-		
 	}
 	
 	public static class CTATableType extends ComplexTableType {
@@ -138,16 +153,13 @@ public class ComplexPETable extends PETable {
 			return true;
 		}
 
-		@Override
-		public boolean isEnclosed() {
-			return true;
-		}
-		
-		
 	}
 
 	public static class TemporaryTableType extends ComplexTableType {
 
+		private Name dbName;
+		
+		
 		@Override
 		public boolean hasPersistentTable() {
 			return true;
@@ -159,11 +171,14 @@ public class ComplexPETable extends PETable {
 		}
 
 		@Override
-		public boolean isEnclosed() {
-			return false;
+		public void setDatabaseName(Name n) {
+			dbName = n;
 		}
 		
-		
+		@Override
+		public Name getDatabaseName() {
+			return dbName;
+		}
 	}
 	
 }

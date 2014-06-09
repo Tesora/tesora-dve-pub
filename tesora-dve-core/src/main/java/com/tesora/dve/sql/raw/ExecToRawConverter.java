@@ -59,7 +59,6 @@ import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
-import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
 import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionStep;

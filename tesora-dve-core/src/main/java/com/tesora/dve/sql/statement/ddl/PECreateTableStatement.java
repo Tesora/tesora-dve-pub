@@ -52,6 +52,7 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.ParserOptions;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.PEColumn;
@@ -60,6 +61,7 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumnBase;
+import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.QualifiedName;
@@ -116,6 +118,13 @@ public class PECreateTableStatement extends
 		return ((PETable)getRoot());
 	}
 
+	@Override
+	protected void preplan(SchemaContext pc, ExecutionSequence es,boolean explain) throws PEException {
+		if (getTable().isUserlandTemporaryTable())
+			return;
+		super.preplan(pc, es, explain);
+	}
+	
 	protected static void addIgnoredFKMessage(SchemaContext sc, ValidateResult vr) {
 		sc.getConnection().getMessageManager().addWarning(vr.getMessage(sc) + " - not persisted");
 	}
@@ -138,14 +147,19 @@ public class PECreateTableStatement extends
 						throw new SchemaException(Pass.NORMALIZE,vr.getMessage(pc));
 				}
 			}
-			// also look for dangling fks
-			DanglingFKComputeBefore computer = new DanglingFKComputeBefore(pc.isPersistent());
-			computer.computeDanglingFKs(pc, getTable());
-			related = computer.getDrops();
-			// need to add the ref'd tables to the clear list in order to force
-			// reload for fks
-			alsoClear = computeRefdTables(pc);
-			transModified = computer.getModded();
+			// also look for dangling fks, but not for temp tables
+			if (!getTable().isUserlandTemporaryTable()) {
+				DanglingFKComputeBefore computer = new DanglingFKComputeBefore(pc.isPersistent());
+				computer.computeDanglingFKs(pc, getTable());
+				related = computer.getDrops();
+				// need to add the ref'd tables to the clear list in order to force
+				// reload for fks
+				alsoClear = computeRefdTables(pc);
+				transModified = computer.getModded();
+			} else {
+				related = Collections.emptyList();
+				alsoClear = Collections.emptyList();
+			}
 		}
 	}
 					
@@ -306,6 +320,7 @@ public class PECreateTableStatement extends
 			return;
 		}
 		boolean immediate = !pc.isPersistent() ||
+				getTable().isUserlandTemporaryTable() || 
 				Functional.all(related, new UnaryPredicate<DelayedFKDrop>() {
 
 					@Override
@@ -341,9 +356,19 @@ public class PECreateTableStatement extends
 				new CreateTableCallback(tab,alsoClear,modded)));		
 	}
 	
-	protected void oneStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {
+	protected void oneStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {		
 		// so - we need to go back and finalize the normalization
 		PETable tab = getTable();
+		// if it's a userland temporary table, no need to muck around with fks
+		if (tab.isUserlandTemporaryTable()) {
+			if (es != null) {
+				es.append(new ComplexDDLExecutionStep(getDatabase(pc),getStorageGroup(pc),tab,Action.CREATE,
+						new CreateTemporaryTableCallback(pc,(ComplexPETable)tab,getSQLCommand(pc))));				
+			}
+			return;
+		}
+		
+		
 		boolean mustRebuildCTS = false;
 		List<ValidateResult> results = tab.validate(pc,false);
 		for(ValidateResult vr : results) {
@@ -359,7 +384,8 @@ public class PECreateTableStatement extends
 			// we need to rebuild the create table stmt
 			tab.setDeclaration(pc, tab);
 		ListOfPairs<SchemaCacheKey<?>,InvalidationScope> clears = new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
-		clears.add(tab.getCacheKey(),InvalidationScope.LOCAL);
+		if (!tab.isUserlandTemporaryTable())
+			clears.add(tab.getCacheKey(),InvalidationScope.LOCAL);
 		List<CatalogEntity> updates = null;
 		pc.beginSaveContext();
 		try {
@@ -412,7 +438,9 @@ public class PECreateTableStatement extends
 	@Override
 	public boolean filterStatement(SchemaContext pc) {
 		PETable tbl = (PETable)getCreated();
-		if (tbl != null) { 
+		if (tbl != null) {
+			// temporary table
+			if (tbl.getDatabase(pc) == null) return false;
 			if (pc.getConnection().isFilteredTable(
 					new QualifiedName(
 							tbl.getDatabase(pc).getName().getUnquotedName().getUnqualified(),
@@ -451,7 +479,7 @@ public class PECreateTableStatement extends
 		
 	}
 	
-	static class DelayedFKDrop implements NestedOperationDDLCallback {
+	static class DelayedFKDrop extends NestedOperationDDLCallback {
 		
 		private PETable enclosingTable;
 		private List<KeyID> keysToDrop;
@@ -479,12 +507,6 @@ public class PECreateTableStatement extends
 			return keysToDrop;
 		}
 		
-		@Override
-		public void beforeTxn(SSConnection conn, CatalogDAO c, WorkerGroup wg) throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-
 		@Override
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
 			conn.getCatalogDAO();
@@ -563,16 +585,6 @@ public class PECreateTableStatement extends
 		}
 
 		@Override
-		public List<CatalogEntity> getDeletedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
-		}
-
-		@Override
 		public boolean canRetry(Throwable t) {
 			return false;
 		}
@@ -607,22 +619,9 @@ public class PECreateTableStatement extends
 			return true;
 		}
 
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
 	}
 		
-	static class CreateTableCallback implements DDLCallback {
+	static class CreateTableCallback extends DDLCallback {
 
 		private PETable builtVersion;
 		private CacheInvalidationRecord record;
@@ -642,12 +641,6 @@ public class PECreateTableStatement extends
 			sql = new SQLCommand(builtVersion.getDeclaration());
 		}
 		
-		@Override
-		public void beforeTxn(SSConnection ssConn, CatalogDAO c, WorkerGroup wg) throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-
 		@Override
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
 			conn.getCatalogDAO();
@@ -697,11 +690,6 @@ public class PECreateTableStatement extends
 		}
 
 		@Override
-		public List<CatalogEntity> getDeletedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
 		public SQLCommand getCommand(CatalogDAO c) {
 			return sql;
 		}
@@ -731,12 +719,61 @@ public class PECreateTableStatement extends
 			return true;
 		}
 
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-			// TODO Auto-generated method stub
-			
+	}
+
+	private static class CreateTemporaryTableCallback extends DDLCallback {
+
+		SQLCommand stmt;
+		// we need to use this specific context to populate the temporary table schema
+		SchemaContext context;
+		// and the table
+		ComplexPETable table;
+
+		int pincount = 0;
+		
+		public CreateTemporaryTableCallback(SchemaContext sc, ComplexPETable table, SQLCommand stmt) {
+			this.context = sc;
+			this.table = table;
+			this.stmt = stmt;
 		}
 		
+		@Override
+		public SQLCommand getCommand(CatalogDAO c) {
+			return stmt;
+		}
+
+		@Override
+		public String description() {
+			return stmt.getRawSQL();
+		}
+
+		@Override
+		public boolean requiresFreshTxn() {
+			return false;
+		}
+
+		
+		@Override
+		public CacheInvalidationRecord getInvalidationRecord() {
+			return null;
+		}
+		
+		public void onCommit(SSConnection conn, CatalogDAO c, WorkerGroup wg) {
+			pincount++;
+			if (pincount == 1) {
+				wg.markPinned();
+				context.getTemporaryTableSchema().addTable(context, table);
+			}
+		}
+		
+		public void onRollback(SSConnection conn, CatalogDAO c, WorkerGroup wg) {
+			if (pincount == 1) {
+				wg.clearPinned();
+				pincount--;
+				context.getTemporaryTableSchema().removeTable(context, table);
+			}
+		}
+
 	}
 	
 }

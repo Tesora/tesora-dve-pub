@@ -400,7 +400,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 	}
 	
 
-	private class CreateTableViaRedistCallback implements NestedOperationDDLCallback {
+	private class CreateTableViaRedistCallback extends NestedOperationDDLCallback {
 
 		private final List<QueryStep> toExecute;
 		private final int redistOffset;
@@ -424,11 +424,6 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 			this.redistOffset = redistOffset;
 		}
 		
-		@Override
-		public void beforeTxn(SSConnection conn, CatalogDAO c, WorkerGroup wg)
-				throws PEException {
-		}
-
 		@Override
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
 			// the table would have been updated via the callback, so now we just build a new context
@@ -464,11 +459,6 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 
 		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
-		}
-
-		@Override
 		public boolean canRetry(Throwable t) {
 			// we're going to say you can never retry these because of the prepare action
 			return false;
@@ -493,18 +483,6 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		public boolean requiresWorkers() {
 			// TODO Auto-generated method stub
 			return true;
-		}
-
-		@Override
-		public void postCommitAction(CatalogDAO c) throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
-				DBResultConsumer resultConsumer) throws Throwable {
-			// nothing
 		}
 
 		@Override
@@ -547,6 +525,12 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 
 		protected boolean isRedistComplete() {
 			return redistCompleted;
+		}
+
+		@Override
+		public void executeNested(SSConnection conn, WorkerGroup wg,
+				DBResultConsumer resultConsumer) throws Throwable {
+			// nothing to do - this is handled elsewhere
 		}
 		
 	}

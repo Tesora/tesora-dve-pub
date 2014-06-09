@@ -170,7 +170,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 				null,Action.ALTER,new RenameTable(sc,alter)));
 	}
 	
-	private static class CopyTable implements NestedOperationDDLCallback {
+	private static class CopyTable extends NestedOperationDDLCallback {
 
 		TableCacheKey otck;
 		TableCacheKey ntck;
@@ -186,12 +186,6 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 			record = new CacheInvalidationRecord(pairs);
 		}
 		
-		@Override
-		public void beforeTxn(SSConnection ssConn,CatalogDAO c, WorkerGroup wg) throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-
 		@Override
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
 			// just create a new schema context
@@ -243,21 +237,6 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		}
 
 		@Override
-		public List<CatalogEntity> getUpdatedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public List<CatalogEntity> getDeletedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
-		}
-
-		@Override
 		public boolean canRetry(Throwable t) {
 			// TODO Auto-generated method stub
 			return false;
@@ -293,23 +272,9 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		public boolean requiresWorkers() {
 			return true;
 		}
-
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
 	}
 	
-	private static class RenameTable implements DDLCallback {
+	private static class RenameTable extends DDLCallback {
 
 		protected PEAlterTableStatement modifier;
 		protected List<CatalogEntity> deletes = null;
@@ -385,10 +350,5 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 			return true;
 		}
 
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-			// TODO Auto-generated method stub
-			
-		}		
 	}
 }

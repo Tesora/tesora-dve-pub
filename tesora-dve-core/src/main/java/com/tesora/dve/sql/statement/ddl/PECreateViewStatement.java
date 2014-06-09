@@ -334,7 +334,7 @@ public class PECreateViewStatement extends
 	}
 
 	
-	private static class CreateViewOperation implements NestedOperationDDLCallback {
+	private static class CreateViewOperation extends NestedOperationDDLCallback {
 
 		private final PEView nascentDefinition;
 		private SchemaContext context;
@@ -496,21 +496,6 @@ public class PECreateViewStatement extends
 				qsuo.execute(conn, wg, resultConsumer);
 			}
 		}
-
-		@Override
-		public void postCommitAction(CatalogDAO c) throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-		
 	}
 	
 }

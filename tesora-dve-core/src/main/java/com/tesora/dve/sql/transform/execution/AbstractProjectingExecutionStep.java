@@ -21,12 +21,8 @@ package com.tesora.dve.sql.transform.execution;
  * #L%
  */
 
-import java.util.List;
-
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
-import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.DistributionVector;

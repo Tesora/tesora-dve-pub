@@ -94,6 +94,7 @@ public class SchemaContext {
 	private final Map<SchemaCacheKey<?>, Persistable<?,?>> loading = new HashMap<SchemaCacheKey<?>, Persistable<?,?>>();
 	private final Set<SchemaCacheKey<?>> cacheLoading = new HashSet<SchemaCacheKey<?>>();
 	private final NativeTypeCatalog types;
+	private final TemporaryTableSchema temporaryTableSchema = new TemporaryTableSchema();
 	private CatalogContext catalog;
 	private PersistContext saveContext;
 	private ParserOptions opts;
@@ -398,6 +399,10 @@ public class SchemaContext {
 		perms = null;
 	}
 	
+	public TemporaryTableSchema getTemporaryTableSchema() {
+		return temporaryTableSchema;
+	}
+	
 	public PEPersistentGroup getPersistentGroup() {
 		Database<?> db = getCurrentDatabase(false);
 		if (db instanceof PEDatabase) {
@@ -645,8 +650,7 @@ public class SchemaContext {
 	public TableScope findScope(ScopeCacheKey sck) {
 		return schemaSource.find(this, sck);
 	}
-	
-	
+		
 	public ListSet<TableScope> findScopesReferencing(PETable pet) {
 		List<TableVisibility> matching = catalog.findTenantsOf(pet.getPersistent(this));
 		ListSet<TableScope> out = new ListSet<TableScope>();

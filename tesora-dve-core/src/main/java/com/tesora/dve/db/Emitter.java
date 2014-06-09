@@ -407,6 +407,9 @@ public abstract class Emitter {
 		if (p instanceof PEColumn)
 			emitColumnDeclaration(sc,(PEColumn)p, buf);
 		else if (p instanceof PETable) {
+			PETable pet = (PETable) p;
+			if (pet.isUserlandTemporaryTable())
+				buf.append(" TEMPORARY");
 			buf.append(" TABLE ").append(p.getName().getSQL());
 			emitTableDeclaration(sc,(PETable)p, buf);
 		}
@@ -492,14 +495,20 @@ public abstract class Emitter {
 	public String emitExternalCreateTableStatement(SchemaContext sc, PETable t, boolean omitDists) {
 		StringBuilder buf = new StringBuilder();
 		setOptions(omitDists ? EmitOptions.TEST_TABLE_DECLARATION : EmitOptions.EXTERNAL_TABLE_DECLARATION);
-		buf.append("CREATE TABLE ").append(t.getName().getQuotedName().getSQL());
+		buf.append("CREATE");
+		if (t.isUserlandTemporaryTable())
+			buf.append(" TEMPORARY");
+		buf.append(" TABLE ").append(t.getName().getQuotedName().getSQL());
 		emitTableDeclaration(sc, t,buf);
 		return buf.toString();		
 	}
 	
 	public String emitCreateTableStatement(SchemaContext sc, PEAbstractTable<?> t) {
 		StringBuilder buf = new StringBuilder();
-		buf.append("CREATE TABLE ");
+		buf.append("CREATE");
+		if (t.isUserlandTemporaryTable())
+			buf.append(" TEMPORARY");
+		buf.append(" TABLE ");
 		emitTable(sc,t,sc.getCurrentDatabase(false),buf);
 		emitTableDeclaration(sc, t,buf);
 		return buf.toString();
@@ -571,7 +580,7 @@ public abstract class Emitter {
 			emitComment(t.asTable().getComment(), buf);
 		}
 
-		boolean emitDistVect = (sc != null && ((PEDatabase)t.getDatabase(sc)).getMTMode() == MultitenantMode.OFF);
+		boolean emitDistVect = (sc != null && t.getEnclosingDatabaseMTMode(sc) == MultitenantMode.OFF); 
 		
 		boolean omitDistVect = (getOptions() != null && getOptions().isOmitDistVect());
 		

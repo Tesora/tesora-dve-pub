@@ -92,6 +92,11 @@ public class WorkerGroup {
 	
 	boolean toPurge = false; // if true, the ssConnection will discard the group rather than caching it 
 
+	// pin count - we increment for each create temporary table and decrement for each drop table that
+	// ends up being on a temporary table.  if the pin count > 0 we cannot purge this worker group,
+	// and this overrides toPruge.
+	int pinned = 0;
+	
 	public interface Manager {
 		abstract void returnWorkerGroup(WorkerGroup wg) throws PEException;
 	}
@@ -514,6 +519,18 @@ public class WorkerGroup {
 	
 	public boolean isMarkedForPurge() {
 		return this.toPurge;
+	}
+	
+	public void markPinned() {
+		this.pinned++;
+	}
+	
+	public void clearPinned() {
+		this.pinned--;
+	}
+	
+	public boolean isPinned() {
+		return pinned > 0;
 	}
 	
 	public void associateWithConnection(int connectionId) {

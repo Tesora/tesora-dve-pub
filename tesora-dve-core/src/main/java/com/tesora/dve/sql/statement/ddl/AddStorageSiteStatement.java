@@ -97,7 +97,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 		return null;
 	}
 
-	private static class AddStorageGenCallback implements NestedOperationDDLCallback {
+	private static class AddStorageGenCallback extends NestedOperationDDLCallback {
 
 		private final PEPersistentGroup theGroup;
 		private final List<PEStorageSite> theSites;
@@ -316,29 +316,6 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 			GenericSQLCommand gsql = s.getGenericSQL(sc, false, false);
 			return gsql.resolve(sc,null).getSQLCommand();			
 		}
-		
-		
-		@Override
-		public List<CatalogEntity> getUpdatedObjects() throws PEException {
-			// the operation takes care of this itself
-			return Collections.emptyList();
-		}
-
-		@Override
-		public List<CatalogEntity> getDeletedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
-		}
-
-		@Override
-		public boolean canRetry(Throwable t) {
-			// let's just say we can't.
-			return false;
-		}
 
 		@Override
 		public boolean requiresFreshTxn() {
@@ -370,14 +347,6 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 				DBResultConsumer resultConsumer) throws Throwable {
 			if (op == null) return;
 			op.execute(conn, wg, resultConsumer);
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
 		}
 		
 	}

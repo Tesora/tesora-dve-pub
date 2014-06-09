@@ -850,14 +850,17 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	@Override
 	public void returnWorkerGroup(WorkerGroup wg) throws PEException {
 		StorageGroup sg = wg.getGroup();
-		wg.disassociateFromConnection();
+		if (!wg.isPinned())
+			wg.disassociateFromConnection();
 		if (activeWG.containsKey(sg) && wg == activeWG.get(sg)) {
 			activeWG.remove(sg);
-			if (wg.isMarkedForPurge())
+			if (wg.isMarkedForPurge() && !wg.isPinned())
 				WorkerGroupFactory.purgeInstance(this, wg);
 			else
 				availableWG.put(sg, wg);
 		} else {
+			if (wg.isPinned())
+				return;
 			// This snippet addresses an issue where worker groups are given 
 			// back to the wg factory, even though they are still in the available list
 			boolean stillInAvailableList = false;

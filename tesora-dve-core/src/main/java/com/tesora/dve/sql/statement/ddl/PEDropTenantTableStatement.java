@@ -183,7 +183,7 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 		
 	}
 	
-	private static class DropTenantTableCallback implements DDLCallback {
+	private static class DropTenantTableCallback extends DDLCallback {
 
 		private final TableKey toDrop;
 		private final String tableName;
@@ -283,12 +283,6 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 			return true;
 		}
 
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-			// TODO Auto-generated method stub
-			
-		}
-		
 	}
 	
 }

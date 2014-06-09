@@ -121,7 +121,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 		return FeaturePlannerIdentifier.CONTAINER_BASE_TABLE;
 	}
 
-	private static class DeleteContainerTenantsCallback implements NestedOperationDDLCallback {
+	private static class DeleteContainerTenantsCallback extends NestedOperationDDLCallback {
 
 		private List<QueryStep> steps;
 		private List<SchemaCacheKey<PEContainerTenant>> tenants;
@@ -132,11 +132,6 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 			this.tenants = tenants;
 		}
 		
-		@Override
-		public List<CatalogEntity> getUpdatedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
 		@Override
 		public List<CatalogEntity> getDeletedObjects() throws PEException {
 			return deleted;
@@ -169,11 +164,6 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 			} finally {
 				sc.endSaveContext();
 			}
-		}
-
-		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return null;
 		}
 
 		@Override
@@ -217,18 +207,6 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 		@Override
 		public boolean requiresWorkers() {
 			return true;
-		}
-
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
 		}
 
 	}

@@ -180,6 +180,7 @@ import com.tesora.dve.sql.schema.SizeTypeAttribute;
 import com.tesora.dve.sql.schema.SubqueryTable;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.TableComponent;
+import com.tesora.dve.sql.schema.TableResolver;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.UnresolvedDistributionVector;
 import com.tesora.dve.sql.schema.UserScope;
@@ -325,6 +326,7 @@ import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryFunction;
+import com.tesora.dve.sql.util.UnaryProcedure;
 import com.tesora.dve.variable.GlobalConfigVariableHandler;
 import com.tesora.dve.variable.VariableScopeKind;
 import com.tesora.dve.worker.SiteManagerCommand;
@@ -368,7 +370,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	private NativeCharSetCatalog supportedCharSets = null;
 	private NativeCollationCatalog supportedCollations = null;
 	
+	private static final TableResolver basicResolver =
+			new TableResolver().withMTChecks()
+			.withQualifiedMissingDBFormat("No such database '%s'.");
+	
 	public static PEAbstractTable<?> getTable(final SchemaContext sc, final Name fullName, final LockInfo lockInfo) {
+		TableInstance ti = basicResolver.lookupTable(sc, fullName, lockInfo);
+		if (ti == null) return null;
+		return ti.getAbstractTable();
+		/*
 		final UnqualifiedName dbName = getDatabaseNameForTable(sc, fullName);
 		final UnqualifiedName tableName = fullName.getUnqualified();
 
@@ -385,6 +395,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 
 		throw new SchemaException(Pass.FIRST, "No database selected for table '" + tableName + "'.");
+		*/
 	}
 
 	public static UnqualifiedName getDatabaseNameForTable(final SchemaContext sc, final Name tableName) {
@@ -959,8 +970,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (Boolean.TRUE.equals(ine) && opts.isResolve()) {
 			// see if the table already exists
 			// UnqualifiedName dbName = null;
-			UnqualifiedName tabName = tableName.getUnqualified();
-			TableInstance ti = pc.getCurrentPEDatabase().getSchema().buildInstance(pc, tabName, lockInfo);
+			TableInstance ti =
+					new TableResolver().withMTChecks().lookupTable(pc, tableName, lockInfo);
 			if (ti != null) {
 				if (ti.getAbstractTable().isView())
 					throw new SchemaException(Pass.FIRST,tableName + " is a view (cannot recreate)");
@@ -1110,9 +1121,24 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
 		
+		TableResolver resolver = 
+				new TableResolver().withMTChecks().withDatabaseFunction(new UnaryProcedure<Database<?>>() {
+
+					@Override
+					public void execute(Database<?> object) {
+						if (!(object instanceof PEDatabase))
+							throw new SchemaException(Pass.SECOND,
+									"Invalid database for drop table: '" + object.getName()
+											+ "'");						
+					}
+					
+				});
+		
 		List<TableKey> tblKeys = new ArrayList<TableKey>();
 		List<Name> unknownTables = new ArrayList<Name>();
 		for(Name givenName : givenNames) {
+			TableInstance ti = resolver.lookupTable(pc, givenName, lockInfo);
+/*
 			UnqualifiedName tableName = givenName.getUnqualified();
 			Database<?> ondb = findDatabase(givenName);
 			if (ondb == null)
@@ -1125,6 +1151,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		
 			PEDatabase peds = (PEDatabase)ondb;
 			TableInstance ti = peds.getSchema().buildInstance(pc, tableName, lockInfo, true);
+			*/
 			if (ti == null) {
 				unknownTables.add(givenName);
 			} else {
@@ -1919,7 +1946,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			if (nascent)
 				ctab.withCTA();
 			if (temporary)
-				ctab.withTemporaryTable();
+				ctab.withTemporaryTable(pc);
 			newtab = ctab;
 		}
 		else
@@ -2101,8 +2128,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			ti = scope.buildTableInstance(
 					name,
 					castAlias(alias),
-					(pc.getCurrentDatabase(false) == null ? null : pc
-							.getCurrentDatabase(false).getSchema()), pc,
+					pc,
 					lockInfo);
 		} else {
 			ti = new TableInstance(null, name, castAlias(alias), 0, opts.isResolve());
@@ -3125,6 +3151,20 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (pc == null) {
 			tab = new TableKey(new PETable(pc, tabName, Collections.EMPTY_LIST, null, null, null),0);
 		} else {
+			TableResolver resolver = new TableResolver().withMTChecks()
+					.withDatabaseFunction(new UnaryProcedure<Database<?>>() {
+
+						@Override
+						public void execute(Database<?> object) {
+							if (!(object instanceof PEDatabase))
+								throw new SchemaException(Pass.SECOND,
+										"Invalid database for table alter: '" + object.getName()
+												+ "'");
+						}
+						
+					});
+			/*
+			
 			Database<?> ondb = pc.getCurrentDatabase(false);
 			if (ondb == null || tabName.isQualified()) {
 				if (!tabName.isQualified())
@@ -3144,6 +3184,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 								+ "'");
 			PEDatabase peds = (PEDatabase) ondb;
 			TableInstance ti = peds.getSchema().buildInstance(pc, tabName.getUnqualified(), lockInfo, true);
+			*/
+			TableInstance ti = resolver.lookupTable(pc, tabName, lockInfo);
 			if (ti == null)
 				throw new SchemaException(Pass.SECOND, "No such table: " + tabName.getSQL());
 			tab = ti.getTableKey();
@@ -3902,8 +3944,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	private List<TableInstance> lookupTables(List<Name> tableNames) {
 		List<TableInstance> tblInstances = new ArrayList<TableInstance>();
 		
+		TableResolver resolver = new TableResolver().withMTChecks();
+		
 		// figure out whether the target table(s) are known or not
 		for (Name targetTableName : tableNames) {
+			/*
 			Database<?> db = null;
 			UnqualifiedName candidateName = null;
 			if (targetTableName.isQualified()) {
@@ -3920,10 +3965,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				candidateName = (UnqualifiedName) targetTableName;
 			}
 			TableInstance ti = db.getSchema().buildInstance(pc, candidateName, lockInfo, true);
+			*/
+			TableInstance ti = resolver.lookupTable(pc, targetTableName, lockInfo);
 			if (ti == null)
 				throw new SchemaException(Pass.FIRST, "No such table: " + targetTableName);
 
-			tblInstances.add(ti.adapt(candidateName, null, ti.getNode(), false));
+			tblInstances.add(ti.adapt(targetTableName.getUnqualified(), null, ti.getNode(), false));
 		}
 		return tblInstances;
 	}

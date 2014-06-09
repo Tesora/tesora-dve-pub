@@ -296,7 +296,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 				delObjs, newObjs ,getInvalidationRecord(pc));
 	}
 
-	private static class ComplexAlterTableActionCallback implements NestedOperationDDLCallback {
+	private static class ComplexAlterTableActionCallback extends NestedOperationDDLCallback {
 
 		private static class ResultMetadataFilter implements OperationFilter {
 
@@ -395,21 +395,6 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 		}
 
 		@Override
-		public List<CatalogEntity> getUpdatedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public List<CatalogEntity> getDeletedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
-		}
-
-		@Override
 		public boolean canRetry(Throwable t) {
 			return true;
 		}
@@ -435,11 +420,6 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 		}
 
 		@Override
-		public void postCommitAction(CatalogDAO c) throws PEException {
-			// TODO Auto-generated method stub
-		}
-
-		@Override
 		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 			for (final QueryStep step : this.plan) {
 				final QueryStepOperation qso = step.getOperation();
@@ -451,14 +431,6 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			final SchemaContext sc = SchemaContext.createContext(conn);
 			this.alterTargetTableStatement.getCatalogEntries(sc);
 			this.alterTargetTableStatement.getDeleteObjects(sc);
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
 		}
 	}
 }

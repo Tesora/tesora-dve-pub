@@ -55,7 +55,7 @@ public class QueryStepDDLOperation extends QueryStepDDLGeneralOperation {
 		catalogEntities.addDelete(catEntity);
 	}
 
-	static class StaticEntityGenerator implements DDLCallback {
+	static class StaticEntityGenerator extends DDLCallback {
 
 		private List<CatalogEntity> updates;
 		private List<CatalogEntity> deletes;
@@ -110,14 +110,6 @@ public class QueryStepDDLOperation extends QueryStepDDLGeneralOperation {
 		}
 
 		@Override
-		public void beforeTxn(SSConnection ssConn, CatalogDAO c, WorkerGroup wg) throws PEException {
-		}
-
-		@Override
-		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
-		}
-
-		@Override
 		public boolean requiresFreshTxn() {
 			return false;
 		}
@@ -126,13 +118,5 @@ public class QueryStepDDLOperation extends QueryStepDDLGeneralOperation {
 		public boolean requiresWorkers() {
 			return !commands.isEmpty();
 		}
-
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-			// TODO Auto-generated method stub
-			
-		}
-		
-		
 	}
 }

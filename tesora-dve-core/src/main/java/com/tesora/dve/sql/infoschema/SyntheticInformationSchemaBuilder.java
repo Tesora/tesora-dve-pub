@@ -27,6 +27,7 @@ import com.tesora.dve.sql.infoschema.info.InfoSchemaDistributionsInformationSche
 import com.tesora.dve.sql.infoschema.info.InfoSchemaEventsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaFilesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaGenerationSiteInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.info.InfoSchemaGlobalTemporaryTablesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaKeyColumnUsageInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaPartitionsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaPluginsInformationSchemaTable;
@@ -34,6 +35,7 @@ import com.tesora.dve.sql.infoschema.info.InfoSchemaReferentialConstraintsSchema
 import com.tesora.dve.sql.infoschema.info.InfoSchemaRoutinesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaSchemataSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaScopesInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.info.InfoSchemaSessionTemporaryTablesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaTableConstraintsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaViewInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.DistributionLogicalTable;
@@ -51,6 +53,7 @@ import com.tesora.dve.sql.infoschema.logical.StatusLogicalInformationSchemaTable
 import com.tesora.dve.sql.infoschema.logical.TableStatusInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.TriggerInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.logical.catalog.CatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.DatabaseCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.DynamicPolicyCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.KeyCatalogInformationSchemaTable;
@@ -110,6 +113,7 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		addPluginsTable(logicalSchema, infoSchema, dbn);
 		addScopesTable(logicalSchema, infoSchema, dbn);
 		addViewsTable(logicalSchema, infoSchema, dbn);
+		addTempTablesTables(logicalSchema, infoSchema, dbn);
 	}
 
 	/**
@@ -269,5 +273,16 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		InfoSchemaViewInformationSchemaTable views = new InfoSchemaViewInformationSchemaTable(backing);
 		infoSchema.addTable(null,views);
 	}
+
+	private void addTempTablesTables(LogicalInformationSchema logicalSchema, InformationSchemaView infoSchema, DBNative dbn) {
+		CatalogInformationSchemaTable tempTables = (CatalogInformationSchemaTable) logicalSchema.lookup("temporary_table");
+		InfoSchemaSessionTemporaryTablesInformationSchemaTable sessTabs =
+				new InfoSchemaSessionTemporaryTablesInformationSchemaTable(tempTables);
+		InfoSchemaGlobalTemporaryTablesInformationSchemaTable globTabs =
+				new InfoSchemaGlobalTemporaryTablesInformationSchemaTable(tempTables);
+		infoSchema.addTable(null,sessTabs);
+		infoSchema.addTable(null, globTabs);
+	}
+
 	
 }
