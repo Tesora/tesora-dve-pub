@@ -1,8 +1,8 @@
-Copyright (c) ${build.copyright.date} Tesora Corporation.  All Rights Reserved.
+Copyright (c) ${build.copyright.date} Tesora Inc.  All Rights Reserved.
 
-************************************************************
-*** Third Party Licenses used by Tesora Corportation ***
-************************************************************
+************************************************
+*** Third Party Licenses used by Tesora Inc. ***
+************************************************
 
 Lists of 49 third-party dependencies.
 (The BSD license) AntLR Parser Generator (antlr:antlr:2.7.7 - http://www.antlr.org/)

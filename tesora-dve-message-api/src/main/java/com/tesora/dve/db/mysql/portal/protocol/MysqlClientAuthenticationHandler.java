@@ -136,7 +136,7 @@ public class MysqlClientAuthenticationHandler extends ByteToMessageDecoder {
                 Charset charset = javaCharsetCatalog.findJavaCharsetById(handshake.getServerCharsetId());
                 int mysqlCharsetID = MysqlNativeConstants.MYSQL_CHARSET_UTF8;
                 int capabilitiesFlag = (int) (ClientCapabilities.CLIENT_PROTOCOL_41 | ClientCapabilities.CLIENT_SECURE_CONNECTION );
-                handshake.setServerCharset((byte) mysqlCharsetID);//WTF?
+                handshake.setServerCharset((byte) mysqlCharsetID);
 
                 MSPAuthenticateV10MessageMessage.write(out, userName, userPassword, salt, charset, mysqlCharsetID, capabilitiesFlag);
                 ctx.write(out);

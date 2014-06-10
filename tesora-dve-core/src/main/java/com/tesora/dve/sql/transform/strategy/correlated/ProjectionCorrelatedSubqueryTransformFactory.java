@@ -68,12 +68,13 @@ import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.strategy.ApplyOption;
 import com.tesora.dve.sql.transform.strategy.ColumnMutator;
 import com.tesora.dve.sql.transform.strategy.ExecutionCost;
+import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.MutatorState;
+import com.tesora.dve.sql.transform.strategy.OrderByLimitRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.PassThroughMutator;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.ProjectionMutator;
 import com.tesora.dve.sql.transform.strategy.TransformFactory;
-import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;
@@ -403,15 +404,18 @@ public class ProjectionCorrelatedSubqueryTransformFactory extends
 		// now traverse the queries in reverse order to remove the subqueries; we're also going 
 		// to build the dependency info - we only care about the outer columns that are needed
 		// note that corsub impls modify as needed - assume that copy is ready for planning at the end of this.
+		List<ExpressionNode> removed = new ArrayList<ExpressionNode>();
 		ListSet<ColumnKey> neededOuterColumns = new ListSet<ColumnKey>();
 		for(int i = queries.size() - 1; i > -1; i--) {
 			CorrelatedSubquery sq = queries.get(i);
 			// we need to fix the mapper for the nested query for what we need to do later
 			sq.getSubquery().getStatement().getMapper().getOriginals().add(copy);
+			removed.add(copy.getProjectionEdge().get(sq.getOffset()));
 			sq.removeFromParent(copy);
 			copy.getDerivedInfo().getLocalNestedQueries().remove(sq.getSubquery().getStatement());
 			neededOuterColumns.addAll(sq.getOuterColumns());
 		}
+		OrderByLimitRewriteTransformFactory.maybeCleanupGroupBys(removed, copy);
 
 		// now figure out which of the outer join needed columns are already on the projection
 		ListSet<ColumnKey> allOuterColumns = new ListSet<ColumnKey>();
@@ -468,7 +472,8 @@ public class ProjectionCorrelatedSubqueryTransformFactory extends
 			}
 			fs.setProjection(intermediate);
 		}
-
+		fs.normalize(pc.getContext());
+		
 		ProjectingFeatureStep returnStep = 
 				DefaultFeatureStepBuilder.INSTANCE.buildProjectingStep(
 						pc, 
