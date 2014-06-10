@@ -252,6 +252,8 @@ public class ShowSchema {
 		
 		public static final String USES_DATASTORE = "uses_datastore";
 		
+		public static final String CONFIG = "config";
+		
 	}
 
 	public interface Container {

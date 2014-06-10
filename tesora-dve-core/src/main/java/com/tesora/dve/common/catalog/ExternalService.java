@@ -49,9 +49,10 @@ import com.tesora.dve.sql.infoschema.annos.TableView;
 				ShowSchema.ExternalService.PLUGIN, 
 				ShowSchema.ExternalService.AUTO_START, 
 				ShowSchema.ExternalService.CONNECT_USER, 
-				ShowSchema.ExternalService.USES_DATASTORE }, extension = true, priviledged = true),
+				ShowSchema.ExternalService.USES_DATASTORE,
+				ShowSchema.ExternalService.CONFIG }, extension = true, priviledged = true),
 		@TableView(view = InfoView.INFORMATION, name = "external_service", pluralName = "", columnOrder = {
-				"name", "plugin", "auto_start", "connect_user", "uses_datastore" }, extension = true, priviledged = true) })
+				"name", "plugin", "auto_start", "connect_user", "uses_datastore", "config" }, extension = true, priviledged = true) })
 @Entity
 @Table(name="external_service")
 public class ExternalService implements CatalogEntity {
@@ -131,6 +132,10 @@ public class ExternalService implements CatalogEntity {
 		this.plugin = plugin;
 	}
 
+	@InfoSchemaColumn(logicalName="config",fieldName="config",
+			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
+			views={@ColumnView(view=InfoView.SHOW, name="config"),
+			       @ColumnView(view=InfoView.INFORMATION, name="config")})
 	public String getConfig() {
 		return config;
 	}

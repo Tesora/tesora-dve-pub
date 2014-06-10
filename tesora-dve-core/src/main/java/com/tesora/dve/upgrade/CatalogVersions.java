@@ -75,7 +75,8 @@ public class CatalogVersions {
 		REBRANDING(new RebrandingVersion(36)),
 		ADD_COLLATION(new AddCollation(37)),
 		ADD_TEMPLATE_MODE(new AddTemplateMode(38)),
-		EXTRA_INFO_SCHEMA_COLUMNS_COLUMNS(new ExtraInfoSchemaColumnsColumns(39));
+		EXTRA_INFO_SCHEMA_COLUMNS_COLUMNS(new ExtraInfoSchemaColumnsColumns(39)),
+		EXTERNAL_SERVICE_SHOW_CONFIG(new InfoSchemaUpgradeVersion(40));
 		
 		private final CatalogVersion upgradeModule; 
 		
