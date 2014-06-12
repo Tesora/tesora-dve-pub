@@ -21,20 +21,10 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import java.util.List;
+/*
+ * HasTable implies anything that acts like a table - so a view, a userland table, info schema table
+ * AND a table scope
+ */
+public interface HasTable {
 
-public interface Table<T extends Column<?>> extends HasName, HasTable {
-
-	
-	public T addColumn(SchemaContext sc, T c);
-	
-	public List<T> getColumns(SchemaContext sc);
-	
-	public T lookup(SchemaContext sc, Name n);
-	
-	public Name getName(SchemaContext sc);
-
-	public boolean isInfoSchema();
-	
-	public Database<?> getDatabase(SchemaContext sc);
 }

@@ -26,6 +26,8 @@ import java.util.Map;
 
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.resultset.IntermediateResultSet;
+import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.ExpressionUtils;
@@ -45,13 +47,16 @@ import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.ListSet;
+import com.tesora.dve.sql.util.Pair;
 
 public class ShowKeysInformationSchemaTable extends ShowInformationSchemaTable {
 	
@@ -118,31 +123,61 @@ public class ShowKeysInformationSchemaTable extends ShowInformationSchemaTable {
 		throw new SchemaException(Pass.SECOND, "Invalid show key command");
 	}
 	
-	@Override
-	protected void handleScope(SchemaContext sc, SelectStatement ss, Map<String,Object> params, List<Name> scoping) {
-		// for columns: table_name, db_name
+	private Pair<String,String> inferScope(SchemaContext sc, List<Name> scoping) {
 		if (scoping.size() > 2)
 			throw new SchemaException(Pass.SECOND, "Overly qualified show keys statement");
 		if (scoping.isEmpty())
 			throw new SchemaException(Pass.SECOND, "Underly qualified show keys statement");
+		return decomposeScope(sc,scoping);
+	}
+		
+	@Override
+	public IntermediateResultSet executeWhereSelect(SchemaContext sc, ExpressionNode wc, List<Name> scoping, ShowOptions options) {
+		if (!sc.getTemporaryTableSchema().isEmpty()) {
+			Pair<String,String> scope = inferScope(sc,scoping);
+			QualifiedName qn = new QualifiedName(new UnqualifiedName(scope.getFirst()), new UnqualifiedName(scope.getSecond()));
+			TableInstance matching = sc.getTemporaryTableSchema().buildInstance(sc, qn);
+			if (matching != null)
+				throw new SchemaException(Pass.PLANNER, "No support for show keys ... where for temporary tables");
+		}
+		return super.executeWhereSelect(sc, wc, scoping, options);
+	}
+	
+	@Override
+	public IntermediateResultSet executeLikeSelect(SchemaContext sc, String likeExpr, List<Name> scoping, ShowOptions options) {
+		List<ResultRow> tempTab = null;
+		if (!sc.getTemporaryTableSchema().isEmpty()) {
+			Pair<String,String> scope = inferScope(sc,scoping);
+			QualifiedName qn = new QualifiedName(new UnqualifiedName(scope.getFirst()), new UnqualifiedName(scope.getSecond()));
+			TableInstance matching = sc.getTemporaryTableSchema().buildInstance(sc, qn);
+			if (matching != null) {
+				ComplexPETable ctab = (ComplexPETable) matching.getAbstractTable();
+				tempTab = ctab.getShowKeys(sc);
+			}
+		}
+		IntermediateResultSet irs = super.executeLikeSelect(sc, likeExpr, scoping, options);
+		if (tempTab != null) {
+			irs = new IntermediateResultSet(irs.getMetadata(),tempTab);
+		}
+		return irs;
+	}
+	
+	@Override
+	protected void handleScope(SchemaContext sc, SelectStatement ss, Map<String,Object> params, List<Name> scoping) {
+		// for columns: table_name, db_name
+		Pair<String,String> scope = inferScope(sc,scoping);
 		TableInstance ti = ss.getBaseTables().get(0);
 		ListSet<ExpressionNode> decompAnd = ExpressionUtils.decomposeAndClause(ss.getWhereClause());
-		Name table = scoping.get(0);
 		FunctionCall filterTable = new FunctionCall(FunctionName.makeEquals(),
 				new ColumnInstance(null,tableName,ti),
 				new NamedParameter(new UnqualifiedName("enctab")));
 		filterTable.setGrouped();
-		params.put("enctab", table.getUnquotedName().get());
+		params.put("enctab", scope.getSecond());
 		FunctionCall filterDB = new FunctionCall(FunctionName.makeEquals(),
 				new ColumnInstance(null,databaseName, ti),
 				new NamedParameter(new UnqualifiedName("encdb")));
 		filterDB.setGrouped();
-		Name dbName = null;
-		if (scoping.size() > 1)
-			dbName = scoping.get(1);
-		else
-			dbName = sc.getCurrentDatabase().getName();
-		params.put("encdb", dbName.getUnquotedName().get());
+		params.put("encdb", scope.getFirst());
 		decompAnd.add(filterTable);
 		decompAnd.add(filterDB);
 		ss.setWhereClause(ExpressionUtils.safeBuildAnd(decompAnd));

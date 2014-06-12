@@ -81,6 +81,8 @@ public final class RedistributionExecutionStep extends
 	boolean enforceScalarValue = false;
 	boolean insertIgnore = false;
 
+	boolean userlandTemporaryTable = false;
+	
 	// any table generator
 	protected TempTableGenerator generator;
 
@@ -111,12 +113,7 @@ public final class RedistributionExecutionStep extends
 			redistToTable.setFrozen();
 		return new RedistributionExecutionStep(sc, db, storageGroup, sql, sourceVect, redistToTable, targetGroup, distKeyTemplate, splain);
 	}
-	
-	
-
-	
-
-	
+		
 	private RedistributionExecutionStep(SchemaContext sc, Database<?> db, PEStorageGroup srcGroup, 
 			DistributionVector sourceDV, ProjectingStatement sql, PEStorageGroup targetGroup, PETable redistToTable,
 			TableScope redistToScopedTable,
@@ -139,6 +136,10 @@ public final class RedistributionExecutionStep extends
 			this.declarationHints = ((TempTable) redistToTable).getHints(sc);
 		}
 
+		if (targetTable.isUserlandTemporaryTable() || 
+				sql.getDerivedInfo().hasUserlandTemporaryTables())
+			userlandTemporaryTable = true;
+		
 		this.missingAutoInc = missingAutoInc;
 		this.offsetOfExistingAutoinc = offsetOfExistingAutoInc;
 		useRowCount = rc;
@@ -232,6 +233,8 @@ public final class RedistributionExecutionStep extends
 		qsrdo.setInsertIgnore(insertIgnore);
 		if (generator != null)
 			qsrdo.withTableGenerator(generator);
+		if (userlandTemporaryTable)
+			qsrdo.withUserlandTemporaryTables();
 		qsrdo.setStatistics(getStepStatistics(sc));
 		addStep(sc,qsteps,qsrdo);
 

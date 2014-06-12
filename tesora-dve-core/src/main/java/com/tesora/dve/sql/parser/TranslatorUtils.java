@@ -1116,7 +1116,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return out;
 	}
 
-	public Statement buildDropTableStatement(List<Name> givenNames, Boolean ifExists) {
+	public Statement buildDropTableStatement(List<Name> givenNames, Boolean ifExists, boolean tempTabs) {
 		if ( givenNames == null ) {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
@@ -1138,23 +1138,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		List<Name> unknownTables = new ArrayList<Name>();
 		for(Name givenName : givenNames) {
 			TableInstance ti = resolver.lookupTable(pc, givenName, lockInfo);
-/*
-			UnqualifiedName tableName = givenName.getUnqualified();
-			Database<?> ondb = findDatabase(givenName);
-			if (ondb == null)
-				throw new SchemaException(Pass.SECOND,
-						"No such database: '" + givenName + "'");
-			if (!(ondb instanceof PEDatabase))
-				throw new SchemaException(Pass.SECOND,
-						"Invalid database for drop table: '" + ondb.getName()
-								+ "'");
-		
-			PEDatabase peds = (PEDatabase)ondb;
-			TableInstance ti = peds.getSchema().buildInstance(pc, tableName, lockInfo, true);
-			*/
 			if (ti == null) {
 				unknownTables.add(givenName);
 			} else {
+				if (tempTabs && !ti.getTableKey().isUserlandTemporaryTable())
+					throw new SchemaException(Pass.SECOND, "No such temporary table: '" + givenName + "'");
 				tblKeys.add(ti.getTableKey());
 			}
 		}
@@ -3149,7 +3137,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public TableKey lookupAlteredTable(Name tabName) {
 		TableKey tab = null;
 		if (pc == null) {
-			tab = new TableKey(new PETable(pc, tabName, Collections.EMPTY_LIST, null, null, null),0);
+			tab = TableKey.make(pc,new PETable(pc, tabName, Collections.EMPTY_LIST, null, null, null),0);
 		} else {
 			TableResolver resolver = new TableResolver().withMTChecks()
 					.withDatabaseFunction(new UnaryProcedure<Database<?>>() {
@@ -3163,28 +3151,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						}
 						
 					});
-			/*
-			
-			Database<?> ondb = pc.getCurrentDatabase(false);
-			if (ondb == null || tabName.isQualified()) {
-				if (!tabName.isQualified())
-					pc.getCurrentDatabase(true);
-				QualifiedName qname = (QualifiedName) tabName;
-				UnqualifiedName leading = qname.getNamespace();
-				if (ondb == null || !ondb.getName().equals(leading)) {
-					ondb = pc.findDatabase(leading);
-					if (leading == null)
-						throw new SchemaException(Pass.SECOND,
-								"No such database: '" + leading + "'");
-				}
-			}
-			if (!(ondb instanceof PEDatabase))
-				throw new SchemaException(Pass.SECOND,
-						"Invalid database for table alter: '" + ondb.getName()
-								+ "'");
-			PEDatabase peds = (PEDatabase) ondb;
-			TableInstance ti = peds.getSchema().buildInstance(pc, tabName.getUnqualified(), lockInfo, true);
-			*/
 			TableInstance ti = resolver.lookupTable(pc, tabName, lockInfo);
 			if (ti == null)
 				throw new SchemaException(Pass.SECOND, "No such table: " + tabName.getSQL());

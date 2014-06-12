@@ -385,7 +385,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 			}
 			
 			FeatureStep out = new RedistFeatureStep(new AdhocFeaturePlanner(),
-					last,new TableKey(getTable(),0),
+					last,TableKey.make(pc.getContext(),getTable(),0),
 					getTable().getStorageGroup(pc.getContext()),
 					dv,
 					new RedistributionFlags().withRowCount(true)

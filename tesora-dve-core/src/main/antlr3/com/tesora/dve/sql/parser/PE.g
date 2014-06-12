@@ -1117,7 +1117,7 @@ config_option returns [Pair p] options {k=1;}:
 
 
 drop_statement returns [Statement s] options {k=1;}:
-  TABLE (IF e=EXISTS)? qualified_identifier_list { $s = utils.buildDropTableStatement($qualified_identifier_list.l, ($e != null)); }
+  TEMPORARY? TABLE (IF e=EXISTS)? qualified_identifier_list { $s = utils.buildDropTableStatement($qualified_identifier_list.l, ($e != null), $TEMPORARY != null); }
   | MULTITENANT? database_tag (IF e=EXISTS)? unqualified_identifier { $s = utils.buildDropDatabaseStatement($unqualified_identifier.n,($e != null), ($MULTITENANT != null), $database_tag.text); } 
   | USER (IF e=EXISTS)? userid { $s = utils.buildDropUserStatement($userid.us, $e != null); }
   | VIEW (IF ve=EXISTS)? qualified_identifier { $s = utils.buildDropViewStatement($qualified_identifier.n,$ve != null); }

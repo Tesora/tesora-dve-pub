@@ -90,7 +90,7 @@ public class ProjectingFeatureStep extends FeatureStep {
 			RedistributionFlags flags,
 			DMLExplainRecord redistExplain) throws PEException {
 		TempTable tt = TempTable.build(pc.getContext(), (ProjectingStatement)getPlannedStatement(), createOpts);
-		TableKey tk = new TableKey(tt, 0);
+		TableKey tk = TableKey.make(pc.getContext(), tt, 0); 
 		RedistFeatureStep redist = new RedistFeatureStep(onBehalfOf, this,tk, createOpts.getGroup(), createOpts.getDistVectColumns(), flags);
 		redist.withExplain(redistExplain == null ? getExplainRecord() : redistExplain);
 		return redist;

@@ -298,8 +298,8 @@ public class PEForeignKey extends PEKey {
 			PEForeignKeyColumn pefkc = (PEForeignKeyColumn) pekc;
 			mapping.put(pefkc.getColumn(), pefkc.getTargetColumn(sc));
 		}
-		TableKey lk = new TableKey(leftTab,1);
-		TableKey rk = new TableKey(rightTab,2);
+		TableKey lk = TableKey.make(sc,leftTab,1);
+		TableKey rk = TableKey.make(sc,rightTab,2);
 		DunPart lp = new DunPart(lk,1);
 		DunPart rp = new DunPart(rk,2);
 		return JoinEdge.computeColocated(sc, lp,Collections.singleton(lk), rp, rk, mapping, null,true);

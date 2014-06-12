@@ -21,6 +21,7 @@ package com.tesora.dve.common.catalog;
  * #L%
  */
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -50,6 +51,8 @@ import com.tesora.dve.distribution.RangeTableRelationship.RangeTableRelationship
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
+import com.tesora.dve.groupmanager.GroupManager;
+import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.variable.GlobalConfig;
 
 public class CatalogDAO {
@@ -995,6 +998,48 @@ public class CatalogDAO {
 		return (List<UserDatabase>) query.getResultList();
 	}
 
+	// this restricts the search to this server
+	public List<TemporaryTable> findLocalUserlandTemporaryTables(Integer connID, String dbName, String tableName) {
+		return findUserlandTemporaryTables(GroupManager.getCoordinationServices().getMemberAddress().toString(),connID,dbName, tableName);
+	}
+	
+	// values not specified won't be queried on - so null,null,null returns all temp tables
+	// and foo, null, null returns all temp tables on server foo
+	@SuppressWarnings("unchecked")
+	public List<TemporaryTable> findUserlandTemporaryTables(String serverName, Integer connID, String dbName, String tableName) {
+
+		StringBuilder hql = new StringBuilder();
+		
+		hql.append("from TemporaryTable tt ");
+		Query query = null;
+		if (serverName == null && connID == null && tableName == null) {
+			query = em.get().createQuery(hql.toString());
+		} else {
+			hql.append("where ");
+			List<String> filters = new ArrayList<String>();
+			if (serverName != null)
+				filters.add("tt.server = :serverName");
+			if (connID != null)
+				filters.add("tt.sessionID = :connID");
+			if (dbName != null)
+				filters.add("tt.db = :dbName");
+			if (tableName != null)
+				filters.add("tt.name = :tableName");
+			hql.append(Functional.join(filters, " and "));
+			query = em.get().createQuery(hql.toString());
+			if (serverName != null)
+				query.setParameter("serverName",serverName);
+			if (connID != null)
+				query.setParameter("connID", connID);
+			if (dbName != null)
+				query.setParameter("dbName",dbName);
+			if (tableName != null)
+				query.setParameter("tableName", tableName);
+		}
+		return (List<TemporaryTable>)query.getResultList();
+	}
+
+	
 	@SuppressWarnings("unchecked")
 	public List<UserTable> findTablesWithUnresolvedFKsTargeting(String dbName, String tabName) {
 		Query query = em
@@ -1112,6 +1157,7 @@ public class CatalogDAO {
 		Query q = em.get().createQuery("delete from ServerRegistration");
 		q.executeUpdate();
 	}
+	
 	
 	// for autoupdate
 	public EntityManager getEntityManager() {

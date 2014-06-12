@@ -139,7 +139,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		// the dist vect is already in the appropriate context, let's get to work
 		// only one ddl step can actually be executed using the current  
 		PETable oldTab = getTarget();
-		TableKey oldTableKey = new TableKey(oldTab,sc.getNextTable());
+		TableKey oldTableKey = TableKey.make(sc, oldTab,sc.getNextTable());
 		long now = System.currentTimeMillis();
 		String mangledNewName = oldTab.getName().getUnquotedName().get() + now;
 		PETable newTab = oldTab.recreate(sc, oldTab.getDeclaration(), new LockInfo(LockType.EXCLUSIVE, "alter distribution"));
@@ -148,12 +148,12 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		newTab.setDistributionVector(sc, adv);
 		if (oldTab.hasAutoInc()) {
 			// figure out the autoinc value, copy it over
-			long nextVal = sc.getPolicyContext().readAutoIncrBlock(oldTableKey);
+			long nextVal = oldTableKey.readAutoIncrBlock(sc); 
 			if (nextVal > 1)
 				newTab.getModifiers().setModifier(new AutoincTableModifier(nextVal));
 		}
 		newTab.setDeclaration(sc, newTab);
-		TableKey newTableKey = new TableKey(newTab,sc.getNextTable());
+		TableKey newTableKey = TableKey.make(sc,newTab,sc.getNextTable());
 		// new table in hand, I can create it
 		PECreateTableStatement createNew = new PECreateTableStatement(newTab,false);
 		createNew.plan(sc,es, config);

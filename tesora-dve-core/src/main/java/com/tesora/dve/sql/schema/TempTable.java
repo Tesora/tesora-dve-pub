@@ -112,7 +112,7 @@ public final class TempTable extends PETable {
 		columnForOffset = colForOff;
 		totalAddedKeys = 0;
 		this.rowCount = rowCount;		
-        TableKey tk = new TableKey(this, 0);
+        TableKey tk = TableKey.make(pc, this, 0);
 		forwardTables = new HashMap<TableKey, TableKey>();
 		for(TableInstance ti : sourceTables)
 			forwardTables.put(ti.getTableKey(), tk);

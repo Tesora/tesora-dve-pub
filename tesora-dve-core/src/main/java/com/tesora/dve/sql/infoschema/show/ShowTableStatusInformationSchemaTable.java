@@ -120,14 +120,14 @@ public class ShowTableStatusInformationSchemaTable extends ShowInformationSchema
 			if (tenant) {
 				TableVisibility tv = (TableVisibility) ce;
 				TableScope ts = TableScope.load(tv, sc);
-				tks.add(new MTTableKey(ts.getTable(sc),ts,0));
+				tks.add(TableKey.make(sc,ts,0));
 				if (onGroup == null) onGroup = ts.getTable(sc).getPersistentStorage(sc);
 				else if (!onGroup.equals(ts.getTable(sc).getPersistentStorage(sc)))
 					throw new SchemaException(Pass.PLANNER, "Unable to execute show status across groups");
 			} else {
 				UserTable ut = (UserTable)ce;
 				PEAbstractTable<?> pet = PEAbstractTable.load(ut, sc);
-				tks.add(new TableKey(pet,0));
+				tks.add(TableKey.make(sc,pet,0));
 				if (onGroup == null) onGroup = pet.getPersistentStorage(sc);
 				else if (!onGroup.equals(pet.getPersistentStorage(sc)))
 					throw new SchemaException(Pass.PLANNER, "Unable to execute show status across groups");

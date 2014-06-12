@@ -55,6 +55,7 @@ import com.tesora.dve.common.catalog.SiteInstance;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.StorageGroup.GroupScale;
 import com.tesora.dve.common.catalog.TableVisibility;
+import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserColumn;
@@ -1209,6 +1210,13 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	@Override
 	public boolean isInXATxn() {
 		return false;
+	}
+
+	@Override
+	public List<TemporaryTable> findUserlandTemporaryTable(Integer connID,
+			String dbName, String tabName) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

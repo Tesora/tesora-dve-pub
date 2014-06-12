@@ -21,20 +21,15 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import java.util.List;
+import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.node.expression.TableInstance;
 
-public interface Table<T extends Column<?>> extends HasName, HasTable {
+public interface AutoIncrement {
 
-	
-	public T addColumn(SchemaContext sc, T c);
-	
-	public List<T> getColumns(SchemaContext sc);
-	
-	public T lookup(SchemaContext sc, Name n);
-	
-	public Name getName(SchemaContext sc);
+	public long getNextAutoIncrBlock(SchemaContext sc, long blockSize);
 
-	public boolean isInfoSchema();
-	
-	public Database<?> getDatabase(SchemaContext sc);
+	public long readAutoIncrBlock(SchemaContext sc);
+
+	public void removeValue(SchemaContext sc, long value);
+
 }

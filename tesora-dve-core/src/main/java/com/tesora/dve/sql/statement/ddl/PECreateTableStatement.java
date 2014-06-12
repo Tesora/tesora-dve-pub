@@ -35,6 +35,8 @@ import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.ConstraintType;
+import com.tesora.dve.common.catalog.ServerRegistration;
+import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
@@ -556,7 +558,7 @@ public class PECreateTableStatement extends
 			for(PEKey pek : dropped) {
 				pek.setPersisted(false);
 				PEAlterTableStatement peat = 
-						new PEAlterTableStatement(sc, new TableKey(tab, sc.getNextTable()), Collections.singletonList(new DropIndexAction(pek)
+						new PEAlterTableStatement(sc, TableKey.make(sc,tab, sc.getNextTable()), Collections.singletonList(new DropIndexAction(pek)
 								.markTransientOnly()));
 				String sql = peat.getSQL(sc);
 				SessionExecutionStep ses = new SessionExecutionStep(tab.getDatabase(sc),tab.getStorageGroup(sc), sql);
@@ -731,10 +733,30 @@ public class PECreateTableStatement extends
 
 		int pincount = 0;
 		
+		List<CatalogEntity> updates;
+		
 		public CreateTemporaryTableCallback(SchemaContext sc, ComplexPETable table, SQLCommand stmt) {
 			this.context = sc;
 			this.table = table;
 			this.stmt = stmt;
+			this.updates = null;
+		}
+		
+		@Override
+		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
+			this.updates = new ArrayList<CatalogEntity>();
+			CatalogDAO c = conn.getCatalogDAO();
+			//String tableName, String tableDatabase, String engineName, int connID, ServerRegistration server
+			updates.add(new TemporaryTable(table.getName().getUnqualified().getUnquotedName().get(),
+					table.getPEDatabase(context).getName().getUnqualified().getUnquotedName().get(),
+					table.getEngine().getPersistent(),
+					conn.getConnectionId()));
+		}
+		
+		@Override
+		public List<CatalogEntity> getUpdatedObjects() throws PEException
+		{
+			return updates;
 		}
 		
 		@Override

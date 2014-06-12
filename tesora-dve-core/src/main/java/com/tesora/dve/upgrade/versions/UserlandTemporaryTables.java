@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.schema;
+package com.tesora.dve.upgrade.versions;
 
 /*
  * #%L
@@ -21,20 +21,20 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import java.util.List;
+import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.exceptions.PEException;
 
-public interface Table<T extends Column<?>> extends HasName, HasTable {
+public class UserlandTemporaryTables extends SimpleCatalogVersion {
 
-	
-	public T addColumn(SchemaContext sc, T c);
-	
-	public List<T> getColumns(SchemaContext sc);
-	
-	public T lookup(SchemaContext sc, Name n);
-	
-	public Name getName(SchemaContext sc);
+	public UserlandTemporaryTables(int v) {
+		super(v);
+	}
 
-	public boolean isInfoSchema();
-	
-	public Database<?> getDatabase(SchemaContext sc);
+	@Override
+	public String[] getUpgradeCommands(DBHelper helper) throws PEException {
+		return new String[] {
+				"create table user_temp_table (id integer not null auto_increment, db varchar(255) not null, table_engine varchar(255) not null, name varchar(255) not null, server_id varchar(255) not null, session_id integer not null, primary key (id)) ENGINE=InnoDB"
+		};
+	}
+
 }

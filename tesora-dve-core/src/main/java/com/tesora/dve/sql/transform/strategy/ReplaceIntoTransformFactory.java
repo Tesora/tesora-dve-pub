@@ -429,7 +429,9 @@ public class ReplaceIntoTransformFactory extends TransformFactory {
 		final TempTable selectResultsTable = t1.getFirst();
 		
 		RedistFeatureStep redistributed = 
-				new RedistFeatureStep(this,pfs,new TableKey(selectResultsTable,0), selectResultsTable.getStorageGroup(sc),
+				new RedistFeatureStep(this,pfs,
+						TableKey.make(pc.getContext(), selectResultsTable,0),
+						selectResultsTable.getStorageGroup(sc),
 						Collections.singletonList(t1.getSecond()), null);
 		
 		InsertIntoSelectStatement lookupPop =

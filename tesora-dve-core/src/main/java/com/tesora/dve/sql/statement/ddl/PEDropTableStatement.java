@@ -23,17 +23,25 @@ package com.tesora.dve.sql.statement.ddl;
 
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.tesora.dve.common.MultiMap;
+import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEContainer;
@@ -48,11 +56,12 @@ import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
-import com.tesora.dve.sql.transform.execution.DropTableExecutionStep;
+import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.util.ListOfPairs;
+import com.tesora.dve.worker.WorkerGroup;
 
 public class PEDropTableStatement extends
 		PEDropStatement<PETable, UserTable> {
@@ -117,34 +126,42 @@ public class PEDropTableStatement extends
 		for(TableKey tk : keys) {
 			PETable tab = tk.getAbstractTable().asTable();
 			List<PEForeignKey> effectedForeignKeys = new ArrayList<PEForeignKey>();
-			checkForeignKeys(pc, tab, effectedForeignKeys, ignoreFKChecks);		
+			if (!tk.isUserlandTemporaryTable())
+				checkForeignKeys(pc, tab, effectedForeignKeys, ignoreFKChecks);		
 			pc.beginSaveContext();
 			try {
-				deletes.add(tab.persistTree(pc));
-				if (tab.isContainerBaseTable(pc)) {
-					PEContainer cont = tab.getDistributionVector(pc).getContainer(pc);
-					List<UserTable> anyTabs = pc.getCatalog().findContainerMembers(cont.getName().get());
-					if (anyTabs.size() == 1) {
-						// last table - this is ok
-						cont.setBaseTable(pc, null);
-						updates.add(cont.persistTree(pc));
-						// we're also going to delete all of the container tenants
-						try {
-							deletes.addAll(pc.getCatalog().getDAO().findContainerTenants(cont.getPersistent(pc)));
-						} catch (Exception e) {
-							throw new PEException("Unable to find container tenants of container " + cont.getName(),e);
+				if (tk.isUserlandTemporaryTable()) {
+					// for userland temp tables, we only need to toss out the temporary table record
+					deletes.addAll(pc.getCatalog().findUserlandTemporaryTable(pc.getConnection().getConnectionId(),
+							tab.getDatabaseName(pc).getUnquotedName().get(),
+							tab.getName().getUnquotedName().get()));
+				} else {
+					deletes.add(tab.persistTree(pc));
+					if (tab.isContainerBaseTable(pc)) {
+						PEContainer cont = tab.getDistributionVector(pc).getContainer(pc);
+						List<UserTable> anyTabs = pc.getCatalog().findContainerMembers(cont.getName().get());
+						if (anyTabs.size() == 1) {
+							// last table - this is ok
+							cont.setBaseTable(pc, null);
+							updates.add(cont.persistTree(pc));
+							// we're also going to delete all of the container tenants
+							try {
+								deletes.addAll(pc.getCatalog().getDAO().findContainerTenants(cont.getPersistent(pc)));
+							} catch (Exception e) {
+								throw new PEException("Unable to find container tenants of container " + cont.getName(),e);
+							}
+						} else {
+							// more than one table left - not ok
+							throw new SchemaException(Pass.PLANNER, "Unable to drop table " 
+									+ tab.getName().getSQL() 
+									+ " because it is the base table to container " 
+									+ cont.getName().getSQL() + " which is not empty");
 						}
-					} else {
-						// more than one table left - not ok
-						throw new SchemaException(Pass.PLANNER, "Unable to drop table " 
-								+ tab.getName().getSQL() 
-								+ " because it is the base table to container " 
-								+ cont.getName().getSQL() + " which is not empty");
 					}
-				}
-				for(PEForeignKey pefk : effectedForeignKeys) 
-					// this should be persisting the whole table, not the key
-					updates.add(pefk.persistTree(pc));
+					for(PEForeignKey pefk : effectedForeignKeys) 
+						// this should be persisting the whole table, not the key
+						updates.add(pefk.persistTree(pc));
+				} 
 			} finally {
 				pc.endSaveContext();
 			}
@@ -209,8 +226,9 @@ public class PEDropTableStatement extends
 	
 	@Override
 	protected ExecutionStep buildStep(SchemaContext pc) throws PEException {
-		return new DropTableExecutionStep(getDatabase(pc), getStorageGroup(pc), getRoot(), getAction(), getSQLCommand(pc),
-				getDeleteObjects(pc), getCatalogObjects(pc),getInvalidationRecord(pc), unknownTables, isIfExists());
+		return new ComplexDDLExecutionStep(getDatabase(pc), getStorageGroup(pc), getRoot(), getAction(),
+				new DropTableCallback(pc,getSQLCommand(pc),getInvalidationRecord(pc),
+						getCatalogObjects(pc),getDeleteObjects(pc)));
 	}
 	
 	@Override
@@ -223,7 +241,8 @@ public class PEDropTableStatement extends
 
 		ListOfPairs<SchemaCacheKey<?>,InvalidationScope> actions = new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
 		for(TableKey tk : tableKeys)
-			actions.add(tk.getAbstractTable().getCacheKey(), InvalidationScope.CASCADE);
+			if (!tk.isUserlandTemporaryTable())
+				actions.add(tk.getAbstractTable().getCacheKey(), InvalidationScope.CASCADE);
 		cacheInvalidationRecord = new CacheInvalidationRecord(actions);
 		
 		return cacheInvalidationRecord;
@@ -240,5 +259,70 @@ public class PEDropTableStatement extends
 		return sql.toString();
 	}
 
+	private class DropTableCallback extends DDLCallback {
+
+		private final SQLCommand command;
+		private final CacheInvalidationRecord record;
+		private final List<CatalogEntity> updates;
+		private final List<CatalogEntity> deletes;
+		private final SchemaContext context;
+		
+		public DropTableCallback(SchemaContext ctxt, SQLCommand theCommand, CacheInvalidationRecord theRecord,
+				List<CatalogEntity> updates, List<CatalogEntity> deletes) {
+			this.command = theCommand;
+			this.record = theRecord;
+			this.updates = updates;
+			this.deletes = deletes;
+			this.context = ctxt;
+		}
+		
+		@Override
+		public SQLCommand getCommand(CatalogDAO c) {
+			return command;
+		}
+
+		@Override
+		public String description() {
+			return "DropTableCallback";
+		}
+
+		@Override
+		public CacheInvalidationRecord getInvalidationRecord() {
+			return record;
+		}
+		
+		public void postCommitAction(CatalogDAO c) throws PEException
+		{
+			if (unknownTables != null && unknownTables.size()>0) {
+				if (!isIfExists()) {
+					throw new PEException("Unknown table '" + StringUtils.join(unknownTables, ",") + "'");
+				} else {
+					// set warning count to number of unknown tables if we only could...
+				}
+			}
+
+		}
+
+		
+		public List<CatalogEntity> getUpdatedObjects() throws PEException
+		{
+			return updates;
+		}
+		
+		public List<CatalogEntity> getDeletedObjects() throws PEException
+		{
+			return deletes;
+		}
+
+		public void onCommit(SSConnection conn, CatalogDAO c, WorkerGroup wg) {
+			for(TableKey tk : tableKeys) {
+				if (tk.isUserlandTemporaryTable()) {
+					wg.clearPinned();
+					context.getTemporaryTableSchema().removeTable(context, (ComplexPETable) tk.getAbstractTable());
+				}
+			}
+		}
+				
+	}
 	
 }

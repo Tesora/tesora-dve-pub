@@ -44,11 +44,14 @@ import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.util.Pair;
 
 public class ShowColumnInformationSchemaTable extends
 		ShowInformationSchemaTable {
@@ -62,31 +65,38 @@ public class ShowColumnInformationSchemaTable extends
 	@Override
 	protected void handleScope(SchemaContext sc, SelectStatement ss, Map<String,Object> params, List<Name> scoping) {
 		// for columns: table_name, db_name
-		if (scoping.size() > 2)
-			throw new SchemaException(Pass.SECOND, "Overly qualified show columns statement");
+		Pair<String,String> scope = inferScope(sc,scoping);
 		AbstractInformationSchemaColumnView tableColumn = lookup("table");
 		AbstractInformationSchemaColumnView dbColumn = lookup("database");
 		TableInstance ti = ss.getBaseTables().get(0);
-		Name tablen = scoping.get(0);
-		Name dbn = (scoping.size() > 1 ? scoping.get(1) : null);
-		if (dbn == null && sc != null) dbn = sc.getCurrentDatabase().getName();
-		String tableName = (tablen == null ? null : tablen.get());
-		String dbName = (dbn == null ? null : dbn.get());
 		ExpressionNode wc = ss.getWhereClause();
 		List<ExpressionNode> decomp = ExpressionUtils.decomposeAndClause(wc);
 		ColumnInstance tabrefName = tableColumn.buildNameTest(ti);
 		FunctionCall tnc = new FunctionCall(FunctionName.makeEquals(),tabrefName,new NamedParameter(new UnqualifiedName("enctab")));
 		decomp.add(tnc);
-		params.put("enctab",tableName);
+		params.put("enctab",scope.getSecond());
 		ColumnInstance dbRefName = dbColumn.buildNameTest(ti);
 		FunctionCall dnc = new FunctionCall(FunctionName.makeEquals(),dbRefName,new NamedParameter(new UnqualifiedName("encdb")));
 		decomp.add(dnc);
-		params.put("encdb",dbName);
+		params.put("encdb",scope.getFirst());
 		ss.setWhereClause(ExpressionUtils.safeBuildAnd(decomp));
 	}
 
+	private Pair<String,String> inferScope(SchemaContext sc, List<Name> scoping) {
+		if (scoping.size() > 2)
+			throw new SchemaException(Pass.SECOND, "Overly qualified show columns statement");
+		return decomposeScope(sc,scoping);
+	}
+	
 	@Override
 	public IntermediateResultSet executeWhereSelect(SchemaContext sc, ExpressionNode wc, List<Name> scoping, ShowOptions options) {
+		if (!sc.getTemporaryTableSchema().isEmpty()) {
+			Pair<String,String> scope = inferScope(sc,scoping);
+			QualifiedName qn = new QualifiedName(new UnqualifiedName(scope.getFirst()), new UnqualifiedName(scope.getSecond()));
+			TableInstance matching = sc.getTemporaryTableSchema().buildInstance(sc, qn);
+			if (matching != null)
+				throw new SchemaException(Pass.PLANNER, "No support for show columns ... where for temporary tables");
+		}
 		IntermediateResultSet irs = super.executeWhereSelect(sc, wc, scoping, options);
 		if (wc == null && scoping != null && scoping.size() == 1 && irs.isEmpty())
 			throw new SchemaException(Pass.PLANNER, "No such table: " + scoping.get(0).getSQL());
@@ -99,7 +109,21 @@ public class ShowColumnInformationSchemaTable extends
 
 	@Override
 	public IntermediateResultSet executeLikeSelect(SchemaContext sc, String likeExpr, List<Name> scoping, ShowOptions options) {
+		List<ResultRow> tempTab = null;
+		if (!sc.getTemporaryTableSchema().isEmpty()) {
+			Pair<String,String> scope = inferScope(sc,scoping);
+			QualifiedName qn = new QualifiedName(new UnqualifiedName(scope.getFirst()), new UnqualifiedName(scope.getSecond()));
+			TableInstance matching = sc.getTemporaryTableSchema().buildInstance(sc, qn);
+			if (matching != null) {
+				ComplexPETable ctab = (ComplexPETable) matching.getAbstractTable();
+				tempTab = ctab.getShowColumns(sc, likeExpr);
+			}
+		}
 		IntermediateResultSet irs = super.executeLikeSelect(sc, likeExpr, scoping, options);
+		if (tempTab != null) {
+			irs = new IntermediateResultSet(irs.getMetadata(),tempTab);
+		}
+		
 		if (sc != null && likeExpr == null && scoping != null && scoping.size() == 1 && irs.isEmpty())
 			throw new SchemaException(Pass.PLANNER, "No such table: " + scoping.get(0).getSQL());
 		

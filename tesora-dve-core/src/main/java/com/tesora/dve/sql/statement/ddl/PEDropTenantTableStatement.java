@@ -234,7 +234,7 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 			Number n = (Number) first;
 			if (n.longValue() == 0) {
 				List<TableKey> freshTKs = new ArrayList<TableKey>();
-				freshTKs.add(new TableKey(reloaded,1));
+				freshTKs.add(TableKey.make(sc,reloaded,1));
 				PEDropTableStatement.compute(sc, deletedEntities, updatedEntities, freshTKs, true);
 			} else {
 				// still has references - this becomes a noop

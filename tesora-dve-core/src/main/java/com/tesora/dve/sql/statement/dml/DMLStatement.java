@@ -247,7 +247,7 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 	protected static void planViaTransforms(SchemaContext sc, DMLStatement dmls, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		// for now, we're going to say dml statements are cacheable - we'll override this later
 		// don't cache plans with parameters yet - won't work right for reuse
-		if (es.getPlan() != null && !sc.getValueManager().hasPassDownParams()) 
+		if (es.getPlan() != null && !(sc.getValueManager().hasPassDownParams() || dmls.getDerivedInfo().hasUserlandTemporaryTables())) 
 			es.getPlan().setCacheable(true);
 		try {
 			TransformFactory.featurePlan(sc, dmls, es, config);

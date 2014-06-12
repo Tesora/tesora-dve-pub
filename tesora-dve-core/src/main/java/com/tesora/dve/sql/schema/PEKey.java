@@ -36,11 +36,21 @@ import com.tesora.dve.common.catalog.Key;
 import com.tesora.dve.common.catalog.KeyColumn;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.ScopeStack;
 import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.infoschema.ConstantSyntheticInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
+import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.SyntheticInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.node.expression.CastFunctionCall;
+import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
+import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.validate.SimpleValidateResult;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
@@ -261,11 +271,14 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 	// override so that we can set flags on column
 	public void setConstraint(ConstraintType ct) {
 		constraint = ct;
-		if (ct == ConstraintType.PRIMARY) {
-			for(PEKeyColumnBase pekc : columns) {
-				if (pekc.isUnresolved()) continue;
-				PEColumn c = pekc.getColumn();
+		for(PEKeyColumnBase pekc : columns) {
+			if (pekc.isUnresolved()) continue;
+			PEColumn c = pekc.getColumn();
+			if (ct == ConstraintType.PRIMARY) {
 				c.makeNotNullable();
+				c.setPrimaryKeyPart();
+			} else if (ct == ConstraintType.UNIQUE) {
+				c.setUniqueKeyPart();
 			}
 		}
 	}
@@ -596,6 +609,37 @@ public class PEKey extends Persistable<PEKey, Key> implements TableComponent<PEK
 			}
 			
 		});
+	}
+	
+	public List<ResultRow> buildRow(final SchemaContext sc) {
+		if (isForeign()) return null;
+		if (isHidden()) return null;
+		if (isSynthetic()) return null;
+		String tableName = 
+				getTable(sc).getName().getUnqualified().getUnquotedName().get();
+		long unique = (!isUnique() ? 0L : 1L);
+		String keyName = getName().getUnqualified().getUnquotedName().get();
+		ArrayList<ResultRow> out = new ArrayList<ResultRow>();
+		int seq = 0;
+		for(PEKeyColumnBase pekcb : getKeyColumns()) {
+			PEKeyColumn pekc = (PEKeyColumn) pekcb;
+			ResultRow rr = new ResultRow();
+			out.add(rr);
+			rr.addResultColumn(tableName);
+			rr.addResultColumn(unique);
+			rr.addResultColumn(keyName);
+			rr.addResultColumn(++seq);
+			rr.addResultColumn(pekc.getColumn().getName().getUnqualified().getUnquotedName().get());
+			rr.addResultColumn("A");
+			rr.addResultColumn(pekc.getCardinality());
+			rr.addResultColumn(pekc.getIndexSize());
+			rr.addResultColumn("");
+			rr.addResultColumn(pekc.getColumn().isNullable() ? "YES" : "NO");
+			rr.addResultColumn(getType().getSQL());
+			rr.addResultColumn(getComment() == null ? "" : getComment().getComment());
+			rr.addResultColumn("");
+		}
+		return out;
 	}
 	
 }

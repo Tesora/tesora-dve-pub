@@ -21,22 +21,30 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import com.tesora.dve.common.PEStringUtils;
+import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.resultset.IntermediateResultSet;
+import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.IsInstance;
 import com.tesora.dve.sql.util.ListSet;
+import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
 
 // specifically for handling tables created via create table as select and 
 // userland temporary tables.  we use a separate class so that we can compose both
 // behaviors.
-public class ComplexPETable extends PETable {
+public class ComplexPETable extends PETable implements AutoIncrement {
 
 	// for a temporary table I think we want to use a qualified name here maybe
 	public ComplexPETable(SchemaContext pc, Name name,
@@ -52,6 +60,8 @@ public class ComplexPETable extends PETable {
 	public ComplexPETable withTemporaryTable(SchemaContext sc) {
 		TemporaryTableType ttt = new TemporaryTableType();
 		ttt.setDatabaseName(super.getDatabaseName(sc));
+		if (hasAutoInc())
+			ttt.setHasAutoIncrement(0);
 		types.add(ttt);
 		return this;
 	}
@@ -98,6 +108,29 @@ public class ComplexPETable extends PETable {
 			return null;
 		return super.persistTree(sc, forRefresh);
 	}
+	
+	@Override
+	public PETable recreate(SchemaContext sc, String decl, LockInfo li) {
+		PETable recreated = super.recreate(sc,decl, li).asTable();
+		if (isUserlandTemporaryTable()) {
+			// copy over the autoinc value
+			ComplexPETable pettab = (ComplexPETable) recreated;
+			TemporaryTableType mtt = getTemporaryTableType();
+			TemporaryTableType ytt = pettab.getTemporaryTableType();
+			if (mtt.hasAutoIncrement()) {
+				ytt.setHasAutoIncrement(mtt.readAutoIncrBlock(null));
+			}
+		}
+		return recreated;
+	}
+	
+	private TemporaryTableType getTemporaryTableType() {
+		List<ComplexTableType> any = Functional.select(types, isTemporaryTable);
+		if (any.isEmpty())
+			return null;
+		return (TemporaryTableType) any.get(0);
+	}
+	
 	
 	private static final IsInstance<ComplexTableType> isTemporaryTable = 
 			new IsInstance<ComplexTableType>(TemporaryTableType.class);
@@ -155,10 +188,11 @@ public class ComplexPETable extends PETable {
 
 	}
 
-	public static class TemporaryTableType extends ComplexTableType {
+	public static class TemporaryTableType extends ComplexTableType implements AutoIncrement {
 
 		private Name dbName;
 		
+		private long autoincValue = -1; // unused
 		
 		@Override
 		public boolean hasPersistentTable() {
@@ -179,6 +213,85 @@ public class ComplexPETable extends PETable {
 		public Name getDatabaseName() {
 			return dbName;
 		}
+
+		@Override
+		public long getNextAutoIncrBlock(SchemaContext sc, long blockSize) {
+			long current = autoincValue;
+			autoincValue += blockSize;
+			return current;
+		}
+
+		@Override
+		public long readAutoIncrBlock(SchemaContext sc) {
+			return autoincValue;
+		}
+
+		@Override
+		public void removeValue(SchemaContext sc, long value) {
+			if (value > autoincValue) {
+				autoincValue = value+1;
+			}
+		}
+		
+		public void setHasAutoIncrement(long v) {
+			autoincValue = v;
+		}
+		
+		public boolean hasAutoIncrement() {
+			return autoincValue > -1;
+		}
+	}
+
+	@Override
+	public long getNextAutoIncrBlock(SchemaContext sc, long blockSize) {
+		TemporaryTableType ttt = getTemporaryTableType();
+		if (ttt == null) return -1;
+		return ttt.getNextAutoIncrBlock(sc, blockSize);
+	}
+
+	@Override
+	public long readAutoIncrBlock(SchemaContext sc) {
+		TemporaryTableType ttt = getTemporaryTableType();
+		if (ttt == null) return -1;
+		return ttt.readAutoIncrBlock(sc);
+	}
+
+	@Override
+	public void removeValue(SchemaContext sc, long value) {
+		TemporaryTableType ttt = getTemporaryTableType();
+		if (ttt == null) return;
+		ttt.removeValue(sc, value);
+	}
+	
+	// to say that this is a leaky vacuum chamber is an understatement.
+	public List<ResultRow> getShowColumns(final SchemaContext sc, String likeExpr) {
+		// religious expletive is this vacuum chamber busted
+		
+		Pattern filtered = null;
+		if (likeExpr != null)
+			filtered = PEStringUtils.buildSQLPattern(likeExpr);
+
+		ArrayList<ResultRow> out = new ArrayList<ResultRow>();
+		for(PEColumn pec : getColumns(sc)) {
+			if (filtered != null) {
+				String n = pec.getName().getUnquotedName().get();
+				Matcher m = filtered.matcher(n);
+				if (!m.matches()) 
+					continue;
+			}
+			out.add(pec.buildRow(sc));
+		}
+		return out;		
+	}
+	
+	public List<ResultRow> getShowKeys(SchemaContext sc) {
+		ArrayList<ResultRow> out = new ArrayList<ResultRow>();
+		for(PEKey pek : getKeys(sc)) {
+			List<ResultRow> sub = pek.buildRow(sc);
+			if (sub == null) continue;
+			out.addAll(sub);
+		}
+		return out;
 	}
 	
 }

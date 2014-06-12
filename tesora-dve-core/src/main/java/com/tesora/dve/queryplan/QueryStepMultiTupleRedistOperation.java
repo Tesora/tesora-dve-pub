@@ -95,6 +95,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 	private boolean enforceScalarValue;
 	private boolean insertIgnore = false;
 	
+	private boolean usesUserlandTemporaryTables = false;
+	
 	private TempTableGenerator tempTableGenerator = TempTableGenerator.DEFAULT_GENERATOR;
 	// well, this is a bit of a hack - for the case where the target group is not the same as the source group
 	// if there is alread a worker group allocated - use this one, not the one we would get
@@ -167,6 +169,11 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		return this;
 	}
 	
+	public QueryStepMultiTupleRedistOperation withUserlandTemporaryTables() {
+		this.usesUserlandTemporaryTables = true;
+		return this;
+	}
+	
 	/**
 	 * Called by <b>QueryStep</b> to do the redistribution operation.
 	 * <p/>
@@ -217,7 +224,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 					targetWG, targetUserDatabase, targetDistModel, targetTable, 
 					tableHints, tempHints, insertOptions, allocatedWG, /* cleanupWG */ null,
 					tempTableGenerator);
-		} else if (ssCon.hasActiveTransaction() && wg.isModified() && targetTable != null) {
+		} else if ((ssCon.hasActiveTransaction() && wg.isModified() && targetTable != null) || usesUserlandTemporaryTables) {
 			// Here we want to redistribute from a persistent group back into itself, within the context
 			// of a transaction.  However, we must both read within the context of the transaction, and
 			// write within the context of a transaction, but we can't both read and write on the same

@@ -64,7 +64,7 @@ public class MTTableInstance extends TableInstance {
 
 	@Override
 	public TableKey getTableKey() {
-		return new MTTableKey(this);
+		return TableKey.make(this);
 	}
 
 	@Override
