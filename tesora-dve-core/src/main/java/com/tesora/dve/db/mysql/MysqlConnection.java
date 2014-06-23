@@ -181,7 +181,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 			if (logger.isDebugEnabled())
 				logger.debug(this.getClass().getSimpleName()
-						+"@"+System.identityHashCode(this)
+//						+"@"+System.identityHashCode(this)
 						+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+consumer+","+promise+")");
 
 			if (!channel.isOpen()) {
