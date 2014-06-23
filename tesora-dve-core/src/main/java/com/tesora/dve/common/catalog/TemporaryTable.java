@@ -38,6 +38,7 @@ import javax.sql.DataSource;
 
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.groupmanager.GroupMembershipListener;
@@ -173,9 +174,6 @@ public class TemporaryTable implements CatalogEntity {
 
 	}
 
-	private static final String cleanupSQL =
-			"delete from user_temp_table where server_id = '%s'";
-	
 	private static final GroupMembershipListener tossConnsOnMembershipExit = new GroupMembershipListener() {
 
 		@Override
@@ -212,20 +210,22 @@ public class TemporaryTable implements CatalogEntity {
 	}
 	
 	private static void cleanupCatalog() {
+		CatalogDAO c = null;
 		try {
-			DataSource catalogDS = CatalogDAO.getCatalogDS();
-			Connection c = catalogDS.getConnection();
-			try {
-				Statement s = c.createStatement();
-
-				s.executeUpdate(String.format(cleanupSQL,GroupManager.getCoordinationServices().getMemberAddress().toString()));
-			}
-			finally {
-				c.close();
-			}
-		} catch (SQLException e) {
+			// tried using CatalogDAO.getCatalogDS but the repl slave test seems to not like that
+			c = CatalogDAOFactory.newInstance();
+			c.begin();
+			c.cleanupUserlandTemporaryTables(GroupManager.getCoordinationServices().getMemberAddress().toString());
+			c.commit();
+		} catch (Throwable t) {
 			// should figure out what to do with this
-		}		
+		} finally {
+			if (c != null) try {
+				c.close();
+			} catch (Throwable t) {
+				// did our best
+			}
+		}
 	}
 	
 }

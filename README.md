@@ -1,4 +1,4 @@
-# Tesora Database Virtualization Engine
+# Tesora<sup>&#8482;</sup> Database Virtualization Engine<sup>&reg;</sup>
 
 The Tesora Database Virtualization Engine (DVE) lets you scale on demand with 
 the power of multiple database servers acting as one.  Tesora's Database Virtualization Engine 
@@ -47,7 +47,7 @@ while only provisioning, consuming and paying for the capacity that you need at 
 3. From the command line run `mvn test` to run all the unit tests in the project.
 
 ### Documentation
-The documentation is available online at https://tesoradocs.atlassian.net/wiki/display/CD/Community+Edition.
+The documentation is available [here](https://tesoradocs.atlassian.net/wiki/display/CD/Community+Edition?os_username=customer_user&os_password=tesora).
 
 ### Issues
 If you have questions post them to the [Developer Forum](https://groups.google.com/forum/#!forum/tesora-dve-dev) or [User Forum](https://groups.google.com/forum/#!forum/tesora-dve-user). 

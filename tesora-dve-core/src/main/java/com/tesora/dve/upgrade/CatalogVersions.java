@@ -77,7 +77,8 @@ public class CatalogVersions {
 		ADD_COLLATION(new AddCollation(37)),
 		ADD_TEMPLATE_MODE(new AddTemplateMode(38)),
 		EXTRA_INFO_SCHEMA_COLUMNS_COLUMNS(new ExtraInfoSchemaColumnsColumns(39)),
-		TEMPORARY_TABLES(new UserlandTemporaryTables(40));
+		EXTERNAL_SERVICE_SHOW_CONFIG(new InfoSchemaUpgradeVersion(40)),
+		TEMPORARY_TABLES(new UserlandTemporaryTables(41));
 		
 		private final CatalogVersion upgradeModule; 
 		

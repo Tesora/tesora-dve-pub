@@ -133,7 +133,7 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 			/*
 			ListSet<ColocatedJoin> invalidJoins = EngineConstant.INVALID_JOINS.getValue(this,getPersistenceContext());
 			if ((partitions == null || partitions.isEmpty()) && (invalidJoins == null || invalidJoins.isEmpty()))
-				// cross join?  shit, what do we do with this?
+				// cross join? 
 				return true;
 				*/
 		}

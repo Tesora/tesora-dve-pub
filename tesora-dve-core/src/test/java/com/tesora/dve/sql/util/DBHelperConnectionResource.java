@@ -199,6 +199,8 @@ public class DBHelperConnectionResource extends JdbcConnectionResource {
 			return ExceptionClassification.UNSUPPORTED_OPERATION;
 		if (StringUtils.startsWithIgnoreCase(m, "File") && StringUtils.containsIgnoreCase(m, "not found"))
 			return ExceptionClassification.FILE_NOT_FOUND;
+		if (StringUtils.startsWithIgnoreCase(m, "Table") && StringUtils.endsWithIgnoreCase(m, "already exists"))
+			return ExceptionClassification.DUPLICATE;
 		return null;
 	}
 	

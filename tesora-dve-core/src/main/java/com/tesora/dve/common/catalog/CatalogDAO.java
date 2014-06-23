@@ -1042,6 +1042,12 @@ public class CatalogDAO {
 		return (List<TemporaryTable>)query.getResultList();
 	}
 
+	public void cleanupUserlandTemporaryTables(String serverName) {
+		Query query = em.get().createQuery("delete from TemporaryTable where server = :name");
+		query.setParameter("name", serverName);
+		query.executeUpdate();
+	}
+	
 	
 	@SuppressWarnings("unchecked")
 	public List<UserTable> findTablesWithUnresolvedFKsTargeting(String dbName, String tabName) {

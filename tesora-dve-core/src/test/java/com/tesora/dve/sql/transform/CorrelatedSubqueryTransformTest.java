@@ -96,7 +96,7 @@ public class CorrelatedSubqueryTransformTest extends TransformTest {
 						.withExplain(new DMLExplainRecord(DMLExplainReason.WRONG_DISTRIBUTION)),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT temp1.ri0_4,temp4.func AS subq",
+						  "SELECT temp1.ri0_4 AS t3r0,temp4.func AS subq",
 						  "FROM temp1",
 						  "LEFT OUTER JOIN temp4 ON  (temp4.t6l2_8 = temp1.rc3_6)"
 						)
@@ -176,7 +176,7 @@ public class CorrelatedSubqueryTransformTest extends TransformTest {
 						.withExplain(new DMLExplainRecord(DMLExplainReason.WRONG_DISTRIBUTION)),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT temp1.oaf1_5, (temp4.func + temp6.func)  + temp1.oas2_9",
+						  "SELECT temp1.oaf1_5 AS t4o0, (temp4.func + temp6.func)  + temp1.oas2_9 AS func_9",
 						  "FROM temp1",
 						  "LEFT OUTER JOIN temp4 ON  (temp4.t7i1_6 = temp1.oai0_11)",
 						  "LEFT OUTER JOIN temp6 ON  (temp6.t10i1_6 = temp1.oai0_11)"

@@ -63,7 +63,7 @@ public interface PEConstants {
 	public static final String PROP_FULL_JDBC_DRIVER = PROP_JPA_PREFIX + PROP_JDBC_DRIVER;
 	
 	public static final String DVE_SERVER_VERSION = "5.5.10";
-	public static final String DVE_SERVER_VERSION_COMMENT = "Tesora (TM) Database Virtualization Engine (TM)";
+	public static final String DVE_SERVER_VERSION_COMMENT = "Tesora (TM) Database Virtualization Engine (R)";
 	public static final String DVE_SERVER_COPYRIGHT_COMMENT = "Copyright (c) 2011 - 2014 Tesora. All rights reserved.";
 	
 	public static final String YES = "yes";

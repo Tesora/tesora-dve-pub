@@ -194,9 +194,7 @@ public class PEDDL extends ProjectDDL {
 	}
 	
 	protected PEDatabaseDDL getSinglePEDB() {
-		if (getDatabases().size() != 1)
-			throw new IllegalStateException("More than one target database found");
-		return (PEDatabaseDDL) getDatabases().get(0);		
+		return (PEDatabaseDDL) super.getSingleDB();
 	}
 	
 	@Override

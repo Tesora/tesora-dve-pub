@@ -166,7 +166,7 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 	}
 
 	@Override
-	public FeatureStep plan(DMLStatement stmt, PlannerContext incontext) throws PEException {
+	public FeatureStep plan(final DMLStatement stmt, PlannerContext incontext) throws PEException {
 		if (!applies(incontext.getContext(), stmt))
 			return null;
 		PlannerContext context = incontext.withTransform(getFeaturePlannerID());
@@ -213,7 +213,7 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 				@Override
 				public void scheduleSelf(PlannerContext pc, ExecutionSequence es)
 						throws PEException {
-					ProjectionInfo projInfo = fcopy.getProjectionMetadata(pc.getContext());
+					ProjectionInfo projInfo = stmt.getProjectionMetadata(pc.getContext());
 					ColumnSet md = new ColumnSet();
 					ResultRow row = new ResultRow();
 					for(int i = 0; i < fcopy.getProjectionEdge().size(); i++) {
