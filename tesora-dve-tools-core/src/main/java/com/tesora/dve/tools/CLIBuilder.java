@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
@@ -49,11 +50,83 @@ import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.Parameter;
 import com.martiansoftware.jsap.SimpleJSAP;
 import com.martiansoftware.jsap.Switch;
+import com.tesora.dve.common.ArrayListFactory;
+import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PELogUtils;
+import com.tesora.dve.common.PEXmlUtils;
 import com.tesora.dve.exceptions.PEException;
 
 public class CLIBuilder implements CLIBuilderCallback {
+
+	public static enum ConsoleColor {
+
+		DEFAULT("\u001B[0m"),
+		BLACK("\u001B[30m"),
+		RED("\u001B[31m"),
+		GREEN("\u001B[32m"),
+		YELLOW("\u001B[33m"),
+		BLUE("\u001B[34m"),
+		PURPLE("\u001B[35m"),
+		CYAN("\u001B[36m"),
+		WHITE("\u001B[37m");
+
+		private final String ansciEscapeCode;
+
+		private ConsoleColor(final String ansciEscapeCode) {
+			this.ansciEscapeCode = ansciEscapeCode;
+		}
+
+		public String getAnsciCode() {
+			return this.ansciEscapeCode;
+		}
+	}
+
+	public static class ColorStringBuilder implements CharSequence {
+
+		private final StringBuilder buffer;
+
+		public ColorStringBuilder() {
+			this.buffer = new StringBuilder();
+		}
+
+		public ColorStringBuilder(final int capacity) {
+			this.buffer = new StringBuilder(capacity);
+		}
+
+		public ColorStringBuilder(final String str) {
+			this.buffer = new StringBuilder(str);
+		}
+
+		@Override
+		public int length() {
+			return this.buffer.length();
+		}
+
+		@Override
+		public char charAt(int index) {
+			return this.buffer.charAt(index);
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			return this.buffer.subSequence(start, end);
+		}
+
+		@Override
+		public String toString() {
+			return this.buffer.toString();
+		}
+
+		public ColorStringBuilder append(final Object object) {
+			return append(object, ConsoleColor.DEFAULT);
+		}
+
+		public ColorStringBuilder append(final Object object, final ConsoleColor color) {
+			this.buffer.append(CLIBuilder.getInColor(String.valueOf(object), color));
+			return this;
+		}
+	}
 
 	private static final Logger logger = Logger.getLogger(CLIBuilder.class);
 
@@ -90,6 +163,32 @@ public class CLIBuilder implements CLIBuilderCallback {
 	private String question = null;
 	private QuestionCallback questionCallback = null;
 
+	public static void printInColor(final String message, final ConsoleColor color, final PrintStream outputStream) {
+		if (outputStream == null) {
+			throw new IllegalArgumentException("No output stream specified");
+		}
+
+		outputStream.println(getInColor(message, color));
+	}
+
+	private static String getInColor(final String message, final ConsoleColor color) {
+		return getInColor(message, color, ConsoleColor.DEFAULT);
+	}
+
+	private static String getInColor(final String message, final ConsoleColor color, final ConsoleColor defaultColor) {
+		if (message == null) {
+			throw new IllegalArgumentException("No message specified");
+		} else if (color == null) {
+			throw new IllegalArgumentException("No color specified");
+		}
+
+		if (color != defaultColor) {
+			return color.getAnsciCode().concat(message).concat(defaultColor.getAnsciCode());
+		}
+
+		return message;
+	}
+
 	protected static String buildToolBannerName(final String toolName) {
 		return PEConstants.DVE_SERVER_VERSION_COMMENT.concat(" ").concat(toolName);
 	}
@@ -115,7 +214,7 @@ public class CLIBuilder implements CLIBuilderCallback {
 
 				processArgs(options);
 			} catch (final JSAPException e) {
-				throw new PEException("Error parsing " + this.name + " command line parameters", e);
+				throw new PEException("Error: Failed to parse " + this.name + " command line parameters", e);
 			}
 		}
 	}
@@ -244,7 +343,7 @@ public class CLIBuilder implements CLIBuilderCallback {
 				fileInputStream = null;
 			}
 		} catch (final Exception e) {
-			printlnDots("Error closing input stream - " + e.getMessage());
+			printlnDots("Error: Failed to close input stream - " + e.getMessage());
 		}
 
 		if (printStream != null) {
@@ -347,6 +446,68 @@ public class CLIBuilder implements CLIBuilderCallback {
 		return null;
 	}
 
+	/**
+	 * @see protected MultiMap<Class<?>, File>
+	 *      scanFilesByTypeOptionalMulti(Scanner scanner, Set<Class<?>> types)
+	 *      Stores only the last file for each type.
+	 */
+	protected Map<Class<?>, File> scanFilesByTypeOptionalSingle(Scanner scanner, Set<Class<?>> types) throws PEException {
+		final Map<Class<?>, File> files = new LinkedHashMap<Class<?>, File>();
+
+		final MultiMap<Class<?>, File> allFiles = scanFilesByTypeOptionalMulti(scanner, types);
+		for (final Class<?> type : allFiles.keySet()) {
+			final List<File> fileList = (List<File>) allFiles.get(type);
+			files.put(type, fileList.get(fileList.size() - 1));
+		}
+
+		return files;
+	}
+
+	/**
+	 * Keep scanning files till the end of the input and return them in Lists
+	 * hashed by their types.
+	 */
+	protected MultiMap<Class<?>, File> scanFilesByTypeOptionalMulti(Scanner scanner, Set<Class<?>> types) throws PEException {
+		final MultiMap<Class<?>, File> filesByType = new MultiMap<Class<?>, File>(new ArrayListFactory<File>());
+
+		final List<File> files = scanFilesOptional(scanner);
+		for (final File file : files) {
+			boolean typeFound = false;
+			for (final Class<?> type : types) {
+				try {
+					PEXmlUtils.unmarshalJAXB(file, type);
+					filesByType.put(type, file);
+					typeFound = true;
+					break;
+				} catch (final Exception e) {
+					// Could not unmarshal the source as this type.
+				}
+			}
+
+			if (!typeFound) {
+				throw new PEException("Failed to unmarshal xml file '" + file.getAbsolutePath() + "'");
+			}
+		}
+
+		return filesByType;
+	}
+
+	private List<File> scanFilesOptional(Scanner scanner) throws PEException {
+		final List<File> files = new ArrayList<File>();
+		while (scanner.hasNext()) {
+			final File scanned = scanFile(scanner);
+			if (scanned != null) {
+				files.add(scanned);
+			}
+		}
+
+		return files;
+	}
+
+	protected File scanFile(Scanner scanner) throws PEException {
+		return scanFile(scanner, null);
+	}
+
 	protected File scanFile(Scanner scanner, String exists) throws PEException {
 		if (hasRequiredArg(scanner, exists)) {
 			try {
@@ -358,10 +519,6 @@ public class CLIBuilder implements CLIBuilderCallback {
 		}
 
 		return null;
-	}
-
-	protected File scanFile(Scanner scanner) throws PEException {
-		return scanFile(scanner, null);
 	}
 
 	protected static String scanFilePath(Scanner scanner) {

@@ -73,9 +73,11 @@ public class StaticAnalyzer {
 	public static final String NON_UNIQUE = "NON_UNIQUE";
 	public static final String CARDINALITY = "CARDINALITY";
 	public static final String INDEX_TYPE = "TYPE";
+	public static final String DATA_LENGTH = "Data_length";
+	public static final String ENGINE = "Engine";
 
 	public static DbAnalyzerReport doStatic(final DBNative dbNative, final AnalyzerOptions options, final String dbUrl, final String dbUser,
-			final String dbPassword, final List<String> forDatabases, final DBHelper dbHelper) throws PEException, SQLException {
+			final String dbPassword, final List<String> forDatabases, final DBHelper dbHelper, final boolean runAnalyze) throws PEException, SQLException {
 
 		final DbAnalyzerReport dbaReport = setup(options, new DbAnalyzerReport(), dbUrl, dbUser, dbPassword);
 
@@ -139,12 +141,25 @@ public class StaticAnalyzer {
 			for (final Table table : tables) {
 				final String tableName = table.getName();
 
-				// Get count of rows in this table
+				// Get row and data counts in this table
 				if (!table.isView()) {
+
+					// Update table statistics
+					if (runAnalyze) {
+						dbHelper.executeQuery("ANALYZE TABLE " + dbNative.quoteIdentifier(tableName));
+					}
+
 					dbHelper.executeQuery("SELECT COUNT(*) FROM " + dbNative.quoteIdentifier(tableName));
 					try (final ResultSet rs = dbHelper.getResultSet()) {
 						rs.next();
 						table.setRowCount(rs.getInt(1));
+					}
+
+					dbHelper.executeQuery("SHOW TABLE STATUS IN " + dbName + " WHERE Name = '" + tableName + "'");
+					try (final ResultSet rs = dbHelper.getResultSet()) {
+						rs.next();
+						table.setEngine(rs.getString(ENGINE));
+						table.setDataLength(rs.getLong(DATA_LENGTH));
 					}
 				}
 				dbHelper.executeQuery("SHOW CREATE TABLE " + dbNative.quoteIdentifier(tableName));

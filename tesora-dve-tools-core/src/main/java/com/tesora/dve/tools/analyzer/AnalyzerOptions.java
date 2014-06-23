@@ -26,6 +26,10 @@ import java.util.List;
 
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.tools.aitemplatebuilder.AiTemplateBuilder;
+import com.tesora.dve.tools.aitemplatebuilder.Broadcast;
+import com.tesora.dve.tools.aitemplatebuilder.Range;
+import com.tesora.dve.tools.aitemplatebuilder.TemplateModelItem;
 
 public final class AnalyzerOptions {
 
@@ -34,7 +38,11 @@ public final class AnalyzerOptions {
 	public static final String SUPPRESS_DUPLICATES_NAME = "suppress_duplicates";
 	public static final String VALIDATE_FKS_NAME = "validate_fks";
 	public static final String ENABLE_TEMPLATE_WILDCARDS = "enable_template_wildcards";
+	public static final String ENABLE_VERBOSE_GENERATOR = "enable_verbose_generator";
+	public static final String DEFAULT_GENERATOR_FALLBACK_MODEL = "default_fallback_model";
 	public static final String CORPUS_SCALE_FACTOR = "corpus_scale_factor";
+	public static final String FK_AS_JOIN = "fk_as_join";
+	public static final String USE_ROW_WIDTH_WEIGHTS = "use_row_width_weights";
 	public static final String RDS_FORMAT = "rds_format";
 
 	private final List<AnalyzerOption> options = new ArrayList<AnalyzerOption>();
@@ -53,10 +61,24 @@ public final class AnalyzerOptions {
 				"Validate that all foreign keys are colocated in loaded schema and generated templates.", true));
 		options.add(new AnalyzerOption(ENABLE_TEMPLATE_WILDCARDS,
 				"Enable to replace common name prefixes in generated templates with wildcards.", false));
+		options.add(new AnalyzerOption(ENABLE_VERBOSE_GENERATOR,
+				"Makes the template generator print out information on its decission making process.", true));
+		options.add(new AnalyzerOption(DEFAULT_GENERATOR_FALLBACK_MODEL,
+				"Default distribution model used for non-collocatable tables. Use '" + Broadcast.SINGLETON_TEMPLATE_ITEM.getTemplateItemName()
+						+ "' for better performance and '" + Range.SINGLETON_TEMPLATE_ITEM.getTemplateItemName() + "' for reduced storage footprint.",
+				Broadcast.SINGLETON_TEMPLATE_ITEM.getTemplateItemName()));
 		options.add(new AnalyzerOption(
 				CORPUS_SCALE_FACTOR,
 				"This constant controls how far into the future will the template generator extrapolate table cardinalities.",
 				3000));
+		options.add(new AnalyzerOption(
+				FK_AS_JOIN,
+				"Instructs the template generator to treat FK relationships as \"singular\" joins allowing them to contribute to range scoring.",
+				true));
+		options.add(new AnalyzerOption(
+				USE_ROW_WIDTH_WEIGHTS,
+				"If available, information on average row width can be used to weight row counts in table size estimations.",
+				true));
 		options.add(new AnalyzerOption(RDS_FORMAT, "Set to true to indicate that the log to be processed is from Amazon RDS", false));
 	}
 
@@ -87,6 +109,22 @@ public final class AnalyzerOptions {
 
 	public boolean isTemplateWildcardsEnabled() {
 		return getBooleanValue(ENABLE_TEMPLATE_WILDCARDS);
+	}
+
+	public boolean isVerboseGeneratorEnabled() {
+		return getBooleanValue(ENABLE_VERBOSE_GENERATOR);
+	}
+
+	public boolean isForeignKeysAsJoinsEnabled() {
+		return getBooleanValue(FK_AS_JOIN);
+	}
+
+	public boolean isRowWidthWeightingEnabled() {
+		return getBooleanValue(USE_ROW_WIDTH_WEIGHTS);
+	}
+
+	public TemplateModelItem getGeneratorDefaultFallbackModel() throws PEException {
+		return AiTemplateBuilder.getModelForName(getValue(DEFAULT_GENERATOR_FALLBACK_MODEL).toString());
 	}
 
 	public boolean isRdsFormat() {

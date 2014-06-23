@@ -21,22 +21,8 @@ package com.tesora.dve.tools.aitemplatebuilder;
  * #L%
  */
 
-public final class Random implements TemplateItem {
+public interface TemplateModelItem extends TemplateItem {
 
-	private static final String DISTRIBUTION_TEMPLATE_BLOCK_NAME = "Random";
+	public boolean isBroadcast();
 
-	public static final TemplateItem SINGLETON_TEMPLATE_ITEM = new Random();
-
-	private Random() {
-	}
-
-	@Override
-	public String getTemplateItemName() {
-		return DISTRIBUTION_TEMPLATE_BLOCK_NAME;
-	}
-
-	@Override
-	public String toString() {
-		return getTemplateItemName();
-	}
 }

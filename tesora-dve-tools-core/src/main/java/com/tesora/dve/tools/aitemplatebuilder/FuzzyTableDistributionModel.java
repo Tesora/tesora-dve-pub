@@ -23,28 +23,27 @@ package com.tesora.dve.tools.aitemplatebuilder;
 
 import java.util.SortedSet;
 
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.StatementType;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 
-public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariable {
+public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariable implements TemplateModelItem {
 
 	private static final String SORTS_FLV_NAME = "sorts";
 	private static final String CARDINALITY_FLV_NAME = "cardinality";
 
-	protected FuzzyTableDistributionModel(final String fclBlockName) throws PEException {
+	protected FuzzyTableDistributionModel(final String fclBlockName) {
 		super(fclBlockName);
 	}
 
 	protected FuzzyTableDistributionModel(final String fclBlockName, final TableStats match,
-			final SortedSet<Long> sortedCardinalities) throws PEException {
+			final SortedSet<Long> sortedCardinalities, final boolean isRowWidthWeightingEnabled) {
 		super(fclBlockName);
 
 		final long totalOrderBy = match.getStatementCounts(StatementType.ORDERBY);
 		final long totalOperations = Math.max(match.getTotalStatementCount(), 1);
 		final double pcOrderBy = FuzzyLinguisticVariable.toPercent(totalOrderBy, totalOperations);
 
-		final long cardinality = match.getPredictedFutureCardinality();
+		final long cardinality = match.getPredictedFutureSize(isRowWidthWeightingEnabled);
 		final double pcCardinality = FuzzyLinguisticVariable.toPercent(
 				CommonRange.findPositionFor(cardinality, sortedCardinalities), sortedCardinalities.size());
 
@@ -54,7 +53,7 @@ public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariabl
 
 	protected FuzzyTableDistributionModel(final String fclBlockName,
 			double pcOrderBy,
-			double pcCardinality) throws PEException {
+			double pcCardinality) {
 		super(fclBlockName);
 
 		setVariable(SORTS_FLV_NAME, pcOrderBy);
