@@ -30,7 +30,6 @@ import java.util.List;
 
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.UserTable;

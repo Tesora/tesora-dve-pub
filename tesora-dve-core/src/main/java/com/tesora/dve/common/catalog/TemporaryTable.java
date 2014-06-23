@@ -21,6 +21,11 @@ package com.tesora.dve.common.catalog;
  * #L%
  */
 
+
+import java.net.InetSocketAddress;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Collections;
 import java.util.List;
 
@@ -28,16 +33,19 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import javax.sql.DataSource;
 
-import org.hibernate.annotations.ForeignKey;
+import org.apache.log4j.Logger;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
+import com.tesora.dve.groupmanager.GroupMembershipListener;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.server.bootstrap.Host;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 
@@ -46,6 +54,8 @@ import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 @Table(name = "user_temp_table")
 public class TemporaryTable implements CatalogEntity {
 
+	static Logger logger = Logger.getLogger(TemporaryTable.class);
+	
 	/**
 	 * 
 	 */
@@ -163,4 +173,59 @@ public class TemporaryTable implements CatalogEntity {
 
 	}
 
+	private static final String cleanupSQL =
+			"delete from user_temp_table where server_id = '%s'";
+	
+	private static final GroupMembershipListener tossConnsOnMembershipExit = new GroupMembershipListener() {
+
+		@Override
+		public void onMembershipEvent(MembershipEventType eventType,
+				InetSocketAddress inetSocketAddress) {
+			if (MembershipEventType.MEMBER_REMOVED == eventType &&
+					inetSocketAddress.equals(GroupManager.getCoordinationServices().getMemberAddress())) {
+				// toss all my connections
+				Singletons.require(Host.class).execute(new Runnable() {
+
+					@Override
+					public void run() {
+						try {
+							PerHostConnectionManager.INSTANCE.closeAllConnectionsWithUserlandTemporaryTables();
+						} catch (PEException pe) {
+							logger.warn("unable to close all conns with temporary tables", pe);
+						}
+					}
+					
+				});
+			}
+		}
+		
+	};
+	
+	public static void onStartServices() {
+		cleanupCatalog();
+		GroupManager.getCoordinationServices().addMembershipListener(tossConnsOnMembershipExit);
+	}
+	
+	public static void onStopServices() {
+		GroupManager.getCoordinationServices().removeMembershipListener(tossConnsOnMembershipExit);
+		cleanupCatalog();
+	}
+	
+	private static void cleanupCatalog() {
+		try {
+			DataSource catalogDS = CatalogDAO.getCatalogDS();
+			Connection c = catalogDS.getConnection();
+			try {
+				Statement s = c.createStatement();
+
+				s.executeUpdate(String.format(cleanupSQL,GroupManager.getCoordinationServices().getMemberAddress().toString()));
+			}
+			finally {
+				c.close();
+			}
+		} catch (SQLException e) {
+			// should figure out what to do with this
+		}		
+	}
+	
 }

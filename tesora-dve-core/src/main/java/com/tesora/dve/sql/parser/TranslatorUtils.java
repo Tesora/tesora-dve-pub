@@ -489,6 +489,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			lockInfo = opts.getLockOverride();
 	}
 
+	// call this during parsing to indicate that we are not handling ddl - used during temp table operations
+	public void notddl() {
+		if (pc != null) pc.forceImmutableSource();
+		if (opts == null || opts.getLockOverride() == null) 
+			lockInfo = new LockInfo(com.tesora.dve.lockmanager.LockType.EXCLUSIVE, "ddl");
+		else if (opts != null && opts.getLockOverride() != null) 
+			lockInfo = opts.getLockOverride();
+	}
+	
 	protected void forceUncacheable(ValueManager.CacheStatus status) {
 		if (pc != null)
 			pc.getValueManager().markUncacheable(status);
@@ -1154,7 +1163,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						+ StringUtils.join(unknownTables, ",") + "'");
 		}
 		
-		PEDropTableStatement stmt = new PEDropTableStatement(pc,tblKeys, unknownTables, ifExists);
+		PEDropTableStatement stmt = new PEDropTableStatement(pc,tblKeys, unknownTables, ifExists, tempTabs);
 		return pc.getPolicyContext().modifyDropTable(stmt);
 	}
 

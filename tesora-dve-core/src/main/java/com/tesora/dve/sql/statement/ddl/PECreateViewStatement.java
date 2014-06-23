@@ -417,7 +417,8 @@ public class PECreateViewStatement extends
 					ViewMode vm = existing.asView().getView(context).getMode(); 
 					if (vm == ViewMode.EMULATE) {
 						// if it was emulated we would have tossed a table down
-						dropCommand = new PEDropTableStatement(context, Collections.singletonList(TableKey.make(context,existing,context.getNextTable())), Collections.EMPTY_LIST, true); 
+						TableKey tk = TableKey.make(context,existing,context.getNextTable());
+						dropCommand = new PEDropTableStatement(context, Collections.singletonList(tk), Collections.EMPTY_LIST, true, tk.isUserlandTemporaryTable()); 
 					} else {
 						dropCommand = new PEDropViewStatement(existing.asView(), true);
 					}

@@ -21,8 +21,7 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.node.expression.TableInstance;
+
 
 public interface AutoIncrement {
 

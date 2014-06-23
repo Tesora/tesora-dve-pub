@@ -223,6 +223,13 @@ public class SchemaContext {
 		}
 	}
 	
+	public void forceImmutableSource() {
+		if (schemaSource.getType() == CacheType.MUTABLE) {
+			mutableSource = false;
+			setSource(buildSource());
+		}
+	}
+	
 	public boolean isMutableSource() {
 		if (mutableSourceOverride != null) return mutableSourceOverride.booleanValue();
 		return schemaSource.getType() == CacheType.MUTABLE;

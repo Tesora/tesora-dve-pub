@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.persistence.EntityManager;
@@ -35,6 +36,7 @@ import javax.persistence.LockModeType;
 import javax.persistence.Persistence;
 import javax.persistence.PersistenceException;
 import javax.persistence.Query;
+import javax.sql.DataSource;
 
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Statistics;
@@ -43,6 +45,7 @@ import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import com.mchange.v2.c3p0.C3P0Registry;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.distribution.DistributionRange;
@@ -1163,6 +1166,13 @@ public class CatalogDAO {
 	public EntityManager getEntityManager() {
 		return em.get();
 	}	
+	
+	public static DataSource getCatalogDS() {
+		@SuppressWarnings("unchecked")
+		Set<DataSource> c3p0pools = C3P0Registry.allPooledDataSources(); 
+		return c3p0pools.iterator().next();
+	}
+
 	
 	public enum CatalogDAOFactory {
 		

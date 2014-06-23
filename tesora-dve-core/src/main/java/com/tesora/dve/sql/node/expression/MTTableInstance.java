@@ -21,7 +21,6 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
-import com.tesora.dve.sql.expression.MTTableKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.schema.Name;

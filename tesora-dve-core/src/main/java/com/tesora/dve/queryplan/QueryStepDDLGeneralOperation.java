@@ -204,9 +204,23 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 				// not really a warning, but it would be nice to get it back out
 				logger.warn(logHeader + " retrying ddl after " + attempts + " tries upon exception: " + t.getMessage());
 			} finally {
-				if (cacheClear != null)
-					QueryPlanner.invalidateCache(cacheClear);
-				cacheClear = null;
+				Throwable anything = null;
+				try {
+					if (cacheClear != null)
+						QueryPlanner.invalidateCache(cacheClear);
+					cacheClear = null;
+				} catch (Throwable t) {
+					// throwing this away - if entities has a finally block we really want it to occur
+					anything = t;
+				}
+				try {
+					entities.onFinally(ssCon);
+				} catch (Throwable t) {
+					if (anything == null)
+						anything = t;
+				}
+				if (anything != null)
+					throw anything;
 			}
 			
 			postCommitAction(c);
@@ -313,6 +327,13 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 		 * Called for every rollback
 		 */
 		public void onRollback(SSConnection conn, CatalogDAO c, WorkerGroup wg) {
+			
+		}
+		
+		/*
+		 * Always called
+		 */
+		public void onFinally(SSConnection conn) throws Throwable {
 			
 		}
 	}

@@ -518,6 +518,7 @@ public class WorkerGroup {
 	}
 	
 	public boolean isMarkedForPurge() {
+		if (this.pinned > 0) return false;
 		return this.toPurge;
 	}
 	

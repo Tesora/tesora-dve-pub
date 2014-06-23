@@ -24,7 +24,6 @@ package com.tesora.dve.sql.transform.execution;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEStorageGroup;
-import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;

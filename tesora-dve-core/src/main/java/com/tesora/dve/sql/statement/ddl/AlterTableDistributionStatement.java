@@ -162,7 +162,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 				null,Action.ALTER,new CopyTable((TableCacheKey)oldTab.getCacheKey(),
 						(TableCacheKey)PETable.getTableKey(oldTab.getPEDatabase(sc), newTab.getName()))));
 		@SuppressWarnings("unchecked")
-		PEDropTableStatement dropTab = new PEDropTableStatement(sc,Collections.singletonList(oldTableKey),Collections.EMPTY_LIST,null);
+		PEDropTableStatement dropTab = new PEDropTableStatement(sc,Collections.singletonList(oldTableKey),Collections.EMPTY_LIST,null,oldTableKey.isUserlandTemporaryTable());
 		dropTab.plan(sc,es, config);
 		AlterTableAction ata = new RenameTableAction(oldTab.getName(),false);
 		PEAlterTableStatement alter = new PEAlterTableStatement(sc,newTableKey,Collections.singletonList(ata));

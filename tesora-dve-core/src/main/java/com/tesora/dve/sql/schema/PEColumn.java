@@ -32,13 +32,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringUtils;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.common.catalog.PersistentColumn;

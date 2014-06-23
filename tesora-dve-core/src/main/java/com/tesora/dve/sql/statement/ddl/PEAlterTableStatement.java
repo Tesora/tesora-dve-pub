@@ -363,7 +363,8 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 					Collections.<ExpressionNode> singletonList(new Wildcard(null)), null, null, null, null, null, null, null, null, new AliasInformation(),
 					null);
 
-			final PEDropTableStatement dropSampleTable = new PEDropTableStatement(sc, Collections.singletonList(targetTableInstance.getTableKey()), Collections.<Name> emptyList(), true);
+			final PEDropTableStatement dropSampleTable = new PEDropTableStatement(sc, Collections.singletonList(targetTableInstance.getTableKey()), Collections.<Name> emptyList(), true, 
+					targetTableInstance.getTableKey().isUserlandTemporaryTable());
 
 			final ExecutionSequence es = new ExecutionSequence(null);
 

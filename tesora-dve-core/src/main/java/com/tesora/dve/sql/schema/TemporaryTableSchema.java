@@ -23,10 +23,13 @@ package com.tesora.dve.sql.schema;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.UnaryFunction;
 
 // Temporary tables have wierd lookup rules.  They appear to be:
 // + a temporary table always hides a persistent table
@@ -96,6 +99,18 @@ public class TemporaryTableSchema implements Schema<ComplexPETable> {
 
 	public boolean isEmpty() {
 		return tables.isEmpty();
+	}
+	
+	// used in connection close
+	public List<String> getQualifiedTemporaryTableNames() {
+		return Functional.apply(tables.keySet(), new UnaryFunction<String,QualifiedName>() {
+
+			@Override
+			public String evaluate(QualifiedName object) {
+				return object.get();
+			}
+			
+		});
 	}
 	
 }

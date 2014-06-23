@@ -23,7 +23,6 @@ package com.tesora.dve.sql.statement.ddl;
 
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -74,12 +73,15 @@ public class PEDropTableStatement extends
 
 	private CacheInvalidationRecord cacheInvalidationRecord = null;
 	
-	public PEDropTableStatement(SchemaContext sc, List<TableKey> tks, List<Name> unknownTbls, Boolean ifExists) {
+	private boolean temporary;
+	
+	public PEDropTableStatement(SchemaContext sc, List<TableKey> tks, List<Name> unknownTbls, Boolean ifExists, boolean temporary) {
 		super(PETable.class, ifExists, false,
 				(tks.isEmpty() ? unknownTbls.get(0) : tks.get(0).getAbstractTable().getName()),
 						"TABLE");
 		this.tableKeys = new ArrayList<TableKey>(tks);
 		this.unknownTables = unknownTbls;
+		this.temporary = temporary;
 		getInvalidationRecord(sc);
 	}
 	
@@ -87,6 +89,7 @@ public class PEDropTableStatement extends
 		super(PETable.class, base.isIfExists(), false, base.getTarget(), "TABLE");
 		this.tableKeys = new ArrayList<TableKey>(base.tableKeys);
 		this.unknownTables = new ArrayList<Name>(base.unknownTables);
+		this.temporary = base.temporary;
 	}
 
 	@Override
@@ -97,6 +100,10 @@ public class PEDropTableStatement extends
 	
 	public List<TableKey> getDroppedTableKeys() {
 		return tableKeys;
+	}
+	
+	public boolean isTemporary() {
+		return temporary;
 	}
 	
 	@Override
@@ -118,6 +125,14 @@ public class PEDropTableStatement extends
 		return new ArrayList<CatalogEntity>(deletes);
 	}
 
+	@Override
+	protected void preplan(SchemaContext pc, ExecutionSequence es,boolean explain) throws PEException {
+		if (temporary)
+			return;
+		super.preplan(pc, es, explain);
+	}
+
+	
 	protected static void compute(SchemaContext pc, 
 			Set<CatalogEntity> deletes, Set<CatalogEntity> updates, 
 			List<TableKey> keys, boolean ignoreFKChecks) throws PEException {
@@ -248,17 +263,6 @@ public class PEDropTableStatement extends
 		return cacheInvalidationRecord;
 	}
 
-	public String getDropTargetSQL() {
-		StringBuilder sql = new StringBuilder();
-		boolean first = true;
-		for(TableKey tk : tableKeys) {
-			if (first) first = false;
-			else sql.append(",");
-			sql.append(tk.getAbstractTable().getName().get());
-		}
-		return sql.toString();
-	}
-
 	private class DropTableCallback extends DDLCallback {
 
 		private final SQLCommand command;
@@ -283,7 +287,7 @@ public class PEDropTableStatement extends
 
 		@Override
 		public String description() {
-			return "DropTableCallback";
+			return command.getRawSQL();
 		}
 
 		@Override
@@ -319,6 +323,8 @@ public class PEDropTableStatement extends
 				if (tk.isUserlandTemporaryTable()) {
 					wg.clearPinned();
 					context.getTemporaryTableSchema().removeTable(context, (ComplexPETable) tk.getAbstractTable());
+					if (context.getTemporaryTableSchema().isEmpty())
+						conn.releaseInflightTemporaryTablesLock();
 				}
 			}
 		}

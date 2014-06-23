@@ -45,6 +45,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
+import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
@@ -334,7 +335,7 @@ public abstract class Emitter {
 		} else if (s instanceof PECreateStatement) {
 			emitCreateStatement(sc, (PECreateStatement)s, buf);
 		} else if (s instanceof PEDropStatement) {
-			emitDropStatement((PEDropStatement)s, buf);
+			emitDropStatement(sc,(PEDropStatement)s, buf);
 		} else if (s instanceof AlterStatement) {
 			emitAlterStatement(sc, (AlterStatement)s, buf);
 		} else if (s instanceof RenameTableStatement) {
@@ -1663,11 +1664,11 @@ public abstract class Emitter {
 	}
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public void emitDropStatement(PEDropStatement dts, StringBuilder buf) {
+	public void emitDropStatement(SchemaContext sc, PEDropStatement dts, StringBuilder buf) {
 		if (PEDatabase.class.equals(dts.getTargetClass())) {
 			emitDropDatabaseStatement(dts,buf);
 		} else if (PETable.class.equals(dts.getTargetClass())) {
-			emitDropTableStatement(dts,buf);
+			emitDropTableStatement(sc, (PEDropTableStatement) dts,buf);
 		} else if (PEViewTable.class.equals(dts.getTargetClass())) {
 			emitDropViewStatement(dts,buf);
 		} else if (PEUser.class.equals(dts.getTargetClass())) {
@@ -1697,8 +1698,25 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitDropTableStatement(PEDropStatement<?,?> peds, StringBuilder buf) {
-		emitDropStatement(peds, buf, "TABLE");
+	public void emitDropTableStatement(final SchemaContext sc, PEDropTableStatement peds, StringBuilder buf) {
+		buf.append("DROP ");
+		if (peds.isTemporary())
+			buf.append("TEMPORARY ");
+		buf.append("TABLE ");
+		if (peds.isIfExists())
+			buf.append("IF EXISTS ");
+		boolean first = true;
+		for(TableKey tk : peds.getDroppedTableKeys()) {
+			if (first) first = false;
+			else buf.append(",");
+			Name tabName = null;
+			if (tk.isUserlandTemporaryTable()) {
+				tabName = new QualifiedName(tk.getAbstractTable().getDatabaseName(sc).getUnqualified(),tk.getAbstractTable().getName().getUnqualified());
+			} else {
+				tabName = tk.getAbstractTable().getName();
+			}
+			emitTable(sc,tabName,buf);
+		}		
 	}
 	
 	public void emitDropViewStatement(PEDropStatement<?,?> peds, StringBuilder buf) {
@@ -1722,18 +1740,10 @@ public abstract class Emitter {
 		buf.append("DROP ").append(what).append(" ");
 		if (ds.isIfExists())
 			buf.append("IF EXISTS ");
-		String sql = StringUtils.EMPTY;
-		if (StringUtils.equals(what, "TABLE")) {
-			 sql = ((PEDropTableStatement)ds).getDropTargetSQL();
-		}
-		if (StringUtils.isEmpty(sql)) {
-			if (ds.getTarget() == null)
-				buf.append(ds.getTargetName().getSQL());
-			else
-				buf.append(ds.getTarget().getName().getSQL());
-		} else {
-			buf.append(sql);
-		}
+		if (ds.getTarget() == null)
+			buf.append(ds.getTargetName().getSQL());
+		else
+			buf.append(ds.getTarget().getName().getSQL());
 	}
 	
 	public void emitAlterStatement(SchemaContext sc, AlterStatement as, StringBuilder buf) {

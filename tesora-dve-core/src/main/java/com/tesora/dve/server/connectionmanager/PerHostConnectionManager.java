@@ -66,6 +66,16 @@ public enum PerHostConnectionManager {
 			ssConnection.close();
 	}
 	
+	public void closeAllConnectionsWithUserlandTemporaryTables() throws PEException {
+		List<SSConnection> copied = new ArrayList<SSConnection>(connectionIdMap.values());
+		for(SSConnection ssconn : copied) {
+			if (ssconn.hasUserlandTemporaryTables()) {
+				StatementManager.INSTANCE.cancelAllStatements(ssconn.getConnectionId());
+				ssconn.close();
+			}
+		}
+	}
+	
 	public void clear() {
 		connectionIdMap.clear();
 		connectionInfoMap.clear();

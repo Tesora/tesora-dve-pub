@@ -29,11 +29,8 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.PersistentDatabase;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
-import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepDDLOperation extends QueryStepDDLGeneralOperation {
 

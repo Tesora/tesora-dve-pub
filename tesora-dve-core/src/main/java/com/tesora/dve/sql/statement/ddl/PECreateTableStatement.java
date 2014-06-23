@@ -35,7 +35,6 @@ import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.ConstraintType;
-import com.tesora.dve.common.catalog.ServerRegistration;
 import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
@@ -63,7 +62,6 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumnBase;
-import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.QualifiedName;
@@ -746,7 +744,6 @@ public class PECreateTableStatement extends
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
 			this.updates = new ArrayList<CatalogEntity>();
 			CatalogDAO c = conn.getCatalogDAO();
-			//String tableName, String tableDatabase, String engineName, int connID, ServerRegistration server
 			updates.add(new TemporaryTable(table.getName().getUnqualified().getUnquotedName().get(),
 					table.getPEDatabase(context).getName().getUnqualified().getUnquotedName().get(),
 					table.getEngine().getPersistent(),
@@ -785,6 +782,8 @@ public class PECreateTableStatement extends
 			if (pincount == 1) {
 				wg.markPinned();
 				context.getTemporaryTableSchema().addTable(context, table);
+				// if we already have it we won't do it again
+				conn.acquireInflightTemporaryTablesLock();
 			}
 		}
 		
@@ -793,6 +792,8 @@ public class PECreateTableStatement extends
 				wg.clearPinned();
 				pincount--;
 				context.getTemporaryTableSchema().removeTable(context, table);
+				if (context.getTemporaryTableSchema().isEmpty())
+					conn.releaseInflightTemporaryTablesLock();
 			}
 		}
 

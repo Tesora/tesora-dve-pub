@@ -21,13 +21,13 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
 
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.server.bootstrap.BootstrapHost;
@@ -44,9 +44,12 @@ public class TemporaryTableTest extends SchemaTest {
 	private static final ProjectDDL sysDDL = new PEDDL("sysdb",
 			new StorageGroupDDL("sys", 2, "sysg"), "schema");
 
+	private static final ProjectDDL encDDL = new PEDDL("encdb",
+			new StorageGroupDDL("enc",2,"encg"), "database");
+	
 	@BeforeClass
 	public static void setup() throws Throwable {
-		PETest.projectSetup(sysDDL);
+		PETest.projectSetup(sysDDL, encDDL);
 		PETest.bootHost = BootstrapHost.startServices(PETest.class);
 		
 		ProxyConnectionResource pcr = new ProxyConnectionResource();
@@ -67,7 +70,6 @@ public class TemporaryTableTest extends SchemaTest {
 			conn1.execute("start transaction");
 			conn1.execute("create temporary table foo (id int, fid int) broadcast distribute");
 			conn1.execute("insert into foo (id, fid) values (1,1),(2,2),(3,3)");
-//			System.out.println(conn1.printResults("select * from information_schema.temporary_tables"));
 			conn1.assertResults("select * from information_schema.temporary_tables",
 					br(nr,3,"sysdb","foo","InnoDB"));
 			conn1.execute("commit");
@@ -125,28 +127,21 @@ public class TemporaryTableTest extends SchemaTest {
 					br(nr,"id",1,
 					   nr,"fid",2));
 	
-			// so the difference in output here I think has to do with the reloading from the catalog
-			// vs never persisting at all...will have to chase this down
-//			System.out.println(conn1.printResults("describe narrow"));
 			conn1.assertResults("describe narrow",
 					br(nr,"id","int(11)","NO","PRI",null,"auto_increment",
 					   nr,"fid","int(11)","YES","UNI",null,"",
 					   nr,"sid","int(11)","YES","MUL",null,""));
-//			System.out.println(conn2.printResults("describe narrow"));
 			conn2.assertResults("describe narrow",
 					br(nr,"id","int(11)","NO","PRI",null,"",
 					   nr,"fid","int(11)","YES","",null,""));
-//			System.out.println(conn1.printResults("show columns in narrow like 'fid'"));
 			
 			conn1.assertResults("show columns in narrow like 'fid'",
 					br(nr,"fid","int(11)","YES","UNI",null,""));
 			
-//			System.out.println(conn1.printResults("show keys in narrow"));
 			conn1.assertResults("show keys in narrow",
 					br(nr,"narrow",1L,"PRIMARY",1,"id","A",-1,4,"","NO","BTREE","","",
 					   nr,"narrow",1L,"fid",1,"fid","A",-1,4,"","YES","BTREE","","",
 					   nr,"narrow",0L,"sid",1,"sid","A",-1,4,"","YES","BTREE","",""));
-//			System.out.println(conn2.printResults("show keys in narrow"));
 			conn2.assertResults("show keys in narrow",
 					br(nr,"narrow",0L,"PRIMARY",1,"id","A",-1,null,null,"","BTREE","",""));
 			conn1.execute("drop table narrow");
@@ -169,7 +164,9 @@ public class TemporaryTableTest extends SchemaTest {
 			conn.execute("create table rt (id int, fid int, primary key (id)) random distribute");
 			conn.execute("create temporary table targ (id int, fid int, primary key (id)) broadcast distribute");
 			conn.execute("insert into targ (id, fid) select * from src");
+			conn.assertResults("select count(*) from targ",br(nr,5L));
 			conn.execute("insert into rt (id, fid) select * from targ");
+			conn.assertResults("select count(*) from rt",br(nr,5L));
 			conn.execute("drop table src");
 			conn.execute("drop table rt");
 			conn.execute("drop table targ");
@@ -184,12 +181,10 @@ public class TemporaryTableTest extends SchemaTest {
 			conn.execute("insert into targ (id,fid) values (1,1),(2,2),(3,3),(4,4),(5,5)");
 			conn.assertResults("select * from information_schema.temporary_tables",
 					br(nr,ignore,"sysdb","targ","InnoDB"));
-//			System.out.println(conn.printResults("describe targ"));
 			conn.assertResults("describe targ",
 					br(nr,"id","int(11)","NO","PRI",null,"",
 					   nr,"fid","int(11)","YES","",null,""));
 			conn.execute("alter table targ add `sid` int default '22'");
-//			System.out.println(conn.printResults("describe targ"));
 			conn.assertResults("describe targ",
 					br(nr,"id","int(11)","NO","PRI",null,"",
 					   nr,"fid","int(11)","YES","",null,"",
@@ -221,9 +216,7 @@ public class TemporaryTableTest extends SchemaTest {
 			Object[] showTabs = br(nr,"targ");
 			
 			conn.execute(pdef);
-//			System.out.println(conn.printResults("describe targ"));
 			conn.assertResults("describe targ",pdesc);
-//			System.out.println(conn.printResults("show tables")); 
 			conn.assertResults("show tables",showTabs);
 			try {
 				conn.execute("drop temporary table targ"); // should fail - doesn't exist
@@ -232,43 +225,182 @@ public class TemporaryTableTest extends SchemaTest {
 				assertEquals(sqle.getMessage(),"SchemaException: No such temporary table: 'targ'");
 			}
 			conn.execute("drop table targ"); // succeeds
-//			System.out.println(conn.printResults("show tables")); // []
 			conn.assertResults("show tables",br());
 			
 			conn.execute(tdef);
-//			System.out.println(conn.printResults("show tables")); // []
 			conn.assertResults("show tables",br());
-//			System.out.println(conn.printResults("describe targ")); // tdef
 			conn.assertResults("describe targ",tdesc);
-//			System.out.println(conn.printResults("select * from information_schema.temporary_tables"));  // tdef
 			conn.assertResults("select * from information_schema.temporary_tables",
 					br(nr,ignore,"sysdb","targ","InnoDB"));
 			conn.execute(pdef);
-//			System.out.println(conn.printResults("show tables")); // [targ]
 			conn.assertResults("show tables",showTabs);
-//			System.out.println(conn.printResults("describe targ")); // tdef
 			conn.assertResults("describe targ",tdesc);
-//			System.out.println(conn.printResults("select column_name from information_schema.columns where table_name = 'targ'")); // pdef
 			conn.assertResults("select column_name from information_schema.columns where table_schema = '" + sysDDL.getDatabaseName() + "' and table_name = 'targ'",
 					br(nr,"id",
 					   nr,"booyeah"));
 			
 			conn.execute("drop table targ");
-//			System.out.println(conn.printResults("show tables")); // [targ]
 			conn.assertResults("show tables",showTabs);
-//			System.out.println(conn.printResults("describe targ")); // pdef
 			conn.assertResults("describe targ",pdesc);
 			conn.execute(tdef);
-//			System.out.println(conn.printResults("describe targ")); // tdef
 			conn.assertResults("describe targ",tdesc);
 			conn.execute("drop temporary table targ");
-//			System.out.println(conn.printResults("show tables")); // [targ]
 			conn.assertResults("show tables",showTabs);
-//			System.out.println(conn.printResults("describe targ")); // pdef
 			conn.assertResults("describe targ",pdesc);
 			
 			conn.execute("drop table targ"); // cleanup
 		}
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testConnectionClose() throws Throwable {
+		DBHelperConnectionResource conn1 = null;
+		DBHelperConnectionResource conn2 = null;
+		
+		String globalQuery = 
+				"select * from information_schema.global_temporary_tables";
+		
+		try {
+			conn1 = new PortalDBHelperConnectionResource();
+			conn2 = new PortalDBHelperConnectionResource();
+			conn1.execute("use " + sysDDL.getDatabaseName());
+			conn2.execute("use " + sysDDL.getDatabaseName());
+			
+			conn1.execute("create temporary table tt1 (id int, fid int, primary key (id))");
+			conn1.execute("create table pt1 (id int, fid int, primary key (id))");
+			conn1.execute("insert into pt1 (id, fid) values (1,1),(2,2),(3,3),(4,4),(5,5)");
+			conn1.execute("start transaction");
+			conn1.execute("insert into tt1 (id, fid) select id, fid from pt1");
+			conn1.assertResults("select count(*) from tt1",br(nr,5L));
+			conn2.assertResults(globalQuery, 
+					br(nr,"LocalhostCoordinationServices:1",ignore,"sysdb","tt1","InnoDB"));
+			conn1.execute("commit");
+			conn1.disconnect();
+			conn1 = null;
+			// apparently the client can quit before the server is entirely done - so sleep a few seconds
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException ie) {
+				// ignore
+			}
+			conn2.assertResults(globalQuery,br());
+			conn2.execute("drop table pt1");
+		} finally {
+			if (conn1 != null) try {
+				conn1.disconnect();
+			} catch (Throwable t) {
+				// ignore
+			}
+			if (conn2 != null) try {
+				conn2.disconnect();
+			} catch (Throwable t) {
+				// ignore
+			}
+		}
+		
+	}
+	
+	@SuppressWarnings("resource")
+	@Test
+	public void testEnclosingDrop() throws Throwable {
+		DBHelperConnectionResource conn1 = null;
+		DBHelperConnectionResource conn2 = null;
+
+		try {
+			conn1 = new PortalDBHelperConnectionResource();
+			conn2 = new PortalDBHelperConnectionResource();
+			
+			encDDL.create(conn2);
+			
+			conn1.execute("use " + encDDL.getDatabaseName());
+			
+			conn1.execute("create temporary table tt1 (id int, fid int, primary key (id))");
+			conn1.execute("insert into tt1 (id,fid) values (1,1),(2,2),(3,3)");
+			
+			// this should work
+			conn2.execute("drop database " + encDDL.getDatabaseName());
+
+			conn1.assertResults(String.format("select count(*) from %s.tt1",
+					encDDL.getDatabaseName()),
+					br(nr,3L));
+			
+			DropStorageGroupThread hangingOut = 
+					new DropStorageGroupThread(conn2,
+							"drop persistent group " + encDDL.getPersistentGroup().getName());
+			hangingOut.start();
+
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException ie) {
+				// ignore
+			}
+			
+			if (!hangingOut.isIssued())
+				fail("Apparently unable to start the hangout thread");
+			
+			conn1.execute("drop temporary table " + encDDL.getDatabaseName() + ".tt1");
+			
+			// sleep for a few seconds
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException ie) {
+				// ignore
+			}
+			
+			if (hangingOut.getOops() != null)
+				throw hangingOut.getOops();
+			
+			if (hangingOut.isAlive())
+				fail("Apparently still waiting even though the temp table is toast");
+
+		} finally {
+			try {
+				conn1.disconnect();
+			} catch (Throwable t) {
+				// ignore
+			}
+			try {
+				conn2.disconnect();
+			} catch (Throwable t) {
+				// ignore
+			}
+
+		}
+		
+	}
+
+	private static class DropStorageGroupThread extends Thread {
+		
+		DBHelperConnectionResource connection;
+		Throwable oops = null;
+		String sql;
+		boolean issuedDrop = false;
+		
+		public DropStorageGroupThread(DBHelperConnectionResource c,
+				String sql) {
+			super("dsgt");
+			connection = c;
+			this.sql = sql;
+		}
+		
+		public boolean isIssued() {
+			return issuedDrop;
+		}
+		
+		public Throwable getOops() {
+			return oops;
+		}
+		
+		public void run() {
+			try {
+				issuedDrop = true;
+				connection.execute(sql);
+			} catch (Throwable t) {
+				oops = t;
+			}
+		}
+		
 	}
 	
 }

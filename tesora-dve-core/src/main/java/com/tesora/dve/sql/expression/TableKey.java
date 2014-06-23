@@ -29,7 +29,6 @@ import com.tesora.dve.sql.schema.AutoIncrement;
 import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.HasTable;
 import com.tesora.dve.sql.schema.PEAbstractTable;
-import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;

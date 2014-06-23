@@ -27,18 +27,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.tesora.dve.common.PEStringUtils;
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.IsInstance;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
 
 // specifically for handling tables created via create table as select and 
