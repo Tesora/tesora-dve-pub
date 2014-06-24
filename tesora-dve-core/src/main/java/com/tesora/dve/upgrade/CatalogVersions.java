@@ -51,6 +51,7 @@ import com.tesora.dve.upgrade.versions.MatchTemplateVersion;
 import com.tesora.dve.upgrade.versions.RawPlans;
 import com.tesora.dve.upgrade.versions.RebrandingVersion;
 import com.tesora.dve.upgrade.versions.UserSecurityVersion;
+import com.tesora.dve.upgrade.versions.UserlandTemporaryTables;
 
 // these are the currently known version numbers.  if we come across a catalog with an older version
 // number then we must dump and load.
@@ -76,7 +77,8 @@ public class CatalogVersions {
 		ADD_COLLATION(new AddCollation(37)),
 		ADD_TEMPLATE_MODE(new AddTemplateMode(38)),
 		EXTRA_INFO_SCHEMA_COLUMNS_COLUMNS(new ExtraInfoSchemaColumnsColumns(39)),
-		EXTERNAL_SERVICE_SHOW_CONFIG(new InfoSchemaUpgradeVersion(40));
+		EXTERNAL_SERVICE_SHOW_CONFIG(new InfoSchemaUpgradeVersion(40)),
+		TEMPORARY_TABLES(new UserlandTemporaryTables(41));
 		
 		private final CatalogVersion upgradeModule; 
 		

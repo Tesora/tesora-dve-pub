@@ -49,6 +49,7 @@ import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
@@ -98,44 +99,70 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 	
 	@Override
 	public IntermediateResultSet executeUniqueSelect(SchemaContext sc, Name onName) {
+		TableInstance tempTab = sc.getTemporaryTableSchema().buildInstance(sc, onName);
 		// delegate to the table table to get the basic information
 		ViewQuery basicQuery = tableTable.buildUniqueSelect(sc, onName);
 		try {
 			sc.getCatalog().startTxn();
-			List<CatalogEntity> raw = LogicalSchemaQueryEngine.buildCatalogEntities(sc, basicQuery).getEntities();
-			if (raw.size() > 1)
-				throw new SchemaException(Pass.SECOND, "Too many tables named " + onName.getSQL());
-			if (raw.size() == 0)
-				throw new SchemaException(Pass.SECOND, "No such table: " + onName);
-			UserTable ut = (UserTable)raw.get(0);
-			PEAbstractTable<?> tempBacking = PEAbstractTable.load(ut, sc);
 			// build a tschema version so we can massage the definition to add back in the stuff we stripped out
 			// and remove the stuff we added
 			PEAbstractTable<?> tschema = null;
-			try {
-				tschema = tempBacking.recreate(sc, ut.getCreateTableStmt(), new LockInfo(com.tesora.dve.lockmanager.LockType.RSHARED, "show create table"));
-			} catch (PEException pe) {
-				throw new SchemaException(Pass.PLANNER,"Unable to recreate table def from create table stmt");
+			PEAbstractTable<?> tempBacking = null;
+			UserTable ut = null;
+			LockInfo lock = new LockInfo(com.tesora.dve.lockmanager.LockType.RSHARED, "show create table");
+			if (tempTab == null) {
+				List<CatalogEntity> raw = LogicalSchemaQueryEngine.buildCatalogEntities(sc, basicQuery).getEntities();
+				if (raw.size() > 1)
+					throw new SchemaException(Pass.SECOND, "Too many tables named " + onName.getSQL());
+				if (raw.size() == 0)
+					throw new SchemaException(Pass.SECOND, "No such table: " + onName);
+				ut = (UserTable)raw.get(0);
+				tempBacking = PEAbstractTable.load(ut, sc);
+				try {
+					tschema = tempBacking.recreate(sc, ut.getCreateTableStmt(), lock);
+				} catch (PEException pe) {
+					throw new SchemaException(Pass.PLANNER,"Unable to recreate table def from create table stmt");
+				}
+			} else { 
+				tschema = tempTab.getAbstractTable().recreate(sc, tempTab.getAbstractTable().getDeclaration(), lock);
 			}
 			StringBuilder buf = new StringBuilder();
 
+			TableKey tk = null;
+			if (tempTab != null) {
+				tk = tempTab.getTableKey();
+			} else if (sc.getPolicyContext().isSchemaTenant() || sc.getPolicyContext().isDataTenant()) {
+				TableScope ts = sc.getPolicyContext().getOfTenant(ut);
+				tk = new MTTableKey(tempBacking,ts,0);
+			} else {
+				tk = TableKey.make(sc, tempBacking, 0);
+			}
+			
 			if (sc.getPolicyContext().isSchemaTenant() || sc.getPolicyContext().isDataTenant()) {
-				Name localName = sc.getPolicyContext().getLocalName(ut);
+				Name localName = null;
+				if (ut != null)
+					localName = sc.getPolicyContext().getLocalName(ut);
+				else if (tempTab.getTableKey() instanceof MTTableKey) {
+					MTTableKey mttk = (MTTableKey) tempTab.getTableKey();
+					localName = mttk.getScope().getName();
+				}
 				if (localName != null)
 					tschema.setName(localName);
 				HashMap<UnqualifiedName,UnqualifiedName> fkmap = new HashMap<UnqualifiedName,UnqualifiedName>();
-				for(Key k : ut.getKeys()) {
-					// either not a foreign key, or a forward foreign key
-					// if forward we would have used the original declared name.
-					if (k.getReferencedTable() == null) continue;
-					Name visibleName = sc.getPolicyContext().getLocalName(k.getReferencedTable());
-					fkmap.put(new UnqualifiedName(k.getReferencedTable().getName()),visibleName.getUnqualified());
+				if (ut != null) {
+					for(Key k : ut.getKeys()) {
+						// either not a foreign key, or a forward foreign key
+						// if forward we would have used the original declared name.
+						if (k.getReferencedTable() == null) continue;
+						Name visibleName = sc.getPolicyContext().getLocalName(k.getReferencedTable());
+						fkmap.put(new UnqualifiedName(k.getReferencedTable().getName()),visibleName.getUnqualified());
+					}
 				}
 
 				// in mt mode the stored declaration has the mtid; remove it.
 				PEColumn c = tschema.getTenantColumn(sc);
 				tschema.removeColumn(sc,c);
-				if (tschema.isTable()) {
+				if (tschema.isTable() && !tschema.isUserlandTemporaryTable()) {
 					List<PEKey> toRemove = new ArrayList<PEKey>();
 					for(PEKey k : tschema.getKeys(sc)) {
 						if (k.isHidden()) {
@@ -162,12 +189,10 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 
 			}	
 
-			if (ut.hasAutoIncr() && tschema.isTable()) {			
-				TableScope ts = sc.getPolicyContext().getOfTenant(ut);
-				TableKey backingKey = null;
-				if (ts != null) backingKey = new MTTableKey(tempBacking,ts,0);
-				else backingKey = new TableKey(tempBacking,0);
-				long nextVal = sc.getPolicyContext().readAutoIncrBlock(backingKey);
+			if (tk.getAbstractTable().isTable()) {
+				long nextVal = -1;
+				if (tk.getAbstractTable().asTable().hasAutoInc())
+					nextVal = tk.readAutoIncrBlock(sc);
 				if (nextVal > 1)
 					tschema.asTable().getModifiers().setModifier(new AutoincTableModifier(nextVal));
 			}

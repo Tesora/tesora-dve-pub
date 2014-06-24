@@ -183,7 +183,7 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 		
 	}
 	
-	private static class DropTenantTableCallback implements DDLCallback {
+	private static class DropTenantTableCallback extends DDLCallback {
 
 		private final TableKey toDrop;
 		private final String tableName;
@@ -234,7 +234,7 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 			Number n = (Number) first;
 			if (n.longValue() == 0) {
 				List<TableKey> freshTKs = new ArrayList<TableKey>();
-				freshTKs.add(new TableKey(reloaded,1));
+				freshTKs.add(TableKey.make(sc,reloaded,1));
 				PEDropTableStatement.compute(sc, deletedEntities, updatedEntities, freshTKs, true);
 			} else {
 				// still has references - this becomes a noop
@@ -283,12 +283,6 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 			return true;
 		}
 
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-			// TODO Auto-generated method stub
-			
-		}
-		
 	}
 	
 }

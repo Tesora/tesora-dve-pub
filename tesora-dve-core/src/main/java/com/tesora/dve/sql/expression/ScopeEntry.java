@@ -47,7 +47,6 @@ import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WildcardTable;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.Column;
-import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.MultiMapLookup;
 import com.tesora.dve.sql.schema.Name;
@@ -59,6 +58,8 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaLookup;
 import com.tesora.dve.sql.schema.SubqueryTable;
 import com.tesora.dve.sql.schema.Table;
+import com.tesora.dve.sql.schema.TableResolver;
+import com.tesora.dve.sql.schema.TableResolver.MissingTableFunction;
 import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
@@ -149,7 +150,7 @@ public class ScopeEntry implements Scope {
 	}
 	
 	// the errors we throw.
-	private void objectNotFound(String what, Name origName) throws SchemaException {
+	private static void objectNotFound(String what, Name origName) throws SchemaException {
 		throw new SchemaException(Pass.SECOND, "No such " + what + ": " + origName.getSQL());
 	}
 	
@@ -157,36 +158,39 @@ public class ScopeEntry implements Scope {
 		throw new SchemaException(Pass.SECOND, "Ambiguous " + what + " reference: " + origName.getSQL());
 	}
 	
+	private static final TableResolver resolver = new TableResolver().withMTChecks()
+			.withMissingTableFunction(new MissingTableFunction() {
+
+				@Override
+				public void onMissingTable(SchemaContext sc, Schema<?> schema,
+						Name name) {
+					UnqualifiedName db = schema.getSchemaName(sc);
+					objectNotFound("Table", new QualifiedName(db,name.getUnqualified())); 
+				}
+				
+			});
+			
+	
 	// add a declared table to the scope, using any alias or the table name as the key.  if the key
 	// is not unique, emit an error
 	@Override
 	public TableInstance buildTableInstance(Name inTableName, UnqualifiedName alias, Schema<?> inSchema, SchemaContext sc, LockInfo info) {
-		Name tableName = inTableName;
-		Schema<?> schema = inSchema;
-		if (tableName.isQualified()) {
-			QualifiedName qname = (QualifiedName) tableName;
-			UnqualifiedName ofdb = qname.getNamespace();
-			tableName = qname.getUnqualified();
-			Database<?> db = sc.findDatabase(ofdb);
-			if (db == null) throw new SchemaException(Pass.SECOND, "No such database: '" + ofdb + "'");
-			schema = db.getSchema();
-			if (schema == null) 
-				throw new SchemaException(Pass.SECOND, "No database specified (qualified name)");
-		}
-		if (schema == null) 
-			throw new SchemaException(Pass.SECOND, "No database specified (unqualified name)");
-		TableInstance raw = schema.buildInstance(sc,tableName.getUnqualified(), info);
-		if (raw == null) {
-			UnqualifiedName db = schema.getSchemaName(sc);
-			objectNotFound("Table", new QualifiedName(db,tableName.getUnqualified())); 
-		}
-		@SuppressWarnings("null")
-		TableInstance ti = raw.adapt(tableName, alias, (sc == null ? 0 : sc.getNextTable()),
+		TableInstance raw = resolver.lookupTable(sc, inSchema, inTableName, info);
+		TableInstance ti = raw.adapt(inTableName.getUnqualified(), alias, (sc == null ? 0 : sc.getNextTable()),
 				(sc != null && sc.getOptions().isResolve()));
-		insertTable(ti,alias,tableName);
+		insertTable(ti,alias,inTableName.getUnqualified());
 		return ti;
 	}
 
+	@Override
+	public TableInstance buildTableInstance(Name inTableName, UnqualifiedName alias, SchemaContext sc, LockInfo info) {
+		TableInstance raw = resolver.lookupTable(sc, inTableName, info);
+		TableInstance ti = raw.adapt(inTableName.getUnqualified(), alias, (sc == null ? 0 : sc.getNextTable()),
+				(sc != null && sc.getOptions().isResolve()));
+		insertTable(ti,alias,inTableName.getUnqualified());
+		return ti;
+	}
+		
 	@Override
 	public void pushVirtualTable(SubqueryTable sqt, UnqualifiedName alias, SchemaContext sc) {
 		TableInstance ti = new TableInstance(sqt,alias,alias,sc.getNextTable(),false);

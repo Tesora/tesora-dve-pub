@@ -1,4 +1,4 @@
-package com.tesora.dve.tools.field;
+package com.tesora.dve.sql.infoschema.info;
 
 /*
  * #%L
@@ -21,22 +21,15 @@ package com.tesora.dve.tools.field;
  * #L%
  */
 
-import java.io.PrintStream;
-import java.util.Properties;
+import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
+import com.tesora.dve.sql.schema.UnqualifiedName;
 
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.upgrade.CatalogSchemaVersion;
+public class InfoSchemaGlobalTemporaryTablesInformationSchemaTable extends
+		InfoSchemaTemporaryTablesInformationSchemaTable {
 
-public interface FieldAction {
+	public InfoSchemaGlobalTemporaryTablesInformationSchemaTable(
+			LogicalInformationSchemaTable basedOn) {
+		super(basedOn, new UnqualifiedName("global_temporary_tables"), true); 
+	}
 
-	public String getName();
-	
-	public String getDescription();
-	
-	public boolean isValid(CatalogSchemaVersion currentVersion);
-	
-	public void report(Properties connectionProperties, PrintStream reportWriter) throws PEException;
-	
-	public void execute(Properties connectionProperties, PrintStream reportWriter) throws PEException;
-	
 }

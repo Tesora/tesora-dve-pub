@@ -31,6 +31,7 @@ package com.tesora.dve.tools.analyzer.jaxb;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
@@ -156,8 +157,12 @@ public class TablesType {
         protected String name;
         @XmlAttribute(name = "rowCount", required = true)
         protected int rowCount;
+		@XmlAttribute(name = "dataLength")
+		protected Long dataLength;
         @XmlAttribute(name = "view")
         protected Boolean view;
+		@XmlAttribute(name = "engine")
+		protected String engine;
 
         /**
          * Gets the value of the columns property.
@@ -295,6 +300,22 @@ public class TablesType {
             this.rowCount = value;
         }
 
+		/**
+		 * Gets the value of the dataLength property.
+		 * 
+		 */
+		public Long getDataLength() {
+			return dataLength;
+		}
+
+		/**
+		 * Sets the value of the dataLength property.
+		 * 
+		 */
+		public void setDataLength(Long value) {
+			this.dataLength = value;
+		}
+
         /**
          * Gets the value of the view property.
          * 
@@ -318,6 +339,22 @@ public class TablesType {
         public void setView(Boolean value) {
             this.view = value;
         }
+
+		/**
+		 * Gets the value of the engine property.
+		 * 
+		 */
+		public String getEngine() {
+			return engine;
+		}
+
+		/**
+		 * Sets the value of the engine property.
+		 * 
+		 */
+		public void setEngine(String value) {
+			this.engine = value;
+		}
 
     }
 

@@ -26,12 +26,15 @@ import static org.junit.Assert.assertTrue;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import com.tesora.dve.common.PEBaseTest;
 import com.tesora.dve.common.StringOutputStream;
 import com.tesora.dve.exceptions.PECodingException;
 
 public class DVEClientToolTestConsole extends PEBaseTest {
+
+	private static final Pattern ERROR_MATCH_REGEX = Pattern.compile("\\bError:\\s");
 
 	private final CLIBuilder tool;
 	private final OutputStream output = new StringOutputStream();
@@ -117,7 +120,7 @@ public class DVEClientToolTestConsole extends PEBaseTest {
 
 	protected boolean hasValidConsoleOutput() {
 		final String consoleText = this.output.toString();
-		return (!consoleText.isEmpty() && (consoleText.indexOf("Error") < 0));
+		return (!consoleText.isEmpty() && !ERROR_MATCH_REGEX.matcher(consoleText).find());
 	}
 
 	protected OutputStream getOutputStream() {

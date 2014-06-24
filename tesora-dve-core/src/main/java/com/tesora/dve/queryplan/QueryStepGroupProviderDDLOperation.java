@@ -68,7 +68,7 @@ public class QueryStepGroupProviderDDLOperation extends QueryStepDDLOperation {
 	}
 
 	@Override
-	protected void onRollback() throws PEException {
+	protected void onRollback(SSConnection conn, CatalogDAO c, WorkerGroup wg) throws PEException {
 		if (target != null)
 			target.rollback(smc);
 	}

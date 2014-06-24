@@ -58,6 +58,7 @@ import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
+import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
 import com.tesora.dve.sql.transform.strategy.TempGroupManager;
 import com.tesora.dve.sql.util.BinaryProcedure;
 import com.tesora.dve.sql.util.Functional;
@@ -122,7 +123,7 @@ public class ShowTableStatusStatement extends DelegatingDDLStatement {
 				dkt.addColumn(firstSelect.getProjectionEdge().get(i), i);
 			DistributionVector sourceVect = buildVector(pc);
 			tgm.plan(pc);
-			es.append(ProjectingExecutionStep.build(pc, ondb, onGroup, origCommand, sourceVect, t1, t1.getStorageGroup(pc), dkt, null));
+			es.append(RedistributionExecutionStep.build(pc, ondb, onGroup, origCommand, sourceVect, t1, t1.getStorageGroup(pc), dkt, null));
 			SelectStatement aggCommand = buildAggCommand(firstSelect);
 			//		System.out.println(aggCommand.getSQL());
 			es.append(ProjectingExecutionStep.build(pc,ondb,t1.getStorageGroup(pc),null,null,aggCommand, null));

@@ -77,8 +77,10 @@ public class RawSchema implements Schema<PEAbstractTable<?>> {
 	@Override
 	public TableInstance buildInstance(SchemaContext sc, UnqualifiedName n, LockInfo ignored,
 			boolean domtchecks) {
-		if (domtchecks)
-			throw new SchemaException(Pass.PLANNER, "no mt checks on raw schema");
+// the new table resolver code turns on mt checks by default - we would have to add a new parser option
+// maybe we should - but it would be better to defer until we get the rule sets in place
+//		if (domtchecks)
+//			throw new SchemaException(Pass.PLANNER, "no mt checks on raw schema");
 		PEAbstractTable<?> candidate = tempTables.lookup(n);
 		if (candidate != null)
 			return new TableInstance(candidate, sc.getOptions().isResolve());

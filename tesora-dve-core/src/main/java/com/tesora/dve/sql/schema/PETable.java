@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.tesora.dve.queryplan.TempTableGenerator;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.codec.binary.Hex;
@@ -1037,10 +1036,6 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return true;
 	}
 	
-	public TempTableGenerator getTableGenerator(SchemaContext sc) {
-		return null;
-	}
-
 	public boolean isExplicitlyDeclared() {
 		return false;
 	}

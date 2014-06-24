@@ -57,6 +57,13 @@ public final class TwoDimensionalMultiMap<OuterKey, InnerKey, Value> {
 		return inner.putAll(ik, values);
 	}
 
+	public void putAll(final TwoDimensionalMultiMap<OuterKey, InnerKey, Value> other) {
+		for (final OuterKey ok : other.keySet()) {
+			final MultiMap<InnerKey, Value> inner = locateInternalValueStorage(ok);
+			inner.putAll(other.get(ok));
+		}
+	}
+
 	private MultiMap<InnerKey, Value> locateInternalValueStorage(final OuterKey ok) {
 		MultiMap<InnerKey, Value> inner = get(ok);
 		if (inner == null) {
@@ -87,5 +94,4 @@ public final class TwoDimensionalMultiMap<OuterKey, InnerKey, Value> {
 	public void clear() {
 		backing.clear();
 	}
-	
 }

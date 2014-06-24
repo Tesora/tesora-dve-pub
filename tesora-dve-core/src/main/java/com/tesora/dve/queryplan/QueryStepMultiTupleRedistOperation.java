@@ -21,7 +21,6 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Future;
 
@@ -37,9 +36,7 @@ import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageGroup;
-import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.IKeyValue;
@@ -51,11 +48,9 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
-import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.worker.AggregationGroup;
 import com.tesora.dve.worker.MysqlRedistTupleForwarder;
-import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
@@ -99,6 +94,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 
 	private boolean enforceScalarValue;
 	private boolean insertIgnore = false;
+	
+	private boolean usesUserlandTemporaryTables = false;
 	
 	private TempTableGenerator tempTableGenerator = TempTableGenerator.DEFAULT_GENERATOR;
 	// well, this is a bit of a hack - for the case where the target group is not the same as the source group
@@ -172,6 +169,11 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		return this;
 	}
 	
+	public QueryStepMultiTupleRedistOperation withUserlandTemporaryTables() {
+		this.usesUserlandTemporaryTables = true;
+		return this;
+	}
+	
 	/**
 	 * Called by <b>QueryStep</b> to do the redistribution operation.
 	 * <p/>
@@ -222,7 +224,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 					targetWG, targetUserDatabase, targetDistModel, targetTable, 
 					tableHints, tempHints, insertOptions, allocatedWG, /* cleanupWG */ null,
 					tempTableGenerator);
-		} else if (ssCon.hasActiveTransaction() && wg.isModified() && targetTable != null) {
+		} else if ((ssCon.hasActiveTransaction() && wg.isModified() && targetTable != null) || usesUserlandTemporaryTables) {
 			// Here we want to redistribute from a persistent group back into itself, within the context
 			// of a transaction.  However, we must both read within the context of the transaction, and
 			// write within the context of a transaction, but we can't both read and write on the same

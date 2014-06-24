@@ -21,11 +21,13 @@ package com.tesora.dve.common.catalog;
  * #L%
  */
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.persistence.EntityManager;
@@ -34,6 +36,7 @@ import javax.persistence.LockModeType;
 import javax.persistence.Persistence;
 import javax.persistence.PersistenceException;
 import javax.persistence.Query;
+import javax.sql.DataSource;
 
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Statistics;
@@ -42,6 +45,7 @@ import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import com.mchange.v2.c3p0.C3P0Registry;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.distribution.DistributionRange;
@@ -50,6 +54,8 @@ import com.tesora.dve.distribution.RangeTableRelationship.RangeTableRelationship
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
+import com.tesora.dve.groupmanager.GroupManager;
+import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.variable.GlobalConfig;
 
 public class CatalogDAO {
@@ -995,6 +1001,54 @@ public class CatalogDAO {
 		return (List<UserDatabase>) query.getResultList();
 	}
 
+	// this restricts the search to this server
+	public List<TemporaryTable> findLocalUserlandTemporaryTables(Integer connID, String dbName, String tableName) {
+		return findUserlandTemporaryTables(GroupManager.getCoordinationServices().getMemberAddress().toString(),connID,dbName, tableName);
+	}
+	
+	// values not specified won't be queried on - so null,null,null returns all temp tables
+	// and foo, null, null returns all temp tables on server foo
+	@SuppressWarnings("unchecked")
+	public List<TemporaryTable> findUserlandTemporaryTables(String serverName, Integer connID, String dbName, String tableName) {
+
+		StringBuilder hql = new StringBuilder();
+		
+		hql.append("from TemporaryTable tt ");
+		Query query = null;
+		if (serverName == null && connID == null && tableName == null) {
+			query = em.get().createQuery(hql.toString());
+		} else {
+			hql.append("where ");
+			List<String> filters = new ArrayList<String>();
+			if (serverName != null)
+				filters.add("tt.server = :serverName");
+			if (connID != null)
+				filters.add("tt.sessionID = :connID");
+			if (dbName != null)
+				filters.add("tt.db = :dbName");
+			if (tableName != null)
+				filters.add("tt.name = :tableName");
+			hql.append(Functional.join(filters, " and "));
+			query = em.get().createQuery(hql.toString());
+			if (serverName != null)
+				query.setParameter("serverName",serverName);
+			if (connID != null)
+				query.setParameter("connID", connID);
+			if (dbName != null)
+				query.setParameter("dbName",dbName);
+			if (tableName != null)
+				query.setParameter("tableName", tableName);
+		}
+		return (List<TemporaryTable>)query.getResultList();
+	}
+
+	public void cleanupUserlandTemporaryTables(String serverName) {
+		Query query = em.get().createQuery("delete from TemporaryTable where server = :name");
+		query.setParameter("name", serverName);
+		query.executeUpdate();
+	}
+	
+	
 	@SuppressWarnings("unchecked")
 	public List<UserTable> findTablesWithUnresolvedFKsTargeting(String dbName, String tabName) {
 		Query query = em
@@ -1113,10 +1167,18 @@ public class CatalogDAO {
 		q.executeUpdate();
 	}
 	
+	
 	// for autoupdate
 	public EntityManager getEntityManager() {
 		return em.get();
 	}	
+	
+	public static DataSource getCatalogDS() {
+		@SuppressWarnings("unchecked")
+		Set<DataSource> c3p0pools = C3P0Registry.allPooledDataSources(); 
+		return c3p0pools.iterator().next();
+	}
+
 	
 	public enum CatalogDAOFactory {
 		

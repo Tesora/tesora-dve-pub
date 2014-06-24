@@ -94,6 +94,7 @@ import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
+import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
 import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionStep;
 import com.tesora.dve.sql.transform.strategy.TempGroupManager.TempGroupPlaceholder;
@@ -337,8 +338,8 @@ public class RawToExecConverter {
 			}
 			
 			try {
-				ProjectingExecutionStep pes =
-						ProjectingExecutionStep.build(variablesContext, ondb, srcGroup, srcDV,
+				RedistributionExecutionStep pes =
+						RedistributionExecutionStep.build(variablesContext, ondb, srcGroup, srcDV,
 								ps, findGroup(ttt.getGroup()), tt, 
 								/*redistToScopedTable=*/null, 
 								/*dv=*/dkt, //DistributionKeyTemplate
@@ -349,6 +350,7 @@ public class RawToExecConverter {
 								/*dk=*/null, // DistributionKey
 								/*mustEnforceScalarValue=*/false,
 								/*insertIgnore=*/false,
+								/*tempTableGenerator=*/null,
 								rawExplain);
 				plan.getSequence().append(pes);
 			} catch (PEException pe) {
@@ -369,7 +371,7 @@ public class RawToExecConverter {
 			throw new SchemaException(Pass.PLANNER, "No support yet for updating a temp table");
 		} 
 		tab = variablesContext.findTable(PEAbstractTable.getTableKey(ondb, new UnqualifiedName(ust.getTable().getName()))).asTable();
-		TableKey tk = new TableKey(tab,0);
+		TableKey tk = TableKey.make(variablesContext,tab,0); 
 		try {
 			DeleteExecutionStep des = 
 					DeleteExecutionStep.build(variablesContext, ondb, srcGroup, tk, 
@@ -450,7 +452,7 @@ public class RawToExecConverter {
 		PEAbstractTable<?> pet = variablesContext.findTable(PEAbstractTable.getTableKey(ondb, new UnqualifiedName(dkv.getTable())));
 		if (pet == null)
 			throw new SchemaException(Pass.PLANNER, "No such table: " + dkv.getTable());
-		TableKey ptk = new TableKey(pet,0);
+		TableKey ptk = TableKey.make(variablesContext, pet, 0); 
 		DistributionVector dv = pet.getDistributionVector(variablesContext);
 		List<PEColumn> distCols = dv.getColumns(variablesContext);
 		if (distCols.size() != dkv.getValue().size())

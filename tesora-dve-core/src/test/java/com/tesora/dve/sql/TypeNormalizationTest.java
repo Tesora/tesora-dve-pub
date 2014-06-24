@@ -28,17 +28,13 @@ import java.util.List;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tesora.dve.resultset.ResultColumn;
-import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
 import com.tesora.dve.sql.util.NativeDatabaseDDL;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.PEDatabaseDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
-import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
-import com.tesora.dve.sql.util.TestResource;
 
 public class TypeNormalizationTest extends ProxySchemaMirrorTest {
 

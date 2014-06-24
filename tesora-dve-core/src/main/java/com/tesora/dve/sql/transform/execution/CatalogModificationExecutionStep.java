@@ -68,6 +68,5 @@ public abstract class CatalogModificationExecutionStep extends ExecutionStep {
 
 	public void setUpdateCountOverride(Long v) {
 		updateCountOverride = v;
-	}
-	
+	}	
 }

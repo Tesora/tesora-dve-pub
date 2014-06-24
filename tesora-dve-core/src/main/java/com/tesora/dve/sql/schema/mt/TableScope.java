@@ -29,6 +29,7 @@ import com.tesora.dve.common.catalog.TableVisibility;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.sql.schema.HasName;
+import com.tesora.dve.sql.schema.HasTable;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PETable;
@@ -43,7 +44,7 @@ import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.mt.PETenant.TenantCacheKey;
 
-public class TableScope extends Persistable<TableScope, TableVisibility> implements HasName {
+public class TableScope extends Persistable<TableScope, TableVisibility> implements HasName, HasTable {
 
 	protected SchemaEdge<PETenant> tenant;
 	protected SchemaEdge<PEAbstractTable<?>> table;

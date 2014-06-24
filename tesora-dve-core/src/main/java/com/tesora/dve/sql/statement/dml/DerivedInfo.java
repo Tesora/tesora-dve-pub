@@ -289,4 +289,13 @@ public class DerivedInfo {
 		}
 	}
 	
+	// temporary tables
+	public boolean hasUserlandTemporaryTables() {
+		for(TableKey tk : getAllTableKeys()) {
+			if (tk.isUserlandTemporaryTable())
+				return true;
+		}
+		return false;
+	}
+	
 }

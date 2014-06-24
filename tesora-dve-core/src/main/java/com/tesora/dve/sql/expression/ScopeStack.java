@@ -155,30 +155,62 @@ public class ScopeStack implements Scope {
 	}
 
 	@Override
-	public TableInstance buildTableInstance(Name inTableName,
-			UnqualifiedName alias, Schema<?> inSchema, SchemaContext sc, LockInfo info) {
+	public TableInstance buildTableInstance(final Name inTableName,
+			final UnqualifiedName alias, 
+			final Schema<?> inSchema, 
+			final SchemaContext sc, 
+			final LockInfo info) {
+		return lookup(new LookupFunction<TableInstance>() {
+
+			@Override
+			public TableInstance lookup(ScopeEntry e) throws SchemaException {
+				return e.buildTableInstance(inTableName, alias, inSchema, sc, info);
+			}
+			
+		});
+	}
+
+	@Override
+	public TableInstance buildTableInstance(final Name inTableName,
+			final UnqualifiedName alias, final SchemaContext sc, final LockInfo info) {
+		return lookup(new LookupFunction<TableInstance>() {
+
+			@Override
+			public TableInstance lookup(ScopeEntry entry) throws SchemaException {
+				return entry.buildTableInstance(inTableName, alias, sc, info);
+			}
+			
+		});
+	}
+
+	private <ReturnType> ReturnType lookup(LookupFunction<ReturnType> f) {
 		SchemaException any = null;
 		for(int i = scopes.size() - 1; i > -1; i--) {
 			try {
-				return scopes.get(i).buildTableInstance(inTableName, alias, inSchema, sc, info);
-			} catch (SchemaException se) {
-				if (any == null) any = se;
+				return f.lookup(scopes.get(i));
+			} catch (SchemaException e) {
+				if (any == null) any = e;
 			}
 		}
 		throw any;
 	}
 
+	interface LookupFunction<ReturnType> {
+		
+		ReturnType lookup(ScopeEntry e) throws SchemaException;
+		
+	}
+	
 	@Override
-	public ExpressionNode buildColumnInstance(SchemaContext sc, Name given) {
-		SchemaException any = null;
-		for(int i = scopes.size() - 1; i > -1; i--) {
-			try {
-				return scopes.get(i).buildColumnInstance(sc, given);
-			} catch (SchemaException se) {
-				if (any == null) any = se;
+	public ExpressionNode buildColumnInstance(final SchemaContext sc, final Name given) {
+		return lookup(new LookupFunction<ExpressionNode>() {
+
+			@Override
+			public ExpressionNode lookup(ScopeEntry e) throws SchemaException {
+				return e.buildColumnInstance(sc, given);
 			}
-		}
-		throw any;
+			
+		});
 	}
 
 	@Override
@@ -187,17 +219,16 @@ public class ScopeStack implements Scope {
 	}
 
 	@Override
-	public ExpressionNode buildExpressionAlias(ExpressionNode e,
-			Alias alias, SourceLocation sloc) {
-		SchemaException any = null;
-		for(int i = scopes.size() - 1; i > -1; i--) {
-			try {
-				return scopes.get(i).buildExpressionAlias(e, alias, sloc);
-			} catch (SchemaException se) {
-				if (any == null) any = se;
+	public ExpressionNode buildExpressionAlias(final ExpressionNode e,
+			final Alias alias, final SourceLocation sloc) {
+		return lookup(new LookupFunction<ExpressionNode>() {
+
+			@Override
+			public ExpressionNode lookup(ScopeEntry entry) throws SchemaException {
+				return entry.buildExpressionAlias(e, alias, sloc);
 			}
-		}
-		throw any;
+			
+		});
 	}
 
 	@Override
@@ -264,4 +295,5 @@ public class ScopeStack implements Scope {
 	public ListSet<NameInstance> getUnresolvedChildren() {
 		return getScope().getUnresolvedChildren();
 	}
+
 }

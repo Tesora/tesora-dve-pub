@@ -180,7 +180,9 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 		try {
 
 			if (logger.isDebugEnabled())
-				logger.debug(this.getClass().getSimpleName()+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+consumer+","+promise+")");
+				logger.debug(this.getClass().getSimpleName()
+//						+"@"+System.identityHashCode(this)
+						+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+consumer+","+promise+")");
 
 			if (!channel.isOpen()) {
 				promise.failure(new PECommunicationsException("Channel closed: " + channel));

@@ -656,6 +656,8 @@ public class AdaptiveMultitenantSchemaPolicyContext extends SchemaPolicyContext 
 		checkAllowedLandlord("create a table");
 		if (stmt instanceof PECreateTableAsSelectStatement)
 			throw new SchemaException(Pass.PLANNER, "Currently unsupported in mt mode - create table as select");
+		if (stmt.getTable().isUserlandTemporaryTable())
+			throw new SchemaException(Pass.PLANNER, "Currently unsupported in mt mode - create temporary table");
 		PETable newTable = (PETable) stmt.getRoot();
 		PETenant currentTenant = getCurrentTenant(true);
 		PETable existingTable = currentTenant.lookup(getSchemaContext(),newTable.getName(), new LockInfo(LockType.EXCLUSIVE, "create table"));
@@ -682,6 +684,8 @@ public class AdaptiveMultitenantSchemaPolicyContext extends SchemaPolicyContext 
 			// this is a limitation of the current implementation - we can circle back to this in a bit.
 			throw new SchemaException(Pass.PLANNER, "Too many tables in drop table stmt");
 		TableKey tk = tks.get(0);
+		if (tk.isUserlandTemporaryTable())
+			throw new SchemaException(Pass.PLANNER, "No support for drop temporary table in mt mode");
 		TableScope ts = null;
 		if (tk instanceof MTTableKey) {
 			MTTableKey mttk = (MTTableKey) tk;
@@ -694,6 +698,8 @@ public class AdaptiveMultitenantSchemaPolicyContext extends SchemaPolicyContext 
 	@Override
 	public Statement modifyAlterTableStatement(PEAlterTableStatement in) {
 		TableKey tk = in.getTableKey();
+		if (tk.isUserlandTemporaryTable())
+			throw new SchemaException(Pass.PLANNER, "No support for alter temporary table in mt mode");
 		TableScope tenantScope = null;
 		if (tk instanceof MTTableKey) {
 			MTTableKey mtk = (MTTableKey) tk;

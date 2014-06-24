@@ -25,18 +25,22 @@ package com.tesora.dve.sql.expression;
 import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.sql.node.expression.MTTableInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.schema.AutoIncrement;
+import com.tesora.dve.sql.schema.ComplexPETable;
+import com.tesora.dve.sql.schema.HasTable;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
+import com.tesora.dve.sql.schema.mt.TableScope;
 
-public class TableKey extends RewriteKey {
+public class TableKey extends RewriteKey implements AutoIncrement {
 
 	protected Table<?> backingTable;
 	protected long node;
 	protected TableInstance instance = null;
 	
-	public TableKey(Table<?> backing, long n) {
+	TableKey(Table<?> backing, long n) {
 		super();
 		backingTable = backing;
 		node = n;
@@ -49,7 +53,7 @@ public class TableKey extends RewriteKey {
 		return instance;
 	}
 	
-	public TableKey(TableInstance ti) {
+	TableKey(TableInstance ti) {
 		super();
 		backingTable = ti.getTable();
 		node = ti.getNode();
@@ -59,7 +63,25 @@ public class TableKey extends RewriteKey {
 	public static TableKey make(TableInstance ti) {
 		if (ti instanceof MTTableInstance)
 			return new MTTableKey((MTTableInstance)ti);
+		else if (ti.getTable() instanceof ComplexPETable) {
+			ComplexPETable ctab = (ComplexPETable) ti.getTable();
+			if (ctab.isUserlandTemporaryTable())
+				return new TemporaryTableKey(ti);
+		}
 		return new TableKey(ti);
+	}
+	
+	public static TableKey make(SchemaContext sc, HasTable backing, long n) {
+		if (backing instanceof TableScope) {
+			TableScope ts = (TableScope) backing;
+			return new MTTableKey(ts.getTable(sc),ts,n);
+		} 
+		if (backing instanceof ComplexPETable) {
+			ComplexPETable ctab = (ComplexPETable) backing;
+			if (ctab.isUserlandTemporaryTable())
+				return new TemporaryTableKey(ctab,n);
+		}
+		return new TableKey((Table<?>)backing,n);
 	}
 	
 	public long getNode() {
@@ -161,6 +183,29 @@ public class TableKey extends RewriteKey {
 		SchemaCacheKey<?> sck = getCacheKey();
 		if (sck == null) return null;
 		return sck.getLockSpecification(reason);
+	}
+
+	@Override
+	public long getNextAutoIncrBlock(SchemaContext sc, long blockSize) {
+		return sc.getPolicyContext().getNextAutoIncrBlock(toInstance(), blockSize);
+	}
+
+	@Override
+	public long readAutoIncrBlock(SchemaContext sc) {
+		return sc.getPolicyContext().readAutoIncrBlock(this);
+	}
+
+	@Override
+	public void removeValue(SchemaContext sc, long value) {
+		sc.getPolicyContext().removeValue(this, value);
+	}
+
+	public TableKey makeFrozen() {
+		return new TableKey(backingTable,node);
+	}
+	
+	public boolean isUserlandTemporaryTable() {
+		return false;
 	}
 	
 }

@@ -27,27 +27,32 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.DistributionModel;
+import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStep;
-import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
+import com.tesora.dve.queryplan.TempTableDeclHints;
+import com.tesora.dve.queryplan.TempTableGenerator;
 import com.tesora.dve.resultset.ColumnInfo;
+import com.tesora.dve.resultset.ColumnMetadata;
+import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.ConditionalWorkerRequest.GuardFunction;
-import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.server.messaging.ConditionalWorkerRequest;
+import com.tesora.dve.server.messaging.WorkerExecuteRequest;
+import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
@@ -60,17 +65,13 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.NameAlias;
 import com.tesora.dve.sql.parser.ParserOptions;
-import com.tesora.dve.sql.schema.NascentPETable;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.PEColumn;
-import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEForeignKey;
-import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
-import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
@@ -86,7 +87,6 @@ import com.tesora.dve.sql.schema.types.BasicType;
 import com.tesora.dve.sql.schema.types.TempColumnType;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
-import com.tesora.dve.sql.statement.ddl.PECreateTableStatement.DelayedFKDrop;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -95,11 +95,9 @@ import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.DelegatingBehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.FeaturePlanTransformerBehavior;
-import com.tesora.dve.sql.transform.behaviors.defaults.DefaultPostPlanningFeaturePlanTransformer;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
-import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.strategy.AdhocFeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
@@ -111,16 +109,16 @@ import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryPredicate;
-import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerGroup;
 
-public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
+public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 
 	private ProjectingStatement srcStmt;
 	private ListOfPairs<PEColumn,Integer> projOffsets;
 	private PEColumn unspecifiedAutoinc;
 	private int specifiedAutoIncOffset;
+	private InhibitTableDrop inhibitor;
 	
 	public PECreateTableAsSelectStatement(Persistable<PETable, UserTable> targ,
 			Boolean ine, boolean exists, ProjectingStatement src, ListOfPairs<PEColumn,Integer> projectionOffsets) {
@@ -129,6 +127,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		this.projOffsets = projectionOffsets;
 		this.unspecifiedAutoinc = null;
 		specifiedAutoIncOffset = -1;
+		inhibitor = new InhibitTableDrop();
 	}
 
 	public ProjectingStatement getSourceStatement() {
@@ -235,9 +234,14 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		for(TableCacheKey tck : alsoClear)
 			clears.add(tck, InvalidationScope.LOCAL);
 
+		CreateTableViaRedistCallback cb =
+				new CreateTableViaRedistCallback((ComplexPETable)getTable(),steps,redistOffset,
+						new CacheInvalidationRecord(clears));
+		
+		inhibitor.setCallback(cb);
+		
 		es.append(new ComplexDDLExecutionStep(getTable().getPEDatabase(pc),getTable().getStorageGroup(pc),getTable(),
-				Action.CREATE, new CreateTableViaRedistCallback((NascentPETable)getTable(),steps,redistOffset,
-						new CacheInvalidationRecord(clears))));		
+				Action.CREATE, cb));		
 	}
 
 	private class PlannerConfiguration extends DelegatingBehaviorConfiguration {
@@ -380,12 +384,13 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 			}
 			
 			FeatureStep out = new RedistFeatureStep(new AdhocFeaturePlanner(),
-					last,new TableKey(getTable(),0),
+					last,TableKey.make(pc.getContext(),getTable(),0),
 					getTable().getStorageGroup(pc.getContext()),
 					dv,
 					new RedistributionFlags().withRowCount(true)
 						.withAutoIncColumn(unspecifiedAutoinc)
-						.withExistingAutoInc(specifiedAutoIncOffset));
+						.withExistingAutoInc(specifiedAutoIncOffset)
+						.withTableGenerator(new CTATableGenerator(pc.getContext(),inhibitor)));
 			
 			return defaultBehavior.getPostPlanningTransformer(pc, stmt).transform(pc, stmt, out);
 		}
@@ -394,11 +399,11 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 	}
 	
 
-	private class CreateTableViaRedistCallback implements NestedOperationDDLCallback, GuardFunction {
+	private class CreateTableViaRedistCallback extends NestedOperationDDLCallback {
 
 		private final List<QueryStep> toExecute;
 		private final int redistOffset;
-		private final NascentPETable nascent;
+		private final ComplexPETable target;
 		
 		private final CacheInvalidationRecord record;
 		
@@ -407,23 +412,17 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		
 		private boolean redistCompleted = false;
 		
-		public CreateTableViaRedistCallback(NascentPETable tab, List<QueryStep> steps,
+		public CreateTableViaRedistCallback(ComplexPETable tab, List<QueryStep> steps,
 				int redistOffset,
 				CacheInvalidationRecord record) {
-			this.nascent = tab;
+			this.target = tab;
 			this.toExecute = steps;
 			this.updates = null;
 			this.deletes = null;
 			this.record = record;
 			this.redistOffset = redistOffset;
-			tab.setCreationGuard(this);
 		}
 		
-		@Override
-		public void beforeTxn(SSConnection conn, CatalogDAO c, WorkerGroup wg)
-				throws PEException {
-		}
-
 		@Override
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
 			// the table would have been updated via the callback, so now we just build a new context
@@ -436,8 +435,8 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 
 			sc.beginSaveContext();
 			try {
-				nascent.persistTree(sc);
-				sc.getSource().setLoaded(nascent, nascent.getCacheKey());
+				target.persistTree(sc);
+				sc.getSource().setLoaded(target, target.getCacheKey());
 				for(DelayedFKDrop dfd : related) {
 					dfd.getTable().persistTree(sc);
 				}
@@ -456,11 +455,6 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		@Override
 		public List<CatalogEntity> getDeletedObjects() throws PEException {
 			return deletes;
-		}
-
-		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
 		}
 
 		@Override
@@ -488,18 +482,6 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 		public boolean requiresWorkers() {
 			// TODO Auto-generated method stub
 			return true;
-		}
-
-		@Override
-		public void postCommitAction(CatalogDAO c) throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
-				DBResultConsumer resultConsumer) throws Throwable {
-			// nothing
 		}
 
 		@Override
@@ -540,10 +522,85 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement  {
 			}
 		}
 
+		protected boolean isRedistComplete() {
+			return redistCompleted;
+		}
+
+		@Override
+		public void executeNested(SSConnection conn, WorkerGroup wg,
+				DBResultConsumer resultConsumer) throws Throwable {
+			// nothing to do - this is handled elsewhere
+		}
+		
+	}
+	
+	protected class CTATableGenerator extends TempTableGenerator {
+		
+		protected final SchemaContext context;
+		protected final GuardFunction guard;
+		
+		public CTATableGenerator(SchemaContext cntxt, GuardFunction f) {
+			this.context = cntxt;
+			this.guard = f;
+		}
+		
+		public UserTable createTableFromMetadata(WorkerGroup targetWG, 
+				TempTableDeclHints tempHints, String tempTableName,
+				PersistentDatabase database, ColumnSet metadata, DistributionModel tempDist) throws PEException {
+
+			PETable target = getTable();
+			
+			for(ColumnMetadata cm : metadata.getColumnList()) {
+				UserColumn uc = new UserColumn(cm);
+				if ( cm.usingAlias() ) 
+					uc.setName(cm.getAliasName());
+				PEColumn pec = PEColumn.build(context,uc);
+				PEColumn existing = target.lookup(context,pec.getName());
+				if (existing != null && existing.getType().equals(TempColumnType.TEMP_TYPE))
+					existing.setType(pec.getType());
+			}
+
+			context.beginSaveContext();
+			try {
+				return target.getPersistent(context);
+			} finally {
+				context.endSaveContext();
+			}
+			
+		}
+		
+		public String buildCreateTableStatement(UserTable theTable, boolean useSystemTempTable) throws PEException {
+			String out = Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(context, getTable());
+			return out;
+		}
+		
+		public void addCleanupStep(SSConnection ssCon, UserTable theTable, PersistentDatabase database, WorkerGroup cleanupWG) {
+			WorkerRequest wer = new WorkerExecuteRequest(
+							ssCon.getNonTransactionalContext(), 
+							UserTable.getDropTableStmt(theTable.getName(), false)).onDatabase(database);
+			cleanupWG.addCleanupStep(
+					new ConditionalWorkerRequest(wer, guard));
+			
+		}		
+
+		@Override
+		public boolean requireSessVarsOnDDLGroup() {
+			return true;
+		}
+	}
+
+	private class InhibitTableDrop implements GuardFunction {
+		
+		private CreateTableViaRedistCallback cb;
+
 		@Override
 		public boolean proceed(Worker w, DBResultConsumer consumer)
 				throws PEException {
-			return !redistCompleted;
+			return !cb.isRedistComplete();
+		}
+		
+		protected void setCallback(CreateTableViaRedistCallback cb) {
+			this.cb = cb;
 		}
 		
 	}

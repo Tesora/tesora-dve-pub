@@ -21,6 +21,7 @@ package com.tesora.dve.tools.aitemplatebuilder;
  * #L%
  */
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -28,20 +29,33 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import com.hazelcast.util.AbstractMap.SimpleImmutableEntry;
+import org.apache.commons.collections.map.SingletonMap;
+
+import com.tesora.dve.common.HashSetFactory;
+import com.tesora.dve.common.LinkedHashMapFactory;
+import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.sql.schema.types.Type;
+import com.tesora.dve.tools.CLIBuilder.ColorStringBuilder;
+import com.tesora.dve.tools.aitemplatebuilder.AiTemplateBuilder.MessageSeverity;
+import com.tesora.dve.tools.aitemplatebuilder.AiTemplateBuilder.ScoreBonus;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.JoinStats;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.TableColumn;
 
 public class PrivateRange implements TemplateRangeItem {
 
-	private static final class ColumnRanker implements Comparator<Map.Entry<TableColumn, Long>> {
+	public interface ColumnRanker<T> extends Comparator<Entry<T, Long>> {
+		public boolean isSafeMode();
+
+		public Set<TableColumn> findRangeColumns(final Map<T, Long> columnStats);
+	}
+
+	private static final class SingleColumnRanker implements ColumnRanker<TableColumn> {
 
 		private final Set<TemplateRangeItem> otherAvailableRanges;
 		private final boolean isSafeMode;
 
-		public ColumnRanker(final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
+		public SingleColumnRanker(final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
 			this.otherAvailableRanges = otherAvailableRanges;
 			this.isSafeMode = isSafeMode;
 		}
@@ -100,9 +114,19 @@ public class PrivateRange implements TemplateRangeItem {
 
 			return frequencyDifference;
 		}
+
+		@Override
+		public boolean isSafeMode() {
+			return this.isSafeMode;
+		}
+
+		@Override
+		public Set<TableColumn> findRangeColumns(Map<TableColumn, Long> columnStats) {
+			return (!columnStats.isEmpty()) ? toSingletonSet(Collections.max(columnStats.entrySet(), this).getKey()) : Collections.EMPTY_SET;
+		}
 	}
 
-	private static final class ColumnVectorRanker implements Comparator<Map.Entry<Set<TableColumn>, Long>> {
+	private static final class ColumnVectorRanker implements ColumnRanker<Set<TableColumn>> {
 
 		private final Set<TemplateRangeItem> otherAvailableRanges;
 		private final boolean isSafeMode;
@@ -156,22 +180,31 @@ public class PrivateRange implements TemplateRangeItem {
 
 			return frequencyDifference;
 		}
+
+		@Override
+		public boolean isSafeMode() {
+			return this.isSafeMode;
+		}
+
+		@Override
+		public Set<TableColumn> findRangeColumns(Map<Set<TableColumn>, Long> columnStats) {
+			return (!columnStats.isEmpty()) ? Collections.max(columnStats.entrySet(), this).getKey() : Collections.EMPTY_SET;
+		}
 	}
 
 	private static Set<TableColumn> toSingletonSet(final TableColumn column) {
 		return Collections.<TableColumn> singleton(column);
 	}
 
-	private final Comparator<?> columnRanker;
-	private final Map.Entry<TableStats, Set<TableColumn>> table;
-	private final boolean isSafeMode;
+	private final ColumnRanker<?> columnRanker;
+	private SingletonMap table;
 
 	public static PrivateRange fromAllColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
 		final Map<TableColumn, Long> tableColumns = new HashMap<TableColumn, Long>();
 		for (final TableColumn column : table.getTableColumns()) {
 			tableColumns.put(column, 1l);
 		}
-		return getValidRange(new PrivateRange(table, tableColumns, otherAvailableRanges, isSafeMode));
+		return getValidRange(buildRangeFor(table, tableColumns, new SingleColumnRanker(otherAvailableRanges, isSafeMode)));
 	}
 
 	public static PrivateRange fromOuterJoinColumns(final TableStats table, final Set<JoinStats> joins, final Set<TemplateRangeItem> otherAvailableRanges,
@@ -191,21 +224,33 @@ public class PrivateRange implements TemplateRangeItem {
 			}
 		}
 
-		return getValidRange(new PrivateRange(table, otherAvailableRanges, outerJoinColumns, isSafeMode));
+		return getValidRange(buildRangeFor(table, outerJoinColumns, new ColumnVectorRanker(otherAvailableRanges, isSafeMode)));
 	}
 
 	public static PrivateRange fromWhereColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
-		return getValidRange(new PrivateRange(table, table.getIdentColumns(), otherAvailableRanges, isSafeMode));
+		return getValidRange(buildRangeFor(table, table.getIdentColumns(), new SingleColumnRanker(otherAvailableRanges, isSafeMode)));
 	}
 
 	public static PrivateRange fromGroupByColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
-		return getValidRange(new PrivateRange(table, table.getGroupByColumns(), otherAvailableRanges, isSafeMode));
+		return getValidRange(buildRangeFor(table, table.getGroupByColumns(), new SingleColumnRanker(otherAvailableRanges, isSafeMode)));
+	}
+
+	private static PrivateRange buildRangeFor(final TableStats table, final Map<TableColumn, Long> columnStats, final SingleColumnRanker ranker) {
+		final PrivateRange range = new PrivateRange(ranker);
+		range.addTable(table, ranker.findRangeColumns(columnStats));
+		return range;
+	}
+
+	private static PrivateRange buildRangeFor(final TableStats table, final Map<Set<TableColumn>, Long> columnStats, final ColumnVectorRanker ranker) {
+		final PrivateRange range = new PrivateRange(ranker);
+		range.addTable(table, ranker.findRangeColumns(columnStats));
+		return range;
 	}
 
 	private static PrivateRange getValidRange(final PrivateRange range) {
 		final Set<TableColumn> rangeColumns = range.getRangeColumnsFor(range.getTable());
 
-		if (rangeColumns != null) {
+		if (!rangeColumns.isEmpty()) {
 			if ((!range.isSafeMode() || (range.isSafeMode() && AiTemplateBuilder.hasAutoIncrement(rangeColumns)))
 					&& AiTemplateBuilder.hasRangeCompatible(rangeColumns)) {
 				return range;
@@ -219,41 +264,46 @@ public class PrivateRange implements TemplateRangeItem {
 	 * Get bonus frequency for a given column.
 	 */
 	private static Double getBonusFrequency(final Entry<TableColumn, Long> columnStats, final boolean isSafeMode) {
-		final float bonus = AiTemplateBuilder.getBonusForColumn(columnStats.getKey(), isSafeMode);
+		final float bonus = computeBonusFactor(Collections.singleton(columnStats.getKey()), isSafeMode);
 		final long frequency = columnStats.getValue();
 		return new Double(bonus * frequency);
 	}
 
 	private static Double getBonusFrequencyForColumnVector(final Entry<Set<TableColumn>, Long> columnStats, final boolean isSafeMode) {
-		final float bonus = AiTemplateBuilder.getBonusForColumns(columnStats.getKey(), isSafeMode);
+		final float bonus = computeBonusFactor(columnStats.getKey(), isSafeMode);
 		final long frequency = columnStats.getValue();
 		return new Double(bonus * frequency);
 	}
 
-	private PrivateRange(final TableStats table, final Map<TableColumn, Long> columnStats, final Set<TemplateRangeItem> otherAvailableRanges,
-			final boolean isSafeMode) {
-		this.columnRanker = new ColumnRanker(otherAvailableRanges, isSafeMode);
-		this.table = new SimpleImmutableEntry<TableStats, Set<TableColumn>>(table, findRangeColumns(columnStats));
-		this.isSafeMode = isSafeMode;
+	/**
+	 * The net bonus factor is the sum of all bonuses over all range columns.
+	 */
+	private static float computeBonusFactor(final Set<TableColumn> columns, final boolean isSafeMode) {
+		float bonusFactor = 1.0f;
+		for (final TableColumn column : columns) {
+			final Set<ScoreBonus> columnBonuses = AiTemplateBuilder.getBonusesForColumn(column, isSafeMode);
+			for (final ScoreBonus bonus : columnBonuses) {
+				bonusFactor += bonus.getBonusFactor();
+			}
+		}
+
+		return bonusFactor;
 	}
 
-	private PrivateRange(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final Map<Set<TableColumn>, Long> outerJoinColumns,
-			final boolean isSafeMode) {
-		this.columnRanker = new ColumnVectorRanker(otherAvailableRanges, isSafeMode);
-		this.table = new SimpleImmutableEntry<TableStats, Set<TableColumn>>(table, findRangeColumnVector(outerJoinColumns));
-		this.isSafeMode = isSafeMode;
+	private PrivateRange(final ColumnRanker<?> ranker) {
+		this.columnRanker = ranker;
 	}
 
 	public boolean isSafeMode() {
-		return this.isSafeMode;
+		return this.columnRanker.isSafeMode();
 	}
 
 	public TableStats getTable() {
-		return this.table.getKey();
+		return (TableStats) this.table.firstKey();
 	}
 
 	public Set<TableColumn> getColumns() {
-		return this.table.getValue();
+		return ((MultiMap<TableColumn, ScoreBonus>) this.table.getValue()).keySet();
 	}
 
 	@Override
@@ -291,14 +341,35 @@ public class PrivateRange implements TemplateRangeItem {
 
 	@Override
 	public String toString() {
-		return "PrivateRange";
+		final ColorStringBuilder value = new ColorStringBuilder();
+		value.append(getTemplateItemName()).append(": {");
+
+		/* Print the range table. */
+		value.append(AiTemplateBuilder.LINE_SEPARATOR).append(AiTemplateBuilder.LINE_INDENT).append(this.getTable());
+
+		value.append(AiTemplateBuilder.LINE_SEPARATOR);
+
+		/* Print collected range bonuses. */
+		final MultiMap<TableColumn, ScoreBonus> tableColumnBonuses = (MultiMap<TableColumn, ScoreBonus>) this.table.get(this.getTable());
+		for (final TableColumn column : tableColumnBonuses.keySet()) {
+			for (final ScoreBonus bonus : tableColumnBonuses.get(column)) {
+				value.append(AiTemplateBuilder.LINE_SEPARATOR).append(AiTemplateBuilder.LINE_INDENT)
+						.append(bonus.print(column), (bonus.isNegative()) ? MessageSeverity.WARNING.getColor() : MessageSeverity.INFO.getColor());
+			}
+		}
+
+		return value.append(AiTemplateBuilder.LINE_SEPARATOR).append("}").toString();
 	}
 
-	private Set<TableColumn> findRangeColumns(final Map<TableColumn, Long> columnStats) {
-		return (!columnStats.isEmpty()) ? toSingletonSet(Collections.max(columnStats.entrySet(), (ColumnRanker) this.columnRanker).getKey()) : null;
-	}
+	private void addTable(final TableStats table, final Set<TableColumn> dv) {
+		final MultiMap<TableColumn, ScoreBonus> columnMap = new MultiMap<TableColumn, ScoreBonus>(
+				new LinkedHashMapFactory<TableColumn, Collection<ScoreBonus>>(),
+				new HashSetFactory<ScoreBonus>()
+				);
 
-	private Set<TableColumn> findRangeColumnVector(final Map<Set<TableColumn>, Long> columnStats) {
-		return (!columnStats.isEmpty()) ? Collections.max(columnStats.entrySet(), (ColumnVectorRanker) this.columnRanker).getKey() : null;
+		for (final TableColumn column : dv) {
+			columnMap.putAll(column, AiTemplateBuilder.getBonusesForColumn(column, this.isSafeMode()));
+		}
+		this.table = new SingletonMap(table, columnMap);
 	}
 }

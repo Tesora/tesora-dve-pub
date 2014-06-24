@@ -48,6 +48,7 @@ import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.ExternalService;
 import com.tesora.dve.common.catalog.Provider;
+import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.comms.client.messages.ConnectRequest;
@@ -254,6 +255,8 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
         genLock.sharedLock(null, reason);
 		genLock.sharedUnlock(null,reason);
 		
+		TemporaryTable.onStartServices();
+		
 		MySqlPortal.start(props);
 
 		return host;
@@ -262,6 +265,8 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 	public static void stopServices() throws Exception {
 		MySqlPortal.stop();
 
+		TemporaryTable.onStopServices();
+		
 		if (GroupManager.getCoordinationServices() != null)
 			GroupManager.getCoordinationServices().unRegisterWithGroup();
 

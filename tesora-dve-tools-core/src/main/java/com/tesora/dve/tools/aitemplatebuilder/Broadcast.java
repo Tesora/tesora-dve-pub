@@ -23,33 +23,24 @@ package com.tesora.dve.tools.aitemplatebuilder;
 
 import java.util.SortedSet;
 
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 
-public final class Range extends FuzzyTableDistributionModel {
+public final class Broadcast extends FuzzyTableDistributionModel {
 
-	private static final String FCL_BLOCK_NAME = "RangeDistribution";
-	private static final String DISTRIBUTION_TEMPLATE_BLOCK_NAME = "Range";
+	private static final String FCL_BLOCK_NAME = "BroadcastDistribution";
+	private static final String DISTRIBUTION_TEMPLATE_BLOCK_NAME = "Broadcast";
 
-	public static final TemplateItem SINGLETON_TEMPLATE_ITEM;
-	static {
-		try {
-			SINGLETON_TEMPLATE_ITEM = new Range();
-		} catch (final PEException e) {
-			throw new Error(e);
-		}
-	}
+	public static final Broadcast SINGLETON_TEMPLATE_ITEM = new Broadcast();
 
-	private Range() throws PEException {
+	private Broadcast() {
 		super(FCL_BLOCK_NAME);
 	}
 
-	public Range(final TableStats match, final SortedSet<Long> sortedCardinalities) throws PEException {
-		super(FCL_BLOCK_NAME, match, sortedCardinalities);
+	public Broadcast(final TableStats match, final SortedSet<Long> sortedCardinalities, final boolean isRowWidthWeightingEnabled) {
+		super(FCL_BLOCK_NAME, match, sortedCardinalities, isRowWidthWeightingEnabled);
 	}
 
-	protected Range(final double pcOrderBy, final double pcCardinality)
-			throws PEException {
+	protected Broadcast(final double pcOrderBy, final double pcCardinality) {
 		super(FCL_BLOCK_NAME, pcOrderBy, pcCardinality);
 	}
 
@@ -66,5 +57,10 @@ public final class Range extends FuzzyTableDistributionModel {
 	@Override
 	protected String getFlvName() {
 		return getTemplateItemName();
+	}
+
+	@Override
+	public boolean isBroadcast() {
+		return true;
 	}
 }

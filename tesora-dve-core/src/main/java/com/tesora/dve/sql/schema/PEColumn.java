@@ -23,6 +23,7 @@ package com.tesora.dve.sql.schema;
 
 
 
+
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringUtils;
@@ -581,17 +583,21 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 
 	@Override
 	protected void updateExisting(SchemaContext pc, UserColumn uc) throws PEException {
+		setPersistentDefaultValue(pc,uc);
+		updateExistingInternal(pc,uc);
+	}
+
+	private void updateExistingInternal(SchemaContext pc, UserColumn uc) {
         String persName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(this);
 		uc.setName(persName);
 		uc.setNullable(Boolean.valueOf(!isSet(NOT_NULLABLE)));
-		setPersistentDefaultValue(pc,uc);
 		uc.setOnUpdate(Boolean.valueOf(isSet(ONUPDATE)));
 		uc.setHashPosition(dvposition);
 		uc.setCDV_Position(cdv_position);
 		addTypeModifiers(uc);
         Singletons.require(HostService.class).getDBNative().updateUserColumn(uc, type);
+		
 	}
-
 	
 	@Override
 	protected Class<? extends CatalogEntity> getPersistentClass() {
@@ -718,5 +724,40 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 	@Override
 	public int getHashPosition() {
 		return dvposition;
+	}
+
+	// for temporary tables
+	
+	public ResultRow buildRow(SchemaContext sc) {
+		ResultRow rr = new ResultRow();
+		sc.beginSaveContext();
+		try {
+			rr.addResultColumn(getName().getUnquotedName().get());
+			UserColumn uc = new UserColumn();
+			updateExistingInternal(sc,uc);
+			rr.addResultColumn(Singletons.require(HostService.class).getDBNative().getDataTypeForQuery(uc));
+			rr.addResultColumn(isNullable() ? "YES" : "NO");
+			
+			String kp = "";
+			if (isPrimaryKeyPart())
+				kp = "PRI";
+			else if (isUniquePart())
+				kp = "UNI";
+			else if (isKeyPart())
+				kp = "MUL";
+			rr.addResultColumn(kp);
+			
+			if (defaultValue == null || ((LiteralExpression)defaultValue).isNullLiteral())
+				rr.addResultColumn(null,true);
+			else
+				rr.addResultColumn(defaultValue.toString(sc));
+			rr.addResultColumn(isAutoIncrement() ? "auto_increment" : "");
+			return rr;
+		} catch (PEException pe) {
+			throw new SchemaException(Pass.SECOND, "Unable to build temporary table show columns result set",pe);
+		} finally {
+			sc.endSaveContext();
+		}
+		
 	}
 }

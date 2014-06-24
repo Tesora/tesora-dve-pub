@@ -21,11 +21,11 @@ package com.tesora.dve.tools.aitemplatebuilder;
  * #L%
  */
 
-public final class Random implements TemplateItem {
+public final class Random implements TemplateItem, TemplateModelItem {
 
 	private static final String DISTRIBUTION_TEMPLATE_BLOCK_NAME = "Random";
 
-	public static final TemplateItem SINGLETON_TEMPLATE_ITEM = new Random();
+	public static final Random SINGLETON_TEMPLATE_ITEM = new Random();
 
 	private Random() {
 	}
@@ -38,5 +38,10 @@ public final class Random implements TemplateItem {
 	@Override
 	public String toString() {
 		return getTemplateItemName();
+	}
+
+	@Override
+	public boolean isBroadcast() {
+		return false;
 	}
 }

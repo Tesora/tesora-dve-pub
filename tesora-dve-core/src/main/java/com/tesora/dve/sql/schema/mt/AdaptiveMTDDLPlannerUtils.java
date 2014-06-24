@@ -147,7 +147,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			Pair<PETable,PEKey> nkp = added.get(i);
 			Pair<PETable,PEForeignKey> nsp = referringKeys.get(i);
 			AlterTableAction ata = new AddIndexAction(nkp.getSecond());
-			TableKey ntk = new TableKey(nkp.getFirst(),sc.getNextTable());
+			TableKey ntk = TableKey.make(sc, nkp.getFirst(), sc.getNextTable()); 
 			PEAlterTableStatement peats = new PEAlterTableStatement(sc,ntk,ata);
 			PEAlterTenantTableStatement peatts = new PEAlterTenantTableStatement(sc, peats,
 					sc.getPolicyContext().getOfTenant(nkp.getFirst().getPersistent(sc)),onTenant);
@@ -286,7 +286,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 	
 	// create table operation is always a separate operation because we need the persistent table id
 	// so we can reference it elsewhere
-	public static class CreateTableOperation implements QueryStepDDLGeneralOperation.DDLCallback, LazyAllocatedTable {
+	public static class CreateTableOperation extends QueryStepDDLGeneralOperation.DDLCallback implements LazyAllocatedTable {
 
 		private final PETable definition;
 		private final PETenant originator;
@@ -459,11 +459,6 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public List<CatalogEntity> getDeletedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
 		public SQLCommand getCommand(CatalogDAO c) {
 			return (sql == null ? SQLCommand.EMPTY : sql);
 		}
@@ -534,7 +529,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 	}
 	
 	
-	public static class CompositeNestedOperation implements NestedOperationDDLCallback {
+	public static class CompositeNestedOperation extends NestedOperationDDLCallback {
 		
 		protected final List<ChangeSource> changes;
 		
@@ -612,11 +607,6 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
-		}
-
-		@Override
 		public boolean canRetry(Throwable t) {
 			return false;
 		}
@@ -682,15 +672,6 @@ public final class AdaptiveMTDDLPlannerUtils {
 				throw new PEException(description(),pe);
 			}
 		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-		
 	}
 	
 	public static class TableFlip implements ChangeSource {
@@ -1159,7 +1140,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 				}
 			}
 			
-			TableKey yonKey = new TableKey(enclosing,sc.getNextTable());
+			TableKey yonKey = TableKey.make(sc,enclosing,sc.getNextTable());
 			AlterTableAction dropCurrentDefinition = 
 					new DropIndexAction(constraint);
 			PEAlterTableStatement dropOld = 
@@ -1307,7 +1288,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			}
 			
 			List<AlterTableAction> actions = original.getActions();
-			TableKey tk = new TableKey(finalDefinition,sc.getNextTable());
+			TableKey tk = TableKey.make(sc,finalDefinition,sc.getNextTable());
 			PEAlterTableStatement modded = new PEAlterTableStatement(sc,tk,actions);
 
 			updates.addAll(modded.getCatalogEntries(sc));

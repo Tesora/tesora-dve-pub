@@ -21,21 +21,32 @@ package com.tesora.dve.sql.statement.ddl;
  * #L%
  */
 
+
 import java.util.HashMap;
 import java.util.List;
 
+import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.Container;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.groupmanager.GroupManager;
+import com.tesora.dve.locking.ClusterLock;
+import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.parser.TranslatorUtils;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
+import com.tesora.dve.sql.transform.execution.ExecutionStep;
+import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
+import com.tesora.dve.worker.WorkerGroup;
 
 public class PEDropStorageGroupStatement extends
 		PEDropStatement<PEPersistentGroup, PersistentGroup> {
@@ -79,6 +90,76 @@ public class PEDropStorageGroupStatement extends
 		if (!any.isEmpty())
 			return "container " + ((Container)any.get(0)).getName();
 		return null;
+	}
+
+	@Override
+	protected ExecutionStep buildStep(SchemaContext sc) throws PEException {
+		return new ComplexDDLExecutionStep(getDatabase(sc), getTarget().get(), getRoot(), getAction(),
+				new DropStorageGroupCallback(getDeleteObjects(sc),getCatalogObjects(sc),getInvalidationRecord(sc)));
+	}
+
+	private static class DropStorageGroupCallback extends DDLCallback {
+
+		private final CacheInvalidationRecord invalid;
+		private final List<CatalogEntity> toDelete;
+		private final List<CatalogEntity> toUpdate;
+
+		private ClusterLock xlock;
+		
+		public DropStorageGroupCallback(List<CatalogEntity> toDelete, List<CatalogEntity> toUpdate, 
+				CacheInvalidationRecord record) {
+			super();
+			this.toDelete = toDelete;
+			this.toUpdate = toUpdate;
+			this.invalid = record;
+		}
+		
+		@Override
+		public SQLCommand getCommand(CatalogDAO c) {
+			return SQLCommand.EMPTY;
+		}
+
+		@Override
+		public String description() {
+			return "drop storage group";
+		}
+
+		@Override
+		public CacheInvalidationRecord getInvalidationRecord() {
+			return invalid;
+		}
+		
+		@Override
+		public List<CatalogEntity> getUpdatedObjects() throws PEException
+		{
+			return toUpdate;
+		}
+		
+		@Override
+		public List<CatalogEntity> getDeletedObjects() throws PEException
+		{
+			return toDelete;
+		}
+
+		@Override
+		public void onFinally(SSConnection conn) throws Throwable {
+			if (xlock != null) {
+				xlock.exclusiveUnlock(conn, "finished dropping storage group");
+				xlock = null;
+			}
+			
+		}
+
+		@Override
+		public void beforeTxn(SSConnection conn, CatalogDAO c, WorkerGroup wg) throws PEException 
+		{
+			if (xlock == null) {
+				xlock = GroupManager.getCoordinationServices().getClusterLock(SSConnection.USERLAND_TEMPORARY_TABLES_LOCK_NAME);
+				xlock.exclusiveLock(conn, "dropping storage group");
+			}
+		}
+
+		
 	}
 	
 }

@@ -40,15 +40,27 @@ public final class TwoDimensionalMap<OuterKey, InnerKey, Value> {
 	}
 	
 	public Value put(final OuterKey ok, final InnerKey ik, final Value nv) {
+		final Map<InnerKey, Value> inner = locateInternalValueStorage(ok);
+		return inner.put(ik, nv);
+	}
+	
+	public void putAll(final TwoDimensionalMap<OuterKey, InnerKey, Value> other) {
+		for (final OuterKey ok : other.keySet()) {
+			final Map<InnerKey, Value> inner = locateInternalValueStorage(ok);
+			inner.putAll(other.get(ok));
+		}
+	}
+
+	private Map<InnerKey, Value> locateInternalValueStorage(final OuterKey ok) {
 		Map<InnerKey, Value> inner = get(ok);
 		if (inner == null) {
 			inner = innerMapFactory.create();
 			backing.put(ok, inner);
 		}
 
-		return inner.put(ik, nv);
+		return inner;
 	}
-	
+
 	public Map<InnerKey, Value> get(final OuterKey ok) {
 		return backing.get(ok);
 	}
@@ -69,5 +81,4 @@ public final class TwoDimensionalMap<OuterKey, InnerKey, Value> {
 	public void clear() {
 		backing.clear();
 	}
-	
 }

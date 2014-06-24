@@ -57,8 +57,10 @@ public interface Scope {
 	
 	public ListSet<VariableInstance> getVariables();
 	
-	
+	// this is used solely for show schema
 	public TableInstance buildTableInstance(Name inTableName, UnqualifiedName alias, Schema<?> inSchema, SchemaContext sc, LockInfo info);
+	
+	public TableInstance buildTableInstance(Name inTableName, UnqualifiedName alias, SchemaContext sc, LockInfo info);
 	
 	public void pushVirtualTable(SubqueryTable sqt, UnqualifiedName alias, SchemaContext sc);
 	
