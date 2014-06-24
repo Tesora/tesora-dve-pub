@@ -42,8 +42,10 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 
+import com.google.common.collect.ImmutableSet;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEConstants;
@@ -60,6 +62,8 @@ import com.tesora.dve.sql.template.jaxb.TableTemplateType;
 import com.tesora.dve.sql.template.jaxb.Template;
 import com.tesora.dve.tools.aitemplatebuilder.AiTemplateBuilder;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats;
+import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
+import com.tesora.dve.tools.aitemplatebuilder.TemplateModelItem;
 import com.tesora.dve.tools.analyzer.Analyzer;
 import com.tesora.dve.tools.analyzer.AnalyzerCallback;
 import com.tesora.dve.tools.analyzer.AnalyzerOption;
@@ -86,6 +90,7 @@ import com.tesora.dve.tools.analyzer.stats.StatementAnalyzer;
 public class DVEAnalyzerCLI extends CLIBuilder {
 	public static final String REPORT_FILE_EXTENSION = ".report";
 	public static final String TEMPLATE_FILE_EXTENSION = ".template";
+	public static final String CORPUS_FILE_EXTENSION = ".corpus";
 	private static final String TEMP_FILE_EXTENSION = ".temp";
 	private static final String ERROR_FILE_EXTENSION = ".error";
 	private static final String DEFAULT_REPORT_NAME = "analyzer" + REPORT_FILE_EXTENSION;
@@ -114,8 +119,11 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 		registerCommand(new CommandType(new String[] { "set", "database" }, "<database> [<database>]...",
 				"Set the name of the database to use for analysis."));
 
-		registerCommand(new CommandType(new String[] { "static" },
-				"Extract static analysis information from the database."));
+		registerCommand(new CommandType(
+				new String[] { "static" },
+				"[<analyze>]",
+				"Extract static analysis information from the database."
+						+ "If TRUE <analyze> executes 'ANALYZE TABLE' command before collecting table statistics (preferred, but causes update to the INFORMATION_SCHEMA and requires INSERT privileges)."));
 
 		registerCommand(new CommandType(new String[] { "open", "report" }, "[<filename>]",
 				"Open an existing static analysis file (default filename = " + DEFAULT_REPORT_NAME + ")."));
@@ -135,15 +143,15 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 				"Generate all-random templates."));
 		registerCommand(new CommandType(
 				new String[] { "generate", "basic", "templates" },
-				"<cutoff cardinality>",
+				"<cutoff cardinality> [<base template>]",
 				"Generate broadcast/random templates with a hard broadcast cardinality cutoff."));
 		registerCommand(new CommandType(
 				new String[] { "generate", "guided", "templates" },
-				"<cutoff cardinality> <fk> <safe> [<corpus file>]",
+				"<cutoff cardinality> <fk> <safe> [<corpus file>] [<base template>]",
 				"Generate templates with a hard broadcast cardinality cutoff. See \"generate templates\" command for the definition of other parameters."));
 		registerCommand(new CommandType(
 				new String[] { "generate", "templates" },
-				"<fk> <safe> [<corpus file>]",
+				"<fk> <safe> [<corpus file>] [<base template>]",
 				"Generate templates from a given frequency corpus."
 						+ " If TRUE the <fk> switch forces the generator to coolocate the foreign keys."
 						+ " If TRUE the <safe> switch forces the generator to generate only ranges backed-up by auto-increment columns."
@@ -167,6 +175,9 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 				"Display the specified template or all templates if name isn't specified."));
 		registerCommand(new CommandType(new String[] { "compare", "templates" },
 				"<template 1> <template 2> [<output file>]", "Compare given template files."));
+		registerCommand(new CommandType(new String[] { "advanced", "compare", "templates" },
+				"<corpus file> <template 1> <template 2> [<output file>]",
+				"Compare given template files. Includes table statistics in the output. This comparator requires a static report and frequency corpus."));
 
 		registerCommand(new CommandType(
 				new String[] { "dynamic", "table" },
@@ -264,21 +275,22 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 
 	/**
 	 * Perform static analysis of a database. In order to run the database(s)
-	 * must have been set. This will generate an initial template which can then
-	 * be saved to file
+	 * must have been set.
 	 * 
 	 * @throws PEException
 	 * @throws SQLException
 	 */
-	public void cmd_static() throws PEException, SQLException {
+	public void cmd_static(Scanner scanner) throws PEException, SQLException {
 		checkConnection();
 		checkDatabase();
+
+		final Boolean analyze = BooleanUtils.toBoolean(scan(scanner));
 
 		println("... Connecting to " + url + " as " + user + "/" + password);
 		final DBHelper dbHelper = new DBHelper(url, user, password).connect();
 
 		println("... Starting static analysis for '" + databasesToString() + "'");
-		report = StaticAnalyzer.doStatic(dbNative, options, url, user, password, databases, dbHelper);
+		report = StaticAnalyzer.doStatic(dbNative, options, url, user, password, databases, dbHelper, analyze);
 
 		println("... Static anlysis complete for '" + databasesToString() + "'");
 	}
@@ -680,8 +692,9 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 		checkDatabase();
 
 		final long broadcastCardinalityCutoff = scanLong(scanner, "cutoff cardinality");
+		final File baseTemplateFile = scanFile(scanner, null);
 
-		generateBroadcastCutoffTemplates(broadcastCardinalityCutoff);
+		generateBroadcastCutoffTemplates(broadcastCardinalityCutoff, baseTemplateFile);
 	}
 
 	/**
@@ -694,9 +707,13 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 		final long broadcastCardinalityCutoff = scanLong(scanner, "cutoff cardinality");
 		final Boolean followForeignKeys = scanBoolean(scanner, "fk");
 		final Boolean isSafeMode = scanBoolean(scanner, "safe");
-		final File corpusFile = scanFile(scanner, null);
 
-		generateCorpusBasedTemplates(broadcastCardinalityCutoff, followForeignKeys, isSafeMode, corpusFile);
+		final Map<Class<?>, File> optionalInputFiles = scanFilesByTypeOptionalSingle(scanner,
+				ImmutableSet.<Class<?>> of(DbAnalyzerCorpus.class, Template.class));
+		final File corpusFile = optionalInputFiles.get(DbAnalyzerCorpus.class);
+		final File baseTemplateFile = optionalInputFiles.get(Template.class);
+
+		generateCorpusBasedTemplates(broadcastCardinalityCutoff, followForeignKeys, isSafeMode, corpusFile, baseTemplateFile);
 	}
 
 	/**
@@ -708,9 +725,13 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 
 		final Boolean followForeignKeys = scanBoolean(scanner, "fk");
 		final Boolean isSafeMode = scanBoolean(scanner, "safe");
-		final File corpusFile = scanFile(scanner, null);
 
-		generateCorpusBasedTemplates(null, followForeignKeys, isSafeMode, corpusFile);
+		final Map<Class<?>, File> optionalInputFiles = scanFilesByTypeOptionalSingle(scanner,
+				ImmutableSet.<Class<?>> of(DbAnalyzerCorpus.class, Template.class));
+		final File corpusFile = optionalInputFiles.get(DbAnalyzerCorpus.class);
+		final File baseTemplateFile = optionalInputFiles.get(Template.class);
+
+		generateCorpusBasedTemplates(null, followForeignKeys, isSafeMode, corpusFile, baseTemplateFile);
 	}
 
 	/**
@@ -724,12 +745,65 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 		final Template baseTemplate = PEXmlUtils.unmarshalJAXB(baseTemplateFile, Template.class);
 		final Template comparedTemplate = PEXmlUtils.unmarshalJAXB(comparedTemplateFile, Template.class);
 
+		compareTemplates(baseTemplate, comparedTemplate, null, outputFile);
+	}
+
+	public void cmd_advanced_compare_templates(Scanner scanner) throws PEException {
+		checkReport();
+		checkDatabase();
+
+		final File corpusFile = scanFile(scanner, "corpus file");
+		final File baseTemplateFile = scanFile(scanner, "template 1");
+		final File comparedTemplateFile = scanFile(scanner, "template 2");
+		final File outputFile = scanFile(scanner);
+
+		final DbAnalyzerCorpus corpus = loadCorpus(corpusFile);
+		final CorpusStats corpusStats = new CorpusStats(corpus.getDescription(), this.options.getCorpusScaleFactor());
+		final Template baseTemplate = PEXmlUtils.unmarshalJAXB(baseTemplateFile, Template.class);
+		final Template comparedTemplate = PEXmlUtils.unmarshalJAXB(comparedTemplateFile, Template.class);
+
+		try {
+
+			/* Generate initial "safe" templates for schema loading. */
+			generateAllBroadcastTemplates();
+
+			/* Analyze the static report. */
+			final StatementAnalyzer analyzer = new StatementAnalyzer(this.options, corpusStats);
+			loadSchema(analyzer);
+			loadCorpusStats(analyzer, corpusStats);
+
+			/* Analyze the corpus. */
+			try (final FrequenciesSource frequencies = new FrequenciesSource(corpus)) {
+				frequencies.analyze(analyzer);
+			}
+
+		} catch (final Throwable e) {
+			clearTemplates();
+			throw new PEException("Unable to analyze corpus '" + corpusFile.getAbsolutePath() + "'", e);
+		}
+
+		compareTemplates(baseTemplate, comparedTemplate, corpusStats, outputFile);
+	}
+
+	private void compareTemplates(final Template baseTemplate, final Template comparedTemplate, final CorpusStats corpusStats, final File outputFile)
+			throws PEException {
 		final Map<String, String> templateDiffs = compareTemplates(baseTemplate, comparedTemplate);
 		final List<String> results = new ArrayList<String>(templateDiffs.size());
 		for (final Map.Entry<String, String> item : templateDiffs.entrySet()) {
 			final String tableName = item.getKey();
 			final String itemDiff = item.getValue();
-			results.add(tableName.concat(": ").concat(itemDiff));
+
+			final ColorStringBuilder entry = new ColorStringBuilder();
+			if (corpusStats != null) {
+				for (final Database db : getSelectedDatabases()) {
+					final TableStats table = corpusStats.findTable(new QualifiedName(db.getName().concat(QualifiedName.PART_SEPARATOR).concat(tableName)));
+					entry.append(table.toString());
+				}
+			} else {
+				entry.append(tableName);
+			}
+
+			results.add(entry.append(": ").append(itemDiff, (itemDiff.equals("MATCH") ? ConsoleColor.GREEN : ConsoleColor.DEFAULT)).toString());
 		}
 
 		if (outputFile == null) {
@@ -1197,10 +1271,11 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 		reloadTemplates(AiTemplateBuilder.buildAllRandomTemplates(databases));
 	}
 
-	private void generateBroadcastCutoffTemplates(final long broadcastCardinalityCutoff) throws Exception {
+	private void generateBroadcastCutoffTemplates(final long broadcastCardinalityCutoff, final File baseTemplateFile) throws Exception {
 		final CorpusStats corpusStats = new CorpusStats(
 				EMPTY_FREQUENCY_CORPUS.getDescription(),
 				this.options.getCorpusScaleFactor());
+		final Template baseTemplate = (baseTemplateFile != null) ? PEXmlUtils.unmarshalJAXB(baseTemplateFile, Template.class) : null;
 		try {
 
 			/* Generate "safe" templates for schema loading. */
@@ -1209,10 +1284,14 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 			final StatementAnalyzer analyzer = new StatementAnalyzer(this.options, corpusStats);
 			loadSchema(analyzer);
 			loadCorpusStats(analyzer, corpusStats);
-			final AiTemplateBuilder templateBuilder = new AiTemplateBuilder(corpusStats, this.getPrintStream());
+			final TemplateModelItem fallbackModel = this.options.getGeneratorDefaultFallbackModel();
+			final boolean isRowWidthWeightingEnabled = this.options.isRowWidthWeightingEnabled();
+			final AiTemplateBuilder templateBuilder = new AiTemplateBuilder(corpusStats, baseTemplate, fallbackModel, this.getPrintStream());
 			templateBuilder.setWildcardsEnabled(this.options.isTemplateWildcardsEnabled());
+			templateBuilder.setVerbose(this.options.isVerboseGeneratorEnabled());
+			templateBuilder.setVerbose(this.options.isForeignKeysAsJoinsEnabled());
 
-			reloadTemplates(templateBuilder.buildBroadcastCutoffTemplates(databases, broadcastCardinalityCutoff));
+			reloadTemplates(templateBuilder.buildBroadcastCutoffTemplates(databases, broadcastCardinalityCutoff, isRowWidthWeightingEnabled));
 
 		} catch (final Throwable e) {
 			clearTemplates();
@@ -1221,10 +1300,11 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 	}
 
 	private void generateCorpusBasedTemplates(final Long broadcastCardinalityCutoff, final boolean followForeignKeys, final boolean isSafeMode,
-			final File corpusFile) throws PEException {
+			final File corpusFile, final File baseTemplateFile) throws PEException {
 
 		/* If there is no corpus file, use an empty corpus instead. */
 		final DbAnalyzerCorpus corpus = (corpusFile != null) ? loadCorpus(corpusFile) : EMPTY_FREQUENCY_CORPUS;
+		final Template baseTemplate = (baseTemplateFile != null) ? PEXmlUtils.unmarshalJAXB(baseTemplateFile, Template.class) : null;
 
 		try {
 
@@ -1249,9 +1329,14 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 			 * Use a user defined Broadcast cardinality cutoff or try to
 			 * determine optimal distribution models automatically.
 			 */
-			final AiTemplateBuilder ai = new AiTemplateBuilder(corpusStats, this.getPrintStream());
+			final TemplateModelItem fallbackModel = this.options.getGeneratorDefaultFallbackModel();
+			final boolean isRowWidthWeightingEnabled = this.options.isRowWidthWeightingEnabled();
+			final AiTemplateBuilder ai = new AiTemplateBuilder(corpusStats, baseTemplate, fallbackModel, this.getPrintStream());
 			ai.setWildcardsEnabled(this.options.isTemplateWildcardsEnabled());
-			final List<Template> builtTemplates = ai.buildTemplates(this.databases, broadcastCardinalityCutoff, followForeignKeys, isSafeMode);
+			ai.setVerbose(this.options.isVerboseGeneratorEnabled());
+			ai.setVerbose(this.options.isForeignKeysAsJoinsEnabled());
+			final List<Template> builtTemplates = ai.buildTemplates(this.databases, broadcastCardinalityCutoff, followForeignKeys, isSafeMode,
+					isRowWidthWeightingEnabled);
 
 			/* Load the generated templates while trashing the old ones. */
 			reloadTemplates(builtTemplates);

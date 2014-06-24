@@ -70,6 +70,13 @@ public final class MultiMap<K, V> {
 		return valueStorage.addAll(values);
 	}
 	
+	public void putAll(final MultiMap<K, V> other) {
+		for (final K key : other.keySet()) {
+			final Collection<V> valueStorage = locateInternalValueStorage(key);
+			valueStorage.addAll(other.get(key));
+		}
+	}
+
 	private Collection<V> locateInternalValueStorage(final K key) {
 		Collection<V> valueStorage = backing.get(key);
 		if (valueStorage == null) {

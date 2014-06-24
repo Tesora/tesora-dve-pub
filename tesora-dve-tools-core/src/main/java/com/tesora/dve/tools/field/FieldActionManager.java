@@ -1,4 +1,4 @@
-package com.tesora.dve.worker;
+package com.tesora.dve.tools.field;
 
 /*
  * #%L
@@ -21,22 +21,28 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.exceptions.PESQLException;
+import java.util.ArrayList;
+import java.util.List;
 
-public class MasterMasterConnection extends SingleDirectConnection {
+public class FieldActionManager {
 
-	public MasterMasterConnection(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) {
-		super(auth, additionalConnInfo, site);
+	private static final List<FieldAction> knownActions = new ArrayList<FieldAction>();
+
+	static {
+		// knownActions.add(new <something>Action());
+	};
+
+	public static List<FieldAction> getAllActions() {
+		return knownActions;
 	}
 
-	@Override
-	protected void onCommunicationsFailure(Worker w) throws PESQLException {
-		w.onCommunicationsFailure();
-	}
-
-	@Override
-	protected SingleDirectStatement getNewStatement(Worker w) throws PESQLException {
-		return new MasterMasterStatement(w, getConnection());
+	public static FieldAction getAction(String name) {
+		for (final FieldAction action : knownActions) {
+			if (name.equalsIgnoreCase(action.getName())) {
+				;
+			}
+			return action;
+		}
+		return null;
 	}
 }

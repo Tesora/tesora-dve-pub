@@ -33,7 +33,9 @@ import net.sourceforge.jFuzzyLogic.FunctionBlock;
 
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.common.MathUtils;
 import com.tesora.dve.common.PEFileUtils;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
 public abstract class FuzzyLinguisticVariable implements TemplateItem {
@@ -69,9 +71,9 @@ public abstract class FuzzyLinguisticVariable implements TemplateItem {
 		return MODEL_SCORE_COMPARATOR;
 	}
 
-	public static List<FuzzyLinguisticVariable> evaluateDistributionModels(final FuzzyLinguisticVariable... distributionModels) {
+	public static List<FuzzyTableDistributionModel> evaluateDistributionModels(final FuzzyTableDistributionModel... distributionModels) {
 
-		final List<FuzzyLinguisticVariable> sortedDistributionModels = Arrays.asList(distributionModels);
+		final List<FuzzyTableDistributionModel> sortedDistributionModels = Arrays.asList(distributionModels);
 		for (final FuzzyLinguisticVariable distributionModel : sortedDistributionModels) {
 			distributionModel.evaluate();
 		}
@@ -81,19 +83,15 @@ public abstract class FuzzyLinguisticVariable implements TemplateItem {
 		return sortedDistributionModels;
 	}
 
-	protected FuzzyLinguisticVariable(final String fclBlockName) throws PEException {
-		final InputStream fclSchema = PEFileUtils.getResourceStream(FuzzyLinguisticVariable.class, FCL_SCHEMA_FILE_NAME);
-		try {
+	protected FuzzyLinguisticVariable(final String fclBlockName) throws PECodingException {
+		try (final InputStream fclSchema = PEFileUtils.getResourceStream(FuzzyLinguisticVariable.class, FCL_SCHEMA_FILE_NAME)) {
 			this.ai = FIS.load(fclSchema, false).getFunctionBlock(fclBlockName);
 			if (this.ai == null) {
-				throw new PEException("Could not load the Fuzzy Control Language (FCL) specification from '" + FCL_SCHEMA_FILE_NAME + "'");
+				throw new PECodingException("Could not load the Fuzzy Control Language (FCL) specification from '" + FCL_SCHEMA_FILE_NAME + "'");
 			}
-		} finally {
-			try {
-				fclSchema.close();
-			} catch (final IOException e) {
-				logger.error(e.getMessage(), e); // Could not close the file.
-			}
+		} catch (final IOException | PEException e) {
+			logger.error(e.getMessage(), e);
+			throw new PECodingException(e);
 		}
 	}
 
@@ -116,7 +114,8 @@ public abstract class FuzzyLinguisticVariable implements TemplateItem {
 	@Override
 	public String toString() {
 		final StringBuilder value = new StringBuilder();
-		return value.append(this.getFlvName()).append(" (").append(this.getScore()).append(")").toString();
+		return value.append(this.getFlvName()).append(" (").append(MathUtils.round(this.getScore(), AiTemplateBuilder.NUMBER_DISPLAY_PRECISION)).append(")")
+				.toString();
 	}
 
 	/**

@@ -39,8 +39,11 @@ import java.util.TreeMap;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 
+import com.tesora.dve.common.MathUtils;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.node.structural.JoinSpecification;
 import com.tesora.dve.sql.schema.Column;
+import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEForeignKey;
@@ -49,6 +52,8 @@ import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.modifiers.EngineTableModifier;
+import com.tesora.dve.sql.schema.modifiers.EngineTableModifier.EngineTag;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
@@ -159,6 +164,25 @@ public class CorpusStats implements StatsVisitor {
 
 		}
 
+		public long getPredictedFutureSize(final boolean isRowWidthWeightingEnabled) {
+			return this.getLHS().getPredictedFutureSize(isRowWidthWeightingEnabled) + this.getRHS().getPredictedFutureSize(isRowWidthWeightingEnabled);
+		}
+
+		public long getTotalCardinality() {
+			return this.getLHS().getTableCardinality() + this.getRHS().getTableCardinality();
+		}
+
+		public Double getTotalDataSizeKb() {
+			final Double lhsSize = this.getLHS().getTableDataSizeKb();
+			final Double rhsSize = this.getRHS().getTableDataSizeKb();
+
+			if ((lhsSize != null) && (rhsSize != null)) {
+				return lhsSize + rhsSize;
+			}
+
+			return null;
+		}
+
 		public abstract TableStats getLHS();
 
 		public abstract TableStats getRHS();
@@ -240,12 +264,37 @@ public class CorpusStats implements StatsVisitor {
 				return this.column;
 			}
 
+			public boolean isPrimary() {
+				if (this.column instanceof PEColumn) {
+					((PEColumn) this.column).isPrimaryKeyPart();
+				}
+
+				return false;
+			}
+
+			public boolean isUnique() {
+				if (this.column instanceof PEColumn) {
+					((PEColumn) this.column).isUniquePart();
+				}
+
+				return false;
+			}
+
+			public long getUpdateCount() {
+				final Map<TableColumn, Long> updated = TableStats.this.getUpdateColumns();
+				return (updated.containsKey(this)) ? updated.get(this) : 0;
+			}
+
 			public Name getName() {
 				return this.column.getName();
 			}
 
 			public Type getType() {
 				return this.column.getType();
+			}
+
+			public String getQualifiedName() {
+				return TableStats.this.getFullTableName().concat(".").concat(this.getColumnInstance().getName().get());
 			}
 
 			@Override
@@ -277,7 +326,7 @@ public class CorpusStats implements StatsVisitor {
 
 			@Override
 			public String toString() {
-				return TableStats.this.getFullTableName().concat(".").concat(this.getColumnInstance().getName().get());
+				return this.getQualifiedName();
 			}
 
 		}
@@ -286,10 +335,13 @@ public class CorpusStats implements StatsVisitor {
 			private final TableStats targetTable;
 			private final Set<TableColumn> foreignColumns = new LinkedHashSet<TableColumn>();
 			private final Set<TableColumn> targetColumns = new LinkedHashSet<TableColumn>();
+			private final ForeignKeyAction updateAction;
+			private final ForeignKeyAction deleteAction;
 			final Set<Pair<TableColumn, TableColumn>> columnPairs = new HashSet<Pair<TableColumn, TableColumn>>();
 			private final String signature;
 
-			private <T extends Column<?>> ForeignRelationship(final TableStats targetTable, final List<T> foreignColumns, final List<T> targetColumns) {
+			private <T extends Column<?>> ForeignRelationship(final TableStats targetTable, final List<T> foreignColumns, final List<T> targetColumns,
+					final ForeignKeyAction updateAction, final ForeignKeyAction deleteAction) {
 				assert (foreignColumns.size() == targetColumns.size());
 
 				this.targetTable = targetTable;
@@ -305,6 +357,9 @@ public class CorpusStats implements StatsVisitor {
 					this.columnPairs.add(new Pair<TableColumn, TableColumn>(foreignColumn, targetColumn));
 				}
 
+				this.updateAction = updateAction;
+				this.deleteAction = deleteAction;
+
 				this.signature = getSignature();
 			}
 
@@ -314,6 +369,18 @@ public class CorpusStats implements StatsVisitor {
 
 			public Set<TableColumn> getTargetColumns() {
 				return getRightColumns();
+			}
+
+			public ForeignKeyAction getUpdateAction() {
+				return this.updateAction;
+			}
+
+			public ForeignKeyAction getDeleteAction() {
+				return this.deleteAction;
+			}
+
+			public boolean hasReferentialActions() {
+				return ((this.updateAction != null) || (this.deleteAction != null));
 			}
 
 			@Override
@@ -376,18 +443,24 @@ public class CorpusStats implements StatsVisitor {
 		private final Map<StatementType, Long> statementStats = new HashMap<StatementType, Long>();
 		private final Map<TableColumn, Long> identColumnStats = new HashMap<TableColumn, Long>();
 		private final Map<TableColumn, Long> groupByColumnStats = new HashMap<TableColumn, Long>();
+		private final Map<TableColumn, Long> updateColumnStats = new HashMap<TableColumn, Long>();
 		private final Set<TableColumn> columns = new HashSet<TableColumn>();
 		private final Set<ForeignRelationship> forwardRelationships = new HashSet<ForeignRelationship>();
 		private final Set<ForeignRelationship> backwardRelationships = new HashSet<ForeignRelationship>();
 		private long cardinality;
+		private final Long dataLength;
+		private final EngineTag engine;
 
-		private TemplateItem distributionModel;
+		private TemplateModelItem distributionModel;
+		private boolean modelFreezed = false;
 
-		public TableStats(final String databaseName, final String tableName, final long cardinality) {
+		public TableStats(final String databaseName, final String tableName, final long cardinality, final Long dataLength, final String engine) {
 			this.schemaName = databaseName;
 			this.tableName = tableName;
 			this.fullName = toQualifiedName(databaseName, tableName);
 			this.cardinality = cardinality;
+			this.dataLength = dataLength;
+			this.engine = EngineTableModifier.EngineTag.findEngine(engine);
 		}
 
 		public String getSchemaName() {
@@ -406,22 +479,26 @@ public class CorpusStats implements StatsVisitor {
 			return this.fullName.getUnquotedName().get();
 		}
 
-		public TemplateItem getTableDistributionModel() {
+		public TemplateModelItem getTableDistributionModel() {
 			return this.distributionModel;
 		}
 
-		public void setTableDistributionModel(final TemplateItem model) {
+		public void setTableDistributionModel(final TemplateModelItem model) {
 			this.distributionModel = model;
 		}
 
 		public boolean hasStatements() {
 			for (final StatementType type : StatementType.values()) {
-				if (this.getStatementCounts(type) > 0) {
+				if (hasStatements(type)) {
 					return true;
 				}
 			}
 
 			return false;
+		}
+
+		public boolean hasStatements(final StatementType type) {
+			return (this.getStatementCounts(type) > 0);
 		}
 
 		public long getTableCardinality() {
@@ -433,8 +510,26 @@ public class CorpusStats implements StatsVisitor {
 		 * epochs in the future. One epoch is the time coverage of data
 		 * available for analysis.
 		 */
-		public long getPredictedFutureCardinality() {
-			return predictFutureTableCardinality(this);
+		public long getPredictedFutureSize(final boolean isRowWidthWeightingEnabled) {
+			final double avgRowLength = getAverageRowLength(isRowWidthWeightingEnabled);
+			final long predictedCardinality = predictFutureTableCardinality(this);
+			return Math.round(avgRowLength * predictedCardinality);
+		}
+
+		protected Double getTableDataSizeKb() {
+			return (this.dataLength != null) ? MathUtils.round((this.dataLength / 1024.0), AiTemplateBuilder.NUMBER_DISPLAY_PRECISION) : null;
+		}
+
+		private Double getAverageRowLength(final boolean isRowWidthWeightingEnabled) {
+			return ((isRowWidthWeightingEnabled && (this.dataLength != null)) && (this.cardinality > 0)) ? (this.dataLength / this.cardinality) : 1.0;
+		}
+
+		public EngineTag getEngine() {
+			return this.engine;
+		}
+
+		public boolean supportsRowLocking() {
+			return EngineTableModifier.EngineTag.INNODB.equals(this.engine);
 		}
 
 		/**
@@ -453,12 +548,34 @@ public class CorpusStats implements StatsVisitor {
 			return total;
 		}
 
+		public long getWriteStatementCount() {
+			long total = 0;
+			for (final StatementType type : Arrays.asList(
+					StatementType.INSERT,
+					StatementType.UPDATE,
+					StatementType.DELETE)) {
+				total += this.getStatementCounts(type);
+			}
+
+			return total;
+		}
+
+		public long getReadStatementCount() {
+			return this.getStatementCounts(StatementType.SELECT);
+		}
+
 		public long getStatementCounts(final StatementType type) {
 			final Long count = this.statementStats.get(type);
 			if (count == null) {
 				return 0;
 			}
 			return count;
+		}
+
+		public double getWriteToReadRatio() {
+			final long writes = this.getWriteStatementCount();
+			final long reads = this.getReadStatementCount();
+			return (reads > 0) ? ((double) writes / reads) : writes;
 		}
 
 		public Map<TableColumn, Long> getIdentColumns() {
@@ -475,6 +592,14 @@ public class CorpusStats implements StatsVisitor {
 
 		public boolean hasGroupByColumns() {
 			return !this.groupByColumnStats.isEmpty();
+		}
+
+		public boolean hasUpdateColumns() {
+			return !this.updateColumnStats.isEmpty();
+		}
+
+		public Map<TableColumn, Long> getUpdateColumns() {
+			return Collections.unmodifiableMap(this.updateColumnStats);
 		}
 
 		public Set<TableColumn> getTableColumns() {
@@ -515,6 +640,31 @@ public class CorpusStats implements StatsVisitor {
 
 		public boolean hasForeignRelationship() {
 			return !this.forwardRelationships.isEmpty() || !this.backwardRelationships.isEmpty();
+		}
+
+		public Set<TableColumn> getColumns(final Set<String> columnNames) throws PEException {
+			final Set<String> seeked = new LinkedHashSet<String>(columnNames);
+			final Set<TableColumn> found = new LinkedHashSet<TableColumn>();
+			for (final TableColumn column : this.columns) {
+				final String name = column.getName().get();
+				if (seeked.remove(name)) {
+					found.add(column);
+				}
+			}
+
+			if (!seeked.isEmpty()) {
+				throw new PEException("The following columns were not found in table '" + this.getFullTableName() + "': " + StringUtils.join(seeked, ", "));
+			}
+
+			return found;
+		}
+
+		public void setDistributionModelFreezed(final boolean freeze) {
+			this.modelFreezed = freeze;
+		}
+
+		public boolean hasDistributionModelFreezed() {
+			return this.modelFreezed;
 		}
 
 		protected void bumpCount(final StatementType type, final int increment) {
@@ -569,6 +719,7 @@ public class CorpusStats implements StatsVisitor {
 			final StringBuilder value = new StringBuilder();
 			final List<String> tableProperties = new ArrayList<String>();
 			tableProperties.add("C:" + String.valueOf(this.getTableCardinality()));
+			tableProperties.add("L:" + String.valueOf(String.valueOf(this.getTableDataSizeKb())) + "KB");
 			for (final StatementType type : StatementType.values()) {
 				tableProperties.add(type.getName().substring(0, 1).concat(":").concat(String.valueOf(this.getStatementCounts(type)).concat("x")));
 			}
@@ -740,7 +891,11 @@ public class CorpusStats implements StatsVisitor {
 		@Override
 		public String toString() {
 			final StringBuilder value = new StringBuilder();
-			value.append("[").append(this.signature).append("; F:").append(this.getFrequency()).append("x]");
+			final List<String> joinProperties = new ArrayList<String>();
+			joinProperties.add("F:" + String.valueOf(this.getFrequency()) + "x");
+			joinProperties.add("C:" + String.valueOf(this.getTotalCardinality()));
+			joinProperties.add("C:" + String.valueOf(this.getTotalDataSizeKb()) + "KB");
+			value.append("[").append(this.signature).append("; ").append(StringUtils.join(joinProperties, ", ")).append("]");
 			return value.toString();
 		}
 
@@ -758,6 +913,35 @@ public class CorpusStats implements StatsVisitor {
 		private TableColumn getRightColumn() {
 			return this.joinColumns.getSecond();
 		}
+	}
+
+	/**
+	 * @return Total size of all tables in KB, but only if all sizes are
+	 *         available.
+	 */
+	public static Double computeTotalSizeKb(final Collection<TableStats> tables) {
+		double totalSize = 0.0;
+		for (final TableStats table : tables) {
+			final Double tableSize = table.getTableDataSizeKb();
+			if (tableSize != null) {
+				totalSize += tableSize;
+			} else {
+				return null;
+			}
+		}
+
+		return MathUtils.round(totalSize, AiTemplateBuilder.NUMBER_DISPLAY_PRECISION);
+	}
+
+	public static Set<JoinStats> findJoinsForTable(final Set<JoinStats> joins, final TableStats table) {
+		final Set<JoinStats> tableJoins = new HashSet<JoinStats>();
+		for (final JoinStats join : joins) {
+			if (join.getLHS().equals(table) || join.getRHS().equals(table)) {
+				tableJoins.add(join);
+			}
+		}
+
+		return tableJoins;
 	}
 
 	private final String corpusName;
@@ -782,6 +966,11 @@ public class CorpusStats implements StatsVisitor {
 
 	public int getSize() {
 		return this.getStatistics().size();
+	}
+
+	public Double getDataSizeMb() {
+		final Double totalSize = computeTotalSizeKb(this.getStatistics());
+		return (totalSize != null) ? MathUtils.round((totalSize / 1024.0), AiTemplateBuilder.NUMBER_DISPLAY_PRECISION) : null;
 	}
 
 	/**
@@ -809,6 +998,10 @@ public class CorpusStats implements StatsVisitor {
 
 	public Set<JoinStats> getJoinsStatistics() {
 		return Collections.unmodifiableSet(this.joins);
+	}
+
+	public TableStats findTable(final QualifiedName name) {
+		return this.corpusStats.get(name);
 	}
 
 	@Override
@@ -847,7 +1040,8 @@ public class CorpusStats implements StatsVisitor {
 
 	@Override
 	public void onUpdate(PEColumn c, int freq) {
-		// not implemented
+		final TableStats table = getStats(c.getTable(), currentContext);
+		table.bumpCount(convertToPEColumn(c), freq, table.updateColumnStats);
 	}
 
 	@Override
@@ -902,7 +1096,7 @@ public class CorpusStats implements StatsVisitor {
 
 	@Override
 	public String toString() {
-		return "[" + this.getCorpusName() + ": C:" + this.getSize() + "]";
+		return "[" + this.getCorpusName() + ": C:" + this.getSize() + ", L:" + String.valueOf(this.getDataSizeMb()) + "MB]";
 	}
 
 	public void resolveTableColumns(final Table<?> table, final SchemaContext context) {
@@ -921,8 +1115,10 @@ public class CorpusStats implements StatsVisitor {
 			final TableStats targetTable = getStats(key.getTargetTable(context), context);
 			final List<PEColumn> foreignColumns = key.getColumns(context);
 			final List<PEColumn> targetColumns = key.getTargetColumns(context);
-			thisTable.addForwardRelationships(thisTable.new ForeignRelationship(targetTable, foreignColumns, targetColumns));
-			targetTable.addBackwardRelationships(targetTable.new ForeignRelationship(thisTable, targetColumns, foreignColumns));
+			final ForeignKeyAction updateAction = key.getUpdateAction();
+			final ForeignKeyAction deleteAction = key.getDeleteAction();
+			thisTable.addForwardRelationships(thisTable.new ForeignRelationship(targetTable, foreignColumns, targetColumns, updateAction, deleteAction));
+			targetTable.addBackwardRelationships(targetTable.new ForeignRelationship(thisTable, targetColumns, foreignColumns, updateAction, deleteAction));
 		}
 	}
 
@@ -938,7 +1134,7 @@ public class CorpusStats implements StatsVisitor {
 		final QualifiedName fullTableName = toQualifiedName(databaseName, tableName);
 		TableStats stats = this.corpusStats.get(fullTableName);
 		if (stats == null) { // Table not mentioned in the static report? Silently create one and proceed...
-			stats = new TableStats(databaseName, tableName, 0);
+			stats = new TableStats(databaseName, tableName, 0, null, null);
 			this.corpusStats.put(fullTableName, stats);
 		}
 		return stats;

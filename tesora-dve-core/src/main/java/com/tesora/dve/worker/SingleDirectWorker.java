@@ -31,9 +31,9 @@ public class SingleDirectWorker extends Worker {
 
 	public static class Factory implements Worker.Factory {
 		@Override
-		public Worker newWorker(UserAuthentication auth, StorageSite site)
+		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site)
 				throws PEException {
-			return new SingleDirectWorker(auth, site);
+			return new SingleDirectWorker(auth, additionalConnInfo, site);
 		}
 
 		@Override
@@ -49,13 +49,13 @@ public class SingleDirectWorker extends Worker {
 
 	public static final String HA_TYPE = "Single";
 
-	protected SingleDirectWorker(UserAuthentication auth, StorageSite site) throws PEException {
-		super(auth, site);
+	protected SingleDirectWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PEException {
+		super(auth, additionalConnInfo, site);
 	}
 
 	@Override
-	public WorkerConnection getConnection(StorageSite site, UserAuthentication auth) {
-		SingleDirectConnection wConnection = new SingleDirectConnection(auth, site);
+	public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth) {
+		SingleDirectConnection wConnection = new SingleDirectConnection(auth, additionalConnInfo, site);
 //		if (logger.isDebugEnabled())
 //			try {
 //				logger.debug("Worker " + getName() + " gets JDBC connection " + wConnection.getConnection().toString());

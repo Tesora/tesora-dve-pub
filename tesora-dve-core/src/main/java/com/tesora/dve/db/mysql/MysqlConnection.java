@@ -115,7 +115,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	}
 
 	@Override
-	public void connect(String url, final String userid, final String password) throws PEException {
+	public void connect(String url, final String userid, final String password, final long clientCapabilities) throws PEException {
 		PEUrl peUrl = PEUrl.fromUrlString(url);
 
 		if (!"mysql".equalsIgnoreCase(peUrl.getSubProtocol()))
@@ -133,7 +133,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 		.handler(new ChannelInitializer<Channel>() {
 			@Override
 			protected void initChannel(Channel ch) throws Exception {
-				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));
+				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));
 
 				if (PACKET_LOGGER)
 					ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));

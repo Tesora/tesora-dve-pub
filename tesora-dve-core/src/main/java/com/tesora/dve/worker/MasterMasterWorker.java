@@ -30,9 +30,9 @@ public class MasterMasterWorker extends Worker {
 
 	public static class Factory implements Worker.Factory {
 		@Override
-		public Worker newWorker(UserAuthentication auth, StorageSite site)
+		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site)
 				throws PEException {
-			return new MasterMasterWorker(auth, site);
+			return new MasterMasterWorker(auth, additionalConnInfo, site);
 		}
 
 		@Override
@@ -50,13 +50,13 @@ public class MasterMasterWorker extends Worker {
 
 	public static final String HA_TYPE = "MasterMaster";
 
-	public MasterMasterWorker(UserAuthentication auth, StorageSite site)
+	public MasterMasterWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site)
 			throws PEException {
-		super(auth, site);
+		super(auth, additionalConnInfo, site);
 	}
 
 	@Override
-	public WorkerConnection getConnection(StorageSite site, UserAuthentication auth) {
-		return new MasterMasterConnection(auth, site);
+	public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth) {
+		return new MasterMasterConnection(auth, additionalConnInfo, site);
 	}
 }

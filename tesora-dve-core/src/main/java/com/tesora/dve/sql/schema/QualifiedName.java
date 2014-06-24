@@ -27,6 +27,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
@@ -34,6 +36,8 @@ import com.tesora.dve.sql.util.UnaryPredicate;
 public class QualifiedName extends Name {
 
 	private static final long serialVersionUID = 1L;
+	public static final String PART_SEPARATOR = ".";
+
 	private List<UnqualifiedName> names;
 	
 	public QualifiedName(List<UnqualifiedName> parts) {
@@ -44,6 +48,17 @@ public class QualifiedName extends Name {
 		names = Arrays.asList(parts);
 	}
 	
+	public QualifiedName(String name) {
+		this(StringUtils.split(name, PART_SEPARATOR));
+	}
+
+	protected QualifiedName(String... parts) {
+		names = new ArrayList<UnqualifiedName>(parts.length);
+		for (final String part : parts) {
+			names.add(new UnqualifiedName(part));
+		}
+	}
+
 	@Override
 	public String get() {
 		return join(new UnaryFunction<String, UnqualifiedName>() {
@@ -100,7 +115,7 @@ public class QualifiedName extends Name {
 	private String join(UnaryFunction<String, UnqualifiedName> proc) {
 		StringBuilder buf = new StringBuilder();
 		List<String> strs = Functional.apply(names, proc);
-		Functional.join(strs, buf, ".");
+		Functional.join(strs, buf, PART_SEPARATOR);
 		return buf.toString();
 	}
 

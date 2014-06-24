@@ -57,6 +57,12 @@
 		</dependency>
 		<dependency>
 			<groupId>com.tesora</groupId>
+			<artifactId>tesora-dve-tools-core</artifactId>
+			<scope>test</scope>
+			<classifier>tests</classifier>
+		</dependency>
+		<dependency>
+			<groupId>com.tesora</groupId>
 			<artifactId>tesora-dve-common</artifactId>
 			<scope>test</scope>
 			<classifier>tests</classifier>
@@ -83,11 +89,6 @@
 			<groupId>com.sun.mail</groupId>
 			<artifactId>javax.mail</artifactId>
 			<version>1.5.0</version>
-		</dependency>
-		<dependency>
-			<groupId>net.sourceforge</groupId>
-			<artifactId>jFuzzyLogic</artifactId>
-			<version>3.0</version>
 		</dependency>
 	</dependencies>
 	<profiles>

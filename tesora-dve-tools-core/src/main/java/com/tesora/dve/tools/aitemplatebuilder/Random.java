@@ -1,4 +1,4 @@
-package com.tesora.dve.tools.field;
+package com.tesora.dve.tools.aitemplatebuilder;
 
 /*
  * #%L
@@ -21,22 +21,27 @@ package com.tesora.dve.tools.field;
  * #L%
  */
 
-import java.io.PrintStream;
-import java.util.Properties;
+public final class Random implements TemplateItem, TemplateModelItem {
 
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.upgrade.CatalogSchemaVersion;
+	private static final String DISTRIBUTION_TEMPLATE_BLOCK_NAME = "Random";
 
-public interface FieldAction {
+	public static final Random SINGLETON_TEMPLATE_ITEM = new Random();
 
-	public String getName();
-	
-	public String getDescription();
-	
-	public boolean isValid(CatalogSchemaVersion currentVersion);
-	
-	public void report(Properties connectionProperties, PrintStream reportWriter) throws PEException;
-	
-	public void execute(Properties connectionProperties, PrintStream reportWriter) throws PEException;
-	
+	private Random() {
+	}
+
+	@Override
+	public String getTemplateItemName() {
+		return DISTRIBUTION_TEMPLATE_BLOCK_NAME;
+	}
+
+	@Override
+	public String toString() {
+		return getTemplateItemName();
+	}
+
+	@Override
+	public boolean isBroadcast() {
+		return false;
+	}
 }

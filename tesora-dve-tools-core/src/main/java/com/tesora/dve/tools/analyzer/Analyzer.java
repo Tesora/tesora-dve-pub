@@ -242,8 +242,10 @@ public abstract class Analyzer {
 			for (final Table staticReportTable : staticReportDb.getTables().getTable()) {
 				final String tableName = staticReportTable.getName();
 				final int tableRowCount = staticReportTable.getRowCount();
+				final Long tableDataLength = staticReportTable.getDataLength();
+				final String engine = staticReportTable.getEngine();
 				corpusStats.addTable(corpusStats.new TableStats(databaseName,
-						tableName, tableRowCount));
+						tableName, tableRowCount, tableDataLength, engine));
 			}
 		}
 

@@ -47,6 +47,8 @@ public class ClientCapabilities {
 	public static final long CLIENT_SSL_VERIFY_SERVER_CERT=1 << 30;
 	public static final long CLIENT_REMEMBER_OPTIONS=1 << 31;
 
+	public static final long DEFAULT_PSITE_CAPABILITIES = (ClientCapabilities.CLIENT_PROTOCOL_41 | ClientCapabilities.CLIENT_SECURE_CONNECTION );
+			
 	long clientCapabilities = 0;
 	
 	public ClientCapabilities() {
@@ -58,6 +60,10 @@ public class ClientCapabilities {
 
 	public void setClientCapability(long clientCapability) {
 		this.clientCapabilities = clientCapability;
+	}
+
+	public long getClientCapability() {
+		return this.clientCapabilities;
 	}
 	
 	public boolean useLongPassword() { return isFlagSet(CLIENT_LONG_PASSWORD);	}

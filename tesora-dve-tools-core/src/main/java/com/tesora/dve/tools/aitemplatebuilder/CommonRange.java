@@ -21,32 +21,40 @@ package com.tesora.dve.tools.aitemplatebuilder;
  * #L%
  */
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedSet;
 
+import com.tesora.dve.common.HashMapFactory;
+import com.tesora.dve.common.HashSetFactory;
+import com.tesora.dve.common.LinkedHashMapFactory;
 import com.tesora.dve.common.MathUtils;
+import com.tesora.dve.common.MultiMap;
+import com.tesora.dve.common.TwoDimensionalMultiMap;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.types.Type;
+import com.tesora.dve.tools.CLIBuilder.ColorStringBuilder;
+import com.tesora.dve.tools.aitemplatebuilder.AiTemplateBuilder.MessageSeverity;
+import com.tesora.dve.tools.aitemplatebuilder.AiTemplateBuilder.ScoreBonus;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.JoinStats;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.Relationship;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.Relationship.RelationshipSpecification;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.TableColumn;
 
-final class CommonRange extends FuzzyLinguisticVariable implements TemplateRangeItem {
-
-	private static final String LINE_SEPARATOR = System.getProperty("line.separator");
-	private static final String INDENT_LINE_SEPARATOR = LINE_SEPARATOR.concat("\t");
+public class CommonRange extends FuzzyLinguisticVariable implements TemplateRangeItem {
 
 	private static final String FCL_BLOCK_NAME = "RangeModel";
 	private static final String JOINS_FLV_NAME = "joinFrequency";
@@ -56,7 +64,10 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 	private double score = 0.0;
 
 	private final Map<Relationship, Double> joins = new HashMap<Relationship, Double>();
-	private final Map<TableStats, Set<TableColumn>> tables = new HashMap<TableStats, Set<TableColumn>>();
+	private final TwoDimensionalMultiMap<TableStats, TableColumn, ScoreBonus> tables = new TwoDimensionalMultiMap<TableStats, TableColumn, ScoreBonus>(
+			new HashMapFactory<TableStats, MultiMap<TableColumn, ScoreBonus>>(),
+			new LinkedHashMapFactory<TableColumn, Collection<ScoreBonus>>(),
+			new HashSetFactory<ScoreBonus>());
 
 	public static boolean haveCommonColumn(final Set<TableColumn> a, final Set<TableColumn> b) {
 		for (final TableColumn column : a) {
@@ -122,7 +133,7 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 		this.addJoin(join);
 	}
 
-	public CommonRange(final CommonRange other) throws PEException {
+	public CommonRange(final CommonRange other) {
 		super(FCL_BLOCK_NAME);
 
 		this.isSafeMode = other.isSafeMode;
@@ -130,9 +141,15 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 		this.tables.putAll(other.tables);
 	}
 
+	protected CommonRange(final boolean isSafeMode) {
+		super(FCL_BLOCK_NAME);
+
+		this.isSafeMode = isSafeMode;
+	}
+
 	public boolean isSuitableFor(final Relationship join) {
-		final Set<TableColumn> left = this.tables.get(join.getLHS());
-		final Set<TableColumn> right = this.tables.get(join.getRHS());
+		final Set<TableColumn> left = this.getRangeColumnsFor(join.getLHS());
+		final Set<TableColumn> right = this.getRangeColumnsFor(join.getRHS());
 
 		/*
 		 * Handle the case when this range already contains both sides of the
@@ -145,6 +162,7 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 		if (isSuitableForHelper(left, join) || isSuitableForHelper(right, join)) {
 			return true;
 		}
+
 		return false;
 	}
 
@@ -156,8 +174,8 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 		}
 
 		this.joins.put(join, 0.0);
-		this.tables.put(join.getLHS(), join.getLeftColumns());
-		this.tables.put(join.getRHS(), join.getRightColumns());
+		this.addTable(join.getLHS(), join.getLeftColumns());
+		this.addTable(join.getRHS(), join.getRightColumns());
 	}
 
 	@Override
@@ -192,8 +210,8 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 
 	public Set<TableColumn> getColumns() {
 		final Set<TableColumn> uniqueColumns = new HashSet<TableColumn>();
-		for (final Set<TableColumn> columnSet : this.tables.values()) {
-			uniqueColumns.addAll(columnSet);
+		for (final TableStats table : this.getTables()) {
+			uniqueColumns.addAll(this.getRangeColumnsFor(table));
 		}
 
 		return uniqueColumns;
@@ -294,6 +312,10 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 		return this.joins.size();
 	}
 
+	private Double getDataSizeKb() {
+		return CorpusStats.computeTotalSizeKb(this.getTables());
+	}
+
 	@Override
 	public String getFclName() {
 		return FCL_BLOCK_NAME;
@@ -315,13 +337,14 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 		return buildUniqueRangeNameForTable(topTable);
 	}
 
-	public void evaluate(final Set<Long> uniqueJoinFrequencies, final SortedSet<Long> sortedJoinCardinalities) {
+	public void evaluate(final Set<Long> uniqueJoinFrequencies, final SortedSet<Long> sortedJoinCardinalities, final boolean isRowWidthWeightingEnabled) {
 		final double averageJoinFrequency = MathUtils.mean(uniqueJoinFrequencies);
 		assert (averageJoinFrequency > 0.0);
 
 		for (final Relationship join : this.joins.keySet()) {
 			final double relativeJoinFrequency = FuzzyLinguisticVariable.toPercent(join.getFrequency(), averageJoinFrequency);
-			final long totalJoinCardinality = join.getLHS().getPredictedFutureCardinality() + join.getRHS().getPredictedFutureCardinality();
+			final long totalJoinCardinality = join.getLHS().getPredictedFutureSize(isRowWidthWeightingEnabled)
+					+ join.getRHS().getPredictedFutureSize(isRowWidthWeightingEnabled);
 			final double pcCardinality = FuzzyLinguisticVariable.toPercent(findPositionFor(totalJoinCardinality, sortedJoinCardinalities),
 					sortedJoinCardinalities.size());
 
@@ -331,8 +354,9 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 			this.evaluate();
 
 			final double joinScore = super.getScore();
+			final float joinScoreFactor = this.computeBonusFactor(join); // TODO
 			this.joins.put(join, joinScore);
-			this.score += joinScore;
+			this.score += (joinScore * joinScoreFactor);
 		}
 	}
 
@@ -343,20 +367,54 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 
 	@Override
 	public String toString() {
-		final StringBuilder value = new StringBuilder();
-		value.append(getTemplateItemName()).append(" (").append(this.getScore()).append("): {");
+		final ColorStringBuilder value = new ColorStringBuilder();
+		value.append(getTemplateItemName())
+				.append(" [").append(this.getDataSizeKb()).append("KB]")
+				.append(" (").append(this.getScore()).append("): {");
 
+		/* Print range tables. */
 		for (final TableStats table : this.getTables()) {
-			value.append(INDENT_LINE_SEPARATOR).append(table);
+			value.append(AiTemplateBuilder.LINE_SEPARATOR).append(AiTemplateBuilder.LINE_INDENT).append(table);
 		}
 
-		value.append(LINE_SEPARATOR);
+		value.append(AiTemplateBuilder.LINE_SEPARATOR);
 
+		/* Print range relationships. */
 		for (final Map.Entry<Relationship, Double> item : this.joins.entrySet()) {
-			value.append(INDENT_LINE_SEPARATOR).append(item.getKey()).append(": (").append(item.getValue()).append(")");
+			final Relationship relationship = item.getKey();
+			final Double score = MathUtils.round(item.getValue(), AiTemplateBuilder.NUMBER_DISPLAY_PRECISION);
+			value.append(AiTemplateBuilder.LINE_SEPARATOR).append(AiTemplateBuilder.LINE_INDENT)
+					.append(relationship).append(": (").append(score).append(")");
+
+			final MultiMap<TableColumn, ScoreBonus> relationshipColumnBonuses = this.getColumnBonusesFor(relationship);
+			for (final TableColumn column : relationshipColumnBonuses.keySet()) {
+				for (final ScoreBonus bonus : relationshipColumnBonuses.get(column)) {
+					if (!bonus.isPerRangeOnly()) {
+						value.append(" (")
+								.append(bonus.print(column), (bonus.isNegative()) ? MessageSeverity.WARNING.getColor() : MessageSeverity.INFO.getColor())
+								.append(")");
+					}
+				}
+			}
 		}
 
-		return value.append(LINE_SEPARATOR).append("}").toString();
+		value.append(AiTemplateBuilder.LINE_SEPARATOR);
+
+		/* Print collected range bonuses. */
+		for (final TableStats table : this.getTables()) {
+			final MultiMap<TableColumn, ScoreBonus> tableColumnBonuses = this.tables.get(table);
+			for (final TableColumn column : tableColumnBonuses.keySet()) {
+				final Collection<ScoreBonus> columnBonuses = tableColumnBonuses.get(column);
+				for (final ScoreBonus bonus : columnBonuses) {
+					if (bonus.isPerRangeOnly()) {
+						value.append(AiTemplateBuilder.LINE_SEPARATOR).append(AiTemplateBuilder.LINE_INDENT)
+								.append(bonus.print(column), (bonus.isNegative()) ? MessageSeverity.WARNING.getColor() : MessageSeverity.INFO.getColor());
+					}
+				}
+			}
+		}
+
+		return value.append(AiTemplateBuilder.LINE_SEPARATOR).append("}").toString();
 	}
 
 	@Override
@@ -366,7 +424,8 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 
 	@Override
 	public Set<TableColumn> getRangeColumnsFor(final TableStats table) {
-		return this.tables.get(table);
+		final MultiMap<TableColumn, ScoreBonus> tableColumns = this.tables.get(table);
+		return (tableColumns != null) ? tableColumns.keySet() : null;
 	}
 
 	@Override
@@ -374,13 +433,72 @@ final class CommonRange extends FuzzyLinguisticVariable implements TemplateRange
 		return "CommonRange";
 	}
 
+	protected void addUserDefinedDistribution(final TableStats table, final Set<String> dv) throws PEException {
+		this.addTable(table, table.getColumns(dv));
+	}
+
+	private void addTable(final TableStats table, final Set<TableColumn> dv) {
+		for (final TableColumn column : dv) {
+			this.tables.putAll(table, column, AiTemplateBuilder.getBonusesForColumn(column, this.isSafeMode));
+		}
+	}
+
 	/**
 	 * Get bonus score for this range.
 	 */
 	private double getBonusScore() {
-		final float bonus = AiTemplateBuilder.getBonusForColumns(this.getColumns(), this.isSafeMode);
+		final float bonus = computeBonusFactor();
 		return (bonus * this.score);
+	}
 
+	/**
+	 * The range bonus factor is the sum of the upper (best) and lower (worst)
+	 * per-table bonuses in this range.
+	 */
+	private float computeBonusFactor() {
+		final List<Float> bonuses = new ArrayList<Float>();
+		for (final TableStats table : this.tables.keySet()) {
+			float netBonusFactor = 1.0f;
+			for (final ScoreBonus bonus : this.tables.get(table).values()) {
+				if (bonus.isPerRangeOnly()) {
+					netBonusFactor += bonus.getBonusFactor();
+				}
+			}
+			bonuses.add(netBonusFactor);
+		}
+
+		final float high = Math.max(0.0f, Collections.max(bonuses));
+		final float low = Math.min(0.0f, Collections.min(bonuses));
+
+		return (high + low);
+	}
+
+	/**
+	 * Each of the relationships/joins within the range can have it's own score
+	 * bonus factor. It's the sum of all bonus factors just on that
+	 * relationship.
+	 */
+	private float computeBonusFactor(final Relationship relationship) {
+		float netBonusFactor = 1.0f;
+		final MultiMap<TableColumn, ScoreBonus> relColumnBonuses = this.getColumnBonusesFor(relationship);
+		for (final ScoreBonus bonus : relColumnBonuses.values()) {
+			if (!bonus.isPerRangeOnly()) {
+				netBonusFactor += bonus.getBonusFactor();
+			}
+		}
+
+		return netBonusFactor;
+	}
+
+	private MultiMap<TableColumn, ScoreBonus> getColumnBonusesFor(final Relationship relationship) {
+		final MultiMap<TableColumn, ScoreBonus> relColumnBonuses = new MultiMap<TableColumn, ScoreBonus>(
+				new LinkedHashMapFactory<TableColumn, Collection<ScoreBonus>>(),
+				new HashSetFactory<ScoreBonus>());
+
+		relColumnBonuses.putAll(this.tables.get(relationship.getLHS()));
+		relColumnBonuses.putAll(this.tables.get(relationship.getRHS()));
+
+		return relColumnBonuses;
 	}
 
 	private boolean isSuitableForHelper(final Set<TableColumn> columns, final Relationship join) {

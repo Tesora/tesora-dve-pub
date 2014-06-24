@@ -21,51 +21,37 @@ package com.tesora.dve.tools.aitemplatebuilder;
  * #L%
  */
 
-import java.util.SortedSet;
+import java.util.Set;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.tools.CLIBuilder.ColorStringBuilder;
+import com.tesora.dve.tools.aitemplatebuilder.AiTemplateBuilder.MessageSeverity;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 
-public final class Broadcast extends FuzzyTableDistributionModel {
+public class UserDefinedCommonRange extends CommonRange {
 
-	private static final String FCL_BLOCK_NAME = "BroadcastDistribution";
-	private static final String DISTRIBUTION_TEMPLATE_BLOCK_NAME = "Broadcast";
+	private final String name;
 
-	public static final TemplateItem SINGLETON_TEMPLATE_ITEM;
-	static {
-		try {
-			SINGLETON_TEMPLATE_ITEM = new Broadcast();
-		} catch (final PEException e) {
-			throw new Error(e);
-		}
-	}
-
-	private Broadcast() throws PEException {
-		super(FCL_BLOCK_NAME);
-	}
-
-	public Broadcast(final TableStats match, final SortedSet<Long> sortedCardinalities)
-			throws PEException {
-		super(FCL_BLOCK_NAME, match, sortedCardinalities);
-	}
-
-	protected Broadcast(final double pcOrderBy, final double pcCardinality)
-			throws PEException {
-		super(FCL_BLOCK_NAME, pcOrderBy, pcCardinality);
+	public UserDefinedCommonRange(final String name, final boolean isSafeMode) {
+		super(isSafeMode);
+		this.name = name;
 	}
 
 	@Override
-	public String getFclName() {
-		return FCL_BLOCK_NAME;
+	public void addUserDefinedDistribution(final TableStats table, final Set<String> dv) throws PEException {
+		super.addUserDefinedDistribution(table, dv);
 	}
 
 	@Override
 	public String getTemplateItemName() {
-		return DISTRIBUTION_TEMPLATE_BLOCK_NAME;
+		return this.name;
 	}
 
 	@Override
-	protected String getFlvName() {
-		return getTemplateItemName();
+	public String toString() {
+		final ColorStringBuilder value = new ColorStringBuilder();
+		value.append(super.toString()).append(" (").append("user defined", MessageSeverity.ALERT.getColor()).append(")");
+		return value.toString();
 	}
+
 }

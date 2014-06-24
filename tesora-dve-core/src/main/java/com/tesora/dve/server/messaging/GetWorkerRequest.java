@@ -32,6 +32,7 @@ import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.worker.AdditionalConnectionInfo;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerManager;
@@ -42,6 +43,7 @@ public class GetWorkerRequest extends WorkerManagerRequest {
 	private static final long serialVersionUID = 3107349676917943589L;
 	UserAuthentication userAuth;
 	StorageGroup storageGroup;
+	AdditionalConnectionInfo additionalConnInfo;
 	
 	WorkerManager wm;
 	Envelope requestEnvelope;
@@ -50,9 +52,10 @@ public class GetWorkerRequest extends WorkerManagerRequest {
 	 int siteCount;
 	 boolean strict;
 	
-	public GetWorkerRequest(UserAuthentication userAuth, StorageGroup group) {
+	public GetWorkerRequest(UserAuthentication userAuth, AdditionalConnectionInfo additionalConnInfo, StorageGroup group) {
 		this.userAuth = userAuth;
 		this.storageGroup = group;
+		this.additionalConnInfo = additionalConnInfo;
 //		group.prepareForTransport(); // to ensure that JPA loads the sites & gens
 	}
 
@@ -69,7 +72,7 @@ public class GetWorkerRequest extends WorkerManagerRequest {
 	}
 	
 	public void fulfillGetWorkerRequest(Collection<? extends StorageSite> storageSites) throws PEException {
-		Map<StorageSite, Worker> theWorkers = wm.getWorkerMap(userAuth, storageSites);
+		Map<StorageSite, Worker> theWorkers = wm.getWorkerMap(userAuth, additionalConnInfo, storageSites);
 		ResponseMessage resp = new GetWorkerResponse(theWorkers);
 		wm.returnResponse(requestEnvelope, resp);
 	}

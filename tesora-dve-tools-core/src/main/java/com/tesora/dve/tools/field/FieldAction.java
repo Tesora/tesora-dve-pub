@@ -21,26 +21,22 @@ package com.tesora.dve.tools.field;
  * #L%
  */
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.PrintStream;
+import java.util.Properties;
 
-public class FieldActionManager {
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.upgrade.CatalogSchemaVersion;
 
-	private static final List<FieldAction> knownActions = new ArrayList<FieldAction>();
+public interface FieldAction {
 
-	static {
-		// knownActions.add(new <something>Action());
-	};
-	
-	public static List<FieldAction> getAllActions() {
-		return knownActions;
-	}
-	
-	public static FieldAction getAction(String name) {
-		for(FieldAction action : knownActions) {
-			if(name.equalsIgnoreCase(action.getName()));
-				return action;
-		}
-		return null;
-	}
+	public String getName();
+
+	public String getDescription();
+
+	public boolean isValid(CatalogSchemaVersion currentVersion);
+
+	public void report(Properties connectionProperties, PrintStream reportWriter) throws PEException;
+
+	public void execute(Properties connectionProperties, PrintStream reportWriter) throws PEException;
+
 }

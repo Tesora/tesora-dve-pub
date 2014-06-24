@@ -57,6 +57,7 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
@@ -205,7 +206,7 @@ public class WorkerGroup {
 	private WorkerGroup provision(Agent sender, Manager manager, UserAuthentication userAuth) throws PEException, PEException {
 		this.manager = manager;
 		this.userAuthentication = userAuth;
-		GetWorkerRequest req = new GetWorkerRequest(userAuth, group);
+		GetWorkerRequest req = new GetWorkerRequest(userAuth, getAdditionalConnInfo(sender), group);
         Envelope e = sender.newEnvelope(req).to(Singletons.require(HostService.class).getWorkerManagerAddress());
 		GetWorkerResponse resp = (GetWorkerResponse) sender.sendAndReceive(e);
 		workerMap.putAll(resp.getWorkers());
@@ -213,7 +214,7 @@ public class WorkerGroup {
 	}
 	
 	public WorkerGroup clone(Agent sender) throws PEException {
-		CloneWorkerRequest req = new CloneWorkerRequest(userAuthentication, workerMap.keySet());
+		CloneWorkerRequest req = new CloneWorkerRequest(userAuthentication, getAdditionalConnInfo(sender), workerMap.keySet());
         Envelope e = sender.newEnvelope(req).to(Singletons.require(HostService.class).getWorkerManagerAddress());
 		GetWorkerResponse resp = (GetWorkerResponse) sender.sendAndReceive(e);
 		WorkerGroup newWG = new WorkerGroup(group);
@@ -562,6 +563,22 @@ public class WorkerGroup {
 	
 	public void addCleanupStep(WorkerRequest req) {
 		cleanupSteps.add(req);
+	}
+
+	AdditionalConnectionInfo getAdditionalConnInfo(Agent conn) {
+		AdditionalConnectionInfo additionalConnInfo = new AdditionalConnectionInfo();
+		additionalConnInfo.setClientCapabilities(getPSiteClientCapabilities(conn));
+		return additionalConnInfo;
+	}
+
+	long getPSiteClientCapabilities(Agent conn) {
+		long psiteClientCapabilities = 0;
+		if (conn instanceof SSConnection) {
+			psiteClientCapabilities = ((SSConnection)conn).getClientCapabilities().getClientCapability();
+		}
+		// just make sure the default psite flags are set
+		psiteClientCapabilities |= ClientCapabilities.DEFAULT_PSITE_CAPABILITIES;
+		return psiteClientCapabilities;
 	}
 	
 	public static class WorkerGroupFactory {
