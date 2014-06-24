@@ -22,9 +22,12 @@ package com.tesora.dve.sql;
  */
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -353,5 +356,43 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 				+ "where (this_.id in (5567))"));
 
 		runTest(tests);
+	}
+	
+	@Ignore
+	@Test
+	public void testPE1511() throws Throwable {
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511 (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci)"));
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_large (value1 VARCHAR(32000), value2 TEXT, value3 VARCHAR(1000), value4 VARCHAR(32000)) CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_bin (value1 VARCHAR(256), value2 TEXT) CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_utf8 (value1 VARCHAR(256), value2 TEXT)"));
+
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511 CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci"));
+		tests.addAll(buildAssertColumnTypeFun("pe1511", Arrays.asList("value1", "value2")));
+
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_large CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci"));
+		tests.addAll(buildAssertColumnTypeFun("pe1511_large", Arrays.asList("value1", "value2", "value3", "value4")));
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_large CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		tests.addAll(buildAssertColumnTypeFun("pe1511_large", Arrays.asList("value1", "value2", "value3", "value4")));
+
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_utf8 CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		tests.addAll(buildAssertColumnTypeFun("pe1511_utf8", Arrays.asList("value1", "value2")));
+
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_bin CONVERT TO CHARACTER SET utf8 COLLATE utf8_bin"));
+		tests.addAll(buildAssertColumnTypeFun("pe1511_bin", Arrays.asList("value1", "value2")));
+
+		runTest(tests);
+	}
+
+	private List<StatementMirrorFun> buildAssertColumnTypeFun(final String tableName, final List<String> columnNames) throws Throwable {
+		final List<StatementMirrorFun> tests = new ArrayList<StatementMirrorFun>();
+		for (final String column : columnNames) {
+			tests.add(new StatementMirrorFun(true, true,
+					"SELECT DISTINCT COLUMN_TYPE, CHARACTER_SET_NAME, COLLATION_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE (TABLE_NAME = '"
+							+ tableName + "' AND COLUMN_NAME = '" + column + "')"));
+		}
+
+		return tests;
 	}
 }
