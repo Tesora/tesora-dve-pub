@@ -1043,4 +1043,5 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	public boolean mustBeCreated() {
 		return false;
 	}
+	
 }

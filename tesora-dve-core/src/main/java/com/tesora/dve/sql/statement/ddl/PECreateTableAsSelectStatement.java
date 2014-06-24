@@ -32,6 +32,7 @@ import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
@@ -227,16 +228,19 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		if (mustRebuildCTS) 
 			// we need to rebuild the create table stmt
 			getTable().setDeclaration(pc, getTable());
-		ListOfPairs<SchemaCacheKey<?>,InvalidationScope> clears = new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
-		clears.add(getTable().getCacheKey(),InvalidationScope.LOCAL);
-		for(DelayedFKDrop dfd : related)
-			clears.add(dfd.getTable().getCacheKey(),InvalidationScope.LOCAL);
-		for(TableCacheKey tck : alsoClear)
-			clears.add(tck, InvalidationScope.LOCAL);
+		CacheInvalidationRecord record = null;
+		if (!getTable().isUserlandTemporaryTable()) {
+			ListOfPairs<SchemaCacheKey<?>,InvalidationScope> clears = new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
+			clears.add(getTable().getCacheKey(),InvalidationScope.LOCAL);
+			for(DelayedFKDrop dfd : related)
+				clears.add(dfd.getTable().getCacheKey(),InvalidationScope.LOCAL);
+			for(TableCacheKey tck : alsoClear)
+				clears.add(tck, InvalidationScope.LOCAL);
+			record = new CacheInvalidationRecord(clears);
+		}
 
 		CreateTableViaRedistCallback cb =
-				new CreateTableViaRedistCallback((ComplexPETable)getTable(),steps,redistOffset,
-						new CacheInvalidationRecord(clears));
+				new CreateTableViaRedistCallback(pc,(ComplexPETable)getTable(),steps,redistOffset,record);
 		
 		inhibitor.setCallback(cb);
 		
@@ -411,8 +415,13 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		private List<CatalogEntity> deletes;
 		
 		private boolean redistCompleted = false;
+
+		// create temporary table as select support
+		private final SchemaContext context;
+		int pincount = 0;
+
 		
-		public CreateTableViaRedistCallback(ComplexPETable tab, List<QueryStep> steps,
+		public CreateTableViaRedistCallback(SchemaContext cntxt, ComplexPETable tab, List<QueryStep> steps,
 				int redistOffset,
 				CacheInvalidationRecord record) {
 			this.target = tab;
@@ -421,28 +430,34 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 			this.deletes = null;
 			this.record = record;
 			this.redistOffset = redistOffset;
+			this.context = cntxt;
 		}
 		
 		@Override
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
 			// the table would have been updated via the callback, so now we just build a new context
 			// and persist out the updates
-			SchemaContext sc = SchemaContext.createContext(conn);
-			sc.forceMutableSource();
-
-			updates = new ArrayList<CatalogEntity>();
 			deletes = Collections.emptyList();
-
-			sc.beginSaveContext();
-			try {
-				target.persistTree(sc);
-				sc.getSource().setLoaded(target, target.getCacheKey());
-				for(DelayedFKDrop dfd : related) {
-					dfd.getTable().persistTree(sc);
+			updates = new ArrayList<CatalogEntity>();
+			if (target.isUserlandTemporaryTable()) {
+				updates.add(new TemporaryTable(target.getName().getUnqualified().getUnquotedName().get(),
+						target.getPEDatabase(context).getName().getUnqualified().getUnquotedName().get(),
+						target.getEngine().getPersistent(),
+						conn.getConnectionId()));
+			} else {
+				SchemaContext sc = SchemaContext.makeMutableIndependentContext(context);
+				
+				sc.beginSaveContext();
+				try {
+					target.persistTree(sc);
+					sc.getSource().setLoaded(target, target.getCacheKey());
+					for(DelayedFKDrop dfd : related) {
+						dfd.getTable().persistTree(sc);
+					}
+					updates.addAll(sc.getSaveContext().getObjects());
+				} finally {
+					sc.endSaveContext();
 				}
-				updates.addAll(sc.getSaveContext().getObjects());
-			} finally {
-				sc.endSaveContext();
 			}
 			
 		}
@@ -532,6 +547,29 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 			// nothing to do - this is handled elsewhere
 		}
 		
+		public void onCommit(SSConnection conn, CatalogDAO c, WorkerGroup wg) {
+			if (!target.isUserlandTemporaryTable()) return;
+			pincount++;
+			if (pincount == 1) {
+				wg.markPinned();
+				context.getTemporaryTableSchema().addTable(context, target);
+				// if we already have it we won't do it again
+				conn.acquireInflightTemporaryTablesLock();
+			}
+		}
+		
+		public void onRollback(SSConnection conn, CatalogDAO c, WorkerGroup wg) {
+			if (!target.isUserlandTemporaryTable()) return;
+			if (pincount == 1) {
+				wg.clearPinned();
+				pincount--;
+				context.getTemporaryTableSchema().removeTable(context, target);
+				if (context.getTemporaryTableSchema().isEmpty())
+					conn.releaseInflightTemporaryTablesLock();
+			}
+		}
+
+		
 	}
 	
 	protected class CTATableGenerator extends TempTableGenerator {
@@ -548,7 +586,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 				TempTableDeclHints tempHints, String tempTableName,
 				PersistentDatabase database, ColumnSet metadata, DistributionModel tempDist) throws PEException {
 
-			PETable target = getTable();
+			ComplexPETable target = (ComplexPETable) getTable();
 			
 			for(ColumnMetadata cm : metadata.getColumnList()) {
 				UserColumn uc = new UserColumn(cm);
@@ -562,7 +600,8 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 
 			context.beginSaveContext();
 			try {
-				return target.getPersistent(context);
+				// need a different overload here
+				return target.buildUserTableForRedist(context);
 			} finally {
 				context.endSaveContext();
 			}

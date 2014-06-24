@@ -403,4 +403,56 @@ public class TemporaryTableTest extends SchemaTest {
 		
 	}
 	
+	@Test
+	public void testTemporaryCTA() throws Throwable {
+		DBHelperConnectionResource conn1 = null;
+		DBHelperConnectionResource conn2 = null;
+		
+		String globalQuery = 
+				"select * from information_schema.global_temporary_tables";
+		
+		try {
+			conn1 = new PortalDBHelperConnectionResource();
+			conn2 = new PortalDBHelperConnectionResource();
+			conn1.execute("use " + sysDDL.getDatabaseName());
+			conn2.execute("use " + sysDDL.getDatabaseName());
+
+			conn1.execute("create table ctasrca (id int, fid int, av varchar(8), primary key (id)) random distribute");
+			conn1.execute("create range ctarange (int) persistent group " + sysDDL.getPersistentGroup().getName());
+			conn1.execute("create table ctasrcb (id int, fid int, bv varchar(8), primary key(id)) range distribute on (id) using ctarange");
+			conn1.execute("insert into ctasrca (id,fid,av) values (1,1,'aone'),(2,2,'atwo'),(3,3,'athree'),(4,4,'afour'),(5,5,'afive')");
+			conn1.execute("insert into ctasrcb (id,fid,bv) values (2,2,'btwo'),(4,4,'bfour')");
+			
+			conn2.assertResults(globalQuery, br());
+			
+			conn1.execute("create temporary table ctatarg (primary key (id)) "
+					+"range distribute on (id) using ctarange "
+					+"select a.id as id, a.av as lv, b.bv as rv from ctasrca a inner join ctasrcb b on a.id = b.id");
+			
+			conn2.assertResults(globalQuery, 
+					br(nr,"LocalhostCoordinationServices:1",ignore,"sysdb","ctatarg","InnoDB"));
+						
+			conn1.assertResults("select count(*) from ctatarg",br(nr,2L));
+			
+			conn1.disconnect();
+			conn1 = null;
+
+			conn2.execute("drop table ctasrca, ctasrcb");			
+			
+			conn2.assertResults(globalQuery, br());
+		} finally {
+			if (conn1 != null) try {
+				conn1.disconnect();
+				conn1 = null;
+			} catch (Throwable t) {
+				// ignore
+			}
+			if (conn2 != null) try {
+				conn2.disconnect();
+				conn2 = null;
+			} catch (Throwable t) {
+				// ignore
+			}
+		}
+	}
 }

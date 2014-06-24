@@ -239,6 +239,10 @@ public class SchemaContext {
 		mutableSourceOverride = b;
 	}
 	
+	public Boolean getMutableSourceOverride() {
+		return mutableSourceOverride;
+	}
+	
 	public <T> SchemaEdge<T> buildEdgeFromKey(SchemaCacheKey<T> sck, boolean persistent) {
 		if (!persistent) throw new SchemaException(Pass.SECOND, "Invalid use of buildEdge - using key based build edge on a transient edge");
 		return getSource().buildEdgeFromKey(sck);

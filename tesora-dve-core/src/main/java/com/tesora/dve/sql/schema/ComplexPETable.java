@@ -101,9 +101,26 @@ public class ComplexPETable extends PETable implements AutoIncrement {
 	
 	@Override
 	public UserTable persistTree(SchemaContext sc, boolean forRefresh) throws PEException {
-		if (isUserlandTemporaryTable())
+		TemporaryTableType ttt = getTemporaryTableType();
+		if (ttt != null && !ttt.isPersisted())
 			return null;
 		return super.persistTree(sc, forRefresh);
+	}
+	
+	public UserTable buildUserTableForRedist(SchemaContext sc) throws PEException {
+		TemporaryTableType ttt = getTemporaryTableType();
+		Boolean mutWas = sc.getMutableSourceOverride();
+		try {
+			if (ttt != null) {
+				sc.setMutableSourceOverride(true);
+				ttt.setPersisted();
+			}
+			return super.persistTree(sc, false);
+		} finally {
+			sc.setMutableSourceOverride(mutWas);
+			if (ttt != null)
+				ttt.clearPersisted();
+		}
 	}
 	
 	@Override
@@ -191,6 +208,8 @@ public class ComplexPETable extends PETable implements AutoIncrement {
 		
 		private long autoincValue = -1; // unused
 		
+		private boolean persist = false;
+		
 		@Override
 		public boolean hasPersistentTable() {
 			return true;
@@ -236,6 +255,18 @@ public class ComplexPETable extends PETable implements AutoIncrement {
 		
 		public boolean hasAutoIncrement() {
 			return autoincValue > -1;
+		}
+		
+		void setPersisted() {
+			persist = true;
+		}
+		
+		void clearPersisted() {
+			persist = false;
+		}
+		
+		boolean isPersisted() {
+			return persist;
 		}
 	}
 

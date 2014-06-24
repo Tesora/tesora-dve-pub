@@ -743,7 +743,6 @@ public class PECreateTableStatement extends
 		@Override
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
 			this.updates = new ArrayList<CatalogEntity>();
-			CatalogDAO c = conn.getCatalogDAO();
 			updates.add(new TemporaryTable(table.getName().getUnqualified().getUnquotedName().get(),
 					table.getPEDatabase(context).getName().getUnqualified().getUnquotedName().get(),
 					table.getEngine().getPersistent(),
