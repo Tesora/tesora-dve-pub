@@ -55,7 +55,7 @@ import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 	
 	public interface Factory {
-		public Worker newWorker(UserAuthentication auth, StorageSite site) throws PEException;
+		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PEException;
 
 		public void onSiteFailure(StorageSite site) throws PEException;
 
@@ -74,6 +74,7 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 
 	StorageSite site;
 	UserAuthentication userAuthentication;
+	AdditionalConnectionInfo additionalConnInfo;
 	
 	@Override
 	public String toString() {
@@ -96,13 +97,14 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 
 	long lastAccessTime = System.currentTimeMillis();
 
-	Worker(UserAuthentication auth, StorageSite site) throws PEException {
+	Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PEException {
 		this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
 		this.site = site;
 		this.userAuthentication = auth;
+		this.additionalConnInfo = additionalConnInfo;
 	}
 
-	public abstract WorkerConnection getConnection(StorageSite site, UserAuthentication auth);
+	public abstract WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth);
 
 
 	void sendStatistics(WorkerRequest wReq, long execTime) throws PEException {
@@ -195,7 +197,7 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		if (wConnection == null) {
 			if (connectionAllocated)
 				throw new PECodingException("Worker connection reallocated");
-			wConnection = getConnection(site, userAuthentication);
+			wConnection = getConnection(site, additionalConnInfo, userAuthentication);
 			connectionAllocated = true;
 		}
 		return wConnection;

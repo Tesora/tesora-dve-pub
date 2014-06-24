@@ -21,22 +21,17 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.exceptions.PESQLException;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 
-public class MasterMasterConnection extends SingleDirectConnection {
+public class AdditionalConnectionInfo {
 
-	public MasterMasterConnection(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) {
-		super(auth, additionalConnInfo, site);
+	long clientCapabilities = ClientCapabilities.DEFAULT_PSITE_CAPABILITIES;
+
+	public long getClientCapabilities() {
+		return clientCapabilities;
 	}
 
-	@Override
-	protected void onCommunicationsFailure(Worker w) throws PESQLException {
-		w.onCommunicationsFailure();
-	}
-
-	@Override
-	protected SingleDirectStatement getNewStatement(Worker w) throws PESQLException {
-		return new MasterMasterStatement(w, getConnection());
-	}
+	public void setClientCapabilities(long clientCapabilities) {
+		this.clientCapabilities = clientCapabilities;
+	} 
 }

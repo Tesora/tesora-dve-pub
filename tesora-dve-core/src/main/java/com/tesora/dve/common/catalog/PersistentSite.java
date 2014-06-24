@@ -59,6 +59,7 @@ import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.annos.TableView;
 import com.tesora.dve.sql.schema.PEStorageSite.TCacheSite;
+import com.tesora.dve.worker.AdditionalConnectionInfo;
 import com.tesora.dve.worker.MasterMasterWorker;
 import com.tesora.dve.worker.SingleDirectWorker;
 import com.tesora.dve.worker.UserAuthentication;
@@ -229,12 +230,12 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 	}
 
 	@Override
-	public Worker createWorker(UserAuthentication auth) throws PEException {
+	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo) throws PEException {
 		// If the user is the admin user then use site creds instead of user creds
 		if(auth.isAdminUser())
-			return getWorkerFactory().newWorker(getMasterInstance().getAuthentication(), this);
+			return getWorkerFactory().newWorker(getMasterInstance().getAuthentication(), additionalConnInfo, this);
 		
-		return getWorkerFactory().newWorker(auth, this);
+		return getWorkerFactory().newWorker(auth, additionalConnInfo, this);
 	}
 
 	public static Worker.Factory getWorkerFactory(String haType) {

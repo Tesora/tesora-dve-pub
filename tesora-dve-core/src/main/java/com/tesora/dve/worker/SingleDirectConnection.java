@@ -41,6 +41,7 @@ import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBConnection.Factory;
 import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
@@ -76,16 +77,19 @@ public class SingleDirectConnection implements WorkerConnection {
 	}
 	
 	static class DSCacheKey {
+		final long CLIENT_CAPABILITIES_MASK = ClientCapabilities.DEFAULT_PSITE_CAPABILITIES | ClientCapabilities.CLIENT_FOUND_ROWS;
 		String userId;
 		String password;
 		String url;
 		boolean adminUser;
+		long clientCapabilities;
 		StorageSite site;
-		DSCacheKey(UserAuthentication auth, StorageSite site) {
+		DSCacheKey(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) {
 			this.userId = auth.getUserid();
 			this.password = auth.getPassword();
 			this.url = site.getMasterUrl();
 			this.adminUser = auth.isAdminUser();
+			this.clientCapabilities = additionalConnInfo.getClientCapabilities() & CLIENT_CAPABILITIES_MASK;
 			this.site = site;
 		}
 		@Override
@@ -96,6 +100,7 @@ public class SingleDirectConnection implements WorkerConnection {
 			result = prime * result + ((url == null) ? 0 : url.hashCode());
 			result = prime * result
 					+ ((userId == null) ? 0 : userId.hashCode());
+			result = prime * result + (int)clientCapabilities;
 			return result;
 		}
 		@Override
@@ -186,13 +191,14 @@ public class SingleDirectConnection implements WorkerConnection {
 		DBType dbType = DBType.valueOf(dbUrl.getSubProtocol().toUpperCase());
 		
 		DBConnection dbConnection = connectionFactoryMap.get(dbType).newInstance(key.site);
-		dbConnection.connect(key.url, key.userId, key.password);
+		dbConnection.connect(key.url, key.userId, key.password, key.clientCapabilities);
 
 		return new DSCacheEntry(dbConnection);
 	}
 
 	final UserAuthentication userAuthentication;
 	final StorageSite site;
+	final AdditionalConnectionInfo additionalConnInfo;
 
 	AtomicReference<DSCacheEntry> datasourceInfo = new AtomicReference<SingleDirectConnection.DSCacheEntry>();
 	
@@ -200,9 +206,10 @@ public class SingleDirectConnection implements WorkerConnection {
 
 	private DSCacheKey datasourceKey;
 
-	public SingleDirectConnection(final UserAuthentication auth, final StorageSite site) {
+	public SingleDirectConnection(final UserAuthentication auth, final AdditionalConnectionInfo additionalConnInfo, final StorageSite site) {
 		this.userAuthentication = auth;
 		this.site = site;
+		this.additionalConnInfo = additionalConnInfo;
 	}
 
 	@Override
@@ -233,7 +240,7 @@ public class SingleDirectConnection implements WorkerConnection {
 		if (cacheEntry == null) {
 			try {
 				synchronized (this) {
-					datasourceKey = new DSCacheKey(userAuthentication, site);
+					datasourceKey = new DSCacheKey(userAuthentication, additionalConnInfo, site);
 				}
 				if (suppressConnectionCaching) {
 					cacheEntry = getCacheEntry(datasourceKey);

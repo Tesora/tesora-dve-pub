@@ -30,6 +30,7 @@ import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.worker.AdditionalConnectionInfo;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 
@@ -103,7 +104,7 @@ public class DynamicSitePlaceHolder implements StorageSite {
 	}
 
 	@Override
-	public Worker createWorker(UserAuthentication auth) throws PEException {
+	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo) throws PEException {
 		return null;
 	}
 
