@@ -21,15 +21,13 @@ package com.tesora.dve.sql.statement.ddl.alter;
  * #L%
  */
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.resultset.ColumnMetadata;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PETable;
@@ -58,14 +56,13 @@ public class ConvertToAction extends ClonableAlterTableAction {
 
 		@Override
 		public AlterTableAction alterTable(SchemaContext sc, PETable tab) {
-			final DBNative nativeDb = Singletons.require(HostService.class).getDBNative();
 			for (final PEColumn column : this.columns) {
 				if (column.hasStringType()) {
 					final Name columnName = column.getName();
 					final ColumnMetadata metadata = ConvertToAction.this.columnMetadata.get(columnName.get());
 					if (metadata != null) {
 						// First change the column type, then update the charset.
-						column.setType(TextType.buildType(metadata.getDataType(), metadata.getSize(), nativeDb));
+						column.setType(TextType.buildType(metadata.getNativeTypeName(), metadata.getSize(), Collections.EMPTY_LIST));
 						column.takeCharsetSettings(ConvertToAction.this.charSet, ConvertToAction.this.collation, true);
 					} else {
 						throw new PECodingException("No native metadata available for column " + columnName.getSQL());

@@ -58,7 +58,7 @@ import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEDatabase;
-import com.tesora.dve.sql.schema.PEStorageGroup;
+import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -374,6 +374,8 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 					new UnqualifiedName(UserTable.getNewTempTableName())
 					);
 
+			final PEPersistentGroup sg = buildOneSiteGroup(sc, false);
+
 			/*
 			 * Make sure the actual sample gets created as a TEMPORARY table in
 			 * the user database so that it always gets removed.
@@ -381,7 +383,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			final ComplexPETable temporarySampleTarget = new ComplexPETable(sc,
 					sampleTargetName, sampleTargetFieldsAndKeys,
 					sampleTarget.getDistributionVector(sc), sampleTargetModifiers,
-					sampleTarget.getPersistentStorage(sc), sampleTargetDatabase, TableState.SHARED);
+					sg, sampleTargetDatabase, TableState.SHARED);
 			temporarySampleTarget.withTemporaryTable(sc);
 
 			final TableInstance targetTableInstance = new TableInstance(temporarySampleTarget, temporarySampleTarget.getName(), null, true);
@@ -399,8 +401,6 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 					targetTableInstance.getTableKey().isUserlandTemporaryTable());
 
 			final ExecutionSequence es = new ExecutionSequence(null);
-
-			final PEStorageGroup sg = buildOneSiteGroup(sc, false);
 
 			es.append(new SessionExecutionStep(null, sg, createSampleTable.getSQL(sc)));
 			es.append(new SessionExecutionStep(null, sg, alterSampleTable.getSQL(sc)));
@@ -429,7 +429,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 
 		@Override
 		public boolean canRetry(Throwable t) {
-			return true;
+			return false;
 		}
 
 		@Override
