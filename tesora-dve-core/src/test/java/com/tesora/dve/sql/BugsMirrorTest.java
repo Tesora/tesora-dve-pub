@@ -392,14 +392,8 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_utf8 CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
 		tests.addAll(buildAssertColumnTypeFun("pe1511_utf8", Arrays.asList("value1", "value2")));
 
-		/*
-		 * The column metadata we collect from the persistent site sime to be
-		 * incorrect.
-		 * The actual types on the native are: VARCHAR(256) and MEDIUMTEXT
-		 * We collect: VARBINARY(768) and LONGBLOB
-		 */
-		//		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_bin CONVERT TO CHARACTER SET utf8 COLLATE utf8_bin"));
-		//		tests.addAll(buildAssertColumnTypeFun("pe1511_bin", Arrays.asList("value1", "value2")));
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_bin CONVERT TO CHARACTER SET utf8 COLLATE utf8_bin"));
+		tests.addAll(buildAssertColumnTypeFun("pe1511_bin", Arrays.asList("value1", "value2")));
 
 		runTest(tests);
 	}

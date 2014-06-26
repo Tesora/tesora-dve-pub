@@ -21,13 +21,11 @@ package com.tesora.dve.sql.statement.ddl.alter;
  * #L%
  */
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PETable;
@@ -35,7 +33,7 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.modifiers.CharsetTableModifier;
 import com.tesora.dve.sql.schema.modifiers.CollationTableModifier;
-import com.tesora.dve.sql.schema.types.TextType;
+import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.ddl.alter.AlterTableAction.ClonableAlterTableAction;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 
@@ -59,10 +57,10 @@ public class ConvertToAction extends ClonableAlterTableAction {
 			for (final PEColumn column : this.columns) {
 				if (column.hasStringType()) {
 					final Name columnName = column.getName();
-					final ColumnMetadata metadata = ConvertToAction.this.columnMetadata.get(columnName.get());
-					if (metadata != null) {
+					final Type columnType = ConvertToAction.this.columnMetadata.get(columnName.get());
+					if (columnType != null) {
 						// First change the column type, then update the charset.
-						column.setType(TextType.buildType(metadata.getNativeTypeName(), metadata.getSize(), Collections.EMPTY_LIST));
+						column.setType(columnType);
 						column.takeCharsetSettings(ConvertToAction.this.charSet, ConvertToAction.this.collation, true);
 					} else {
 						throw new PECodingException("No native metadata available for column " + columnName.getSQL());
@@ -99,7 +97,7 @@ public class ConvertToAction extends ClonableAlterTableAction {
 
 	private final CharsetTableModifier charSet;
 	private final CollationTableModifier collation;
-	private final Map<String, ColumnMetadata> columnMetadata = new HashMap<String, ColumnMetadata>();
+	private final Map<String, Type> columnMetadata = new HashMap<String, Type>();
 
 	public ConvertToAction(final String charSet, final String collation) {
 		if ((charSet == null) || (collation == null)) {
@@ -160,7 +158,7 @@ public class ConvertToAction extends ClonableAlterTableAction {
 		return this.collation.getCollation();
 	}
 
-	public Map<String, ColumnMetadata> getColumnMetadataContainer() {
+	public Map<String, Type> getColumnMetadataContainer() {
 		return this.columnMetadata;
 	}
 

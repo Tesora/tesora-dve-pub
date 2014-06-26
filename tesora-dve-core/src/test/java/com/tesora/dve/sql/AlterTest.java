@@ -536,23 +536,6 @@ public class AlterTest extends SchemaTest {
 	}
 
 	@Test
-	public void testPE1511() throws Throwable {
-		conn.execute("CREATE TABLE pe1511 (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci)");
-		conn.execute("CREATE TABLE pe1511_large (value1 VARCHAR(32000), value2 TEXT, value3 VARCHAR(1000), value4 VARCHAR(32000)) CHARACTER SET latin1 COLLATE latin1_swedish_ci");
-		conn.execute("CREATE TABLE pe1511_bin (value1 VARCHAR(256), value2 TEXT) CHARACTER SET latin1 COLLATE latin1_swedish_ci");
-		conn.execute("CREATE TABLE pe1511_utf8 (value1 VARCHAR(256), value2 TEXT)");
-
-		conn.execute("ALTER TABLE pe1511 CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci");
-
-		conn.execute("ALTER TABLE pe1511_large CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci");
-		conn.execute("ALTER TABLE pe1511_large CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci");
-
-		conn.execute("ALTER TABLE pe1511_utf8 CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci");
-
-		conn.execute("ALTER TABLE pe1511_bin CONVERT TO CHARACTER SET utf8 COLLATE utf8_bin");
-	}
-
-	@Test
 	public void testTemplateModes() throws Throwable {
 		try {
 			conn.execute(SchemaTest.buildAlterTemplateModeStmt(TemplateMode.OPTIONAL));
