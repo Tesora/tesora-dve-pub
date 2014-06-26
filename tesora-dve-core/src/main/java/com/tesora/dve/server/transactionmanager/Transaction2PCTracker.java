@@ -22,18 +22,15 @@ package com.tesora.dve.server.transactionmanager;
  */
 
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-
-import javax.sql.DataSource;
 
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
-import com.mchange.v2.c3p0.C3P0Registry;
+import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.TransactionRecord;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -62,7 +59,7 @@ public class Transaction2PCTracker {
         pendingOp = Singletons.require(HostService.class).submit(new Callable<Boolean>() {
             @Override
             public Boolean call() throws Exception {
-                return txnRec.recordPrepare(getCatalogDS());
+                return txnRec.recordPrepare(CatalogDAO.getCatalogDS());
             }
         });
 		
@@ -75,7 +72,7 @@ public class Transaction2PCTracker {
 		
 		finishPrepare();
 
-		if (!txnRec.recordCommit(getCatalogDS()))
+		if (!txnRec.recordCommit(CatalogDAO.getCatalogDS()))
 			throw new PECodingException("Unable to execute 2PC commit");
 
 		txnState = TxnState.COMMIT;
@@ -89,7 +86,7 @@ public class Transaction2PCTracker {
             @Override
             public void run() {
                 try {
-                    txnRec.clearTransactionRecord(getCatalogDS());
+                    txnRec.clearTransactionRecord(CatalogDAO.getCatalogDS());
                 } catch (Throwable t) {
                     logger.warn("Exception cleaning up transaction record for transaction " + txnRec.getXid(), t);
                 }
@@ -104,7 +101,7 @@ public class Transaction2PCTracker {
             @Override
             public void run() {
                 try {
-                    TransactionRecord.clearOldTransactionRecords(getCatalogDS());
+                    TransactionRecord.clearOldTransactionRecords(CatalogDAO.getCatalogDS());
                 } catch (Throwable t) {
                     logger.warn("Exception cleaning up old transaction records", t);
                 }
@@ -124,16 +121,10 @@ public class Transaction2PCTracker {
 	}
 	
 	public static Map<String, Boolean> getGlobalCommitMap() throws PEException {
-		return TransactionRecord.getGlobalCommitMap(getCatalogDS());
+		return TransactionRecord.getGlobalCommitMap(CatalogDAO.getCatalogDS());
 	}
 	
 	public static Map<String, Boolean> getCommitMapForHost(String host) throws PEException {
-		return TransactionRecord.getCommitMapByHost(getCatalogDS(), host);
-	}
-
-	private static DataSource getCatalogDS() {
-		@SuppressWarnings("unchecked")
-		Set<DataSource> c3p0pools = C3P0Registry.allPooledDataSources(); 
-		return c3p0pools.iterator().next();
+		return TransactionRecord.getCommitMapByHost(CatalogDAO.getCatalogDS(), host);
 	}
 }

@@ -43,6 +43,7 @@ import com.tesora.dve.db.mysql.common.JavaCharsetCatalog;
 import com.tesora.dve.db.mysql.common.SimpleCredentials;
 import com.tesora.dve.db.mysql.libmy.MyFieldPktResponse;
 import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQuitRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
@@ -64,7 +65,7 @@ public class AsyncExample {
 		final MyBackendDecoder.CharsetDecodeHelper charsetHelper = constructCharsetDecodeHelper();
 		final SimpleCredentials cred = constructCredentials(username, password, isClearText);
 		final JavaCharsetCatalog javaCharsetCatalog = constructJavaCharsetCatalog();
-		final MysqlClientAuthenticationHandler authHandler = new MysqlClientAuthenticationHandler(cred, javaCharsetCatalog);
+		final MysqlClientAuthenticationHandler authHandler = new MysqlClientAuthenticationHandler(cred, ClientCapabilities.DEFAULT_PSITE_CAPABILITIES, javaCharsetCatalog);
 
 		final NioEventLoopGroup connectionEventGroup = new NioEventLoopGroup(1);
 		final Bootstrap mysqlBootstrap = new Bootstrap();

@@ -94,7 +94,7 @@ public class PEDropTenantStatement extends
 		
 
 	
-	private static class DropTenantCallback implements DDLCallback {
+	private static class DropTenantCallback extends DDLCallback {
 
 		private PETenant tenant;
 		private SchemaContext context;
@@ -132,9 +132,6 @@ public class PEDropTenantStatement extends
 			return System.identityHashCode(this) + "@DropTenantCallback for " + tenant.getName();
 		}
 
-		@Override
-		public void beforeTxn(SSConnection conn, CatalogDAO c, WorkerGroup wg) throws PEException {
-		}
 
 		@Override
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {

@@ -37,6 +37,7 @@ import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.server.statistics.SiteStatKey.SiteType;
 import com.tesora.dve.sql.transform.execution.AdhocCatalogEntity;
 import com.tesora.dve.sql.util.ListOfPairs;
+import com.tesora.dve.worker.AdditionalConnectionInfo;
 import com.tesora.dve.worker.SingleDirectWorker;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
@@ -155,10 +156,10 @@ public class DynamicSiteInfo extends AbstractDynamicSiteInfo implements StorageS
 	private static SingleDirectWorker.Factory factory = new SingleDirectWorker.Factory();
 
 	@Override
-	public Worker createWorker(UserAuthentication auth, EventLoopGroup preferredEventLoop) throws PEException {
+	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {
 		// For dynamic sites we will use the site credentials rather than the
 		// ones passed in
-		return factory.newWorker(siteAuth, this, preferredEventLoop);
+		return factory.newWorker(siteAuth, additionalConnInfo, this, preferredEventLoop);
 	}
 
 	@Override

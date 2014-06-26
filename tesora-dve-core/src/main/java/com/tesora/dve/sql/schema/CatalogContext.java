@@ -42,6 +42,7 @@ import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.RawPlan;
 import com.tesora.dve.common.catalog.SiteInstance;
 import com.tesora.dve.common.catalog.TableVisibility;
+import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
@@ -189,6 +190,9 @@ public interface CatalogContext {
 	
 	public RawPlan findRawPlan(String name);
 	public List<RawPlan> findAllEnabledRawPlans();
+	
+	// find matching temporary table records on _this_ server
+	public List<TemporaryTable> findUserlandTemporaryTable(Integer connID, String dbName, String tabName);
 	
 	public void startTxn();
 	public void commitTxn();

@@ -64,10 +64,12 @@ public class MysqlClientAuthenticationHandler extends ByteToMessageDecoder {
     JavaCharsetCatalog javaCharsetCatalog;
 	Charset serverCharset = CharsetUtil.UTF_8;
 
+	long clientCapabilities;
 
-	public MysqlClientAuthenticationHandler(SimpleCredentials userCredentials, JavaCharsetCatalog javaCharsetCatalog) {
+	public MysqlClientAuthenticationHandler(SimpleCredentials userCredentials, long clientCapabilities, JavaCharsetCatalog javaCharsetCatalog) {
 		this.userCredentials = userCredentials;
         this.javaCharsetCatalog = javaCharsetCatalog;
+        this.clientCapabilities = clientCapabilities;
 	}
 
 
@@ -135,8 +137,8 @@ public class MysqlClientAuthenticationHandler extends ByteToMessageDecoder {
                 String salt = handshake.getSalt();
                 Charset charset = javaCharsetCatalog.findJavaCharsetById(handshake.getServerCharsetId());
                 int mysqlCharsetID = MysqlNativeConstants.MYSQL_CHARSET_UTF8;
-                int capabilitiesFlag = (int) (ClientCapabilities.CLIENT_PROTOCOL_41 | ClientCapabilities.CLIENT_SECURE_CONNECTION );
-                handshake.setServerCharset((byte) mysqlCharsetID);//WTF?
+                int capabilitiesFlag = (int) clientCapabilities;
+                handshake.setServerCharset((byte) mysqlCharsetID);
 
                 MSPAuthenticateV10MessageMessage.write(out, userName, userPassword, salt, charset, mysqlCharsetID, capabilitiesFlag);
                 ctx.writeAndFlush(out);

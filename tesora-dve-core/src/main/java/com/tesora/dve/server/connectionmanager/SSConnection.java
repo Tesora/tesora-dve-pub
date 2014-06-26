@@ -93,6 +93,7 @@ import com.tesora.dve.server.connectionmanager.messages.BeginTransactionRequestE
 import com.tesora.dve.server.connectionmanager.messages.CommitTransactionRequestExecutor;
 import com.tesora.dve.server.connectionmanager.messages.ConnectRequestExecutor;
 import com.tesora.dve.server.connectionmanager.messages.DBMetadataRequestExecutor;
+import com.tesora.dve.server.connectionmanager.messages.ExecuteRequestExecutor;
 import com.tesora.dve.server.connectionmanager.messages.FetchRequestExecutor;
 import com.tesora.dve.server.connectionmanager.messages.GetDatabaseRequestExecutor;
 import com.tesora.dve.server.connectionmanager.messages.GetTransactionStatusRequestExecutor;
@@ -122,6 +123,7 @@ import com.tesora.dve.variable.SessionVariableHandler;
 import com.tesora.dve.variable.VariableInfo;
 import com.tesora.dve.variable.VariableValueStore;
 import com.tesora.dve.worker.agent.Agent;
+import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.StatementManager;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.UserCredentials;
@@ -135,6 +137,8 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public static final String DYNAMIC_POLICY_VARIABLE_NAME = "dynamic_policy";
 	public static final String STORAGE_GROUP_VARIABLE_NAME = "storage_group";
 
+	public static final String USERLAND_TEMPORARY_TABLES_LOCK_NAME = "DVE.Userland.Temporary.Tables";
+	
 	static Logger logger = Logger.getLogger(SSConnection.class);
 
 	static final boolean transactionLoggingEnabled = !Boolean.getBoolean("SSConnection.suppressTransactionRecording");
@@ -204,6 +208,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	AcquiredLockSet nontxnLocks = new AcquiredLockSet();
 	
 	ClusterLock addGenerationReadLock = null; // set during txns to lock out addGeneration
+	// acquired when this connection has existing temporary tables.  used to prevent dropping
+	// a storage group from underneath 
+	ClusterLock inflightTemporaryTables = null;  
 	
 	Map<String, SSStatement> statementMap = new HashMap<String, SSStatement>();
 	
@@ -252,7 +259,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	// than calling close() directly, then there would be no need to synchronize.
 	@Override
 	public synchronized void close() throws PEException {
+		// if we have temporary tables, let them go (indy)
 		releaseGenerationLock();
+		dropUserlandTemporaryTables();
 		if (activeWG != null) {
 			StatementManager.INSTANCE.cancelAllStatements(currentConnId);
 			PerHostConnectionManager.INSTANCE.unRegisterConnection(currentConnId);
@@ -262,8 +271,8 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 					userRollbackTransaction();
 			} catch (Exception e) {
 			}
-			executeCleanupSteps();
-			clearAllWorkerGroups();
+			executeCleanupSteps(false);
+			clearAllWorkerGroups(true);
 			super.close();
 			connectionCount.release();
 			activeWG = null;
@@ -311,18 +320,24 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 
 	public <T> T executeInContext(Callable<T> task) throws Exception {
+		return executeInContext(true,task);
+	}
+
+	private <T> T executeInContext(boolean genlock, Callable<T> task) throws Exception {
 		T returnValue;
 
 		synchronized (this) {
 			pushDebugContext(nextRequestId());
 			try {
-				acquireGenerationLock();
+				if (genlock)
+					acquireGenerationLock();
 				try {
 					executingInContext = true;
 					returnValue = task.call();
 				} finally {
 					if (transactionDepth == 0) {
-						releaseGenerationLock();
+						if (genlock)
+							releaseGenerationLock();
 					}
 					purgeDynamicWorkerGroups();
 
@@ -337,9 +352,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 				PEThreadContext.popFrame();
 			}
 		}
-		return returnValue;
+		return returnValue;		
 	}
-
+	
 	private String nextRequestId() {
 		final int id;
 		if (requestCounter.compareAndSet(Integer.MAX_VALUE, 1))
@@ -379,6 +394,59 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		}
 	}
 
+	private void dropUserlandTemporaryTables() {
+		// make a separate list for this since executing these statements will cause the 
+		// temp table schema to be modified.
+		List<String> tempTabNames = schemaContext.getTemporaryTableSchema().getQualifiedTemporaryTableNames();
+		for(String tqn : tempTabNames) {
+			final MysqlTextResultCollector resultConsumer = new MysqlTextResultCollector();
+			final String sql = "DROP TEMPORARY TABLE IF EXISTS " + tqn;
+//			System.out.println(sql);
+			// executeInContext is ok here, because this is called ONLY from close(), which already has
+			// the mutex on this.
+			try {
+				executeInContext(false,new Callable<Throwable>() {
+					public Throwable call() {
+						try {
+							ExecuteRequestExecutor.execute(SSConnection.this, resultConsumer, sql.getBytes());
+						} catch (Throwable e) {
+//							e.printStackTrace();
+							return e;
+						}
+						return null;
+					}
+				});
+			} catch (Throwable t) {
+				// best effort
+			}
+		}
+	}
+	
+	public boolean hasUserlandTemporaryTables() {
+		return !schemaContext.getTemporaryTableSchema().isEmpty();
+	}
+	
+	// called from a ddl callback
+	public void acquireInflightTemporaryTablesLock() {
+		try {
+			if (inflightTemporaryTables == null) {
+				inflightTemporaryTables = GroupManager.getCoordinationServices().getClusterLock(USERLAND_TEMPORARY_TABLES_LOCK_NAME);
+				inflightTemporaryTables.sharedLock(this, "userland temporary table created");
+            }
+        } catch (RuntimeException t){
+            logger.warn("Problem getting userland temporary tables lock",t);
+            throw t;
+        }
+	}
+	
+	// called from a ddl callback
+	public void releaseInflightTemporaryTablesLock() {
+		if (inflightTemporaryTables != null) {
+			inflightTemporaryTables.sharedUnlock(this, "releasing userland temporary tables lock");
+			inflightTemporaryTables = null;
+		}
+	}
+	
 	public ResponseMessage executeMessageDirect(final Object message) throws Exception {
 		final SSConnection contextSSCon = this;
 		return executeInContext(new Callable<ResponseMessage>() {
@@ -428,7 +496,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
                                     synchronized (SSConnection.this) {
 //										if (logger.isDebugEnabled())
 //											logger.debug("NPE: SSConnection{"+getName()+"}.onTimeout calls clearAllWorkerGroups() due to non-transactional timeout");
-                                        clearAllWorkerGroups();
+                                        clearAllWorkerGroups(false);
                                     }
                                 } catch (PEException e) {
                                     logger.warn("Exception encountered clearing worker groups from connection", e);
@@ -452,7 +520,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public void doPostReplyProcessing() throws PEException {
 		if ( tempCleanupRequired && transactionDepth == 0) {
 			try {
-				executeCleanupSteps();
+				executeCleanupSteps(false);
 			} catch (PEException e) {
 				logger.warn("Exception during SSConnection post reply processing (temp cleanup)", e);
 			}
@@ -839,14 +907,17 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	@Override
 	public void returnWorkerGroup(WorkerGroup wg) throws PEException {
 		StorageGroup sg = wg.getGroup();
-		wg.disassociateFromConnection();
+		if (!wg.isPinned())
+			wg.disassociateFromConnection();
 		if (activeWG.containsKey(sg) && wg == activeWG.get(sg)) {
 			activeWG.remove(sg);
-			if (wg.isMarkedForPurge())
+			if (wg.isMarkedForPurge() && !wg.isPinned())
 				WorkerGroupFactory.purgeInstance(this, wg);
 			else
 				availableWG.put(sg, wg);
 		} else {
+			if (wg.isPinned())
+				return;
 			// This snippet addresses an issue where worker groups are given 
 			// back to the wg factory, even though they are still in the available list
 			boolean stillInAvailableList = false;
@@ -885,7 +956,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		activeWG.put(newWG.getGroup(), newWG);
 	}
 	
-	private void clearTemporaryWorkerGroups() throws PEException {
+	private void clearTemporaryWorkerGroups(boolean closing) throws PEException {
 		if (activeWG.size() > 0)
 			throw new PEException("transaction terminated with active workers");
 //		for (Iterator<Map.Entry<StorageGroup, WorkerGroup>> i = availableWG.entrySet().iterator(); i.hasNext();) {
@@ -895,10 +966,10 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 //				i.remove();
 //			}
 //		}
-		clearAllWorkerGroups();
+		clearAllWorkerGroups(closing);
 	}
 
-	public void clearAllWorkerGroups() throws PEException {
+	public void clearAllWorkerGroups(boolean closing) throws PEException {
 //		try {
 //			for (WorkerGroup wg : availableWG.values()) {
 //				if (logger.isDebugEnabled())
@@ -908,12 +979,19 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 //		} finally {
 //			availableWG.clear();
 //		}
-		for (Iterator<WorkerGroup> iwg = availableWG.values().iterator(); iwg.hasNext();) {
-			WorkerGroup wg = iwg.next();
-			if (logger.isDebugEnabled())
-				logger.debug("NPE: SSConnection{"+getName()+"}.clearAllWorkerGroups() clears "+wg);
-			iwg.remove();
-			WorkerGroupFactory.returnInstance(this, wg);
+		try {
+			for (Iterator<WorkerGroup> iwg = availableWG.values().iterator(); iwg.hasNext();) {
+				WorkerGroup wg = iwg.next();
+				if (!closing && wg.isPinned()) continue;
+				if (logger.isDebugEnabled())
+					logger.debug("NPE: SSConnection{"+getName()+"}.clearAllWorkerGroups() clears "+wg);
+				iwg.remove();
+				WorkerGroupFactory.returnInstance(this, wg);
+			}
+		} finally {
+			if (closing) 
+				// release the temporary table lock
+				releaseInflightTemporaryTablesLock();
 		}
 	}
 	
@@ -949,11 +1027,11 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		return schemaContext;
 	}
 	
-	private void executeCleanupSteps() throws PEException {
+	private void executeCleanupSteps(boolean closing) throws PEException {
 		if (activeWG != null) {
 			availableWG.putAll(activeWG);
 			activeWG.clear();
-			clearTemporaryWorkerGroups();
+			clearTemporaryWorkerGroups(closing);
 		}
 	}
 

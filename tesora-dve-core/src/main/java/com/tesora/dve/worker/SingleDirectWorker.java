@@ -32,9 +32,9 @@ public class SingleDirectWorker extends Worker {
 
 	public static class Factory implements Worker.Factory {
 		@Override
-		public Worker newWorker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop)
+		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop)
 				throws PEException {
-			return new SingleDirectWorker(auth, site, preferredEventLoop);
+			return new SingleDirectWorker(auth, additionalConnInfo, site, preferredEventLoop);
 		}
 
 		@Override
@@ -50,13 +50,13 @@ public class SingleDirectWorker extends Worker {
 
 	public static final String HA_TYPE = "Single";
 
-	protected SingleDirectWorker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
-		super(auth, site, preferredEventLoop);
+	protected SingleDirectWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
+		super(auth, additionalConnInfo, site, preferredEventLoop);
 	}
 
 	@Override
-	public WorkerConnection getConnection(StorageSite site, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
-		SingleDirectConnection wConnection = new SingleDirectConnection(auth, site, preferredEventLoop);
+	public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
+		SingleDirectConnection wConnection = new SingleDirectConnection(auth, additionalConnInfo, site, preferredEventLoop);
 //		if (logger.isDebugEnabled())
 //			try {
 //				logger.debug("Worker " + getName() + " gets JDBC connection " + wConnection.getConnection().toString());

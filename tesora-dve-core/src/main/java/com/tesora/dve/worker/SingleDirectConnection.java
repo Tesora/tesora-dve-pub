@@ -44,14 +44,18 @@ public class SingleDirectConnection implements WorkerConnection {
 
     final UserAuthentication userAuthentication;
 	final StorageSite site;
+	final AdditionalConnectionInfo additionalConnInfo;
 
 	AtomicReference<DirectConnectionCache.CachedConnection> datasourceInfo = new AtomicReference<>();
 	
 	WorkerStatement wSingleStatement = null;
 
-	public SingleDirectConnection(final UserAuthentication auth, final StorageSite site, EventLoopGroup preferredEventLoop) {
+
+
+	public SingleDirectConnection(final UserAuthentication auth, final AdditionalConnectionInfo additionalConnInfo, final StorageSite site, EventLoopGroup preferredEventLoop) {
 		this.userAuthentication = auth;
 		this.site = site;
+		this.additionalConnInfo = additionalConnInfo;
         if (preferredEventLoop == null)
             this.preferredEventLoop = DEFAULT_EVENTLOOP;
         else

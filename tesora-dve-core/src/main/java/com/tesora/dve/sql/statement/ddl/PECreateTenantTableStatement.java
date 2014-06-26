@@ -36,7 +36,6 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEForeignKeyColumn;
 import com.tesora.dve.sql.schema.PEKey;
-import com.tesora.dve.sql.schema.PEKeyColumn;
 import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;

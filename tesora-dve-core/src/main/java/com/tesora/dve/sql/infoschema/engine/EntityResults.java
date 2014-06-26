@@ -30,7 +30,6 @@ import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.SyntheticLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 

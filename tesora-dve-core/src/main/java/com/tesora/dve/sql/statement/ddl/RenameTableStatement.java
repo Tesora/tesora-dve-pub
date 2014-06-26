@@ -77,6 +77,7 @@ public class RenameTableStatement extends DDLStatement {
 				final PEAbstractTable<?> sourceTable = this.tableLookupCache.get(renameAction.getValue());
 				final Name targetName = renameAction.getKey();
 				renamePairs.add(sourceTable, targetName);
+				if (sourceTable.getDatabase(sc) == null) continue; // temporary table, nothing to invalidate
 				uniqueCacheKeys.add(new Pair<SchemaCacheKey<?>, InvalidationScope>(sourceTable.getDatabase(sc).getCacheKey(), InvalidationScope.CASCADE));
 			}
 		}

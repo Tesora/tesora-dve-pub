@@ -26,6 +26,7 @@ import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
@@ -55,12 +56,20 @@ public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
 	}
 
 	
-	public interface NestedOperationDDLCallback extends DDLCallback {
+	public static abstract class NestedOperationDDLCallback extends DDLCallback {
 		
-		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable;
+		public abstract void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable;
 
-		public void prepareNested(SSConnection conn, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException;
+		public void prepareNested(SSConnection conn, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+			
+		}
 		
+		@Override
+		public SQLCommand getCommand(CatalogDAO c) {
+			return SQLCommand.EMPTY;
+		}
+
+
 	}
 
 }

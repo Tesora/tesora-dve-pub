@@ -50,6 +50,7 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
@@ -85,6 +86,11 @@ public class WorkerGroup {
 	
 	boolean toPurge = false; // if true, the ssConnection will discard the group rather than caching it
 
+	// pin count - we increment for each create temporary table and decrement for each drop table that
+	// ends up being on a temporary table.  if the pin count > 0 we cannot purge this worker group,
+	// and this overrides toPruge.
+	int pinned = 0;
+	
     EventLoopGroup clientEventLoop;  //this is the thread that handles all IO for this group.
 
 	public interface Manager {
@@ -196,15 +202,15 @@ public class WorkerGroup {
 		this.manager = manager;
 		this.userAuthentication = userAuth;
         this.clientEventLoop = preferredEventLoop;
-		GetWorkerRequest req = new GetWorkerRequest(userAuth, group, preferredEventLoop);
+		GetWorkerRequest req = new GetWorkerRequest(userAuth, getAdditionalConnInfo(sender), group, preferredEventLoop);
         Envelope e = sender.newEnvelope(req).to(Singletons.require(HostService.class).getWorkerManagerAddress());
 		GetWorkerResponse resp = (GetWorkerResponse) sender.sendAndReceive(e);
 		workerMap.putAll(resp.getWorkers());
 		return this;
 	}
 	
-	public WorkerGroup clone(SSConnection sender) throws PEException {
-		CloneWorkerRequest req = new CloneWorkerRequest(userAuthentication, clientEventLoop, workerMap.keySet());
+	public WorkerGroup clone(Agent sender) throws PEException {
+		CloneWorkerRequest req = new CloneWorkerRequest(userAuthentication, getAdditionalConnInfo(sender), clientEventLoop, workerMap.keySet());
         Envelope e = sender.newEnvelope(req).to(Singletons.require(HostService.class).getWorkerManagerAddress());
 		GetWorkerResponse resp = (GetWorkerResponse) sender.sendAndReceive(e);
 		WorkerGroup newWG = new WorkerGroup(group);
@@ -531,7 +537,20 @@ public class WorkerGroup {
 	}
 	
 	public boolean isMarkedForPurge() {
+		if (this.pinned > 0) return false;
 		return this.toPurge;
+	}
+	
+	public void markPinned() {
+		this.pinned++;
+	}
+	
+	public void clearPinned() {
+		this.pinned--;
+	}
+	
+	public boolean isPinned() {
+		return pinned > 0;
 	}
 	
 	public void associateWithConnection(int connectionId) {
@@ -562,6 +581,22 @@ public class WorkerGroup {
 	
 	public void addCleanupStep(WorkerRequest req) {
 		cleanupSteps.add(req);
+	}
+
+	AdditionalConnectionInfo getAdditionalConnInfo(Agent conn) {
+		AdditionalConnectionInfo additionalConnInfo = new AdditionalConnectionInfo();
+		additionalConnInfo.setClientCapabilities(getPSiteClientCapabilities(conn));
+		return additionalConnInfo;
+	}
+
+	long getPSiteClientCapabilities(Agent conn) {
+		long psiteClientCapabilities = 0;
+		if (conn instanceof SSConnection) {
+			psiteClientCapabilities = ((SSConnection)conn).getClientCapabilities().getClientCapability();
+		}
+		// just make sure the default psite flags are set
+		psiteClientCapabilities |= ClientCapabilities.DEFAULT_PSITE_CAPABILITIES;
+		return psiteClientCapabilities;
 	}
 	
 	public static class WorkerGroupFactory {
@@ -701,14 +736,9 @@ public class WorkerGroup {
 		
 		public static WorkerGroup newInstance(SSConnection ssCon, StorageGroup sg, PersistentDatabase ctxDB) throws PEException {
 			WorkerGroup wg = workerGroupPool.get(sg, ssCon.getUserAuthentication());
-            Channel channel = ssCon.getChannel();
-            EventLoop eventLoop = channel == null ? null : channel.eventLoop();
-
 			if (wg == null) {
-                wg = new WorkerGroup(sg).provision(ssCon, ssCon, ssCon.getUserAuthentication(), eventLoop);
-			} else {
-                wg.bindToClientThread(eventLoop);
-            }
+				wg = new WorkerGroup(sg).provision(ssCon, ssCon, ssCon.getUserAuthentication());
+			}
 			try {
 				if (ctxDB != null) 
 					wg.setDatabase(ssCon, ctxDB);
@@ -725,7 +755,7 @@ public class WorkerGroup {
 		}
 
 		public static void returnInstance(final SSConnection ssCon, final WorkerGroup wg) throws PEException {
-			ssCon.verifyWorkerGroupCleanup(wg);
+			ssCon.verifyWorkerGroupCleanup(wg); 
 			if (suppressCaching || wg.isTemporaryGroup()  || wg.isMarkedForPurge()) {
 				if (logger.isDebugEnabled())
 					logger.debug("NPE: WorkerGroupFactory.returnInstance() calls releaseWorkers on " + wg);

@@ -50,6 +50,7 @@ import com.tesora.dve.common.catalog.ServerRegistration;
 import com.tesora.dve.common.catalog.SiteInstance;
 import com.tesora.dve.common.catalog.StorageGroupGeneration;
 import com.tesora.dve.common.catalog.TableVisibility;
+import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserColumn;
@@ -119,7 +120,8 @@ public class AnnotationInformationSchemaBuilder implements
 		new InfoTableConfig(ServerRegistration.class),
 		new InfoTableConfig(RawPlan.class),
 		new InfoTableConfig(UserView.class).withLogical(ViewCatalogInformationSchemaTable.class),
-		new InfoTableConfig(Collations.class)
+		new InfoTableConfig(Collations.class),
+		new InfoTableConfig(TemporaryTable.class)
 	};
 	
 	private static Type buildType(Class<?> retVal, InfoSchemaColumn info, Class<?> enc, DBNative dbn) throws PEException {

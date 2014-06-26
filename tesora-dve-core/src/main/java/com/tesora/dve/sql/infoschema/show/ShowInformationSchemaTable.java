@@ -57,6 +57,7 @@ import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.util.ListSet;
+import com.tesora.dve.sql.util.Pair;
 
 public class ShowInformationSchemaTable extends InformationSchemaTableView {
 
@@ -224,6 +225,15 @@ public class ShowInformationSchemaTable extends InformationSchemaTableView {
 	 * @param scoping
 	 */
 	protected void handleScope(SchemaContext sc, SelectStatement ss, Map<String,Object> params, List<Name> scoping) {
+	}
+	
+	protected Pair<String,String> decomposeScope(SchemaContext sc, List<Name> scoping) {
+		Name tablen = scoping.get(0);
+		Name dbn = (scoping.size() > 1 ? scoping.get(1) : null);
+		if (dbn == null && sc != null) dbn = sc.getCurrentDatabase().getName();
+		String tableName = (tablen == null ? null : tablen.get());
+		String dbName = (dbn == null ? null : dbn.get());
+		return new Pair<String,String>(dbName,tableName);		
 	}
 	
 	protected ViewQuery addAdditionalFiltering(ViewQuery vq) {

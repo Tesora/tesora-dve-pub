@@ -140,7 +140,7 @@ public class JoinExploder {
 			property = onProperty;
 			LogicalInformationSchemaTable nextTab = property.getReturnType();
 			TableInstance nti = new TableInstance(nextTab,null,newAlias,sc.getNextTable(),false);
-			rhs = new TableKey(nti);
+			rhs = TableKey.make(nti);
 		}
 		
 		public TableKey getLHS() {

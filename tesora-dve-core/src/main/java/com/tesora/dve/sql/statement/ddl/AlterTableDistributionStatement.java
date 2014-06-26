@@ -139,7 +139,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		// the dist vect is already in the appropriate context, let's get to work
 		// only one ddl step can actually be executed using the current  
 		PETable oldTab = getTarget();
-		TableKey oldTableKey = new TableKey(oldTab,sc.getNextTable());
+		TableKey oldTableKey = TableKey.make(sc, oldTab,sc.getNextTable());
 		long now = System.currentTimeMillis();
 		String mangledNewName = oldTab.getName().getUnquotedName().get() + now;
 		PETable newTab = oldTab.recreate(sc, oldTab.getDeclaration(), new LockInfo(LockType.EXCLUSIVE, "alter distribution"));
@@ -148,12 +148,12 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		newTab.setDistributionVector(sc, adv);
 		if (oldTab.hasAutoInc()) {
 			// figure out the autoinc value, copy it over
-			long nextVal = sc.getPolicyContext().readAutoIncrBlock(oldTableKey);
+			long nextVal = oldTableKey.readAutoIncrBlock(sc); 
 			if (nextVal > 1)
 				newTab.getModifiers().setModifier(new AutoincTableModifier(nextVal));
 		}
 		newTab.setDeclaration(sc, newTab);
-		TableKey newTableKey = new TableKey(newTab,sc.getNextTable());
+		TableKey newTableKey = TableKey.make(sc,newTab,sc.getNextTable());
 		// new table in hand, I can create it
 		PECreateTableStatement createNew = new PECreateTableStatement(newTab,false);
 		createNew.plan(sc,es, config);
@@ -162,7 +162,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 				null,Action.ALTER,new CopyTable((TableCacheKey)oldTab.getCacheKey(),
 						(TableCacheKey)PETable.getTableKey(oldTab.getPEDatabase(sc), newTab.getName()))));
 		@SuppressWarnings("unchecked")
-		PEDropTableStatement dropTab = new PEDropTableStatement(sc,Collections.singletonList(oldTableKey),Collections.EMPTY_LIST,null);
+		PEDropTableStatement dropTab = new PEDropTableStatement(sc,Collections.singletonList(oldTableKey),Collections.EMPTY_LIST,null,oldTableKey.isUserlandTemporaryTable());
 		dropTab.plan(sc,es, config);
 		AlterTableAction ata = new RenameTableAction(oldTab.getName(),false);
 		PEAlterTableStatement alter = new PEAlterTableStatement(sc,newTableKey,Collections.singletonList(ata));
@@ -170,7 +170,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 				null,Action.ALTER,new RenameTable(sc,alter)));
 	}
 	
-	private static class CopyTable implements NestedOperationDDLCallback {
+	private static class CopyTable extends NestedOperationDDLCallback {
 
 		TableCacheKey otck;
 		TableCacheKey ntck;
@@ -186,12 +186,6 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 			record = new CacheInvalidationRecord(pairs);
 		}
 		
-		@Override
-		public void beforeTxn(SSConnection ssConn,CatalogDAO c, WorkerGroup wg) throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-
 		@Override
 		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException {
 			// just create a new schema context
@@ -243,21 +237,6 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		}
 
 		@Override
-		public List<CatalogEntity> getUpdatedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public List<CatalogEntity> getDeletedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
-		}
-
-		@Override
 		public boolean canRetry(Throwable t) {
 			// TODO Auto-generated method stub
 			return false;
@@ -293,23 +272,9 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		public boolean requiresWorkers() {
 			return true;
 		}
-
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
 	}
 	
-	private static class RenameTable implements DDLCallback {
+	private static class RenameTable extends DDLCallback {
 
 		protected PEAlterTableStatement modifier;
 		protected List<CatalogEntity> deletes = null;
@@ -385,10 +350,5 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 			return true;
 		}
 
-		@Override
-		public void postCommitAction(CatalogDAO c) {
-			// TODO Auto-generated method stub
-			
-		}		
 	}
 }

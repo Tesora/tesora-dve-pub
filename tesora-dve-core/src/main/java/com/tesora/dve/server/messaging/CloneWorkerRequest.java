@@ -31,6 +31,7 @@ import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryProcedure;
+import com.tesora.dve.worker.AdditionalConnectionInfo;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerManager;
@@ -44,19 +45,23 @@ public class CloneWorkerRequest extends WorkerManagerRequest {
     EventLoopGroup preferredEventLoop;
 	UserAuthentication userAuth;
 	Collection<? extends StorageSite> storageSites;
+	AdditionalConnectionInfo additionalConnInfo;
 
-	public CloneWorkerRequest(UserAuthentication userAuth, EventLoopGroup preferredEventLoop,
-			Collection<? extends StorageSite> storageSites) {
+	public CloneWorkerRequest(UserAuthentication userAuth,
+			AdditionalConnectionInfo additionalConnInfo,
+            EventLoopGroup preferredEventLoop,
+            Collection<? extends StorageSite> storageSites) {
 		super();
 		this.userAuth = userAuth;
 		this.storageSites = storageSites;
+		this.additionalConnInfo = additionalConnInfo;
         this.preferredEventLoop = preferredEventLoop;
 	}
 
 	@Override
 	public ResponseMessage executeRequest(Envelope e, WorkerManager wm)
 			throws PEException {
-		Map<StorageSite, Worker> theWorkers = wm.getWorkerMap(userAuth, preferredEventLoop, storageSites);
+		Map<StorageSite, Worker> theWorkers = wm.getWorkerMap(userAuth, additionalConnInfo, preferredEventLoop, storageSites);
 		Functional.apply(theWorkers.keySet(), new UnaryProcedure<StorageSite>() {
 			public void execute(StorageSite site) {
 				site.incrementUsageCount();

@@ -43,6 +43,7 @@ import com.tesora.dve.sql.schema.cache.SchemaCollectionCacheKey;
 import com.tesora.dve.sql.util.Accessor;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
+import com.tesora.dve.worker.AdditionalConnectionInfo;
 import com.tesora.dve.worker.SingleDirectWorker;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
@@ -420,11 +421,11 @@ public class PEStorageSite extends Persistable<PEStorageSite, PersistentSite> {
 		}
 
 		@Override
-		public Worker createWorker(UserAuthentication auth, EventLoopGroup preferredEventLoop) throws PEException {
+		public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {
 			if(auth.isAdminUser())
-				return getWorkerFactory().newWorker(pess.getMaster().getAuthentication(), this, preferredEventLoop);
+				return getWorkerFactory().newWorker(pess.getMaster().getAuthentication(), additionalConnInfo, this, preferredEventLoop);
 
-			return getWorkerFactory().newWorker(auth, this, preferredEventLoop);
+			return getWorkerFactory().newWorker(auth, additionalConnInfo, this, preferredEventLoop);
 		}
 
 		@Override

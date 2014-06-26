@@ -103,33 +103,28 @@ public class LateSortedInsert {
 			StringBuilder buf = new StringBuilder();
 			buf.append(prefix);
 			SQLCommand sqlc = null;
-			// if we have parameters we have to use the generic sql
+			// we must always use generic sql - whether we have parameters or not,
+			// so that we can handle special characters correctly.
+			EmitOptions opts = EmitOptions.GENERIC_SQL;
+			emitter.setOptions(opts);
+			emitter.startGenericCommand();
+			try {
+				emitter.pushContext(sc.getTokens());
+				emitter.emitInsertValues(sc, asList, buf);		
+			} finally {
+				emitter.popContext();
+			}
+			if (suffix != null)
+				buf.append(suffix);
+			GenericSQLCommand gsql = emitter.buildGenericCommand(buf.toString());
 			if (sc.getValueManager().hasPassDownParams()) {
-				EmitOptions opts = EmitOptions.GENERIC_SQL;
-				emitter.setOptions(opts);
-				emitter.startGenericCommand();
-				try {
-					emitter.pushContext(sc.getTokens());
-					emitter.emitInsertValues(sc, asList, buf);		
-				} finally {
-					emitter.popContext();
-				}
-				if (suffix != null)
-					buf.append(suffix);
-
-				GenericSQLCommand gsql = emitter.buildGenericCommand(buf.toString());
 				if ((sc.getOptions() != null && sc.getOptions().isPrepare()))
 					sqlc = new SQLCommand(gsql.resolve(sc,null));
 				else {
 					sqlc = new SQLCommand(gsql.resolve(sc,null),gsql.getFinalParams(sc));
-				}
+				}				
 			} else {
-				EmitOptions opts = EmitOptions.NONE.addForceParamValues();
-				emitter.setOptions(opts);
-				emitter.emitInsertValues(sc, asList, buf);
-				if (suffix != null)
-					buf.append(suffix);
-				sqlc = new SQLCommand(buf.toString());
+				sqlc = new SQLCommand(gsql.resolve(sc,null));
 			}
 			out.add(new JustInTimeInsert(sqlc,asList.size(),dk));
 		}

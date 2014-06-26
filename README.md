@@ -1,4 +1,4 @@
-# Tesora Database Virtualization Engine
+# Tesora<sup>&#8482;</sup> Database Virtualization Engine<sup>&reg;</sup>
 
 The Tesora Database Virtualization Engine (DVE) lets you scale on demand with 
 the power of multiple database servers acting as one.  Tesora's Database Virtualization Engine 
@@ -16,7 +16,7 @@ while only provisioning, consuming and paying for the capacity that you need at 
  	mvn install:install-file -Dfile=jFuzzyLogic_v3.0.jar -DgroupId=net.sourceforge -DartifactId=jFuzzyLogic -Dversion=3.0 -Dpackaging=jar
  	```
  	
-4. Obtain the source code from the git repository.
+4. Obtain the DVE source code from the git repository.
 5. Run `mvn install -DskipTests` to build the project and place the newly built jar files in the local Maven repository.
 
 ### Running Unit Tests
@@ -46,15 +46,19 @@ while only provisioning, consuming and paying for the capacity that you need at 
   4. From the root directory run `mvn clean install`
 3. From the command line run `mvn test` to run all the unit tests in the project.
 
+### Documentation
+The documentation is available [here](https://tesoradocs.atlassian.net/wiki/display/CD/Community+Edition?os_username=customer_user&os_password=tesora).
+
 ### Issues
 If you have questions post them to the [Developer Forum](https://groups.google.com/forum/#!forum/tesora-dve-dev) or [User Forum](https://groups.google.com/forum/#!forum/tesora-dve-user). 
 
-Talk to us on our IRC channel `#Tesora-DVE` (freenode).
+Talk to us on our IRC channel `#tesora` (freenode).
 
 ### Links
 Find out more about [Tesora](http://www.tesora.com).
 
 Follow us [@tesoracorp](http://twitter.com/tesoracorp).
 
-
+### License
+DVE is available under AGPL version 3.  See [COPYING](COPYING).
 

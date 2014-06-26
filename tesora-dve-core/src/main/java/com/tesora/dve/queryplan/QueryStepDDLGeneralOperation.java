@@ -22,6 +22,7 @@ package com.tesora.dve.queryplan;
  */
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.log4j.Logger;
@@ -61,7 +62,7 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 	public void setEntities(DDLCallback entgen) {
 		entities = entgen;
 	}
-		
+	
 	// allow derived classes to step in
 	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		// does nothing
@@ -83,8 +84,8 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 		}
 	}
 	
-	protected void onRollback() throws PEException {
-		
+	protected void onRollback(SSConnection conn, CatalogDAO c, WorkerGroup wg) throws PEException {
+		entities.onRollback(conn,c,wg);
 	}
 	
 	
@@ -100,6 +101,7 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 		
 		
 		boolean noteEntities = logger.isDebugEnabled() && entities != null;
+
 		
 		// Send the catalog changes to the transaction manager so that it can
 		// back them out in the event of a catastrophic failure
@@ -172,10 +174,15 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 				if (!sideffects) {
 					executeAction(ssCon,c, wg, resultConsumer);
 					sideffects = true;
+					if (entities != null)
+						entities.onExecute();
 				}
 
 				c.commit();
 				success = true;
+
+				if (entities != null)
+					entities.onCommit(ssCon, c, wg);
 				
 				if (attempts > 1 || logger.isDebugEnabled())
 					logger.warn("Successfully committed after " + attempts + " tries");
@@ -184,10 +191,12 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 					updatedEntity.onUpdate();
 				for (CatalogEntity deletedEntity : entitiesToNotifyOfDrop)
 					deletedEntity.onDrop();
+				
+				
 			} catch (Throwable t) {
 				logger.debug(logHeader + " while executing",t);
 				c.retryableRollback(t);
-				onRollback();
+				onRollback(ssCon, c, wg);
 				if (entities == null || !entities.canRetry(t)) {
 					logger.warn(logHeader + " giving up possibly retryable ddl txn after " + attempts + " tries");
 					throw new PEException(t);
@@ -195,9 +204,23 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 				// not really a warning, but it would be nice to get it back out
 				logger.warn(logHeader + " retrying ddl after " + attempts + " tries upon exception: " + t.getMessage());
 			} finally {
-				if (cacheClear != null)
-					QueryPlanner.invalidateCache(cacheClear);
-				cacheClear = null;
+				Throwable anything = null;
+				try {
+					if (cacheClear != null)
+						QueryPlanner.invalidateCache(cacheClear);
+					cacheClear = null;
+				} catch (Throwable t) {
+					// throwing this away - if entities has a finally block we really want it to occur
+					anything = t;
+				}
+				try {
+					entities.onFinally(ssCon);
+				} catch (Throwable t) {
+					if (anything == null)
+						anything = t;
+				}
+				if (anything != null)
+					throw anything;
 			}
 			
 			postCommitAction(c);
@@ -223,34 +246,96 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 		return true;
 	}
 	
-	public interface DDLCallback {
-		
+	public static abstract class DDLCallback {
+				
 		// this would be called before the txn starts
-		public void beforeTxn(SSConnection conn, CatalogDAO c, WorkerGroup wg) throws PEException;
+		public void beforeTxn(SSConnection conn, CatalogDAO c, WorkerGroup wg) throws PEException 
+		{
+		}
 		
 		// this is called after the txn starts
-		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException;
+		public void inTxn(SSConnection conn, WorkerGroup wg) throws PEException
+		{
+		}
 		
-		public List<CatalogEntity> getUpdatedObjects() throws PEException;
+		/*
+		 * Default []
+		 */
+		public List<CatalogEntity> getUpdatedObjects() throws PEException
+		{
+			return Collections.emptyList();
+		}
 		
-		public List<CatalogEntity> getDeletedObjects() throws PEException;
+		/*
+		 * Default []
+		 */
+		public List<CatalogEntity> getDeletedObjects() throws PEException
+		{
+			return Collections.emptyList();
+		}
 		
 		// for fk support, there may be more than one command - we might have to go back and drop 
 		// an existing foreign key
-		public SQLCommand getCommand(CatalogDAO c);
+		public abstract SQLCommand getCommand(CatalogDAO c);
 		
-		public boolean canRetry(Throwable t);
+		/*
+		 * Default cannot retry
+		 */
+		public boolean canRetry(Throwable t) {
+			return false;
+		}
 		
-		public boolean requiresFreshTxn();
+		/*
+		 * Default requires fresh txn
+		 */
+		public boolean requiresFreshTxn() {
+			return true;
+		}
 		
 		// used for debugging
-		public String description();
+		public abstract String description();
 		
-		public CacheInvalidationRecord getInvalidationRecord();
+		public abstract CacheInvalidationRecord getInvalidationRecord();
 		
-		public boolean requiresWorkers();
+		/*
+		 * Default requires workers
+		 */
+		public boolean requiresWorkers() {
+			return true;
+		}
 		
-		public void postCommitAction(CatalogDAO c) throws PEException;
+		public void postCommitAction(CatalogDAO c) throws PEException
+		{
+			
+		}
+		
+		/*
+		 * Called after the execute, but before the commit
+		 */
+		public void onExecute() {
+			
+		}
+		
+		/*
+		 * Called after the commit, but before any notifies
+		 */
+		public void onCommit(SSConnection conn, CatalogDAO c, WorkerGroup wg) {
+			
+		}
+		
+		/*
+		 * Called for every rollback
+		 */
+		public void onRollback(SSConnection conn, CatalogDAO c, WorkerGroup wg) {
+			
+		}
+		
+		/*
+		 * Always called
+		 */
+		public void onFinally(SSConnection conn) throws Throwable {
+			
+		}
 	}
 	
 	@Override

@@ -32,6 +32,7 @@ import java.util.Map;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.DistributionModel;
+import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserColumn;
@@ -178,10 +179,15 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 		state = ts;
 	}
 	
+	// one of our internal temp tables
 	public boolean isTempTable() {
 		return false;
 	}
 
+	public boolean isUserlandTemporaryTable(){
+		return false;
+	}
+	
 	public boolean isVirtualTable() {
 		return false;
 	}
@@ -417,6 +423,21 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 	
 	public PEDatabase getPEDatabase(SchemaContext sc) {
 		return (PEDatabase)getDatabase(sc);
+	}
+	
+	// for temporary table support
+	public Name getDatabaseName(SchemaContext sc) {
+		return getDatabase(sc).getName();
+	}
+	
+	// also for temp table support
+	public MultitenantMode getEnclosingDatabaseMTMode(SchemaContext sc) {
+		Database<?> db = getDatabase(sc);
+		if (db instanceof PEDatabase) {
+			PEDatabase pedb = (PEDatabase) db;
+			return pedb.getMTMode();
+		}
+		return MultitenantMode.OFF;
 	}
 	
 	public void setDeclaration(SchemaContext sc, PEAbstractTable<?> basedOn) {

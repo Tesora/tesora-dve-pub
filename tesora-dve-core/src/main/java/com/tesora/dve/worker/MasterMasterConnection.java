@@ -27,8 +27,8 @@ import io.netty.channel.EventLoopGroup;
 
 public class MasterMasterConnection extends SingleDirectConnection {
 
-	public MasterMasterConnection(UserAuthentication auth, StorageSite site,EventLoopGroup preferredEventLoop) {
-		super(auth, site,preferredEventLoop);
+	public MasterMasterConnection(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) {
+		super(auth, additionalConnInfo, site, preferredEventLoop);
 	}
 
 	@Override

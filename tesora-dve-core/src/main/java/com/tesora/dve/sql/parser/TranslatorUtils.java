@@ -25,7 +25,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -132,6 +131,7 @@ import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.Comment;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.ContainerDistributionVector;
 import com.tesora.dve.sql.schema.ContainerPolicyContext;
 import com.tesora.dve.sql.schema.Database;
@@ -147,7 +147,6 @@ import com.tesora.dve.sql.schema.LoadDataInfileLineOption;
 import com.tesora.dve.sql.schema.LoadDataInfileModifier;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.schema.NascentPETable;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEContainer;
@@ -181,6 +180,7 @@ import com.tesora.dve.sql.schema.SizeTypeAttribute;
 import com.tesora.dve.sql.schema.SubqueryTable;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.TableComponent;
+import com.tesora.dve.sql.schema.TableResolver;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.UnresolvedDistributionVector;
 import com.tesora.dve.sql.schema.UserScope;
@@ -326,6 +326,7 @@ import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryFunction;
+import com.tesora.dve.sql.util.UnaryProcedure;
 import com.tesora.dve.variable.GlobalConfigVariableHandler;
 import com.tesora.dve.variable.VariableScopeKind;
 import com.tesora.dve.worker.SiteManagerCommand;
@@ -369,7 +370,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	private NativeCharSetCatalog supportedCharSets = null;
 	private NativeCollationCatalog supportedCollations = null;
 	
+	private static final TableResolver basicResolver =
+			new TableResolver().withMTChecks()
+			.withQualifiedMissingDBFormat("No such database '%s'.");
+	
 	public static PEAbstractTable<?> getTable(final SchemaContext sc, final Name fullName, final LockInfo lockInfo) {
+		TableInstance ti = basicResolver.lookupTable(sc, fullName, lockInfo);
+		if (ti == null) return null;
+		return ti.getAbstractTable();
+		/*
 		final UnqualifiedName dbName = getDatabaseNameForTable(sc, fullName);
 		final UnqualifiedName tableName = fullName.getUnqualified();
 
@@ -386,6 +395,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 
 		throw new SchemaException(Pass.FIRST, "No database selected for table '" + tableName + "'.");
+		*/
 	}
 
 	public static UnqualifiedName getDatabaseNameForTable(final SchemaContext sc, final Name tableName) {
@@ -479,6 +489,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			lockInfo = opts.getLockOverride();
 	}
 
+	// call this during parsing to indicate that we are not handling ddl - used during temp table operations
+	public void notddl() {
+		if (pc != null) pc.forceImmutableSource();
+		if (opts == null || opts.getLockOverride() == null) 
+			lockInfo = new LockInfo(com.tesora.dve.lockmanager.LockType.EXCLUSIVE, "ddl");
+		else if (opts != null && opts.getLockOverride() != null) 
+			lockInfo = opts.getLockOverride();
+	}
+	
 	protected void forceUncacheable(ValueManager.CacheStatus status) {
 		if (pc != null)
 			pc.getValueManager().markUncacheable(status);
@@ -950,7 +969,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			List<TableComponent<?>> fieldsAndKeys, UnresolvedDistributionVector indv,
 			Name groupName, List<TableModifier> modifiers, Boolean ine, 
 			Pair<UnqualifiedName,List<UnqualifiedName>> discriminator,
-			ProjectingStatement ctas) {
+			ProjectingStatement ctas,
+			boolean temporary) {
 		if ( tableName == null ) {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
@@ -959,8 +979,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (Boolean.TRUE.equals(ine) && opts.isResolve()) {
 			// see if the table already exists
 			// UnqualifiedName dbName = null;
-			UnqualifiedName tabName = tableName.getUnqualified();
-			TableInstance ti = pc.getCurrentPEDatabase().getSchema().buildInstance(pc, tabName, lockInfo);
+			TableInstance ti =
+					new TableResolver().withMTChecks().lookupTable(pc, tableName, lockInfo);
 			if (ti != null) {
 				if (ti.getAbstractTable().isView())
 					throw new SchemaException(Pass.FIRST,tableName + " is a view (cannot recreate)");
@@ -1044,7 +1064,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			// we want to inject when both the dist vect and the discriminator are null; if either is non-null the dist info
 			// was specified
 			if (dv == null && discriminator == null) {
-				newTab = buildTable(tableName, actualFieldsAndKeys, null, pesg, modifiers, ctaProjectionOffsets != null);
+				newTab = buildTable(tableName, actualFieldsAndKeys, null, pesg, modifiers, ctaProjectionOffsets != null, temporary);
 				if (pc == null || (opts != null && opts.isOmitMetadataInjection())) {
 					dv = new DistributionVector(pc, null, DistributionVector.Model.RANDOM);
 					newTab.setDistributionVector(pc,dv);				
@@ -1061,7 +1081,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						throw new SchemaException(Pass.SECOND, e);
 					}
 			} else if (dv != null) {
-				newTab = buildTable(tableName, actualFieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null);
+				newTab = buildTable(tableName, actualFieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null, temporary);
 			} else if (discriminator != null) {
 				// newTab will be the base table on the container - so change the dist vect on it to be the container
 				PEContainer container = pc.findContainer(discriminator.getFirst());
@@ -1073,7 +1093,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				}
 
 				dv = new ContainerDistributionVector(pc,container,false);
-				newTab = buildTable(tableName, fieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null);
+				newTab = buildTable(tableName, fieldsAndKeys, dv, pesg, modifiers, ctaProjectionOffsets != null, temporary);
 				// newTab is actually the container base table - so go resolve the columns now and so mark them
 				List<UnqualifiedName> colNames = discriminator.getSecond();
 				for(int i = 0; i < colNames.size(); i++) {
@@ -1105,29 +1125,33 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return out;
 	}
 
-	public Statement buildDropTableStatement(List<Name> givenNames, Boolean ifExists) {
+	public Statement buildDropTableStatement(List<Name> givenNames, Boolean ifExists, boolean tempTabs) {
 		if ( givenNames == null ) {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
 		
+		TableResolver resolver = 
+				new TableResolver().withMTChecks().withDatabaseFunction(new UnaryProcedure<Database<?>>() {
+
+					@Override
+					public void execute(Database<?> object) {
+						if (!(object instanceof PEDatabase))
+							throw new SchemaException(Pass.SECOND,
+									"Invalid database for drop table: '" + object.getName()
+											+ "'");						
+					}
+					
+				});
+		
 		List<TableKey> tblKeys = new ArrayList<TableKey>();
 		List<Name> unknownTables = new ArrayList<Name>();
 		for(Name givenName : givenNames) {
-			UnqualifiedName tableName = givenName.getUnqualified();
-			Database<?> ondb = findDatabase(givenName);
-			if (ondb == null)
-				throw new SchemaException(Pass.SECOND,
-						"No such database: '" + givenName + "'");
-			if (!(ondb instanceof PEDatabase))
-				throw new SchemaException(Pass.SECOND,
-						"Invalid database for drop table: '" + ondb.getName()
-								+ "'");
-		
-			PEDatabase peds = (PEDatabase)ondb;
-			TableInstance ti = peds.getSchema().buildInstance(pc, tableName, lockInfo, true);
+			TableInstance ti = resolver.lookupTable(pc, givenName, lockInfo);
 			if (ti == null) {
 				unknownTables.add(givenName);
 			} else {
+				if (tempTabs && !ti.getTableKey().isUserlandTemporaryTable())
+					throw new SchemaException(Pass.SECOND, "No such temporary table: '" + givenName + "'");
 				tblKeys.add(ti.getTableKey());
 			}
 		}
@@ -1139,7 +1163,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						+ StringUtils.join(unknownTables, ",") + "'");
 		}
 		
-		PEDropTableStatement stmt = new PEDropTableStatement(pc,tblKeys, unknownTables, ifExists);
+		PEDropTableStatement stmt = new PEDropTableStatement(pc,tblKeys, unknownTables, ifExists, tempTabs);
 		return pc.getPolicyContext().modifyDropTable(stmt);
 	}
 
@@ -1881,7 +1905,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public PETable buildTable(Name tableName,
 			List<TableComponent<?>> fieldsAndKeys, DistributionVector dv,
 			PEPersistentGroup sg, List<TableModifier> modifiers,
-			boolean nascent) {
+			boolean nascent, 
+			boolean temporary) {
 		if ( tableName == null ) {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
@@ -1911,9 +1936,16 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 		// the dv should have the container here, if applicable
 		PETable newtab = null;
-		if (nascent)
-			newtab = new NascentPETable(pc, unqualifiedTableName, fieldsAndKeys,
-				dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED);
+		if (nascent || temporary) {
+			ComplexPETable ctab =
+					new ComplexPETable(pc, unqualifiedTableName, fieldsAndKeys,
+							dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED);
+			if (nascent)
+				ctab.withCTA();
+			if (temporary)
+				ctab.withTemporaryTable(pc);
+			newtab = ctab;
+		}
 		else
 			newtab = new PETable(pc, unqualifiedTableName, fieldsAndKeys,
 				dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED);
@@ -2023,7 +2055,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			PEUser peu = pc.getCurrentUser().get(pc);
 			if (peu == null)
 				return LiteralExpression.makeNullLiteral();
-			// not entirely correct, but wtf cares
+			// not entirely correct
 			return LiteralExpression.makeStringLiteral(peu.getUserScope().getSQL());
 		} else if (EngineConstant.FUNCTION.has(fc, EngineConstant.UUID)) {
 			forceUncacheable(ValueManager.CacheStatus.NOCACHE_DYNAMIC_FUNCTION);
@@ -2093,8 +2125,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			ti = scope.buildTableInstance(
 					name,
 					castAlias(alias),
-					(pc.getCurrentDatabase(false) == null ? null : pc
-							.getCurrentDatabase(false).getSchema()), pc,
+					pc,
 					lockInfo);
 		} else {
 			ti = new TableInstance(null, name, castAlias(alias), 0, opts.isResolve());
@@ -3115,27 +3146,21 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public TableKey lookupAlteredTable(Name tabName) {
 		TableKey tab = null;
 		if (pc == null) {
-			tab = new TableKey(new PETable(pc, tabName, Collections.EMPTY_LIST, null, null, null),0);
+			tab = TableKey.make(pc,new PETable(pc, tabName, Collections.EMPTY_LIST, null, null, null),0);
 		} else {
-			Database<?> ondb = pc.getCurrentDatabase(false);
-			if (ondb == null || tabName.isQualified()) {
-				if (!tabName.isQualified())
-					pc.getCurrentDatabase(true);
-				QualifiedName qname = (QualifiedName) tabName;
-				UnqualifiedName leading = qname.getNamespace();
-				if (ondb == null || !ondb.getName().equals(leading)) {
-					ondb = pc.findDatabase(leading);
-					if (leading == null)
-						throw new SchemaException(Pass.SECOND,
-								"No such database: '" + leading + "'");
-				}
-			}
-			if (!(ondb instanceof PEDatabase))
-				throw new SchemaException(Pass.SECOND,
-						"Invalid database for table alter: '" + ondb.getName()
-								+ "'");
-			PEDatabase peds = (PEDatabase) ondb;
-			TableInstance ti = peds.getSchema().buildInstance(pc, tabName.getUnqualified(), lockInfo, true);
+			TableResolver resolver = new TableResolver().withMTChecks()
+					.withDatabaseFunction(new UnaryProcedure<Database<?>>() {
+
+						@Override
+						public void execute(Database<?> object) {
+							if (!(object instanceof PEDatabase))
+								throw new SchemaException(Pass.SECOND,
+										"Invalid database for table alter: '" + object.getName()
+												+ "'");
+						}
+						
+					});
+			TableInstance ti = resolver.lookupTable(pc, tabName, lockInfo);
 			if (ti == null)
 				throw new SchemaException(Pass.SECOND, "No such table: " + tabName.getSQL());
 			tab = ti.getTableKey();
@@ -3894,8 +3919,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	private List<TableInstance> lookupTables(List<Name> tableNames) {
 		List<TableInstance> tblInstances = new ArrayList<TableInstance>();
 		
+		TableResolver resolver = new TableResolver().withMTChecks();
+		
 		// figure out whether the target table(s) are known or not
 		for (Name targetTableName : tableNames) {
+			/*
 			Database<?> db = null;
 			UnqualifiedName candidateName = null;
 			if (targetTableName.isQualified()) {
@@ -3912,10 +3940,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				candidateName = (UnqualifiedName) targetTableName;
 			}
 			TableInstance ti = db.getSchema().buildInstance(pc, candidateName, lockInfo, true);
+			*/
+			TableInstance ti = resolver.lookupTable(pc, targetTableName, lockInfo);
 			if (ti == null)
 				throw new SchemaException(Pass.FIRST, "No such table: " + targetTableName);
 
-			tblInstances.add(ti.adapt(candidateName, null, ti.getNode(), false));
+			tblInstances.add(ti.adapt(targetTableName.getUnqualified(), null, ti.getNode(), false));
 		}
 		return tblInstances;
 	}

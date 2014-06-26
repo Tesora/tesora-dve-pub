@@ -94,6 +94,7 @@ public class SchemaContext {
 	private final Map<SchemaCacheKey<?>, Persistable<?,?>> loading = new HashMap<SchemaCacheKey<?>, Persistable<?,?>>();
 	private final Set<SchemaCacheKey<?>> cacheLoading = new HashSet<SchemaCacheKey<?>>();
 	private final NativeTypeCatalog types;
+	private final TemporaryTableSchema temporaryTableSchema = new TemporaryTableSchema();
 	private CatalogContext catalog;
 	private PersistContext saveContext;
 	private ParserOptions opts;
@@ -222,6 +223,13 @@ public class SchemaContext {
 		}
 	}
 	
+	public void forceImmutableSource() {
+		if (schemaSource.getType() == CacheType.MUTABLE) {
+			mutableSource = false;
+			setSource(buildSource());
+		}
+	}
+	
 	public boolean isMutableSource() {
 		if (mutableSourceOverride != null) return mutableSourceOverride.booleanValue();
 		return schemaSource.getType() == CacheType.MUTABLE;
@@ -229,6 +237,10 @@ public class SchemaContext {
 	
 	public void setMutableSourceOverride(Boolean b) {
 		mutableSourceOverride = b;
+	}
+	
+	public Boolean getMutableSourceOverride() {
+		return mutableSourceOverride;
 	}
 	
 	public <T> SchemaEdge<T> buildEdgeFromKey(SchemaCacheKey<T> sck, boolean persistent) {
@@ -396,6 +408,10 @@ public class SchemaContext {
 	
 	public void clearPolicyContext() {
 		perms = null;
+	}
+	
+	public TemporaryTableSchema getTemporaryTableSchema() {
+		return temporaryTableSchema;
 	}
 	
 	public PEPersistentGroup getPersistentGroup() {
@@ -645,8 +661,7 @@ public class SchemaContext {
 	public TableScope findScope(ScopeCacheKey sck) {
 		return schemaSource.find(this, sck);
 	}
-	
-	
+		
 	public ListSet<TableScope> findScopesReferencing(PETable pet) {
 		List<TableVisibility> matching = catalog.findTenantsOf(pet.getPersistent(this));
 		ListSet<TableScope> out = new ListSet<TableScope>();

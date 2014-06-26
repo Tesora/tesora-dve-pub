@@ -138,7 +138,7 @@ public class TableInstance extends ExpressionNode {
 	}
 	
 	public TableKey getTableKey() {
-		return new TableKey(this);
+		return TableKey.make(this);
 	}
 	
 	@Override

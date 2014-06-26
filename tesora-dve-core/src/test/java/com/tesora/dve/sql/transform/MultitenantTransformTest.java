@@ -145,7 +145,6 @@ public class MultitenantTransformTest extends TransformTest {
 				);				
 	}
 
-	// wtf is happening here?
 	@Ignore
 	@Test
 	public void testDW() throws Exception {

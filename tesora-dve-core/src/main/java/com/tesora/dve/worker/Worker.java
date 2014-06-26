@@ -54,9 +54,9 @@ import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
  * WorkerManager.
  */
 public abstract class Worker implements GenericSQLCommand.DBNameResolver {
-
-    public interface Factory {
-		public Worker newWorker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException;
+	
+	public interface Factory {
+		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException;
 
 		public void onSiteFailure(StorageSite site) throws PEException;
 
@@ -78,6 +78,7 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 
 	StorageSite site;
 	UserAuthentication userAuthentication;
+	AdditionalConnectionInfo additionalConnInfo;
 	
 	@Override
 	public String toString() {
@@ -102,15 +103,16 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 
     boolean bindingChangedSinceLastCatalogSet = false;
 
-	Worker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
+	Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
 		this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
 		this.site = site;
 		this.userAuthentication = auth;
+		this.additionalConnInfo = additionalConnInfo;
         this.previousEventLoop = null;
         this.preferredEventLoop = preferredEventLoop;
 	}
 
-	public abstract WorkerConnection getConnection(StorageSite site, UserAuthentication auth, EventLoopGroup preferredEventLoop);
+	public abstract WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop);
 
     public void bindToClientThread(EventLoopGroup eventLoop) throws PESQLException {
         this.previousEventLoop = this.preferredEventLoop;
@@ -214,7 +216,7 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		if (wConnection == null) {
 			if (connectionAllocated)
 				throw new PECodingException("Worker connection reallocated");
-			wConnection = getConnection(site, userAuthentication, preferredEventLoop);
+			wConnection = getConnection(site, additionalConnInfo, userAuthentication, preferredEventLoop);
 			connectionAllocated = true;
 		}
 		return wConnection;

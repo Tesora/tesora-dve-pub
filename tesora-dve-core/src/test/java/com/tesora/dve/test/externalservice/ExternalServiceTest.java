@@ -73,11 +73,21 @@ public class ExternalServiceTest extends SchemaTest {
 	Map<String,String> options = new HashMap<String, String>();
 	
 	
+	private static final String[] createdDBs = new String[] { 
+			"SystemSite_es1_FileReplSlave",
+			"SystemSite_es1_TestService",
+			"SystemSite_es1_foo"
+	};
+	
 	@BeforeClass
 	public static void setup() throws Throwable {
 		projectSetup(checkDDL);
 		bootHost = BootstrapHost.startServices(PETest.class);
         populateMetadata(ExternalServiceTest.class, Singletons.require(HostService.class).getProperties());
+        try (final DBHelperConnectionResource dropper = new DBHelperConnectionResource()) {
+        	for(String s : createdDBs)
+        		dropper.execute("drop database if exists " + s);
+        }
 	}
 
 	@Before
@@ -145,8 +155,10 @@ public class ExternalServiceTest extends SchemaTest {
 		
 		verifyStart();
 
-		conn.execute("SHOW EXTERNAL SERVICES");
-		conn.execute("SHOW EXTERNAL SERVICE " + testExternalServiceName);
+		conn.assertResults("show external services",
+				br(nr,testExternalServiceName,ignore,"YES","root","YES",testESConfig2));
+		conn.assertResults("show external service " + testExternalServiceName,
+				br(nr,testExternalServiceName,null));
 		
 		// test DROP ddl
 		

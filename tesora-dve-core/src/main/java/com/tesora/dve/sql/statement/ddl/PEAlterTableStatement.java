@@ -29,8 +29,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.collections.ListUtils;
+
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
@@ -51,16 +54,20 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.Wildcard;
 import com.tesora.dve.sql.node.structural.FromTableReference;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.schema.PEStorageGroup;
+import com.tesora.dve.sql.schema.PEDatabase;
+import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.TableComponent;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
+import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.statement.ddl.alter.AlterTableAction;
 import com.tesora.dve.sql.statement.ddl.alter.AlterTableAction.ClonableAlterTableAction;
 import com.tesora.dve.sql.statement.ddl.alter.ConvertToAction;
@@ -296,7 +303,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 				delObjs, newObjs ,getInvalidationRecord(pc));
 	}
 
-	private static class ComplexAlterTableActionCallback implements NestedOperationDDLCallback {
+	private static class ComplexAlterTableActionCallback extends NestedOperationDDLCallback {
 
 		private static class ResultMetadataFilter implements OperationFilter {
 
@@ -347,14 +354,41 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			final SchemaContext sc = SchemaContext.createContext(conn);
 			sc.forceMutableSource();
 
+			/*
+			 * Build a sample table on which we then perform a trial conversion
+			 * to get the resultant column types.
+			 */
 			final PETable sampleTarget = this.alterTarget.recreate(sc, this.alterTarget.getDeclaration(), new LockInfo(
 					com.tesora.dve.lockmanager.LockType.RSHARED, "transient alter table statement"));
-			sampleTarget.setName(new UnqualifiedName(UserTable.getNewTempTableName()));
-			sampleTarget.setDeclaration(sc, sampleTarget);
 
-			final TableInstance targetTableInstance = new TableInstance(sampleTarget, sampleTarget.getName(), null, true);
+			final PEDatabase sampleTargetDatabase = sampleTarget.getPEDatabase(sc);
+			final List<TableModifier> sampleTargetModifiers = new ArrayList<TableModifier>();
+			for (final TableModifier entry : sampleTarget.getModifiers().getModifiers()) {
+				if (entry != null) {
+					sampleTargetModifiers.add(entry);
+				}
+			}
+			final List<TableComponent<?>> sampleTargetFieldsAndKeys = ListUtils.union(sampleTarget.getColumns(sc), sampleTarget.getKeys(sc));
+			final QualifiedName sampleTargetName = new QualifiedName(
+					sampleTargetDatabase.getName().getUnqualified(),
+					new UnqualifiedName(UserTable.getNewTempTableName())
+					);
 
-			final PECreateTableStatement createSampleTable = new PECreateTableStatement(sampleTarget, false);
+			final PEPersistentGroup sg = buildOneSiteGroup(sc, false);
+
+			/*
+			 * Make sure the actual sample gets created as a TEMPORARY table in
+			 * the user database so that it always gets removed.
+			 */
+			final ComplexPETable temporarySampleTarget = new ComplexPETable(sc,
+					sampleTargetName, sampleTargetFieldsAndKeys,
+					sampleTarget.getDistributionVector(sc), sampleTargetModifiers,
+					sg, sampleTargetDatabase, TableState.SHARED);
+			temporarySampleTarget.withTemporaryTable(sc);
+
+			final TableInstance targetTableInstance = new TableInstance(temporarySampleTarget, temporarySampleTarget.getName(), null, true);
+
+			final PECreateTableStatement createSampleTable = new PECreateTableStatement(temporarySampleTarget, false);
 
 			final PEAlterTableStatement alterSampleTable =
 					new PEAlterTableStatement(sc, targetTableInstance.getTableKey(), Collections.singletonList(this.alterAction.makeTransientOnlyClone()));
@@ -363,11 +397,10 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 					Collections.<ExpressionNode> singletonList(new Wildcard(null)), null, null, null, null, null, null, null, null, new AliasInformation(),
 					null);
 
-			final PEDropTableStatement dropSampleTable = new PEDropTableStatement(sc, Collections.singletonList(targetTableInstance.getTableKey()), Collections.<Name> emptyList(), true);
+			final PEDropTableStatement dropSampleTable = new PEDropTableStatement(sc, Collections.singletonList(targetTableInstance.getTableKey()), Collections.<Name> emptyList(), true, 
+					targetTableInstance.getTableKey().isUserlandTemporaryTable());
 
 			final ExecutionSequence es = new ExecutionSequence(null);
-
-			final PEStorageGroup sg = buildOneSiteGroup(sc, false);
 
 			es.append(new SessionExecutionStep(null, sg, createSampleTable.getSQL(sc)));
 			es.append(new SessionExecutionStep(null, sg, alterSampleTable.getSQL(sc)));
@@ -395,23 +428,8 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 		}
 
 		@Override
-		public List<CatalogEntity> getUpdatedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public List<CatalogEntity> getDeletedObjects() throws PEException {
-			return Collections.emptyList();
-		}
-
-		@Override
-		public SQLCommand getCommand(CatalogDAO c) {
-			return SQLCommand.EMPTY;
-		}
-
-		@Override
 		public boolean canRetry(Throwable t) {
-			return true;
+			return false;
 		}
 
 		@Override
@@ -435,11 +453,6 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 		}
 
 		@Override
-		public void postCommitAction(CatalogDAO c) throws PEException {
-			// TODO Auto-generated method stub
-		}
-
-		@Override
 		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 			for (final QueryStep step : this.plan) {
 				final QueryStepOperation qso = step.getOperation();
@@ -451,14 +464,6 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			final SchemaContext sc = SchemaContext.createContext(conn);
 			this.alterTargetTableStatement.getCatalogEntries(sc);
 			this.alterTargetTableStatement.getDeleteObjects(sc);
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
 		}
 	}
 }

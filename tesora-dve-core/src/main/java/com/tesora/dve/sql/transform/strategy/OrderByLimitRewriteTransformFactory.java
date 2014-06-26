@@ -304,7 +304,7 @@ public class OrderByLimitRewriteTransformFactory extends TransformFactory {
 		}			
 	}
 	
-	private static void maybeCleanupGroupBys(List<ExpressionNode> removed, SelectStatement targ) throws PEException {
+	public static void maybeCleanupGroupBys(List<ExpressionNode> removed, SelectStatement targ) throws PEException {
 		for(Iterator<SortingSpecification> iter = targ.getGroupBysEdge().iterator(); iter.hasNext();) {
 			SortingSpecification ss = iter.next();
 			ExpressionNode en = ss.getTarget();

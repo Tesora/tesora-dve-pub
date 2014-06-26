@@ -61,6 +61,7 @@ import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.schema.mt.AdaptiveMultitenantSchemaPolicyContext;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.TransientSchemaTest;
+import com.tesora.dve.sql.transform.execution.AbstractProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.AdhocResultsSessionStep;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
@@ -73,6 +74,7 @@ import com.tesora.dve.sql.transform.execution.FilterExecutionStep;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.sql.transform.execution.ParallelExecutionStep;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
+import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep;
 import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionSequence;
@@ -274,27 +276,28 @@ public abstract class TransformTest extends TransientSchemaTest {
 				printExecutionStepVerify(pc,iter.next(),nesting+1,iter.hasNext(),buf);
 			}
 			buf.append(prefix).append(")");
-		} else if (hp instanceof ProjectingExecutionStep) {
-			ProjectingExecutionStep ses = (ProjectingExecutionStep) hp;
+		} else if (hp instanceof AbstractProjectingExecutionStep) {
+			AbstractProjectingExecutionStep aes = (ProjectingExecutionStep) hp;
 			buf.append(prefix).append("new ProjectingExpectedStep(");
-			if (ses.getExecutionType() == ExecutionType.SELECT) {
+			if (aes.getExecutionType() == ExecutionType.SELECT) {
 				buf.append("ExecutionType.SELECT,").append(PEConstants.LINE_SEPARATOR);
 			} else {
 				buf.append("ExecutionType.UNION,").append(PEConstants.LINE_SEPARATOR);
 			}
-			if (ses.getRedistTable(pc) == null)
+			if (aes instanceof ProjectingExecutionStep) {
 				buf.append(prefix).append("\tnull,").append(PEConstants.LINE_SEPARATOR);
-			else {
-				buf.append(prefix).append("\t").append(characterizeGroup(ses.getPEStorageGroup().getPEStorageGroup(pc))).append(",");
-				buf.append('"').append(ses.getRedistTable(pc)).append('"').append(",").append(characterizeGroup(ses.getTargetGroup(pc).getPEStorageGroup(pc))).append(",");				
-				Model targDistModel = ses.getDistKey().getModel(pc);
+			} else {
+				RedistributionExecutionStep redist = (RedistributionExecutionStep) aes;
+				buf.append(prefix).append("\t").append(characterizeGroup(redist.getPEStorageGroup().getPEStorageGroup(pc))).append(",");
+				buf.append('"').append(redist.getRedistTable(pc)).append('"').append(",").append(characterizeGroup(redist.getTargetGroup(pc).getPEStorageGroup(pc))).append(",");				
+				Model targDistModel = redist.getDistKey().getModel(pc);
 				buf.append(targDistModel.getCodeName()).append(".MODEL_NAME,").append(PEConstants.LINE_SEPARATOR);
 				buf.append(prefix).append("\t");
-				if (ses.getDistKey().getColumnNames().isEmpty())
+				if (redist.getDistKey().getColumnNames().isEmpty())
 					buf.append("emptyDV,");
 				else {
 					buf.append("new String[] {");
-					Functional.join(ses.getDistKey().getColumnNames(), buf, ",", new BinaryProcedure<String,StringBuilder>() {
+					Functional.join(redist.getDistKey().getColumnNames(), buf, ",", new BinaryProcedure<String,StringBuilder>() {
 
 						@Override
 						public void execute(String aobj, StringBuilder bobj) {
@@ -306,7 +309,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 				}
 				buf.append(PEConstants.LINE_SEPARATOR);
 
-				PETable tab = ses.getTargetTable();
+				PETable tab = redist.getTargetTable();
                 if (tab instanceof TempTable){ //we have a temp table, so generate match for expected index hints.
                     buf.append(prefix).append("\t");
 					TempTableDeclHints hints = ((TempTable) tab).getHints(pc);
@@ -335,11 +338,15 @@ public abstract class TransformTest extends TransientSchemaTest {
                     }
                     buf.append(PEConstants.LINE_SEPARATOR);
                 }
+
 			}
-            appendSQL(ses,buf,pc,prefix);
-            appendInMemoryLimit(ses,buf,pc,prefix);
+            appendSQL(aes,buf,pc,prefix);
+            if (aes instanceof ProjectingExecutionStep) {
+            	ProjectingExecutionStep pes = (ProjectingExecutionStep) aes;
+            	appendInMemoryLimit(pes,buf,pc,prefix);
+            }
             // should do something about reasons here
-            addExplainHint(ses.getExplainHint(),buf,pc,prefix);
+            addExplainHint(aes.getExplainHint(),buf,pc,prefix);
 		} else if (hp instanceof DeleteExecutionStep) {
 			DeleteExecutionStep des = (DeleteExecutionStep) hp;
 			appendDirectExpectedStepParams("DeleteExpectedStep",des,buf,prefix,pc);
@@ -595,7 +602,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		public ProjectingExpectedStep(ExecutionType exec, PEStorageGroup sourceGroup,  
 				String redistTo, PEStorageGroup target,
 				String model, String[] dv, String[][] indices, String...sql) {
-			super(ProjectingExecutionStep.class, sourceGroup,sql);
+			super((redistTo == null ? ProjectingExecutionStep.class : RedistributionExecutionStep.class), sourceGroup,sql);
 			redistTable = redistTo;
 			this.target = target;
 			this.redistModel = model;
@@ -643,7 +650,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		@Override
 		public void verify(SchemaContext sc, ExecutionStep es) {
 			super.verify(sc,es);
-			ProjectingExecutionStep ses = (ProjectingExecutionStep) es;
+			AbstractProjectingExecutionStep ses = (AbstractProjectingExecutionStep) es;
 			/*
 			 * hint testing disabled for now
 			String stepSQL = "'" + es.getSQL(sc,null) + "'";
@@ -655,14 +662,13 @@ public abstract class TransformTest extends TransientSchemaTest {
 			}
 			*/
 			
-			if (redistTable == null) {
-				assertNull(ses.getRedistTable(sc));
-				assertNull(ses.getTargetGroup(sc));
-				assertEquals("should have same in mem limit flag for step '" + es.getSQL(sc, null) + "'", this.usesInMemoryLimit, ses.usesInMemoryLimit());
-			} else {
-				assertEquals(buildAssertTag("redist table should match"),ses.getRedistTable(sc), redistTable);
+			if (ses instanceof RedistributionExecutionStep) {
+				RedistributionExecutionStep redist = (RedistributionExecutionStep) ses;
+				if (redistTable == null)
+					fail("Found RedistributionExecutionStep but expecting ProjectingExecutionStep");
+				assertEquals(buildAssertTag("redist table should match"),redist.getRedistTable(sc), redistTable);
 				if (target != null) {
-					PEStorageGroup targ = ses.getTargetGroup(sc).getPEStorageGroup(sc);
+					PEStorageGroup targ = redist.getTargetGroup(sc).getPEStorageGroup(sc);
 					assertNotNull("target group must exist", targ);
 					if (!target.equals(targ)) {
 						fail("Expected " + target + " but found " + targ + " on step " + es.getSQL(sc, null));
@@ -670,17 +676,17 @@ public abstract class TransformTest extends TransientSchemaTest {
 				} else {
 					// no checking
 				}
-				assertEquals(buildAssertTag("redist model should match"),redistModel,ses.getTargetDistributionModel(sc));
+				assertEquals(buildAssertTag("redist model should match"),redistModel,redist.getTargetDistributionModel(sc));
 				if (dv != null) {
-					assertNotNull(ses.getDistKey());
-					DistributionKeyTemplate kt = ses.getDistKey();
+					assertNotNull(redist.getDistKey());
+					DistributionKeyTemplate kt = redist.getDistKey();
 					List<String> tempColumns = kt.getColumnNames();
 					assertEquals(dv.length,tempColumns.size());
 					for(int i = 0; i < dv.length; i++)
 						assertEquals("should have same dist vect",dv[i], tempColumns.get(i));
 				}
                 if (indices != null){
-                    PETable tab = ses.getTargetTable();
+                    PETable tab = redist.getTargetTable();
                     if (tab instanceof TempTable){
 						TempTableDeclHints hints = ((TempTable) tab).getHints(sc);
 						List<List<String>> sesIndices = hints.getIndexes();
@@ -690,7 +696,13 @@ public abstract class TransformTest extends TransientSchemaTest {
                         }
                     }
                 }
-			}				
+
+			} else {
+				ProjectingExecutionStep pes = (ProjectingExecutionStep) ses;
+				if (redistTable != null)
+					fail("Found ProjectingExecutionStep but expecting RedistributionExecutionStep");
+				assertEquals("should have same in mem limit flag for step '" + es.getSQL(sc, null) + "'", this.usesInMemoryLimit, pes.usesInMemoryLimit());				
+			}			
 		}
 	}
 	

@@ -41,7 +41,7 @@ import com.tesora.dve.variable.SchemaVariableConstants;
 
 public class AutoIncrementBlock {
 	
-	private final PETable table;
+	private final TableKey table;
 	private TableScope scope = null;
 	// maintain the original order of specified and generated values - this allows us to do late allocation even in the
 	// case where specified values mean for the current stmt that a value must be generated.
@@ -50,7 +50,7 @@ public class AutoIncrementBlock {
 	private final ValueManager containing;
 	
 	public AutoIncrementBlock(ValueManager vm, TableKey tk) {
-		table = tk.getAbstractTable().asTable();
+		table = tk.makeFrozen();
 		if (tk instanceof MTTableKey)
 			scope = ((MTTableKey)tk).getScope();
 		containing = vm;
@@ -111,19 +111,18 @@ public class AutoIncrementBlock {
 		if (max > -1 && insertIdFromVar != null)
 			throw new SchemaException(Pass.SECOND, "Cannot specify both the autoincrement column value and " + SchemaVariableConstants.REPL_SLAVE_INSERT_ID);
 		TableScope actualScope = null;
+		TableKey tk = null;
 		if (scope != null) {
 			PETenant currentTenant = (PETenant) sc.getCurrentTenant().get(sc);
 			actualScope = currentTenant.lookupScope(sc, scope.getName(), null /* should have locked already */);
+			tk = TableKey.make(sc,actualScope,0);
+		} else {
+			tk = table;
 		}
 		if (!toAllocate.isEmpty()) {
 			long first = -1;
 			if (insertIdFromVar == null) {
-				if (scope != null) {
-					// mt plans would cache the original tenant, but this could be a different tenant
-					first = sc.getCatalog().getNextIncrementValueChunk(sc, actualScope, toAllocate.size());
-				} else {
-					first = sc.getCatalog().getNextIncrementValueChunk(sc, table, toAllocate.size());
-				}
+				first = tk.getNextAutoIncrBlock(sc, toAllocate.size());
 			} else {
 				first = insertIdFromVar.longValue();
 			}
@@ -144,12 +143,8 @@ public class AutoIncrementBlock {
 			}
 			cv.setLastInsertId(first + (toAllocate.size() - 1));
 		}
-		if (max > -1) {
-			if (actualScope != null)
-				sc.getPolicyContext().removeValue(actualScope, max);
-			else
-				sc.getPolicyContext().removeValue(table, max);
-		}
+		if (max > -1) 
+			tk.removeValue(sc, max);
 	}
 	
 	public static boolean requiresAllocation(IConstantExpression in, SchemaContext sc, SQLMode mode) {

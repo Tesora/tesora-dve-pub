@@ -70,8 +70,8 @@ public class WorkerManager extends Agent {
 		}
 	}
 
-	public Worker getWorker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
-		Worker theWorker = site.createWorker(auth, preferredEventLoop);
+	public Worker getWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
+		Worker theWorker = site.createWorker(auth, additionalConnInfo, preferredEventLoop);
 		activeWorkers.add(theWorker);
 		return theWorker;
 	}
@@ -111,12 +111,12 @@ public class WorkerManager extends Agent {
 		}
 	}
 
-	public Map<StorageSite, Worker> getWorkerMap(UserAuthentication auth, EventLoopGroup preferredEventLoop,
-			Collection<? extends StorageSite> storageSites) throws PEException {
+	public Map<StorageSite, Worker> getWorkerMap(UserAuthentication auth,
+			AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop, Collection<? extends StorageSite> storageSites) throws PEException {
 		Map<StorageSite, Worker> workerMap = new HashMap<StorageSite, Worker>();
 		
 		for (StorageSite site : storageSites) {
-			workerMap.put(site, getWorker(auth, site, preferredEventLoop));
+			workerMap.put(site, getWorker(auth, additionalConnInfo, site, preferredEventLoop));
 		}
 		return workerMap;
 	}

@@ -117,7 +117,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	}
 
 	@Override
-	public void connect(String url, final String userid, final String password) throws PEException {
+	public void connect(String url, final String userid, final String password, final long clientCapabilities) throws PEException {
 		PEUrl peUrl = PEUrl.fromUrlString(url);
 
 		if (!"mysql".equalsIgnoreCase(peUrl.getSubProtocol()))
@@ -132,9 +132,9 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 		.group(connectionEventGroup)
 		.option(ChannelOption.ALLOCATOR, USE_POOLED_BUFFERS ? PooledByteBufAllocator.DEFAULT : UnpooledByteBufAllocator.DEFAULT)
 		.handler(new ChannelInitializer<Channel>() {
-            @Override
-            protected void initChannel(Channel ch) throws Exception {
-                authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));
+			@Override
+			protected void initChannel(Channel ch) throws Exception {
+				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));           
 
                 if (PACKET_LOGGER)
                     ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
@@ -182,7 +182,9 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 		try {
 
 			if (logger.isDebugEnabled())
-				logger.debug(this.getClass().getSimpleName()+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+consumer+","+promise+")");
+				logger.debug(this.getClass().getSimpleName()
+//						+"@"+System.identityHashCode(this)
+						+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+consumer+","+promise+")");
 
 			if (!channel.isOpen()) {
 				promise.failure(new PECommunicationsException("Channel closed: " + channel));

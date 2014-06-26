@@ -78,12 +78,22 @@ public class DVEAnalyzerCLITest extends SchemaTest {
 	/**
 	 * Generate templates while testing various template generator methods.
 	 */
-	private static void testTemplateGenerators(final DVEClientToolTestConsole console, final String cardinalityCutoff, final String frequencyCorpus) {
+	private static void testTemplateGenerators(final DVEClientToolTestConsole console, final String cardinalityCutoff, final String frequencyCorpus,
+			final String baseTemplate) {
 		console.executeCommand("generate broadcast templates");
 		console.executeCommand("generate random templates");
+
 		console.executeCommand("generate basic templates " + cardinalityCutoff);
+		console.executeCommand("generate basic templates " + cardinalityCutoff + " " + baseTemplate);
+
 		console.executeCommand("generate guided templates " + cardinalityCutoff + " false false " + frequencyCorpus);
+		console.executeCommand("generate guided templates " + cardinalityCutoff + " false false " + baseTemplate);
+		console.executeCommand("generate guided templates " + cardinalityCutoff + " false false " + frequencyCorpus + " " + baseTemplate);
+
 		console.executeCommand("generate templates false false " + frequencyCorpus);
+		console.executeCommand("generate templates false false " + baseTemplate);
+		console.executeCommand("generate templates false false " + frequencyCorpus + " " + baseTemplate);
+
 	}
 
 	private static void assertStatementCounts(final String frequencyCorpus, final Map<String, Integer> expectedStatementCounts) throws PEException {
@@ -107,6 +117,12 @@ public class DVEAnalyzerCLITest extends SchemaTest {
 		final String staticReport = getTempFile("static", null);
 		final String frequencyCorpus = getTempFile("corpus", null);
 		final String template = getTempFile("template", null);
+		final String baseTemplate = getTempFile("baseTemplate", Arrays.asList(
+				"<?xml version=\"1.0\"?>"
+				+ "<template name=\"allbroadcast\">"
+				+ "<tabletemplate match=\".*\" model=\"Broadcast\" />"
+				+ "</template>"
+				));
 		final String generalLog = getTempFile("general",
 				Arrays.asList(
 						"		1 Connect	" + nativeConnection.getUserid() + "@localhost on " + TEST_DATABASE_NAME,
@@ -118,12 +134,12 @@ public class DVEAnalyzerCLITest extends SchemaTest {
 
 		console.executeCommand("connect " + getConnectionString());
 		console.executeCommand("set database " + TEST_DATABASE_NAME);
-		console.executeCommand("static");
+		console.executeCommand("static true");
 		console.executeCommand("save report " + staticReport);
 		console.executeCommand("frequencies mysql " + frequencyCorpus + " "
 				+ generalLog + " " + generalLog + " " + generalLog);
 
-		testTemplateGenerators(console, "10", frequencyCorpus);
+		testTemplateGenerators(console, "10", frequencyCorpus, baseTemplate);
 
 		console.executeCommand("save template " + TEST_DATABASE_NAME + " " + template);
 		console.executeCommand("dynamic mysql " + generalLog + " " + dynamicLog);

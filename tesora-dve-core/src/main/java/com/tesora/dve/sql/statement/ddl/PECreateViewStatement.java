@@ -334,7 +334,7 @@ public class PECreateViewStatement extends
 	}
 
 	
-	private static class CreateViewOperation implements NestedOperationDDLCallback {
+	private static class CreateViewOperation extends NestedOperationDDLCallback {
 
 		private final PEView nascentDefinition;
 		private SchemaContext context;
@@ -417,7 +417,8 @@ public class PECreateViewStatement extends
 					ViewMode vm = existing.asView().getView(context).getMode(); 
 					if (vm == ViewMode.EMULATE) {
 						// if it was emulated we would have tossed a table down
-						dropCommand = new PEDropTableStatement(context, Collections.singletonList(new TableKey(existing,context.getNextTable())), Collections.EMPTY_LIST, true); 
+						TableKey tk = TableKey.make(context,existing,context.getNextTable());
+						dropCommand = new PEDropTableStatement(context, Collections.singletonList(tk), Collections.EMPTY_LIST, true, tk.isUserlandTemporaryTable()); 
 					} else {
 						dropCommand = new PEDropViewStatement(existing.asView(), true);
 					}
@@ -496,21 +497,6 @@ public class PECreateViewStatement extends
 				qsuo.execute(conn, wg, resultConsumer);
 			}
 		}
-
-		@Override
-		public void postCommitAction(CatalogDAO c) throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
-				WorkerGroup wg, DBResultConsumer resultConsumer)
-				throws PEException {
-			// TODO Auto-generated method stub
-			
-		}
-		
 	}
 	
 }

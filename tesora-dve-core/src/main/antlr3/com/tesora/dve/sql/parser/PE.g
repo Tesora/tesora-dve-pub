@@ -303,7 +303,7 @@ sql_schema_query_statement returns [Statement s] options {k=1;}:
 // [5] | <table_opts> select statement
 
 table_definition returns [Statement s] options {k=1;}:
-  TABLE push_scope if_not_exists tn=qualified_identifier
+  (temptab=TEMPORARY { utils.notddl(); })? TABLE push_scope if_not_exists tn=qualified_identifier
   (
     // [2]
     ( LIKE npon=qualified_identifier 
@@ -315,7 +315,7 @@ table_definition returns [Statement s] options {k=1;}:
       ((ctadist=distribution_declaration) | (ctacont=container_discriminator))?
       AS? (ctasel=select_statement)
       { $s = utils.buildCreateTable($tn.n, Collections.EMPTY_LIST, $ctadist.dv, $ctasgn.n, $cta_dto.l,
-                                $if_not_exists.b, $ctacont.p, $ctasel.s); utils.popScope(); }
+                                $if_not_exists.b, $ctacont.p, $ctasel.s, $temptab != null); utils.popScope(); }
      )
      |
      ( Left_Paren
@@ -330,7 +330,7 @@ table_definition returns [Statement s] options {k=1;}:
             ((ntdist=distribution_declaration) | (ntcont=container_discriminator))?
             (AS? ntsel=select_statement)?
             { $s = utils.buildCreateTable($tn.n, $table_define_fields.l, $ntdist.dv, $sgn.n, $nt_dto.l, 
-                                    $if_not_exists.b, $ntcont.p, $ntsel.s); utils.popScope(); }
+                                    $if_not_exists.b, $ntcont.p, $ntsel.s, $temptab != null); utils.popScope(); }
            )
         )
       )
@@ -1117,7 +1117,7 @@ config_option returns [Pair p] options {k=1;}:
 
 
 drop_statement returns [Statement s] options {k=1;}:
-  TABLE (IF e=EXISTS)? qualified_identifier_list { $s = utils.buildDropTableStatement($qualified_identifier_list.l, ($e != null)); }
+  (TEMPORARY { utils.notddl(); })? TABLE (IF e=EXISTS)? qualified_identifier_list { $s = utils.buildDropTableStatement($qualified_identifier_list.l, ($e != null), $TEMPORARY != null); }
   | MULTITENANT? database_tag (IF e=EXISTS)? unqualified_identifier { $s = utils.buildDropDatabaseStatement($unqualified_identifier.n,($e != null), ($MULTITENANT != null), $database_tag.text); } 
   | USER (IF e=EXISTS)? userid { $s = utils.buildDropUserStatement($userid.us, $e != null); }
   | VIEW (IF ve=EXISTS)? qualified_identifier { $s = utils.buildDropViewStatement($qualified_identifier.n,$ve != null); }
@@ -1378,7 +1378,7 @@ kill_statement returns [Statement s] options {k=1;}:
 ddl:
   { utils.ddl(); }
   ;
-  
+
 empty_statement options {k=1;}:
   // COMMENT | LINE_COMMENT;
   EOF 

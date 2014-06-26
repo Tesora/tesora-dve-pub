@@ -37,7 +37,7 @@ public class MTTableKey extends TableKey {
 		scope = ts;
 	}
 	
-	public MTTableKey(MTTableInstance ti) {
+	MTTableKey(MTTableInstance ti) {
 		super(ti);
 		scope = ti.getTableScope();
 	}
@@ -68,4 +68,9 @@ public class MTTableKey extends TableKey {
 	public SchemaCacheKey<?> getCacheKey() {
 		return scope.getCacheKey();
 	}	
+	
+	@Override
+	public TableKey makeFrozen() {
+		return new MTTableKey(getTable(),scope,getNode());
+	}
 }

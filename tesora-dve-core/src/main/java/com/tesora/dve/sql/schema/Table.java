@@ -23,7 +23,7 @@ package com.tesora.dve.sql.schema;
 
 import java.util.List;
 
-public interface Table<T extends Column<?>> extends HasName {
+public interface Table<T extends Column<?>> extends HasName, HasTable {
 
 	
 	public T addColumn(SchemaContext sc, T c);

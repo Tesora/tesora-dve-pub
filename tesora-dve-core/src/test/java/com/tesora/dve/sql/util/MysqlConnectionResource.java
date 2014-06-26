@@ -37,6 +37,7 @@ import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.MysqlStmtCloseDiscarder;
 import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
@@ -45,6 +46,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.sql.parser.ParserInvoker.LineInfo;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.worker.AdditionalConnectionInfo;
 import com.tesora.dve.worker.MysqlPreparedStmtExecuteCollector;
 import com.tesora.dve.worker.MysqlTextResultChunkProvider;
 import com.tesora.dve.worker.UserAuthentication;
@@ -142,7 +144,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 	@Override
 	public void connect() throws Throwable {
-		mysqlConn.connect(url, userName, password);
+		mysqlConn.connect(url, userName, password, ClientCapabilities.DEFAULT_PSITE_CAPABILITIES);
 		connected = true;
 	}
 
@@ -214,7 +216,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		}
 
 		@Override
-		public Worker createWorker(UserAuthentication auth, EventLoopGroup preferredEventLoop) throws PEException {
+		public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {
 			return null;
 		}
 

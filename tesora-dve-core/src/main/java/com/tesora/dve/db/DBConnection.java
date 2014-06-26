@@ -40,7 +40,7 @@ public interface DBConnection extends PEFuture.Listener<Boolean> {
 		void onUpdate();
 	}
 	
-	void connect(String url, String userid, String password) throws PEException;
+	void connect(String url, String userid, String password, long clientCapabilities) throws PEException;
 	void close();
 	
 	PEFuture<Boolean> execute(SQLCommand sql, DBResultConsumer consumer, PEPromise<Boolean> promise) throws PESQLException;
