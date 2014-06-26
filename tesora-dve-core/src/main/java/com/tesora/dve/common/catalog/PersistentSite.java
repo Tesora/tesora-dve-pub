@@ -231,7 +231,7 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 	}
 
 	@Override
-	public Worker createWorker(UserAuthentication auth, EventLoopGroup preferredEventLoop, AdditionalConnectionInfo additionalConnInfo) throws PEException {	
+	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {
 		// If the user is the admin user then use site creds instead of user creds
 		if(auth.isAdminUser())
 			return getWorkerFactory().newWorker(getMasterInstance().getAuthentication(), additionalConnInfo, this, preferredEventLoop);

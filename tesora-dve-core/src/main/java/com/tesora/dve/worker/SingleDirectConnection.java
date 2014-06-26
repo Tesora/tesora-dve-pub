@@ -88,7 +88,7 @@ public class SingleDirectConnection implements WorkerConnection {
     protected DBConnection getConnection() throws PESQLException {
         DirectConnectionCache.CachedConnection cacheEntry = datasourceInfo.get();
         while (cacheEntry == null){
-            cacheEntry = DirectConnectionCache.checkoutDatasource(preferredEventLoop,userAuthentication, site);
+            cacheEntry = DirectConnectionCache.checkoutDatasource(preferredEventLoop,userAuthentication, additionalConnInfo, site);
 
             if (datasourceInfo.compareAndSet(null, cacheEntry))
                 break;

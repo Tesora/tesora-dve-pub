@@ -30,6 +30,7 @@ import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.mysql.MysqlConnection;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
@@ -83,15 +84,15 @@ public class DirectConnectionCache {
                     /* testWhileIdle */ false
                     );
 
-    public static CachedConnection checkoutDatasource(UserAuthentication auth, StorageSite site) throws PESQLException {
-        return checkoutDatasource(null,auth,site);
+    public static CachedConnection checkoutDatasource(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PESQLException {
+        return checkoutDatasource(null,auth,additionalConnInfo,site);
     }
-    public static CachedConnection checkoutDatasource(EventLoopGroup preferredEventLoop, UserAuthentication auth, StorageSite site) throws PESQLException {
+    public static CachedConnection checkoutDatasource(EventLoopGroup preferredEventLoop, UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PESQLException {
         try{
             if (preferredEventLoop == null)
                 preferredEventLoop = SharedEventLoopHolder.getLoop();
 
-            DSCacheKey datasourceKey = new DirectConnectionCache.DSCacheKey(preferredEventLoop,auth, site);
+            DSCacheKey datasourceKey = new DirectConnectionCache.DSCacheKey(preferredEventLoop,auth, additionalConnInfo, site);
 
             CachedConnection cacheEntry;
             if (DirectConnectionCache.suppressConnectionCaching) {
@@ -157,7 +158,7 @@ public class DirectConnectionCache {
         DBType dbType = DBType.valueOf(dbUrl.getSubProtocol().toUpperCase());
 
         DBConnection dbConnection = connectionFactoryMap.get(dbType).newInstance(key.eventLoop,key.site);
-        dbConnection.connect(key.url, key.userId, key.password);
+        dbConnection.connect(key.url, key.userId, key.password, key.clientCapabilities);
 
         return new CachedConnection(key, dbConnection);
     }
@@ -172,8 +173,8 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void connect(String url, String userid, String password) throws PEException {
-            dbConnection.connect(url,userid,password);
+        public void connect(String url, String userid, String password,  long clientCapabilities) throws PEException {
+            dbConnection.connect(url,userid,password, clientCapabilities);
         }
 
         @Override
@@ -254,14 +255,17 @@ public class DirectConnectionCache {
     }
 
     public static class DSCacheKey {
+        final long CLIENT_CAPABILITIES_MASK = ClientCapabilities.DEFAULT_PSITE_CAPABILITIES | ClientCapabilities.CLIENT_FOUND_ROWS;
         private final EventLoopGroup eventLoop;
+        private long clientCapabilities;
         private final String userId;
         private final String password;
         private final String url;
         private final boolean adminUser;
         private final StorageSite site;
 
-        public DSCacheKey(EventLoopGroup eventLoop,UserAuthentication auth, StorageSite site) {
+        public DSCacheKey(EventLoopGroup eventLoop,UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) {
+            this.clientCapabilities = additionalConnInfo.getClientCapabilities() & CLIENT_CAPABILITIES_MASK;
             this.eventLoop = eventLoop;
             this.userId = auth.getUserid();
             this.password = auth.getPassword();
@@ -278,6 +282,7 @@ public class DirectConnectionCache {
             result = prime * result + ((url == null) ? 0 : url.hashCode());
             result = prime * result
                     + ((userId == null) ? 0 : userId.hashCode());
+            result = prime * result + (int)clientCapabilities;
             result = prime * result + eventLoop.hashCode();
             return result;
         }
@@ -301,6 +306,8 @@ public class DirectConnectionCache {
                 if (other.userId != null)
                     return false;
             } else if (!userId.equals(other.userId)){
+                return false;
+            } else if (clientCapabilities != other.clientCapabilities){
                 return false;
             } else if (eventLoop != other.eventLoop)
                 return false;

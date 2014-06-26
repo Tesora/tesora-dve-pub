@@ -202,7 +202,7 @@ public class WorkerGroup {
 		this.manager = manager;
 		this.userAuthentication = userAuth;
         this.clientEventLoop = preferredEventLoop;
-		GetWorkerRequest req = new GetWorkerRequest(userAuth, getAdditionalConnInfo(sender), group, preferredEventLoop);
+		GetWorkerRequest req = new GetWorkerRequest(userAuth, getAdditionalConnInfo(sender), preferredEventLoop, group);
         Envelope e = sender.newEnvelope(req).to(Singletons.require(HostService.class).getWorkerManagerAddress());
 		GetWorkerResponse resp = (GetWorkerResponse) sender.sendAndReceive(e);
 		workerMap.putAll(resp.getWorkers());
@@ -736,9 +736,14 @@ public class WorkerGroup {
 		
 		public static WorkerGroup newInstance(SSConnection ssCon, StorageGroup sg, PersistentDatabase ctxDB) throws PEException {
 			WorkerGroup wg = workerGroupPool.get(sg, ssCon.getUserAuthentication());
+            Channel channel = ssCon.getChannel();
+            EventLoop eventLoop = channel == null ? null : channel.eventLoop();
+
 			if (wg == null) {
-				wg = new WorkerGroup(sg).provision(ssCon, ssCon, ssCon.getUserAuthentication());
-			}
+				wg = new WorkerGroup(sg).provision(ssCon, ssCon, ssCon.getUserAuthentication(), eventLoop);
+			} else {
+                wg.bindToClientThread(eventLoop);
+            }
 			try {
 				if (ctxDB != null) 
 					wg.setDatabase(ssCon, ctxDB);

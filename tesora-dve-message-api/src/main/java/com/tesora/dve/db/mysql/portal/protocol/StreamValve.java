@@ -105,7 +105,7 @@ public class StreamValve extends ChannelInboundHandlerAdapter {
 
     public void validateInLoopAndPipeline(ChannelPipeline otherPipeline) {
         if (!this.savedContext.executor().inEventLoop()){
-            throw new IllegalStateException("Cannot request pause/resume outside of event loop");
+            throw new IllegalStateException("Cannot request pause/resume outside of event loop, current thread is "+Thread.currentThread());
         }
 
         if (this.savedContext.pipeline() != otherPipeline){
