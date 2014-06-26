@@ -21,68 +21,53 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
+import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
-import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.common.PECollectionUtils;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
-public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor {
-	
-	static Logger logger = Logger.getLogger(RedistTupleBuilder.class);
-	
+public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor, RedistTargetSite.InsertPolicy {
+    static final String SIMPLE_CLASSNAME = RedistTupleBuilder.class.getSimpleName();
+
 	static private AtomicInteger nextId = new AtomicInteger();
 	private int thisId = nextId.incrementAndGet();
 
+    Logger logger = Logger.getLogger(RedistTupleBuilder.class.getName() +"."+thisId);
 
-	class SiteContext {
-		private static final int MAX_PACKET_PERMITS = 100;
-		ChannelHandlerContext ctx;
-		int pstmtId = -1;
-        BufferedExecute bufferedExecute = new BufferedExecute();
-		int totalQueuedBytes = 0;
-		int totalQueuedRows = 0;
-		boolean needsNewParam = true;
-		AtomicReference<Future<Void>> flushFuture = new AtomicReference<Future<Void>>();
-		ReentrantLock siteCtxLock = new ReentrantLock();
-		Semaphore packetWritePermits = new Semaphore(MAX_PACKET_PERMITS);
-		public int pstmtTupleCount = 0;
-		AtomicInteger pendingStatementCount = new AtomicInteger();
-		AtomicInteger queuedRowSetCount = new AtomicInteger();
-	}
-	Map<StorageSite, SiteContext> siteCtxBySite = new ConcurrentHashMap<StorageSite, SiteContext>();
-	Map<Channel, SiteContext> siteCtxByChannel = new ConcurrentHashMap<Channel, SiteContext>();
+    Map<StorageSite, RedistTargetSite> siteCtxBySite = new HashMap<StorageSite, RedistTargetSite>();
+	Map<Channel, RedistTargetSite> siteCtxByChannel = new HashMap<Channel, RedistTargetSite>();
 
-	AtomicInteger updatedRowsCount = new AtomicInteger();
+    IdentityHashMap<RedistTargetSite,RedistTargetSite> blockedTargetSites = new IdentityHashMap<>();
+    IdentityHashMap<ChannelHandlerContext,ChannelHandlerContext> sourceSites = new IdentityHashMap<>();
+    boolean receivingSourcePackets = false;
+    boolean processFailed = false;
+
+	int updatedRowsCount = 0;
+
 	PEPromise<Integer> completionPromise = new PEDefaultPromise<Integer>();
-	
-	ReentrantLock processPacketLock = new ReentrantLock();
+
+    boolean sourcePaused = false;
 
 	boolean lastPacketSent = false;
 
@@ -111,20 +96,163 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 		this.maxDataSize = maxDataSize;
 	}
 
-	public void execute(MappingSolution mappingSolution,
-			MyBinaryResultRow binRow, int fieldCount, ColumnSet columnSet, long[] autoIncrBlocks)
+	public void processSourcePacket(MappingSolution mappingSolution, MyBinaryResultRow binRow, int fieldCount, ColumnSet columnSet, long[] autoIncrBlocks)
 			throws PEException {
+        if (!receivingSourcePackets)
+            receivingSourcePackets = true;
+
+        //SMG:debug
+        if (processFailed)
+            System.out.println(Thread.currentThread() + " :: receiving source packet during failed redist");
 
 		if (mappingSolution == MappingSolution.AllWorkers || mappingSolution == MappingSolution.AllWorkersSerialized) {
-			for (SiteContext siteCtx : siteCtxBySite.values())
-				writePacket(binRow, (autoIncrBlocks == null) ? null : new long[] { autoIncrBlocks[0] }, siteCtx);
+			for (RedistTargetSite siteCtx : siteCtxBySite.values())
+				handleSourceRow(binRow, (autoIncrBlocks == null) ? null : new long[]{autoIncrBlocks[0]}, siteCtx);
 		} else if (mappingSolution == MappingSolution.AnyWorker || mappingSolution == MappingSolution.AnyWorkerSerialized) {
-			writePacket(binRow, autoIncrBlocks, PECollectionUtils.selectRandom(siteCtxBySite.values()));
+			handleSourceRow(binRow, autoIncrBlocks, PECollectionUtils.selectRandom(siteCtxBySite.values()));
 		} else {
 			StorageSite executionSite = targetWG.resolveSite(mappingSolution.getSite());
-			writePacket(binRow, autoIncrBlocks, siteCtxBySite.get(executionSite));
+			handleSourceRow(binRow, autoIncrBlocks, siteCtxBySite.get(executionSite));
 		}
+
+        if (!blockedTargetSites.isEmpty()){
+            pauseSourceStreams();
+        }
+
 	}
+
+    public void setProcessingComplete() throws PEException {
+        //Called when upstream forwarder has seen stream EOFs from all source streams, so all rows have been forwarded.
+
+        //unpause all source streams so they are ready for re-use.
+        resumeSourceStreams();
+
+        lastPacketSent = true;
+        flushTargetSites();
+
+        testRedistributionComplete();
+    }
+
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //called when the RedistTupleBuilder is ready to receive responses on the target sockets.
+        this.targetActive(ctx);
+    }
+
+    @Override
+    public void failure(Exception e) {
+        completionPromise.failure(e);
+    }
+
+    @Override
+    public void addSite(StorageSite site, ChannelHandlerContext ctx) {
+        addTargetSite(site, ctx);
+    }
+
+    public int getUpdateCount() throws Exception {
+        if (logger.isDebugEnabled())
+            logger.debug("About to call completionPromise.sync(): " + completionPromise);
+        return completionPromise.sync();
+    }
+
+    @Override
+    public boolean isDone(ChannelHandlerContext ctx){
+        RedistTargetSite siteCtx = siteCtxByChannel.get(ctx.channel());
+
+        return isProcessingComplete(siteCtx);
+    }
+
+    @Override
+    public void packetStall(ChannelHandlerContext ctx) {
+        targetPacketStall(ctx);
+    }
+
+    @Override
+    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        return processTargetPacket(ctx, message);
+    }
+
+    @Override
+    public int getMaximumRowsToBuffer() {
+        return maximumRowCount;
+    }
+
+    @Override
+    public int getColumnsPerTuple() {
+        return targetTable.getNumberOfColumns();
+    }
+
+    @Override
+    public ColumnSet getRowsetMetadata() {
+        return rowSetMetadata;
+    }
+
+    public SQLCommand buildInsertStatement(int tupleCount) throws PEException {
+        SQLCommand insertCommand;
+        if (tupleCount == maximumRowCount && insertStatementFuture != null) {
+            try {
+                //TODO: this delayed building is suspect, we don't want to block a netty thread, and it ignores the tuple count. -sgossard
+                insertCommand = insertStatementFuture.get();
+            } catch (ExecutionException ee) {
+                throw new PEException("Exception encountered syncing to redist insert statement", ee);
+            } catch (InterruptedException ie) {
+                throw new PEException("Sync to redist insert statement interrupted", ie);
+            }
+        } else {
+            insertCommand = QueryStepMultiTupleRedistOperation.getTableInsertStatement(targetTable, insertOptions, rowSetMetadata, tupleCount, insertIgnore);
+        }
+        return insertCommand;
+    }
+
+
+    public void setRowSetMetadata(ColumnSet resultColumnMetadata) {
+        this.rowSetMetadata = resultColumnMetadata;
+    }
+
+    public void setInsertIgnore(boolean insertIgnore) {
+        this.insertIgnore = insertIgnore;
+    }
+
+    @Override
+    public String toString() {
+        return SIMPLE_CLASSNAME + "{" + thisId + "}";
+    }
+
+
+
+    protected void targetActive(ChannelHandlerContext ctx){
+        //NOOP.   No harm in having this here, the JIT will eliminate it.
+    }
+
+    public void sourceActive(ChannelHandlerContext ctx){
+        //this is called by MysqlRedistTupleForwarder instances that are processing the source queries when they are in position to receive response packets.
+        if (sourceSites.get(ctx) == null){
+            sourceSites.put(ctx,ctx);
+
+            //new site, pause it if we are paused.
+            if (receivingSourcePackets && sourcePaused) {
+                StreamValve.pipelinePause(ctx.pipeline());
+            }
+        }
+    }
+
+    protected void pauseSourceStreams(){
+        if (!sourcePaused){
+            sourcePaused = true;
+            for (ChannelHandlerContext ctx : sourceSites.keySet()){
+                StreamValve.pipelinePause(ctx.pipeline());
+            }
+        }
+    }
+
+    protected void resumeSourceStreams(){
+        if (sourcePaused){
+            sourcePaused = false;
+            for (ChannelHandlerContext ctx : sourceSites.keySet()){
+                StreamValve.pipelineResume(ctx.pipeline());
+            }
+        }
+    }
 
 	/**
 	 *
@@ -133,15 +261,15 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
      * @param siteCtx
      * @throws PEException
 	 */
-	private void writePacket(MyBinaryResultRow binRow, long[] autoIncrBlocks, SiteContext siteCtx) throws PEException {
-		siteCtx.siteCtxLock.lock();
+	protected void handleSourceRow(MyBinaryResultRow binRow, long[] autoIncrBlocks, RedistTargetSite siteCtx) throws PEException {
+//		siteCtx.siteCtxLock.lock();
 		try {
 
 			int rowsToFlushCount = 1;
 			int bytesToFlushCount = binRow.sizeInBytes();
 
 
-            boolean needsFlush = (siteCtx.totalQueuedRows + rowsToFlushCount >= maximumRowCount) || siteCtx.totalQueuedBytes + bytesToFlushCount >= maxDataSize;
+            boolean needsFlush = (siteCtx.getTotalQueuedRows() + rowsToFlushCount >= maximumRowCount) || siteCtx.getTotalQueuedBytes() + bytesToFlushCount >= maxDataSize;
 
             long[] autoIncUsed = autoIncrBlocks;
             if (needsFlush && autoIncrBlocks != null) {
@@ -149,287 +277,106 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
                 autoIncrBlocks[0] += rowsToFlushCount;
             }
 
-            siteCtx.bufferedExecute.add(binRow, autoIncUsed);
-            siteCtx.queuedRowSetCount.incrementAndGet();
-            siteCtx.totalQueuedBytes += bytesToFlushCount;
-            siteCtx.totalQueuedRows += rowsToFlushCount;
+            siteCtx.append(binRow, rowsToFlushCount, bytesToFlushCount, autoIncUsed);
 
-            if (needsFlush)
-				submitFlush(siteCtx);
+            if (siteCtx.getTotalQueuedRows() >= maximumRowCount || siteCtx.getTotalQueuedBytes() >= maxDataSize){
+                siteCtx.flush();
+                if (!siteCtx.allWritesFlushed()){
+                    blockedTargetSites.put(siteCtx,siteCtx);
+                }
+            }
 
-		} finally {
-			siteCtx.siteCtxLock.unlock();
+        } finally {
+//			siteCtx.siteCtxLock.unlock();
 		}
 	}
 
-	private void submitFlush(final SiteContext siteCtx) throws PEException  {
-        //NOTE: this code assumes we are holding the siteCtxLock mutex. -sgossard
-
-		syncPreviousFlush(siteCtx.flushFuture.getAndSet(null));
-
-		final BufferedExecute buffersToFlush = siteCtx.bufferedExecute;
-		if (!buffersToFlush.isEmpty()) {
-			final int rowsToFlush = siteCtx.totalQueuedRows; 
-			siteCtx.bufferedExecute = new BufferedExecute();
-			siteCtx.totalQueuedRows = 0;
-			siteCtx.totalQueuedBytes = 0;
-			if (rowsToFlush > 0) {
-                siteCtx.flushFuture.set(Singletons.require(HostService.class).submit(new Callable<Void>() {
-                    @Override
-                    public Void call() throws Exception {
-                        flushBuffers(siteCtx, buffersToFlush);
-                        return null;
-                    }
-                }));
-			} else {
-				siteCtx.queuedRowSetCount.addAndGet(-1 * buffersToFlush.size());
-			}
-		}
-	}
-
-	private void syncPreviousFlush(Future<Void> flushFuture) throws PEException {
-		try {
-			if (flushFuture != null)
-				flushFuture.get();
-		} catch (InterruptedException ie) {
-			throw new PEException("Sync of previous redist buffer flush interrupted", ie);
-		} catch (ExecutionException ee) {
-			throw new PEException("Exception from redist buffer flush - check log for details", ee);
-		}
-	}
-
-    private void flushBuffers(SiteContext siteCtx, BufferedExecute bufferedExecute) throws Exception {
-        int columnsPerTuple = targetTable.getNumberOfColumns();
-
-        int bufferedRowCount = bufferedExecute.size();
-        int rowsToFlush = Math.min(bufferedRowCount, maximumRowCount);
-
-        if (rowsToFlush != bufferedRowCount){
-            throw new PECodingException(String.format("number of buffered rows, %s, exceeded the maximum row count of %s",bufferedRowCount,rowsToFlush));
-        }
-
-        if (siteCtx.pstmtId >= 0 && rowsToFlush != siteCtx.pstmtTupleCount) {
-            closeActivePreparedStatement(siteCtx);
-        }
-
-        if (siteCtx.pstmtId < 0) {
-            startNewPreparedStatement(siteCtx, rowsToFlush);
-        }
-
-        bufferedExecute.setStmtID(siteCtx.pstmtId);
-        bufferedExecute.setNeedsNewParams(siteCtx.needsNewParam);
-        bufferedExecute.setRowSetMetadata(rowSetMetadata);
-        bufferedExecute.setColumnsPerTuple(columnsPerTuple);
-
-        int rowsWritten = bufferedExecute.size();
-
-        siteCtx.packetWritePermits.acquire();
-
-        // ********************
-        // order of these statements really matters.
-        //
-        // If a response comes in after we have queued all the input, we are done when no rows are queued or pending.
-        // If we send the message out before incrementing the pending count, if pending was originally zero, a response
-        // can come back on a different thread and think the redist is finished.
-        // similarly if we decrement the queued row count before we increment the pending count, the queued rows can drop to
-        // zero just before we increment pending, and another thread can catch things in the middle.
-        //
-        // The safest order of execution is increment pending, write the execute, then decrement the queued.
-
-        siteCtx.pendingStatementCount.incrementAndGet();
-        siteCtx.ctx.write(bufferedExecute);
-        siteCtx.queuedRowSetCount.getAndAdd(-rowsWritten);
-        siteCtx.ctx.flush();
-
-        // ********************
-
-        siteCtx.needsNewParam = false;
+    private void targetPacketStall(ChannelHandlerContext ctx) {
+        //NOOP.  just here
     }
 
-    private void closeActivePreparedStatement(SiteContext siteCtx) {
-		if (siteCtx.pstmtId >= 0) {
-			// Close statement commands have no results from mysql, so we can just send the command directly on the 
-			// channel context
+    private boolean processTargetPacket(ChannelHandlerContext ctx, MyMessage message) {
+        RedistTargetSite siteCtx = siteCtxByChannel.get(ctx.channel());
 
-            MSPComStmtCloseRequestMessage closeRequestMessage = MSPComStmtCloseRequestMessage.newMessage((byte) 0, siteCtx.pstmtId);
-            siteCtx.ctx.write(closeRequestMessage);
-			siteCtx.ctx.flush();
-			siteCtx.pstmtId = -1;
-			siteCtx.pstmtTupleCount = -1;
-			siteCtx.needsNewParam = true;
-		}
-	}
+        //SMG:debug
+        if (processFailed)
+            System.out.println(Thread.currentThread() + " :: receiving target packet during failed redist");
 
-	private void startNewPreparedStatement(SiteContext siteCtx, int tupleCount) throws Exception {
-		SQLCommand insertCommand;
-		if (tupleCount == maximumRowCount && insertStatementFuture != null) {
-			try {
-				insertCommand = insertStatementFuture.get();
-			} catch (ExecutionException ee) {
-				throw new PEException("Exception encountered syncing to redist insert statement", ee);
-			} catch (InterruptedException ie) {
-				throw new PEException("Sync to redist insert statement interrupted", ie);
-			}
-		} else {
-			insertCommand = QueryStepMultiTupleRedistOperation.getTableInsertStatement(targetTable, insertOptions, rowSetMetadata, tupleCount, insertIgnore);
-		}
-		
-		PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
-		MysqlPrepareStatementCollector prepareCollector = new MysqlPrepareStatementCollector();
-		prepareCollector.setExecuteImmediately(true);
-		MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(insertCommand.getSQL(), prepareCollector, preparePromise);
-		prepareCmd.setExecuteImmediately(true);
-		
-		siteCtx.packetWritePermits.acquire(SiteContext.MAX_PACKET_PERMITS);
-		try {
-			siteCtx.ctx.channel().write(prepareCmd);
-			siteCtx.ctx.channel().flush();
-		} finally {
-			siteCtx.packetWritePermits.release(SiteContext.MAX_PACKET_PERMITS);
-		}
+        if (!isProcessingComplete(siteCtx)) {
+            try {
+                if (message instanceof MyOKResponse) {
+                    if (!isProcessingComplete(siteCtx) && !completionPromise.isFulfilled()) { // skip if previous exception
+                        int rowCount = (int) ((MyOKResponse)message).getAffectedRows();
+                        updatedRowsCount+= rowCount;
+                    }
+                } else {
+                    MyErrorResponse err = (MyErrorResponse)message;
+                    failure(err.asException());
+                }
+            } finally {
+                siteCtx.handleAck(message);
+                blockedTargetSites.remove(siteCtx);
+                if (blockedTargetSites.isEmpty())
+                resumeSourceStreams();
+            }
+        }
 
-		if (logger.isDebugEnabled())
-			logger.debug("About to call preparePromise.sync(): " + preparePromise);
-		preparePromise.sync(); // Waits until all of the results of the prepare statement have been processed
-		
-		siteCtx.pstmtId = prepareCollector.getPreparedStatement().getStmtId().getStmtId(siteCtx.ctx.channel());
-		siteCtx.pstmtTupleCount = tupleCount;
-	}
+        testRedistributionComplete();
 
-    @Override
-    public boolean isDone(ChannelHandlerContext ctx){
-        SiteContext siteCtx = siteCtxByChannel.get(ctx.channel());
         return isProcessingComplete(siteCtx);
     }
 
-    @Override
-    public void packetStall(ChannelHandlerContext ctx) {
-    }
+    private boolean isProcessingComplete(RedistTargetSite siteCtx) {
+        boolean done = lastPacketSent && !siteCtx.hasPendingRows();
 
-	@Override
-	public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-		SiteContext siteCtx = siteCtxByChannel.get(ctx.channel());
-		if (!isProcessingComplete(siteCtx)) {
-			processPacketLock.lock();
-			try {
-				siteCtx.packetWritePermits.release();
-				if (message instanceof MyOKResponse) {
-					if (!isProcessingComplete(siteCtx) && !completionPromise.isFulfilled()) { // skip if previous exception
-                        int rowCount = (int) ((MyOKResponse)message).getAffectedRows();
-						updatedRowsCount.addAndGet(rowCount);
-					}
-				} else {
-                    MyErrorResponse err = (MyErrorResponse)message;
-					failure(err.asException());
-				}
-			} finally {
-				siteCtx.pendingStatementCount.decrementAndGet();
-				processPacketLock.unlock();
-			}
-		}
-
-        testRedistributionComplete();
-//		if (logger.isDebugEnabled())
-//			logger.debug("RedistTupleBuilder.processPacket checks isProcessingComplete: lastPacketSent = " + lastPacketSent + ", pendingRowCount = " + pendingStatementCount.get());
-//		if (isProcessingComplete())
-//			completionPromise.trySuccess(updatedRowsCount.get());
-		return isProcessingComplete(siteCtx);
-	}
-
-	private boolean isProcessingComplete(SiteContext siteCtx) {
-		return (lastPacketSent && siteCtx.pendingStatementCount.get() == 0 && siteCtx.queuedRowSetCount.get() == 0);
+        return done;
 	}
 	
-	public void setProcessingComplete() throws PEException {
-		try {
-			for (SiteContext siteContext : siteCtxBySite.values()) {
-				siteContext.siteCtxLock.lock();
-				try {
-					submitFlush(siteContext);
-				} finally {
-					siteContext.siteCtxLock.unlock();
-				}
-			}
 
-			for (SiteContext siteCtx : siteCtxBySite.values()) {
-				siteCtx.siteCtxLock.lock();
-				try {
-					syncPreviousFlush(siteCtx.flushFuture.get());
-					closeActivePreparedStatement(siteCtx);
-				} catch (PEException e) {
-					siteCtx.bufferedExecute = null;
-					siteCtx.queuedRowSetCount.set(0);
-					throw e;
-				} finally {
-					siteCtx.siteCtxLock.unlock();
-				}
-			}
-			testRedistributionComplete();
-		} catch (Exception e) {
-			completionPromise.failure(e);
-		}
 
-		for (SiteContext siteCtx : siteCtxBySite.values()) {
-			siteCtx.siteCtxLock.lock();
-			try {
-				syncPreviousFlush(siteCtx.flushFuture.get());
-				closeActivePreparedStatement(siteCtx);
-			} finally {
-				siteCtx.siteCtxLock.unlock();
-			}
-		}
-        lastPacketSent = true;
-		testRedistributionComplete();
-	}
+    private void closeTargetSites() {
 
-	private void testRedistributionComplete() {
+        for (RedistTargetSite siteCtx : siteCtxBySite.values()) {
+            siteCtx.close();
+        }
+    }
+
+    private void flushTargetSites() {
+        for (RedistTargetSite siteContext : siteCtxBySite.values()) {
+            boolean isFlushed = siteContext.flush();
+        }
+    }
+
+    private void testRedistributionComplete() {
 		boolean isProcessingComplete = lastPacketSent;
-		for (SiteContext siteCtx : siteCtxBySite.values()) {
-			if (siteCtx.pendingStatementCount.get() != 0 || siteCtx.queuedRowSetCount.get() != 0) {
+		for (RedistTargetSite siteCtx : siteCtxBySite.values()) {
+			if ( siteCtx.hasPendingRows() ) {
 				isProcessingComplete = false;
 				break;
 			}
 		}
+
 		if (isProcessingComplete) {
 			if (logger.isDebugEnabled())
 				logger.debug("Redistribution of " + targetTable.displayName() + " complete - " + updatedRowsCount + " rows updated");
-			completionPromise.trySuccess(updatedRowsCount.get());
+            try{
+                closeTargetSites();
+                completionPromise.trySuccess(updatedRowsCount);
+            } catch (Exception e){
+                completionPromise.failure(e);
+            }
+
 		}
 	}
 
-	@Override
-	public void failure(Exception e) {
-		completionPromise.failure(e);
-	}
+    private void addTargetSite(StorageSite site, ChannelHandlerContext ctx) {
+        RedistTargetSite siteCtx = new RedistTargetSite(this,ctx,this);
+        siteCtxBySite.put(site, siteCtx);
+        siteCtxByChannel.put(ctx.channel(), siteCtx);
 
-	public int getUpdateCount() throws Exception {
-		if (logger.isDebugEnabled())
-			logger.debug("About to call completionPromise.sync(): " + completionPromise);
-		return completionPromise.sync();
-	}
-
-	@Override
-	public void addSite(StorageSite site, ChannelHandlerContext ctx) {
-		SiteContext siteCtx = new SiteContext();
-		siteCtx.ctx = ctx;
-		siteCtxBySite.put(site, siteCtx);
-		siteCtxByChannel.put(ctx.channel(), siteCtx);
-		readyPromise.success(this);
-	}
-
-	@Override
-	public String toString() {
-		return getClass().getSimpleName()+"{"+thisId+"}";
-	}
-
-
-	public void setRowSetMetadata(ColumnSet resultColumnMetadata) {
-		this.rowSetMetadata = resultColumnMetadata;
-	}
-
-	public void setInsertIgnore(boolean insertIgnore) {
-		this.insertIgnore = insertIgnore;
-	}
+        //TODO: should we be declaring success after adding the first target site? -sgossard
+        readyPromise.success(this);
+    }
 
 
 }

@@ -21,6 +21,7 @@ package com.tesora.dve.db.mysql.portal;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
 import com.tesora.dve.db.mysql.portal.protocol.MSPProtocolDecoder;
 import com.tesora.dve.server.global.HostService;
@@ -83,6 +84,7 @@ public class MySqlPortal implements MySqlPortalService {
 			catalog.close();
 		}
 
+        //TODO: parse/plan is on this pool, which is probably ok, especially with blocking calls to catalog.  Check for responses that can be done by backend netty threads and avoid two context shifts.
 		clientExecutorService = new PEThreadPoolExecutor(max_concurrent,
 				max_concurrent,
 				30L, TimeUnit.SECONDS,
@@ -91,25 +93,29 @@ public class MySqlPortal implements MySqlPortalService {
 		clientExecutorService.allowCoreThreadTimeOut(true);
 		
 		bossGroup = new NioEventLoopGroup(1, new PEDefaultThreadFactory("msp-boss"));
-		workerGroup = new NioEventLoopGroup(0, new PEDefaultThreadFactory("msp-worker"));
+
+        //fixes the number of Netty NIO threads to the number of available CPUs.
+        workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors(), new PEDefaultThreadFactory("netty-worker"));
+
 		ServerBootstrap b = new ServerBootstrap();
 		try {
 			b.group(bossGroup, workerGroup)
 			.channel(NioServerSocketChannel.class)
 			.childHandler(new ChannelInitializer<SocketChannel>() {
 
-				@Override
-				protected void initChannel(SocketChannel ch) throws Exception {
+                @Override
+                protected void initChannel(SocketChannel ch) throws Exception {
                     if (PACKET_LOGGER)
                         ch.pipeline().addFirst(new LoggingHandler(LogLevel.INFO));
-					ch.pipeline()
-					.addLast(MSPEncoder.getInstance())
-                    .addLast(MSPProtocolDecoder.class.getSimpleName(), new MSPProtocolDecoder(MSPProtocolDecoder.MyDecoderState.READ_CLIENT_AUTH))
-					.addLast(new MSPAuthenticateHandlerV10())
-                    .addLast(MSPCommandHandler.class.getSimpleName(), new MSPCommandHandler(clientExecutorService))
-					.addLast(ConnectionHandlerAdapter.getInstance());
-				}
-			})
+                    ch.pipeline()
+                            .addLast(MSPEncoder.getInstance())
+                            .addLast(MSPProtocolDecoder.class.getSimpleName(), new MSPProtocolDecoder(MSPProtocolDecoder.MyDecoderState.READ_CLIENT_AUTH))
+                            .addLast(new MSPAuthenticateHandlerV10())
+                            .addLast(MSPCommandHandler.class.getSimpleName(), new MSPCommandHandler(clientExecutorService))
+                            .addLast(ConnectionHandlerAdapter.getInstance());
+                }
+            })
+                    
 			.childOption(ChannelOption.ALLOCATOR, USE_POOLED_BUFFERS ? PooledByteBufAllocator.DEFAULT : UnpooledByteBufAllocator.DEFAULT)
 			.childOption(ChannelOption.TCP_NODELAY, true)
 			.childOption(ChannelOption.SO_KEEPALIVE, true)

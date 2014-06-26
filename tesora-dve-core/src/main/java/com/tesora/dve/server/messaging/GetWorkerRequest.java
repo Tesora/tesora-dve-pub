@@ -36,10 +36,12 @@ import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerManager;
 import com.tesora.dve.worker.agent.Envelope;
+import io.netty.channel.EventLoopGroup;
 
 public class GetWorkerRequest extends WorkerManagerRequest {
 	
 	private static final long serialVersionUID = 3107349676917943589L;
+    EventLoopGroup preferredEventLoop;
 	UserAuthentication userAuth;
 	StorageGroup storageGroup;
 	
@@ -50,9 +52,10 @@ public class GetWorkerRequest extends WorkerManagerRequest {
 	 int siteCount;
 	 boolean strict;
 	
-	public GetWorkerRequest(UserAuthentication userAuth, StorageGroup group) {
+	public GetWorkerRequest(UserAuthentication userAuth, StorageGroup group, EventLoopGroup preferredEventLoop) {
 		this.userAuth = userAuth;
 		this.storageGroup = group;
+        this.preferredEventLoop = preferredEventLoop;
 //		group.prepareForTransport(); // to ensure that JPA loads the sites & gens
 	}
 
@@ -69,7 +72,7 @@ public class GetWorkerRequest extends WorkerManagerRequest {
 	}
 	
 	public void fulfillGetWorkerRequest(Collection<? extends StorageSite> storageSites) throws PEException {
-		Map<StorageSite, Worker> theWorkers = wm.getWorkerMap(userAuth, storageSites);
+		Map<StorageSite, Worker> theWorkers = wm.getWorkerMap(userAuth, preferredEventLoop, storageSites);
 		ResponseMessage resp = new GetWorkerResponse(theWorkers);
 		wm.returnResponse(requestEnvelope, resp);
 	}

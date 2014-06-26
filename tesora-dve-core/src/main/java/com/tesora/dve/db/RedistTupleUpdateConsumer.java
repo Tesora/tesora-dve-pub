@@ -71,7 +71,7 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
 	@Override
 	public PEFuture<Boolean> writeCommandExecutor(Channel channel,
 			StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
-		MysqlForwardedExecuteCommand execCommand = 
+		MysqlForwardedExecuteCommand execCommand =
 				new MysqlForwardedExecuteCommand(forwardedResultHandler, promise, site);
 		channel.write(execCommand);
 		if (logger.isDebugEnabled())

@@ -68,8 +68,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = prepareCollector.getPreparedStatement();
 				channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), resultForwarder, promise));
 //			System.out.println("selectCollector " + pstmt);
-				channel.write(new MysqlStmtCloseCommand(pstmt));
-				channel.flush();
+				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
 			}
 			@Override
 			public void onFailure(Exception e) {

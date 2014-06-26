@@ -25,14 +25,15 @@ import com.tesora.dve.common.catalog.ISiteInstance;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PEException;
+import io.netty.channel.EventLoopGroup;
 
 public class MasterMasterWorker extends Worker {
 
 	public static class Factory implements Worker.Factory {
 		@Override
-		public Worker newWorker(UserAuthentication auth, StorageSite site)
+		public Worker newWorker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop)
 				throws PEException {
-			return new MasterMasterWorker(auth, site);
+			return new MasterMasterWorker(auth, site, preferredEventLoop);
 		}
 
 		@Override
@@ -50,13 +51,13 @@ public class MasterMasterWorker extends Worker {
 
 	public static final String HA_TYPE = "MasterMaster";
 
-	public MasterMasterWorker(UserAuthentication auth, StorageSite site)
+	public MasterMasterWorker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop)
 			throws PEException {
-		super(auth, site);
+		super(auth, site, preferredEventLoop);
 	}
 
 	@Override
-	public WorkerConnection getConnection(StorageSite site, UserAuthentication auth) {
-		return new MasterMasterConnection(auth, site);
+	public WorkerConnection getConnection(StorageSite site, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
+		return new MasterMasterConnection(auth, site, preferredEventLoop);
 	}
 }

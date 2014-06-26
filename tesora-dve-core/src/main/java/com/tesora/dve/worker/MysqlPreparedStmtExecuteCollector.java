@@ -28,6 +28,7 @@ import io.netty.channel.Channel;
 
 import java.util.List;
 
+import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.StorageSite;
@@ -118,6 +119,11 @@ public class MysqlPreparedStmtExecuteCollector implements MysqlQueryResultConsum
     public boolean emptyResultSet(MyOKResponse ok) {
         numRowsAffected = ok.getAffectedRows();
         return numRowsAffected > 0;
+    }
+
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //NOOP.
     }
 
     @Override

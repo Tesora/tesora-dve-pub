@@ -28,6 +28,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
+import io.netty.channel.EventLoopGroup;
 
 public interface StorageSite {
 
@@ -52,7 +53,7 @@ public interface StorageSite {
 
 	void incrementUsageCount();
 
-	Worker createWorker(UserAuthentication auth) throws PEException;
+	Worker createWorker(UserAuthentication auth, EventLoopGroup preferredEventLoop) throws PEException;
 
 	/**
 	 * Called when the notification manager decides that 

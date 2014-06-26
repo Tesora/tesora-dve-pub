@@ -211,4 +211,9 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 		getPromise().failure(e);
 	}
 
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        resultConsumer.active(ctx);
+    }
+
 }

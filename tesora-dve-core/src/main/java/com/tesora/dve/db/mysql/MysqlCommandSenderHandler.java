@@ -38,6 +38,7 @@ import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
@@ -55,13 +56,14 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
 
     enum TimingDesc {BACKEND_ROUND_TRIP, BACKEND_RESPONSE_PROCESSING}
 
-	List<MysqlCommand> cmdList = Collections.synchronizedList(new LinkedList<MysqlCommand>());
+    MysqlCommand previousCommand = null;
+	List<MysqlCommand> cmdList = new LinkedList<MysqlCommand>();
 
 	Charset serverCharset = null;
 
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-		if (!(msg instanceof MysqlCommand)){
+        if (!(msg instanceof MysqlCommand)){
             logger.warn("Don't know how to handle message, passing downstream :" + (msg) );
             ctx.write(msg); //see if someone downstream can handle this.
             return;
@@ -77,32 +79,27 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
         Timer previouslyAttached = timingService.attachTimerOnThread(cast.frontendTimer);
         boolean noResponse = false;
         try {
-            if (cast.getResultHandler() != null) {
-                noResponse = cast.getResultHandler().isDone(ctx);//finished before we started, no responses will get processed.
-                if (cast.isExecuteImmediately()) {
-                    synchronized (cmdList) {
-                        int insertPos = 0;
-                        for (; insertPos < cmdList.size(); ++insertPos) {
-                            MysqlCommand pendingCmd = cmdList.get(insertPos);
-                            if (pendingCmd.isPreemptable())
-                                break;
-                        }
-                        cmdList.add(insertPos, cast);
-                        if (logger.isDebugEnabled())
-                            logger.debug(ctx.channel() + ": cmd registered for immediate execution: " + cast);
+            noResponse = cast.isDone(ctx);//finished before we started, no responses will get processed.
+            if (cast.isExecuteImmediately()) {
+                    int insertPos = 0;
+                    for (; insertPos < cmdList.size(); ++insertPos) {
+                        MysqlCommand pendingCmd = cmdList.get(insertPos);
+                        if (pendingCmd.isPreemptable())
+                            break;
                     }
-                } else {
-                    cmdList.add(cast);
+                    cmdList.add(insertPos, cast);
                     if (logger.isDebugEnabled())
-                        logger.debug(ctx.channel() + ": cmd registered: " + cast);
-                }
+                        logger.debug(ctx.channel() + ": cmd registered for immediate execution: " + cast);
+            } else {
+                cmdList.add(cast);
+                if (logger.isDebugEnabled())
+                    logger.debug(ctx.channel() + ": cmd registered: " + cast);
             }
             // System.out.println("Executing " + cmd);
             cast.executeInContext(ctx, getServerCharset(ctx));
             if (noResponse){
                 commandTimer.end(
-                    cast.getClass().getName(),
-                    cast.getResultHandler().getClass().getName()
+                    cast.getClass().getName()
                 );
             }
             lookupActiveCommand(ctx);//quick check to see if request is already done, (IE stmt close)
@@ -110,7 +107,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
             logger.error("Connection " + ctx.channel() + "to " + ctx.channel().remoteAddress()
                     + " closed due to exception", e);
             ctx.close();
-            cast.getResultHandler().failure(e);
+            cast.failure(e);
         } finally {
             timingService.attachTimerOnThread(previouslyAttached);
         }
@@ -156,20 +153,17 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
             if (logger.isDebugEnabled() && cmd.resultsProcessedCount() == 1)
                 logger.debug(ctx.channel() + ": results received for cmd " + cmd);
 
-            MysqlCommandResultsProcessor resultHandler = cmd.getResultHandler();
-
             responseProcessing = cmd.commandTimer.newSubTimer(TimingDesc.BACKEND_RESPONSE_PROCESSING);
             timingService.attachTimerOnThread(cmd.commandTimer);
-            resultHandler.processPacket(ctx, message);
+            cmd.processPacket(ctx, message);
             responseProcessing.end(
                     socketDesc,
-                    cmd.getClass().getName(),
-                    resultHandler.getClass().getName()
+                    cmd.getClass().getName()
             );
             lookupActiveCommand(ctx);//fast triggers removal of finished commands to get accurate completion time.
 
         } catch (PEException e) {
-            cmd.getResultHandler().failure(e);
+            cmd.failure(e);
         } catch (Exception e) {
             String errorMsg = String.format("encountered problem processing %s via %s, failing command.\n", (message.getClass().getName()), (cmd == null ? "null" : cmd.getClass().getName()));
             if (cmd==null || logger.isDebugEnabled())
@@ -177,7 +171,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
             else
                 logger.warn(errorMsg);
             if (cmd != null)
-                cmd.getResultHandler().failure(e);
+                cmd.failure(e);
         } finally {
             timingService.detachTimerOnThread();
             PEThreadContext.clear();
@@ -187,24 +181,27 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
     }
 
     protected MysqlCommand lookupActiveCommand(ChannelHandlerContext ctx) {
-        synchronized(cmdList){
-            for (;;){
-                if (cmdList.isEmpty())
-                    return null;
+        for (;;){
+            if (cmdList.isEmpty()){
+                return null;
+            }
+            MysqlCommand cmd = cmdList.get(0);
+            if (previousCommand != cmd){
+                previousCommand = cmd;
+                cmd.active(ctx);
+            }
+            if (cmd.isDone(ctx)) {
+                cmd.commandTimer.end( socketDesc,
+                        cmd.getClass().getName()
+                );
 
-                MysqlCommand cmd = cmdList.get(0);
-                if (cmd.getResultHandler().isDone(ctx)) {
-                    cmd.commandTimer.end( socketDesc,
-                            cmd.getClass().getName(),
-                            cmd.getResultHandler().getClass().getName()
-                    );
-                    cmdList.remove(0);
-                    if (logger.isDebugEnabled())
-                        logger.debug(ctx.channel() + ": "+cmd.resultsProcessedCount()+" results received for deregistered cmd " + cmd);
+                cmdList.remove(0);
+                if (logger.isDebugEnabled())
+                    logger.debug(ctx.channel() + ": "+cmd.resultsProcessedCount()+" results received for deregistered cmd " + cmd);
 
-                    continue;
-                } else
-                    return cmd;
+                continue;
+            } else {
+                return cmd;
             }
         }
     }
@@ -212,7 +209,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
         if ( ! cmdList.isEmpty() ){
-            cmdList.get(0).getResultHandler().packetStall(ctx);
+            cmdList.get(0).packetStall(ctx);
         }
         super.channelReadComplete(ctx);
     }
@@ -235,7 +232,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
                         new PECommunicationsException("Connection closed before completing command: " + cmd);
                 if (cause != null)
                     communicationsFailureException.initCause(cause);
-                cmd.getResultHandler().failure(communicationsFailureException);
+                cmd.failure(communicationsFailureException);
             }
         }
     }

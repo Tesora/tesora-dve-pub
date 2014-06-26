@@ -22,6 +22,7 @@ package com.tesora.dve.worker;
  */
 
 import com.tesora.dve.exceptions.PESQLException;
+import io.netty.channel.EventLoopGroup;
 
 public interface WorkerConnection {
 	
@@ -48,4 +49,6 @@ public interface WorkerConnection {
 	boolean hasActiveTransaction() throws PESQLException;
 
 	int getConnectionId() throws PESQLException;
+
+    void bindToClientThread(EventLoopGroup eventLoop) throws PESQLException;
 }

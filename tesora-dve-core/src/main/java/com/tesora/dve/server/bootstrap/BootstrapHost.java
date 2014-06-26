@@ -34,6 +34,7 @@ import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.server.global.MySqlPortalService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.worker.DirectConnectionCache;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -69,7 +70,6 @@ import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.schema.mt.TableGarbageCollector;
 import com.tesora.dve.variable.GlobalConfigVariableHandler;
 import com.tesora.dve.worker.agent.Agent;
-import com.tesora.dve.worker.SingleDirectConnection;
 import com.tesora.dve.worker.WorkerManager;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
 
@@ -275,7 +275,7 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 		SiteProviderFactory.closeSiteProviders();
 		ExternalServiceFactory.closeExternalServices();
 		GroupManager.shutdown();
-		SingleDirectConnection.clearConnectionCache();
+		DirectConnectionCache.clearConnectionCache();
 	}
 
     @Override

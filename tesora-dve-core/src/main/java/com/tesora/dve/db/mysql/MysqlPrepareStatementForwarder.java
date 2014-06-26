@@ -51,8 +51,7 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
         MyPrepareOKResponse copyPrepareOK = new MyPrepareOKResponse(preparedOK);//copy since we are mutating the id.
         int outboundID = Long.valueOf(outboundPStmt.getStmtId()).intValue();
         copyPrepareOK.setStmtId( outboundID );
-		outboundCtx.write(copyPrepareOK);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(copyPrepareOK);
 		outboundPStmt.setNumParams(getNumParams());
 	}
 
@@ -65,8 +64,7 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 			@Override
 			public void onSuccess(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = resultForwarder.getPreparedStatement();
-				channel.write(new MysqlStmtCloseCommand(pstmt));
-				channel.flush();
+				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
 				promise.success(false);
 			}
 			@Override
@@ -85,8 +83,7 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 
 	@Override
 	public void consumeParamDefEOF(MyEOFPktResponse myEof) {
-		outboundCtx.write(myEof);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(myEof);
 	}
 
 	@Override
@@ -96,14 +93,12 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 
 	@Override
 	public void consumeColDefEOF(MyEOFPktResponse colEof) {
-		outboundCtx.write(colEof);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(colEof);
 	}
 
 	@Override
 	public void consumeError(MyErrorResponse error) {
-		outboundCtx.write(error);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(error);
 	}
 
 
@@ -118,8 +113,7 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 
 		MyMessage respMsg = new MyErrorResponse(e);
 		respMsg.setPacketNumber(1);
-		outboundCtx.write(respMsg);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(respMsg);
 	}
 
 }

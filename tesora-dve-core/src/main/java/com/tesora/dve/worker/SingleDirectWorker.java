@@ -24,6 +24,7 @@ package com.tesora.dve.worker;
 import com.tesora.dve.common.catalog.ISiteInstance;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PEException;
+import io.netty.channel.EventLoopGroup;
 
 public class SingleDirectWorker extends Worker {
 	
@@ -31,9 +32,9 @@ public class SingleDirectWorker extends Worker {
 
 	public static class Factory implements Worker.Factory {
 		@Override
-		public Worker newWorker(UserAuthentication auth, StorageSite site)
+		public Worker newWorker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop)
 				throws PEException {
-			return new SingleDirectWorker(auth, site);
+			return new SingleDirectWorker(auth, site, preferredEventLoop);
 		}
 
 		@Override
@@ -49,13 +50,13 @@ public class SingleDirectWorker extends Worker {
 
 	public static final String HA_TYPE = "Single";
 
-	protected SingleDirectWorker(UserAuthentication auth, StorageSite site) throws PEException {
-		super(auth, site);
+	protected SingleDirectWorker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
+		super(auth, site, preferredEventLoop);
 	}
 
 	@Override
-	public WorkerConnection getConnection(StorageSite site, UserAuthentication auth) {
-		SingleDirectConnection wConnection = new SingleDirectConnection(auth, site);
+	public WorkerConnection getConnection(StorageSite site, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
+		SingleDirectConnection wConnection = new SingleDirectConnection(auth, site, preferredEventLoop);
 //		if (logger.isDebugEnabled())
 //			try {
 //				logger.debug("Worker " + getName() + " gets JDBC connection " + wConnection.getConnection().toString());

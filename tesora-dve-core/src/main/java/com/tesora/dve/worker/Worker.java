@@ -24,6 +24,7 @@ package com.tesora.dve.worker;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
+import io.netty.channel.EventLoopGroup;
 import io.netty.util.concurrent.Future;
 
 import java.sql.SQLException;
@@ -53,9 +54,9 @@ import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
  * WorkerManager.
  */
 public abstract class Worker implements GenericSQLCommand.DBNameResolver {
-	
-	public interface Factory {
-		public Worker newWorker(UserAuthentication auth, StorageSite site) throws PEException;
+
+    public interface Factory {
+		public Worker newWorker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException;
 
 		public void onSiteFailure(StorageSite site) throws PEException;
 
@@ -71,6 +72,9 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 	private static Logger logger = Logger.getLogger(Worker.class);
 	
 	private static AtomicLong nextWorkerId = new AtomicLong();
+
+    EventLoopGroup previousEventLoop;
+    EventLoopGroup preferredEventLoop;
 
 	StorageSite site;
 	UserAuthentication userAuthentication;
@@ -96,14 +100,26 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 
 	long lastAccessTime = System.currentTimeMillis();
 
-	Worker(UserAuthentication auth, StorageSite site) throws PEException {
+    boolean bindingChangedSinceLastCatalogSet = false;
+
+	Worker(UserAuthentication auth, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
 		this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
 		this.site = site;
 		this.userAuthentication = auth;
+        this.previousEventLoop = null;
+        this.preferredEventLoop = preferredEventLoop;
 	}
 
-	public abstract WorkerConnection getConnection(StorageSite site, UserAuthentication auth);
+	public abstract WorkerConnection getConnection(StorageSite site, UserAuthentication auth, EventLoopGroup preferredEventLoop);
 
+    public void bindToClientThread(EventLoopGroup eventLoop) throws PESQLException {
+        this.previousEventLoop = this.preferredEventLoop;
+        this.preferredEventLoop = eventLoop;
+        if (wConnection != null){
+            wConnection.bindToClientThread(eventLoop);
+            bindingChangedSinceLastCatalogSet = true;
+        }
+    }
 
 	void sendStatistics(WorkerRequest wReq, long execTime) throws PEException {
 		LogSiteStatisticRequest sNotice = wReq.getStatisticsNotice();
@@ -162,12 +178,15 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 			// the physical db name might be the same, but we could have dropped the physical db in between
 			// check to make sure that the udb id has not changed
 			String newDatabaseName = currentDatabase.getNameOnSite(site);
-			if (!newDatabaseName.equals(currentDatabaseName) || (currentDatabaseID != null && currentDatabaseID.intValue() != currentDatabase.getId())) {
-				previousDatabaseID = currentDatabaseID;
+
+			if (bindingChangedSinceLastCatalogSet || !newDatabaseName.equals(currentDatabaseName) || (currentDatabaseID != null && currentDatabaseID.intValue() != currentDatabase.getId()) ) {
+                previousDatabaseID = currentDatabaseID;
 				currentDatabaseID = currentDatabase.getId();
 				currentDatabaseName = newDatabaseName;
 				userVisibleDatabaseName = currentDatabase.getUserVisibleName();
+                previousEventLoop = preferredEventLoop;
 				getConnection().setCatalog(currentDatabaseName);
+                bindingChangedSinceLastCatalogSet = false;
 			}
 		}
 	}
@@ -195,7 +214,7 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		if (wConnection == null) {
 			if (connectionAllocated)
 				throw new PECodingException("Worker connection reallocated");
-			wConnection = getConnection(site, userAuthentication);
+			wConnection = getConnection(site, userAuthentication, preferredEventLoop);
 			connectionAllocated = true;
 		}
 		return wConnection;

@@ -23,6 +23,7 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.singleton.Singletons;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -83,4 +84,25 @@ public abstract class MysqlCommand {
 		return resultsProcessedCount.get();
 	}
 
+    //Delegate calls on nested results handler, to reduce structural dependency, AKA, law of demeter.
+
+    boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        return getResultHandler().processPacket(ctx,message);
+    }
+
+    public void packetStall(ChannelHandlerContext ctx) throws PEException {
+        getResultHandler().packetStall(ctx);
+    }
+
+    public void failure(Exception e){
+        getResultHandler().failure(e);
+    }
+
+    public boolean isDone(ChannelHandlerContext ctx){
+        return getResultHandler().isDone(ctx);
+    }
+
+    public void active(ChannelHandlerContext ctx) {
+        getResultHandler().active(ctx);
+    }
 }

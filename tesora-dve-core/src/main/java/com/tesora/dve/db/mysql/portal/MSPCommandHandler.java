@@ -117,7 +117,6 @@ public class MSPCommandHandler extends ChannelInboundHandlerAdapter {
                                 } else {
                                     mspAction.execute(clientExecutorService, ctx, ssCon, mspMessage);
                                 }
-                                ctx.flush();
                             } catch (Throwable t) {
                                 ctx.fireExceptionCaught(t);
                             } finally {

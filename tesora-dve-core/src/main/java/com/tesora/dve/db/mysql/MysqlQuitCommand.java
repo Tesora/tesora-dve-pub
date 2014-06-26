@@ -22,7 +22,9 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.libmy.MyOKResponse;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQuitRequestMessage;
+import com.tesora.dve.exceptions.PECommunicationsException;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.nio.charset.Charset;
@@ -32,13 +34,13 @@ import com.tesora.dve.exceptions.PEException;
 
 public class MysqlQuitCommand extends MysqlCommand implements
 		MysqlCommandResultsProcessor {
-	
-	public static MysqlQuitCommand INSTANCE = new MysqlQuitCommand();
+
+    boolean closed = false;
 
 
     @Override
     public boolean isDone(ChannelHandlerContext ctx) {
-        return false;
+        return closed;
     }
 
     @Override
@@ -47,11 +49,21 @@ public class MysqlQuitCommand extends MysqlCommand implements
 
     @Override
 	public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-		return isDone(ctx);
+        if (message instanceof MyOKResponse)
+            closed = true;
+        return isDone(ctx);
 	}
 
 	@Override
 	public void failure(Exception e) {
+        if (e instanceof PECommunicationsException){
+            PECommunicationsException comm = (PECommunicationsException)e;
+            if (comm.getMessage().startsWith("Connection closed")){
+                //a connection close can return an OK, or close the socket, so this isn't an error.
+                closed = true;
+                return;
+            }
+        }
 		throw new PECodingException(this.getClass().getSimpleName() + " encountered unhandled exception", e);
 	}
 
@@ -66,5 +78,10 @@ public class MysqlQuitCommand extends MysqlCommand implements
 	MysqlCommandResultsProcessor getResultHandler() {
 		return this;
 	}
+
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //NOOP.
+    }
 
 }

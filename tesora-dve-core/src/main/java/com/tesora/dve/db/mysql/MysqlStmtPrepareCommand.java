@@ -60,6 +60,11 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
         ctx.write(prepStmt);
     }
 
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //NOOP.
+    }
+
 
     //this is a prepare response, which returns a ERR, or [PREPARE_OK, N*param defs, an EOF, M*column defs, final EOF]
 	@Override

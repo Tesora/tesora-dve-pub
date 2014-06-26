@@ -21,18 +21,8 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.SortedMap;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -46,6 +36,9 @@ import com.tesora.dve.server.connectionmanager.*;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
+import io.netty.channel.Channel;
+import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.PECollectionUtils;
@@ -90,7 +83,9 @@ public class WorkerGroup {
 
 	long idleTime;
 	
-	boolean toPurge = false; // if true, the ssConnection will discard the group rather than caching it 
+	boolean toPurge = false; // if true, the ssConnection will discard the group rather than caching it
+
+    EventLoopGroup clientEventLoop;  //this is the thread that handles all IO for this group.
 
 	public interface Manager {
 		abstract void returnWorkerGroup(WorkerGroup wg) throws PEException;
@@ -197,18 +192,19 @@ public class WorkerGroup {
 		this.name = "DynamicWG";
 	}
 
-	private WorkerGroup provision(Agent sender, Manager manager, UserAuthentication userAuth) throws PEException, PEException {
+	private WorkerGroup provision(Agent sender, Manager manager, UserAuthentication userAuth, EventLoopGroup preferredEventLoop) throws PEException, PEException {
 		this.manager = manager;
 		this.userAuthentication = userAuth;
-		GetWorkerRequest req = new GetWorkerRequest(userAuth, group);
+        this.clientEventLoop = preferredEventLoop;
+		GetWorkerRequest req = new GetWorkerRequest(userAuth, group, preferredEventLoop);
         Envelope e = sender.newEnvelope(req).to(Singletons.require(HostService.class).getWorkerManagerAddress());
 		GetWorkerResponse resp = (GetWorkerResponse) sender.sendAndReceive(e);
 		workerMap.putAll(resp.getWorkers());
 		return this;
 	}
 	
-	public WorkerGroup clone(Agent sender) throws PEException {
-		CloneWorkerRequest req = new CloneWorkerRequest(userAuthentication, workerMap.keySet());
+	public WorkerGroup clone(SSConnection sender) throws PEException {
+		CloneWorkerRequest req = new CloneWorkerRequest(userAuthentication, clientEventLoop, workerMap.keySet());
         Envelope e = sender.newEnvelope(req).to(Singletons.require(HostService.class).getWorkerManagerAddress());
 		GetWorkerResponse resp = (GetWorkerResponse) sender.sendAndReceive(e);
 		WorkerGroup newWG = new WorkerGroup(group);
@@ -320,7 +316,27 @@ public class WorkerGroup {
 			syncWorkers(activeWorkers);
 			cleanupSteps.clear();
 		}
+        bindToClientThread(null);
 	}
+
+    /**
+     * Changes the event loop used to process IO for all workers.  When a worker group is in use by a SSConnection,
+     * backend connections held by its workers should share the same event loop as the client connection,
+     * so that passing IO between frontend and backend sockets doesn't require any locking or context switching.
+     *
+     * @param eventLoop
+     */
+    public void bindToClientThread(EventLoopGroup eventLoop) {
+        if (workerMap != null){
+            for (Worker worker : workerMap.values()){
+                try {
+                    worker.bindToClientThread(eventLoop);
+                } catch (PESQLException e) {
+                    logger.warn(this+" encountered problem binding worker to client event loop",e);
+                }
+            }
+        }
+    }
 	
 	public void returnToManager() throws PEException {
 		if (manager != null) {
@@ -457,6 +473,7 @@ public class WorkerGroup {
             Future<Worker> f = Singletons.require(HostService.class).submit(w.getName(), new Callable<Worker>() {
                 @Override
                 public Worker call() throws Exception {
+                    //SMG: Our heaviest locking is always in this call stack, caused by doing a netty write() outside the event loop, which syncs on a startup lock for the loop.
                     try {
                         long reqStartTime = System.currentTimeMillis();
                         req.executeRequest(w, resultConsumer);
@@ -484,12 +501,13 @@ public class WorkerGroup {
 					throw new PEException("Exception encountered synchronizing site updates", e);
 				}
 			}
+
 			firstWorker = false;
 			workerFutures.add(f);
 		}
 		return workerFutures;
 	}
-	
+
 //	public void sendToAllWorkers(Agent agent, Object m) throws PEException {
 //		send(agent, MappingSolution.AllWorkers, m);
 //	}
@@ -683,9 +701,14 @@ public class WorkerGroup {
 		
 		public static WorkerGroup newInstance(SSConnection ssCon, StorageGroup sg, PersistentDatabase ctxDB) throws PEException {
 			WorkerGroup wg = workerGroupPool.get(sg, ssCon.getUserAuthentication());
+            Channel channel = ssCon.getChannel();
+            EventLoop eventLoop = channel == null ? null : channel.eventLoop();
+
 			if (wg == null) {
-				wg = new WorkerGroup(sg).provision(ssCon, ssCon, ssCon.getUserAuthentication());
-			}
+                wg = new WorkerGroup(sg).provision(ssCon, ssCon, ssCon.getUserAuthentication(), eventLoop);
+			} else {
+                wg.bindToClientThread(eventLoop);
+            }
 			try {
 				if (ctxDB != null) 
 					wg.setDatabase(ssCon, ctxDB);
@@ -702,7 +725,7 @@ public class WorkerGroup {
 		}
 
 		public static void returnInstance(final SSConnection ssCon, final WorkerGroup wg) throws PEException {
-			ssCon.verifyWorkerGroupCleanup(wg); 
+			ssCon.verifyWorkerGroupCleanup(wg);
 			if (suppressCaching || wg.isTemporaryGroup()  || wg.isMarkedForPurge()) {
 				if (logger.isDebugEnabled())
 					logger.debug("NPE: WorkerGroupFactory.returnInstance() calls releaseWorkers on " + wg);

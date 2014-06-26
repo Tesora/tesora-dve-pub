@@ -38,6 +38,7 @@ import com.tesora.dve.db.mysql.common.MysqlHandshake;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import io.netty.channel.Channel;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.charset.NativeCharSet;
@@ -220,6 +221,8 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	private String sessionVariableSetStatement;
 	private boolean executingInContext;
 	private ClientCapabilities clientCapabilities = new ClientCapabilities();
+    private Channel activeChannel;
+
 	
 	public SSConnection() throws PEException {
 		super("SSConnection");
@@ -227,6 +230,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	
 	@Override
 	protected void initialize() throws PEException {
+        //SMG: since SSConnection objects are usually created when client sockets are accepted, this semaphore blocks frontend netty threads, which is really bad.  -sgossard
 		connectionCount.nonBlockingAcquire();
         currentConnId = GroupManager.getCoordinationServices().registerConnection(Singletons.require(HostService.class).getHostName() + "." + getName());
 		PerHostConnectionManager.INSTANCE.registerConnection(currentConnId, this);
@@ -589,6 +593,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 			// to commit, we push on and commit the rest anyways, so just log exceptions and keep 
 			// processing the replies from the other sites.  If the site is brought back online and 
 			// made the master again, the "set master" functionality will recover the transaction.
+
+            //SMG:NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO!!!!!!!!!!!!!!!!!!
+
 			try {
 				f.get();
 			} catch (Throwable t) {
@@ -599,24 +606,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 				    logger.warn("Site failed during XA commit phase - exception ignored", t);
 			}
 		}
-		
-//		WorkerGroup.executeOnAllGroups(availableWG.values(), MappingSolution.AllWorkers, req, resultConsumer);
-//		int receiveCount = 0;
-//		for (WorkerGroup wg : availableWG.values()) {
-//			wg.sendToAllWorkers(this, req);
-//			receiveCount += wg.size();
-//		}
-//		while (receiveCount-- > 0) {
-//			// At this point we have recorded the transaction as committed.  If any of the sites fail
-//			// to commit, we push on and commit the rest anyways, so just log exceptions and keep 
-//			// processing the replies from the other sites.  If the site is brought back online and 
-//			// made the master again, the "set master" functionality will recover the transaction.
-//			try {
-//				receive();
-//			} catch (Throwable t) {
-//				logger.warn("Site failed during XA commit phase - exception ignored", t);
-//			}
-//		}
 
 		setTempCleanupRequired(true);
 	}
@@ -1229,6 +1218,14 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public void setClientCapabilities(ClientCapabilities clientCaps) {
 		this.clientCapabilities = clientCaps;
 	}
-		
+
+    public void injectChannel(Channel channel) {
+        this.activeChannel = channel;
+    }
+
+    public Channel getChannel(){
+        return this.activeChannel;
+    }
+
 }
 

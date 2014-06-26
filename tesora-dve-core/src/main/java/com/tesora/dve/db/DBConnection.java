@@ -28,11 +28,12 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.DevXid;
+import io.netty.channel.EventLoopGroup;
 
 public interface DBConnection extends PEFuture.Listener<Boolean> {
 	
 	interface Factory {
-		DBConnection newInstance(StorageSite site);
+		DBConnection newInstance(EventLoopGroup eventLoop,StorageSite site);
 	}
 	
 	interface Monitor {

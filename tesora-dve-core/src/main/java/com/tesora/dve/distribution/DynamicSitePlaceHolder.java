@@ -21,7 +21,9 @@ package com.tesora.dve.distribution;
  * #L%
  */
 
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import com.tesora.dve.common.UserVisibleDatabase;
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -32,6 +34,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
+import io.netty.channel.EventLoopGroup;
 
 public class DynamicSitePlaceHolder implements StorageSite {
 	
@@ -57,7 +60,17 @@ public class DynamicSitePlaceHolder implements StorageSite {
 
 	@Override
 	public Worker pickWorker(Map<StorageSite, Worker> workerMap) throws PEException {
-		return workerMap.values().toArray(new Worker[]{})[position % workerMap.size()];
+        int mapSize = workerMap.size();
+        Set<Map.Entry<StorageSite,Worker>> entrySet = workerMap.entrySet();
+        int desiredElement = position % entrySet.size();
+        Iterator<Map.Entry<StorageSite,Worker>> entryIterator = entrySet.iterator();
+
+        for (int current = 0;entryIterator.hasNext();current++){
+            Map.Entry<StorageSite,Worker> thisEntry = entryIterator.next();
+            if (current == desiredElement)
+                return thisEntry.getValue();
+        }
+        throw new PECodingException("Didn't find "+position+" element in "+workerMap);
 	}
 
 	@Override
@@ -103,7 +116,7 @@ public class DynamicSitePlaceHolder implements StorageSite {
 	}
 
 	@Override
-	public Worker createWorker(UserAuthentication auth) throws PEException {
+	public Worker createWorker(UserAuthentication auth, EventLoopGroup preferredEventLoop) throws PEException {
 		return null;
 	}
 

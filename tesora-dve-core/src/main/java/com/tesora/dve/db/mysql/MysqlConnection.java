@@ -23,10 +23,7 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBType;
-import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
-import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
-import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
-import com.tesora.dve.db.mysql.portal.protocol.MSPProtocolEncoder;
+import com.tesora.dve.db.mysql.portal.protocol.*;
 import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -76,8 +73,8 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 	public static class Factory implements DBConnection.Factory {
 		@Override
-		public DBConnection newInstance(StorageSite site) {
-			return new MysqlConnection(site);
+		public DBConnection newInstance(EventLoopGroup eventLoop, StorageSite site) {
+			return new MysqlConnection(eventLoop, site);
 		}
 	}
 
@@ -93,10 +90,15 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	private boolean pendingUpdate = false;
 	private boolean hasActiveTransaction = false;
 
-	public MysqlConnection(StorageSite site) {
+	public MysqlConnection(EventLoopGroup eventLoop, StorageSite site) {
+        this.connectionEventGroup = eventLoop;
 		sharedExceptionCatcher = getExceptionCatcher();
 		this.site = site;
 	}
+
+    public MysqlConnection(StorageSite site) {
+        this(SharedEventLoopHolder.getLoop(),site);
+    }
 
 	public void setShutdownQuietPeriod(final long seconds) {
 		this.shutdownQuietPeriod = seconds;
@@ -124,28 +126,28 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 		InetSocketAddress serverAddress = new InetSocketAddress(peUrl.getHost(), peUrl.getPort());
         final MyBackendDecoder.CharsetDecodeHelper charsetHelper = new CharsetDecodeHelper();
-		connectionEventGroup = new NioEventLoopGroup(1, new PEDefaultThreadFactory("mysql-" + site.getName()));
 		mysqlBootstrap = new Bootstrap();
 		mysqlBootstrap // .group(inboundChannel.eventLoop())
 		.channel(NioSocketChannel.class)
 		.group(connectionEventGroup)
 		.option(ChannelOption.ALLOCATOR, USE_POOLED_BUFFERS ? PooledByteBufAllocator.DEFAULT : UnpooledByteBufAllocator.DEFAULT)
 		.handler(new ChannelInitializer<Channel>() {
-			@Override
-			protected void initChannel(Channel ch) throws Exception {
-				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));
+            @Override
+            protected void initChannel(Channel ch) throws Exception {
+                authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));
 
-				if (PACKET_LOGGER)
-					ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
+                if (PACKET_LOGGER)
+                    ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
 
-				ch.pipeline()
-				.addLast(authHandler)
-                .addLast(MSPProtocolEncoder.class.getSimpleName(), new MSPProtocolEncoder())
-                .addLast(MSPEncoder.class.getSimpleName(), MSPEncoder.getInstance())
-                .addLast(MyBackendDecoder.class.getSimpleName(), new MyBackendDecoder(site.getName(),charsetHelper))
-				.addLast(MysqlCommandSenderHandler.class.getSimpleName(), new MysqlCommandSenderHandler(site.getName()));
-			}
-		});
+                ch.pipeline()
+                        .addLast(authHandler)
+                        .addLast(MSPProtocolEncoder.class.getSimpleName(), new MSPProtocolEncoder())
+                        .addLast(MSPEncoder.class.getSimpleName(), MSPEncoder.getInstance())
+                        .addLast(MyBackendDecoder.class.getSimpleName(), new MyBackendDecoder(site.getName(), charsetHelper))
+                        .addLast(StreamValve.class.getSimpleName(), new StreamValve())
+                        .addLast(MysqlCommandSenderHandler.class.getSimpleName(), new MysqlCommandSenderHandler(site.getName()));
+            }
+        });
 
 		pendingConnection = mysqlBootstrap.connect(serverAddress);
 
@@ -166,7 +168,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 	@Override
 	public PEFuture<Boolean> execute(SQLCommand sql, DBResultConsumer consumer, PEPromise<Boolean> promise) throws PESQLException {
-		PEFuture<Boolean> executionResult = promise;
+        PEFuture<Boolean> executionResult = promise;
 
 		PEThreadContext.pushFrame(getClass().getSimpleName())
 				.put("site", site.getName())
@@ -210,14 +212,14 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	@Override
 	public synchronized void close() {
 		if (connectionEventGroup != null) {
-//			if (channel.isOpen()) {
-//				ChannelFuture f = channel.write(MysqlQuitCommand.INSTANCE);
-//				channel.flush();
-//				f.syncUninterruptibly();
-//				channel.close().syncUninterruptibly();
-//			}
-//			System.out.println("Close connection: Allocated " + totalConnections.get() + ", active " + activeConnections.decrementAndGet());
-			connectionEventGroup.shutdownGracefully(shutdownQuietPeriod, shutdownTimeout, TimeUnit.SECONDS);
+			if (channel.isOpen()) {
+                try {
+                    channel.writeAndFlush(new MysqlQuitCommand());
+                } finally {
+				    channel.close().syncUninterruptibly();
+                }
+			}
+            //NOTE: we don't shutdown the event loop. Under the shared thread model, we don't know if someone else is using it. -sgossard
 			connectionEventGroup = null;
 		}
 	}

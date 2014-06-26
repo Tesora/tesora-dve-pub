@@ -49,6 +49,7 @@ import com.tesora.dve.worker.MysqlPreparedStmtExecuteCollector;
 import com.tesora.dve.worker.MysqlTextResultChunkProvider;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
+import io.netty.channel.EventLoopGroup;
 
 public class MysqlConnectionResource extends ConnectionResource {
 
@@ -213,7 +214,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		}
 
 		@Override
-		public Worker createWorker(UserAuthentication auth) throws PEException {
+		public Worker createWorker(UserAuthentication auth, EventLoopGroup preferredEventLoop) throws PEException {
 			return null;
 		}
 

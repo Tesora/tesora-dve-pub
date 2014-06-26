@@ -26,6 +26,7 @@ import com.tesora.dve.db.NativeResultHandler;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 

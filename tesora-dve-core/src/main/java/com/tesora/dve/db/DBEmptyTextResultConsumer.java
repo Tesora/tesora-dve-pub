@@ -27,6 +27,7 @@ import io.netty.channel.Channel;
 
 import java.util.List;
 
+import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.StorageSite;
@@ -45,6 +46,11 @@ public class DBEmptyTextResultConsumer implements MysqlQueryResultConsumer, DBRe
 	static Logger logger = Logger.getLogger( DBEmptyTextResultConsumer.class );
 
 	public final static DBEmptyTextResultConsumer INSTANCE = new DBEmptyTextResultConsumer();
+
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //NOOP.
+    }
 
     public boolean emptyResultSet(MyOKResponse ok) {
         return ok.getAffectedRows() > 0;

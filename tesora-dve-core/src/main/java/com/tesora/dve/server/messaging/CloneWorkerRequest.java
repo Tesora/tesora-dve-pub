@@ -35,25 +35,28 @@ import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerManager;
 import com.tesora.dve.worker.agent.Envelope;
+import io.netty.channel.EventLoopGroup;
 
 public class CloneWorkerRequest extends WorkerManagerRequest {
 
 	private static final long serialVersionUID = 1L;
 
+    EventLoopGroup preferredEventLoop;
 	UserAuthentication userAuth;
 	Collection<? extends StorageSite> storageSites;
 
-	public CloneWorkerRequest(UserAuthentication userAuth,
+	public CloneWorkerRequest(UserAuthentication userAuth, EventLoopGroup preferredEventLoop,
 			Collection<? extends StorageSite> storageSites) {
 		super();
 		this.userAuth = userAuth;
 		this.storageSites = storageSites;
+        this.preferredEventLoop = preferredEventLoop;
 	}
 
 	@Override
 	public ResponseMessage executeRequest(Envelope e, WorkerManager wm)
 			throws PEException {
-		Map<StorageSite, Worker> theWorkers = wm.getWorkerMap(userAuth, storageSites);
+		Map<StorageSite, Worker> theWorkers = wm.getWorkerMap(userAuth, preferredEventLoop, storageSites);
 		Functional.apply(theWorkers.keySet(), new UnaryProcedure<StorageSite>() {
 			public void execute(StorageSite site) {
 				site.incrementUsageCount();
