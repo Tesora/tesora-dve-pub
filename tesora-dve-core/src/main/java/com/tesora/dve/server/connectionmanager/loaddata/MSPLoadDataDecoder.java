@@ -22,19 +22,21 @@ package com.tesora.dve.server.connectionmanager.loaddata;
  */
 
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
-import com.tesora.dve.db.mysql.portal.MSPCommandHandler;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.ByteToMessageDecoder;
 
 import java.nio.ByteOrder;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 
-import org.apache.commons.lang.ArrayUtils;
+import io.netty.util.ReferenceCountUtil;
 
 import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.db.mysql.MyLoadDataInfileContext;
@@ -44,114 +46,250 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryPlanner;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 
+/**
+ * A netty handler that decodes and dispatches "LOAD DATA LOCAL INFILE", where the file contents are provided on the socket rather than on the server's disk.
+ * Like all netty handlers, methods called by netty should never block since this will prevent other sockets processed by the same
+ * thread from being serviced.  Currently, this class only expects method invocations from a single netty thread,
+ * and is therefore completely thread safe and doesn't require any locking or atomics.  The only exception to this rule is
+ * inserts are blocking and get submitted to a separate thread pool to prevent blocking, and the request and responses are handled
+ * on client executor threads, not the normal netty thread.  To make this boundary clear, any code executed off the netty
+ * thread has been moved to methods called clientThreadXXXX().  These typically have a mirrored methods named XXXX(), that execute on
+ * the netty thread, and these paired methods redispatch the call onto the opposing pool.
+ * <br/>
+ * In order to wait for an insert to complete, this decoder toggles the netty channel autoRead on and off.  Since more data may
+ * already be in the pipeline and will be delivered even after the pause, this data is decoded normally and held in a queue
+ * for future processing.  The load data input could finish as part of this process, and so processing this queue cannot be
+ * done solely on the channelRead() / decode() calls.  To keep things clean, other than the actual decoding, all state is
+ * processed in a single loop (that exits when no more data is available/expected), inside the method processQueuedOutput().
+ */
+
 public class MSPLoadDataDecoder extends ByteToMessageDecoder {
+    private ExecutorService clientExecutorService;
+	private SSConnection ssCon;
+    private ChannelHandlerContext ctx;
 
-	public static final String LOAD_DATA_DECODER_NAME = "LoadDataDecoder";
+    MyLoadDataInfileContext myLoadDataInfileContext;
 
-    private static final int EMPTYPKT_INDICATOR = 0x0;
-    public static final String MSP_COMMAND_HANDLER = MSPCommandHandler.class.getSimpleName();
+    Queue<ByteBuf> decodedFrameQueue = new LinkedList<>();
+    boolean decodedEOF = false;
+    boolean waitingForInsert = false;
+    Throwable encounteredError = null;
 
-    private ExecutorService clientExecutorService = null;
-	private SSConnection ssCon = null;
-	MyLoadDataInfileContext myLoadDataInfileContext = null;
-	private int length = 0;
-	private ByteBuf frame = null;
-	static private MyOKResponse okResp = new MyOKResponse();
-	List<Future<Void>> dataBlockWorkerList = new ArrayList<Future<Void>>();
-	Throwable t = null;
-	
-	public enum MyLoadDataDecoderState {
-		READ_DATA_BLOCK, READ_EOF;
-	}
+
 
 	public MSPLoadDataDecoder(ExecutorService clientExecutorService, SSConnection ssCon, MyLoadDataInfileContext myLoadDataInfileContext) {
 		this.clientExecutorService = clientExecutorService;
 		this.ssCon = ssCon;
 		this.myLoadDataInfileContext = myLoadDataInfileContext;
-		dataBlockWorkerList.clear();
 	}
 
-	@Override
-	protected void decode(final ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+    @Override
+    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+        this.ctx = ctx;
 
-		if (in.readableBytes() < 3) {
-			return;
-		}
-
-		in.markReaderIndex();
-
-		ByteBuf buffer = in.order(ByteOrder.LITTLE_ENDIAN);
-		length = buffer.readUnsignedMedium();
-		
-		if (buffer.readableBytes() < length - 3) {
-			in.resetReaderIndex();
-			return;
-		}
-
-        //SMG: This bytebuf is a heap buffer, but we shouldn't assume so and manage the refcount like it was a direct buffer, in case it changes.
-		frame = buffer.readBytes(length+1);			// +1 for the packet number
-
-		boolean removeDecoder = true;
-		try {
-			
-			MyLoadDataInfileContext loadDataInfileCtx = MyLoadDataInfileContext.getLoadDataInfileContextFromChannel(ctx);
-			if (loadDataInfileCtx == null) {
-				MyLoadDataInfileContext.setLoadDataInfileContextOnChannel(ctx, myLoadDataInfileContext);
-			}
-
-			if (length == EMPTYPKT_INDICATOR) {
-                handleEOFPacket(ctx, loadDataInfileCtx);
-            } else {
-                removeDecoder = handleNormalFrame(ctx);
-			}
-		} finally {
-			if (removeDecoder) {
-				ctx.pipeline().remove(this);
-                //TODO: double check if this release is required.  I would expect ByteToMessageDecoder to always release the input buffer, even if we get removed from pipeline. -sgossard
-				in.release();
-			}
-		}
-	}
-
-    private boolean handleNormalFrame(ChannelHandlerContext ctx) {
-        try {
-            frame.readByte(); //packet number
-            byte[] msgBuf = MysqlAPIUtils.readBytes(frame);
-            if (t == null) {
-                //SMG: NOTE: previously there was a get() that keep netty from generating too many execute() calls and risking out of order execution.  execute() batches must be serialized. -sgossard
-                List<List<byte[]>> parsedRows = LoadDataBlockExecutor.processDataBlock(ctx, ssCon, msgBuf);
-                dataBlockWorkerList.add(execute(ctx, parsedRows));
-            }
-        } catch (Throwable e) {
-            // if we get an error we still need to drain the data coming from the client
-            // so capture the fact we have an error
-            t = e;
+        //TODO: this decoder isn't sharable/stateless, so storing the context on the channel doesn't really make sense. -sgossard
+        MyLoadDataInfileContext loadDataInfileCtx = MyLoadDataInfileContext.getLoadDataInfileContextFromChannel(ctx);
+        if (loadDataInfileCtx == null) {
+            MyLoadDataInfileContext.setLoadDataInfileContextOnChannel(ctx, myLoadDataInfileContext);
         }
-        return false;
+
     }
 
-    private void handleEOFPacket(ChannelHandlerContext ctx, MyLoadDataInfileContext loadDataInfileCtx) {
-        try {
-            if (t == null) {
-                //TODO: We pass an empty byte array here to signal EOF, but I don't see anything downstream to deal with an incomplete row on eof. -sgossard
-                List<List<byte[]>> parsedRows = LoadDataBlockExecutor.processDataBlock(ctx, ssCon, ArrayUtils.EMPTY_BYTE_ARRAY);
-                dataBlockWorkerList.add(execute(ctx, parsedRows));
-                for (Future<Void> future : dataBlockWorkerList) {
-                    //SMG: this future get blocks the frontend netty thread to wait for all the executes to succeed before we send out an OK, or send an error. -sgossard
-                    future.get();
+    @Override
+    protected void handlerRemoved0(ChannelHandlerContext ctx) throws Exception {
+        //TODO: Avoid discarding/mangling a query on remove in the (unlikely) case where the client pipelined a request. -sgossard
+        closePreparedStatements(myLoadDataInfileContext);
+
+        //now we are sure we won't be getting any more packets, so turn autoread back on.
+        resumeInput(ctx);
+
+        //just to be safe, we'll release any bytebufs we are still holding.
+        while (!decodedFrameQueue.isEmpty()){
+            ReferenceCountUtil.release(decodedFrameQueue.remove());
+        }
+    }
+
+    @Override
+	protected void decode(final ChannelHandlerContext ignored, ByteBuf in, List<Object> out) throws Exception {
+
+        decodeAvailableInput(in);
+
+        processQueuedOutput(ctx);
+	}
+
+    private void decodeAvailableInput(ByteBuf in) {
+        //we always parse the input frames until we hit load data EOF, so the stream is recoverable.
+
+        while(!decodedEOF) {
+            //slice off the frame sequence number and the frame payload.
+            ByteBuf frame = decodeNextFrame(in);
+
+            boolean inputDidntHaveFullFrame = (frame == null);
+            if (inputDidntHaveFullFrame)
+                break;
+
+            decodedEOF = (frame.readableBytes() <= 1);
+
+            decodedFrameQueue.add(frame);
+        }
+
+    }
+
+
+    private void processQueuedOutput(ChannelHandlerContext ctx) throws Exception {
+        byte packetNumber = 0;
+        for (;;){
+            ByteBuf nextDecodedFrame = decodedFrameQueue.poll();
+
+            if (nextDecodedFrame == null)
+                break;
+
+            try {
+                if ( encounteredError == null ) {
+
+                    packetNumber = nextDecodedFrame.readByte();
+                    byte[] frameData = MysqlAPIUtils.readBytes(nextDecodedFrame);
+
+                    final List<List<byte[]>> parsedRows = LoadDataBlockExecutor.processDataBlock(ctx, ssCon, frameData);
+
+                    insertRequest(ctx, parsedRows);
+
+                    waitingForInsert = true;
+
+                    if (waitingForInsert)
+                        break; //OK, we sent out an insert. We'll wait for it to come back before sending another.
                 }
-                sendResponseOnMainCtx(ctx, createLoadDataEOFMsg(loadDataInfileCtx, frame.readByte()));
-            } else {
-                sendResponseOnMainCtx(ctx, new MyErrorResponse(new PEException(t)));
+            } catch (Throwable t) {
+                failLoadData(t);
+            } finally {
+                ReferenceCountUtil.release(nextDecodedFrame);
             }
-        } catch (Throwable e) {
-            sendResponseOnMainCtx(ctx, new MyErrorResponse(new PEException(e)));
-        } finally {
-            closePreparedStatements(ctx, loadDataInfileCtx);
+        }
+
+        if (waitingForInsert) {
+            pauseInput(ctx);
+            return;
+        }
+
+        boolean loadDataIsFinished = decodedEOF || (encounteredError != null);
+
+        if (loadDataIsFinished) {
+            sendResponseAndRemove(ctx, packetNumber);
+        } else {
+            //not waiting for input, haven't seen input EOF or thrown an exception, must need more input data.
+            resumeInput(ctx);
+        }
+
+    }
+
+    private void pauseInput(ChannelHandlerContext ctx) {
+        //NOTE: may still get some data left in the decoder, which is why we have the decode queue.
+        ctx.channel().config().setAutoRead(false);
+    }
+
+    private void resumeInput(ChannelHandlerContext ctx) {
+        ctx.channel().config().setAutoRead(true);
+        ctx.pipeline().fireChannelRead(Unpooled.EMPTY_BUFFER); //this flushes any partial packets held in the decoder.
+    }
+
+    private void sendResponseAndRemove(ChannelHandlerContext ctx, byte packetNumber)  {
+        ChannelPipeline pipeline = ctx.pipeline();
+        try {
+            pauseInput(ctx);//stop incoming packets so we don't process the next request, we'll resume in the removal callback.
+
+            MyMessage response;
+
+            if (encounteredError == null)
+                response = createLoadDataEOFMsg(myLoadDataInfileContext, packetNumber);
+            else
+                response = new MyErrorResponse(new PEException(encounteredError));
+
+            pipeline.writeAndFlush(response);
+            pipeline.remove(this);
+
+        } catch (Exception e){
+            ctx.channel().close();
         }
     }
 
-    private void closePreparedStatements(ChannelHandlerContext ctx, MyLoadDataInfileContext loadDataInfileCtx) {
+    private ByteBuf decodeNextFrame(ByteBuf in){
+        if (in.readableBytes() < 4) {  //three bytes for the length, one for the sequence.
+            return null;
+        }
+
+        in.markReaderIndex();
+
+        ByteBuf buffer = in.order(ByteOrder.LITTLE_ENDIAN);
+        int length = buffer.readUnsignedMedium();
+
+        if (buffer.readableBytes() < length + 1) {
+            in.resetReaderIndex();
+            return null;
+        }
+
+        return buffer.readSlice(length + 1).order(ByteOrder.LITTLE_ENDIAN).retain();
+    }
+
+    private void failLoadData(Throwable e) {
+        encounteredError = e;
+    }
+
+    private void insertRequest(final ChannelHandlerContext ctx, final List<List<byte[]>> parsedRows) {
+        clientExecutorService.submit(new Callable<Void>() {
+            public Void call() throws Exception {
+                return clientThreadInsertRequest(ctx, parsedRows);
+            }
+        });
+    }
+
+    private Void clientThreadInsertRequest(final ChannelHandlerContext ctx, final List<List<byte[]>> parsedRows) throws Exception {
+        ssCon.executeInContext(new Callable<Void>() {
+            public Void call() {
+                try {
+                    LoadDataBlockExecutor.executeInsert(ctx, ssCon, parsedRows);
+                    clientThreadInsertSuccess(ctx);
+                } catch (Throwable e) {
+                    clientThreadInsertFailure(ctx, e);
+                }
+                return null;
+            }
+        });
+        return null;
+    }
+
+    private void clientThreadInsertSuccess(final ChannelHandlerContext ctx) {
+
+        ctx.executor().submit( new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                insertSuccess(ctx);
+                return null;
+            }
+        });
+    }
+
+    private void clientThreadInsertFailure(final ChannelHandlerContext ctx, final Throwable e) {
+        ctx.executor().submit( new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                insertFailure(ctx, e);
+                return null;
+            }
+        });
+
+    }
+
+    private void insertSuccess(ChannelHandlerContext ctx) throws Exception {
+        waitingForInsert = false;
+        processQueuedOutput(ctx);//forward more frames, if available.
+    }
+
+    private void insertFailure(ChannelHandlerContext ctx, Throwable e) throws Exception {
+        failLoadData(e);
+        processQueuedOutput(ctx);
+    }
+
+    private void closePreparedStatements(MyLoadDataInfileContext loadDataInfileCtx) {
 		for (MyPreparedStatement<String> pStmt : loadDataInfileCtx.getPreparedStatements()) {
 			ssCon.removePreparedStatement(pStmt.getStmtId());
 			QueryPlanner.destroyPreparedStatement(ssCon, pStmt.getStmtId());
@@ -159,8 +297,8 @@ public class MSPLoadDataDecoder extends ByteToMessageDecoder {
 		loadDataInfileCtx.clearPreparedStatements();
 	}
 
-	static public MyOKResponse createLoadDataEOFMsg(MyLoadDataInfileContext loadDataInfileCtx, byte packetNumber) throws PEException {
-		MyOKResponse okResp = getOkResp();
+	static public MyOKResponse createLoadDataEOFMsg(MyLoadDataInfileContext loadDataInfileCtx, byte packetNumber) {
+        MyOKResponse okResp = new MyOKResponse();
 		okResp.setAffectedRows(loadDataInfileCtx.getInfileRowsAffected());
 		okResp.setWarningCount((short) loadDataInfileCtx.getInfileWarnings());
 		okResp.setInsertId(0);
@@ -170,32 +308,4 @@ public class MSPLoadDataDecoder extends ByteToMessageDecoder {
 		return okResp;
 	}
 
-	static private MyOKResponse getOkResp() {
-		if (okResp == null) {
-			okResp = new MyOKResponse();
-		}
-		return okResp;
-	}
-
-	private void sendResponseOnMainCtx(ChannelHandlerContext ctx, Object msg) {
-		ctx.pipeline().context(MSP_COMMAND_HANDLER).writeAndFlush(msg);
-	}
-
-    private Future<Void> execute(final ChannelHandlerContext ctx, final List<List<byte[]>> dataRows) {
-		return clientExecutorService.submit(new Callable<Void>() {
-			public Void call() throws Exception {
-				ssCon.executeInContext(new Callable<Void>() {
-					public Void call()  {
-						try {
-							LoadDataBlockExecutor.executeInsert(ctx, ssCon, dataRows);
-						} catch (Throwable e) {
-							sendResponseOnMainCtx(ctx, new MyErrorResponse(new PEException(e)));
-						}
-						return null;
-					}
-				});
-				return null;
-			}
-		});
-	}
 }
