@@ -365,11 +365,20 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_large"));
 		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_bin"));
 		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_utf8"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS search_api_db_product_display_text"));
 
 		tests.add(new StatementMirrorProc("CREATE TABLE pe1511 (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci)"));
 		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_large (value1 VARCHAR(32000), value2 TEXT, value3 VARCHAR(1000), value4 VARCHAR(32000)) CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
 		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_bin (value1 VARCHAR(256), value2 TEXT) CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
 		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_utf8 (value1 VARCHAR(256), value2 TEXT)"));
+		tests.add(new StatementMirrorProc("CREATE TABLE search_api_db_product_display_text ("
+				+ "`item_id` BIGINT NOT NULL COMMENT 'The primary identifier of the item.',"
+				+ "`field_name` VARCHAR(255) NOT NULL COMMENT 'The name of the field in which the token appears, or an MD5 hash of the field.',"
+				+ "`word` VARCHAR(50) NOT NULL COMMENT 'The text of the indexed token.',"
+				+ "`score` INT unsigned NOT NULL DEFAULT 0 COMMENT 'The score associated with this token.',"
+				+ "PRIMARY KEY (`item_id`, `field_name`, `word`),"
+				+ "INDEX `word_field` (`word`(20), `field_name`)"
+				+ ") ENGINE = InnoDB DEFAULT CHARACTER SET utf8"));
 
 		tests.add(new StatementMirrorProc("ALTER TABLE pe1511 CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci"));
 		tests.addAll(buildAssertColumnTypeFun("pe1511", Arrays.asList("value1", "value2")));
@@ -394,6 +403,9 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 
 		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_bin CONVERT TO CHARACTER SET utf8 COLLATE utf8_bin"));
 		tests.addAll(buildAssertColumnTypeFun("pe1511_bin", Arrays.asList("value1", "value2")));
+
+		tests.add(new StatementMirrorProc("ALTER TABLE search_api_db_product_display_text CONVERT TO CHARACTER SET 'utf8' COLLATE 'utf8_bin'"));
+		tests.addAll(buildAssertColumnTypeFun("search_api_db_product_display_text", Arrays.asList("item_id", "field_name", "word", "score")));
 
 		runTest(tests);
 	}
