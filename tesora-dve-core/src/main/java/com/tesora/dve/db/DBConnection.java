@@ -24,6 +24,7 @@ package com.tesora.dve.db;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.PEFuture;
 import com.tesora.dve.concurrent.PEPromise;
+import com.tesora.dve.eventing.EventHandler;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.messaging.SQLCommand;

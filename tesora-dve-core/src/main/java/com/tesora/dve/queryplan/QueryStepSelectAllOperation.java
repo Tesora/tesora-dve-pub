@@ -30,12 +30,27 @@ import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.eventing.AbstractEvent;
+import com.tesora.dve.eventing.AbstractReqRespState;
+import com.tesora.dve.eventing.EventHandler;
+import com.tesora.dve.eventing.EventStateMachine;
+import com.tesora.dve.eventing.Request;
+import com.tesora.dve.eventing.Response;
+import com.tesora.dve.eventing.StackAction;
+import com.tesora.dve.eventing.State;
+import com.tesora.dve.eventing.TransitionResult;
+import com.tesora.dve.eventing.events.ExceptionResponse;
+import com.tesora.dve.eventing.events.QSOExecuteRequestEvent;
+import com.tesora.dve.eventing.events.WorkerGroupSubmitEvent;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.QueryStepOperation.QSOExecutor;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
+import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.worker.MysqlParallelResultConsumer;
 import com.tesora.dve.worker.WorkerGroup;
+import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 /**
  * {@link QueryStepSelectAllOperation} is a <b>QueryStep</b> operation which
@@ -99,4 +114,37 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 		buf.append("SelectAll stmt=").append(command.getRawSQL());
 		return buf.toString();
 	}
+
+	@Override
+	protected State getImplState(EventStateMachine esm, AbstractEvent event) {
+		return new SelectAllSM();
+	}
+
+	class SelectAllSM extends AbstractReqRespState {
+
+		QSOExecuteRequestEvent request;
+		
+		@Override
+		public TransitionResult onEvent(EventStateMachine esm,
+				AbstractEvent event) {
+			if (event.isRequest()) {
+				request = (QSOExecuteRequestEvent) event;
+				try {
+					request.getConsumer().setResultsLimit(getResultsLimit());
+					MappingSolution ms = distributionModel.mapForQuery(request.getWorkerGroup(), command);
+					WorkerExecuteRequest req = new WorkerExecuteRequest(request.getConnection().getTransactionalContext(), command).onDatabase(database);
+					WorkerGroupSubmitEvent submitEvent = 
+							new WorkerGroupSubmitEvent(esm,ms,req,request.getConsumer(),0);
+					return new TransitionResult()
+					.withTargetEvent(submitEvent, request.getWorkerGroup());
+				} catch (PEException pe) {
+					return propagateRequestException(request,pe);
+				}
+			} else {
+				return propagateResponse(esm,request,event);
+			}
+		}
+		
+	}
+	
 }

@@ -37,7 +37,22 @@ import com.tesora.dve.common.catalog.ISiteInstance;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.UserDatabase;
+import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.eventing.AbstractEvent;
+import com.tesora.dve.eventing.AbstractReqRespState;
+import com.tesora.dve.eventing.DispatchState;
+import com.tesora.dve.eventing.EventHandler;
+import com.tesora.dve.eventing.EventStateMachine;
+import com.tesora.dve.eventing.Request;
+import com.tesora.dve.eventing.Response;
+import com.tesora.dve.eventing.StackAction;
+import com.tesora.dve.eventing.State;
+import com.tesora.dve.eventing.TransitionReqRespState;
+import com.tesora.dve.eventing.TransitionResult;
+import com.tesora.dve.eventing.events.AcknowledgeResponse;
+import com.tesora.dve.eventing.events.ExceptionResponse;
+import com.tesora.dve.eventing.events.WorkerRequestEvent;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
@@ -52,7 +67,7 @@ import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
  * Temp), though which database it is connected to can be changed by the
  * WorkerManager.
  */
-public abstract class Worker implements GenericSQLCommand.DBNameResolver {
+public abstract class Worker implements GenericSQLCommand.DBNameResolver, EventHandler {
 	
 	public interface Factory {
 		public Worker newWorker(UserAuthentication auth, StorageSite site) throws PEException;
@@ -382,4 +397,85 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 	public int getConnectionId() throws PESQLException {
 		return getConnection().getConnectionId();
 	}
+	
+	@Override
+	public Response request(Request in) {
+		return sm.request(in);
+	}
+
+	@Override
+	public void response(Response in) {
+		sm.response(in);
+	}
+
+	@Override
+	public boolean isAsynchronous() {
+		return sm.isAsynchronous();
+	}
+
+	@Override
+	public void requestCallbackOnly(Request in) {
+		sm.requestCallbackOnly(in);
+	}
+
+	// one state for each of the blocking calls in worker
+	
+	// this executes by doing a Host.submit on the inbound request
+	// and arranges to return the response to our own state machine, which
+	// then sends the response back.  this is a transitional state.  once
+	// we MysqlConnection working with events we can remove this in favor of
+	// true state machines.
+	private class ThreadedExecute extends TransitionReqRespState {
+
+		@Override
+		protected ChildRunnable buildRunnable(EventStateMachine ems, final Request reqEvent) {
+			WorkerRequestEvent workerRequest = (WorkerRequestEvent) reqEvent;
+			final DBResultConsumer resultConsumer = workerRequest.getConsumer();
+			final WorkerRequest req = workerRequest.getWrappedRequest();
+			return new ChildRunnable() {				
+				@Override
+				public void run() throws Throwable {
+					// TODO Auto-generated method stub
+					try {
+						long reqStartTime = System.currentTimeMillis();
+						req.executeRequest(Worker.this, resultConsumer);
+						Worker.this.sendStatistics(req, System.currentTimeMillis() - reqStartTime);
+					} catch (PEException e) {
+						Worker.this.setLastException(e);
+						// TODO: handle this
+						//								if (e.hasCause(PECommunicationsException.class))
+						//									markForPurge();
+						//								else
+						//									throw new PEException("On WorkerGroup " + wg, e);
+						throw e;
+					} catch (Exception e) {
+						Worker.this.setLastException(e);
+						throw e;
+					}
+					
+				}
+				
+			};
+		}
+		
+	}
+		
+	private final DispatchState IDLE_STATE = new DispatchState() {
+		
+		@Override
+		public State getTarget(EventStateMachine esm, AbstractEvent event) {
+			return new ThreadedExecute();
+		}
+		
+	};
+	
+	private final EventStateMachine sm = new EventStateMachine("Worker",IDLE_STATE) {
+
+		@Override
+		public boolean isAsynchronous() {
+			return false;
+		}
+		
+	};
+	
 }

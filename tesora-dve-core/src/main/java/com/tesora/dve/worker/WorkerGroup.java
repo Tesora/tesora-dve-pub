@@ -21,6 +21,7 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -57,6 +58,22 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.eventing.AbstractEvent;
+import com.tesora.dve.eventing.AbstractReqRespState;
+import com.tesora.dve.eventing.DispatchState;
+import com.tesora.dve.eventing.EventHandler;
+import com.tesora.dve.eventing.EventStateMachine;
+import com.tesora.dve.eventing.Request;
+import com.tesora.dve.eventing.Response;
+import com.tesora.dve.eventing.SequentialExecutionMode;
+import com.tesora.dve.eventing.SequentialState;
+import com.tesora.dve.eventing.StackAction;
+import com.tesora.dve.eventing.State;
+import com.tesora.dve.eventing.TransitionResult;
+import com.tesora.dve.eventing.events.AcknowledgeResponse;
+import com.tesora.dve.eventing.events.ExceptionResponse;
+import com.tesora.dve.eventing.events.WorkerGroupSubmitEvent;
+import com.tesora.dve.eventing.events.WorkerRequestEvent;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
@@ -75,7 +92,7 @@ import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
 
-public class WorkerGroup {
+public class WorkerGroup  implements EventHandler {
 	
 	static Logger logger = Logger.getLogger( WorkerGroup.class );
 
@@ -490,6 +507,8 @@ public class WorkerGroup {
 		return workerFutures;
 	}
 	
+	
+	
 //	public void sendToAllWorkers(Agent agent, Object m) throws PEException {
 //		send(agent, MappingSolution.AllWorkers, m);
 //	}
@@ -846,4 +865,101 @@ public class WorkerGroup {
 		PEThreadContext.logDebug();
 	}
 
+	@Override
+	public Response request(Request in) {
+		return sm.request(in);
+	}
+
+	@Override
+	public void response(Response in) {
+		sm.response(in);
+	}
+
+	@Override
+	public boolean isAsynchronous() {
+		return sm.isAsynchronous();
+	}
+
+	@Override
+	public void requestCallbackOnly(Request in) {
+		sm.requestCallbackOnly(in);
+	}
+	
+	// everything below this is part of the event state machine
+	
+	private class SubmitterState extends AbstractReqRespState {
+
+		private int sent = 0;
+		private List<ExceptionResponse> exceptions = new ArrayList<ExceptionResponse>();
+		private WorkerGroupSubmitEvent request;
+		
+		@Override
+		public TransitionResult onEvent(EventStateMachine esm, AbstractEvent event) {
+			// inbound is single threaded; outbound is multithreaded, accordingly lock around the receive
+			if (event.isRequest()) {
+				request = (WorkerGroupSubmitEvent) event;
+				try {
+					int senderCount = request.getSenderCount();
+					if (senderCount == 0)
+						senderCount = request.getMappingSolution().computeSize(WorkerGroup.this);
+					request.getResultConsumer().setSenderCount(senderCount);
+					Collection<Worker> workers = getTargetWorkers(request.getMappingSolution());
+					if (request.getMappingSolution().isWorkerSerializationRequired() && workers.size() > 1) {
+						// to handle worker serialization we would have to only schedule the first item, and then
+						// do the rest - it would be better to figure out that case in the dispatcher and use a sequential state
+						throw new PEException("Not yet - worker serialization");
+					}
+					// for each worker we're going to build a target event, where the worker is the target
+					// and the event is a WorkerRequestEvent
+					TransitionResult result = new TransitionResult();
+					for(Worker w : workers) {
+						// todo - worker serialization
+						result.withTargetEvent(new WorkerRequestEvent(WorkerGroup.this,
+								request.getWrappedRequest(),request.getResultConsumer()), w);
+					}
+					sent = workers.size();
+					return result;
+				} catch (PEException pe) {
+					return propagateRequestException(request,pe);
+				}				
+			} else {
+				Response resp = (Response) event;
+				if (resp.isError()) {
+					exceptions.add((ExceptionResponse)resp);
+				}
+				sent--;
+				TransitionResult out = new TransitionResult();
+				if (sent == 0) {
+					// we're done
+					out.withStateTransition(null, StackAction.POP);
+					if (exceptions.isEmpty())
+						out.withTargetEvent(new AcknowledgeResponse(request),request.getRequestor());
+					else
+						out.withTargetEvent(new ExceptionResponse(request,exceptions),request.getRequestor());
+				}
+				return out;
+			}
+		}		
+	}
+
+	private final DispatchState IDLE_STATE = new DispatchState() {
+		
+		@Override
+		public State getTarget(EventStateMachine esm, AbstractEvent event) {
+			if (event instanceof WorkerGroupSubmitEvent) {
+				return new SubmitterState();
+			}
+			return null;
+		}
+		
+	};
+	
+
+	private final EventStateMachine sm = new EventStateMachine("WorkerGroup",IDLE_STATE) {
+		@Override
+		public boolean isAsynchronous() {
+			return true;
+		}		
+	};
+			
 }

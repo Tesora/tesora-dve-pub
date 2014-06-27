@@ -24,6 +24,15 @@ package com.tesora.dve.queryplan;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.logutil.LogSubject;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.eventing.AbstractEvent;
+import com.tesora.dve.eventing.DispatchState;
+import com.tesora.dve.eventing.EventHandler;
+import com.tesora.dve.eventing.EventStateMachine;
+import com.tesora.dve.eventing.Request;
+import com.tesora.dve.eventing.Response;
+import com.tesora.dve.eventing.State;
+import com.tesora.dve.eventing.TransitionReqRespState;
+import com.tesora.dve.eventing.events.QSOExecuteRequestEvent;
 import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.worker.WorkerGroup;
@@ -35,7 +44,7 @@ import com.tesora.dve.worker.WorkerGroup;
  * @author mjones
  *
  */
-public abstract class QueryStepOperation implements LogSubject {
+public abstract class QueryStepOperation implements LogSubject, EventHandler {
 
 	/**
 	 * Called by <b>QueryStep</b> to execute the operation.  Any results
@@ -80,4 +89,62 @@ public abstract class QueryStepOperation implements LogSubject {
 		return null;
 	}
 	
+	@Override
+	public Response request(Request in) {
+		return sm.request(in);
+	}
+
+	@Override
+	public void response(Response in) {
+		sm.response(in);
+	}
+
+	@Override
+	public boolean isAsynchronous() {
+		return sm.isAsynchronous();
+	}
+
+	@Override
+	public void requestCallbackOnly(Request in) {
+		sm.requestCallbackOnly(in);
+	}
+
+	protected State getImplState(EventStateMachine esm, AbstractEvent event) {
+		return new QSOExecutor();
+	}
+	
+	// right now we're just going to wrap it in a threaded execute call
+	class QSOExecutor extends TransitionReqRespState {
+
+		@Override
+		protected ChildRunnable buildRunnable(EventStateMachine ems, Request req) {
+			final QSOExecuteRequestEvent reqEvent = (QSOExecuteRequestEvent) req;
+			return new ChildRunnable() {
+
+				@Override
+				public void run() throws Throwable {
+					// TODO Auto-generated method stub
+					execute(reqEvent.getConnection(),reqEvent.getWorkerGroup(),reqEvent.getConsumer());
+				}
+				
+			};
+		}
+		
+	}
+	
+	private final State DISPATCHER = new DispatchState() {
+		
+		public State getTarget(EventStateMachine esm, AbstractEvent event) {
+			return getImplState(esm,event);
+		}
+	};
+	
+	private final EventStateMachine sm = new EventStateMachine("QSO",DISPATCHER) {
+
+		@Override
+		public boolean isAsynchronous() {
+			return true;
+		}
+		
+	};
 }

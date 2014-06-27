@@ -36,6 +36,8 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.eventing.SynchronousEventHandler;
+import com.tesora.dve.eventing.events.QSOExecuteRequestEvent;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -216,7 +218,11 @@ public class QueryStep {
 						logger.debug("QueryStep executes " + op.toString());
 					slowQueryLogger = ssCon.getExecutionLogger().getNewLogger(op); 
 
-					op.execute(ssCon, wg, resultConsumer);
+					SynchronousEventHandler sync = new SynchronousEventHandler();
+					QSOExecuteRequestEvent execRequest = new QSOExecuteRequestEvent(sync,ssCon,wg,resultConsumer);
+					sync.call(execRequest, op);
+					
+					// op.execute(ssCon, wg, resultConsumer);
 				} finally {
 					ExecutionLogger afterLogger = null;
 					try {

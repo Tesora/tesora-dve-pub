@@ -23,6 +23,7 @@ package com.tesora.dve.queryplan;
 
 import javax.xml.bind.annotation.XmlType;
 
+import com.tesora.dve.queryplan.QueryStepSelectAllOperation.SelectAllSM;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
@@ -30,13 +31,25 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.IKeyValue;
+import com.tesora.dve.eventing.AbstractEvent;
+import com.tesora.dve.eventing.AbstractReqRespState;
+import com.tesora.dve.eventing.EventHandler;
+import com.tesora.dve.eventing.EventStateMachine;
+import com.tesora.dve.eventing.Request;
+import com.tesora.dve.eventing.SequentialState;
+import com.tesora.dve.eventing.State;
+import com.tesora.dve.eventing.TransitionResult;
+import com.tesora.dve.eventing.events.QSOExecuteRequestEvent;
+import com.tesora.dve.eventing.events.WorkerGroupSubmitEvent;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
+import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.worker.MysqlParallelResultConsumer;
 import com.tesora.dve.worker.WorkerGroup;
+import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 @XmlType(name="QueryStepQueryByKeyOperation")
 public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
@@ -114,4 +127,59 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 		buf.append("SelectByKey key=").append(distValue).append(", stmt=").append(command.getRawSQL());
 		return buf.toString();
 	}
+	
+	@Override
+	protected State getImplState(EventStateMachine esm, AbstractEvent event) {
+		return new SelectByKeySM();
+	}
+
+	private class SelectByKeySM extends AbstractReqRespState {
+
+		QSOExecuteRequestEvent request;
+		
+		@Override
+		public TransitionResult onEvent(EventStateMachine esm,
+				AbstractEvent event) {
+			if (event.isRequest()) {
+				request = (QSOExecuteRequestEvent) event;
+
+				try {
+					request.getConsumer().setResultsLimit(getResultsLimit());
+
+					final boolean savepointRequired = request.getConnection().getTransId() != null && command.isForUpdateStatement()
+							&& "5.6".equals(Singletons.require(HostService.class).getDveVersion(request.getConnection()));
+
+					WorkerExecuteRequest req =
+							new WorkerExecuteRequest(request.getConnection().getTransactionalContext(), command).
+							onDatabase(database).withLockRecovery(savepointRequired);
+
+					WorkerGroup.MappingSolution mappingSolution = 
+							distValue.getDistributionModel().mapKeyForQuery(
+									request.getConnection().getCatalogDAO(), request.getWorkerGroup().getGroup(), distValue,
+									command.isForUpdateStatement() ? DistKeyOpType.SELECT_FOR_UPDATE : DistKeyOpType.QUERY);
+					if (logger.isDebugEnabled())
+						logger.debug(this.getClass().getSimpleName() + " maps dv " + distValue + " to " + mappingSolution);
+
+					int senderCount = mappingSolution.computeSize(request.getWorkerGroup());
+
+					request.getConsumer().setResultsLimit(getResultsLimit());
+					request.getConsumer().setSenderCount(senderCount);
+
+					WorkerGroupSubmitEvent submitter = 
+							new WorkerGroupSubmitEvent(esm,mappingSolution,req,request.getConsumer(),senderCount);
+
+					return new TransitionResult()
+					.withTargetEvent(submitter, request.getWorkerGroup());
+				} catch (Throwable t) {
+					return propagateRequestException(request,t);
+				}
+			} else {
+				return propagateResponse(esm,request,event);
+			}
+		}
+
+		
+	}
+	
+	
 }

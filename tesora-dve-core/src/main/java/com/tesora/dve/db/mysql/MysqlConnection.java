@@ -27,6 +27,8 @@ import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
 import com.tesora.dve.db.mysql.portal.protocol.MSPProtocolEncoder;
+import com.tesora.dve.eventing.Request;
+import com.tesora.dve.eventing.Response;
 import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
