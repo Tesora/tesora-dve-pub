@@ -21,16 +21,13 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.concurrent.*;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
 
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
-import com.tesora.dve.concurrent.PEFuture.Listener;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
@@ -57,26 +54,25 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 		throw new PEException("Cannot inject into " + this.getClass().getSimpleName());
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(final Channel channel, StorageSite site, final DBConnection.Monitor connectionMonitor, final SQLCommand sql, final PEPromise<Boolean> promise) {
+    @Override
+    public void writeCommandExecutor(final Channel channel, final StorageSite site, final DBConnection.Monitor connectionMonitor, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
 		final MysqlQueryResultConsumer resultForwarder = this;
 		final MysqlPrepareParallelConsumer prepareCollector = new MysqlPrepareStatementDiscarder();
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
-		preparePromise.addListener(new Listener<Boolean>() {
+		preparePromise.addListener(new CompletionTarget<Boolean>() {
 			@Override
-			public void onSuccess(Boolean returnValue) {
+			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = prepareCollector.getPreparedStatement();
 				channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), resultForwarder, promise));
 //			System.out.println("selectCollector " + pstmt);
 				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
 			}
 			@Override
-			public void onFailure(Exception e) {
+			public void failure(Exception e) {
 				promise.failure(e);
 			}
 		});
 		channel.write(new MysqlStmtPrepareCommand(sql.getSQL(), prepareCollector, preparePromise));
-		return promise;
 	}
 
 }

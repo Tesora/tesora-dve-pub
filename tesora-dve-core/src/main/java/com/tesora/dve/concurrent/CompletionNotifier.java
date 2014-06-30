@@ -1,4 +1,4 @@
-package com.tesora.dve.db.mysql;
+package com.tesora.dve.concurrent;
 
 /*
  * #%L
@@ -21,17 +21,10 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.concurrent.CompletionHandle;
-
-public abstract class MysqlConcurrentCommand extends MysqlCommand {
-
-	private CompletionHandle<Boolean> promise;
-
-	public MysqlConcurrentCommand(CompletionHandle<Boolean> promise) {
-		this.promise = promise;
-	}
-
-	public CompletionHandle<Boolean> getCompletionHandle() {
-		return promise;
-	}
+/**
+ *
+ */
+public interface CompletionNotifier<T> {
+    void addListener(CompletionTarget<T> listener);
+    void removeListener(CompletionTarget<T> listener);
 }

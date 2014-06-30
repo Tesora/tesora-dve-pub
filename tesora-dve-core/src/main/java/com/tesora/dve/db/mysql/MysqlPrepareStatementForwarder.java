@@ -21,6 +21,8 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.concurrent.*;
+import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
@@ -29,11 +31,6 @@ import io.netty.channel.ChannelHandlerContext;
 
 import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
-import com.tesora.dve.concurrent.PEFuture.Listener;
-import com.tesora.dve.db.DBConnection.Monitor;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer {
@@ -55,25 +52,23 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 		outboundPStmt.setNumParams(getNumParams());
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(final Channel channel, StorageSite site, Monitor connectionMonitor, SQLCommand sql,
-			final PEPromise<Boolean> promise) {
+    @Override
+    public void writeCommandExecutor(final Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, final CompletionHandle<Boolean> promise) {
 		final MysqlPrepareStatementForwarder resultForwarder = this;
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
-		preparePromise.addListener(new Listener<Boolean>() {
+		preparePromise.addListener(new CompletionTarget<Boolean>() {
 			@Override
-			public void onSuccess(Boolean returnValue) {
+			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = resultForwarder.getPreparedStatement();
 				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
 				promise.success(false);
 			}
 			@Override
-			public void onFailure(Exception e) {
+			public void failure(Exception e) {
 				promise.failure(e);
 			}
 		});
 		super.writeCommandExecutor(channel, site, connectionMonitor, sql, preparePromise);
-		return promise;
 	}
 
 	@Override

@@ -22,13 +22,12 @@ package com.tesora.dve.db;
  */
 
 
+import com.tesora.dve.concurrent.CompletionHandle;
 import io.netty.channel.Channel;
 
 import java.util.List;
 
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
@@ -54,7 +53,7 @@ public interface DBResultConsumer {
 
 	void setNumRowsAffected(long rowcount);
 
-	PEFuture<Boolean> writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise);
+    void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise);
 
 	boolean isSuccessful();
 

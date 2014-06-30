@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.SynchronousCompletion;
 import io.netty.channel.Channel;
 
 import io.netty.channel.ChannelHandlerContext;
@@ -35,8 +37,6 @@ import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
@@ -64,7 +64,7 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	volatile int senderCount = 0;
 	volatile int rowCount = 0;
 
-	private final PEFuture<RedistTupleBuilder> handlerFuture;
+	private final SynchronousCompletion<RedistTupleBuilder> handlerFuture;
 	private final CatalogDAO catalogDAO;
 	private final DistributionModel distModel;
 	private final WorkerGroup targetWG;
@@ -127,7 +127,7 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 			SSContext ssContext, CatalogDAO c, WorkerGroup targetWG, 
 			DistributionModel distModel, KeyValue distValue, TableHints tableHints, 
 			boolean useResultSetAliases, MyPreparedStatement<MysqlGroupedPreparedStatementId> selectPStatement, 
-			PEFuture<RedistTupleBuilder> handlerFuture) 
+			SynchronousCompletion<RedistTupleBuilder> handlerFuture)
 	{
 		this.catalogDAO = c;
 		this.distModel = distModel;
@@ -148,11 +148,9 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 		throw new PECodingException(this.getClass().getSimpleName()+".inject not supported");
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel,
-			StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
+    @Override
+    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), this, promise));
-		return promise;
 	}
 
 	private RedistTupleBuilder getTargetHandler() throws PEException {

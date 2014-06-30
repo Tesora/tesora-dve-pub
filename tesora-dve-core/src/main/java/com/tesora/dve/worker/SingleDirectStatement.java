@@ -24,6 +24,7 @@ package com.tesora.dve.worker;
 import java.sql.ResultSet;
 import java.util.concurrent.Callable;
 
+import com.tesora.dve.concurrent.CompletionHandle;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
@@ -51,25 +52,44 @@ public class SingleDirectStatement implements WorkerStatement {
 		this.worker = w;
 		this.dbConnection = dbConnection;
 	}
-	
-	protected boolean doExecute(SQLCommand sqlCommand, DBResultConsumer resultConsumer) throws PESQLException {
-		try {
+
+	protected void doExecute(SQLCommand sqlCommand, DBResultConsumer resultConsumer, final CompletionHandle<Boolean> promise) throws PESQLException {
 		if (sqlCommand.hasReferenceTime()) {
 			String setTimestampSQL = "SET TIMESTAMP=" + sqlCommand.getReferenceTime() + ";";
 			dbConnection.execute(new SQLCommand(setTimestampSQL), DBEmptyTextResultConsumer.INSTANCE);
 		}
 
-		return dbConnection.execute(sqlCommand.getResolvedCommand(worker), resultConsumer, 
-				new PEDefaultPromise<Boolean>()
-				).sync();
-		} catch (Exception e) {
-			if (e instanceof PESQLException)
-				throw (PESQLException)e;
-			else
-				throw new PESQLException(e);
-		}
+        CompletionHandle<Boolean> transformErrors = new CompletionHandle<Boolean>() {
+            @Override
+            public boolean trySuccess(Boolean returnValue) {
+                return promise.trySuccess(returnValue);
+            }
+
+            @Override
+            public boolean isFulfilled() {
+                return promise.isFulfilled();
+            }
+
+            @Override
+            public void success(Boolean returnValue) {
+                promise.success(returnValue);
+            }
+
+            @Override
+            public void failure(Exception e) {
+                if (e instanceof PESQLException)
+                    promise.failure(e);
+                else {
+                    PESQLException convert = new PESQLException(e);
+                    convert.fillInStackTrace();
+                    promise.failure(convert);
+                }
+            }
+
+        };
+        dbConnection.execute(sqlCommand.getResolvedCommand(worker), resultConsumer, transformErrors);
 	}
-	
+
 	@Override
 	public boolean execute(int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer) throws PESQLException {
 		boolean hasResults = false;
@@ -81,7 +101,9 @@ public class SingleDirectStatement implements WorkerStatement {
 			hasResults = connectionSafeJDBCCall(new Callable<Boolean>() {
 				@Override
 				public Boolean call() throws Exception {
-					return doExecute(sql, resultConsumer);
+                    PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+                    doExecute(sql, resultConsumer, promise);
+                    return promise.sync();
 				}
 			});
 			

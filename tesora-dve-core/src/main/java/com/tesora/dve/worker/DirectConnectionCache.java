@@ -24,8 +24,7 @@ package com.tesora.dve.worker;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.mysql.MysqlConnection;
@@ -183,8 +182,8 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public PEFuture<Boolean> execute(SQLCommand sql, DBResultConsumer consumer, PEPromise<Boolean> promise) throws PESQLException {
-            return dbConnection.execute(sql,consumer,promise);
+        public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) throws PESQLException {
+            dbConnection.execute(sql,consumer,promise);
         }
 
         @Override
@@ -243,13 +242,13 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void onSuccess(Boolean returnValue) {
-            dbConnection.onSuccess(returnValue);
+        public void success(Boolean returnValue) {
+            dbConnection.success(returnValue);
         }
 
         @Override
-        public void onFailure(Exception e) {
-            dbConnection.onFailure(e);
+        public void failure(Exception e) {
+            dbConnection.failure(e);
         }
 
     }

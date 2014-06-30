@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 
-public class PEDefaultPromise<T> implements PEPromise<T> {
+public class PEDefaultPromise<T> implements CompletionTarget<T>, CompletionHandle<T>, SynchronousCompletion<T>, CompletionNotifier<T> {
 	
 	private static final int WAIT_TIMEOUT = 60 * 1000;
 	
@@ -36,24 +36,23 @@ public class PEDefaultPromise<T> implements PEPromise<T> {
 	static AtomicInteger nextId = new AtomicInteger();
 	int thisId = nextId.incrementAndGet();
 	
-	Set<Listener<T>> listeners = null;
+	Set<CompletionTarget<T>> listeners = null;
 	
 	T returnValue;
 	Exception thrownException;
 	boolean waitersNotified = false;
 
 	@Override
-	public PEPromise<T> addListener(Listener<T> listener) {
+	public void addListener(CompletionTarget<T> listener) {
 		synchronized (this) {
 			if (listeners == null)
-				listeners = new HashSet<Listener<T>>();
+				listeners = new HashSet<CompletionTarget<T>>();
 			listeners.add(listener);
 		}
-		return this;
 	}
 
 	@Override
-	public void removeListener(Listener<T> listener) {
+	public void removeListener(CompletionTarget<T> listener) {
 		synchronized (this) {
 			listeners.remove(listener);			
 		}
@@ -94,7 +93,7 @@ public class PEDefaultPromise<T> implements PEPromise<T> {
 	}
 
 	@Override
-	public PEDefaultPromise<T> success(T returnValue) {
+	public void success(T returnValue) {
 		synchronized (this) {
 			if (logger.isDebugEnabled()) logger.debug(this + ".success("+returnValue+")");
 //			if (executionComplete)
@@ -105,14 +104,13 @@ public class PEDefaultPromise<T> implements PEPromise<T> {
 			if (!waitersNotified) {
 				try {
 					if (listeners != null)
-						for (Listener<T> listener : listeners)
-							listener.onSuccess(returnValue);
+						for (CompletionTarget<T> listener : listeners)
+							listener.success(returnValue);
 				} finally {
 					releaseWaiters();
 				}
 			}
 		}
-		return this;
 	}
 
 	@Override
@@ -128,7 +126,7 @@ public class PEDefaultPromise<T> implements PEPromise<T> {
 	}
 
 	@Override
-	public PEDefaultPromise<T> failure(Exception t) {
+	public void failure(Exception t) {
 		synchronized (this) {
 			if (logger.isDebugEnabled()) logger.debug(this + ".failure("+t.getMessage()+")", t);
 			if (!waitersNotified) {
@@ -138,14 +136,13 @@ public class PEDefaultPromise<T> implements PEPromise<T> {
 
 				try {
 					if (listeners != null)
-						for (Listener<T> listener : listeners)
-							listener.onFailure(t);
+						for (CompletionTarget<T> listener : listeners)
+							listener.failure(t);
 				} finally {
 					releaseWaiters();
 				}
 			}
 		}
-		return this;
 	}
 
 	@Override

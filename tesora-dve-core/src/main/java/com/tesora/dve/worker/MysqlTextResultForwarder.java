@@ -21,12 +21,12 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.NativeResultHandler;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
@@ -37,8 +37,6 @@ import java.util.List;
 
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.MysqlExecuteCommand;
 import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
@@ -80,10 +78,9 @@ public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder
 		super.setHasResults();
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
+    @Override
+    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		channel.write(new MysqlExecuteCommand(sql, connectionMonitor, this, promise));
-		return promise;
 	}
 
 }

@@ -21,6 +21,7 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.concurrent.*;
 import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import io.netty.channel.Channel;
@@ -39,8 +40,6 @@ import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.common.PECollectionUtils;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -65,7 +64,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
 	int updatedRowsCount = 0;
 
-	PEPromise<Integer> completionPromise = new PEDefaultPromise<Integer>();
+	final PEDefaultPromise<Integer> completionPromise = new PEDefaultPromise<>();
 
     boolean sourcePaused = false;
 
@@ -74,7 +73,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 	final Future<SQLCommand> insertStatementFuture;
 	final PersistentTable targetTable;
 	final WorkerGroup targetWG;
-	final PEPromise<RedistTupleBuilder> readyPromise;
+	final CompletionTarget<RedistTupleBuilder> readyPromise;
 
 	final int maximumRowCount;
 	final int maxDataSize;
@@ -85,7 +84,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
 	public RedistTupleBuilder(Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions,
 			PersistentTable targetTable, int maximumRowCount, int maxDataSize,
-			PEPromise<RedistTupleBuilder> readyPromise,
+			CompletionTarget<RedistTupleBuilder> readyPromise,
 			WorkerGroup targetWG) {
 		this.insertOptions = insertOptions;
 		this.insertStatementFuture = insertStatementFuture;

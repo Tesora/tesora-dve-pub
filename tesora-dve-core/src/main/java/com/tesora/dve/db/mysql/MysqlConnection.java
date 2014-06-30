@@ -23,19 +23,18 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBType;
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.portal.protocol.*;
 import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 
@@ -44,9 +43,6 @@ import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.concurrent.PEDefaultThreadFactory;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
@@ -83,7 +79,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	private Channel channel;
 	private ChannelFuture pendingConnection;
 	private MysqlClientAuthenticationHandler authHandler;
-	final PEPromise<Boolean> sharedExceptionCatcher;
+	final CompletionHandle<Boolean> sharedExceptionCatcher;
 	private Exception pendingException = null;
 	private final StorageSite site;
 
@@ -167,8 +163,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	}
 
 	@Override
-	public PEFuture<Boolean> execute(SQLCommand sql, DBResultConsumer consumer, PEPromise<Boolean> promise) throws PESQLException {
-        PEFuture<Boolean> executionResult = promise;
+	public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) throws PESQLException {
 
 		PEThreadContext.pushFrame(getClass().getSimpleName())
 				.put("site", site.getName())
@@ -191,14 +186,13 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 			} else if (pendingException == null) {
 				syncToServerConnect();
 				authHandler.assertAuthenticated();
-				executionResult = consumer.writeCommandExecutor(channel, site, this, sql, promise);
-				channel.flush();
+				consumer.writeCommandExecutor(channel, site, this, sql, promise);
+                channel.flush();
 			} else {
 				promise.failure(new PEException("Queued exception from previous execution", pendingException));
 				pendingException = null;
 			}
 
-			return executionResult;
 		} finally {
 			PEThreadContext.popFrame();
 		}
@@ -239,8 +233,10 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 	@Override
 	public void prepare(DevXid xid) throws Exception {
-		execute(new SQLCommand("XA PREPARE " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE,
-				new PEDefaultPromise<Boolean>()).sync();
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+        execute(new SQLCommand("XA PREPARE " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE,
+                promise);
+        promise.sync();
 	}
 
 	@Override
@@ -248,15 +244,19 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 		String sql = "XA COMMIT " + xid.getMysqlXid();
 		if (onePhase)
 			sql += " ONE PHASE";
-		execute(new SQLCommand(sql), DBEmptyTextResultConsumer.INSTANCE, new PEDefaultPromise<Boolean>()).sync();
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+        execute(new SQLCommand(sql), DBEmptyTextResultConsumer.INSTANCE, promise);
+        promise.sync();
 		pendingUpdate = false;
 		hasActiveTransaction = false;
 	}
 	@Override
 	public void rollback(DevXid xid) throws Exception {
         try{
-		    execute(new SQLCommand("XA ROLLBACK " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE,
-				new PEDefaultPromise<Boolean>()).sync();
+            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+            execute(new SQLCommand("XA ROLLBACK " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE,
+                    promise);
+            promise.sync();
         } catch (PEException e){
             Exception root = e.rootCause();
             if (root instanceof PESQLStateException){
@@ -293,33 +293,32 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 		}
 	}
 
-	private PEPromise<Boolean> getExceptionCatcher() {
+	private CompletionHandle<Boolean> getExceptionCatcher() {
 
 		// re-usable promise that forwards success/failure calls; result is ignored
 		PEDefaultPromise<Boolean> catcher = new PEDefaultPromise<Boolean>() {
 			@Override
-			public PEDefaultPromise<Boolean> success(Boolean returnValue) {
-				onSuccess(returnValue);
-				return this;
+			public void success(Boolean returnValue) {
+				MysqlConnection.this.success(returnValue);
 			}
 
 			@Override
-			public PEDefaultPromise<Boolean> failure(Exception e) {
-				onFailure(e);
-				return this;
+			public void failure(Exception e) {
+                MysqlConnection.this.failure(e);
 			}
 
 		};
-		return catcher.addListener(this);
+		catcher.addListener(this);
+        return catcher;
 	}
 
 	@Override
-	public void onFailure(Exception e) {
+	public void failure(Exception e) {
 		pendingException = new PEException("Unhandled exception received on server housekeeping sql statement", e);
 	}
 
 	@Override
-	public void onSuccess(Boolean returnValue) {
+	public void success(Boolean returnValue) {
 	}
 
 	@Override
