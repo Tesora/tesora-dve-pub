@@ -25,6 +25,7 @@ import java.sql.ResultSet;
 import java.util.concurrent.Callable;
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
@@ -55,34 +56,19 @@ public class SingleDirectStatement implements WorkerStatement {
 
 	protected void doExecute(SQLCommand sqlCommand, DBResultConsumer resultConsumer, final CompletionHandle<Boolean> promise) throws PESQLException {
 		if (sqlCommand.hasReferenceTime()) {
-			String setTimestampSQL = "SET TIMESTAMP=" + sqlCommand.getReferenceTime() + ";";
-			dbConnection.execute(new SQLCommand(setTimestampSQL), DBEmptyTextResultConsumer.INSTANCE);
+            dbConnection.setTimestamp( sqlCommand.getReferenceTime() );
 		}
 
-        CompletionHandle<Boolean> transformErrors = new CompletionHandle<Boolean>() {
-            @Override
-            public boolean trySuccess(Boolean returnValue) {
-                return promise.trySuccess(returnValue);
-            }
-
-            @Override
-            public boolean isFulfilled() {
-                return promise.isFulfilled();
-            }
-
-            @Override
-            public void success(Boolean returnValue) {
-                promise.success(returnValue);
-            }
+        CompletionHandle<Boolean> transformErrors = new DelegatingCompletionHandle<Boolean>(promise) {
 
             @Override
             public void failure(Exception e) {
                 if (e instanceof PESQLException)
-                    promise.failure(e);
+                    super.failure(e);
                 else {
                     PESQLException convert = new PESQLException(e);
                     convert.fillInStackTrace();
-                    promise.failure(convert);
+                    super.failure(convert);
                 }
             }
 
@@ -90,7 +76,7 @@ public class SingleDirectStatement implements WorkerStatement {
         dbConnection.execute(sqlCommand.getResolvedCommand(worker), resultConsumer, transformErrors);
 	}
 
-	@Override
+    @Override
 	public boolean execute(int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer) throws PESQLException {
 		boolean hasResults = false;
 		StatementManager.INSTANCE.registerStatement(connectionId, this);

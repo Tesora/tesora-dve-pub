@@ -24,6 +24,8 @@ package com.tesora.dve.worker;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -141,7 +143,9 @@ public class SingleDirectConnection implements WorkerConnection {
 	@Override
 	public void rollbackXA(DevXid xid) throws PESQLException {
 		try {
-			getConnection().rollback(xid);
+            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+			getConnection().rollback(xid, promise);
+            promise.sync();
 		} catch (Exception e) {
 			throw new PESQLException("Cannot rollback XA Transaction " + xid, e);
 		}
@@ -150,7 +154,9 @@ public class SingleDirectConnection implements WorkerConnection {
 	@Override
 	public void commitXA(DevXid xid, boolean onePhase) throws PESQLException {
 		try {
-			getConnection().commit(xid, onePhase);
+            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+			getConnection().commit(xid, onePhase, promise);
+            promise.sync();
 		} catch (Exception e) {
 			throw new PESQLException("Cannot commit XA Transaction " + xid, e);
 		}
@@ -159,7 +165,9 @@ public class SingleDirectConnection implements WorkerConnection {
 	@Override
 	public void prepareXA(DevXid xid) throws PESQLException {
 		try {
-			getConnection().prepare(xid);
+            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+			getConnection().prepare(xid, promise);
+            promise.sync();
 		} catch (Exception e) {
 			throw new PESQLException("Cannot prepare XA Transaction " + xid, e);
 		}

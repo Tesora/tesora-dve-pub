@@ -44,14 +44,17 @@ public interface DBConnection extends CompletionTarget<Boolean> {
 	void close();
 	
 	void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) throws PESQLException;
-	void execute(SQLCommand sql, DBResultConsumer consumer) throws PESQLException;
 	
 	void start(DevXid xid) throws Exception;
 	void end(DevXid xid) throws Exception;
-	void prepare(DevXid xid) throws Exception;
-	void commit(DevXid xid, boolean onePhase) throws Exception;
-	void rollback(DevXid xid) throws Exception;
-	void setCatalog(String databaseName) throws Exception;
+
+	void prepare(DevXid xid, CompletionHandle<Boolean> promise) throws Exception;
+	void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) throws Exception;
+	void rollback(DevXid xid, CompletionHandle<Boolean> promise) throws Exception;
+
+    void sendPreamble(String siteName) throws Exception;
+    void setCatalog(String databaseName) throws Exception;
+    void setTimestamp(long referenceTime) throws PESQLException;
 	void cancel();
 
 	boolean hasPendingUpdate();

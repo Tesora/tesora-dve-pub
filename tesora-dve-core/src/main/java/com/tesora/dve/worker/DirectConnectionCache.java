@@ -187,11 +187,6 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void execute(SQLCommand sql, DBResultConsumer consumer) throws PESQLException {
-            dbConnection.execute(sql, consumer);
-        }
-
-        @Override
         public void start(DevXid xid) throws Exception {
             dbConnection.start(xid);
         }
@@ -202,23 +197,33 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void prepare(DevXid xid) throws Exception {
-            dbConnection.prepare(xid);
+        public void prepare(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
+            dbConnection.prepare(xid, promise);
         }
 
         @Override
-        public void commit(DevXid xid, boolean onePhase) throws Exception {
-            dbConnection.commit(xid,onePhase);
+        public void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) throws Exception {
+            dbConnection.commit(xid,onePhase,promise);
         }
 
         @Override
-        public void rollback(DevXid xid) throws Exception {
-            dbConnection.rollback(xid);
+        public void rollback(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
+            dbConnection.rollback(xid, promise);
+        }
+
+        @Override
+        public void sendPreamble(String siteName) throws Exception {
+            dbConnection.sendPreamble(siteName);
         }
 
         @Override
         public void setCatalog(String databaseName) throws Exception {
             dbConnection.setCatalog(databaseName);
+        }
+
+        @Override
+        public void setTimestamp(long referenceTime) throws PESQLException {
+            dbConnection.setTimestamp(referenceTime);
         }
 
         @Override

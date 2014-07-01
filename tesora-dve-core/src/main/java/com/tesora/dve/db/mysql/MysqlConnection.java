@@ -24,6 +24,8 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.portal.protocol.*;
 import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.bootstrap.Bootstrap;
@@ -157,12 +159,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 //		});
 	}
 
-	@Override
-	public void execute(SQLCommand sql, DBResultConsumer consumer) throws PESQLException {
-		execute(sql, consumer, sharedExceptionCatcher);
-	}
-
-	@Override
+    @Override
 	public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) throws PESQLException {
 
 		PEThreadContext.pushFrame(getClass().getSimpleName())
@@ -223,59 +220,76 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	@Override
 	public void start(DevXid xid) throws Exception {
 		hasActiveTransaction = true;
-		execute(new SQLCommand("XA START " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE);
-	}
+        execute(new SQLCommand("XA START " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, sharedExceptionCatcher);
+    }
 
 	@Override
 	public void end(DevXid xid) throws Exception {
-		execute(new SQLCommand("XA END " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE);
+        execute(new SQLCommand("XA END " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, sharedExceptionCatcher);
+    }
+
+	@Override
+	public void prepare(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
+        execute(new SQLCommand("XA PREPARE " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, promise);
 	}
 
 	@Override
-	public void prepare(DevXid xid) throws Exception {
-        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        execute(new SQLCommand("XA PREPARE " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE,
-                promise);
-        promise.sync();
-	}
-
-	@Override
-	public void commit(DevXid xid, boolean onePhase) throws Exception {
+	public void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) throws Exception {
 		String sql = "XA COMMIT " + xid.getMysqlXid();
 		if (onePhase)
 			sql += " ONE PHASE";
-        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        execute(new SQLCommand(sql), DBEmptyTextResultConsumer.INSTANCE, promise);
-        promise.sync();
-		pendingUpdate = false;
-		hasActiveTransaction = false;
+        execute(new SQLCommand(sql), DBEmptyTextResultConsumer.INSTANCE, new DelegatingCompletionHandle<Boolean>(promise){
+            @Override
+            public void success(Boolean returnValue) {
+                clearActiveState();
+                super.success(returnValue);
+            }
+        });
 	}
 	@Override
-	public void rollback(DevXid xid) throws Exception {
-        try{
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-            execute(new SQLCommand("XA ROLLBACK " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE,
-                    promise);
-            promise.sync();
-        } catch (PEException e){
-            Exception root = e.rootCause();
-            if (root instanceof PESQLStateException){
-                PESQLStateException mysqlError = (PESQLStateException)root;
-                //watch for rollback failing because we don't actually have an XA transaction. -sgossard
-                if (backendErrorImpliesNoOpenXA(mysqlError))
-                    logger.warn("tried to rollback transaction, but response implied no XA exists, " + mysqlError.getMessage());
-                else
-                    throw root;
+	public void rollback(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
+        execute(new SQLCommand("XA ROLLBACK " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, new DelegatingCompletionHandle<Boolean>(promise){
+            @Override
+            public void success(Boolean returnValue) {
+                clearActiveState();
+                super.success(returnValue);
             }
-        }
-		pendingUpdate = false;
-		hasActiveTransaction = false;
+
+            @Override
+            public void failure(Exception e) {
+                if (e instanceof PESQLStateException && backendErrorImpliesNoOpenXA((PESQLStateException)e)){
+                    logger.warn("tried to rollback transaction, but response implied no XA exists, " + e.getMessage());
+                    clearActiveState();
+                    super.success(true);
+                } else {
+                    super.failure(e);
+                }
+            }
+        });
 	}
+
+    private void clearActiveState() {
+        pendingUpdate = false;
+        hasActiveTransaction = false;
+    }
 
     public boolean backendErrorImpliesNoOpenXA(PESQLStateException mysqlError) {
         return mysqlError.getErrorNumber() == 1397 || //XAER_NOTA, XA id is completely unknown.
                (mysqlError.getErrorNumber() == 1399 && mysqlError.getErrorMsg().contains("NON-EXISTING")) //XAER_RMFAIL, because we are in NON-EXISTING state
         ;
+    }
+
+    @Override
+    public void sendPreamble(String siteName) throws Exception {
+        execute(new SQLCommand("set @" + DBNative.DVE_SITENAME_VAR + "='" + siteName + "',character_set_connection='" + MysqlNativeConstants.DB_CHAR_SET
+                + "', character_set_client='" + MysqlNativeConstants.DB_CHAR_SET + "', character_set_results='" + MysqlNativeConstants.DB_CHAR_SET + "'"),
+                DBEmptyTextResultConsumer.INSTANCE, sharedExceptionCatcher);
+    }
+
+    @Override
+    public void setTimestamp(long referenceTime) throws PESQLException {
+        String setTimestampSQL = "SET TIMESTAMP=" + referenceTime + ";";
+        execute(new SQLCommand(setTimestampSQL), DBEmptyTextResultConsumer.INSTANCE, sharedExceptionCatcher);
     }
 
     @Override
@@ -286,17 +300,18 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 	@Override
 	public void cancel() {
-		try {
-			execute(new SQLCommand("KILL QUERY " + authHandler.getThreadID()), MysqlKillResultDiscarder.INSTANCE);
-		} catch (PESQLException e) {
-			logger.warn("Failed to cancel active query", e);
-		}
+        logger.warn("Cancelling running query via MysqlConnection.cancel() currently not supported.");
+        //KILL QUERY needs to be sent on a different socket than the target query.  Sent on the same socket, it pends until the target query finishes, oops.  -sgossard
+//		try {
+//            execute(new SQLCommand("KILL QUERY " + authHandler.getThreadID()), MysqlKillResultDiscarder.INSTANCE, sharedExceptionCatcher);
+//        } catch (PESQLException e) {
+//			logger.warn("Failed to cancel active query", e);
+//		}
 	}
 
 	private CompletionHandle<Boolean> getExceptionCatcher() {
-
 		// re-usable promise that forwards success/failure calls; result is ignored
-		PEDefaultPromise<Boolean> catcher = new PEDefaultPromise<Boolean>() {
+		return new PEDefaultPromise<Boolean>() {
 			@Override
 			public void success(Boolean returnValue) {
 				MysqlConnection.this.success(returnValue);
@@ -308,8 +323,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 			}
 
 		};
-		catcher.addListener(this);
-        return catcher;
 	}
 
 	@Override

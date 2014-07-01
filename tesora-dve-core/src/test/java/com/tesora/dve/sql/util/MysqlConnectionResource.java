@@ -140,7 +140,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id; 
 		MysqlStmtCloseDiscarder discarder = new MysqlStmtCloseDiscarder(pstmt);
 		
-		mysqlConn.execute(new SQLCommand(new GenericSQLCommand("CLOSE PREP STMT")), discarder);
+		mysqlConn.execute(new SQLCommand(new GenericSQLCommand("CLOSE PREP STMT")), discarder, new PEDefaultPromise<Boolean>() );
 	}
 
 	@Override
