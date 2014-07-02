@@ -132,7 +132,7 @@ public class SingleDirectConnection implements WorkerConnection {
 	@Override
 	public void setCatalog(String databaseName) throws PESQLException {
 		try {
-			getConnection().setCatalog(databaseName);
+			getConnection().setCatalog(databaseName, null);
 		} catch (PESQLQueryInterruptedException e) {
 			throw e;
 		} catch (Exception e) {
@@ -176,7 +176,7 @@ public class SingleDirectConnection implements WorkerConnection {
 	@Override
 	public void endXA(DevXid xid) throws PESQLException {
 		try {
-			getConnection().end(xid);
+			getConnection().end(xid,null);
 		} catch (Exception e) {
 			throw new PESQLException("Cannot end XA Transaction " + xid, e);
 		}
@@ -185,7 +185,7 @@ public class SingleDirectConnection implements WorkerConnection {
 	@Override
 	public void startXA(DevXid xid) throws PESQLException {
 		try {
-			getConnection().start(xid);
+			getConnection().start(xid, null);
 		} catch (Exception e) {
 			throw new PESQLException("Cannot start XA Transaction " + xid, e);
 		}

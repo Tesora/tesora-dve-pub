@@ -372,7 +372,7 @@ public class MysqlNative extends DBNative {
 	@Override
 	public void postConnect(DBConnection conn, String siteName) throws PESQLException {
 		try {
-            conn.sendPreamble(siteName);
+            conn.sendPreamble(siteName, null);
 		} catch (Exception e) {
             if (e instanceof PESQLException)
                 throw (PESQLException)e;

@@ -66,6 +66,8 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 	static Logger logger = Logger.getLogger( MysqlConnection.class );
 
+    DeferredErrorHandle deferredErrorHandle = new DeferredErrorHandle();
+
 	private long shutdownQuietPeriod = 2;
 	private long shutdownTimeout = 15;
 
@@ -81,7 +83,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	private Channel channel;
 	private ChannelFuture pendingConnection;
 	private MysqlClientAuthenticationHandler authHandler;
-	final CompletionHandle<Boolean> sharedExceptionCatcher;
+
 	private Exception pendingException = null;
 	private final StorageSite site;
 
@@ -90,7 +92,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 	public MysqlConnection(EventLoopGroup eventLoop, StorageSite site) {
         this.connectionEventGroup = eventLoop;
-		sharedExceptionCatcher = getExceptionCatcher();
 		this.site = site;
 	}
 
@@ -151,6 +152,10 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 //		System.out.println("Create connection: Allocated " + totalConnections.incrementAndGet() + ", active " + activeConnections.incrementAndGet());
 		channel = pendingConnection.channel();
+
+        //TODO: this was moved from execute to connect, which avoids blocking on the execute to be netty friendly, but causes lag on checkout.  Should make this event driven like everything else. -sgossard
+        syncToServerConnect();
+        authHandler.assertAuthenticated();
 //		channel.closeFuture().addListener(new GenericFutureListener<Future<Void>>() {
 //			@Override
 //			public void operationComplete(Future<Void> future) throws Exception {
@@ -161,6 +166,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
     @Override
 	public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) throws PESQLException {
+        CompletionHandle<Boolean> resultTracker = wrapHandler(promise);
 
 		PEThreadContext.pushFrame(getClass().getSimpleName())
 				.put("site", site.getName())
@@ -179,17 +185,15 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 						+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+consumer+","+promise+")");
 
 			if (!channel.isOpen()) {
-				promise.failure(new PECommunicationsException("Channel closed: " + channel));
+                resultTracker.failure(new PECommunicationsException("Channel closed: " + channel));
 			} else if (pendingException == null) {
-				syncToServerConnect();
-				authHandler.assertAuthenticated();
-				consumer.writeCommandExecutor(channel, site, this, sql, promise);
+				consumer.writeCommandExecutor(channel, site, this, sql, resultTracker);
                 channel.flush();
 			} else {
-				promise.failure(new PEException("Queued exception from previous execution", pendingException));
-				pendingException = null;
+                Exception currentError = pendingException;
+                pendingException = null; //if no tracker was provided, will just save it for the next call.
+                resultTracker.failure(currentError);
 			}
-
 		} finally {
 			PEThreadContext.popFrame();
 		}
@@ -218,14 +222,14 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	}
 
 	@Override
-	public void start(DevXid xid) throws Exception {
+	public void start(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
 		hasActiveTransaction = true;
-        execute(new SQLCommand("XA START " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, sharedExceptionCatcher);
+        execute(new SQLCommand("XA START " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, promise);
     }
 
 	@Override
-	public void end(DevXid xid) throws Exception {
-        execute(new SQLCommand("XA END " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, sharedExceptionCatcher);
+	public void end(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
+        execute(new SQLCommand("XA END " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, promise);
     }
 
 	@Override
@@ -280,50 +284,42 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
     }
 
     @Override
-    public void sendPreamble(String siteName) throws Exception {
+    public void sendPreamble(String siteName, CompletionHandle<Boolean> promise) throws Exception {
         execute(new SQLCommand("set @" + DBNative.DVE_SITENAME_VAR + "='" + siteName + "',character_set_connection='" + MysqlNativeConstants.DB_CHAR_SET
                 + "', character_set_client='" + MysqlNativeConstants.DB_CHAR_SET + "', character_set_results='" + MysqlNativeConstants.DB_CHAR_SET + "'"),
-                DBEmptyTextResultConsumer.INSTANCE, sharedExceptionCatcher);
+                DBEmptyTextResultConsumer.INSTANCE, promise);
     }
 
     @Override
-    public void setTimestamp(long referenceTime) throws PESQLException {
+    public void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) throws PESQLException {
         String setTimestampSQL = "SET TIMESTAMP=" + referenceTime + ";";
-        execute(new SQLCommand(setTimestampSQL), DBEmptyTextResultConsumer.INSTANCE, sharedExceptionCatcher);
+        execute(new SQLCommand(setTimestampSQL), DBEmptyTextResultConsumer.INSTANCE, promise);
     }
 
     @Override
-	public void setCatalog(String databaseName) throws Exception {
-		execute(new SQLCommand("use " + databaseName), DBEmptyTextResultConsumer.INSTANCE,
-				sharedExceptionCatcher);
+	public void setCatalog(String databaseName, CompletionHandle<Boolean> promise) throws Exception {
+		execute(new SQLCommand("use " + databaseName), DBEmptyTextResultConsumer.INSTANCE, promise);
 	}
 
+    @Deprecated
 	@Override
 	public void cancel() {
         logger.warn("Cancelling running query via MysqlConnection.cancel() currently not supported.");
         //KILL QUERY needs to be sent on a different socket than the target query.  Sent on the same socket, it pends until the target query finishes, oops.  -sgossard
 //		try {
-//            execute(new SQLCommand("KILL QUERY " + authHandler.getThreadID()), MysqlKillResultDiscarder.INSTANCE, sharedExceptionCatcher);
+//            execute(new SQLCommand("KILL QUERY " + authHandler.getThreadID()), MysqlKillResultDiscarder.INSTANCE, wrapHandler(null));
 //        } catch (PESQLException e) {
 //			logger.warn("Failed to cancel active query", e);
 //		}
 	}
 
-	private CompletionHandle<Boolean> getExceptionCatcher() {
-		// re-usable promise that forwards success/failure calls; result is ignored
-		return new PEDefaultPromise<Boolean>() {
-			@Override
-			public void success(Boolean returnValue) {
-				MysqlConnection.this.success(returnValue);
-			}
-
-			@Override
-			public void failure(Exception e) {
-                MysqlConnection.this.failure(e);
-			}
-
-		};
-	}
+    private CompletionHandle<Boolean> wrapHandler(final CompletionHandle<Boolean> target) {
+        if (target != null)
+            return target;  //caller supplied a handler to track success/failure.
+        else {
+            return deferredErrorHandle;
+        }
+    }
 
 	@Override
 	public void failure(Exception e) {
@@ -362,4 +358,18 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 				.toString();
 	}
 
+    private class DeferredErrorHandle extends PEDefaultPromise<Boolean> {
+        //supply our own handler that will report failures on some call in the future.
+        //TODO: since query results generally come back in order, it would be good for these handlers to signal the next provided handler, not some arbitrary execute in the future. -sgossard
+        @Override
+        public void success(Boolean returnValue) {
+            MysqlConnection.this.success(returnValue);
+        }
+
+        @Override
+        public void failure(Exception e) {
+            MysqlConnection.this.failure(e);
+        }
+
+    }
 }

@@ -56,7 +56,7 @@ public class SingleDirectStatement implements WorkerStatement {
 
 	protected void doExecute(SQLCommand sqlCommand, DBResultConsumer resultConsumer, final CompletionHandle<Boolean> promise) throws PESQLException {
 		if (sqlCommand.hasReferenceTime()) {
-            dbConnection.setTimestamp( sqlCommand.getReferenceTime() );
+            dbConnection.setTimestamp( sqlCommand.getReferenceTime(), null);
 		}
 
         CompletionHandle<Boolean> transformErrors = new DelegatingCompletionHandle<Boolean>(promise) {
