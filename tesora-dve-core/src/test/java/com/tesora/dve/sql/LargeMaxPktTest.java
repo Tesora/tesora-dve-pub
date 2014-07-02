@@ -21,19 +21,24 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.testng.Assert;
 
+import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
 import com.tesora.dve.sql.util.PEDDL;
@@ -41,7 +46,6 @@ import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
-import org.testng.Assert;
 
 public class LargeMaxPktTest extends MysqlConnSchemaMirrorTest {
 	private static final int SITES = 5;
@@ -101,11 +105,64 @@ public class LargeMaxPktTest extends MysqlConnSchemaMirrorTest {
 			tests.add(new StatementMirrorProc("CREATE TABLE `pe1512` (`data` longblob)"));
 			tests.add(new StatementMirrorProc("INSERT INTO `pe1512` VALUES ('" + StringUtils.repeat("0", 17000000) + "')"));
 			tests.add(new StatementMirrorFun("SELECT length(data) FROM `pe1512`"));
-			// There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
+			// TODO: There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
 			// that it doesn't handle extended packets properly 
 			//tests.add(new StatementMirrorFun("SELECT data FROM `pe1512`"));
 
 			runTest(tests);
+		} finally {
+			ResourceResponse.BLOB_COLUMN.useFormatedOutput(true);
+			if (saveMaxPkt != null) {
+				nativeResource.getConnection().execute("SET GLOBAL max_allowed_packet = " + saveMaxPkt);
+			}
+		}
+	}
+
+	@Ignore
+	@Test
+	public void testPE1559() throws Throwable {
+		Long saveMaxPkt = null;
+		try {
+			// We need to exceed the default value of 16M.
+			ResourceResponse saveMaxPktRR = nativeResource.getConnection().execute("SHOW GLOBAL VARIABLES like 'max_allowed_packet'");
+			saveMaxPkt = (Long.valueOf((String) saveMaxPktRR.getResults().get(0).getResultColumn(2).getColumnValue())).longValue();
+
+			nativeResource.getConnection().execute("SET GLOBAL max_allowed_packet = 67108864");
+
+			/* Refresh the 'max_allowed_packet' variable. */
+			disconnect();
+			TimeUnit.SECONDS.sleep(10);//TODO: hack to deal with race condition where fast disconnect/reconnect after a response still picks up old value. -sgossard
+			connect();
+
+			// Avoid out of heap.
+			ResourceResponse.BLOB_COLUMN.useFormatedOutput(false);
+			
+			try {
+				final String payload = FileUtils.readFileToString(getFileFromLargeFileRepository("pe1559_payload.dat"));
+				final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+				tests.add(new StatementMirrorProc(
+						"CREATE TABLE `cache_views` ("
+								+ "`cid` varchar(255) NOT NULL DEFAULT '' COMMENT 'Primary Key: Unique cache ID.',"
+								+ "`data` longblob COMMENT 'A collection of data to cache.',"
+								+ "`expire` int(11) NOT NULL DEFAULT '0' COMMENT 'A Unix timestamp indicating when the cache entry should expire, or 0 for never.',"
+								+ "`created` int(11) NOT NULL DEFAULT '0' COMMENT 'A Unix timestamp indicating when the cache entry was created.',"
+								+ "`serialized` smallint(6) NOT NULL DEFAULT '0' COMMENT 'A flag to indicate whether content is serialized (1) or not (0).',"
+								+ "PRIMARY KEY (`cid`),"
+								+ "KEY `expire` (`expire`)"
+								+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT 'Generic cache table for caching things not separated out...' COMMENT 'Generic cache table for caching things not separated out...' /*#dve BROADCAST DISTRIBUTE */"));
+				tests.add(new StatementMirrorProc("INSERT INTO `cache_views` (cid) VALUES ('views_data:en')"));
+				tests.add(new StatementMirrorProc("UPDATE `cache_views` SET serialized='1', created='1403888529', expire='0', data='"
+						+ payload + "' WHERE (cid = 'views_data:en')"));
+				tests.add(new StatementMirrorFun("SELECT length(data) FROM `cache_views`"));
+				// TODO: There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
+				// that it doesn't handle extended packets properly 
+				//tests.add(new StatementMirrorFun("SELECT data FROM `cache_views`"));
+
+				runTest(tests);
+			} catch (final PEException e) {
+				System.err.println("WARNING: This test will be ignored: " + e.getMessage());
+				return;
+			}
 		} finally {
 			ResourceResponse.BLOB_COLUMN.useFormatedOutput(true);
 			if (saveMaxPkt != null) {

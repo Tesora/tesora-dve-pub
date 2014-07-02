@@ -38,6 +38,8 @@ import org.apache.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
+import com.tesora.dve.exceptions.PEException;
+
 /**
  * Base class for all Tesora DVE tests.  Sets up things like logging and temporary
  * work directories.  Useful when no DVE specific infrastructure is required
@@ -88,6 +90,20 @@ public abstract class PEBaseTest
 		deleteWorkDirectoryAfterEachTest = false;
 	}
 	
+	protected static File getFileFromLargeFileRepository(final String fileName) throws PEException {
+		final String largeFileRepositoryPath = System.getProperty(LARGE_RESOURCE_DIR_VAR);
+		if (largeFileRepositoryPath == null) {
+			throw new PEException("Environment variable '" + LARGE_RESOURCE_DIR_VAR + "' is undefined.");
+		}
+
+		final File returnFile = new File(new File(largeFileRepositoryPath), fileName);
+		if (!returnFile.canRead()) {
+			throw new PEException("The file '" + returnFile.getAbsolutePath() + "' is not accessible.");
+		}
+
+		return returnFile;
+	}
+
 	/**
 	 * Creates a new randomly named directory in the default temporary-file directory.
 	 * The directory gets deleted when the virtual machine terminates.
