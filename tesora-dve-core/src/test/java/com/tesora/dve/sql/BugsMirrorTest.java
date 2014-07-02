@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -419,5 +420,66 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		}
 
 		return tests;
+	}
+	
+	@Ignore
+	@Test
+	public void testPE1560() throws Throwable {
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS commerce_order"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS field_data_commerce_line_items"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS commerce_line_item"));
+		
+		tests.add(new StatementMirrorProc("CREATE TABLE `commerce_order` ("
+				+ "`order_id` int(10) unsigned NOT NULL,"
+				+ "`order_number` varchar(255) DEFAULT NULL,"
+				+ "`revision_id` int(10) unsigned DEFAULT NULL,"
+				+ "`type` varchar(255) NOT NULL DEFAULT '',"
+				+ "`uid` int(11) NOT NULL DEFAULT '0',"
+				+ "`mail` varchar(255) NOT NULL DEFAULT '',"
+				+ "`status` varchar(255) NOT NULL,"
+				+ "`created` int(11) NOT NULL DEFAULT '0',"
+				+ "`changed` int(11) NOT NULL DEFAULT '0',"
+				+ "`hostname` varchar(128) NOT NULL DEFAULT '',"
+				+ "`data` longblob,"
+				+ "PRIMARY KEY (`order_id`),"
+				+ "UNIQUE KEY `order_number` (`order_number`),"
+				+ "UNIQUE KEY `revision_id` (`revision_id`)"
+				+ ") DEFAULT CHARSET=utf8"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `field_data_commerce_line_items` ("
+				+ "`entity_type` varchar(128) NOT NULL DEFAULT '',"
+				+ "`bundle` varchar(128) NOT NULL DEFAULT '',"
+				+ "`deleted` tinyint(4) NOT NULL DEFAULT '0',"
+				+ "`entity_id` int(10) unsigned NOT NULL,"
+				+ "`revision_id` int(10) unsigned DEFAULT NULL,"
+				+ "`language` varchar(32) NOT NULL DEFAULT '',"
+				+ "`delta` int(10) unsigned NOT NULL,"
+				+ "`commerce_line_items_line_item_id` int(10) unsigned DEFAULT NULL,"
+				+ "PRIMARY KEY (`entity_type`,`entity_id`,`deleted`,`delta`,`language`)"
+				+ ") DEFAULT CHARSET=utf8"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `commerce_line_item` ("
+				+ "`line_item_id` int(10) unsigned NOT NULL,"
+				+ "`order_id` int(11) NOT NULL DEFAULT '0',"
+				+ "`type` varchar(255) NOT NULL DEFAULT '',"
+				+ "`line_item_label` varchar(255) NOT NULL,"
+				+ "`quantity` decimal(10,2) NOT NULL DEFAULT '0.00',"
+				+ "`created` int(11) NOT NULL DEFAULT '0',"
+				+ "`changed` int(11) NOT NULL DEFAULT '0',"
+				+ "`data` longblob,"
+				+ "PRIMARY KEY (`line_item_id`)"
+				+ ") DEFAULT CHARSET=utf8"));
+		
+		tests.add(new StatementMirrorProc("INSERT INTO `commerce_order` VALUES (1,'1',1,'commerce_order',4,'customer@example.com','cart',1404095055,1404095055,'127.0.0.1','a:0:{}'),(2,'2',8,'commerce_order',4,'customer@example.com','pending',1404095055,1404095055,'127.0.0.1','a:3:{s:14:\"payment_method\";s:66:\"commerce_payment_example|commerce_payment_commerce_payment_example\";s:24:\"commerce_payment_example\";a:1:{s:11:\"credit_card\";a:3:{s:6:\"number\";s:16:\"4111111111111111\";s:9:\"exp_month\";s:2:\"06\";s:8:\"exp_year\";s:4:\"2012\";}}s:43:\"commerce_payment_order_paid_in_full_invoked\";b:1;}'),(3,'3',15,'commerce_order',4,'customer@example.com','pending',1404095055,1404095055,'127.0.0.1','a:3:{s:14:\"payment_method\";s:66:\"commerce_payment_example|commerce_payment_commerce_payment_example\";s:24:\"commerce_payment_example\";a:1:{s:11:\"credit_card\";a:3:{s:6:\"number\";s:16:\"4111111111111111\";s:9:\"exp_month\";s:2:\"06\";s:8:\"exp_year\";s:4:\"2012\";}}s:43:\"commerce_payment_order_paid_in_full_invoked\";b:1;}')"));
+		tests.add(new StatementMirrorProc("INSERT INTO `field_data_commerce_line_items` VALUES ('commerce_order','commerce_order',0,1,1,'und',0,1),('commerce_order','commerce_order',0,1,1,'und',1,2),('commerce_order','commerce_order',0,2,8,'und',0,3),('commerce_order','commerce_order',0,2,8,'und',1,4),('commerce_order','commerce_order',0,2,8,'und',2,5),('commerce_order','commerce_order',0,2,8,'und',3,6),('commerce_order','commerce_order',0,2,8,'und',4,7),('commerce_order','commerce_order',0,3,15,'und',0,8),('commerce_order','commerce_order',0,3,15,'und',1,9),('commerce_order','commerce_order',0,3,15,'und',2,10)"));
+		tests.add(new StatementMirrorProc("INSERT INTO `commerce_line_item` VALUES (1,1,'product','SWT1-PNK-LG',1.00,1404095055,1404095055,'a:0:{}'),(2,1,'product','SWT1-GRY-SM',1.00,1404095055,1404095055,'a:0:{}'),(3,2,'product','SWT2-BLU-LG',1.00,1404095055,1404095055,'a:0:{}'),(4,2,'product','LAP1-BLK-13',1.00,1404095055,1404095055,'a:0:{}'),(5,2,'product','WTR-BLU-OS',1.00,1404095055,1404095055,'a:0:{}'),(6,2,'product','TOT1-GRN-OS',1.00,1404095055,1404095055,'a:0:{}'),(7,2,'product','SHO2-PRL-09',1.00,1404095055,1404095055,'a:0:{}'),(8,3,'product','LAP1-BLK-17',1.00,1404095055,1404095055,'a:0:{}'),(9,3,'product','LAP1-BLK-15',1.00,1404095055,1404095055,'a:0:{}'),(10,3,'product','MG2-YLW-OS',1.00,1404095055,1404095055,'a:0:{}')"));
+		
+		tests.add(new StatementMirrorFun("SELECT commerce_line_item_field_data_commerce_line_items.line_item_id AS commerce_line_item_field_data_commerce_line_items_line_item_"
+				+ " FROM commerce_order commerce_order"
+				+ " LEFT JOIN field_data_commerce_line_items field_data_commerce_line_items ON commerce_order.order_id = field_data_commerce_line_items.entity_id AND (field_data_commerce_line_items.entity_type = 'commerce_order' AND field_data_commerce_line_items.deleted = '0')"
+				+ " INNER JOIN commerce_line_item commerce_line_item_field_data_commerce_line_items ON field_data_commerce_line_items.commerce_line_items_line_item_id = commerce_line_item_field_data_commerce_line_items.line_item_id"
+				+ " WHERE (( (commerce_order.order_id = '0' ) )AND(( (commerce_line_item_field_data_commerce_line_items.type IN  ('product_discount', 'product')) )))AND (1 = 0) AND (1 = 0)"));
+
+		runTest(tests);
 	}
 }
