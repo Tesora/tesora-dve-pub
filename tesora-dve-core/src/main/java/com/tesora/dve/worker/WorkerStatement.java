@@ -31,7 +31,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 
 public interface WorkerStatement {
 	
-	void execute(int connectionId, SQLCommand sql, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) throws Exception;
+	void execute(int connectionId, SQLCommand sql, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise);
 	
 	void cancel() throws PESQLException;
 

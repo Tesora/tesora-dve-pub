@@ -54,7 +54,7 @@ public class SingleDirectStatement implements WorkerStatement {
 		this.dbConnection = dbConnection;
 	}
 
-	protected void doExecute(SQLCommand sqlCommand, DBResultConsumer resultConsumer, final CompletionHandle<Boolean> promise) throws PESQLException {
+	protected void doExecute(SQLCommand sqlCommand, DBResultConsumer resultConsumer, final CompletionHandle<Boolean> promise) {
 		if (sqlCommand.hasReferenceTime()) {
             dbConnection.setTimestamp( sqlCommand.getReferenceTime(), null);
 		}
@@ -77,7 +77,7 @@ public class SingleDirectStatement implements WorkerStatement {
 	}
 
     @Override
-	public void execute(final int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) throws Exception {
+	public void execute(final int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
 
 		StatementManager.INSTANCE.registerStatement(connectionId, this);
 		PerHostConnectionManager.INSTANCE.changeConnectionState(

@@ -22,10 +22,12 @@ package com.tesora.dve.server.messaging;
  */
 
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import javax.transaction.xa.XAException;
 
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.log4j.Logger;
 
@@ -71,95 +73,103 @@ public class WorkerExecuteRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, XAException, PEException {
-		executeStatement(w, getCommand(), resultConsumer);
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+		executeStatement(w, getCommand(), resultConsumer, promise);
 	}
 	
-	protected void executeStatement(Worker w, SQLCommand stmtCommand, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
-		long rowCount = -1;
-		boolean hasResults = false;
-		ColumnSet rsmd = null;
-		Exception anyException = null;
-				
-		w.setCurrentDatabase(defaultDatabase);
+	protected void executeStatement(final Worker w, final SQLCommand stmtCommand, final DBResultConsumer resultConsumer, final CompletionHandle<Boolean> callersResult) {
+
+        try {
+            w.setCurrentDatabase(defaultDatabase);
+
+            // do any late resolution
+
+            if (isAutoTransact())
+                w.startTrans(getTransId());
 		
-		// do any late resolution
-		
-		if (isAutoTransact())
-			w.startTrans(getTransId());
-		
-		try {
+
 			String savepointId = null;
 			
 			if (recoverLocks) {
-				savepointId = "barrier" + w.getUniqueValue();
+                savepointId = executeSavepoint(w);
+			}
 
-                try {
-                    PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-                    w.getStatement().execute(getConnectionId(), new SQLCommand("savepoint " + savepointId), DBEmptyTextResultConsumer.INSTANCE, promise);
-                    promise.sync();
-                } catch (Exception e) {
-                    throw new PEException(e);
+            final String finalSavepoint = savepointId;
+
+			final WorkerStatement stmt = w.getStatement();
+
+            CompletionHandle<Boolean> executeTracker = new PEDefaultPromise<Boolean>(){
+                @Override
+                public void failure(Exception t) {
+                    callersResult.failure(t);
                 }
 
-			}
-
-			WorkerStatement stmt;
-//			if (stmtCommand.isPreparedStatement()) {
-//				WorkerPreparedStatement pstmt = w.prepareStatement(stmtCommand);
-//				stmtCommand.fillParameters(pstmt);
-//				hasResults = pstmt.execute();
-//				stmt = pstmt;
-//			} else {
-				stmt = w.getStatement();
-            try {
-                PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-                stmt.execute(getConnectionId(), stmtCommand, resultConsumer,promise);
-                promise.sync();
-            } catch (Exception e) {
-                throw new PEException(e);
-            }
-//			}
-			
-			if (recoverLocks) {
-				boolean rowsFound = (hasResults && stmt.getResultSet().isBeforeFirst()) 
-						|| (!hasResults && resultConsumer.getUpdateCount() > 0);
-				if (!rowsFound) {
+                @Override
+                public void success(Boolean returnValue) {
                     try {
-                        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-                        w.getStatement().execute(getConnectionId(), new SQLCommand("rollback to " + savepointId), DBEmptyTextResultConsumer.INSTANCE,promise);
-                        promise.sync();
-                    } catch (Exception e) {
-                        throw new PEException(e);
+                        long rowCount = -1;
+                        final boolean hasResults = false;
+                        ColumnSet rsmd = null;
+
+                        if (recoverLocks) {
+                            ResultSet resultSet = stmt.getResultSet();
+                            boolean rowsFound = (hasResults && resultSet != null && resultSet.isBeforeFirst())
+                                    || (!hasResults && resultConsumer.getUpdateCount() > 0);
+                            if (!rowsFound) {
+                                rollbackToSavepoint(w, finalSavepoint);
+                            }
+                        }
+
+                        rowCount = resultConsumer.getUpdateCount();
+                        new ExecuteResponse(hasResults, rowCount, rsmd ).from(w.getAddress()).success();
+                        callersResult.success(true);
+                    } catch (Exception e){
+                        callersResult.failure(e);
                     }
-				}
-			}
-			
-			
-//			if (hasResults) {
-//				ResultChunkManager rcm = new ResultChunkManager(stmt.getResultSet(), Host.getProperties(), "worker", command); 
-//				w.setChunkManager( rcm );
-//				rsmd = rcm.getMetaData();
-//			}
-//			else
-				rowCount = resultConsumer.getUpdateCount();
-			
-			new ExecuteResponse(hasResults, rowCount, rsmd ).from(w.getAddress()).success();
-		} catch (PEException pe) {
-			anyException = pe;
-			throw pe;
+                }
+
+            };
+
+            stmt.execute(getConnectionId(), stmtCommand, resultConsumer,executeTracker);
+		} catch (Exception pe) {
+			callersResult.failure(pe);
 		} finally {
-			if (logger.isDebugEnabled())
-				logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
-						.append(stmtCommand).append("\" updating ").append(rowCount).append(" rows (hasResults=")
-						.append(hasResults ? "true" : "false")
-						.append(")").append(" except=")
-						.append(anyException == null ? "none" : anyException.getMessage())						
-						.toString());
+            //SMG: need to replace this logging behavior.
+//			if (logger.isDebugEnabled())
+//				logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
+//						.append(stmtCommand).append("\" updating ").append(rowCount).append(" rows (hasResults=")
+//						.append(hasResults ? "true" : "false")
+//						.append(")").append(" except=")
+//						.append(anyException == null ? "none" : anyException.getMessage())
+//						.toString());
 		}
 	}
 
-	@Override
+    private void rollbackToSavepoint(Worker w, String savepointId) throws PEException {
+        try {
+            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+            w.getStatement().execute(getConnectionId(), new SQLCommand("rollback to " + savepointId), DBEmptyTextResultConsumer.INSTANCE,promise);
+            promise.sync();
+        } catch (Exception e) {
+            throw new PEException(e);
+        }
+    }
+
+    private String executeSavepoint(Worker w) throws PEException {
+        String savepointId;
+        savepointId = "barrier" + w.getUniqueValue();
+
+        try {
+            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+            w.getStatement().execute(getConnectionId(), new SQLCommand("savepoint " + savepointId), DBEmptyTextResultConsumer.INSTANCE, promise);
+            promise.sync();
+        } catch (Exception e) {
+            throw new PEException(e);
+        }
+        return savepointId;
+    }
+
+    @Override
 	public String toString() {
 		return new StringBuffer().append("WorkerExecuteRequest("+getCommand()+")").toString();
 	}

@@ -633,8 +633,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		private CreateTableViaRedistCallback cb;
 
 		@Override
-		public boolean proceed(Worker w, DBResultConsumer consumer)
-				throws PEException {
+		public boolean proceed(Worker w, DBResultConsumer consumer) {
 			return !cb.isRedistComplete();
 		}
 		

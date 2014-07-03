@@ -25,6 +25,8 @@ import java.sql.SQLException;
 
 import javax.transaction.xa.XAException;
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -58,25 +60,10 @@ public class WorkerGrantPrivilegesRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
-		WorkerStatement stmt = w.getStatement();
-		// String localizedDBName = UserDatabase.getNameOnSite(databaseName, w.getWorkerSite());
-		// having an issue with temp sites and privileges, so who cares about security
-		// String ddl = Host.getDBNative().getGrantprivilegesCommand(userDeclaration, localizedDBName);
+	public void executeRequest(final Worker w, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise)  {
+
         SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getGrantPriviledgesCommand(userDeclaration, "*");
-		if (logger.isDebugEnabled()) {
-			logger.debug(w.getName()+": Current database is "+ w.getCurrentDatabaseName());
-			logger.debug(w.getName()+":executing statement " + ddl);
-		}
-        try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-            stmt.execute(getConnectionId(), ddl, resultConsumer,promise);
-            promise.sync();
-        } catch (Exception e) {
-            throw new PEException(e);
-        }
-		
-		new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
+		simpleExecute(w,resultConsumer,ddl,promise);
 	}
 
 	@Override

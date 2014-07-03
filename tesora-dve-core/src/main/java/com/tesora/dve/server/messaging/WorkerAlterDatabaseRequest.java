@@ -26,6 +26,7 @@ import java.sql.SQLException;
 import javax.transaction.xa.XAException;
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -57,8 +58,7 @@ public class WorkerAlterDatabaseRequest extends WorkerRequest {
 	}
 
 	@Override
-	public void executeRequest(final Worker w, final DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
-        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+	public void executeRequest(final Worker w, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
 
 		final String onSiteName = this.alteredDatabase.getNameOnSite(w.getWorkerSite());
 
@@ -66,21 +66,7 @@ public class WorkerAlterDatabaseRequest extends WorkerRequest {
 		final String defaultCollation = alteredDatabase.getDefaultCollationName();
 
         final SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getAlterDatabaseStmt(onSiteName, defaultCharSet, defaultCollation);
-		if (logger.isDebugEnabled()) {
-			logger.debug(w.getName() + ": current database is " + w.getCurrentDatabaseName());
-			logger.debug(w.getName() + ": executing statement " + ddl);
-		}
-
-		final WorkerStatement stmt = w.getStatement();
-        try {
-            stmt.execute(getConnectionId(), ddl, resultConsumer, promise);
-
-            promise.sync();
-        } catch (Exception e) {
-            throw new PEException(e);
-        }
-
-        new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
+		simpleExecute(w,resultConsumer,ddl,promise);
 	}
 
 	@Override

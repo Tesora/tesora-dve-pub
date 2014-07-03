@@ -131,13 +131,7 @@ public class SingleDirectConnection implements WorkerConnection {
 
 	@Override
 	public void setCatalog(String databaseName) throws PESQLException {
-		try {
-			getConnection().setCatalog(databaseName, null);
-		} catch (PESQLQueryInterruptedException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new PESQLException("Unhandled exception setting database " + databaseName, e);
-		}
+		getConnection().setCatalog(databaseName, null);
 	}
 
 	@Override
