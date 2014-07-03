@@ -182,47 +182,47 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) throws PESQLException {
+        public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) {
             dbConnection.execute(sql,consumer,promise);
         }
 
         @Override
-        public void start(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
+        public void start(DevXid xid, CompletionHandle<Boolean> promise) {
             dbConnection.start(xid, promise);
         }
 
         @Override
-        public void end(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
+        public void end(DevXid xid, CompletionHandle<Boolean> promise) {
             dbConnection.end(xid, promise);
         }
 
         @Override
-        public void prepare(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
+        public void prepare(DevXid xid, CompletionHandle<Boolean> promise) {
             dbConnection.prepare(xid, promise);
         }
 
         @Override
-        public void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) throws Exception {
+        public void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) {
             dbConnection.commit(xid,onePhase,promise);
         }
 
         @Override
-        public void rollback(DevXid xid, CompletionHandle<Boolean> promise) throws Exception {
+        public void rollback(DevXid xid, CompletionHandle<Boolean> promise) {
             dbConnection.rollback(xid, promise);
         }
 
         @Override
-        public void sendPreamble(String siteName, CompletionHandle<Boolean> promise) throws Exception {
+        public void sendPreamble(String siteName, CompletionHandle<Boolean> promise)  {
             dbConnection.sendPreamble(siteName, promise);
         }
 
         @Override
-        public void setCatalog(String databaseName, CompletionHandle<Boolean> promise) throws Exception {
+        public void setCatalog(String databaseName, CompletionHandle<Boolean> promise) {
             dbConnection.setCatalog(databaseName, promise);
         }
 
         @Override
-        public void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) throws PESQLException {
+        public void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) {
             dbConnection.setTimestamp(referenceTime, promise);
         }
 

@@ -43,17 +43,17 @@ public interface DBConnection extends CompletionTarget<Boolean> {
 	void connect(String url, String userid, String password, long clientCapabilities) throws PEException;
 	void close();
 	
-	void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) throws PESQLException;
+	void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise);
 	
-	void start(DevXid xid, CompletionHandle<Boolean> promise) throws Exception;
-	void end(DevXid xid, CompletionHandle<Boolean> promise) throws Exception;
-	void prepare(DevXid xid, CompletionHandle<Boolean> promise) throws Exception;
-	void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) throws Exception;
-	void rollback(DevXid xid, CompletionHandle<Boolean> promise) throws Exception;
+	void start(DevXid xid, CompletionHandle<Boolean> promise);
+	void end(DevXid xid, CompletionHandle<Boolean> promise);
+	void prepare(DevXid xid, CompletionHandle<Boolean> promise);
+	void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise);
+	void rollback(DevXid xid, CompletionHandle<Boolean> promise);
 
-    void sendPreamble(String siteName, CompletionHandle<Boolean> promise) throws Exception;
-    void setCatalog(String databaseName, CompletionHandle<Boolean> promise) throws Exception;
-    void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) throws PESQLException;
+    void sendPreamble(String siteName, CompletionHandle<Boolean> promise);
+    void setCatalog(String databaseName, CompletionHandle<Boolean> promise);
+    void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise);
 
     @Deprecated
 	void cancel();
