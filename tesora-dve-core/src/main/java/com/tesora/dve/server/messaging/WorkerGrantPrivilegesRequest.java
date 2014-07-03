@@ -58,7 +58,7 @@ public class WorkerGrantPrivilegesRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
 		WorkerStatement stmt = w.getStatement();
 		// String localizedDBName = UserDatabase.getNameOnSite(databaseName, w.getWorkerSite());
 		// having an issue with temp sites and privileges, so who cares about security
@@ -76,7 +76,7 @@ public class WorkerGrantPrivilegesRequest extends WorkerRequest {
             throw new PEException(e);
         }
 		
-		return new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
+		new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
 	}
 
 	@Override

@@ -47,7 +47,7 @@ public class WorkerExecuteKillRequest extends WorkerExecuteRequest {
 	}
 
 	@Override
-	protected ResponseMessage executeStatement(Worker w, SQLCommand stmtCommand, DBResultConsumer resultConsumer)
+	protected void executeStatement(Worker w, SQLCommand stmtCommand, DBResultConsumer resultConsumer)
 			throws SQLException, PEException, XAException {
 
 		ConnectionInfo connectionInfo = PerHostConnectionManager.INSTANCE.getConnectionInfo(connectionId);
@@ -57,11 +57,11 @@ public class WorkerExecuteKillRequest extends WorkerExecuteRequest {
 		int siteConnId = connectionInfo.getSiteConnectionId(w.getWorkerSite());
 		if (siteConnId == 0)
 			// no corresponding thread on this site
-			return new GenericResponse().success();
+			return;
 
 		StringBuilder sql = new StringBuilder(stmtCommand.getRawSQL());
 		sql.append(' ').append(siteConnId);
-		return super.executeStatement(w, new SQLCommand(sql.toString()), resultConsumer);
+		super.executeStatement(w, new SQLCommand(sql.toString()), resultConsumer);
 	}
 
 }

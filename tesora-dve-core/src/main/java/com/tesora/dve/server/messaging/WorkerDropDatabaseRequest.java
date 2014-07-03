@@ -57,7 +57,7 @@ public class WorkerDropDatabaseRequest extends WorkerRequest {
 	}
 
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, XAException, PEException {
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, XAException, PEException {
 		
 		WorkerStatement stmt = w.getStatement();
 		String localizedDBName = UserDatabase.getNameOnSite(databaseName, w.getWorkerSite());
@@ -74,7 +74,7 @@ public class WorkerDropDatabaseRequest extends WorkerRequest {
             throw new PEException(e);
         }
 		
-		return new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
+		new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
 	}
 
 	@Override

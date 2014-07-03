@@ -71,12 +71,11 @@ public class WorkerExecuteRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, XAException, PEException {
-		return executeStatement(w, getCommand(), resultConsumer);
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, XAException, PEException {
+		executeStatement(w, getCommand(), resultConsumer);
 	}
 	
-	protected ResponseMessage executeStatement(Worker w, SQLCommand stmtCommand, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
-		ResponseMessage resp = null;
+	protected void executeStatement(Worker w, SQLCommand stmtCommand, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
 		long rowCount = -1;
 		boolean hasResults = false;
 		ColumnSet rsmd = null;
@@ -145,7 +144,7 @@ public class WorkerExecuteRequest extends WorkerRequest {
 //			else
 				rowCount = resultConsumer.getUpdateCount();
 			
-			resp = new ExecuteResponse(hasResults, rowCount, rsmd ).from(w.getAddress()).success();			
+			new ExecuteResponse(hasResults, rowCount, rsmd ).from(w.getAddress()).success();
 		} catch (PEException pe) {
 			anyException = pe;
 			throw pe;
@@ -158,7 +157,6 @@ public class WorkerExecuteRequest extends WorkerRequest {
 						.append(anyException == null ? "none" : anyException.getMessage())						
 						.toString());
 		}
-		return resp;
 	}
 
 	@Override

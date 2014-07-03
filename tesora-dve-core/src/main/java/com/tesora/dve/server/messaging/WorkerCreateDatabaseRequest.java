@@ -63,7 +63,7 @@ public class WorkerCreateDatabaseRequest extends WorkerRequest {
 	}
 
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, XAException, PEException {
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, XAException, PEException {
 		
 		final String onSiteName = newDatabase.getNameOnSite(w.getWorkerSite());
 
@@ -82,7 +82,7 @@ public class WorkerCreateDatabaseRequest extends WorkerRequest {
             throw new PEException(e);
         }
 		
-		return new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
+		new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
 	}
 
 	@Override

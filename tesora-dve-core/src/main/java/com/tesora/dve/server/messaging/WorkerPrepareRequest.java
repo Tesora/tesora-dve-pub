@@ -46,10 +46,9 @@ public class WorkerPrepareRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException,
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException,
 			PEException, XAException {
 		w.prepare(getContext().getTransId());
-		return new GenericResponse().success();
 	}
 
 	@Override

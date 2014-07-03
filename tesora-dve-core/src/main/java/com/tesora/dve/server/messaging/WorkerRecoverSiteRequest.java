@@ -61,7 +61,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
 	}
 
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
 
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
 		WorkerStatement stmt = w.getStatement();
@@ -121,8 +121,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
 		}
 		
 		logger.info(w.getName() + ": Completed XA Transaction Recovery for site " + w.getWorkerSite());
-		
-		return new GenericResponse().success();
+
 	}
 
 	@Override

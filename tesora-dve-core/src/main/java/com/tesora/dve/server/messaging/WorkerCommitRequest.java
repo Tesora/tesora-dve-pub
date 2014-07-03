@@ -53,10 +53,9 @@ public class WorkerCommitRequest extends WorkerRequest {
     }
 	
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException,
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException,
 			PEException, XAException {
 		w.commit(getTransId(), onePhase);
-		return new GenericResponse().success();
 	}
 
 	@Override

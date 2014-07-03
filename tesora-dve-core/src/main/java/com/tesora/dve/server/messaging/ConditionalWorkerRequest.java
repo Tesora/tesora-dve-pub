@@ -50,13 +50,11 @@ public class ConditionalWorkerRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public ResponseMessage executeRequest(Worker w,
+	public void executeRequest(Worker w,
 			DBResultConsumer resultConsumer) throws SQLException, PEException,
 			XAException {
 		if (guard.proceed(w,resultConsumer))
-			return target.executeRequest(w, resultConsumer);
-		else
-			return new GenericResponse();
+			target.executeRequest(w, resultConsumer);
 	}
 
 	@Override

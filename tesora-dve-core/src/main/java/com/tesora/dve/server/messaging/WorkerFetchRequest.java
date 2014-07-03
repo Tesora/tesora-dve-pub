@@ -72,10 +72,9 @@ public class WorkerFetchRequest extends WorkerRequest {
 	}
 
 	@Override
-	public ResponseMessage executeRequest(Worker w,
+	public void executeRequest(Worker w,
 			DBResultConsumer resultConsumer) throws SQLException, PEException,
 			XAException {
 		// TODO Auto-generated method stub
-		return null;
 	}
 }

@@ -25,6 +25,7 @@ import java.sql.SQLException;
 
 import javax.transaction.xa.XAException;
 
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -56,7 +57,9 @@ public class WorkerAlterDatabaseRequest extends WorkerRequest {
 	}
 
 	@Override
-	public ResponseMessage executeRequest(final Worker w, final DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
+	public void executeRequest(final Worker w, final DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+
 		final String onSiteName = this.alteredDatabase.getNameOnSite(w.getWorkerSite());
 
 		final String defaultCharSet = alteredDatabase.getDefaultCharacterSetName();
@@ -70,14 +73,14 @@ public class WorkerAlterDatabaseRequest extends WorkerRequest {
 
 		final WorkerStatement stmt = w.getStatement();
         try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
             stmt.execute(getConnectionId(), ddl, resultConsumer, promise);
+
             promise.sync();
         } catch (Exception e) {
             throw new PEException(e);
         }
 
-        return new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
+        new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
 	}
 
 	@Override

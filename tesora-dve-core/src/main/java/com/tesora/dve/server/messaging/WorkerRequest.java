@@ -74,7 +74,7 @@ public abstract class WorkerRequest extends RequestMessage {
 		return connectionContext.getTransId();
 	}
 
-	public abstract ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException;
+	public abstract void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException;
 	
 	@Override
 	public String toString() {

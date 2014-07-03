@@ -53,7 +53,7 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
 	}
 
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
 
 		Collection<SQLCommand> cmds = mappedInserts.get(w.getWorkerSite());
 
@@ -63,7 +63,7 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
 			}
 		}
 		
-		return new ExecuteResponse(resultConsumer.hasResults(), resultConsumer.getUpdateCount(), null ).from(w.getAddress()).success();
+		new ExecuteResponse(resultConsumer.hasResults(), resultConsumer.getUpdateCount(), null ).from(w.getAddress()).success();
 	}
 
 	@Override

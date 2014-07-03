@@ -41,9 +41,8 @@ public class ResetWorkerRequest extends WorkerRequest {
 	private static final long serialVersionUID = 1L;
 	
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException {
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException {
 		w.resetStatement();
-		return new GenericResponse().success();
 	}
 
 	@Override

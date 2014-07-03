@@ -46,10 +46,9 @@ public class WorkerRollbackRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException,
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException,
 			PEException, XAException {
 		w.rollback(getTransId());
-		return new GenericResponse().success();
 	}
 
 	@Override
