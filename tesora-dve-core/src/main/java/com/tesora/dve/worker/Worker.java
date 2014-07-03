@@ -142,17 +142,19 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 //		}
 	}
 
-	private void closeWConnection() throws PESQLException {
+	private void closeWConnection() {
 		if (wConnection != null) {
 			try {
 				resetStatement();
 //				rollback(currentGlobalTransaction);
 				wConnection.close(lastException == null);
-			} catch (PEException e) {
-				wConnection.close(false);
-			} catch (SQLException e) {
-				wConnection.close(false);
-			}
+			} catch (Exception e) {
+                try {
+                    wConnection.close(false);
+                } catch (PESQLException e1) {
+                    logger.warn("Encountered problem resetting and closing connection "+wConnection, e);
+                }
+            }
 			wConnection = null;
 		}
 	}

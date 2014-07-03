@@ -23,6 +23,7 @@ package com.tesora.dve.worker;
 
 import java.sql.ResultSet;
 
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -30,7 +31,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 
 public interface WorkerStatement {
 	
-	boolean execute(int connectionId, SQLCommand sql, DBResultConsumer resultConsumer) throws PESQLException;
+	void execute(int connectionId, SQLCommand sql, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) throws Exception;
 	
 	void cancel() throws PESQLException;
 

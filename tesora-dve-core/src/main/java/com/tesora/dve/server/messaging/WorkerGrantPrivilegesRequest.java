@@ -25,6 +25,7 @@ import java.sql.SQLException;
 
 import javax.transaction.xa.XAException;
 
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
@@ -67,7 +68,13 @@ public class WorkerGrantPrivilegesRequest extends WorkerRequest {
 			logger.debug(w.getName()+": Current database is "+ w.getCurrentDatabaseName());
 			logger.debug(w.getName()+":executing statement " + ddl);
 		}
-		stmt.execute(getConnectionId(), ddl, resultConsumer);
+        try {
+            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+            stmt.execute(getConnectionId(), ddl, resultConsumer,promise);
+            promise.sync();
+        } catch (Exception e) {
+            throw new PEException(e);
+        }
 		
 		return new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
 	}

@@ -26,11 +26,11 @@ import java.util.concurrent.Callable;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.exceptions.PEException;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PESQLException;
@@ -77,44 +77,63 @@ public class SingleDirectStatement implements WorkerStatement {
 	}
 
     @Override
-	public boolean execute(int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer) throws PESQLException {
-		boolean hasResults = false;
+	public void execute(final int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) throws Exception {
+
 		StatementManager.INSTANCE.registerStatement(connectionId, this);
 		PerHostConnectionManager.INSTANCE.changeConnectionState(
 				connectionId, "Query", "", (sql == null) ? "Null Query" : sql.getRawSQL());
-		try {
-			
-			hasResults = connectionSafeJDBCCall(new Callable<Boolean>() {
-				@Override
-				public Boolean call() throws Exception {
-                    PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-                    doExecute(sql, resultConsumer, promise);
-                    return promise.sync();
-				}
-			});
-			
-		} catch (PESQLException e) {
-			throw new PESQLException(e.getMessage(), new PESQLException("On statement: " + sql.getDisplayForLog(), e));
-		} finally {
-			StatementManager.INSTANCE.unregisterStatement(connectionId, this);
-			PerHostConnectionManager.INSTANCE.resetConnectionState(connectionId);
-		}
-		return hasResults;
+
+        CompletionHandle<Boolean> wrapped = new DelegatingCompletionHandle<Boolean>(promise){
+            @Override
+            public void success(Boolean returnValue) {
+                onFinish();
+                super.success(returnValue);
+            }
+
+            @Override
+            public void failure(Exception e) {
+                Exception convert = processException(sql,e);
+                onFinish();
+                super.failure(convert);
+            }
+
+            void onFinish(){
+                StatementManager.INSTANCE.unregisterStatement(connectionId, SingleDirectStatement.this);
+                PerHostConnectionManager.INSTANCE.resetConnectionState(connectionId);
+            }
+        };
+
+		doExecute(sql, resultConsumer, wrapped);
 	}
-	
-	private <T> T connectionSafeJDBCCall(Callable<T> safeCall) throws PESQLException {
+
+    private PESQLException processException(SQLCommand sql, Exception e) {
+        PESQLException psqlError;
+        if (e instanceof PECommunicationsException){
+            try{
+                onCommunicationFailure(worker);
+            } catch (PESQLException closeError){
+                //we got a comm error, then had a failure trying to cleanup, probably because of the comm error.  ignore.
+            }
+        }
+
+        if (e instanceof PESQLException)
+            psqlError = (PESQLException)e;
+        else
+            psqlError = new PESQLException(e);
+
+        worker.setLastException(psqlError);
+
+        if (sql != null)
+            return new PESQLException(psqlError.getMessage(), new PESQLException("On statement: " + sql.getDisplayForLog(), psqlError));
+        else
+            return psqlError;
+    }
+
+    private <T> T connectionSafeJDBCCall(Callable<T> safeCall) throws PESQLException {
 		try {
 			return safeCall.call();
-		} catch (PECommunicationsException c) {
-			worker.setLastException(c);
-			onCommunicationFailure(worker);
-			throw c;
-		} catch (PESQLException e) {
-			worker.setLastException(e);
-			throw e;
 		} catch (Exception e) {
-			worker.setLastException(e);
-			throw new PESQLException(e);
+			throw processException(null,e);
 		}
 	}
 

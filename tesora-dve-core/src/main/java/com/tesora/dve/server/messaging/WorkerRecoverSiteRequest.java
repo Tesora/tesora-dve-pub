@@ -28,6 +28,7 @@ import java.util.Map;
 
 import javax.transaction.xa.XAException;
 
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.comms.client.messages.GenericResponse;
@@ -64,7 +65,14 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
 
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
 		WorkerStatement stmt = w.getStatement();
-		boolean hasResults = stmt.execute(getConnectionId(), new SQLCommand("XA RECOVER"), results);
+		boolean hasResults;
+        try {
+            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+            stmt.execute(getConnectionId(), new SQLCommand("XA RECOVER"), results, promise);
+            hasResults = promise.sync();
+        } catch (Exception e) {
+            throw new PEException(e);
+        }
 		if (!hasResults)
 			throw new PECodingException("XA RECOVER did not return results");
 		
@@ -101,7 +109,13 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
 				recoverStatement = "XA COMMIT " + xid;
 			else
 				recoverStatement = "XA ROLLBACK " + xid;
-			stmt.execute(getConnectionId(), new SQLCommand(recoverStatement), DBEmptyTextResultConsumer.INSTANCE);
+            try {
+                PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+                stmt.execute(getConnectionId(), new SQLCommand(recoverStatement), DBEmptyTextResultConsumer.INSTANCE, promise);
+                promise.sync();
+            } catch (Exception e) {
+                throw new PEException(e);
+            }
 			
 			logger.info(w.getName() + ": " + recoverStatement);
 		}

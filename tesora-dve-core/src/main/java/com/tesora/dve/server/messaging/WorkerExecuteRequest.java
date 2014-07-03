@@ -26,6 +26,7 @@ import java.sql.SQLException;
 
 import javax.transaction.xa.XAException;
 
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
@@ -93,8 +94,15 @@ public class WorkerExecuteRequest extends WorkerRequest {
 			
 			if (recoverLocks) {
 				savepointId = "barrier" + w.getUniqueValue();
-				w.getStatement().execute(getConnectionId(), new SQLCommand("savepoint " + savepointId),
-						DBEmptyTextResultConsumer.INSTANCE);
+
+                try {
+                    PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+                    w.getStatement().execute(getConnectionId(), new SQLCommand("savepoint " + savepointId), DBEmptyTextResultConsumer.INSTANCE, promise);
+                    promise.sync();
+                } catch (Exception e) {
+                    throw new PEException(e);
+                }
+
 			}
 
 			WorkerStatement stmt;
@@ -105,15 +113,26 @@ public class WorkerExecuteRequest extends WorkerRequest {
 //				stmt = pstmt;
 //			} else {
 				stmt = w.getStatement();
-				hasResults = stmt.execute(getConnectionId(), stmtCommand, resultConsumer);
+            try {
+                PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+                stmt.execute(getConnectionId(), stmtCommand, resultConsumer,promise);
+                promise.sync();
+            } catch (Exception e) {
+                throw new PEException(e);
+            }
 //			}
 			
 			if (recoverLocks) {
 				boolean rowsFound = (hasResults && stmt.getResultSet().isBeforeFirst()) 
 						|| (!hasResults && resultConsumer.getUpdateCount() > 0);
 				if (!rowsFound) {
-					w.getStatement().execute(getConnectionId(), new SQLCommand("rollback to " + savepointId),
-							DBEmptyTextResultConsumer.INSTANCE);
+                    try {
+                        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+                        w.getStatement().execute(getConnectionId(), new SQLCommand("rollback to " + savepointId), DBEmptyTextResultConsumer.INSTANCE,promise);
+                        promise.sync();
+                    } catch (Exception e) {
+                        throw new PEException(e);
+                    }
 				}
 			}
 			
