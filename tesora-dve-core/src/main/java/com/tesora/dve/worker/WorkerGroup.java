@@ -21,17 +21,17 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.server.connectionmanager.*;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -69,6 +69,8 @@ import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
 
+import javax.transaction.xa.XAException;
+
 public class WorkerGroup {
 	
 	static Logger logger = Logger.getLogger( WorkerGroup.class );
@@ -91,7 +93,7 @@ public class WorkerGroup {
 	// and this overrides toPruge.
 	int pinned = 0;
 	
-    EventLoopGroup clientEventLoop;  //this is the thread that handles all IO for this group.
+    EventLoopGroup clientEventLoop = SharedEventLoopHolder.getLoop();  //this is the thread that handles all IO for this group.
 
 	public interface Manager {
 		abstract void returnWorkerGroup(WorkerGroup wg) throws PEException;
@@ -201,7 +203,11 @@ public class WorkerGroup {
 	private WorkerGroup provision(Agent sender, Manager manager, UserAuthentication userAuth, EventLoopGroup preferredEventLoop) throws PEException, PEException {
 		this.manager = manager;
 		this.userAuthentication = userAuth;
-        this.clientEventLoop = preferredEventLoop;
+        if (preferredEventLoop == null)
+            this.clientEventLoop = SharedEventLoopHolder.getLoop();
+        else
+            this.clientEventLoop = preferredEventLoop;
+
 		GetWorkerRequest req = new GetWorkerRequest(userAuth, getAdditionalConnInfo(sender), preferredEventLoop, group);
         Envelope e = sender.newEnvelope(req).to(Singletons.require(HostService.class).getWorkerManagerAddress());
 		GetWorkerResponse resp = (GetWorkerResponse) sender.sendAndReceive(e);
@@ -330,13 +336,18 @@ public class WorkerGroup {
      * backend connections held by its workers should share the same event loop as the client connection,
      * so that passing IO between frontend and backend sockets doesn't require any locking or context switching.
      *
-     * @param eventLoop
+     * @param preferredEventLoop
      */
-    public void bindToClientThread(EventLoopGroup eventLoop) {
+    public void bindToClientThread(EventLoopGroup preferredEventLoop) {
+        if (preferredEventLoop == null)
+            this.clientEventLoop = SharedEventLoopHolder.getLoop();
+        else
+            this.clientEventLoop = preferredEventLoop;
+
         if (workerMap != null){
             for (Worker worker : workerMap.values()){
                 try {
-                    worker.bindToClientThread(eventLoop);
+                    worker.bindToClientThread(preferredEventLoop);
                 } catch (PESQLException e) {
                     logger.warn(this+" encountered problem binding worker to client event loop",e);
                 }
@@ -473,32 +484,55 @@ public class WorkerGroup {
 		resultConsumer.setSenderCount(senderCount);
 		Collection<Worker> workers = getTargetWorkers(mappingSolution);
 		ArrayList<Future<Worker>> workerFutures = new ArrayList<Future<Worker>>();
-		final WorkerGroup wg = this;
-		boolean firstWorker = true;
+        boolean firstWorker = true;
+        boolean firstMustRunSerial = mappingSolution.isWorkerSerializationRequired() && workers.size() > 1;
+
+
 		for (final Worker w: workers) {
-            Future<Worker> f = Singletons.require(HostService.class).submit(w.getName(), new Callable<Worker>() {
+            final PEDefaultPromise<Worker> workerPromise = new PEDefaultPromise<>();
+            submitWork(w, req, resultConsumer, workerPromise);
+            Future<Worker> f = new Future<Worker>(){
+                volatile Worker wrk = null;
+                volatile Throwable t = null;
                 @Override
-                public Worker call() throws Exception {
-                    //SMG: Our heaviest locking is always in this call stack, caused by doing a netty write() outside the event loop, which syncs on a startup lock for the loop.
-                    try {
-                        long reqStartTime = System.currentTimeMillis();
-                        req.executeRequest(w, resultConsumer);
-                        w.sendStatistics(req, System.currentTimeMillis() - reqStartTime);
-                    } catch (PEException e) {
-                        w.setLastException(e);
-                        if (e.hasCause(PECommunicationsException.class))
-                            markForPurge();
-                        else
-                            throw new PEException("On WorkerGroup " + wg, e);
-                        throw e;
-                    } catch (Exception e) {
-                        w.setLastException(e);
-                        throw e;
-                    }
-                    return w;
+                public boolean cancel(boolean mayInterruptIfRunning) {
+                    return false;
                 }
-            });
-			if (firstWorker && mappingSolution.isWorkerSerializationRequired() && workers.size() > 1) {
+
+                @Override
+                public boolean isCancelled() {
+                    return false;
+                }
+
+                @Override
+                public boolean isDone() {
+                    return wrk != null || t != null;
+                }
+
+                @Override
+                public synchronized Worker get() throws InterruptedException, ExecutionException {
+                    if (wrk != null)
+                        return wrk;
+
+                    if (t != null)
+                        throw new ExecutionException(t);
+
+                    try {
+                        wrk = workerPromise.sync();
+                        return wrk;
+                    } catch (Exception e){
+                        t = e;
+                        throw new ExecutionException(e);
+                    }
+                }
+
+                @Override
+                public Worker get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+                    return get();
+                }
+            };
+
+            if (firstWorker && firstMustRunSerial) {
 				try {
 					f.get(); // let the first worker complete (and acquire locks) before starting subsequent workers
 				} catch (InterruptedException e) {
@@ -513,6 +547,50 @@ public class WorkerGroup {
 		}
 		return workerFutures;
 	}
+
+    private void submitWork(final Worker w, final WorkerRequest req, final DBResultConsumer resultConsumer, final CompletionHandle<Worker> workerComplete) {
+        final long reqStartTime = System.currentTimeMillis();
+        final CompletionHandle<Boolean> promise = new PEDefaultPromise<Boolean>(){
+            @Override
+            public void success(Boolean returnValue) {
+                try {
+                    w.sendStatistics(req, System.currentTimeMillis() - reqStartTime);
+                    workerComplete.success(w);
+                } catch (PEException e) {
+                    this.failure(e);
+                }
+            }
+
+            @Override
+            public void failure(Exception t) {
+                try{
+                    w.setLastException(t);
+                    if (t instanceof PEException && ((PEException)t).hasCause(PECommunicationsException.class)){
+                        markForPurge();
+                    }
+                } finally {
+                    workerComplete.failure(t);
+                }
+            }
+        };
+
+////        SMG: quick hack to force connection on calling thread.
+//        try {
+//            w.getConnectionId();
+//        } catch (PESQLException e) {
+//        }
+//        clientEventLoop.submit(new Callable<Worker>() {
+//
+        Singletons.require(HostService.class).submit(w.getName(), new Callable<Worker>() {
+            @Override
+            public Worker call() throws Exception {
+                //SMG: Our heaviest locking is always in this call stack, caused by doing a netty write() outside the event loop, which syncs on a startup lock for the loop.
+                req.executeRequest(w, resultConsumer, promise);
+                return w;
+            }
+        });
+
+    }
 
 //	public void sendToAllWorkers(Agent agent, Object m) throws PEException {
 //		send(agent, MappingSolution.AllWorkers, m);
