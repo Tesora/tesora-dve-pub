@@ -151,8 +151,8 @@ public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDe
 			case READ_NEXT_EXTENDEDPACKET:
 				length = inBuf.readUnsignedMedium();
 
-				final byte extPacketNum = inBuf.readByte(); // need to store the last packet num - the OK response needs to use it.
-//				logger.debug("Reading subsequent extended packet "+extPacketNum+": " + extendedPacket);
+				sequenceId = inBuf.readByte(); // need to store the last packet num - the OK response needs to use it.
+//				logger.debug("Reading subsequent extended packet "+sequenceId+": " + extendedPacket);
 				extendedPacket.writeBytes(MysqlAPIUtils.readBytes(inBuf, length)); // append the payload to the frame
 
 				if (length == EXTPKT_INDICATOR) {
