@@ -23,7 +23,6 @@ package com.tesora.dve.queryplan;
 
 import javax.xml.bind.annotation.XmlType;
 
-import com.tesora.dve.queryplan.QueryStepSelectAllOperation.SelectAllSM;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
@@ -33,10 +32,7 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.eventing.AbstractEvent;
 import com.tesora.dve.eventing.AbstractReqRespState;
-import com.tesora.dve.eventing.EventHandler;
 import com.tesora.dve.eventing.EventStateMachine;
-import com.tesora.dve.eventing.Request;
-import com.tesora.dve.eventing.SequentialState;
 import com.tesora.dve.eventing.State;
 import com.tesora.dve.eventing.TransitionResult;
 import com.tesora.dve.eventing.events.QSOExecuteRequestEvent;
@@ -45,11 +41,9 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
-import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.worker.MysqlParallelResultConsumer;
 import com.tesora.dve.worker.WorkerGroup;
-import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 @XmlType(name="QueryStepQueryByKeyOperation")
 public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
@@ -166,16 +160,20 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 					request.getConsumer().setSenderCount(senderCount);
 
 					WorkerGroupSubmitEvent submitter = 
-							new WorkerGroupSubmitEvent(esm,mappingSolution,req,request.getConsumer(),senderCount);
+							new WorkerGroupSubmitEvent(this,request,mappingSolution,req,request.getConsumer(),senderCount);
 
-					return new TransitionResult()
-					.withTargetEvent(submitter, request.getWorkerGroup());
+					return new TransitionResult().withEvent(submitter, request.getWorkerGroup());
 				} catch (Throwable t) {
 					return propagateRequestException(request,t);
 				}
 			} else {
 				return propagateResponse(esm,request,event);
 			}
+		}
+
+		@Override
+		public String getName() {
+			return "QSO:SelectByKeySM";
 		}
 
 		

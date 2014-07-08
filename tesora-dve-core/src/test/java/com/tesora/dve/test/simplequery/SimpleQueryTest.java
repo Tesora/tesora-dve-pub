@@ -115,6 +115,7 @@ public class SimpleQueryTest extends SchemaTest {
 				try {
 					twoStatementsSingleConnection();
 				} catch (Exception e) {
+					e.printStackTrace();
 //					System.out.println(i);
 				}
 		 }

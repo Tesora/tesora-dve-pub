@@ -22,7 +22,7 @@ package com.tesora.dve.eventing.events;
  */
 
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.eventing.EventHandler;
+import com.tesora.dve.eventing.EventSource;
 import com.tesora.dve.eventing.Request;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
@@ -37,10 +37,10 @@ public class WorkerGroupSubmitEvent extends Request {
 	private final int senderCount;
 	private final MappingSolution mappingSolution;
 	
-	public WorkerGroupSubmitEvent(EventHandler requestor,
+	public WorkerGroupSubmitEvent(EventSource origState, Request causedBy,
 			MappingSolution mappingSolution,
 			WorkerRequest orig, DBResultConsumer resultConsumer, int senderCount) {
-		super(requestor);
+		super(origState, causedBy);
 		this.wrapped = orig;
 		this.resultConsumer = resultConsumer;
 		this.senderCount = senderCount;

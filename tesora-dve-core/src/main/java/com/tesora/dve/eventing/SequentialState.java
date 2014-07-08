@@ -42,23 +42,42 @@ public abstract class SequentialState implements State {
 			if (original != null)
 				return new TransitionResult()
 					.withStateTransition(null, StackAction.POP)
-					.withTargetEvent(new ExceptionResponse(req,new EventingException("Duplicate request to sequential state")), req.getRequestor());
+					.withEvent(new ExceptionResponse(this,req,
+							new EventingException("Duplicate request to sequential state")), 
+							req.getResponseTarget());
 			original = req;
 			current = buildFirstStep(esm,original);
-			SequentialTransition stepResult = current.execute(esm);
-			// since first half can never indicate another step to execute, return the result as is
+			boolean done = false;
+			SequentialTransition stepResult = null;
+			while(!done) {
+				stepResult = current.execute(esm);
+				// if the first transition is to go directly to the next step, with no event, do that now
+				if (stepResult.getNextStep() != null && stepResult.getEvents().isEmpty()) {
+					current = stepResult.getNextStep();
+				} else {
+					done = true;
+				}
+			}
 			return stepResult;
 		} else {
-			SequentialTransition stepResult = current.onResponse(esm, (Response) event);
+			SequentialTransition stepResult = current.onResponse(original, esm, (Response) event, current.generatedRequest);
+			// so we can have a few cases here:
+			// we have a next step, but no event - just execute the next step
+			// we can have no next step, and an event - report back
+			// it is not permissible to have a next step & an event
 			SequentialStep next = stepResult.getNextStep();
-			if (next != null) {
-				if (stepResult.getStackRequest() != null) {
-					// changing state stack with remaining steps - this is an error
-					return new TransitionResult()
-						.withStateTransition(null, StackAction.POP)
-						.withTargetEvent(new ExceptionResponse(original,new EventingException("Remaining sequential step but changing state")), original.getRequestor());
-				}
+			boolean haveEvent = !stepResult.getEvents().isEmpty();
+			if (haveEvent && next != null) 
+				// internal error
+				return buildInternalError("Internal error: sequential state has next step and event");
+			if (next != null && stepResult.getStackRequest() != null)
+				return buildInternalError("Internal error: Remaining sequential step but changing state");
+			while(next != null) {
 				current = next;
+				// we have to do the execute side - we have just processed a response for this step, which has 
+				// lead to another step - for which we must now execute
+				stepResult = current.execute(esm);
+				next = stepResult.getNextStep();
 			}
 			return stepResult;
 		}
@@ -69,41 +88,12 @@ public abstract class SequentialState implements State {
 		return StateRole.SEQUENTIAL;
 	}
 
-	// on request we have three return options
-	// invoke other
-	// invoke self
-	// response.  this should pop the state stack
-	//
-	// on response we have three return options
-	// do nothing (i.e. counting)
-	// response.  this should pop the state stack
-	// next item
-	public interface SequentialStep {
-		
-		public SequentialTransition execute(EventStateMachine esm);
-		
-		public SequentialTransition onResponse(EventStateMachine esm, Response req);
-		
-	}
-	
-	public class SequentialTransition extends TransitionResult {
-		
-		// the only different thing we could add is the next item
-		private SequentialStep nextStep;
-		
-		public SequentialTransition() {
-			super();
-		}
-		
-		public SequentialTransition withNextStep(SequentialStep ss) {
-			nextStep = ss;
-			return this;
-		}
-		
-		public SequentialStep getNextStep() {
-			return nextStep;
-		}
-		
+	private TransitionResult buildInternalError(String message) {
+		return new TransitionResult()
+			.withStateTransition(null, StackAction.POP)
+			.withEvent(new ExceptionResponse(this,original,
+					new EventingException(message)),
+					original.getResponseTarget());
 	}
 	
 }

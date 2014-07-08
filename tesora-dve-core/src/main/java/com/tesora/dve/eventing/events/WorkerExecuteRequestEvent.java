@@ -24,35 +24,25 @@ package com.tesora.dve.eventing.events;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.eventing.EventSource;
 import com.tesora.dve.eventing.Request;
-import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.worker.WorkerGroup;
+import com.tesora.dve.worker.Worker;
 
-public class QSOExecuteRequestEvent extends Request {
+public class WorkerExecuteRequestEvent extends Request {
 
-	// SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer
-	private final SSConnection connection;
-	private final WorkerGroup wg;
+	private final Worker worker;
 	private final DBResultConsumer consumer;
 	
-	public QSOExecuteRequestEvent(EventSource orig, Request causedBy,
-			SSConnection conn,
-			WorkerGroup workerGroup,
-			DBResultConsumer consumer) {
-		super(orig, causedBy);
-		this.connection = conn;
-		this.wg = workerGroup;
+	public WorkerExecuteRequestEvent(EventSource origState, Request causedBy, Worker w, DBResultConsumer consumer) {
+		super(origState, causedBy);
+		worker = w;
 		this.consumer = consumer;
 	}
 	
-	public SSConnection getConnection() {
-		return connection;
-	}
-
-	public WorkerGroup getWorkerGroup() {
-		return wg;
+	public Worker getWorker() {
+		return worker;
 	}
 	
 	public DBResultConsumer getConsumer() {
 		return consumer;
 	}
+	
 }

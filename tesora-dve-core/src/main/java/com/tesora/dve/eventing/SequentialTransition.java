@@ -1,4 +1,4 @@
-package com.tesora.dve.eventing.events;
+package com.tesora.dve.eventing;
 
 /*
  * #%L
@@ -21,16 +21,31 @@ package com.tesora.dve.eventing.events;
  * #L%
  */
 
-import com.tesora.dve.eventing.EventSource;
-import com.tesora.dve.eventing.Request;
-import com.tesora.dve.eventing.Response;
 
-// An acknowledge response merely indicates that the request was processed
-// Think of this as the return value for a void function
-public class AcknowledgeResponse extends Response {
+public class SequentialTransition extends TransitionResult {
 
-	public AcknowledgeResponse(EventSource src, Request req) {
-		super(src, req);
+	// the only different thing we could add is the next item
+	private SequentialStep nextStep;
+	
+	public SequentialTransition() {
+		super();
+	}
+	
+	public SequentialTransition withNextStep(SequentialStep ss) {
+		nextStep = ss;
+		return this;
+	}
+	
+	public SequentialStep getNextStep() {
+		return nextStep;
+	}
+	
+	public SequentialTransition withSequentialEvent(AbstractEvent ae, EventHandler target) {
+		return (SequentialTransition)withEvent(ae,target);
 	}
 
+	public SequentialTransition withSequentialTransition(State nextState, StackAction action) {
+		return (SequentialTransition)withStateTransition(nextState,action);
+	}
+	
 }

@@ -21,8 +21,10 @@ package com.tesora.dve.eventing;
  * #L%
  */
 
+import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.eventing.events.AcknowledgeResponse;
 import com.tesora.dve.eventing.events.ExceptionResponse;
+import com.tesora.dve.eventing.events.WrappedResponseMessageEvent;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
@@ -37,16 +39,28 @@ public abstract class TransitionReqRespState extends AbstractReqRespState {
 			request = (Request) event;
 			final Request reqEvent = request;
 			final ChildRunnable child = buildRunnable(esm,request);
+			final EventSource src = this;
+			// in the runnable I will effectively be acting like another event handler, but in order
+			// to do that I need to set up the response target correctly.  I cannot use the one in request,
+			// because the response target in request is for my parent caller.
 			Singletons.require(HostService.class).execute(new Runnable() {
 
 				@Override
 				public void run() {
 					// assume it will work, override if it doesn't
-					Response resp = new AcknowledgeResponse(reqEvent);
+					Response resp = null;
+					ResponseMessage any = null;
 					try {
-						child.run();
+						any = child.run();
 					} catch (Throwable t) {
-						resp = new ExceptionResponse(reqEvent,t);
+//						t.printStackTrace();
+						resp = new ExceptionResponse(src,reqEvent,t);
+					}
+					if (resp == null) {
+						if (any == null)
+							resp = new AcknowledgeResponse(src,reqEvent);
+						else
+							resp = new WrappedResponseMessageEvent(src,reqEvent,any);
 					}
 					esm.response(resp);
 				}
@@ -61,7 +75,7 @@ public abstract class TransitionReqRespState extends AbstractReqRespState {
 	
 	public interface ChildRunnable {
 		
-		public void run() throws Throwable;
+		public ResponseMessage run() throws Throwable;
 		
 	}
 }

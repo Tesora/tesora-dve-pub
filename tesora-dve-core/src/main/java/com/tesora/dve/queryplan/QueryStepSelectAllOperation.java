@@ -32,22 +32,15 @@ import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.eventing.AbstractEvent;
 import com.tesora.dve.eventing.AbstractReqRespState;
-import com.tesora.dve.eventing.EventHandler;
 import com.tesora.dve.eventing.EventStateMachine;
-import com.tesora.dve.eventing.Request;
-import com.tesora.dve.eventing.Response;
-import com.tesora.dve.eventing.StackAction;
 import com.tesora.dve.eventing.State;
 import com.tesora.dve.eventing.TransitionResult;
-import com.tesora.dve.eventing.events.ExceptionResponse;
 import com.tesora.dve.eventing.events.QSOExecuteRequestEvent;
 import com.tesora.dve.eventing.events.WorkerGroupSubmitEvent;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStepOperation.QSOExecutor;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
-import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.worker.MysqlParallelResultConsumer;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
@@ -122,6 +115,11 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 
 	class SelectAllSM extends AbstractReqRespState {
 
+		@Override
+		public String getName() {
+			return "QSO:SelectAllSM";
+		}
+				
 		QSOExecuteRequestEvent request;
 		
 		@Override
@@ -134,9 +132,8 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 					MappingSolution ms = distributionModel.mapForQuery(request.getWorkerGroup(), command);
 					WorkerExecuteRequest req = new WorkerExecuteRequest(request.getConnection().getTransactionalContext(), command).onDatabase(database);
 					WorkerGroupSubmitEvent submitEvent = 
-							new WorkerGroupSubmitEvent(esm,ms,req,request.getConsumer(),0);
-					return new TransitionResult()
-					.withTargetEvent(submitEvent, request.getWorkerGroup());
+							new WorkerGroupSubmitEvent(this,request,ms,req,request.getConsumer(),0);
+					return new TransitionResult().withEvent(submitEvent, request.getWorkerGroup());
 				} catch (PEException pe) {
 					return propagateRequestException(request,pe);
 				}
@@ -144,6 +141,7 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 				return propagateResponse(esm,request,event);
 			}
 		}
+
 		
 	}
 	

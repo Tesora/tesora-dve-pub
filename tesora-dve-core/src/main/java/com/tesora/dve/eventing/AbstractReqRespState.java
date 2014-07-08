@@ -38,9 +38,9 @@ public abstract class AbstractReqRespState implements State {
 		Response resp = (Response) event;
 		if (resp.isError()) {
 			ExceptionResponse er = (ExceptionResponse) resp;
-			result.withTargetEvent(new ExceptionResponse(request,er), request.getRequestor());
+			result.withEvent(new ExceptionResponse(this,request,er), request.getResponseTarget());
 		} else {
-			result.withTargetEvent(new AcknowledgeResponse(request),request.getRequestor());
+			result.withEvent(new AcknowledgeResponse(this,request),request.getResponseTarget());
 		}
 		return result;
 	}
@@ -48,6 +48,6 @@ public abstract class AbstractReqRespState implements State {
 	protected TransitionResult propagateRequestException(Request request, Throwable t) {
 		return new TransitionResult()
 		.withStateTransition(null, StackAction.POP)
-		.withTargetEvent(new ExceptionResponse(request,t),request.getRequestor());
+		.withEvent(new ExceptionResponse(this,request,t),request.getResponseTarget());
 	}
 }

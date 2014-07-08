@@ -27,9 +27,11 @@ import com.tesora.dve.sql.util.Pair;
 public class DispatchState implements State {
 	
 	ListOfPairs<Class<?>,State> matching;
+	final String name;
 	
-	public DispatchState() {
+	public DispatchState(String n) {
 		matching = new ListOfPairs<Class<?>,State>();
+		name = n;
 	}
 	
 	public DispatchState withMatch(Class<?> eventClass, State targetState) {
@@ -44,7 +46,7 @@ public class DispatchState implements State {
 			throw new EventingException("No target state found for " + event.getClass().getName());
 		return new TransitionResult()
 			.withStateTransition(actual, StackAction.PUSH)
-			.withTargetEvent(event, esm);
+			.withEvent(event, esm);
 	}
 
 	public State getTarget(EventStateMachine esm, AbstractEvent event) {
@@ -61,5 +63,8 @@ public class DispatchState implements State {
 		return StateRole.DISPATCH;
 	}
 
-	
+	@Override
+	public String getName() {
+		return name;
+	}
 }

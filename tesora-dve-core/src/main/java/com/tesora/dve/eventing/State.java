@@ -21,10 +21,11 @@ package com.tesora.dve.eventing;
  * #L%
  */
 
-public interface State {
+public interface State extends EventSource {
 
 	public TransitionResult onEvent(EventStateMachine esm, AbstractEvent event);
 
 	public StateRole getRole();
+	
 	
 }

@@ -36,7 +36,6 @@ import javax.xml.datatype.XMLGregorianCalendar;
 
 import com.sun.org.apache.xerces.internal.jaxp.datatype.XMLGregorianCalendarImpl;
 import com.tesora.dve.common.PEStringUtils;
-import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentColumn;
 import com.tesora.dve.common.catalog.PersistentTable;

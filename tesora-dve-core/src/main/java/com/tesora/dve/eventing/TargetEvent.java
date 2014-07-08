@@ -39,21 +39,8 @@ public class TargetEvent {
 		return theTarget;
 	}
 
-	// convenient
-	public void sendResponse() {
-		theTarget.response((Response) theEvent);
-	}
-	
-	public Response sendRequest() {
-		return theTarget.request((Request) theEvent);
-	}
-	
 	public Response getResponse() {
 		return (Response)theEvent;
 	}
 
-	public boolean isSelfInvoke(EventStateMachine esm) {
-		return (esm == theTarget);
-	}
-	
 }

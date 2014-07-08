@@ -33,7 +33,7 @@ public abstract class AbstractImmediateState implements State {
 			result.withStateTransition(nextState, StackAction.REPLACE);
 		else
 			result.withStateTransition(null, StackAction.POP);
-		result.withTargetEvent(out, req.getRequestor());
+		result.withEvent(out, req.getResponseTarget());
 		return result;
 	}
 

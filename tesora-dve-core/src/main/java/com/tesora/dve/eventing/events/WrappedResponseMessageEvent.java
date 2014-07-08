@@ -21,38 +21,23 @@ package com.tesora.dve.eventing.events;
  * #L%
  */
 
-import com.tesora.dve.db.DBResultConsumer;
+
+import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.eventing.EventSource;
 import com.tesora.dve.eventing.Request;
-import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.worker.WorkerGroup;
+import com.tesora.dve.eventing.Response;
 
-public class QSOExecuteRequestEvent extends Request {
+public class WrappedResponseMessageEvent extends Response {
 
-	// SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer
-	private final SSConnection connection;
-	private final WorkerGroup wg;
-	private final DBResultConsumer consumer;
+	private final ResponseMessage wrapped;
 	
-	public QSOExecuteRequestEvent(EventSource orig, Request causedBy,
-			SSConnection conn,
-			WorkerGroup workerGroup,
-			DBResultConsumer consumer) {
-		super(orig, causedBy);
-		this.connection = conn;
-		this.wg = workerGroup;
-		this.consumer = consumer;
-	}
-	
-	public SSConnection getConnection() {
-		return connection;
+	public WrappedResponseMessageEvent(EventSource src, Request target, ResponseMessage rm) {
+		super(src, target);
+		this.wrapped = rm;
 	}
 
-	public WorkerGroup getWorkerGroup() {
-		return wg;
+	public ResponseMessage getWrappedResponse() {
+		return wrapped;
 	}
 	
-	public DBResultConsumer getConsumer() {
-		return consumer;
-	}
 }

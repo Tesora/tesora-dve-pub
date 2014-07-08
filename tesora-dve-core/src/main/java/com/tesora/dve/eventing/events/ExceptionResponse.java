@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.tesora.dve.eventing.EventSource;
 import com.tesora.dve.eventing.Request;
 import com.tesora.dve.eventing.Response;
 
@@ -33,21 +34,21 @@ public class ExceptionResponse extends Response {
 	// acts more like a collector - we could have multiple exceptions
 	List<Throwable> exceptions;
 	
-	public ExceptionResponse(Request req, Throwable t) {
-		super(req);
+	public ExceptionResponse(EventSource src, Request targ, Throwable t) {
+		super(src, targ);
 		exceptions = new ArrayList<Throwable>();
 		exceptions.add(t);
 	}
 	
-	public ExceptionResponse(Request req, List<ExceptionResponse> chained) {
-		super(req);
+	public ExceptionResponse(EventSource src, Request targ, List<ExceptionResponse> chained) {
+		super(src, targ);
 		exceptions = new ArrayList<Throwable>();
 		for(ExceptionResponse er : chained)
 			exceptions.addAll(er.getExceptions());
 	}
 	
-	public ExceptionResponse(Request req, ExceptionResponse chained) {
-		this(req,Collections.singletonList(chained));
+	public ExceptionResponse(EventSource src, Request targ, ExceptionResponse chained) {
+		this(src,targ,Collections.singletonList(chained));
 	}
 	
 	public boolean isError() {

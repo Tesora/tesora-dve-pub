@@ -28,6 +28,9 @@ import javax.transaction.xa.XAException;
 import com.tesora.dve.comms.client.messages.GenericResponse;
 import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.eventing.AbstractEvent;
+import com.tesora.dve.eventing.EventStateMachine;
+import com.tesora.dve.eventing.State;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.ConnectionInfo;
@@ -62,6 +65,10 @@ public class WorkerExecuteKillRequest extends WorkerExecuteRequest {
 		StringBuilder sql = new StringBuilder(stmtCommand.getRawSQL());
 		sql.append(' ').append(siteConnId);
 		return super.executeStatement(w, new SQLCommand(sql.toString()), resultConsumer);
+	}
+
+	protected State getImplState(EventStateMachine esm, AbstractEvent event) {
+		return new WorkerRequestExecutor();
 	}
 
 }

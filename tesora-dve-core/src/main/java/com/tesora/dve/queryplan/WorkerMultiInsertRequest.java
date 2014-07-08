@@ -33,6 +33,9 @@ import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.eventing.AbstractEvent;
+import com.tesora.dve.eventing.EventStateMachine;
+import com.tesora.dve.eventing.State;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -79,6 +82,10 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
 	@Override
 	public MessageVersion getVersion() {
 		return MessageVersion.VERSION1;
+	}
+
+	protected State getImplState(EventStateMachine esm, AbstractEvent event) {
+		return new WorkerRequestExecutor();
 	}
 
 

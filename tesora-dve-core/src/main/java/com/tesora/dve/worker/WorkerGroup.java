@@ -65,15 +65,13 @@ import com.tesora.dve.eventing.EventHandler;
 import com.tesora.dve.eventing.EventStateMachine;
 import com.tesora.dve.eventing.Request;
 import com.tesora.dve.eventing.Response;
-import com.tesora.dve.eventing.SequentialExecutionMode;
-import com.tesora.dve.eventing.SequentialState;
 import com.tesora.dve.eventing.StackAction;
 import com.tesora.dve.eventing.State;
 import com.tesora.dve.eventing.TransitionResult;
 import com.tesora.dve.eventing.events.AcknowledgeResponse;
 import com.tesora.dve.eventing.events.ExceptionResponse;
+import com.tesora.dve.eventing.events.WorkerExecuteRequestEvent;
 import com.tesora.dve.eventing.events.WorkerGroupSubmitEvent;
-import com.tesora.dve.eventing.events.WorkerRequestEvent;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
@@ -875,16 +873,6 @@ public class WorkerGroup  implements EventHandler {
 		sm.response(in);
 	}
 
-	@Override
-	public boolean isAsynchronous() {
-		return sm.isAsynchronous();
-	}
-
-	@Override
-	public void requestCallbackOnly(Request in) {
-		sm.requestCallbackOnly(in);
-	}
-	
 	// everything below this is part of the event state machine
 	
 	private class SubmitterState extends AbstractReqRespState {
@@ -914,8 +902,7 @@ public class WorkerGroup  implements EventHandler {
 					TransitionResult result = new TransitionResult();
 					for(Worker w : workers) {
 						// todo - worker serialization
-						result.withTargetEvent(new WorkerRequestEvent(WorkerGroup.this,
-								request.getWrappedRequest(),request.getResultConsumer()), w);
+						result.withEvent(new WorkerExecuteRequestEvent(this,request,w,request.getResultConsumer()),request.getWrappedRequest());
 					}
 					sent = workers.size();
 					return result;
@@ -923,26 +910,33 @@ public class WorkerGroup  implements EventHandler {
 					return propagateRequestException(request,pe);
 				}				
 			} else {
-				Response resp = (Response) event;
-				if (resp.isError()) {
-					exceptions.add((ExceptionResponse)resp);
+				synchronized(this) {
+					Response resp = (Response) event;
+					if (resp.isError()) {
+						exceptions.add((ExceptionResponse)resp);
+					}
+					sent--;
+					TransitionResult out = new TransitionResult();
+					if (sent == 0) {
+						// we're done
+						out.withStateTransition(null, StackAction.POP);
+						if (exceptions.isEmpty())
+							out.withEvent(new AcknowledgeResponse(this,request),request.getResponseTarget());
+						else
+							out.withEvent(new ExceptionResponse(this,request,exceptions),request.getResponseTarget());
+					}
+					return out;
 				}
-				sent--;
-				TransitionResult out = new TransitionResult();
-				if (sent == 0) {
-					// we're done
-					out.withStateTransition(null, StackAction.POP);
-					if (exceptions.isEmpty())
-						out.withTargetEvent(new AcknowledgeResponse(request),request.getRequestor());
-					else
-						out.withTargetEvent(new ExceptionResponse(request,exceptions),request.getRequestor());
-				}
-				return out;
 			}
+		}
+
+		@Override
+		public String getName() {
+			return "WorkerGroup.SubmitterState@" + WorkerGroup.this.toString();
 		}		
 	}
 
-	private final DispatchState IDLE_STATE = new DispatchState() {
+	private final DispatchState IDLE_STATE = new DispatchState("WorkerGroup.Dispatch") {
 		
 		@Override
 		public State getTarget(EventStateMachine esm, AbstractEvent event) {
@@ -955,11 +949,6 @@ public class WorkerGroup  implements EventHandler {
 	};
 	
 
-	private final EventStateMachine sm = new EventStateMachine("WorkerGroup",IDLE_STATE) {
-		@Override
-		public boolean isAsynchronous() {
-			return true;
-		}		
-	};
+	private final EventStateMachine sm = new EventStateMachine("WorkerGroup",IDLE_STATE);
 			
 }

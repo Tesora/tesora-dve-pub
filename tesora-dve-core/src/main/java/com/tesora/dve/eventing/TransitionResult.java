@@ -65,11 +65,11 @@ public class TransitionResult {
 		return this;
 	}
 	
-	public TransitionResult withTargetEvent(AbstractEvent ae, EventHandler targ) {
-		events.add(new TargetEvent(ae,targ));
+	public TransitionResult withEvent(AbstractEvent ae, EventHandler target) {
+		events.add(new TargetEvent(ae,target));
 		return this;
 	}
-
+	
 	public List<TargetEvent> getEvents() {
 		return events;
 	}
@@ -83,7 +83,7 @@ public class TransitionResult {
 
 			@Override
 			public boolean test(TargetEvent object) {
-				return object.isSelfInvoke(esm);
+				return object.getTarget() == esm;
 			}
 			
 		});

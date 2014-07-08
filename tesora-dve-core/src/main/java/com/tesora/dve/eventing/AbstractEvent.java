@@ -1,5 +1,10 @@
 package com.tesora.dve.eventing;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.tesora.dve.common.PEConstants;
+
 /*
  * #%L
  * Tesora Inc.
@@ -23,6 +28,29 @@ package com.tesora.dve.eventing;
 
 public abstract class AbstractEvent {
 
+	protected final EventSource generatingState;
+	
+	protected AbstractEvent(EventSource s) {
+		generatingState = s;
+	}
+	
 	public abstract boolean isRequest();
-		
+
+	public String toString() {
+		String n = getClass().getName();
+		int lastDot = n.lastIndexOf(".");
+		return System.identityHashCode(this) + "@" + n.substring(lastDot+1);
+	}
+	
+	public String getHistory() {
+		ArrayList<HistoryEntry> entries = new ArrayList<HistoryEntry>();
+		collectHistory(entries,0);
+		StringBuilder buf = new StringBuilder();
+		for(HistoryEntry he : entries) {
+			buf.append(he.getLevel()).append(he.getEntry()).append(PEConstants.LINE_SEPARATOR);
+		}
+		return buf.toString();
+	}
+	
+	public abstract void collectHistory(List<HistoryEntry> entries, int nestLevel);
 }

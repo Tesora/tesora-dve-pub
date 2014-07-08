@@ -23,28 +23,30 @@ package com.tesora.dve.eventing;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ConcurrentHashMap;
+import com.tesora.dve.eventing.events.ExceptionResponse;
 
 
 // we have one instance of an EventStateMachine per logical state machine
 // the event state machine is stateless - it's role is to apply the rules to
 // the adapted state machine and guide the transitions
-public abstract class EventStateMachine implements EventHandler {
+public class EventStateMachine implements EventHandler {
 
 	private final String name;
 	
-	private LinkedList<State> stack;
+	private ConcurrentHashMap<Request,StateStack> stacks;
+	private final State initialState;	
 	
 	public EventStateMachine(String name,State initialState) {
 		this.name = name;
-		this.stack = new LinkedList<State>();
-		this.stack.addFirst(initialState);
+		this.initialState = initialState;
+		this.stacks = new ConcurrentHashMap<Request,StateStack>();
 	}
-	
-	protected final synchronized Response onEvent(AbstractEvent in, boolean responseOnly) {
+
+	protected final Response onEvent(AbstractEvent in) {		
 		// we could cycle through a few states while processing this event if
 		// we call out to other state machines and they immediately fulfill.  accordingly
 		// this is implemented as a loop.
@@ -53,11 +55,22 @@ public abstract class EventStateMachine implements EventHandler {
 
 		do {
 			for(Iterator<AbstractEvent> iter = e.iterator(); iter.hasNext();) {
-				State current = getState();
 				AbstractEvent ae = iter.next();
+				StateStack myStack = getStack(ae);
+				if (myStack == null)
+					return stackError(ae);
+				State current = myStack.getFirst(); 
 				TransitionResult transition = current.onEvent(this,ae);
-				if (transition.getStackRequest() != null)
-					modifyStack(transition.getStackRequest());
+				if (transition.getStackRequest() != null) {
+					if (myStack.modifyStack(transition.getStackRequest())) {
+						/*
+						System.out.println("In state: " + current.getName() + " removing stack " + myStack 
+								+ " upon event " + ae.getHistory()
+								+ (ae != in ? " kickoff event " + in.getHistory() : ""));
+								*/
+						stacks.remove(myStack.getRootRequest());
+					}
+				}
 				if (transition.isSelfInvoke(this)) {
 					if (transition.getEvents().size() > 1)
 						throw new EventingException("Bad self invoke: more than one event");
@@ -82,7 +95,21 @@ public abstract class EventStateMachine implements EventHandler {
 				List<TargetEvent> responses = new ArrayList<TargetEvent>();
 				for(TargetEvent te : transition.getEvents()) {
 					if (te.getEvent().isRequest()) {
-						Response anything = te.sendRequest();
+						Response anything = null;
+						if (te.getTarget() == this) {
+							// self invoke; we mostly just set up the state stack, now we're going to try again
+							anything = onEvent(te.getEvent());
+						} else {
+							// invoke elsewhere, set up the reply to
+							Request req = (Request) te.getEvent();
+							req.setTarget(this);
+							/*
+							req.setContext("Inbound event: " + ae + PEConstants.LINE_SEPARATOR
+									+ ", stack: " + myStack + PEConstants.LINE_SEPARATOR
+									+ ", state: " + current.getName());
+									*/
+							anything = te.getTarget().request(req);
+						}
 						if (anything != null)
 							e.add(anything);
 					} else {
@@ -95,10 +122,12 @@ public abstract class EventStateMachine implements EventHandler {
 					if (!e.isEmpty()) {
 						throw new EventingException("Bad state implementation: both responses and follow on requests");
 					}
-					if (isRequest && !responseOnly)
-						return responses.get(0).getResponse();
-					else
-						responses.get(0).sendResponse();
+					TargetEvent te = responses.get(0);
+					if (isRequest)
+						return te.getResponse();
+					else {
+						te.getTarget().response(te.getResponse());
+					}
 				}
 			}
 		} while (!e.isEmpty());
@@ -107,39 +136,65 @@ public abstract class EventStateMachine implements EventHandler {
 
 	}
 	
+	private Response stackError(AbstractEvent ae) {
+		StringBuilder buf = new StringBuilder();
+		buf.append("SM: ").append(name);
+		buf.append(" stacks{");
+		boolean first = true;
+		for (Enumeration<Request> kiter = stacks.keys(); kiter.hasMoreElements();) {
+			Request kr = kiter.nextElement();
+			if (first) first = false;
+			else buf.append(",");
+			buf.append(System.identityHashCode(kr)).append("@").append(kr.getClass().getSimpleName());
+		}
+		buf.append("}").append(" Event {").append(ae.getHistory()).append("}");
+		// this is a fatal error, so we're just going to forward the error to the caller
+		Request root = null;
+//		String context = null;
+		if (ae.isRequest()) {
+			root = (Request) ae;
+		} else {
+			root = ((Response)ae).getRequest();
+//			context = root.getContext();
+		}
+		EventingException ee = new EventingException("Missing state stack: " + buf.toString()/* + "; context: " + context*/);
+		ee.printStackTrace();
+		root = root.getCause();
+		ExceptionResponse er = new ExceptionResponse(null,root,ee);
+		if (ae.isRequest())
+			return er;
+		else 
+			root.getResponseTarget().response(er);
+		return null;		
+	}
+	
 	public final Response request(Request in) {
-		return onEvent(in,false);
+		return onEvent(in);
 	}
 		
 	public final void response(Response in) {
-		onEvent(in,false);
+		onEvent(in);
 	}
 
-	public final void requestCallbackOnly(Request in) {
-		onEvent(in,true);
-	}
-	
-	public State getState() {
-		return stack.getFirst();
-	}
-	
-	public void modifyStack(StackRequest trans) {
-		if (trans == null) return;
-		switch(trans.getAction()) {
-		case PUSH:
-			stack.addFirst(trans.getState());
-			break;
-		case POP:
-			stack.removeFirst();
-			break;
-		case REPLACE:
-			if (!stack.isEmpty())
-				stack.removeFirst();
-			stack.addFirst(trans.getState());
-			break;
-		default:
-			throw new EventingException("Unknown stack action: " + trans.getAction());
+	public StateStack getStack(AbstractEvent ae) {
+		StateStack stack = null;
+		if (ae.isRequest()) {
+			Request r = (Request) ae;
+			stack = stacks.get(r);
+			if (stack == null) {
+				stack = new StateStack(r,initialState);
+				stacks.put(r,stack);
+			}
+		} else {
+			// for responses, search the causal chain for a hit
+			Response r = (Response) ae;
+			Request req = r.getRequest();
+			while(stack == null && req != null) {
+				stack = stacks.get(req);
+				if (stack == null)
+					req = req.getCause();
+			}
 		}
+		return stack;
 	}
-	
 }

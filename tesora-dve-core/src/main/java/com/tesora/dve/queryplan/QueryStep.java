@@ -219,7 +219,7 @@ public class QueryStep {
 					slowQueryLogger = ssCon.getExecutionLogger().getNewLogger(op); 
 
 					SynchronousEventHandler sync = new SynchronousEventHandler();
-					QSOExecuteRequestEvent execRequest = new QSOExecuteRequestEvent(sync,ssCon,wg,resultConsumer);
+					QSOExecuteRequestEvent execRequest = new QSOExecuteRequestEvent(null,null,ssCon,wg,resultConsumer);
 					sync.call(execRequest, op);
 					
 					// op.execute(ssCon, wg, resultConsumer);

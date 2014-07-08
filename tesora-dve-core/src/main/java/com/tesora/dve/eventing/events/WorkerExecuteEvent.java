@@ -21,29 +21,21 @@ package com.tesora.dve.eventing.events;
  * #L%
  */
 
-import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.eventing.EventHandler;
+import java.sql.SQLException;
+
+import javax.transaction.xa.XAException;
+
+import com.tesora.dve.eventing.EventSource;
 import com.tesora.dve.eventing.Request;
-import com.tesora.dve.server.messaging.WorkerRequest;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.worker.Worker;
 
-public class WorkerRequestEvent extends Request {
+public abstract class WorkerExecuteEvent extends Request {
 
-	private final WorkerRequest wrapped;
-	private final DBResultConsumer consumer;
-
-	public WorkerRequestEvent(EventHandler requestor, WorkerRequest orig, DBResultConsumer consumer) {
-		super(requestor);
-		this.wrapped = orig;
-		this.consumer = consumer;
-	}
-
-	public WorkerRequest getWrappedRequest() {
-		return wrapped;
+	public WorkerExecuteEvent(EventSource origState, Request causedBy) {
+		super(origState, causedBy);
 	}
 	
-	public DBResultConsumer getConsumer() {
-		return consumer;
-	}
-	
+	public abstract void execute(Worker w) throws SQLException, PEException, XAException;
 	
 }

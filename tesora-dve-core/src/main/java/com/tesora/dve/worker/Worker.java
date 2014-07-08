@@ -37,22 +37,17 @@ import com.tesora.dve.common.catalog.ISiteInstance;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.UserDatabase;
-import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.eventing.AbstractEvent;
-import com.tesora.dve.eventing.AbstractReqRespState;
 import com.tesora.dve.eventing.DispatchState;
 import com.tesora.dve.eventing.EventHandler;
 import com.tesora.dve.eventing.EventStateMachine;
 import com.tesora.dve.eventing.Request;
 import com.tesora.dve.eventing.Response;
-import com.tesora.dve.eventing.StackAction;
 import com.tesora.dve.eventing.State;
 import com.tesora.dve.eventing.TransitionReqRespState;
-import com.tesora.dve.eventing.TransitionResult;
-import com.tesora.dve.eventing.events.AcknowledgeResponse;
-import com.tesora.dve.eventing.events.ExceptionResponse;
-import com.tesora.dve.eventing.events.WorkerRequestEvent;
+import com.tesora.dve.eventing.events.WorkerExecuteEvent;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
@@ -408,16 +403,6 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver, EventH
 		sm.response(in);
 	}
 
-	@Override
-	public boolean isAsynchronous() {
-		return sm.isAsynchronous();
-	}
-
-	@Override
-	public void requestCallbackOnly(Request in) {
-		sm.requestCallbackOnly(in);
-	}
-
 	// one state for each of the blocking calls in worker
 	
 	// this executes by doing a Host.submit on the inbound request
@@ -429,17 +414,14 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver, EventH
 
 		@Override
 		protected ChildRunnable buildRunnable(EventStateMachine ems, final Request reqEvent) {
-			WorkerRequestEvent workerRequest = (WorkerRequestEvent) reqEvent;
-			final DBResultConsumer resultConsumer = workerRequest.getConsumer();
-			final WorkerRequest req = workerRequest.getWrappedRequest();
+			final WorkerExecuteEvent execRequest = (WorkerExecuteEvent) reqEvent;
 			return new ChildRunnable() {				
 				@Override
-				public void run() throws Throwable {
-					// TODO Auto-generated method stub
+				public ResponseMessage run() throws Throwable {
 					try {
-						long reqStartTime = System.currentTimeMillis();
-						req.executeRequest(Worker.this, resultConsumer);
-						Worker.this.sendStatistics(req, System.currentTimeMillis() - reqStartTime);
+//						long reqStartTime = System.currentTimeMillis();
+						execRequest.execute(Worker.this);
+//						Worker.this.sendStatistics(req, System.currentTimeMillis() - reqStartTime);
 					} catch (PEException e) {
 						Worker.this.setLastException(e);
 						// TODO: handle this
@@ -452,15 +434,20 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver, EventH
 						Worker.this.setLastException(e);
 						throw e;
 					}
-					
+					return null;
 				}
 				
 			};
 		}
+
+		@Override
+		public String getName() {
+			return "Worker.ThreadedExecute";
+		}
 		
 	}
 		
-	private final DispatchState IDLE_STATE = new DispatchState() {
+	private final DispatchState IDLE_STATE = new DispatchState("Worker.DISPATCH") {
 		
 		@Override
 		public State getTarget(EventStateMachine esm, AbstractEvent event) {
@@ -469,13 +456,6 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver, EventH
 		
 	};
 	
-	private final EventStateMachine sm = new EventStateMachine("Worker",IDLE_STATE) {
-
-		@Override
-		public boolean isAsynchronous() {
-			return false;
-		}
-		
-	};
+	private final EventStateMachine sm = new EventStateMachine("Worker",IDLE_STATE);
 	
 }

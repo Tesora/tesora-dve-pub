@@ -49,18 +49,9 @@ public class SynchronousEventHandler implements EventHandler {
 		}
 	}
 
-	@Override
-	public boolean isAsynchronous() {
-		return false;
-	}
-
-	@Override
-	public void requestCallbackOnly(Request in) {
-		throw new EventingException("Invalid request: SynchronousEventHandler does not handle requests");
-	}
-
 	public void call(Request req, EventHandler target) throws PEException {
 		synchronized(this) {
+			req.setTarget(this);
 			response = target.request(req);
 			while(response == null) try {
 				wait();

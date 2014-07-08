@@ -1,5 +1,7 @@
 package com.tesora.dve.eventing;
 
+import java.util.List;
+
 /*
  * #%L
  * Tesora Inc.
@@ -25,7 +27,8 @@ public class Response extends AbstractEvent {
 
 	protected final Request forRequest;
 	
-	public Response(Request req) {
+	public Response(EventSource generatingState, Request req) {
+		super(generatingState);
 		this.forRequest = req;
 	}
 	
@@ -42,4 +45,11 @@ public class Response extends AbstractEvent {
 		return false;
 	}
 	
+	@Override
+	public void collectHistory(List<HistoryEntry> entries, int nestLevel) {
+		entries.add(new HistoryEntry(toString(),nestLevel));
+		forRequest.collectHistory(entries, nestLevel+1);
+	}
+	
+
 }

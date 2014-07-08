@@ -1,4 +1,4 @@
-package com.tesora.dve.eventing.events;
+package com.tesora.dve.eventing;
 
 /*
  * #%L
@@ -21,16 +21,8 @@ package com.tesora.dve.eventing.events;
  * #L%
  */
 
-import com.tesora.dve.eventing.EventSource;
-import com.tesora.dve.eventing.Request;
-import com.tesora.dve.eventing.Response;
+public interface EventSource {
 
-// An acknowledge response merely indicates that the request was processed
-// Think of this as the return value for a void function
-public class AcknowledgeResponse extends Response {
-
-	public AcknowledgeResponse(EventSource src, Request req) {
-		super(src, req);
-	}
+	public String getName();
 
 }

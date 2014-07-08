@@ -22,7 +22,7 @@ package com.tesora.dve.eventing.events;
  */
 
 
-import com.tesora.dve.eventing.EventHandler;
+import com.tesora.dve.eventing.EventSource;
 import com.tesora.dve.eventing.Request;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.WorkerGroup.Manager;
@@ -32,9 +32,9 @@ public class AllocateWorkerGroupRequest extends Request {
 	private Manager manager;
 	private UserAuthentication userAuthentication;
 	
-	public AllocateWorkerGroupRequest(EventHandler requestor,
+	public AllocateWorkerGroupRequest(EventSource orig, Request causedBy,
 			Manager manager, UserAuthentication userAuth) {
-		super(requestor);
+		super(orig,causedBy);
 		this.manager = manager;
 		this.userAuthentication = userAuth;
 	}

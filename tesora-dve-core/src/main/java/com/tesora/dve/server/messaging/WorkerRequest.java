@@ -30,6 +30,15 @@ import org.apache.commons.lang.StringUtils;
 import com.tesora.dve.comms.client.messages.RequestMessage;
 import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.eventing.AbstractEvent;
+import com.tesora.dve.eventing.DispatchState;
+import com.tesora.dve.eventing.EventHandler;
+import com.tesora.dve.eventing.EventStateMachine;
+import com.tesora.dve.eventing.Request;
+import com.tesora.dve.eventing.Response;
+import com.tesora.dve.eventing.State;
+import com.tesora.dve.eventing.TransitionReqRespState;
+import com.tesora.dve.eventing.events.WorkerExecuteRequestEvent;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
@@ -43,7 +52,7 @@ import com.tesora.dve.worker.Worker;
  *  
  */
 @SuppressWarnings("serial")
-public abstract class WorkerRequest extends RequestMessage {
+public abstract class WorkerRequest extends RequestMessage implements EventHandler {
 	
 	final SSContext connectionContext;
 	
@@ -90,4 +99,49 @@ public abstract class WorkerRequest extends RequestMessage {
 	}
 
 	public abstract LogSiteStatisticRequest getStatisticsNotice();
+	
+	@Override
+	public Response request(Request in) {
+		return sm.request(in);
+	}
+
+	@Override
+	public void response(Response in) {
+		sm.response(in);
+	}
+
+	protected State getImplState(EventStateMachine esm, AbstractEvent event) {
+		return new WorkerRequestExecutor();
+	}
+	
+	public class WorkerRequestExecutor extends TransitionReqRespState {
+
+		@Override
+		protected ChildRunnable buildRunnable(EventStateMachine ems, Request req) {
+			final WorkerExecuteRequestEvent wreq = (WorkerExecuteRequestEvent) req;
+			return new ChildRunnable() {
+
+				@Override
+				public ResponseMessage run() throws Throwable {
+					return executeRequest(wreq.getWorker(),wreq.getConsumer());
+				}
+				
+			};
+		}
+
+		@Override
+		public String getName() {
+			return "WorkerRequestExecutor";
+		}
+		
+	}
+	
+	private final State DISPATCHER = new DispatchState("WorkerRequest.DISPATCHER") {
+		
+		public State getTarget(EventStateMachine esm, AbstractEvent event) {
+			return getImplState(esm,event);
+		}
+	};
+	
+	private final EventStateMachine sm = new EventStateMachine(getClass().getSimpleName(),DISPATCHER);
 }

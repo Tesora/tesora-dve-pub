@@ -23,6 +23,7 @@ package com.tesora.dve.queryplan;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.logutil.LogSubject;
+import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.eventing.AbstractEvent;
 import com.tesora.dve.eventing.DispatchState;
@@ -99,16 +100,6 @@ public abstract class QueryStepOperation implements LogSubject, EventHandler {
 		sm.response(in);
 	}
 
-	@Override
-	public boolean isAsynchronous() {
-		return sm.isAsynchronous();
-	}
-
-	@Override
-	public void requestCallbackOnly(Request in) {
-		sm.requestCallbackOnly(in);
-	}
-
 	protected State getImplState(EventStateMachine esm, AbstractEvent event) {
 		return new QSOExecutor();
 	}
@@ -122,29 +113,28 @@ public abstract class QueryStepOperation implements LogSubject, EventHandler {
 			return new ChildRunnable() {
 
 				@Override
-				public void run() throws Throwable {
+				public ResponseMessage run() throws Throwable {
 					// TODO Auto-generated method stub
 					execute(reqEvent.getConnection(),reqEvent.getWorkerGroup(),reqEvent.getConsumer());
+					return null;
 				}
 				
 			};
 		}
+
+		@Override
+		public String getName() {
+			return "QSOExecutor";
+		}
 		
 	}
 	
-	private final State DISPATCHER = new DispatchState() {
+	private final State DISPATCHER = new DispatchState("QSODispatch") {
 		
 		public State getTarget(EventStateMachine esm, AbstractEvent event) {
 			return getImplState(esm,event);
 		}
 	};
 	
-	private final EventStateMachine sm = new EventStateMachine("QSO",DISPATCHER) {
-
-		@Override
-		public boolean isAsynchronous() {
-			return true;
-		}
-		
-	};
+	private final EventStateMachine sm = new EventStateMachine("QSO",DISPATCHER);
 }

@@ -21,7 +21,6 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Future;
 
@@ -37,9 +36,7 @@ import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageGroup;
-import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.IKeyValue;
@@ -51,11 +48,9 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
-import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.worker.AggregationGroup;
 import com.tesora.dve.worker.MysqlRedistTupleForwarder;
-import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;

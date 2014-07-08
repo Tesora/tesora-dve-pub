@@ -1,5 +1,7 @@
 package com.tesora.dve.eventing;
 
+import java.util.List;
+
 /*
  * #%L
  * Tesora Inc.
@@ -23,25 +25,37 @@ package com.tesora.dve.eventing;
 
 public abstract class Request extends AbstractEvent {
 
-	protected Request parentRequest;
-	protected final EventHandler requestedBy;
+	// where we send our response
+	protected EventHandler replyTo;
+	// just for now
+//	String context;
+	private final Request cause;
 	
-	public Request(EventHandler requestor) {
-		this.requestedBy= requestor;
-		if (requestor == null)
-			throw new EventingException("Request constructed with null requestor");
+	public Request(EventSource generatingState, Request causedBy) {
+		super(generatingState);
+		this.cause = causedBy;
 	}
 	
-	public void setParentRequest(Request p) {
-		this.parentRequest = p;
+	/*
+	public void setContext(String s) {
+		context = s;
 	}
 	
-	public EventHandler getRequestor() {
-		return requestedBy;
+	public String getContext() {
+		return context;
 	}
 	
-	public Request getCausedBy() {
-		return parentRequest;
+	*/
+	protected void setTarget(EventHandler rt) {
+		replyTo = rt;
+	}
+	
+	public EventHandler getResponseTarget() {
+		return replyTo;
+	}
+	
+	public Request getCause() {
+		return cause;
 	}
 	
 	@Override
@@ -49,4 +63,12 @@ public abstract class Request extends AbstractEvent {
 		return true;
 	}
 
+	@Override
+	public void collectHistory(List<HistoryEntry> entries, int nestLevel) {
+		entries.add(new HistoryEntry(toString(),nestLevel));
+		if (cause != null)
+			cause.collectHistory(entries, nestLevel+1);
+	}
+
+	
 }

@@ -26,6 +26,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.common.catalog.MultitenantMode;
@@ -39,6 +40,7 @@ import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.variable.SchemaVariableConstants;
 
+@Ignore
 public class ExplainTest extends SchemaTest {
 
 	private static final ProjectDDL checkDDL =

@@ -29,13 +29,4 @@ public interface EventHandler {
 	
 	public void response(Response in);
 
-	// during the transition period we will have event handlers that execute synchronously
-	// (i.e. they block).  for such handlers we need to send events to them via Host.submit so
-	// that the parent handler can continue to execute asynchronously.
-	public boolean isAsynchronous();
-
-	// transitional only - do a request that only responds via the callback, no immediate response
-	public void requestCallbackOnly(Request in);
-	
-
 }

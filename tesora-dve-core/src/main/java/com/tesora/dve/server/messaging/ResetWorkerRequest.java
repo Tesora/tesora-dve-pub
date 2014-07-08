@@ -61,4 +61,5 @@ public class ResetWorkerRequest extends WorkerRequest {
 	public LogSiteStatisticRequest getStatisticsNotice() {
 		return null;
 	}
+
 }

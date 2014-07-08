@@ -23,8 +23,6 @@ package com.tesora.dve.worker;
 
 import com.tesora.dve.common.catalog.ISiteInstance;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.eventing.Request;
-import com.tesora.dve.eventing.Response;
 import com.tesora.dve.exceptions.PEException;
 
 public class SingleDirectWorker extends Worker {
