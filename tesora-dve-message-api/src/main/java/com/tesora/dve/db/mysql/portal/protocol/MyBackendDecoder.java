@@ -21,23 +21,12 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
-import com.tesora.dve.clock.*;
-import com.tesora.dve.db.mysql.MyFieldType;
-import com.tesora.dve.db.mysql.MysqlNativeConstants;
-import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
-import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
-import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
-
-import com.tesora.dve.singleton.Singletons;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.ByteToMessageDecoder;
-
-import org.apache.log4j.Logger;
 
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -45,12 +34,36 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.log4j.Logger;
+
+import com.tesora.dve.clock.NoopTimingService;
+import com.tesora.dve.clock.Timer;
+import com.tesora.dve.clock.TimingService;
+import com.tesora.dve.db.mysql.MyFieldType;
+import com.tesora.dve.db.mysql.MysqlNativeConstants;
+import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
+import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
+import com.tesora.dve.db.mysql.libmy.BufferedExecute;
+import com.tesora.dve.db.mysql.libmy.MyBinaryResultRow;
+import com.tesora.dve.db.mysql.libmy.MyColumnCount;
+import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
+import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
+import com.tesora.dve.db.mysql.libmy.MyFieldPktResponse;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.libmy.MyOKResponse;
+import com.tesora.dve.db.mysql.libmy.MyPrepareOKResponse;
+import com.tesora.dve.db.mysql.libmy.MyRawMessage;
+import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
+import com.tesora.dve.exceptions.PECodingException;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.singleton.Singletons;
+
 public class MyBackendDecoder extends ChannelDuplexHandler {
 	protected static final Logger logger = Logger.getLogger(MyBackendDecoder.class);
     protected static final ParseStrategy UNSOLICITED = new UnsolicitedMessageParser();
 	public static final int PACKET_HEADER_LEN = 4;
-
-    String socketDesc;
+	
+	String socketDesc;
 
     public interface CharsetDecodeHelper {
         long lookupMaxLength(byte mysqlCharsetID);
@@ -175,7 +188,9 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
             lookupParser();//check if we are done and pop the parser now, to reduce memory usage and get tighter timer measurements.
 
-            out.add(message);
+			if (message != null) {
+				out.add(message);
+			}
 
 		} catch (Exception e) {
             logger.warn(String.format("Unexpected problem parsing frame, closing %s :", socketDesc), e);
@@ -336,6 +351,28 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
 
     static class ExecuteResponseParser extends BaseParseStrategy {
+
+		private class ExtendedPacket {
+			private byte sequenceId;
+			private byte messageType;
+			private ByteBuf payloadBuffer;
+
+			public ExtendedPacket(final byte messageType, final int initialCapacity) {
+				this.messageType = messageType;
+				this.payloadBuffer = Unpooled.buffer(initialCapacity + 1).order(ByteOrder.LITTLE_ENDIAN);
+			}
+
+			public void writePacketPayload(final ByteBuf frame, final int payloadLength, final byte sequenceId) {
+				logger.debug("Reading an extended packet: id=" + sequenceId + "; payload=" + payloadLength);
+				this.sequenceId = sequenceId;
+				this.payloadBuffer.writeBytes(frame, payloadLength);
+			}
+
+			public MyMessage buildBackendResponseMessage() throws PEException {
+				return parseAwaitRow(this.payloadBuffer, this.messageType, this.sequenceId);
+			}
+		}
+
         private CharsetDecodeHelper helper;
 
         enum ExecMode {PROTOCOL_BINARY, PROTOCOL_TEXT}
@@ -344,6 +381,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         ExecMode mode;
         ResponseState bufferState = ResponseState.AWAIT_FIELD_COUNT;
         private int bufferFieldCount;
+		private ExtendedPacket extendedPacket;
         private List<DataTypeValueFunc> typeDecoders = new ArrayList<>();
 
         ExecuteResponseParser(CharsetDecodeHelper help,ExecMode mode) {
@@ -358,7 +396,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 ByteBuf nextFrame = leBuf.readSlice(packetSize).order(ByteOrder.LITTLE_ENDIAN);
                 switch (bufferState) {
                     case AWAIT_ROW:
-                        message = parseAwaitRow(nextFrame);
+                    	message = parseAwaitRow(nextFrame);
                         break;
                     case AWAIT_FIELD_COUNT:
                         message = parseFieldCount(nextFrame);
@@ -447,31 +485,55 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             return message;
         }
 
-        public MyMessage parseAwaitRow(ByteBuf frame) throws PEException {
-            MyMessage message = null;
-            byte fifthByte = frame.getByte(4);
-            frame.skipBytes(4).order(ByteOrder.LITTLE_ENDIAN);
+		public MyMessage parseAwaitRow(final ByteBuf frame) throws PEException {
+			final int payloadLength = frame.readUnsignedMedium(); // 1st - 3rd byte
+			final byte packetSequenceId = frame.readByte(); // 4th byte
 
-            if (fifthByte == MyEOFPktResponse.EOFPKK_FIELD_COUNT) {
-                bufferState = ResponseState.DONE;
-                MyEOFPktResponse eofPkt = new MyEOFPktResponse();
-                eofPkt.unmarshallMessage(frame);
-                message = eofPkt;
-            } else if (mode == ExecMode.PROTOCOL_BINARY) {
-                MyBinaryResultRow binRow = new MyBinaryResultRow(typeDecoders);
-                binRow.unmarshallMessage(frame);
-                message = binRow;
-            } else if (mode == ExecMode.PROTOCOL_TEXT){
-                MyTextResultRow textRow = new MyTextResultRow();
-                textRow.unmarshallMessage(frame);
-                message = textRow;
-            } else {
-                throw new PECodingException("Unexpected reponse parsing mode, "+mode);
-            }
+			if (payloadLength < MysqlNativeConstants.MAX_PAYLOAD_SIZE) {
+				if (this.extendedPacket == null) {
+					final byte messageType = frame.getByte(4); // 5th byte
+					return parseAwaitRow(frame, messageType, packetSequenceId);
+				}
 
-            return message;
+				this.extendedPacket.writePacketPayload(frame, payloadLength, packetSequenceId);
+				final MyMessage message = this.extendedPacket.buildBackendResponseMessage();
+				this.extendedPacket = null; // reset
 
+				return message;
+			}
+
+			if (this.extendedPacket == null) {
+				final byte messageType = frame.readByte(); // 5th byte
+				this.extendedPacket = new ExtendedPacket(messageType, payloadLength);
+				this.extendedPacket.writePacketPayload(frame, payloadLength - 1, packetSequenceId);
+			} else {
+				this.extendedPacket.writePacketPayload(frame, payloadLength, packetSequenceId);
+			}
+
+			return null;
         }
+
+		private MyMessage parseAwaitRow(final ByteBuf frame, final byte messageType, final byte sequenceId) throws PEException {
+			MyMessage message = null;
+			if (messageType == MyEOFPktResponse.EOFPKK_FIELD_COUNT) {
+				bufferState = ResponseState.DONE;
+				MyEOFPktResponse eofPkt = new MyEOFPktResponse();
+				eofPkt.unmarshallMessage(frame);
+				message = eofPkt;
+			} else if (mode == ExecMode.PROTOCOL_BINARY) {
+				MyBinaryResultRow binRow = new MyBinaryResultRow(typeDecoders);
+				binRow.unmarshallMessage(frame);
+				message = binRow;
+			} else if (mode == ExecMode.PROTOCOL_TEXT) {
+				MyTextResultRow textRow = new MyTextResultRow();
+				textRow.unmarshallMessage(frame);
+				message = textRow;
+			} else {
+				throw new PECodingException("Unexpected reponse parsing mode, " + mode);
+			}
+
+			return message.withPacketNumber(sequenceId);
+		}
     }
 
     static class PrepareResponseParser extends BaseParseStrategy {

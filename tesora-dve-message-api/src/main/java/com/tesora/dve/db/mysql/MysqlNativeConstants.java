@@ -29,6 +29,7 @@ public class MysqlNativeConstants {
 	static final String MYSQL_LITERAL_QUOTE_CHAR = "'";
 
 	public static final int MAX_PACKET_SIZE = 16777216;
+	public static final int MAX_PAYLOAD_SIZE = MAX_PACKET_SIZE - 1; // MAX_PACKET_SIZE - 1 (2^24 - 1).
 	public static final int MAX_DECIMAL_PRECISION = 65;
 
 	// Character sets

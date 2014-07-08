@@ -30,13 +30,12 @@ import java.nio.ByteOrder;
 import java.util.List;
 
 import com.tesora.dve.common.PEThreadContext;
+import com.tesora.dve.db.mysql.MysqlNativeConstants;
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
 public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDecoderState> {
-
-	private static final int EXTPKT_INDICATOR = 0xFFFFFF;
 
 	private static final int MESSAGE_HEADER_LENGTH = 4;
 
@@ -111,7 +110,7 @@ public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDe
 					length = inBuf.readUnsignedMedium();
 					sequenceId = inBuf.readByte();
 
-					if (length == EXTPKT_INDICATOR) {
+					if (length == MysqlNativeConstants.MAX_PAYLOAD_SIZE) {
 //						logger.debug("reading extended packet");
 						checkpoint(MyDecoderState.READ_FIRST_EXTENDEDPACKET);
 					} else {
@@ -155,7 +154,7 @@ public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDe
 //				logger.debug("Reading subsequent extended packet "+sequenceId+": " + extendedPacket);
 				extendedPacket.writeBytes(MysqlAPIUtils.readBytes(inBuf, length)); // append the payload to the frame
 
-				if (length == EXTPKT_INDICATOR) {
+				if (length == MysqlNativeConstants.MAX_PAYLOAD_SIZE) {
 //					logger.debug("Waiting for next extended packet");
 					checkpoint(MyDecoderState.READ_NEXT_EXTENDEDPACKET);
 				} else {
