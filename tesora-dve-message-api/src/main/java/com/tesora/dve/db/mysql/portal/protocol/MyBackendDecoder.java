@@ -363,7 +363,9 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 			}
 
 			public void writePacketPayload(final ByteBuf frame, final int payloadLength, final byte sequenceId) {
-				logger.debug("Reading an extended packet: id=" + sequenceId + "; payload=" + payloadLength);
+				if (logger.isDebugEnabled()) {
+					logger.debug("Reading an extended packet: id=" + sequenceId + "; payload=" + payloadLength);
+				}
 				this.sequenceId = sequenceId;
 				this.payloadBuffer.writeBytes(frame, payloadLength);
 			}
