@@ -21,6 +21,7 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.exceptions.PESQLException;
 import io.netty.channel.EventLoopGroup;
 
@@ -34,11 +35,11 @@ public interface WorkerConnection {
 
 	void setCatalog(String currentDatabaseName) throws PESQLException;
 
-	void rollbackXA(DevXid xid) throws PESQLException;
+	void rollbackXA(DevXid xid, CompletionHandle<Boolean> promise);
 
-	void commitXA(DevXid xid, boolean onePhase) throws PESQLException;
+	void commitXA(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) ;
 
-	void prepareXA(DevXid xid) throws PESQLException;
+	void prepareXA(DevXid xid, CompletionHandle<Boolean> promise);
 
 	void endXA(DevXid xid) throws PESQLException;
 

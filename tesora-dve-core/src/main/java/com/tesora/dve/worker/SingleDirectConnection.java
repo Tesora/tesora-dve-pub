@@ -135,36 +135,32 @@ public class SingleDirectConnection implements WorkerConnection {
 	}
 
 	@Override
-	public void rollbackXA(DevXid xid) throws PESQLException {
+	public void rollbackXA(DevXid xid, CompletionHandle<Boolean> promise) {
 		try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
 			getConnection().rollback(xid, promise);
-            promise.sync();
 		} catch (Exception e) {
-			throw new PESQLException("Cannot rollback XA Transaction " + xid, e);
+			PESQLException problem = new PESQLException("Cannot rollback XA Transaction " + xid, e);
+            problem.fillInStackTrace();
+            promise.failure(problem);
 		}
 	}
 
 	@Override
-	public void commitXA(DevXid xid, boolean onePhase) throws PESQLException {
-		try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-			getConnection().commit(xid, onePhase, promise);
-            promise.sync();
-		} catch (Exception e) {
-			throw new PESQLException("Cannot commit XA Transaction " + xid, e);
-		}
-	}
+	public void commitXA(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) {
+        try {
+            getConnection().commit(xid, onePhase, promise);
+        } catch (PESQLException e) {
+            promise.failure(e);
+        }
+    }
 
 	@Override
-	public void prepareXA(DevXid xid) throws PESQLException {
-		try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-			getConnection().prepare(xid, promise);
-            promise.sync();
-		} catch (Exception e) {
-			throw new PESQLException("Cannot prepare XA Transaction " + xid, e);
-		}
+	public void prepareXA(DevXid xid, CompletionHandle<Boolean> promise) {
+        try {
+            getConnection().prepare(xid, promise);
+        } catch (PESQLException sqlError){
+            promise.failure(sqlError);
+        }
 	}
 
 	@Override

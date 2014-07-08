@@ -21,6 +21,9 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
@@ -145,7 +148,9 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 	private void closeWConnection() {
 		if (wConnection != null) {
 			try {
-				resetStatement();
+                PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+				resetStatement(promise);
+                promise.sync();
 //				rollback(currentGlobalTransaction);
 				wConnection.close(lastException == null);
 			} catch (Exception e) {
@@ -159,22 +164,47 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		}
 	}
 
-	public void resetStatement() throws SQLException {
-		if (!StringUtils.isEmpty(currentGlobalTransaction))
+	public void resetStatement(CompletionHandle<Boolean> promise) throws SQLException {
+
+        CompletionHandle<Boolean> resultTracker = new DelegatingCompletionHandle<Boolean>(promise){
+            @Override
+            public void success(Boolean returnValue) {
+                if (chunkMgr != null) {
+                    try {
+                        chunkMgr.close();
+                        chunkMgr = null;
+                    } catch (SQLException e) {
+                        this.failure(e);
+                        return;
+                    }
+                }
+                super.success(returnValue);
+            }
+
+            @Override
+            public void failure(Exception e) {
+                if (e instanceof SQLException)
+                    super.failure(e);
+
+                SQLException problem = new SQLException("Unable to reset worker connection", e);
+                problem.fillInStackTrace();
+                super.failure(problem);
+            }
+
+        };
+		if (!StringUtils.isEmpty(currentGlobalTransaction)) {
 			try {
-				rollback(currentGlobalTransaction);
+				rollback(currentGlobalTransaction, resultTracker);
 //				currentGlobalTransaction = null;
 			} catch (Exception e) {
-				throw new SQLException("Unable to reset worker connection", e);
-//				logger.warn(getName()
-//						+ " got exception on rollback during releaseWorkers() - exception ignored",
-//						e);
+				SQLException problem = new SQLException("Unable to reset worker connection", e);
+                problem.fillInStackTrace();
+                promise.failure(problem);
+                return;
 			}
-//		currentGlobalTransaction = null;
-		if (chunkMgr != null) {
-			chunkMgr.close();
-			chunkMgr = null;
-		}
+        } else {
+            promise.success(true);
+        }
 	}
 
 	public void setCurrentDatabase(PersistentDatabase currentDatabase) throws PEException {
@@ -248,7 +278,7 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		this.site = site2;
 	}
 
-	public DevXid getXid(String globalId) throws PEException {
+	public DevXid getXid(String globalId) {
 		return new DevXid(globalId, getName());
 	}
 
@@ -278,49 +308,98 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		}
 	}
 
-	public void prepare(String globalId) throws PEException {
+	public void prepare(String globalId, CompletionHandle<Boolean> promise) {
 		if (site.supportsTransactions()) {
 			if (!StringUtils.isEmpty(currentGlobalTransaction)) {
 				if (logger.isDebugEnabled())
 					logger.debug("Txn: "+getName()+".prepare("+globalId+")");
-				if (currentGlobalTransaction != globalId)
-					throw new PEException("Transaction id mismatch (expected "
+				if (currentGlobalTransaction != globalId) {
+					PEException problem = new PEException("Transaction id mismatch (expected "
 							+ currentGlobalTransaction + ", got " + globalId + ")");
-				endTrans(globalId);
-				getConnection().prepareXA(getXid(globalId));
+                    problem.fillInStackTrace();
+                    promise.failure(problem);
+                    return;
+                }
+                try {
+                    endTrans(globalId);
+                } catch (PEException e) {
+                    promise.failure(e);
+                    return;
+                }
+
+                getConnection().prepareXA(getXid(globalId), promise);
+                return;
 			}
 		}
+
+        promise.success(true);
 	}
 
-	public void commit(String globalId, boolean onePhase) throws PEException {
+	public void commit(String globalId, boolean onePhase, CompletionHandle<Boolean> promise) {
 		if (site.supportsTransactions()) {
 			if (!StringUtils.isEmpty(currentGlobalTransaction)) {
 				if (logger.isDebugEnabled())
 					logger.debug("Txn: "+getName()+".commit("+globalId+")");
-				if (currentGlobalTransaction != globalId)
-					throw new PEException("Transaction id mismatch (expected "
+				if (currentGlobalTransaction != globalId) {
+					PEException problem = new PEException("Transaction id mismatch (expected "
 							+ currentGlobalTransaction + ", got " + globalId + ")");
-				if (onePhase)
-					endTrans(globalId);
-				getConnection().commitXA(getXid(globalId), onePhase);
-				currentGlobalTransaction = null;
+                    problem.fillInStackTrace();
+                    promise.failure(problem);
+                    return;
+                }
+
+                try {
+
+                    if (onePhase)
+                        endTrans(globalId);
+
+                } catch (PEException e) {
+                    promise.failure(e);
+                    return;
+                }
+
+                CompletionHandle<Boolean> resultTracker = new DelegatingCompletionHandle<Boolean>(promise){
+                    @Override
+                    public void success(Boolean returnValue) {
+                        currentGlobalTransaction = null;
+                        super.success(returnValue);
+                    }
+
+                };
+
+                getConnection().commitXA(getXid(globalId), onePhase, resultTracker);
+                return;
 			}
 		}
+        promise.success(true);
 	}
 
-	public void rollback(String globalId) throws PEException {
+	public void rollback(String globalId, CompletionHandle<Boolean> promise) {
 		if (site.supportsTransactions()) {
 			if ( /* isModified() && */ !StringUtils.isEmpty(currentGlobalTransaction)) {
 				if (logger.isDebugEnabled())
 					logger.debug("Txn: "+getName()+".rollback("+globalId+")");
-				if (currentGlobalTransaction != globalId)
-					throw new PEException("Transaction id mismatch (expected "
+				if (currentGlobalTransaction != globalId){
+                    PEException problem = new PEException("Transaction id mismatch (expected "
 							+ currentGlobalTransaction + ", got " + globalId + ")");
-				endTrans(globalId);
-				currentGlobalTransaction = null;
-				getConnection().rollbackXA(getXid(globalId));
+                    problem.fillInStackTrace();
+                    promise.failure(problem);
+                    return;
+                }
+
+                try {
+                    endTrans(globalId);
+                } catch (PEException e) {
+                    promise.failure(e);
+                    return;
+                }
+
+                currentGlobalTransaction = null;
+				getConnection().rollbackXA(getXid(globalId), promise);
 			}
 		}
+
+        promise.success(true);
 	}
 
 	public void close() throws PEException {

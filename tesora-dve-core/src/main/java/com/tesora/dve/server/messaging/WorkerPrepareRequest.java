@@ -48,12 +48,7 @@ public class WorkerPrepareRequest extends WorkerRequest {
 	
 	@Override
 	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-        try {
-            w.prepare(getContext().getTransId());
-            promise.success(true);
-        } catch (PEException e) {
-            promise.failure(e);
-        }
+        w.prepare(getContext().getTransId(), promise);
     }
 
 	@Override

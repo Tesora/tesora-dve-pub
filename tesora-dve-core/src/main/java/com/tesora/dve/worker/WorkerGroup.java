@@ -575,13 +575,13 @@ public class WorkerGroup {
         };
 
 ////        SMG: quick hack to force connection on calling thread.
-//        try {
-//            w.getConnectionId();
-//        } catch (PESQLException e) {
-//        }
-//        clientEventLoop.submit(new Callable<Worker>() {
+        try {
+            w.getConnectionId();
+        } catch (PESQLException e) {
+        }
+        clientEventLoop.submit(new Callable<Worker>() {
 //
-        Singletons.require(HostService.class).submit(w.getName(), new Callable<Worker>() {
+//        Singletons.require(HostService.class).submit(w.getName(), new Callable<Worker>() {
             @Override
             public Worker call() throws Exception {
                 //SMG: Our heaviest locking is always in this call stack, caused by doing a netty write() outside the event loop, which syncs on a startup lock for the loop.

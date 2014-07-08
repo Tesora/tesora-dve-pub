@@ -55,12 +55,7 @@ public class WorkerCommitRequest extends WorkerRequest {
 
     @Override
     public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-        try {
-            w.commit(getTransId(), onePhase);
-            promise.success(true);
-        } catch (PEException e) {
-            promise.failure(e);
-        }
+        w.commit(getTransId(), onePhase, promise);
     }
 
 	@Override

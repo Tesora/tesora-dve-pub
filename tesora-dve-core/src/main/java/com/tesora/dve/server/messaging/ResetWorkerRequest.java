@@ -44,8 +44,7 @@ public class ResetWorkerRequest extends WorkerRequest {
 	@Override
 	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
         try {
-            w.resetStatement();
-            promise.success(true);
+            w.resetStatement(promise);
         } catch (SQLException e) {
             promise.failure(e);
         }

@@ -48,12 +48,7 @@ public class WorkerRollbackRequest extends WorkerRequest {
 	
 	@Override
 	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-        try {
-            w.rollback(getTransId());
-            promise.success(true);
-        } catch (PEException e) {
-            promise.failure(e);
-        }
+        w.rollback(getTransId(), promise);
     }
 
 	@Override
