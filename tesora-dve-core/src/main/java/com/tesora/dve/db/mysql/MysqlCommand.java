@@ -52,7 +52,7 @@ public abstract class MysqlCommand {
 
     void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
 		PEThreadContext.inherit(debugContext.copy());
-		PEThreadContext.pushFrame(getClass().getSimpleName()).put("cmd", this);
+		PEThreadContext.pushFrame(getClass()).put("cmd", this);
 		try {
 			execute(ctx, charset);
 		} finally {

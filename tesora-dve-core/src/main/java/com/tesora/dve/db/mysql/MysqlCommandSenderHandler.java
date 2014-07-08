@@ -145,7 +145,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
                 return;
             }
             PEThreadContext.inherit(cmd.debugContext.copy());
-            PEThreadContext.pushFrame(getClass().getName())
+            PEThreadContext.pushFrame(getClass())
                     .put("command", cmd);
 
             cmd.incrementResultsProcessedCount();

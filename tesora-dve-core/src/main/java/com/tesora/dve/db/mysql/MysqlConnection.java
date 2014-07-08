@@ -168,7 +168,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) {
         CompletionHandle<Boolean> resultTracker = wrapHandler(promise);
 
-		PEThreadContext.pushFrame(getClass().getSimpleName())
+		PEThreadContext.pushFrame(getClass())
 				.put("site", site.getName())
 				.put("connectionId", getConnectionId())
 				.put("channel", channel.toString())

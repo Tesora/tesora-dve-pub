@@ -107,7 +107,7 @@ public class QueryStep {
 	 * @throws Throwable 
 	 */
 	public void executeStep(SSConnection ssCon, DBResultConsumer resultConsumer) throws Throwable  {
-		PEThreadContext.pushFrame(getClass().getSimpleName()).put("storageGroup", storageGroup).logDebug();
+		PEThreadContext.pushFrame(getClass()).put("storageGroup", storageGroup).logDebug();
 		try {
 			validateStep();
 			needsCleanup = true;

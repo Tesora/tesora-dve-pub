@@ -38,6 +38,11 @@ public class PEThreadContext {
 
 	};
 
+    public static Ref pushFrame(Class<?> clazz) {
+        context().push(clazz);
+        return REF;
+    }
+
 	public static Ref pushFrame(String name) {
 		context().push(name);
 		return REF;
