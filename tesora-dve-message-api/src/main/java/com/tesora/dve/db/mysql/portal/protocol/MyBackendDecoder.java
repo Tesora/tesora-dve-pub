@@ -368,7 +368,6 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 			}
 
 			public void writePacketPayload(final ByteBuf frame, final int payloadLength, final byte sequenceId) {
-				logger.warn("Reading an extended packet: id=" + sequenceId + "; payload=" + payloadLength); // TODO
 				if (logger.isDebugEnabled()) {
 					logger.debug("Reading an extended packet: id=" + sequenceId + "; payload=" + payloadLength);
 				}
@@ -377,8 +376,6 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 			}
 
 			public MyMessage buildBackendResponseMessage() throws PEException {
-				logger.warn("Building the response message: id=" + sequenceId + "; messageType=" + this.messageType + "; payloadBuffer="
-						+ this.payloadBuffer.toString()); // TODO
 				return parseAwaitRow(this.payloadBuffer, this.messageType, this.sequenceId);
 			}
 		}
@@ -522,7 +519,6 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         }
 
 		private MyMessage parseAwaitRow(final ByteBuf frame, final byte messageType, final byte sequenceId) throws PEException {
-			logger.warn("Parsing a response message: id=" + sequenceId + "; messageType=" + messageType + "; frameReadable=" + frame.readableBytes()); // TODO
 			MyMessage message = null;
 			if (messageType == MyEOFPktResponse.EOFPKK_FIELD_COUNT && frame.readableBytes() == 5) { //EOF payload is exactly 5 bytes and first byte is 0xfe
 				bufferState = ResponseState.DONE;
