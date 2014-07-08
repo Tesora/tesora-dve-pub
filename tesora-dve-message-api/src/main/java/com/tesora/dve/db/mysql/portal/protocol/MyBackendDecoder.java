@@ -177,7 +177,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
             //ok, we aren't waiting for a packet anymore, end the wait timer, start the decode timer.
             responseParser.endAtomicWaitTimer();
-            Timer decodeTimer = responseParser.getParentTimer().newSubTimer(TimingDesc.BACKEND_DECODE);
+			Timer decodeTimer = responseParser.getNewSubTimer(TimingDesc.BACKEND_DECODE);
 
             //use the active response parser to decode the buffer into a protocol message.
             MyMessage message = responseParser.parsePacket(ctx,PACKET_HEADER_LEN + payloadLen, leBuf);
@@ -229,6 +229,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         boolean isDone();
         void setParentTimer(Timer parent);
         Timer getParentTimer();
+		Timer getNewSubTimer(Enum location);
 
         void startAtomicWaitTimer();
         void endAtomicWaitTimer();
@@ -250,6 +251,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         public void setParentTimer(Timer parent) {
             this.parent = parent;
         }
+
+		public Timer getNewSubTimer(Enum location) {
+			return (this.parent != null) ? this.parent.newSubTimer(TimingDesc.BACKEND_DECODE) : null;
+		}
 
         @Override
         public void startAtomicWaitTimer() {
@@ -363,6 +368,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 			}
 
 			public void writePacketPayload(final ByteBuf frame, final int payloadLength, final byte sequenceId) {
+				logger.warn("Reading an extended packet: id=" + sequenceId + "; payload=" + payloadLength); // TODO
 				if (logger.isDebugEnabled()) {
 					logger.debug("Reading an extended packet: id=" + sequenceId + "; payload=" + payloadLength);
 				}
@@ -371,6 +377,8 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 			}
 
 			public MyMessage buildBackendResponseMessage() throws PEException {
+				logger.warn("Building the response message: id=" + sequenceId + "; messageType=" + this.messageType + "; payloadBuffer="
+						+ this.payloadBuffer.toString()); // TODO
 				return parseAwaitRow(this.payloadBuffer, this.messageType, this.sequenceId);
 			}
 		}
@@ -505,19 +513,18 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 			}
 
 			if (this.extendedPacket == null) {
-				final byte messageType = frame.readByte(); // 5th byte
+				final byte messageType = frame.getByte(4); // 5th byte
 				this.extendedPacket = new ExtendedPacket(messageType, payloadLength);
-				this.extendedPacket.writePacketPayload(frame, payloadLength - 1, packetSequenceId);
-			} else {
-				this.extendedPacket.writePacketPayload(frame, payloadLength, packetSequenceId);
 			}
+			this.extendedPacket.writePacketPayload(frame, payloadLength, packetSequenceId);
 
 			return null;
         }
 
 		private MyMessage parseAwaitRow(final ByteBuf frame, final byte messageType, final byte sequenceId) throws PEException {
+			logger.warn("Parsing a response message: id=" + sequenceId + "; messageType=" + messageType + "; frameReadable=" + frame.readableBytes()); // TODO
 			MyMessage message = null;
-			if (messageType == MyEOFPktResponse.EOFPKK_FIELD_COUNT) {
+			if (messageType == MyEOFPktResponse.EOFPKK_FIELD_COUNT && frame.readableBytes() == 5) { //EOF payload is exactly 5 bytes and first byte is 0xfe
 				bufferState = ResponseState.DONE;
 				MyEOFPktResponse eofPkt = new MyEOFPktResponse();
 				eofPkt.unmarshallMessage(frame);
