@@ -57,16 +57,7 @@ public class DirectConnectionCache {
 
     static boolean suppressConnectionCaching = Boolean.getBoolean("SingleConnection.suppressConnectionCaching") || Boolean.getBoolean("DirectConnectionCache.suppressConnectionCaching");
 
-    //SMG: does this really need to be concurrent, or even exist?  We only have one impl, and we never swap it out, YAGNI.  -sgossard
-    private static Map<DBType, DBConnection.Factory> connectionFactoryMap = new ConcurrentHashMap<DBType, DBConnection.Factory>() {
-        private static final long serialVersionUID = 1L;
-        {
-            if (suppressConnectionCaching)
-                logger.warn("connection caching is disabled");
-
-            put(DBType.MYSQL, new MysqlConnection.Factory());
-        }
-    };
+    static final DBConnection.Factory MYSQL_FACTORY = new MysqlConnection.Factory();
 
     static GenericKeyedObjectPool<DSCacheKey, CachedConnection> connectionCache =
             new GenericKeyedObjectPool<DSCacheKey, CachedConnection>(
@@ -83,9 +74,7 @@ public class DirectConnectionCache {
                     /* testWhileIdle */ false
                     );
 
-    public static CachedConnection checkoutDatasource(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PESQLException {
-        return checkoutDatasource(null,auth,additionalConnInfo,site);
-    }
+
     public static CachedConnection checkoutDatasource(EventLoopGroup preferredEventLoop, UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PESQLException {
         try{
             if (preferredEventLoop == null)
@@ -153,10 +142,7 @@ public class DirectConnectionCache {
         if (SingleDirectConnection.logger.isDebugEnabled())
             SingleDirectConnection.logger.debug("Allocating new JDBC connection to " + key.site.getName() + " ==> " + key.toString());
 
-        PEUrl dbUrl = PEUrl.fromUrlString(key.url);
-        DBType dbType = DBType.valueOf(dbUrl.getSubProtocol().toUpperCase());
-
-        DBConnection dbConnection = connectionFactoryMap.get(dbType).newInstance(key.eventLoop,key.site);
+        DBConnection dbConnection = MYSQL_FACTORY.newInstance(key.eventLoop, key.site);
         dbConnection.connect(key.url, key.userId, key.password, key.clientCapabilities);
 
         return new CachedConnection(key, dbConnection);
@@ -326,11 +312,6 @@ public class DirectConnectionCache {
     }
 
     private static class DSCacheEntryFactory extends BaseKeyedPoolableObjectFactory<DSCacheKey, CachedConnection> {
-
-        static AtomicInteger createCount = new AtomicInteger();
-        static AtomicInteger activateCount = new AtomicInteger();
-        static AtomicInteger destroyCount = new AtomicInteger();
-
         @Override
         public CachedConnection makeObject(DSCacheKey key) throws Exception {
             return connect(key);
