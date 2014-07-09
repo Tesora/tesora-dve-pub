@@ -22,7 +22,6 @@ package com.tesora.dve.db.mysql.portal.protocol;
  */
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -357,30 +356,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
     static class ExecuteResponseParser extends BaseParseStrategy {
 
-		private class ExtendedPacket {
-			private byte sequenceId;
-			private byte messageType;
-			private ByteBuf payloadBuffer;
-
-			public ExtendedPacket(final byte messageType, final int initialCapacity) {
-				this.messageType = messageType;
-				this.payloadBuffer = Unpooled.buffer(initialCapacity + 1).order(ByteOrder.LITTLE_ENDIAN);
-			}
-
-			public void writePacketPayload(final ByteBuf frame, final int payloadLength, final byte sequenceId) {
-				if (logger.isDebugEnabled()) {
-					logger.debug("Reading an extended packet: id=" + sequenceId + "; payload=" + payloadLength);
-				}
-				this.sequenceId = sequenceId;
-				this.payloadBuffer.writeBytes(frame, payloadLength);
-			}
-
-			public MyMessage buildBackendResponseMessage() throws PEException {
-				return parseAwaitRow(this.payloadBuffer, this.messageType, this.sequenceId);
-			}
-		}
-
-        private CharsetDecodeHelper helper;
+		private CharsetDecodeHelper helper;
 
         enum ExecMode {PROTOCOL_BINARY, PROTOCOL_TEXT}
         enum ResponseState { AWAIT_FIELD_COUNT, AWAIT_FIELD, AWAIT_FIELD_EOF, AWAIT_ROW, DONE }
@@ -503,8 +479,11 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 				}
 
 				this.extendedPacket.writePacketPayload(frame, payloadLength, packetSequenceId);
-				final MyMessage message = this.extendedPacket.buildBackendResponseMessage();
-				this.extendedPacket = null; // reset
+				final MyMessage message = parseAwaitRow(this.extendedPacket);
+
+				// reset
+				this.extendedPacket.releasePayload();
+				this.extendedPacket = null;
 
 				return message;
 			}
@@ -517,6 +496,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
 			return null;
         }
+
+		private MyMessage parseAwaitRow(final ExtendedPacket packet) throws PEException {
+			return this.parseAwaitRow(packet.getPayload(), packet.getMessageType(), packet.getSequenceId());
+		}
 
 		private MyMessage parseAwaitRow(final ByteBuf frame, final byte messageType, final byte sequenceId) throws PEException {
 			MyMessage message = null;
