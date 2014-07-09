@@ -88,7 +88,7 @@ public class MySqlPortal implements MySqlPortalService {
 		clientExecutorService = new PEThreadPoolExecutor(max_concurrent,
 				max_concurrent,
 				30L, TimeUnit.SECONDS,
-				new LinkedBlockingQueue<Runnable>(),
+				new LinkedBlockingQueue<Runnable>(),  //The thread count limits concurrency here.  Using a bounded queue here would block netty threads (very bad), so this pool could be overrun by 'bad' clients that pipeline. -sgossard
 				new PEDefaultThreadFactory("msp-client"));
 		clientExecutorService.allowCoreThreadTimeOut(true);
 		

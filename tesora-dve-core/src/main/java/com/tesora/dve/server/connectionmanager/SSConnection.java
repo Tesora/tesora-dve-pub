@@ -237,7 +237,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	
 	@Override
 	protected void initialize() throws PEException {
-        //SMG: since SSConnection objects are usually created when client sockets are accepted, this semaphore blocks frontend netty threads, which is really bad.  -sgossard
 		connectionCount.nonBlockingAcquire();
         currentConnId = GroupManager.getCoordinationServices().registerConnection(Singletons.require(HostService.class).getHostName() + "." + getName());
 		PerHostConnectionManager.INSTANCE.registerConnection(currentConnId, this);
