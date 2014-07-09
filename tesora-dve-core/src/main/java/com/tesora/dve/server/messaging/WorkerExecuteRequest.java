@@ -101,6 +101,13 @@ public class WorkerExecuteRequest extends WorkerRequest {
             CompletionHandle<Boolean> executeTracker = new PEDefaultPromise<Boolean>(){
                 @Override
                 public void failure(Exception t) {
+                    if (logger.isDebugEnabled())
+                        logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
+                                .append(stmtCommand)
+                                .append(")").append(" except=")
+						.append(t.getMessage())
+						.toString());
+
                     callersResult.failure(t);
                 }
 
@@ -123,6 +130,14 @@ public class WorkerExecuteRequest extends WorkerRequest {
                         rowCount = resultConsumer.getUpdateCount();
                         new ExecuteResponse(hasResults, rowCount, rsmd ).from(w.getAddress()).success();
                         callersResult.success(true);
+
+                        if (logger.isDebugEnabled())
+                            logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
+                                    .append(stmtCommand).append("\" updating ").append(rowCount).append(" rows (hasResults=")
+                                    .append(hasResults ? "true" : "false")
+                                    .append(")")
+                                    .toString());
+
                     } catch (Exception e){
                         callersResult.failure(e);
                     }
@@ -133,15 +148,6 @@ public class WorkerExecuteRequest extends WorkerRequest {
             stmt.execute(getConnectionId(), stmtCommand, resultConsumer,executeTracker);
 		} catch (Exception pe) {
 			callersResult.failure(pe);
-		} finally {
-            //SMG: need to replace this logging behavior.
-//			if (logger.isDebugEnabled())
-//				logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
-//						.append(stmtCommand).append("\" updating ").append(rowCount).append(" rows (hasResults=")
-//						.append(hasResults ? "true" : "false")
-//						.append(")").append(" except=")
-//						.append(anyException == null ? "none" : anyException.getMessage())
-//						.toString());
 		}
 	}
 
