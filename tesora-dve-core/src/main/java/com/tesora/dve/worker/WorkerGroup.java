@@ -579,7 +579,8 @@ public class WorkerGroup {
             //This call forces the worker to get a database connection immediately in the client thread, before we submit to the netty thread (where blocking would be bad).
             //TODO: the worker's lazy getConnection() call shouldn't block, any following calls should get chained off the pending connection. -sgossard
             w.getConnectionId();
-        } catch (PESQLException e) {
+        } catch (Exception e) {
+            //any exception here needs to be ignored so the normal code path can fail just like it used to.
         }
 
         clientEventLoop.submit(new Callable<Worker>() {
@@ -829,7 +830,9 @@ public class WorkerGroup {
 					wg.setDatabase(ssCon, ctxDB);
 				wg.assureSessionVariables(ssCon);
 			} catch (PEException e) {
-				if (logger.isDebugEnabled())
+                //SMG:debug
+                e.printStackTrace(System.out);
+                if (logger.isDebugEnabled())
 					logger.debug("NPE: WorkerGroupFactory.newInstance() calls releaseWorkers() on "+ wg);
 				wg.releaseWorkers(ssCon);
 				throw e;
