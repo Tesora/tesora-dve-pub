@@ -396,6 +396,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			//			targetWG.execute(MappingSolution.AllWorkers, redistInsertRequest, insertCollector);
 			////			System.out.println("insertCollector A " + insertCollector.getPreparedStatement());
 
+
+            //TODO: the futures handshake between update consumer, forwarder, and tuple builder works, but is pretty messy. -sgossard
 			// Set up the update consumer on the target WG to accept updates
 			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
 			updateConsumer.setInsertIgnore(insertIgnore);

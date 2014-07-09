@@ -158,7 +158,6 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 			if (targetHandler.get() == null) {
 				if (logger.isDebugEnabled())
 					logger.debug("About to call handlerFuture.sync(): " + handlerFuture);
-                //SMG: sync called inside netty, not awesome.
 				targetHandler.set(handlerFuture.sync());
 			}
 			return targetHandler.get();

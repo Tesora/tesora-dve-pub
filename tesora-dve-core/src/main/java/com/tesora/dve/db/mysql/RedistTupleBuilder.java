@@ -73,7 +73,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 	final Future<SQLCommand> insertStatementFuture;
 	final PersistentTable targetTable;
 	final WorkerGroup targetWG;
-	final CompletionTarget<RedistTupleBuilder> readyPromise;
+	final PECountdownPromise<RedistTupleBuilder> readyCountdownPromise;
 
 	final int maximumRowCount;
 	final int maxDataSize;
@@ -84,12 +84,12 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
 	public RedistTupleBuilder(Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions,
 			PersistentTable targetTable, int maximumRowCount, int maxDataSize,
-			CompletionTarget<RedistTupleBuilder> readyPromise,
+			PECountdownPromise<RedistTupleBuilder> readyCountdownPromise,
 			WorkerGroup targetWG) {
 		this.insertOptions = insertOptions;
 		this.insertStatementFuture = insertStatementFuture;
 		this.targetTable = targetTable;
-		this.readyPromise = readyPromise;
+		this.readyCountdownPromise = readyCountdownPromise;
 		this.targetWG = targetWG;
 		this.maximumRowCount = maximumRowCount;
 		this.maxDataSize = maxDataSize;
@@ -365,8 +365,8 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
         siteCtxBySite.put(site, siteCtx);
         siteCtxByChannel.put(ctx.channel(), siteCtx);
 
-        //TODO: should we be declaring success after adding the first target site? -sgossard
-        readyPromise.success(this);
+        //not super obvious, but this is a countdown promise, and requires one success for each site before triggering the OK.
+        readyCountdownPromise.success(this);
     }
 
 

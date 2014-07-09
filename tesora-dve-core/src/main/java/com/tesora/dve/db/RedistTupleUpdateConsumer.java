@@ -91,9 +91,8 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
         PECountdownPromise<RedistTupleBuilder> countdownResult = new PECountdownPromise<RedistTupleBuilder>(senderCount);
 
         readySynchronizer = countdownResult;
-        CompletionTarget<RedistTupleBuilder> resultTarget = countdownResult;
 
-		forwardedResultHandler = new RedistTupleBuilder(insertStatementFuture, insertOptions, targetTable, maxTupleCount, maxDataSize, resultTarget, targetWG);
+        forwardedResultHandler = new RedistTupleBuilder(insertStatementFuture, insertOptions, targetTable, maxTupleCount, maxDataSize, countdownResult, targetWG);
 		forwardedResultHandler.setInsertIgnore(insertIgnore);
 	}
 
