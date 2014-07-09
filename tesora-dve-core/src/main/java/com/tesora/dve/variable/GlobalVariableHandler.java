@@ -29,4 +29,5 @@ public abstract class GlobalVariableHandler extends VariableHandler {
 	public abstract void setValue(CatalogDAO c, String name, String value) throws PEException;
 	
 	public abstract String getValue(CatalogDAO c, String name) throws PEException;
+	
 }

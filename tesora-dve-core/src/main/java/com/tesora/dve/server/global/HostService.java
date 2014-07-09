@@ -31,6 +31,7 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.variable.*;
+import com.tesora.dve.variables.GlobalVariableStore;
 
 import java.util.Collection;
 import java.util.List;
@@ -86,6 +87,8 @@ public interface HostService {
 
     Map<String,String> getGlobalVariables(CatalogDAO c) throws PEException;
 
+    GlobalVariableStore getGlobalVariableStore();
+    
     String getServerVersion();
 
     String getServerVersionComment();

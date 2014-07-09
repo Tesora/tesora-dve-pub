@@ -28,9 +28,12 @@ import java.net.NetworkInterface;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 
@@ -42,10 +45,15 @@ import org.apache.log4j.Logger;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.Join;
+import com.hazelcast.config.MapConfig;
+import com.hazelcast.config.MapConfig.StorageType;
+import com.hazelcast.config.MapStoreConfig;
+import com.hazelcast.config.MaxSizeConfig;
 import com.hazelcast.config.NetworkConfig;
 import com.hazelcast.core.Cluster;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.MapLoader;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.exceptions.PEException;
@@ -59,6 +67,7 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 	public static final String TYPE = "hazelcast";
 	private static final int CLUSTER_PORT_DEFAULT = NetworkConfig.DEFAULT_PORT;
 	private static final String CLUSTER_PORT_PROPERTY = "cluster.port";
+	private static final String GLOBAL_SESS_VAR_MAP_NAME = "DVE.Global.Session.Variables";
 
 	static Logger logger = Logger.getLogger(HazelcastCoordinationServices.class);
 
@@ -271,6 +280,20 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 		}
 		join.getTcpIpConfig().setEnabled(true);
 
+		MapConfig mc = new MapConfig(GLOBAL_SESS_VAR_MAP_NAME);
+		mc.setStorageType(StorageType.HEAP);
+		mc.setTimeToLiveSeconds(0);
+		mc.setMaxIdleSeconds(0);
+		MaxSizeConfig msc = new MaxSizeConfig();
+		msc.setSize(0);
+		msc.setMaxSizePolicy(MaxSizeConfig.POLICY_CLUSTER_WIDE_MAP_SIZE);
+		mc.setMaxSizeConfig(msc);
+		MapStoreConfig masc = new MapStoreConfig();
+		masc.setImplementation(new VariableLoader());
+		mc.setMapStoreConfig(masc);
+		
+		cfg.addMapConfig(mc);
+				
 		ourHazelcastInstance = Hazelcast.newHazelcastInstance(cfg);
 	}
 
@@ -406,6 +429,10 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 		return getOurHazelcastInstance().getIdGenerator(domain).newId();
 	}
 
+	@Override
+	public Map<String, String> getGlobalVariables() {
+		return getOurHazelcastInstance().getMap(GLOBAL_SESS_VAR_MAP_NAME);
+	}
 
 //	private void handleExternalServiceMemberRemovedEvent(InetSocketAddress inetSocketAddress) {
 //		String memberAddress = inetSocketAddress.getHostName();
@@ -448,4 +475,26 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 //			}
 //		}
 //	}
+	
+	private static class VariableLoader implements MapLoader<String,String> {
+
+		@Override
+		public String load(String key) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Map<String, String> loadAll(Collection<String> keys) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public Set<String> loadAllKeys() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+		
+	}
 }

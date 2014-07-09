@@ -32,6 +32,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.variables.VariableScope;
 
 public class VariableAccessor {
 		
@@ -132,9 +133,11 @@ public class VariableAccessor {
 	
 	public String getSQL() {
 		StringBuilder buf = new StringBuilder();
-		if (scope == VariableScopeKind.SESSION) {
+		if (scope.getScope() == VariableScope.GLOBAL) {
+			buf.append("@@global.");
+		} else if (scope.getScope() == VariableScope.SESSION) {
 			buf.append("@@session.");
-		} else if (scope == VariableScopeKind.USER) {
+		} else if (scope.getScope() == VariableScope.USER) {
 			buf.append("@");
 		} else if (scope == null) {
 			buf.append(scopeName).append(".");

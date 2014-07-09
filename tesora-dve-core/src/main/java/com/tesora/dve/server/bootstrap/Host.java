@@ -81,6 +81,7 @@ import com.tesora.dve.variable.VariableInfo;
 import com.tesora.dve.variable.VariableValueStore;
 import com.tesora.dve.variable.status.StatusVariableHandler;
 import com.tesora.dve.variable.status.StatusVariableHandlerDynamicMBean;
+import com.tesora.dve.variables.GlobalVariableStore;
 
 public class Host implements HostService {
     protected static Logger logger = Logger.getLogger(Host.class);
@@ -178,6 +179,8 @@ public class Host implements HostService {
 	private VariableConfig<SessionVariableHandler> sessionConfigTemplate;
 	private VariableValueStore sessionConfigDefaults;
 
+	private GlobalVariableStore globalVariableStore;
+	
 	private Map<String /* providerName */, VariableConfig<ScopedVariableHandler>> scopedVariables 
 		= new HashMap<String, VariableConfig<ScopedVariableHandler>>();
 
@@ -226,6 +229,9 @@ public class Host implements HostService {
 			CatalogDAO c = CatalogDAOFactory.newInstance();
 			try {
 				project = c.findProject(props.getProperty("defaultproject", Project.DEFAULT));
+				
+				// bootstrap host has already ensured we are part of a cluster if need be, therefore it
+				// is safe to initialize variables here.
 				
 				initialiseConfigVariables(c);
 				initialiseSessionVariableTemplate(false);
@@ -687,5 +693,10 @@ public class Host implements HostService {
 	@Override
     public void onGarbageEvent() {
 		// does nothing by default
+	}
+
+	@Override
+	public GlobalVariableStore getGlobalVariableStore() {
+		return globalVariableStore;
 	}
 }

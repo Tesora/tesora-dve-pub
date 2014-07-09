@@ -29,12 +29,14 @@ import com.tesora.dve.exceptions.PENotFoundException;
 public class ConfigVariableHandler extends GlobalVariableHandler {
 	
 	String variableName;
-
-	public void initialise(CatalogDAO c, String name, String defaultValue) throws Throwable {
+	boolean global;
+	
+	public void initialise(CatalogDAO c, String name, String defaultValue, boolean global) throws Throwable {
 		GlobalConfig configVar = c.findConfig(name, false); 
 		if (configVar == null)
 			configVar = c.createConfig(name, defaultValue);
 		this.variableName = name;
+		this.global = global;
 		onValueChange(configVar.getName(), configVar.getValue());
 	}
 	

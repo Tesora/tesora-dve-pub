@@ -1,5 +1,7 @@
 package com.tesora.dve.variable;
 
+import com.tesora.dve.variables.VariableScope;
+
 /*
  * #%L
  * Tesora Inc.
@@ -23,19 +25,21 @@ package com.tesora.dve.variable;
 
 public enum VariableScopeKind implements java.io.Serializable {
 
-	DVE,
-	SESSION,
-	USER,
-	GROUP_PROVIDER(true);
+	DVE(VariableScope.GLOBAL),
+	SESSION(VariableScope.SESSION),
+	USER(VariableScope.USER),
+	GROUP_PROVIDER(VariableScope.GLOBAL,true);
 	
 	private final boolean named;
+	private final VariableScope scope;
 	
-	private VariableScopeKind() {
-		this(false);
+	private VariableScopeKind(VariableScope scope) {
+		this(scope,false);
 	}
 	
-	private VariableScopeKind(boolean n) {
+	private VariableScopeKind(VariableScope scope, boolean n) {
 		named = n;
+		this.scope = scope;
 	}
 	
 	public boolean hasName() {
@@ -46,4 +50,7 @@ public enum VariableScopeKind implements java.io.Serializable {
 		return VariableScopeKind.valueOf(in.trim().toUpperCase());
 	}
 	
+	public VariableScope getScope() {
+		return scope;
+	}
 }
