@@ -830,8 +830,6 @@ public class WorkerGroup {
 					wg.setDatabase(ssCon, ctxDB);
 				wg.assureSessionVariables(ssCon);
 			} catch (PEException e) {
-                //SMG:debug
-                e.printStackTrace(System.out);
                 if (logger.isDebugEnabled())
 					logger.debug("NPE: WorkerGroupFactory.newInstance() calls releaseWorkers() on "+ wg);
 				wg.releaseWorkers(ssCon);
