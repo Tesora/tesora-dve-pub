@@ -52,6 +52,7 @@ public class PortalDBHelperConnectionResource extends
 	
 	@Override
 	public JdbcConnectParams getConnectParams() throws Throwable {
+		if (connParams != null) return connParams;
 		Properties catalogProps = TestCatalogHelper.getTestCatalogProps(PETest.class);
 		String portalPort = catalogProps.getProperty(PEConstants.MYSQL_PORTAL_PORT_PROPERTY, PEConstants.MYSQL_PORTAL_DEFAULT_PORT);
 

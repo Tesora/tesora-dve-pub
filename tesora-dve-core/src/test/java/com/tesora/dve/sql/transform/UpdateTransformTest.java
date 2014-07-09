@@ -139,7 +139,8 @@ public class UpdateTransformTest extends TransformTest {
 						new FilterExpectedStep("LateBindingUpdateCounter", new UpdateExpectedStep(
 								TransientExecutionEngine.AGGREGATION,
 								"UPDATE temp1",
-								"SET temp1.A1i0_4 = 15"
+								"SET temp1.A1i0_4 = 15",
+								"WHERE temp1.A1d1_5 like '%wrong%'"
 								)
 						),
 						new DeleteExpectedStep(
@@ -203,7 +204,8 @@ public class UpdateTransformTest extends TransformTest {
 						new FilterExpectedStep("LateBindingUpdateCounter", new UpdateExpectedStep(
 								TransientExecutionEngine.AGGREGATION,
 								"UPDATE temp1",
-								"SET temp1.D1i0_4 = 15"
+								"SET temp1.D1i0_4 = 15",
+								"WHERE temp1.D1d1_5 like '%wrong%'"
 								)
 						),
 						new DeleteExpectedStep(
@@ -428,7 +430,8 @@ public class UpdateTransformTest extends TransformTest {
 					new FilterExpectedStep("LateBindingUpdateCounter",new UpdateExpectedStep(
 						TransientExecutionEngine.AGGREGATION,
 					  "UPDATE temp1",
-					  "SET temp1.D1i0_6 = temp1.func_9,temp1.D1f2_8 = temp1.D1f2_8"
+					  "SET temp1.D1i0_6 = temp1.func_9,temp1.D1f2_8 = temp1.D1f2_8",
+					  "WHERE temp1.D1i0_6 = -1"
 					)
 					),
 						new DeleteExpectedStep(
@@ -469,7 +472,8 @@ public class UpdateTransformTest extends TransformTest {
 					new FilterExpectedStep("LateBindingUpdateCounter",new UpdateExpectedStep(
 						TransientExecutionEngine.AGGREGATION,
 					  "UPDATE temp1",
-					  "SET temp1.D1i0_6 = temp1.func_9,temp1.D1f2_8 = temp1.D1f2_8"
+					  "SET temp1.D1i0_6 = temp1.func_9,temp1.D1f2_8 = temp1.D1f2_8",
+					  "WHERE temp1.D1i0_6 = -1"
 					)
 					),
 						new DeleteExpectedStep(
