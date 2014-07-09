@@ -100,10 +100,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
         if (!receivingSourcePackets)
             receivingSourcePackets = true;
 
-        //SMG:debug
-        if (processFailed)
-            System.out.println(Thread.currentThread() + " :: receiving source packet during failed redist");
-
 		if (mappingSolution == MappingSolution.AllWorkers || mappingSolution == MappingSolution.AllWorkersSerialized) {
 			for (RedistTargetSite siteCtx : siteCtxBySite.values())
 				handleSourceRow(binRow, (autoIncrBlocks == null) ? null : new long[]{autoIncrBlocks[0]}, siteCtx);
@@ -296,10 +292,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
     private boolean processTargetPacket(ChannelHandlerContext ctx, MyMessage message) {
         RedistTargetSite siteCtx = siteCtxByChannel.get(ctx.channel());
-
-        //SMG:debug
-        if (processFailed)
-            System.out.println(Thread.currentThread() + " :: receiving target packet during failed redist");
 
         if (!isProcessingComplete(siteCtx)) {
             try {

@@ -59,7 +59,7 @@ public class LoadDataBlockExecutor {
 			throw new PEException("Cannot process Load Data Infile data block because load data infile context is missing.");
 		}
 
-        //SMG: this is the only place we touch the session during the parse.  As long as this isn't sensitive to being in the session context, we can move the decode into the netty thread.
+        //TODO: this is the only place we touch the session during the parse.  As long as this isn't sensitive to being in the session context, we can move the decode into the netty thread. -sgossard
 		if (loadDataInfileContext.getCharset() == null) {
 			loadDataInfileContext.setCharset(Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
                     connMgr.getSessionVariable(ClientCharSetSessionVariableHandler.VARIABLE_NAME), true).getJavaCharset());

@@ -487,7 +487,7 @@ public class WorkerGroup {
         boolean firstWorker = true;
         boolean firstMustRunSerial = mappingSolution.isWorkerSerializationRequired() && workers.size() > 1;
 
-
+        //TODO: it would be good to move this entire loop to the netty thread to avoid N cross thread queues, but the first worker sync and lazy database connect make that difficult. -sgossard
 		for (final Worker w: workers) {
             final PEDefaultPromise<Worker> workerPromise = new PEDefaultPromise<>();
             submitWork(w, req, resultConsumer, workerPromise);
@@ -574,17 +574,19 @@ public class WorkerGroup {
             }
         };
 
-////        SMG: quick hack to force connection on calling thread.
+
         try {
+            //This call forces the worker to get a database connection immediately in the client thread, before we submit to the netty thread (where blocking would be bad).
+            //TODO: the worker's lazy getConnection() call shouldn't block, any following calls should get chained off the pending connection. -sgossard
             w.getConnectionId();
         } catch (PESQLException e) {
         }
+
         clientEventLoop.submit(new Callable<Worker>() {
 //
 //        Singletons.require(HostService.class).submit(w.getName(), new Callable<Worker>() {
             @Override
             public Worker call() throws Exception {
-                //SMG: Our heaviest locking is always in this call stack, caused by doing a netty write() outside the event loop, which syncs on a startup lock for the loop.
                 req.executeRequest(w, resultConsumer, promise);
                 return w;
             }

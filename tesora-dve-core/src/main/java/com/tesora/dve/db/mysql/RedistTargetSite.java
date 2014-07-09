@@ -170,7 +170,7 @@ class RedistTargetSite implements AutoCloseable {
                     };
                     prepareCollector1.setExecuteImmediately(true);
                     MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
-                    //SMG:remove
+                    //TODO: this execute immediately stuff is a hack to send/receive a query before some fake "query" has "completed".  We should just get rid of fake queries and move to a 1 request to 1 response model. -sgossard
                     prepareCmd.setExecuteImmediately(true);
 
                     //sends the prepare with the callback that will issue the execute.
@@ -255,8 +255,6 @@ class RedistTargetSite implements AutoCloseable {
     }
 
     protected void prepareFailed(MyErrorResponse error){
-        //SMG:debug
-        System.out.println("***Prepare failed, "+error);
         //SMG: need a better way to propigate this backwards.
         logger.error("prepare failed, error=" + error);
     }
