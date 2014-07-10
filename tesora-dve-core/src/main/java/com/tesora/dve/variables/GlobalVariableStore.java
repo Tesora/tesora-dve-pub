@@ -17,6 +17,8 @@ import com.tesora.dve.lockmanager.LockClient;
  */
 public class GlobalVariableStore extends VariableStore implements LockClient {
 
+	public static final GlobalVariableStore INSTANCE = new GlobalVariableStore();
+	
 	private static final String GLOBAL_VAR_STORE_LOCK_NAME = "DVE.Global.Variables";
 	
 	// this is a cache that's built from the group services copy

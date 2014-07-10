@@ -59,6 +59,7 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.session.LoadDataInfileStatement;
 import com.tesora.dve.variable.ClientCharSetSessionVariableHandler;
+import com.tesora.dve.variables.Variables;
 
 public class LoadDataRequestExecutor {
 
@@ -72,7 +73,7 @@ public class LoadDataRequestExecutor {
 		Charset charSet = cs;
 		if (charSet == null) {
 			charSet = Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
-					connMgr.getSessionVariable(ClientCharSetSessionVariableHandler.VARIABLE_NAME), true).getJavaCharset();
+					Variables.CHARACTER_SET_CLIENT.getSessionValue(connMgr), true).getJavaCharset();
 		}
 		String query = PECharsetUtils.getString(message, charSet, true);
 		if (logger.isDebugEnabled()) {

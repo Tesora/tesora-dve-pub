@@ -57,7 +57,7 @@ import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep.VariableV
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.variable.SchemaVariableConstants;
 import com.tesora.dve.variable.SessionVariableHandler;
-import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variable.VariableScopeKind;
 
 
@@ -155,7 +155,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 			return SetVariableExecutionStep.makeSource(litex);
 		} else if (EngineConstant.VARIABLE.has(rhs)) {
 			VariableInstance rvi = (VariableInstance) rhs;
-			final VariableAccessor va = rvi.buildAccessor();
+			final AbstractVariableAccessor va = rvi.buildAccessor();
 			return SetVariableExecutionStep.makeSource(va);
 		}
 		return null;
@@ -231,9 +231,9 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 
 	private static class SetVariableOperationFilter implements OperationFilter {
 
-		private final VariableAccessor target;
+		private final AbstractVariableAccessor target;
 		
-		public SetVariableOperationFilter(VariableAccessor targ) {
+		public SetVariableOperationFilter(AbstractVariableAccessor targ) {
 			target = targ;
 		}
 		

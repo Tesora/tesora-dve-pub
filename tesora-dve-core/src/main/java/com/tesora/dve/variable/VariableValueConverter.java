@@ -29,8 +29,6 @@ import com.tesora.dve.exceptions.PEException;
 
 public class VariableValueConverter {
 
-	private static final long NANOS_PER_SECOND = 1000000000;
-
 	public static int toInternalInteger(final String value) throws PEException {
 		try {
 			return Integer.parseInt(value);
@@ -48,14 +46,6 @@ public class VariableValueConverter {
 		return ret;
 	}
 	
-	public static long secondsToNanos(final String value) throws PEException {
-		try {
-			return Math.round(Double.parseDouble(value) * NANOS_PER_SECOND);
-		} catch (Exception e) {
-			throw new PEException("Invalid floating point value '" + value + "'");
-		}
-	}
-
 	@SuppressWarnings("serial")
 	private final static Set<String> trueMap = new HashSet<String>(){{ add("true"); add("yes"); add("on"); add("1"); }};
 	@SuppressWarnings("serial")

@@ -35,6 +35,8 @@ import com.tesora.dve.sql.schema.cache.NonMTCachedPlan;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.VariableStoreSource;
 
 public class SSConnectionContext implements ConnectionContext {
 
@@ -67,13 +69,14 @@ public class SSConnectionContext implements ConnectionContext {
 	}
 
 	@Override
-	public String getVariableValue(VariableAccessor va) throws PEException {
+	public String getVariableValue(AbstractVariableAccessor va) throws PEException {
 		return va.getValue(backing);
 	}
 
 	@Override
 	public List<List<String>> getVariables(VariableScope vs) throws PEException {
-		return VariableAccessor.getValues(vs.getScopeKind(), vs.getScopeName(), backing);
+		throw new PEException("Fill me in");
+//		return VariableAccessor.getValues(vs.getScopeKind(), vs.getScopeName(), backing);
 	}
 
 	@Override
@@ -172,5 +175,10 @@ public class SSConnectionContext implements ConnectionContext {
 	@Override
 	public CatalogDAO getDAO() {
 		return backing.getCatalogDAO();
+	}
+
+	@Override
+	public VariableStoreSource getVariableSource() {
+		return backing;
 	}
 }

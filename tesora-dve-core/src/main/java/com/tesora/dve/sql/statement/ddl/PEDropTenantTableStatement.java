@@ -46,7 +46,6 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
@@ -65,6 +64,8 @@ import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.A
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.variables.VariableScope;
+import com.tesora.dve.variables.Variables;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class PEDropTenantTableStatement extends PEDropTableStatement {
@@ -151,7 +152,8 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 
 		@Override
 		public ListOfPairs<TableScope, TaggedFK> computeRootSet(SchemaContext sc) {
-			boolean required = SchemaVariables.hasForeignKeyChecks(sc);
+			boolean required = 
+					Variables.FOREIGN_KEY_CHECKS.getSessionValue(sc.getConnection().getVariableSource()).booleanValue();
 			// our root set is everything that refers to us
 			List<TableScope> yonScopes = sc.findScopesForFKTargets(subjectTable, tenant);
 			ListOfPairs<TableScope, TaggedFK> out = new ListOfPairs<TableScope, TaggedFK>();

@@ -54,19 +54,19 @@ public class AnalyzerTest extends PEBaseTest {
 
 	@SuppressWarnings({ "unused" })
 	@Test
-	public void testAnalyzer() throws Exception {
+	public void testAnalyzer() throws Throwable {
 		new Emulator(new AnalyzerOptions(), new AnalysisResultHandler());
 
 		new ExpectedExceptionTester() {
 			@Override
-			public void test() throws Exception {
+			public void test() throws Throwable {
 				new Emulator(null, new AnalysisResultHandler());
 			}
 		}.assertException(IllegalArgumentException.class);
 
 		new ExpectedExceptionTester() {
 			@Override
-			public void test() throws Exception {
+			public void test() throws Throwable {
 				new Emulator(new AnalyzerOptions(), null);
 			}
 		}.assertException(IllegalArgumentException.class);

@@ -46,6 +46,7 @@ import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.variable.GlobalConfigVariableConstants;
 import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variables.Variables;
 
 public class InsertAutoincrementTest extends SchemaTest {
 
@@ -148,7 +149,7 @@ public class InsertAutoincrementTest extends SchemaTest {
 		conn.execute(buf.toString());
 
 		CatalogDAO c = CatalogDAOFactory.newInstance();
-        String orig = Singletons.require(HostService.class).getGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS);
+		String orig = Singletons.require(HostService.class).getGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS);
 		try {
             Singletons.require(HostService.class).setGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS, "1");
 

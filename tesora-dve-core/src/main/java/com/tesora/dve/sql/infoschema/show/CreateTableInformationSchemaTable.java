@@ -57,10 +57,10 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.modifiers.AutoincTableModifier;
 import com.tesora.dve.sql.schema.mt.TableScope;
+import com.tesora.dve.variables.Variables;
 
 public class CreateTableInformationSchemaTable extends ShowInformationSchemaTable {
 
@@ -197,7 +197,8 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 					tschema.asTable().getModifiers().setModifier(new AutoincTableModifier(nextVal));
 			}
 
-			boolean omitDistVect = SchemaVariables.isOmitDistComments(sc);
+			boolean omitDistVect = 
+					Variables.OMIT_DIST_COMMENTS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 			
 			if (tschema.isTable())
                 buf.append(Singletons.require(HostService.class).getDBNative().getEmitter().emitExternalCreateTableStatement(sc,tschema.asTable(),omitDistVect));

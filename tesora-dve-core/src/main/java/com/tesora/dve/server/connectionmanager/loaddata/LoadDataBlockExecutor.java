@@ -46,6 +46,7 @@ import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.variable.ClientCharSetSessionVariableHandler;
+import com.tesora.dve.variables.Variables;
 import com.tesora.dve.worker.MysqlSyntheticPreparedResultForwarder;
 
 public class LoadDataBlockExecutor {
@@ -61,7 +62,7 @@ public class LoadDataBlockExecutor {
 
 		if (loadDataInfileContext.getCharset() == null) {
 			loadDataInfileContext.setCharset(Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
-                    connMgr.getSessionVariable(ClientCharSetSessionVariableHandler.VARIABLE_NAME), true).getJavaCharset());
+					Variables.CHARACTER_SET_CLIENT.getSessionValue(connMgr), true).getJavaCharset());
 		}
 
 		if (logger.isDebugEnabled()) {
@@ -96,7 +97,7 @@ public class LoadDataBlockExecutor {
 
 		if (loadDataInfileContext.getCharset() == null) {
 			loadDataInfileContext.setCharset(Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
-                    connMgr.getSessionVariable(ClientCharSetSessionVariableHandler.VARIABLE_NAME), true).getJavaCharset());
+					Variables.CHARACTER_SET_CLIENT.getSessionValue(connMgr), true).getJavaCharset());
 		}
 
 		List<String> params = new ArrayList<String>();

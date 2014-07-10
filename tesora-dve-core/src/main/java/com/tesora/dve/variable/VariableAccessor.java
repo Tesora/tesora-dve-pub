@@ -62,6 +62,7 @@ public class VariableAccessor {
 		return scopeName;
 	}
 	
+	/*
 	public String getValue(SSConnection conn) throws PEException {
 		// if "session", if the session doesn't have the var, we're also going to check in "dve".
 		// this handles something like version_comment, which is in "dve" for us, but will never be
@@ -74,7 +75,9 @@ public class VariableAccessor {
 			return conn.getUserVariable(name);
 			throw new PEException("Unknown variable scope: " + scope);
 	}
+*/
 
+	/*
 	public static List<List<String>> getValues(VariableScopeKind scope, String scopeName, SSConnection conn) throws PEException {
 		ArrayList<List<String>> raw = new ArrayList<List<String>>();
 		if (VariableScopeKind.SESSION == scope) {
@@ -107,6 +110,7 @@ public class VariableAccessor {
 		});
 		return raw;
 	}
+	*/
 	
 	public void setValue(SSConnection conn, String v) throws Throwable {
 		if (VariableScopeKind.DVE == scope) {

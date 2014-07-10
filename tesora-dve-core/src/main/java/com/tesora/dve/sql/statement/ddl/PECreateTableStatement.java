@@ -66,7 +66,6 @@ import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
@@ -87,6 +86,8 @@ import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
+import com.tesora.dve.variables.VariableScope;
+import com.tesora.dve.variables.Variables;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class PECreateTableStatement extends
@@ -170,7 +171,8 @@ public class PECreateTableStatement extends
 		protected abstract void end(SchemaContext sc, PETable pet);
 		
 		protected void computeDanglingFKs(SchemaContext sc, PETable newTab) {
-			boolean required = SchemaVariables.hasForeignKeyChecks(sc);
+			boolean required = 
+					Variables.FOREIGN_KEY_CHECKS.getSessionValue(sc.getConnection().getVariableSource()).booleanValue();
 			UnqualifiedName dbName = newTab.getDatabase(sc).getName().getUnqualified();
 			UnqualifiedName tabName = newTab.getName().getUnqualified();
 			List<PETable> matching = sc.findTablesWithUnresolvedFKSTargeting(dbName, tabName);

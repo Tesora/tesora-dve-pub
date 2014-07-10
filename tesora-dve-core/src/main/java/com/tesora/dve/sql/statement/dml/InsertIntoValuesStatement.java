@@ -61,7 +61,6 @@ import com.tesora.dve.sql.schema.LateSortedInsert;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.session.TransactionStatement;
@@ -76,6 +75,8 @@ import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.Variables;
 
 public class InsertIntoValuesStatement extends InsertStatement {
 
@@ -191,7 +192,8 @@ public class InsertIntoValuesStatement extends InsertStatement {
 			// new tenant - but in order to do that we need the rest of the tuple
 			// fortunately for us the tenant column should be specified last
 			
-			SQLMode sqlMode = SchemaVariables.getSQLMode(sc);
+			SQLMode sqlMode = 
+					Variables.SQL_MODE.getSessionValue(sc.getConnection().getVariableSource()); 
 
 			// we used to turn off caching here, but it turns out there is no need
 			// strict_trans_tables, strict_all_tables:
@@ -244,9 +246,9 @@ public class InsertIntoValuesStatement extends InsertStatement {
 						if (current instanceof VariableInstance) {
 							cacheable = false;
 							VariableInstance vi = (VariableInstance) current;
-							VariableAccessor va = vi.buildAccessor();
+							AbstractVariableAccessor va = vi.buildAccessor();
 							try {
-								String value = sc.getConnection().getVariableValue(va); 
+								String value = va.getValue(sc.getConnection().getVariableSource()); 
 								actual = LiteralExpression.makeStringLiteral(value);
 							} catch (PEException pe) {
 								throw new SchemaException(Pass.SECOND, "Unable to sub in value for variable " + vi);

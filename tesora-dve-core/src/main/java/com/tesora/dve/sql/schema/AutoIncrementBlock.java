@@ -38,6 +38,7 @@ import com.tesora.dve.sql.schema.cache.IParameter;
 import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variables.Variables;
 
 public class AutoIncrementBlock {
 	
@@ -83,7 +84,8 @@ public class AutoIncrementBlock {
 	}
 
 	public void compute(SchemaContext sc, ConnectionValues cv) {
-		SQLMode mode = SchemaVariables.getSQLMode(sc);
+		SQLMode mode = 
+				Variables.SQL_MODE.getSessionValue(sc.getConnection().getVariableSource());
 		cv.setLastInsertId(null);
 		// examine the values in order to determine whether insert id is illegal
 		long max = -1;
@@ -106,7 +108,8 @@ public class AutoIncrementBlock {
 				}
 			}
 		}
-		Long insertIdFromVar = SchemaVariables.getReplInsertId(sc);
+		Long insertIdFromVar = 
+				Variables.REPL_INSERT_ID.getValue(sc.getConnection().getVariableSource());
 		
 		if (max > -1 && insertIdFromVar != null)
 			throw new SchemaException(Pass.SECOND, "Cannot specify both the autoincrement column value and " + SchemaVariableConstants.REPL_SLAVE_INSERT_ID);

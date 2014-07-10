@@ -134,12 +134,17 @@ import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variable.VariableConfig;
 import com.tesora.dve.variable.VariableInfo;
 import com.tesora.dve.variable.VariableScopeKind;
+import com.tesora.dve.variable.VariableValueStore;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.GlobalVariableStore;
+import com.tesora.dve.variables.LocalVariableStore;
+import com.tesora.dve.variables.VariableStoreSource;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 /*
  * Essentially a mock class of the full engine; used in tests, upgrader, analyzer.
  */
-public class TransientExecutionEngine implements CatalogContext, ConnectionContext {
+public class TransientExecutionEngine implements CatalogContext, ConnectionContext, VariableStoreSource {
 
 	private SchemaContext tpc;
 	private List<PersistentSite> sites = new ArrayList<PersistentSite>();
@@ -168,8 +173,9 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	private String tempTableKern;
 	private int tempTableCounter;
 	
-	private TwoDimensionalMap<VariableScopeKind, String, String> variables;
-	
+	private LocalVariableStore sessionVariables = new LocalVariableStore();
+	private GlobalVariableStore globalVariables = new GlobalVariableStore();
+	private VariableValueStore userVariables = new VariableValueStore("User",true);
 	
 	private IPETenant currentTenant = null; 
 	private PEUser currentUser = null;
@@ -178,7 +184,6 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	private final ConnectionMessageManager messages = new ConnectionMessageManager();
 	
 	public TransientExecutionEngine(String ttkern) {
-		variables = buildDefaultVariables();
 		tpc = SchemaContext.createContext(this,this);
 		currentUser = new PEUser(tpc);
 		users.add(new User(currentUser.getUserScope().getUserName(), 
@@ -203,6 +208,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		}
 	}
 
+	/*
 	public static TwoDimensionalMap<VariableScopeKind,String,String> buildDefaultVariables() {
 		TwoDimensionalMap<VariableScopeKind,String,String> out = new TwoDimensionalMap<VariableScopeKind,String,String>();
         VariableConfig<SessionVariableHandler>  config = Singletons.require(HostService.class).getSessionConfigTemplate();
@@ -215,6 +221,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		out.put(VariableScopeKind.DVE, SchemaVariableConstants.TEMPLATE_MODE_NAME, TemplateMode.OPTIONAL.toString());
 		return out;
 	}
+	*/
 	
 	public SchemaContext getPersistenceContext() {
 		return tpc;
@@ -225,12 +232,12 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		tpc = cntxt;
 	}
 	
-	public SchemaContext parse(String[] in) throws Exception {
+	public SchemaContext parse(String[] in) throws Throwable {
 		return parse(in,false);
 	}
 	
 	// parse and apply.  all statements execute in the context of the project.
-	public SchemaContext parse(String[] in, boolean analyzer) throws Exception {
+	public SchemaContext parse(String[] in, boolean analyzer) throws Throwable {
 		// we turn on ignore missing user for the analyzer.  it has no effect for the tests.
 		ParserOptions opts = ParserOptions.TEST.setResolve().setIgnoreMissingUser();
 		for(String sql : in) {
@@ -252,7 +259,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		return pc;
 	} 
 	
-	public void dispatch(Statement s) throws Exception {
+	public void dispatch(Statement s) throws Throwable {
 		if (s instanceof DDLStatement) {
 			dispatchCreateStatement(s);
 		} else if (s instanceof SessionStatement) {
@@ -264,7 +271,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	}
 	
 	@SuppressWarnings("rawtypes")
-	public void dispatchCreateStatement(Statement s) throws Exception {
+	public void dispatchCreateStatement(Statement s) throws Throwable {
 		if (s instanceof PECreateStatement) {
 			executeCreateStatement((PECreateStatement<?,?>)s);
 		} else if (s instanceof PEDropStatement) {
@@ -274,7 +281,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		}
 	}
 
-	public void dispatchSessionStatement(Statement s) {
+	public void dispatchSessionStatement(Statement s) throws Throwable {
 		if (s instanceof UseStatement) {
 			UseStatement us = (UseStatement)s;
 			if (us instanceof UseDatabaseStatement) {
@@ -306,7 +313,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	}
 	
 	@SuppressWarnings("rawtypes")
-	public void executeCreateStatement(PECreateStatement pecs) throws Exception {
+	public void executeCreateStatement(PECreateStatement pecs) throws Throwable {
 		if (pecs.getCreated() instanceof PEDatabase) {
 			PECreateDatabaseStatement pecds = (PECreateDatabaseStatement) pecs;
 			List<Statement> extras = pecds.getPrereqs(tpc);
@@ -747,8 +754,8 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	}
 
 	@Override
-	public String getVariableValue(VariableAccessor va) throws PEException {
-		return variables.get(va.getScopeKind(),va.getVariableName());
+	public String getVariableValue(AbstractVariableAccessor va) throws PEException {
+		return va.getValue(this);
 	}
 
 	@Override
@@ -756,19 +763,12 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		throw new PEException("No support for getVariables in TransientExecutionEngine");
 	}
 
-	public TwoDimensionalMap<VariableScopeKind, String, String> getVariables() {
-		return variables;
-	}
-
-	private void dispatchSetSessionVar(SessionSetVariableStatement stmt) {
+	private void dispatchSetSessionVar(SessionSetVariableStatement stmt) throws Throwable {
 		for(SetExpression se : stmt.getSetExpressions()) {
 			if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION)
 				throw new SchemaException(Pass.PLANNER, "No support for setting txn isolation in trans exec engine");
 			SetVariableExpression sve = (SetVariableExpression) se;
-			VariableScope vs = sve.getVariable().getScope();
-			String name = VariableConfig.canonicalise(sve.getVariable().getVariableName().getUnquotedName().get());
-			Object value = sve.getVariableValue(tpc);
-			variables.put(vs.getScopeKind(), name, value.toString());
+			sve.getVariable().buildAccessor().setValue(this, sve.getVariableValue(tpc).toString());
 		}
 	}
 	
@@ -1215,6 +1215,29 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	@Override
 	public List<TemporaryTable> findUserlandTemporaryTable(Integer connID,
 			String dbName, String tabName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public LocalVariableStore getSessionVariableStore() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public GlobalVariableStore getGlobalVariableStore() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public VariableStoreSource getVariableSource() {
+		return this;
+	}
+
+	@Override
+	public VariableValueStore getUserVariableStore() {
 		// TODO Auto-generated method stub
 		return null;
 	}

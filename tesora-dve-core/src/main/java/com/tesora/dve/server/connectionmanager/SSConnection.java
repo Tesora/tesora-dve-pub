@@ -113,7 +113,6 @@ import com.tesora.dve.sql.schema.ConnectionContext;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.StructuralUtils;
 import com.tesora.dve.sql.schema.cache.NonMTCachedPlan;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
@@ -121,9 +120,10 @@ import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.variable.SessionVariableHandler;
 import com.tesora.dve.variable.VariableInfo;
 import com.tesora.dve.variable.VariableValueStore;
+import com.tesora.dve.variables.GlobalVariableStore;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.VariableHandler;
-import com.tesora.dve.variables.VariableStore;
+import com.tesora.dve.variables.VariableStoreSource;
 import com.tesora.dve.variables.Variables;
 import com.tesora.dve.worker.agent.Agent;
 import com.tesora.dve.worker.MysqlTextResultCollector;
@@ -135,7 +135,7 @@ import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
 
-public class SSConnection extends Agent implements WorkerGroup.Manager, LockClient {
+public class SSConnection extends Agent implements WorkerGroup.Manager, LockClient, VariableStoreSource {
 
 	public static final String DYNAMIC_POLICY_VARIABLE_NAME = "dynamic_policy";
 	public static final String STORAGE_GROUP_VARIABLE_NAME = "storage_group";
@@ -203,6 +203,8 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	boolean autoCommitMode = true;
 	
 	long lastInsertedId = 0;
+	
+	LocalVariableStore localSessionVariables = new LocalVariableStore();
 	
 	VariableValueStore sessionVariables = new VariableValueStore("Session");
 	
@@ -482,7 +484,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 	private void doSessionTimeoutCheck() {
 		try {
-			final long wait_timeout = Long.parseLong(getSessionVariable(SessionVariableHandler.WAIT_TIMEOUT));
+			final long wait_timeout = Variables.WAIT_TIMEOUT.getSessionValue(this).longValue(); 
 			if (!executingInContext) {
 				Singletons.require(HostService.class).submit(new Callable<Void>() {
                     public Void call() throws Exception {
@@ -511,9 +513,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
                     }
                 });
 			}
-		} catch (PENotFoundException e) {
-			// Ignore - the wait_timeout variable won't be found if it takes more than the timeout interval
-			// for the ConnectRequest packet to be received
 		} catch (Exception e) {
 			logger.warn("Exception executing timeout check", e);
 		}
@@ -1069,14 +1068,10 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		*/
 	}
 	
-	public String getSessionVariable(String variableName) throws PEException {
-        return Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo(variableName).getHandler().getValue(this, variableName);
-	}
+//	public String getSessionVariable(String variableName) throws PEException {
+//       return Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo(variableName).getHandler().getValue(this, variableName);
+//	}
 
-	public boolean hasSessionVariable(String variableName) throws PEException {
-        return Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo(variableName, false) != null;
-	}
-	
 	public void setUserVariable(String variableName, String value) throws PENotFoundException {
 		userVariables.setValue(variableName, value);
 	}
@@ -1161,12 +1156,14 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
         return sessionVariables.getValue(name);
     }
 	
+    /*
 	public Map<String,String> getSessionVariables() throws PEException {
         HashMap<String, String> vMap = new HashMap<String, String>();
         for (String name : sessionVariables.getNames())
                 vMap.put(name, getSessionVariable(name));
         return Collections.unmodifiableMap(vMap);		
 	}
+	*/
 	
 	public LocalVariableStore getSessionVariablesStore() {
 		return null;
@@ -1246,7 +1243,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 	
 	public ExecutionLogger getNewPlanLogger(QueryPlan qp) {
-		if (SchemaVariables.slowQueryLogEnabled(getConnectionContext())) {
+		if (Variables.SLOW_QUERY_LOG.getValue(this).booleanValue()) {
 			slowQueryLogger = new SlowQueryLogger(this,qp);
 			return slowQueryLogger;
 		}
@@ -1321,6 +1318,21 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	
 	public void setClientCapabilities(ClientCapabilities clientCaps) {
 		this.clientCapabilities = clientCaps;
+	}
+
+	@Override
+	public LocalVariableStore getSessionVariableStore() {
+		return localSessionVariables;
+	}
+
+	@Override
+	public GlobalVariableStore getGlobalVariableStore() {
+		return GlobalVariableStore.INSTANCE;
+	}
+
+	@Override
+	public VariableValueStore getUserVariableStore() {
+		return userVariables;
 	}
 		
 }

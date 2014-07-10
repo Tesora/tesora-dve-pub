@@ -28,7 +28,7 @@ public class BooleanValueConverter extends ValueMetadata<Boolean> {
 
 	@Override
 	public String convertToExternal(Boolean in) {
-		return (Boolean.TRUE.equals(in) ? PEConstants.YES : PEConstants.NO);
+		return (Boolean.TRUE.equals(in) ? "1" : "0");
 	}
 
 	@Override

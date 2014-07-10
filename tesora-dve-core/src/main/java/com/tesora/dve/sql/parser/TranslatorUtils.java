@@ -175,7 +175,6 @@ import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.RangeDistribution;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.SizeTypeAttribute;
 import com.tesora.dve.sql.schema.SubqueryTable;
 import com.tesora.dve.sql.schema.Table;
@@ -328,7 +327,9 @@ import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryProcedure;
 import com.tesora.dve.variable.GlobalConfigVariableHandler;
+import com.tesora.dve.variable.SchemaVariableConstants;
 import com.tesora.dve.variable.VariableScopeKind;
+import com.tesora.dve.variables.Variables;
 import com.tesora.dve.worker.SiteManagerCommand;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
@@ -518,7 +519,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				i++;
 			}
 		}
-		if (literals.size() > SchemaVariables.getLiteralsCutoff(pc)) {
+		if (literals.size() > Variables.CACHED_PLAN_LITERALS_MAX.getValue(pc.getConnection().getVariableSource()).intValue()) { 
 			forceUncacheable(ValueManager.CacheStatus.NOCACHE_TOO_MANY_LITERALS);
 		} else {
 			TreeMap<SourceLocation, DelegatingLiteralExpression> map = new TreeMap<SourceLocation, DelegatingLiteralExpression>();
@@ -1321,7 +1322,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 
 		if ((mode != null) && !mode.requiresTemplate()) {
-			throw new SchemaException(Pass.SECOND, "Redundant template specification '" + templateName.getSQL() + "' for " + SchemaVariables.TEMPLATE_MODE_NAME
+			throw new SchemaException(Pass.SECOND, "Redundant template specification '" + templateName.getSQL() + "' for " + SchemaVariableConstants.TEMPLATE_MODE_NAME
 					+ " '" + mode.toString() + "'; syntax error");
 		}
 
@@ -1833,7 +1834,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public PEKey buildForeignKey(Name name, List<PEKeyColumnBase> mycols, Name targetTableName, List<UnqualifiedName> targetColumns,
 			ForeignKeyAction deleteAction, ForeignKeyAction updateAction) {
 		// are unknown tables ok?
-		boolean required = (pc != null && SchemaVariables.hasForeignKeyChecks(pc));
+		boolean required = (pc != null && 
+				Variables.FOREIGN_KEY_CHECKS.getSessionValue(pc.getConnection().getVariableSource()).booleanValue());
 		
 		// figure out whether the target table is known or not
 		PETable targetTab = null;
@@ -2028,7 +2030,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (pc != null) {
 			if (unqualifiedName.isPipes()) {
 				forceUncacheable(ValueManager.CacheStatus.NOCACHE_DYNAMIC_FUNCTION);
-				SQLMode mode = SchemaVariables.getSQLMode(pc);
+				SQLMode mode = 
+						Variables.SQL_MODE.getSessionValue(pc.getConnection().getVariableSource()); 
 				if (mode.isPipesAsConcat()) {
 					// rewrite to use the concat function call
 					unqualifiedName = new FunctionName("CONCAT",-1,false);

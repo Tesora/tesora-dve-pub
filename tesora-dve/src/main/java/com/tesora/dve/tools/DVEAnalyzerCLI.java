@@ -699,8 +699,9 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 
 	/**
 	 * Generate guided templates with a hard broadcast cardinality cutoff.
+	 * @throws Throwable 
 	 */
-	public void cmd_generate_guided_templates(final Scanner scanner) throws Exception {
+	public void cmd_generate_guided_templates(final Scanner scanner) throws Throwable {
 		checkReport();
 		checkDatabase();
 
@@ -718,8 +719,9 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 
 	/**
 	 * Automatically generate templates from a given corpus.
+	 * @throws Throwable 
 	 */
-	public void cmd_generate_templates(final Scanner scanner) throws PEException {
+	public void cmd_generate_templates(final Scanner scanner) throws Throwable {
 		checkReport();
 		checkDatabase();
 
@@ -1300,7 +1302,7 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 	}
 
 	private void generateCorpusBasedTemplates(final Long broadcastCardinalityCutoff, final boolean followForeignKeys, final boolean isSafeMode,
-			final File corpusFile, final File baseTemplateFile) throws PEException {
+			final File corpusFile, final File baseTemplateFile) throws Throwable {
 
 		/* If there is no corpus file, use an empty corpus instead. */
 		final DbAnalyzerCorpus corpus = (corpusFile != null) ? loadCorpus(corpusFile) : EMPTY_FREQUENCY_CORPUS;

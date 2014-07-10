@@ -59,7 +59,6 @@ import com.tesora.dve.sql.schema.modifiers.CollationTableModifier;
 import com.tesora.dve.sql.schema.modifiers.CommentTableModifier;
 import com.tesora.dve.sql.schema.modifiers.CreateOptionModifier;
 import com.tesora.dve.sql.schema.modifiers.EngineTableModifier;
-import com.tesora.dve.sql.schema.modifiers.EngineTableModifier.EngineTag;
 import com.tesora.dve.sql.schema.modifiers.RowFormatTableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifierTag;
@@ -68,6 +67,7 @@ import com.tesora.dve.sql.schema.validate.ValidateResult;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryPredicate;
+import com.tesora.dve.variables.Variables;
 
 public class PETable extends PEAbstractTable<PETable> implements HasComment { 
 		
@@ -800,12 +800,8 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 
 	private void forceStorage(SchemaContext pc) {
 		EngineTableModifier etm = (EngineTableModifier) modifiers.getModifier(TableModifierTag.ENGINE);
-		if (etm == null) {
-			String engine = SchemaVariables.getStorageEngine(pc); 
-			if ( engine != null)
-				etm = new EngineTableModifier(EngineTag.findEngine(engine));
-			else
-				etm = new EngineTableModifier(EngineTableModifier.EngineTag.INNODB);
+		if (etm == null) { 
+			etm = new EngineTableModifier(Variables.STORAGE_ENGINE.getSessionValue(pc.getConnection().getVariableSource())); 
 			modifiers.setModifier(etm);
 		}
 	}

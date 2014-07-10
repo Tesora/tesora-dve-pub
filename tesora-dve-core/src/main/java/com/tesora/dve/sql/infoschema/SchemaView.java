@@ -31,8 +31,6 @@ import java.util.Map;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
@@ -42,10 +40,10 @@ import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.Schema;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.util.UnaryFunction;
+import com.tesora.dve.variables.Variables;
 
 public abstract class SchemaView implements
 		Schema<InformationSchemaTableView> {
@@ -143,11 +141,7 @@ public abstract class SchemaView implements
 	}
 	
 	protected boolean useExtensions(SchemaContext sc) {
-		try {
-			return SchemaVariables.isShowMetadataExtensions(sc);
-		} catch (PEException pe) {
-			throw new SchemaException(Pass.PLANNER, "Unable to obtain metadata extension flag value",pe);
-		}
+		return 	Variables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 	}
 
 	protected boolean hasPriviledge(SchemaContext sc) {

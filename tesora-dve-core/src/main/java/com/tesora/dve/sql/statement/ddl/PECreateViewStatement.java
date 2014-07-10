@@ -66,7 +66,6 @@ import com.tesora.dve.sql.schema.PEView;
 import com.tesora.dve.sql.schema.PEViewTable;
 import com.tesora.dve.sql.schema.RangeDistributionVector;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.TableComponent;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.UserScope;
@@ -85,6 +84,7 @@ import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.variables.Variables;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
@@ -161,8 +161,10 @@ public class PECreateViewStatement extends
 		}
 		
 		// figure out the collation and charset
-		String charset = SchemaVariables.getCharacterSetClient(sc);
-		String collation = SchemaVariables.getCollationConnection(sc);
+		String charset =
+				Variables.CHARACTER_SET_CLIENT.getSessionValue(sc.getConnection().getVariableSource());
+		String collation = 
+				Variables.COLLATION_CONNECTION.getSessionValue(sc.getConnection().getVariableSource());
 
 		ProjectingStatement copy = CopyVisitor.copy(definition);
 		

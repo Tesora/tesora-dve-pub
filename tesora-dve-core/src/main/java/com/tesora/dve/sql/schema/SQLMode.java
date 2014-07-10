@@ -22,8 +22,10 @@ package com.tesora.dve.sql.schema;
  */
 
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
+
+import com.tesora.dve.sql.util.Functional;
 
 public class SQLMode {
 
@@ -38,7 +40,7 @@ public class SQLMode {
 			if ("".equals(traw))
 				modes = Collections.EMPTY_SET;
 			else {
-				modes = new HashSet<String>();
+				modes = new LinkedHashSet<String>();
 				String[] parts = traw.split(",");
 				for(String s : parts) {
 					modes.add(s.trim().toLowerCase());
@@ -47,6 +49,10 @@ public class SQLMode {
 		}
 	}
 
+	public String toString() {
+		return Functional.join(modes, ",");
+	}
+	
 	public boolean isStrictMode() {
 		return modes.contains("strict_trans_tables") || modes.contains("strict_all_tables");
 	}

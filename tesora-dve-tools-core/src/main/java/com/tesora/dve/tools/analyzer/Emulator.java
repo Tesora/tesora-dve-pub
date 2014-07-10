@@ -113,7 +113,7 @@ public class Emulator extends Analyzer {
 	protected final EmulatorPlanCache planCache;
 	protected final AnalyzerCallback cb;
 
-	public Emulator(AnalyzerOptions opts, AnalyzerCallback cb) throws Exception {
+	public Emulator(AnalyzerOptions opts, AnalyzerCallback cb) throws Throwable {
 		super(opts);
 
 		if (cb == null) {

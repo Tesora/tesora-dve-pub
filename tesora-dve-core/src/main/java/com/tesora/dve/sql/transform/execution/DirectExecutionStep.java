@@ -41,8 +41,8 @@ import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
+import com.tesora.dve.variables.Variables;
 
 public abstract class DirectExecutionStep extends ExecutionStep {
 
@@ -217,7 +217,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	}
 	
 	public StepExecutionStatistics getStepStatistics(SchemaContext sc) {
-		if (SchemaVariables.getStepwiseStatistics(sc.getConnection()))
+		if (Variables.STEPWISE_STATISTICS.getValue(sc.getConnection().getVariableSource()).booleanValue())
 			return stats;
 		return null;
 	}

@@ -66,6 +66,7 @@ import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.NonDMLFeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
 
 /*
  * Applies when variables are present in the query.  If found, we sub in the current values of
@@ -106,7 +107,7 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 			if (vi.getScope().isUserScope() && DBNative.DVE_SITENAME_VAR.equals(vi.getVariableName().get().toLowerCase()))
 				continue;
 			final Edge<?, ExpressionNode> parentEdge = vi.getParentEdge();
-			final VariableAccessor va = vi.buildAccessor();
+			final AbstractVariableAccessor va = vi.buildAccessor();
 			parentEdge.set(LiteralExpression.makeStringLiteral(sc.getConnection().getVariableValue(va)));
 		}
 	}

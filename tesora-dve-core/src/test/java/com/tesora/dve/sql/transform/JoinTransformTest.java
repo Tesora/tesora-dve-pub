@@ -59,7 +59,7 @@ public class JoinTransformTest extends TransformTest {
 	};
 	
 	@Test
-	public void simpleTestA() throws Exception {
+	public void simpleTestA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"select l.* from laws l, states s where l.state_id = s.id and s.tag = 'Idaho'",SelectStatement.class,
@@ -84,7 +84,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void simpleTestB() throws Exception {
+	public void simpleTestB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"select l.law, s.name, t.name from laws l, states s, titles t where l.state_id = s.id and s.tag = 'Idaho' and l.title_id = t.id",SelectStatement.class,
@@ -123,7 +123,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void complexTestA() throws Exception {
+	public void complexTestA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -177,7 +177,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testSystest1() throws Exception {
+	public void testSystest1() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db, "select l.* from laws l, states s where s.id = 37 and l.state_id = s.id order by s.name",SelectStatement.class,
@@ -205,7 +205,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testExplicitSimpleA() throws Exception {
+	public void testExplicitSimpleA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"select l.* from laws l inner join states s on l.state_id = s.id where s.tag = 'Idaho'",
@@ -231,7 +231,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testExplicitSimpleB() throws Exception {
+	public void testExplicitSimpleB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		// select l.law, s.name, t.name from laws l, states s, titles t where l.state_id = s.id and s.tag = 'Idaho' and l.title_id = t.id
@@ -273,7 +273,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testLeftOuterSimpleA() throws Exception {
+	public void testLeftOuterSimpleA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -313,7 +313,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testLeftOuterSimpleB() throws Exception {
+	public void testLeftOuterSimpleB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -354,7 +354,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testLeftOuterSimpleC() throws Exception {
+	public void testLeftOuterSimpleC() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -394,7 +394,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testInnerA() throws Exception {
+	public void testInnerA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -420,7 +420,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testLeftOuterA() throws Exception {
+	public void testLeftOuterA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		// note that we don't need to propagate the l.version test all the way to the end since it is on the base table
@@ -448,7 +448,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testSchemaSystemTestA() throws Exception {
+	public void testSchemaSystemTestA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"select l.* from laws l, titles t where t.name like 'Court%' and l.title_id = t.id order by l.state_id asc",
@@ -653,7 +653,7 @@ public class JoinTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testPE449() throws Exception {
+	public void testPE449() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table foo (`id` int, `pid` int, `junk` varchar(32), primary key (`id`))");
 		ExecutionPlan ep = stmtTest(db,"select * from foo",SelectStatement.class,

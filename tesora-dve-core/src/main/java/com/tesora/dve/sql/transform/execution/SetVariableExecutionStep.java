@@ -39,6 +39,7 @@ import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variable.VariableScopeKind;
+import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class SetVariableExecutionStep extends ExecutionStep {
@@ -101,7 +102,7 @@ public class SetVariableExecutionStep extends ExecutionStep {
 		return new LiteralVariableValueSource(ce);
 	}
 	
-	public static VariableValueSource makeSource(VariableAccessor va) {
+	public static VariableValueSource makeSource(AbstractVariableAccessor va) {
 		return new VariableVariableValueSource(va);
 	}
 	
@@ -141,9 +142,9 @@ public class SetVariableExecutionStep extends ExecutionStep {
 	
 	private static class VariableVariableValueSource implements VariableValueSource {
 		
-		private final VariableAccessor accessor;
+		private final AbstractVariableAccessor accessor;
 		
-		public VariableVariableValueSource(VariableAccessor acc) {
+		public VariableVariableValueSource(AbstractVariableAccessor acc) {
 			accessor = acc;
 		}
 

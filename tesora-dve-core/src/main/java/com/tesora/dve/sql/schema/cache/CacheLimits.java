@@ -22,10 +22,10 @@ package com.tesora.dve.sql.schema.cache;
  */
 
 
+
 import java.util.Arrays;
 
 import com.tesora.dve.sql.schema.ConnectionContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 
 public class CacheLimits {
 
@@ -35,7 +35,7 @@ public class CacheLimits {
 		CacheSegment[] segments = CacheSegment.values();
 		limits = new int[segments.length];
 		for(CacheSegment cs : segments) {
-			int value = SchemaVariables.getCacheLimit(cs, cc);
+			int value = cs.getVariable().getValue(cc.getVariableSource()).intValue();
 			limits[cs.ordinal()] = value; 
 		}
 	}

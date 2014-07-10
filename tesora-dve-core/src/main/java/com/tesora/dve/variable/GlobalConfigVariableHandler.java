@@ -34,7 +34,6 @@ import com.tesora.dve.server.connectionmanager.SlowQueryLogger;
 import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.parser.InvokeParser;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 

@@ -65,7 +65,7 @@ public abstract class TestTypes extends TransientSchemaTest {
 	public abstract List<NativeType> getNativeTypes();
 	
 	@Test
-	public void testTypes() throws Exception {
+	public void testTypes() throws Throwable {
 		for(NativeType nt : getNativeTypes()) {
 			if (nt.isUsedInCreate()) {
 				// timestamp has weird rules, for instance it's not by default nullable - you have to explicitly

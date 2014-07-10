@@ -134,7 +134,7 @@ public class StatementCounter extends Analyzer {
 	private final PrintStream outputStream;
 
 	public StatementCounter(AnalyzerOptions opts, File corpusFile, File checkpointFile, int checkpointInterval,
-			File errorFileName, PrintStream outputStream) throws Exception {
+			File errorFileName, PrintStream outputStream) throws Throwable {
 		super(opts);
 
 		emitOptions = EmitOptions.NONE.analyzerLiteralsAsParameters();

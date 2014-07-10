@@ -27,19 +27,20 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
 
 public class CachedLateResolvingVariableExpression implements IConstantExpression {
 
-	private final VariableAccessor accessor;
+	private final AbstractVariableAccessor accessor;
 	
-	public CachedLateResolvingVariableExpression(VariableAccessor va) {
+	public CachedLateResolvingVariableExpression(AbstractVariableAccessor va) {
 		accessor = va;
 	}
 	
 	@Override
 	public Object getValue(SchemaContext sc) {
 		try {
-			return sc.getConnection().getVariableValue(accessor);
+			return accessor.getValue(sc.getConnection().getVariableSource());
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.PLANNER, "Unable to obtain variable value",pe);
 		}

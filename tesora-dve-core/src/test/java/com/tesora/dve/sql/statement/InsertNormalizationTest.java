@@ -56,17 +56,17 @@ public class InsertNormalizationTest extends TransformTest {
 		"create table nodefs ( `id` integer, `payload` varchar(50));"
 	};
 
-	private SchemaContext buildNonIncrInsertSchema() throws Exception {
+	private SchemaContext buildNonIncrInsertSchema() throws Throwable {
 		return buildDatabase(TestName.MULTI,nonIncrInsertSchema);
 	}
 	
-	private SchemaContext buildDefsSchema() throws Exception {
+	private SchemaContext buildDefsSchema() throws Throwable {
 		return buildDatabase(TestName.MULTI,defaultsSchema);
 	}
 	
 	
 	@Test
-	public void testNonIncrTableParse() throws Exception {
+	public void testNonIncrTableParse() throws Throwable {
 		SchemaContext deb = buildNonIncrInsertSchema();
 		PESchema schema = deb.getCurrentPEDatabase().getSchema();
 		PETable tab = schema.buildInstance(deb,new UnqualifiedName("nonincrinsert"),null).getAbstractTable().asTable();
@@ -86,7 +86,7 @@ public class InsertNormalizationTest extends TransformTest {
 	}
 	
 	@Test
-	public void noColumnsSpecified() throws Exception {
+	public void noColumnsSpecified() throws Throwable {
 		SchemaContext db = buildNonIncrInsertSchema();
 		String insert = "insert into nonincrinsert () values (1, 'whodunnit', 2);";
 		InsertIntoValuesStatement is = parseInsert(db, insert);
@@ -97,7 +97,7 @@ public class InsertNormalizationTest extends TransformTest {
 	}
 	
 	@Test
-	public void nothingSpecified() throws Exception {
+	public void nothingSpecified() throws Throwable {
 		SchemaContext db = buildDefsSchema();
 		String insert = "insert into defs () values ();";
 		InsertIntoValuesStatement is = parseInsert(db, insert);
@@ -107,7 +107,7 @@ public class InsertNormalizationTest extends TransformTest {
 	}
 	
 	@Test
-	public void defaultValuesNonIncr() throws Exception {
+	public void defaultValuesNonIncr() throws Throwable {
 		SchemaContext db= buildNonIncrInsertSchema();
 		String insert = "insert into nonincrinsert (id, payload) values (1, 'whodunnit')";
 		InsertIntoValuesStatement is = parseInsert(db, insert);
@@ -116,7 +116,7 @@ public class InsertNormalizationTest extends TransformTest {
 	}
 	
 	@Test
-	public void nullableValuesNonIncr() throws Exception {
+	public void nullableValuesNonIncr() throws Throwable {
 		SchemaContext db= buildNonIncrInsertSchema();
 		String insert = "insert into nonincrinsert (id, counter) values (1, 22)";
 		InsertIntoValuesStatement is = parseInsert(db, insert);
@@ -126,7 +126,7 @@ public class InsertNormalizationTest extends TransformTest {
 	}
 	
 	@Test
-	public void invalidValuesSize() throws Exception {
+	public void invalidValuesSize() throws Throwable {
 		SchemaContext db= buildNonIncrInsertSchema();
 		String insert = "insert into nonincrinsert (id, counter) values (1)";
 		try {
@@ -137,7 +137,7 @@ public class InsertNormalizationTest extends TransformTest {
 	}
 	
 	@Test
-	public void invalidMultiValuesSizes() throws Exception {
+	public void invalidMultiValuesSizes() throws Throwable {
 		SchemaContext db= buildNonIncrInsertSchema();
 		String insert = "insert into nonincrinsert (id, counter) values (1, 1), (2, 2), (3, 3), (4)";
 		try {
@@ -152,7 +152,7 @@ public class InsertNormalizationTest extends TransformTest {
 	};
 	
 	@Test
-	public void defaultValues() throws Exception {
+	public void defaultValues() throws Throwable {
 		SchemaContext db = buildDatabase(TestName.MULTI,defaultValueSchema);
 		String in = "insert into defval (aval) values(default)";
 		InsertIntoValuesStatement is = parseInsert(db, in);
@@ -162,7 +162,7 @@ public class InsertNormalizationTest extends TransformTest {
 	}
 	
 	@Test
-	public void testPE762() throws Exception {
+	public void testPE762() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table pe762 (`id` int, `fid` int) range distribute on (`id`) using openrange");
 		stmtTest(db,

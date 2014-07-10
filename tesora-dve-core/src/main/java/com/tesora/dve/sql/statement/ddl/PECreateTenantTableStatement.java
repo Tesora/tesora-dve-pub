@@ -39,7 +39,6 @@ import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.mt.AdaptiveMTDDLPlannerUtils;
 import com.tesora.dve.sql.schema.mt.FKRefMaintainer;
@@ -57,6 +56,8 @@ import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.variables.VariableScope;
+import com.tesora.dve.variables.Variables;
 
 // creating a tenant table
 // for all cases we need to add a tvr
@@ -138,7 +139,8 @@ public class PECreateTenantTableStatement extends PECreateTableStatement {
 	}
 	
 	protected MultiMap<TableScope, PEForeignKey> computeRootSet(SchemaContext sc, PETable target) {
-		boolean required = SchemaVariables.hasForeignKeyChecks(sc);
+		boolean required = 
+				Variables.FOREIGN_KEY_CHECKS.getSessionValue(sc.getConnection().getVariableSource()).booleanValue();
 		// we may have just resolved a foreign key - see if that is the case
 		List<TableScope> matching = sc.findScopesWithUnresolvedFKsTargeting(onTenant.getDatabase(sc).getName().getUnqualified(), logicalName, onTenant);
 		// first find the set that matches - that will be the root set of the schema graph
@@ -190,7 +192,8 @@ public class PECreateTenantTableStatement extends PECreateTableStatement {
 		
 		@Override
 		public ListOfPairs<TableScope, TaggedFK> computeRootSet(SchemaContext sc) {
-			boolean required = SchemaVariables.hasForeignKeyChecks(sc);
+			boolean required = 
+					Variables.FOREIGN_KEY_CHECKS.getSessionValue(sc.getConnection().getVariableSource()).booleanValue();
 			// we may have just resolved a foreign key - see if that is the case
 			List<TableScope> matching = sc.findScopesWithUnresolvedFKsTargeting(tenant.getDatabase(sc).getName().getUnqualified(), logicalName, tenant);
 			ListOfPairs<TableScope, TaggedFK> out = new ListOfPairs<TableScope, TaggedFK>();

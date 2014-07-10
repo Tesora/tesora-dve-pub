@@ -49,6 +49,7 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.variables.Variables;
 import com.tesora.dve.worker.AggregationGroup;
 import com.tesora.dve.worker.MysqlRedistTupleForwarder;
 import com.tesora.dve.worker.WorkerGroup;
@@ -377,9 +378,9 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			// Use a thread to build the default insert statement (assuming we'll need it more often than not)
 			final PersistentTable tableForInsertStatement = givenTargetTable;
 			final int tableColumnCount = tableForInsertStatement.getNumberOfColumns(); 
-			final int maxColumnCount = Integer.parseInt(ssCon.getSessionVariable("redist_max_columns"));
+			final int maxColumnCount = Variables.REDIST_MAX_COLUMNS.getGlobalValue(ssCon).intValue(); 
 			final int maxTupleCount = (maxColumnCount > tableColumnCount) ? (maxColumnCount / tableColumnCount) : 1;
-			final int maxDataSize = Integer.parseInt(ssCon.getSessionVariable("redist_max_size"));
+			final int maxDataSize = Variables.REDIST_MAX_SIZE.getGlobalValue(ssCon).intValue(); 
 			//			Future<SQLCommand> insertStatementFuture = Host.submit(new Callable<SQLCommand>() {
 			//				public SQLCommand call() throws Exception {
 			//					return getTableInsertStatement(tableForInsertStatement, insertOptions, resultMetadata, maxTupleCount);

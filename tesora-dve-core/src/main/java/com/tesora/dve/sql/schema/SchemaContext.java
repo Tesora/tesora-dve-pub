@@ -75,6 +75,9 @@ import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.VariableStoreSource;
+import com.tesora.dve.variables.Variables;
 import com.tesora.dve.worker.agent.Agent;
 
 public class SchemaContext {
@@ -542,7 +545,8 @@ public class SchemaContext {
 	}
 	
 	public IDynamicPolicy getGroupPolicy() {
-		String defName = SchemaVariables.getDefaultPolicyName(this);
+		String defName =
+				Variables.DEFAULT_DYNAMIC_POLICY.getValue(getConnection().getVariableSource());
 		if (defName == null) return null;
 		return (IDynamicPolicy)schemaSource.find(this, PEPolicy.getPolicyKey(defName));
 	}
@@ -883,7 +887,7 @@ public class SchemaContext {
 		}
 
 		@Override
-		public String getVariableValue(VariableAccessor va) throws PEException {
+		public String getVariableValue(AbstractVariableAccessor va) throws PEException {
 			return null;
 		}
 
@@ -979,6 +983,12 @@ public class SchemaContext {
 		@Override
 		public boolean isInXATxn() {
 			return false;
+		}
+
+		@Override
+		public VariableStoreSource getVariableSource() {
+			// TODO Auto-generated method stub
+			return null;
 		}
 	}	
 }

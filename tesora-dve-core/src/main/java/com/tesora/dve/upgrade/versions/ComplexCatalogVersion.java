@@ -92,8 +92,8 @@ public abstract class ComplexCatalogVersion extends BasicCatalogVersion {
 			
 			t.parse(decls);
 			return t;
-		} catch (Exception e) {
-			throw new PEException("Unable to build trans exec engine for parser",e);
+		} catch (Throwable t) {
+			throw new PEException("Unable to build trans exec engine for parser",t);
 		}
 	}
 

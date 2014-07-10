@@ -21,6 +21,7 @@ package com.tesora.dve.variable;
  * #L%
  */
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -55,6 +56,8 @@ import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSetScopedVariableOperation;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.test.simplequery.SimpleQueryTest;
+import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.MysqlTextResultChunkProvider;
 import com.tesora.dve.worker.UserCredentials;
 
@@ -160,7 +163,7 @@ public class VariableTest extends PETest {
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation("character_set_client"), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(Variables.CHARACTER_SET_CLIENT), results);
 		assertTrue(results.hasResults());
 		assertEquals("latin1", results.getSingleColumnValue(1, 1));
 
@@ -170,7 +173,7 @@ public class VariableTest extends PETest {
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation("character_set_client"), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(Variables.CHARACTER_SET_CLIENT), results);
 		assertTrue(results.hasResults());
 		assertEquals("utf8", results.getSingleColumnValue(1, 1));
 	}
@@ -191,7 +194,7 @@ public class VariableTest extends PETest {
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation("dynamic_policy"), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(Variables.DEFAULT_DYNAMIC_POLICY), results);
 		assertTrue(results.hasResults());
 		assertEquals("OnPremisePolicy", results.getSingleColumnValue(1, 1));
 	}
@@ -212,7 +215,7 @@ public class VariableTest extends PETest {
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(PERSISTENT_GROUP_VARIABLE), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(Variables.PERSISTENT_GROUP), results);
 		assertTrue(results.hasResults());
 		assertEquals(PEConstants.DEFAULT_GROUP_NAME, results.getSingleColumnValue(1, 1));
 	}
@@ -228,14 +231,15 @@ public class VariableTest extends PETest {
 	@Test
 	public void getVariableUpperCaseTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation("Persistent_Group"), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(Variables.PERSISTENT_GROUP), results);
 		assertTrue(results.hasResults());
 		assertEquals(1, results.getNumRowsAffected());
 	}
 
 	@Test
 	public void clientCharSet() throws Throwable {
-		String origCharSet = ssConnection.getSessionVariable(ClientCharSetSessionVariableHandler.VARIABLE_NAME);
+		String origCharSet =
+				Variables.CHARACTER_SET_CLIENT.getSessionValue(ssConnection);
 		String newCharset = "utf8";
 		if (!origCharSet.toLowerCase().equals("utf8"))
 			newCharset = "latin1";
@@ -246,27 +250,28 @@ public class VariableTest extends PETest {
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(ClientCharSetSessionVariableHandler.VARIABLE_NAME), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(Variables.CHARACTER_SET_CLIENT), results);
 		assertTrue(results.hasResults());
 		assertEquals(newCharset, results.getSingleColumnValue(1, 1));
 	}
 
 	@Test
 	public void setValidCollation() throws Throwable {
-		String origCollation = ssConnection.getSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME);
+		String origCollation = 
+				Variables.COLLATION_CONNECTION.getSessionValue(ssConnection);
 
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(CollationSessionVariableHandler.VARIABLE_NAME),
-				results);
+		executeQuery(new QueryStepGetSessionVariableOperation(Variables.COLLATION_CONNECTION), results);
 		assertTrue(results.hasResults());
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
 
 		String utfCollation = "utf8_unicode_ci";
 		ssConnection.setSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME, utfCollation);
-		assertEquals(utfCollation, ssConnection.getSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME));
+		assertEquals(utfCollation,
+				Variables.COLLATION_CONNECTION.getSessionValue(ssConnection));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(CollationSessionVariableHandler.VARIABLE_NAME),
+		executeQuery(new QueryStepGetSessionVariableOperation(Variables.COLLATION_CONNECTION),
 				results);
 		assertTrue(results.hasResults());
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
@@ -278,11 +283,11 @@ public class VariableTest extends PETest {
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
 
 		ssConnection.setSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME, origCollation);
-		assertEquals(origCollation, ssConnection.getSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME));
+		assertEquals(origCollation, 
+				Variables.COLLATION_CONNECTION.getSessionValue(ssConnection));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(CollationSessionVariableHandler.VARIABLE_NAME),
-				results);
+		executeQuery(new QueryStepGetSessionVariableOperation(Variables.COLLATION_CONNECTION), results);
 		assertTrue(results.hasResults());
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
 
@@ -312,51 +317,54 @@ public class VariableTest extends PETest {
 	/** PE-1154 */
 	@Test
 	public void setLongQueryTime() throws Throwable {
-		assertEquals("10.0", ssConnection.getSessionVariable("long_query_time"));
-		ssConnection.setSessionVariable("long_query_time", "25.5");
-		assertEquals("25.5", ssConnection.getSessionVariable("long_query_time"));
+		assertEquals(new Double(10.0), Variables.LONG_QUERY_TIME.getGlobalValue(ssConnection));
+		Variables.LONG_QUERY_TIME.setGlobalValue("25.5");
+		assertEquals(new Double(25.5), Variables.LONG_QUERY_TIME.getGlobalValue(ssConnection));
 	}
 
 	/** PE-1156 */
+	@SuppressWarnings("unchecked")
 	@Test
 	public void setGroupConcatMaxLen() throws Throwable {
-		assertEquals("1024", ssConnection.getSessionVariable("group_concat_max_len"));
-		ssConnection.setSessionVariable("group_concat_max_len", "5");
-		assertEquals("5", ssConnection.getSessionVariable("group_concat_max_len"));
+		VariableHandler<Long> var = (VariableHandler<Long>) Variables.lookup("group_concat_max_len", true); 
+		assertEquals(new Long(1024), var.getSessionValue(ssConnection));
+		var.setSessionValue(ssConnection, "5");
+		assertEquals(new Long(5), var.getSessionValue(ssConnection)); 
 	}
 
 	/** PE-1128 */
 	@Test
 	public void setAutocommit() throws Throwable {
+		assertEquals(Boolean.TRUE, Variables.AUTOCOMMIT.getSessionValue(ssConnection));
+		Variables.AUTOCOMMIT.setSessionValue(ssConnection, "0");
+		assertEquals(Boolean.FALSE, Variables.AUTOCOMMIT.getSessionValue(ssConnection));
+		Variables.AUTOCOMMIT.setSessionValue(ssConnection, "ON");
+		assertEquals(Boolean.TRUE, Variables.AUTOCOMMIT.getSessionValue(ssConnection));
+		Variables.AUTOCOMMIT.setSessionValue(ssConnection, "OFF");
+		assertEquals(Boolean.FALSE, Variables.AUTOCOMMIT.getSessionValue(ssConnection));
+		
+		
 		final String variableName = "autocommit";
-
-		assertEquals("1", ssConnection.getSessionVariable(variableName));
-		ssConnection.setSessionVariable(variableName, "0");
-		assertEquals("0", ssConnection.getSessionVariable(variableName));
-		ssConnection.setSessionVariable(variableName, "ON");
-		assertEquals("ON", ssConnection.getSessionVariable(variableName));
-		ssConnection.setSessionVariable(variableName, "OFF");
-		assertEquals("OFF", ssConnection.getSessionVariable(variableName));
 
 		final String expectedErrorMessage = "Invalid value given for the AUTOCOMMIT variable.";
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
-				ssConnection.setSessionVariable(variableName, null);
+				Variables.AUTOCOMMIT.setSessionValue(ssConnection, null);
 			}
 		}.assertException(PEException.class, expectedErrorMessage);
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
-				ssConnection.setSessionVariable(variableName, "");
+				Variables.AUTOCOMMIT.setSessionValue(ssConnection, "");
 			}
 		}.assertException(PEException.class, expectedErrorMessage);
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
-				ssConnection.setSessionVariable(variableName, "2");
+				Variables.AUTOCOMMIT.setSessionValue(ssConnection, "2");
 			}
 		}.assertException(PEException.class, expectedErrorMessage);
 	}
@@ -364,23 +372,25 @@ public class VariableTest extends PETest {
 	@Test
 	public void setTimeZone() throws Throwable {
 		// make sure the default values are properly set
-        String peTimeZoneDefault = Singletons.require(HostService.class).getGlobalVariable(catalogDAO, "default_time_zone");
+		// now that we support scopes - we should toss over default_time_zone in favor of time_zone with a global scope
+		
+		String peTimeZoneDefault = Variables.TIME_ZONE.getGlobalValue(ssConnection);		
 		assertEquals("+00:00", peTimeZoneDefault);
-		assertEquals("+00:00", ssConnection.getSessionVariable("time_zone"));
+		assertEquals("+00:00", Variables.TIME_ZONE.getSessionValue(ssConnection)); 
 
 		// change the session variable
-		ssConnection.setSessionVariable("time_zone", "+05:00");
-		assertEquals("+05:00", ssConnection.getSessionVariable("time_zone"));
+		Variables.TIME_ZONE.setSessionValue(ssConnection, "+05:00");
+		assertEquals("+05:00", Variables.TIME_ZONE.getSessionValue(ssConnection));
 
 		// change the default PE time zone
-        Singletons.require(HostService.class).setGlobalVariable(catalogDAO, "default_time_zone", "-09:00");
+		Variables.TIME_ZONE.setGlobalValue("-09:00");
 		// new connection should have new default
 		SSConnectionProxy conProxy = new SSConnectionProxy();
 		try {
 			SSConnection ssConnection = SSConnectionAccessor.getSSConnection(conProxy);
 			SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
 			ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
-			assertEquals("-09:00", ssConnection.getSessionVariable("time_zone"));
+			assertEquals("-09:00",  Variables.TIME_ZONE.getSessionValue(ssConnection));
 		} finally {
 			conProxy.close();
 		}
