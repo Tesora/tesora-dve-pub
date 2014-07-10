@@ -808,4 +808,30 @@ public class AlterTest extends SchemaTest {
 	private static Type buildTypeFromNative(final MysqlType type) throws PEException {
 		return BasicType.buildType(new MysqlNativeType(type), 0, Collections.EMPTY_LIST).normalize();
 	}
+
+	@Test
+	public void testPE1404() throws Throwable {
+		conn.execute("CREATE TABLE `pe1404` ( `id` int NOT NULL,  `data` int DEFAULT 1, PRIMARY KEY (`id`)) ENGINE=InnoDB /*#dve  BROADCAST DISTRIBUTE */");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `id` int(11) NOT NULL,\n  `data` int(11) DEFAULT 1,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","","1",""));
+
+		conn.execute("INSERT INTO `pe1404` (`id`) VALUES (1)");
+		conn.assertResults("SELECT `id`, `data` FROM `pe1404` ORDER BY `id`",
+				br(nr,1,1));
+		
+		conn.execute("ALTER TABLE `pe1404` ALTER COLUMN `data` SET DEFAULT 99");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `id` int(11) NOT NULL,\n  `data` int(11) DEFAULT 99,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","","99",""));
+
+		conn.execute("INSERT INTO `pe1404` (`id`) VALUES (2)");
+		conn.assertResults("SELECT `id`, `data` FROM `pe1404` ORDER BY `id`",
+				br(nr,1,1,
+				   nr,2,99));
+	}
 }
