@@ -21,52 +21,18 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+public final class ExtendedPacket extends Packet {
 
-import java.nio.ByteOrder;
-
-import org.apache.log4j.Logger;
-
-public final class ExtendedPacket {
-
-	private static final Logger logger = Logger.getLogger(ExtendedPacket.class);
-
-	private byte sequenceId;
-	private byte messageType;
-	private ByteBuf payloadBuffer;
-
-	public ExtendedPacket(final byte messageType, final int initialCapacity) {
-		this.messageType = messageType;
-		this.payloadBuffer = Unpooled.buffer(initialCapacity + 1).order(ByteOrder.LITTLE_ENDIAN);
+	protected ExtendedPacket(final int initialCapacity) {
+		super(initialCapacity);
 	}
 
-	public void writePacketPayload(final ByteBuf frame, final int payloadLength, final byte sequenceId) {
-		if (logger.isDebugEnabled()) {
-			logger.debug("Reading an extended packet: id=" + sequenceId + "; payload=" + payloadLength);
-		}
-		this.sequenceId = sequenceId;
-		this.payloadBuffer.writeBytes(frame, payloadLength);
+	protected ExtendedPacket(final byte messageType, final int initialCapacity) {
+		super(messageType, initialCapacity);
 	}
 
-	public byte getSequenceId() {
-		return this.sequenceId;
-	}
-
-	public byte getMessageType() {
-		return this.messageType;
-	}
-
-	public ByteBuf getPayload() {
-		return this.payloadBuffer;
-	}
-
-	public boolean releasePayload() {
-		if ((this.payloadBuffer != null) && this.payloadBuffer.release()) {
-			this.payloadBuffer = null;
-			return true;
-		}
-
-		return false;
+	@Override
+	public boolean isExtended() {
+		return true;
 	}
 }
