@@ -68,7 +68,6 @@ import com.tesora.dve.siteprovider.SiteProviderPlugin.SiteProviderFactory;
 import com.tesora.dve.smqplugin.SimpleMQPlugin;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.schema.mt.TableGarbageCollector;
-import com.tesora.dve.variable.GlobalConfigVariableHandler;
 import com.tesora.dve.worker.agent.Agent;
 import com.tesora.dve.worker.SingleDirectConnection;
 import com.tesora.dve.worker.WorkerManager;
@@ -327,7 +326,7 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 				}
 			}
 
-			GlobalConfigVariableHandler.initializeGlobalVariables(getGlobalVariables(c));
+//			GlobalConfigVariableHandler.initializeGlobalVariables(getGlobalVariables(c));
 		} finally {
 			c.close();
 		}

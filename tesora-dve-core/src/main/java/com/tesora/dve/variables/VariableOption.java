@@ -21,12 +21,13 @@ package com.tesora.dve.variables;
  * #L%
  */
 
-public interface GlobalVariableStore extends VariableStore {
+public enum VariableOption {
 
-	public void invalidate();
-	
-	public LocalVariableStore buildNewLocalStore();
-
-	public boolean isServer();
+	// not an emulated variable
+	DVE_ONLY,
+	// readonly - cannot be set
+	READONLY,
+	// are nulls allowed - by default they are not
+	NULLABLE
 	
 }

@@ -22,7 +22,7 @@ package com.tesora.dve.common.catalog;
  */
 
 import com.tesora.dve.sql.schema.ConnectionContext;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public enum TemplateMode {
 	OPTIONAL(false, false),
@@ -31,7 +31,7 @@ public enum TemplateMode {
 
 	public static TemplateMode getCurrentDefault(final ConnectionContext cc) {
 		return 
-			Variables.TEMPLATE_MODE.getValue(cc.getVariableSource());
+			KnownVariables.TEMPLATE_MODE.getValue((cc == null ? null : cc.getVariableSource()));
 	}
 
 	public static TemplateMode getCurrentDefault() {

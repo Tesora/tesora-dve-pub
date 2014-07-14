@@ -37,7 +37,7 @@ import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
-import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 public class ExplainTest extends SchemaTest {
 
@@ -92,7 +92,7 @@ public class ExplainTest extends SchemaTest {
 	@Test
 	public void testSimple() throws Throwable {
 		conn.execute("use " + checkDDL.getDatabaseName());
-		conn.execute("alter dve set " + SchemaVariableConstants.STEPWISE_STATISTICS_NAME + " = true");
+		conn.execute("alter dve set " + VariableConstants.STEPWISE_STATISTICS_NAME + " = true");
 		conn.assertResults(SESSION_QUERY,
 				br(nr,"duk","foofoo",
 				   nr,"morgan","foobar",

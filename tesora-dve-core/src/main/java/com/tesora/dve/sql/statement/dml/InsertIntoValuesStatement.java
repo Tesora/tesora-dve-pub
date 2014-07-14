@@ -74,9 +74,8 @@ import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variables.AbstractVariableAccessor;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class InsertIntoValuesStatement extends InsertStatement {
 
@@ -193,7 +192,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 			// fortunately for us the tenant column should be specified last
 			
 			SQLMode sqlMode = 
-					Variables.SQL_MODE.getSessionValue(sc.getConnection().getVariableSource()); 
+					KnownVariables.SQL_MODE.getSessionValue(sc.getConnection().getVariableSource()); 
 
 			// we used to turn off caching here, but it turns out there is no need
 			// strict_trans_tables, strict_all_tables:

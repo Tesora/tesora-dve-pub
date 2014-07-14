@@ -23,21 +23,28 @@ package com.tesora.dve.variables;
 
 import com.tesora.dve.exceptions.PEException;
 
-public class LiteralValueConverter extends ValueMetadata<String> {
+public class BoundedIntegralConverter extends IntegralValueConverter {
 
-	@Override
-	public String convertToInternal(String varName, String in) throws PEException {
-		return in;
+	// use null to denote not to check
+	private final Long minimum;
+	private final Long maximum;
+	
+	public BoundedIntegralConverter(Long min, Long max) {
+		this.minimum = min;
+		this.maximum = max;
 	}
-
+	
 	@Override
-	public String convertToExternal(String in) {
-		return in;
+	public Long convertToInternal(String varName, String in) throws PEException {
+		Long number = super.convertToInternal(varName, in);
+		if (number == null) return number;
+		if (minimum != null && number.longValue() < minimum.longValue()) {
+			throw new PEException(String.format("Invalid value '%s' must be at least %d",in,minimum));
+		}
+		if (maximum != null && number.longValue() > maximum.longValue()) {
+			throw new PEException(String.format("Invalid value '%s' must be no more than %d",in,maximum));
+		}
+		return number;
 	}
-
-	@Override
-	public String getTypeName() {
-		return "identifier";
-	}
-
+	
 }

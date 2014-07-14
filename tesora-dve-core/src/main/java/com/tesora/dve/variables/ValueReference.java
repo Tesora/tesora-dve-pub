@@ -1,4 +1,4 @@
-package com.tesora.dve.variable;
+package com.tesora.dve.variables;
 
 /*
  * #%L
@@ -21,19 +21,45 @@ package com.tesora.dve.variable;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.groupmanager.GroupManager;
 
-public class GroupServiceVariableHandler extends ConfigVariableHandler {
-
-	@Override
-	public void setValue(CatalogDAO c, String name, String value) throws PEException {
-		if ( GroupManager.isValidServiceType(value) ) {
-			super.setValue(c, name, value);
-		} else {
-			throw new PEException("Value '" + value + "' is not valid for variable '" + name + "'" );
-		}
+public class ValueReference<Type> {
+	
+	private final VariableHandler<Type> variable;
+	private Type value;
+	
+	public ValueReference(VariableHandler<Type> vh) {
+		this(vh,null);
 	}
-
+	
+	public ValueReference(VariableHandler<Type> vh, Type value) {
+		this.variable = vh;
+		this.value = value;
+	}
+	
+	public ValueReference<Type> copy() {
+		ValueReference<Type> out = new ValueReference<Type>(variable);
+		out.set(get());
+		return out;
+	}
+	
+	public void set(Type t) {
+		value = t;
+	}
+	
+	public void set(String v) throws PEException {
+		set(variable.toInternal(v));
+	}
+	
+	protected void setInternal(Object t) {
+		value = (Type) t;
+	}
+	
+	public Type get() {
+		return value;
+	}
+	
+	public VariableHandler<Type> getVariable() {
+		return variable;
+	}
 }

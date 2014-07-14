@@ -30,7 +30,6 @@ import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.lockmanager.LockType;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.mt.IPETenant;
-import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.VariableStoreSource;
 

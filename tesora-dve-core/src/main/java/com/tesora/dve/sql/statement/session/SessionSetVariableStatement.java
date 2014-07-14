@@ -22,6 +22,7 @@ package com.tesora.dve.sql.statement.session;
  */
 
 
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -55,8 +56,8 @@ import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep.VariableValueSource;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.variable.SchemaVariableConstants;
 import com.tesora.dve.variable.SessionVariableHandler;
+import com.tesora.dve.variable.VariableConstants;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variable.VariableScopeKind;
 
@@ -118,8 +119,8 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 						throw new PEException("Illegal set expression, multiple values");
 					}
 
-					if (variableName.equalsIgnoreCase(SchemaVariableConstants.SLOW_QUERY_LOG_NAME)
-							|| variableName.equalsIgnoreCase(SchemaVariableConstants.LONG_QUERY_TIME_NAME)) {
+					if (variableName.equalsIgnoreCase(VariableConstants.SLOW_QUERY_LOG_NAME)
+							|| variableName.equalsIgnoreCase(VariableConstants.LONG_QUERY_TIME_NAME)) {
 						handleSetGlobalVariableExpression(pc,sve, es);
 					} else {
 						handleSetVariableExpression(pc,sve, es);
@@ -188,14 +189,14 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 				SetVariableExpression sve = (SetVariableExpression) se;
 				if (sve.getVariable().getScope().getScopeKind() == VariableScopeKind.SESSION) {
 					String vn = sve.getVariable().getVariableName().get();
-					if (SchemaVariableConstants.SQL_AUTO_IS_NULL.equals(vn.toLowerCase())) {
+					if (VariableConstants.SQL_AUTO_IS_NULL_NAME.equals(vn.toLowerCase())) {
 						// only catch the literal variety for now
 						ExpressionNode value = sve.getValue().get(0);
 						if (value instanceof LiteralExpression) {
 							LiteralExpression litex = (LiteralExpression) value;
 							String strval = litex.getValue(pc).toString();
 							if ("1".equals(strval.trim())) {
-								throw new SchemaException(Pass.PLANNER, "No support for " + SchemaVariableConstants.SQL_AUTO_IS_NULL + " = 1 (planned)");
+								throw new SchemaException(Pass.PLANNER, "No support for " + VariableConstants.SQL_AUTO_IS_NULL_NAME + " = 1 (planned)");
 							}
 						}
 					}					

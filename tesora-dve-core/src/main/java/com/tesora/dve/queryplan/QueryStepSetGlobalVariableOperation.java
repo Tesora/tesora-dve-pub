@@ -22,26 +22,25 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepSetGlobalVariableOperation extends QueryStepOperation {
 	
-	String variableName;
+	VariableHandler handler;
 	String value;
 
-	public QueryStepSetGlobalVariableOperation(String variableName, String value) {
+	public QueryStepSetGlobalVariableOperation(VariableHandler handler, String value) {
 		super();
-		this.variableName = variableName;
+		this.handler = handler;
 		this.value = value;
 	}
 
 	@Override
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
-        Singletons.require(HostService.class).setGlobalVariable(ssCon.getCatalogDAO(), variableName, value);
+		handler.setGlobalValue(value);
 	}
 
 }

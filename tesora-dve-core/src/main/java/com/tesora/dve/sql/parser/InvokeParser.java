@@ -55,7 +55,7 @@ import com.tesora.dve.sql.statement.session.TransactionStatement;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class InvokeParser {
 
@@ -95,7 +95,7 @@ public class InvokeParser {
 
 	public static InputState buildInputState(String icmd, SchemaContext pc) {
 		long maxLen =  
-			Variables.LARGE_INSERT_CUTOFF.getValue(pc == null ? null : pc.getConnection().getVariableSource()).longValue();
+			KnownVariables.LARGE_INSERT_CUTOFF.getValue(pc == null ? null : pc.getConnection().getVariableSource()).longValue();
 		if (icmd.length() > maxLen)
 			return new ContinuationInputState(icmd,maxLen);
 		return new InitialInputState(icmd);

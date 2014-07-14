@@ -30,7 +30,6 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.transform.CopyContext;
-import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 
 public class LateResolvingVariableExpression extends ConstantExpression {

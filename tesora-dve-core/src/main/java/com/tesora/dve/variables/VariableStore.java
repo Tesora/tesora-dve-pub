@@ -1,57 +1,32 @@
 package com.tesora.dve.variables;
 
-import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
+/*
+ * #%L
+ * Tesora Inc.
+ * Database Virtualization Engine
+ * %%
+ * Copyright (C) 2011 - 2014 Tesora Inc.
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License, version 3,
+ * as published by the Free Software Foundation.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * #L%
+ */
 
-public abstract class VariableStore {
+public interface VariableStore {
 
-	public VariableStore() {
-	}
+	public <Type> ValueReference<Type> getReference(VariableHandler<Type> vh);
+	
+	public <Type> void setValue(VariableHandler<Type> vh, Type t);
+		
+	public <Type> Type getValue(VariableHandler<Type> vh);
 
-	protected abstract <Type> ValueReference<Type> getReference(VariableHandler<Type> vh);
-	
-	public abstract <Type> void setValue(VariableHandler<Type> vh, Type t);
-	
-	public <Type> Type getValue(VariableHandler<Type> vh) {
-		ValueReference<Type> vr = (ValueReference<Type>) getReference(vh);
-		if (vr == null)
-			throw new PECodingException("Variable \'" + vh.getName() + "\' not found");
-		return vr.get();
-	}
-	
-	protected static class ValueReference<Type> {
-		
-		private final VariableHandler<Type> variable;
-		private Type value;
-		
-		public ValueReference(VariableHandler<Type> vh) {
-			variable = vh;
-		}
-		
-		public ValueReference<Type> copy() {
-			ValueReference<Type> out = new ValueReference<Type>(variable);
-			out.set(get());
-			return out;
-		}
-		
-		public void set(Type t) {
-			value = t;
-		}
-		
-		public void set(String v) throws PEException {
-			set(variable.getMetadata().convertToInternal(v));
-		}
-		
-		protected void setInternal(Object t) {
-			value = (Type) t;
-		}
-		
-		public Type get() {
-			return value;
-		}
-		
-		public VariableHandler<Type> getVariable() {
-			return variable;
-		}
-	}
 }

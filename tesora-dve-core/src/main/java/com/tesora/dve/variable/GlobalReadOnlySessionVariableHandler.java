@@ -21,11 +21,8 @@ package com.tesora.dve.variable;
  * #L%
  */
 
-import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.singleton.Singletons;
 
 public class GlobalReadOnlySessionVariableHandler extends SessionVariableHandler {
 
@@ -45,6 +42,7 @@ public class GlobalReadOnlySessionVariableHandler extends SessionVariableHandler
 
 	@Override
 	public String getValue(SSConnection ssCon, String name) throws PEException {
+		/*
 		if (value != null) return value;
 		try {
             value = Singletons.require(HostService.class).getGlobalVariable(ssCon.getCatalogDAO(), globalVariableName);
@@ -53,6 +51,8 @@ public class GlobalReadOnlySessionVariableHandler extends SessionVariableHandler
 			throw new PECodingException("Session variable \"" + name + "\" maps to undefined DVE variable \""
 					+ globalVariableName + "\"", e);
 		}
+		*/
+		throw new PEException("Don't call this");
 	}
 	
 	@Override

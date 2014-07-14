@@ -31,7 +31,7 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.variable.*;
-import com.tesora.dve.variables.GlobalVariableStore;
+import com.tesora.dve.variables.VariableManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -79,16 +79,6 @@ public interface HostService {
 
     String getStatusVariable(CatalogDAO c, String variableName) throws PEException;
 
-    String getGlobalVariable(CatalogDAO c, String variableName) throws PEException;
-
-    GlobalVariableHandler getGlobalVariableHandler(String variableName) throws PEException;
-
-    void setGlobalVariable(CatalogDAO c, String variableName, String value) throws PEException;
-
-    Map<String,String> getGlobalVariables(CatalogDAO c) throws PEException;
-
-    GlobalVariableStore getGlobalVariableStore();
-    
     String getServerVersion();
 
     String getServerVersionComment();
@@ -110,10 +100,6 @@ public interface HostService {
     void setScopedVariable(String scopeName, String variableName, String value) throws PEException;
 
     void addScopedConfig(String scopeName, VariableConfig<ScopedVariableHandler> variableConfig);
-
-    VariableConfig<SessionVariableHandler> getSessionConfigTemplate();
-
-    VariableValueStore getSessionConfigDefaults(SSConnection ssCon) throws PEException;
 
     InformationSchemas getInformationSchema();
 
@@ -138,4 +124,6 @@ public interface HostService {
     void onGarbageEvent();
 
     DBNative getDBNative();
+    
+    VariableManager getVariableManager();
 }

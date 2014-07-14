@@ -56,7 +56,7 @@ public class QueryStepSetScopedVariableOperation extends
 			throws Throwable {
 		String nv = accessor.getValue(ssCon, wg);
 		if (VariableScopeKind.DVE == scopeKind) {
-            Singletons.require(HostService.class).setGlobalVariable(ssCon.getCatalogDAO(), variableName, nv);
+			Singletons.require(HostService.class).getVariableManager().lookup(variableName, true).setGlobalValue(nv);
 		} else if (VariableScopeKind.SESSION == scopeKind) {
 			ssCon.setSessionVariable(variableName, nv);
 		} else if (VariableScopeKind.USER == scopeKind) {

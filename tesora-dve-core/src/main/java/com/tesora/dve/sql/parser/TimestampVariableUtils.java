@@ -34,7 +34,7 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 /**
  * Value        	Nullable 	Default			On Update		Insert Set Timestamp	Update Set Timestamp
@@ -270,7 +270,7 @@ public abstract class TimestampVariableUtils {
 	
 	public static long getCurrentUnixTime(SchemaContext sc) {
 		Long ts = 
-				Variables.REPL_TIMESTAMP.getValue(sc.getConnection().getVariableSource());
+				KnownVariables.REPL_TIMESTAMP.getValue(sc.getConnection().getVariableSource());
 		if (ts == null || ts.longValue() == 0L) {
 			// we should be getting the local timezone of the mysql connection
 			// but for now we will assume that the default is the same as the 

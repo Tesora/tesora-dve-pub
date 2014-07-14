@@ -64,8 +64,7 @@ import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.A
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
-import com.tesora.dve.variables.VariableScope;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class PEDropTenantTableStatement extends PEDropTableStatement {
@@ -153,7 +152,7 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 		@Override
 		public ListOfPairs<TableScope, TaggedFK> computeRootSet(SchemaContext sc) {
 			boolean required = 
-					Variables.FOREIGN_KEY_CHECKS.getSessionValue(sc.getConnection().getVariableSource()).booleanValue();
+					KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(sc.getConnection().getVariableSource()).booleanValue();
 			// our root set is everything that refers to us
 			List<TableScope> yonScopes = sc.findScopesForFKTargets(subjectTable, tenant);
 			ListOfPairs<TableScope, TaggedFK> out = new ListOfPairs<TableScope, TaggedFK>();

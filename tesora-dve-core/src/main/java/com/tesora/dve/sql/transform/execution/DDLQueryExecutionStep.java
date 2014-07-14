@@ -34,7 +34,7 @@ import com.tesora.dve.queryplan.QueryStepShowCatalogEntityOperation;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class DDLQueryExecutionStep extends ExecutionStep {
 
@@ -70,7 +70,7 @@ public class DDLQueryExecutionStep extends ExecutionStep {
 		} else {
 
 			boolean extensions =
-					Variables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
+					KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 			addStep(sc,qsteps,new QueryStepShowCatalogEntityOperation(queriedEntities, new CatalogQueryOptions(extensions, pluralForm, tenant)));
 		}
 	}

@@ -25,12 +25,11 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.variable.GlobalVariableHandler;
+import com.tesora.dve.variables.ServerGlobalVariableStore;
+import com.tesora.dve.variables.VariableHandler;
 
 public class OnGlobalConfigChangeMessage extends GroupMessage {
 
@@ -38,24 +37,25 @@ public class OnGlobalConfigChangeMessage extends GroupMessage {
 
 	static Logger logger = Logger.getLogger(OnGlobalConfigChangeMessage.class);
 
-	String variableName;
-	String newValue;
+	final String variableName;
+	final String newValue;
 
 	public OnGlobalConfigChangeMessage(String variableName, String newValue) {
 		this.variableName = variableName;
 		this.newValue = newValue;
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	void execute(HostService hostService) {
-		CatalogDAO c = CatalogDAOFactory.newInstance();
+		ServerGlobalVariableStore.INSTANCE.invalidate();
 		try {
-            GlobalVariableHandler handler = Singletons.require(HostService.class).getGlobalVariableHandler(variableName);
+			VariableHandler handler = Singletons.require(HostService.class).getVariableManager().lookup(variableName, true);
 
 			if (handler == null) {
 				logger.error("OnGlobalConfigChangeMessage handler not found for variable '" + variableName + "'");
 			} else {
-				handler.onValueChange(variableName, newValue);
+				handler.onGlobalValueChange(handler.toInternal(newValue));
 
 				logger.info("OnGlobalConfigChangeMessage updated " + variableName + " = '" + newValue + "'");
 			}
@@ -63,8 +63,6 @@ public class OnGlobalConfigChangeMessage extends GroupMessage {
 			logger.error(
 					"Exception in OnGlobalConfigChangeMessage " + variableName + " = '" + newValue + "' - "
 							+ e.getMessage(), e);
-		} finally {
-			c.close();
 		}
 	}
 

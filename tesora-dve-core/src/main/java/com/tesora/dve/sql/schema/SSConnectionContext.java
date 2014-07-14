@@ -34,7 +34,6 @@ import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.cache.NonMTCachedPlan;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.mt.IPETenant;
-import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.VariableStoreSource;
 

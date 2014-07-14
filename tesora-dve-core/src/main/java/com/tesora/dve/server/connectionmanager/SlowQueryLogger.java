@@ -28,7 +28,7 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.common.logutil.StructuredExecutionLogger;
 import com.tesora.dve.queryplan.QueryPlan;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class SlowQueryLogger extends StructuredExecutionLogger {
 
@@ -68,9 +68,9 @@ public class SlowQueryLogger extends StructuredExecutionLogger {
 	
 	private void log() {
 		final long planThreshold = 
-				Math.round(Variables.LONG_QUERY_TIME.getValue(ofConnection).doubleValue() * NANOS_PER_SECOND);
+				Math.round(KnownVariables.LONG_QUERY_TIME.getValue(ofConnection).doubleValue() * NANOS_PER_SECOND);
 		final long stepThreshold = 
-				Math.round(Variables.LONG_PLAN_STEP_TIME.getValue(ofConnection).doubleValue() * NANOS_PER_SECOND);
+				Math.round(KnownVariables.LONG_PLAN_STEP_TIME.getValue(ofConnection).doubleValue() * NANOS_PER_SECOND);
 		boolean write = false;
 		if (planThreshold > 0 && getDelta() > planThreshold) {
 			write = true;

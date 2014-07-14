@@ -51,7 +51,7 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class InformationSchemaTableView implements
 		Table<AbstractInformationSchemaColumnView> {
@@ -216,7 +216,7 @@ public class InformationSchemaTableView implements
 	}
 	
 	protected boolean useExtensions(SchemaContext sc) {
-		return 	Variables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
+		return 	KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 	}
 
 	public static void derefEntities(LanguageNode in) {

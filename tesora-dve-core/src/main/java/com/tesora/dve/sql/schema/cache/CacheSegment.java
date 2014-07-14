@@ -24,7 +24,7 @@ package com.tesora.dve.sql.schema.cache;
 import java.util.Locale;
 
 import com.tesora.dve.variables.VariableHandler;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 // we use a segmented cache, one where items of a particular type are stored in a subcache.
 // this allows each subcache to thrash independently and build it's own hot set over time.
@@ -34,36 +34,36 @@ public enum CacheSegment {
 	 * The uncategorized cache is everything not stored in a particular cache
 	 * i.e. databases, persistent groups, persistent sites, users, privileges, etc.
 	 */
-	UNCATEGORIZED(Variables.CACHE_LIMIT),
+	UNCATEGORIZED(KnownVariables.CACHE_LIMIT),
 	/*
 	 * Tenant scopes
 	 */
-	SCOPE(Variables.SCOPE_CACHE_LIMIT),
+	SCOPE(KnownVariables.SCOPE_CACHE_LIMIT),
 	/*
 	 * Tenants
 	 */
-	TENANT(Variables.TENANT_CACHE_LIMIT),
+	TENANT(KnownVariables.TENANT_CACHE_LIMIT),
 	/*
 	 * Tables.  In multitenant mode this is the backing tables; in regular mode it's just tables.
 	 */
-	TABLE(Variables.TABLE_CACHE_LIMIT),
+	TABLE(KnownVariables.TABLE_CACHE_LIMIT),
 	/*
 	 * Plans.  In multitenant mode this is on backing table plans; otherwise regular plans.
 	 */
-	PLAN(Variables.PLAN_CACHE_LIMIT),
+	PLAN(KnownVariables.PLAN_CACHE_LIMIT),
 	/*
 	 * Raw plans.  We use a separate limit so that they don't clutter up the general area.
 	 */
-	RAWPLAN(Variables.RAW_PLAN_CACHE_LIMIT),
+	RAWPLAN(KnownVariables.RAW_PLAN_CACHE_LIMIT),
 	/* 
 	 * Templates.  We use a separate segment so that modifying templates doesn't flush the cache.
 	 * Modifying a template only effects create stmts anyways.
 	 */
-	TEMPLATE(Variables.TEMPLATE_CACHE_LIMIT),
+	TEMPLATE(KnownVariables.TEMPLATE_CACHE_LIMIT),
 	/*
 	 * Prepared statements.  This is the global max.  Prepared statements are valid by connection only.
 	 */
-	PREPARED(Variables.MAX_PREPARED_STMT_COUNT);
+	PREPARED(KnownVariables.MAX_PREPARED_STMT_COUNT);
 	
 	private final VariableHandler<Long> variable;
 		

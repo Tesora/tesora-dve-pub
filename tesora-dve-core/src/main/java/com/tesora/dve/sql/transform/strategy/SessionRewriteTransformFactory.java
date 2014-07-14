@@ -65,7 +65,6 @@ import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.NonDMLFeatureStep;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 
 /*

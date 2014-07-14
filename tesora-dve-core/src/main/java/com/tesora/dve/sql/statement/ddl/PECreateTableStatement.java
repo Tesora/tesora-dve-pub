@@ -86,8 +86,7 @@ import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
-import com.tesora.dve.variables.VariableScope;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class PECreateTableStatement extends
@@ -172,7 +171,7 @@ public class PECreateTableStatement extends
 		
 		protected void computeDanglingFKs(SchemaContext sc, PETable newTab) {
 			boolean required = 
-					Variables.FOREIGN_KEY_CHECKS.getSessionValue(sc.getConnection().getVariableSource()).booleanValue();
+					KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(sc.getConnection().getVariableSource()).booleanValue();
 			UnqualifiedName dbName = newTab.getDatabase(sc).getName().getUnqualified();
 			UnqualifiedName tabName = newTab.getName().getUnqualified();
 			List<PETable> matching = sc.findTablesWithUnresolvedFKSTargeting(dbName, tabName);

@@ -62,7 +62,7 @@ import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 /*
  * Applies when the query has an order by clause and/or a limit clause.
@@ -214,7 +214,7 @@ public class OrderByLimitRewriteTransformFactory extends TransformFactory {
 		ListSet<ColumnKey> addedPKOrders = new ListSet<ColumnKey>();		
 
 		boolean emulate = 
-				Variables.EMULATE_MYSQL_LIMIT.getValue(context.getContext().getConnection().getVariableSource()).booleanValue();
+				KnownVariables.EMULATE_MYSQL_LIMIT.getValue(context.getContext().getConnection().getVariableSource()).booleanValue();
 		if (emulate) {
 			ListSet<TableKey> pks = projectionContainsPK(context.getContext(),working);
 			if (!pks.isEmpty()) {

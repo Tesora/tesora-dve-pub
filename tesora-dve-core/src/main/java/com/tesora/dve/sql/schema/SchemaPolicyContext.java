@@ -63,7 +63,7 @@ import com.tesora.dve.sql.statement.session.UseTenantStatement;
 import com.tesora.dve.sql.template.TemplateManager;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.util.Pair;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class SchemaPolicyContext {
 
@@ -391,10 +391,10 @@ public class SchemaPolicyContext {
 			pesg = sc.findStorageGroup(defStorageGroup);
 			if (pesg == null)
 				throw new SchemaException(Pass.SECOND, "Persistent group " + defStorageGroup.getSQL() + " does not exist.");
-		} else if (Variables.BALANCE_PERSISTENT_GROUPS.getValue(sc.getConnection().getVariableSource()).booleanValue()) {
+		} else if (KnownVariables.BALANCE_PERSISTENT_GROUPS.getValue(sc.getConnection().getVariableSource()).booleanValue()) {
 			// We need to dynamic pick a persistent group out of those configured
 			pesg = sc.findBalancedPersistentGroup(
-					Variables.BALANCE_PERSISTENT_GROUPS_PREFIX.getValue(sc.getConnection().getVariableSource()));
+					KnownVariables.BALANCE_PERSISTENT_GROUPS_PREFIX.getValue(sc.getConnection().getVariableSource()));
 			
 			if(pesg == null)
 				throw new SchemaException(Pass.SECOND, "Failed to find suitable persistent group for balanced database.");

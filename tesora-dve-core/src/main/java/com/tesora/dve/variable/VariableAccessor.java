@@ -23,15 +23,9 @@ package com.tesora.dve.variable;
 
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.variables.VariableScope;
 
 public class VariableAccessor {
@@ -112,6 +106,7 @@ public class VariableAccessor {
 	}
 	*/
 	
+	/*
 	public void setValue(SSConnection conn, String v) throws Throwable {
 		if (VariableScopeKind.DVE == scope) {
             Singletons.require(HostService.class).setGlobalVariable(conn.getCatalogDAO(), name, v);
@@ -124,6 +119,7 @@ public class VariableAccessor {
 		}
 
 	}
+	*/
 	
 	private static void convert(Map<String,String> varvalues, String scopeName, List<List<String>> acc) {
 		for(Map.Entry<String, String> me : varvalues.entrySet()) {

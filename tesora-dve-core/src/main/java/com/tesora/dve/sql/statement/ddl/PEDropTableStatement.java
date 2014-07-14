@@ -59,8 +59,7 @@ import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.util.ListOfPairs;
-import com.tesora.dve.variables.VariableScope;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class PEDropTableStatement extends
@@ -197,7 +196,7 @@ public class PEDropTableStatement extends
 	protected static void checkForeignKeys(SchemaContext pc, PETable targetTable, 
 			List<PEForeignKey> updatedKeys, boolean ignoreFKChecks) {
 		boolean required = 
-				Variables.FOREIGN_KEY_CHECKS.getSessionValue(pc.getConnection().getVariableSource()).booleanValue()
+				KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(pc.getConnection().getVariableSource()).booleanValue()
 				&& !ignoreFKChecks;
 		MultiMap<PETable, PEForeignKey> referencing = pc.findFKSReferencing(targetTable);
 		if (referencing.isEmpty()) return;

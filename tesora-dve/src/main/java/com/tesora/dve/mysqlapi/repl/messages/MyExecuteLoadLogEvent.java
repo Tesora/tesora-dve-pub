@@ -37,7 +37,7 @@ import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import com.tesora.dve.dbc.ServerDBConnection;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
-import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 public class MyExecuteLoadLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
@@ -132,7 +132,7 @@ public class MyExecuteLoadLogEvent extends MyLogEventPacket {
 
 			// since we don't want to parse here to determine if a time function is specified 
 			// set the TIMESTAMP variable to the master statement execution time
-			conn.executeUpdate("set " + SchemaVariableConstants.REPL_SLAVE_TIMESTAMP + "=" + getCommonHeader().getTimestamp());
+			conn.executeUpdate("set " + VariableConstants.REPL_SLAVE_TIMESTAMP_NAME + "=" + getCommonHeader().getTimestamp());
 			
 			conn.executeLoadDataRequest(plugin.getClientConnectionContext().getCtx(), origQuery.getBytes(CharsetUtil.UTF_8));
 

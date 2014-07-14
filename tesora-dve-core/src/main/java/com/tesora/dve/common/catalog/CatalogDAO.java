@@ -433,6 +433,19 @@ public class CatalogDAO {
 				variableName, except);
 	}
 
+	public VariableConfig findVariableConfig(String variableName) throws PENotFoundException {
+		return findVariableConfig(variableName, true);
+	}
+	
+	public VariableConfig findVariableConfig(String variableName, boolean except) throws PENotFoundException {
+		return (VariableConfig) CatalogDAOFactory.INSTANCE.getLookupCache(VariableConfig.class, "name").findByValue(this,
+				variableName, except);
+	}
+	
+	public List<VariableConfig> findAllVariableConfigs() {
+		return findAllByClass(VariableConfig.class);
+	}
+	
 	public UserDatabase findDatabase(String databaseName) throws PEException {
 		return findDatabase(databaseName, true);
 	}

@@ -1,16 +1,39 @@
 package com.tesora.dve.variables;
 
+/*
+ * #%L
+ * Tesora Inc.
+ * Database Virtualization Engine
+ * %%
+ * Copyright (C) 2011 - 2014 Tesora Inc.
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License, version 3,
+ * as published by the Free Software Foundation.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * #L%
+ */
+
 import java.util.EnumSet;
 import java.util.Locale;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.VariableConfig;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.variable.GlobalConfig;
-import com.tesora.dve.variables.VariableStore.ValueReference;
 
 /*
  * Every nonuser variable has an associated VariableConfig record in the catalog.
@@ -26,6 +49,8 @@ import com.tesora.dve.variables.VariableStore.ValueReference;
 
 public class VariableHandler<Type> {
 
+	public static final String NULL_VALUE = new String("null");
+		
 	// name of the variable
 	private final String variableName;
 	// information about the type, valid values, etc.
@@ -34,19 +59,19 @@ public class VariableHandler<Type> {
 	private final EnumSet<VariableScope> scopes;
 	// if there is no record in the catalog, this is the default value
 	private Type defaultOnMissing;
-	// if true, the variable is for dve only, and we will never push it down
-	private final boolean dveOnly;
+	// options
+	private final EnumSet<VariableOption> options;
 	
 	
 	public VariableHandler(String name, ValueMetadata<Type> md,
 			EnumSet<VariableScope> applies,
 			Type defaultOnMissing,
-			boolean dveOnly) {
+			EnumSet<VariableOption> options) {
 		this.variableName = name.toLowerCase(Locale.ENGLISH);
 		this.metadata = md;
 		this.scopes = applies;
 		this.defaultOnMissing = defaultOnMissing;
-		this.dveOnly = dveOnly;
+		this.options = options;
 	}
 	
 	public String getName() {
@@ -66,7 +91,7 @@ public class VariableHandler<Type> {
 	}
 
 	public boolean isDVEOnly() {
-		return dveOnly;
+		return options.contains(VariableOption.DVE_ONLY);
 	}
 	
 	public ValueReference<Type> getDefaultValueReference() {
@@ -104,7 +129,7 @@ public class VariableHandler<Type> {
 			// global map
 			if (source == null)
 				// transient side
-				return GlobalVariableStore.INSTANCE.getValue(this);
+				return ServerGlobalVariableStore.INSTANCE.getValue(this);
 			return source.getGlobalVariableStore().getValue(this);
 		} else {
 			// session map
@@ -129,6 +154,8 @@ public class VariableHandler<Type> {
 	}
 	
 	public void setValue(VariableStoreSource conn, VariableScope scope, String newValue) throws PEException {
+		if (options.contains(VariableOption.READONLY))
+			throw new PEException(String.format("Unable to set readonly variable '%s'",getName()));
 		if (scope == VariableScope.SESSION)
 			setSessionValue(conn,newValue);
 		else if (scope == VariableScope.GLOBAL)
@@ -140,8 +167,8 @@ public class VariableHandler<Type> {
 	public void setSessionValue(VariableStoreSource conn, String newValue) throws PEException {
 		if (!scopes.contains(VariableScope.SESSION))
 			throw new PECodingException("Attempt to set non existent session variable " + variableName);
-		VariableStore sessionValues = conn.getSessionVariableStore(); 
-		Type t = getMetadata().convertToInternal(newValue);
+		AbstractVariableStore sessionValues = conn.getSessionVariableStore(); 
+		Type t = toInternal(newValue);
 		sessionValues.setValue(this, t);
 		onSessionValueChange(conn,t);
 	}
@@ -149,14 +176,13 @@ public class VariableHandler<Type> {
 	public void setGlobalValue(String newValue) throws PEException {
 		if (!scopes.contains(VariableScope.GLOBAL))
 			throw new PECodingException("Attempt to set non existent global variable " + variableName);
-		VariableStore globalValues = null;
-		Type t = getMetadata().convertToInternal(newValue);
+		Type t =  toInternal(newValue);
 		// the global variable store propagates the change message
-		globalValues.setValue(this, t);
+		ServerGlobalVariableStore.INSTANCE.setValue(this, t);
 	}
 	
 	public void setPersistentValue(final CatalogDAO c, final String newValue) throws PEException {
-		Type validType = getMetadata().convertToInternal(newValue);
+		Type validType = toInternal(newValue);
 		persistValue(c,newValue);
 		// broadcast
 	}
@@ -182,13 +208,92 @@ public class VariableHandler<Type> {
 	}
 	
 	public void onSessionValueChange(VariableStoreSource conn, Type newValue) throws PEException {
-		// does nothing
+		if (!isDVEOnly()) {
+			if (conn instanceof SSConnection) {
+				SSConnection ssCon = (SSConnection) conn;
+				ssCon.updateWorkerState(getSessionAssignmentClause(toExternal(newValue)));
+			}
+		}
 	}
 
 	public String getSessionAssignmentClause(String value) {
 		if (scopes.contains(VariableScope.SESSION) && !isDVEOnly())
-			return String.format("%s='%s'",getName(),value);
+			return String.format("%s=%s",getName(),value);
 		return null;
 	}
 
+	public VariableConfig buildNewConfig() {
+		// String name, String valueType, String value, String scopes, boolean emulated, String helpText) {
+		return new VariableConfig(getName(),
+				getMetadata().getTypeName(),
+				toExternal(getDefaultOnMissing()),
+				convert(getScopes()),
+				!isDVEOnly(),
+				null);
+	}
+	
+	public static String convert(EnumSet<VariableScope> scopes) {
+		return Functional.join(scopes, ",", new UnaryFunction<String,VariableScope>() {
+
+			@Override
+			public String evaluate(VariableScope object) {
+				return object.name();
+			}
+			
+		});
+	}
+	
+	public static EnumSet<VariableScope> convert(String in) {
+		String[] bits = in.split(",");
+		EnumSet<VariableScope> out = EnumSet.noneOf(VariableScope.class);
+		for(String s : bits) {
+			out.add(VariableScope.valueOf(s));
+		}
+		return out;
+	}
+	
+	public void initialise(CatalogDAO c) throws PEException {
+		VariableConfig conf = c.findVariableConfig(getName(),false);
+		if (conf != null) {
+			defaultOnMissing = toInternal(conf.getValue());
+			if (scopes.contains(VariableScope.GLOBAL)) {
+				// check with the global version too.  we're going to go directly to the global variable store
+				ValueReference<Type> existing = ServerGlobalVariableStore.INSTANCE.getReference(this);
+				if (existing != null) {
+					defaultOnMissing = existing.get();
+				}
+			}
+		} else {
+			conf = buildNewConfig();
+			try {
+				c.begin();
+				c.persistToCatalog(conf);
+				c.commit();
+			} catch (Throwable t) {
+				c.rollback(t);
+				throw new PEException("Unable to initialise catalog for variable '" + getName() + "'");
+			}
+		}
+	}
+
+	public String toExternal(Type in) {
+		return getMetadata().convertToExternal(in);
+	}
+	
+	public Type toInternal(String in) throws PEException {
+		if (in == null || NULL_VALUE.equals(in)) {
+			if (options.contains(VariableOption.NULLABLE)) 
+				return null;
+			throw new PEException(String.format("Invalid value for variable '%s': null not allowed",getName()));			
+		}
+		return getMetadata().convertToInternal(getName(),in);
+	}
+
+	// the map does not support nulls
+	public String toMap(Type in) {
+		if (in == null)
+			return NULL_VALUE;
+		return toExternal(in);
+	}
+	
 }

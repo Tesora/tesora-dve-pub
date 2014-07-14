@@ -46,7 +46,7 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.mt.AdaptiveMultitenantSchemaPolicyContext;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class ColumnCatalogInformationSchemaTable extends
 		CatalogInformationSchemaTable {
@@ -147,7 +147,7 @@ public class ColumnCatalogInformationSchemaTable extends
 		if (restrictTenant != null)
 			decompAnd.add(restrictTenant);
 		boolean showTenantColumn = 
-					Variables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
+					KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 
 		if (!showTenantColumn) {
 			FunctionCall excludeTenantColumn = new FunctionCall(FunctionName.makeNotEquals(), new ColumnInstance(columnNameColumn,ours.toInstance()),

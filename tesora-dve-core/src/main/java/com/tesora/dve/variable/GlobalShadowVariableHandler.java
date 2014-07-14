@@ -22,9 +22,7 @@ package com.tesora.dve.variable;
  */
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.singleton.Singletons;
 
 public class GlobalShadowVariableHandler extends SessionVariableHandler {
 	
@@ -43,7 +41,10 @@ public class GlobalShadowVariableHandler extends SessionVariableHandler {
 
 	@Override
 	public String getDefaultValue(SSConnection ssCon) throws PEException {
+		/*
         return Singletons.require(HostService.class).getGlobalVariable(ssCon.getCatalogDAO(), globalVariableName);
+        */
+		throw new PEException("Don't call this");
 	}
 	
 	@Override

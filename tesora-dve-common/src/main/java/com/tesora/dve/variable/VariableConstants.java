@@ -21,17 +21,17 @@ package com.tesora.dve.variable;
  * #L%
  */
 
-public interface SchemaVariableConstants {
-	
+public interface VariableConstants {
+
 	// pe specific session variables
 	public static final String SHOW_METADATA_EXTENSIONS_NAME = "dve_metadata_extensions";
-	public static final String REPL_SLAVE_INSERT_ID = "dve_repl_slave_insert_id";
-	public static final String REPL_SLAVE_TIMESTAMP = "dve_repl_slave_timestamp";
+	public static final String REPL_SLAVE_INSERT_ID_NAME = "dve_repl_slave_insert_id";
+	public static final String REPL_SLAVE_TIMESTAMP_NAME = "dve_repl_slave_timestamp";
 	public static final String OMIT_DIST_COMMENTS_NAME = "dve_omit_comments";
 	
 	// regular session variables
 	public static final String SQL_SELECT_LIMIT_NAME = "sql_select_limit";
-	public static final String SQL_AUTO_IS_NULL = "sql_auto_is_null";
+	public static final String SQL_AUTO_IS_NULL_NAME = "sql_auto_is_null";
 	public static final String FOREIGN_KEY_CHECKS_NAME = "foreign_key_checks";
 	public static final String STORAGE_ENGINE_NAME = "storage_engine";
 	public static final String CHARACTER_SET_CLIENT_NAME = "character_set_client";
@@ -43,8 +43,8 @@ public interface SchemaVariableConstants {
 	public static final String LONG_QUERY_TIME_NAME = "long_query_time";
 	
 	// planning related constants
-	public static final String LARGE_INSERT_THRESHOLD = "large_insert_threshold";
-	public static final String LIMIT_ORDERBY_EMULATION = "dve_mysql_emulate_limit";
+	public static final String LARGE_INSERT_THRESHOLD_NAME = "large_insert_threshold";
+	public static final String LIMIT_ORDERBY_EMULATION_NAME = "dve_mysql_emulate_limit";
 	public static final String MAX_CACHED_LITERALS_NAME = "max_cached_plan_literals";
 	public static final String STEPWISE_STATISTICS_NAME = "stepwise_statistics";
 	public static final String CARDINALITY_COSTING_NAME = "cost_based_planning";
@@ -61,4 +61,21 @@ public interface SchemaVariableConstants {
 	
 	// template related
 	public static final String TEMPLATE_MODE_NAME = "template_mode";
+
+	public static final String STATISTICS_INTERVAL_NAME = "statistics_interval";
+
+	public static final String ADAPTIVE_CLEANUP_INTERVAL_NAME = "adaptive_cleanup_interval";
+
+	public static final String PERF_TIMING_LOG_LEVEL_NAME = "perf_timing_log_level";
+	public static final String SQL_LOGGING_NAME = "sql_logging";
+	
+	public static final String GROUP_SERVICE_NAME = "group_service";
+	
+	public static final String MAX_CACHED_PLAN_LITERALS_NAME = "max_cached_plan_literals";
+	public static final String INNODB_LOCK_WAIT_TIMEOUT_NAME = "innodb_lock_wait_timeout";
+	public static final String WAIT_TIMEOUT_NAME = "wait_timeout";
+	public static final String REDIST_MAX_COLUMNS_NAME = "redist_max_columns";
+	public static final String REDIST_MAX_SIZE_NAME = "redist_max_size";
+	public static final String GROUP_CONCAT_MAX_LEN_NAME = "group_concat_max_len";
+
 }

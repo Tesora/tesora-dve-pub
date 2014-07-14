@@ -37,7 +37,6 @@ import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variable.VariableScopeKind;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.worker.WorkerGroup;

@@ -26,6 +26,8 @@ import com.tesora.dve.db.mysql.portal.protocol.MSPProtocolDecoder;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.global.MySqlPortalService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.variables.KnownVariables;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
@@ -46,8 +48,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.concurrent.PEDefaultThreadFactory;
 import com.tesora.dve.concurrent.PEThreadPoolExecutor;
 import com.tesora.dve.exceptions.PEException;
@@ -73,7 +73,8 @@ public class MySqlPortal implements MySqlPortalService {
 
 		InternalLoggerFactory.setDefaultFactory(new Log4JLoggerFactory());
 
-		int max_concurrent;
+		int max_concurrent = KnownVariables.MAX_CONCURRENT.getValue(null).intValue();
+/*
 		CatalogDAO catalog = CatalogDAOFactory.newInstance();
 		try {
             max_concurrent = Integer.parseInt(Singletons.require(HostService.class).getGlobalVariable(catalog, "max_concurrent"));
@@ -82,7 +83,7 @@ public class MySqlPortal implements MySqlPortalService {
 		} finally {
 			catalog.close();
 		}
-
+*/
 		clientExecutorService = new PEThreadPoolExecutor(max_concurrent,
 				max_concurrent,
 				30L, TimeUnit.SECONDS,

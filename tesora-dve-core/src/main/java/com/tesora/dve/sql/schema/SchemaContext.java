@@ -74,10 +74,9 @@ import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.VariableStoreSource;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.agent.Agent;
 
 public class SchemaContext {
@@ -546,7 +545,7 @@ public class SchemaContext {
 	
 	public IDynamicPolicy getGroupPolicy() {
 		String defName =
-				Variables.DEFAULT_DYNAMIC_POLICY.getValue(getConnection().getVariableSource());
+				KnownVariables.DEFAULT_DYNAMIC_POLICY.getValue(getConnection().getVariableSource());
 		if (defName == null) return null;
 		return (IDynamicPolicy)schemaSource.find(this, PEPolicy.getPolicyKey(defName));
 	}

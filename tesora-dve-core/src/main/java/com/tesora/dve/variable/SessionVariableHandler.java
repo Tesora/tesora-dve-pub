@@ -46,11 +46,12 @@ public class SessionVariableHandler extends VariableHandler {
 	}
 
 	public void setValue(SSConnection ssCon, String name, String value) throws PEException {
-		ssCon.setSessionVariableValue(name, value);
+		// ssCon.setSessionVariableValue(name, value);
 	}
 
 	public String getValue(SSConnection ssCon, String name) throws PEException {
-		return ssCon.getSessionVariableValue(name);
+		// return ssCon.getSessionVariableValue(name);
+		throw new PEException("Don't call me");
 	}
 	
 	public String getSessionAssignmentClause(String name, String value) {

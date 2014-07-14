@@ -45,7 +45,7 @@ import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class InsertIntoSelectStatement extends InsertStatement {
 
@@ -124,7 +124,7 @@ public class InsertIntoSelectStatement extends InsertStatement {
 		});
 
 		SQLMode sqlMode = 
-				Variables.SQL_MODE.getSessionValue(sc.getConnection().getVariableSource()); 
+				KnownVariables.SQL_MODE.getSessionValue(sc.getConnection().getVariableSource()); 
 		
 		SelectStatement src = null;
 		if (sourceSelect.get() instanceof SelectStatement) {

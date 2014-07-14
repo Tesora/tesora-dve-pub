@@ -26,7 +26,6 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
-import com.tesora.dve.variable.VariableAccessor;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 
 public class CachedLateResolvingVariableExpression implements IConstantExpression {

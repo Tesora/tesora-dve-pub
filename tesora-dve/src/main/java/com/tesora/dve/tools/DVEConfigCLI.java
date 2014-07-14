@@ -21,6 +21,7 @@ package com.tesora.dve.tools;
  * #L%
  */
 
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.PrintWriter;
@@ -69,7 +70,7 @@ import com.tesora.dve.tools.jaxb.policy.PolicyConfig;
 import com.tesora.dve.upgrade.CatalogSchemaVersion;
 import com.tesora.dve.upgrade.CatalogVersions;
 import com.tesora.dve.variable.GlobalConfig;
-import com.tesora.dve.variable.GlobalConfigVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 public class DVEConfigCLI extends CLIBuilder {
 
@@ -616,7 +617,7 @@ public class DVEConfigCLI extends CLIBuilder {
 			throw new PEException("'" + name + "' isn't a recognized type for group service");
 		}
 
-		catHelper.setVariable(GlobalConfigVariableConstants.GROUP_SERVICE, type, true);
+		catHelper.setVariable(VariableConstants.GROUP_SERVICE_NAME, type, true);
 	}
 
 	@SuppressWarnings("unused")

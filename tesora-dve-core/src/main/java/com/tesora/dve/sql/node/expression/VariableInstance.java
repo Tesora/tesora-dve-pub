@@ -22,6 +22,8 @@ package com.tesora.dve.sql.node.expression;
  */
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -33,7 +35,7 @@ import com.tesora.dve.sql.transform.CopyContext;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.UserVariableAccessor;
 import com.tesora.dve.variables.VariableAccessor;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.VariableManager;
 
 public class VariableInstance extends ExpressionNode {
 
@@ -63,7 +65,8 @@ public class VariableInstance extends ExpressionNode {
 		if (getScope().getScopeKind().getScope() == com.tesora.dve.variables.VariableScope.USER)
 			return new UserVariableAccessor(variableName.get());
 		else try {
-			return new VariableAccessor(Variables.lookup(variableName.get(), true),
+			VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+			return new VariableAccessor(vm.lookup(variableName.get(), true),
 					getScope().getScopeKind().getScope());
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.PLANNER, pe);

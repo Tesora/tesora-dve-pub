@@ -24,6 +24,7 @@ package com.tesora.dve.sql;
 
 
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -64,7 +65,7 @@ import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.TestResource;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.standalone.PETest;
-import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 /**
  * Class for tests requiring a complete DVE system up and running, not just the engine. 
@@ -587,6 +588,6 @@ public class SchemaTest extends PETest {
 	}
 
 	public static String buildAlterTemplateModeStmt(final TemplateMode mode) {
-		return "alter dve set " + SchemaVariableConstants.TEMPLATE_MODE_NAME + " = '" + mode + "'";
+		return "alter dve set " + VariableConstants.TEMPLATE_MODE_NAME + " = '" + mode + "'";
 	}
 }

@@ -33,7 +33,6 @@ import java.util.TreeMap;
 
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.PEConstants;
-import com.tesora.dve.common.TwoDimensionalMap;
 import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -52,7 +51,6 @@ import com.tesora.dve.common.catalog.Project;
 import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.RawPlan;
 import com.tesora.dve.common.catalog.SiteInstance;
-import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.StorageGroup.GroupScale;
 import com.tesora.dve.common.catalog.TableVisibility;
 import com.tesora.dve.common.catalog.TemporaryTable;
@@ -128,15 +126,10 @@ import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
-import com.tesora.dve.variable.SchemaVariableConstants;
-import com.tesora.dve.variable.SessionVariableHandler;
-import com.tesora.dve.variable.VariableAccessor;
-import com.tesora.dve.variable.VariableConfig;
-import com.tesora.dve.variable.VariableInfo;
-import com.tesora.dve.variable.VariableScopeKind;
 import com.tesora.dve.variable.VariableValueStore;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.GlobalVariableStore;
+import com.tesora.dve.variables.ServerGlobalVariableStore;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.VariableStoreSource;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
@@ -173,8 +166,8 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	private String tempTableKern;
 	private int tempTableCounter;
 	
-	private LocalVariableStore sessionVariables = new LocalVariableStore();
-	private GlobalVariableStore globalVariables = new GlobalVariableStore();
+	private LocalVariableStore sessionVariables;
+	private GlobalVariableStore globalVariables = new TransientGlobalVariableStore();
 	private VariableValueStore userVariables = new VariableValueStore("User",true);
 	
 	private IPETenant currentTenant = null; 
@@ -184,6 +177,8 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	private final ConnectionMessageManager messages = new ConnectionMessageManager();
 	
 	public TransientExecutionEngine(String ttkern) {
+		Singletons.require(HostService.class).getVariableManager().initialiseTransient(globalVariables);
+		sessionVariables = globalVariables.buildNewLocalStore();
 		tpc = SchemaContext.createContext(this,this);
 		currentUser = new PEUser(tpc);
 		users.add(new User(currentUser.getUserScope().getUserName(), 
@@ -1221,14 +1216,12 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 
 	@Override
 	public LocalVariableStore getSessionVariableStore() {
-		// TODO Auto-generated method stub
-		return null;
+		return sessionVariables;
 	}
 
 	@Override
 	public GlobalVariableStore getGlobalVariableStore() {
-		// TODO Auto-generated method stub
-		return null;
+		return globalVariables;
 	}
 
 	@Override
@@ -1238,8 +1231,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 
 	@Override
 	public VariableValueStore getUserVariableStore() {
-		// TODO Auto-generated method stub
-		return null;
+		return userVariables;
 	}
 
 }

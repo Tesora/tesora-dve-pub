@@ -43,7 +43,7 @@ import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class PrePlanner {
 
@@ -66,7 +66,7 @@ public class PrePlanner {
 			if (ss.getLimitEdge().has())
 				return c;
 			Long limitByOtherMeans = 
-						Variables.SELECT_LIMIT.getValue(sc.getConnection().getVariableSource());
+						KnownVariables.SELECT_LIMIT.getValue(sc.getConnection().getVariableSource());
 			if (limitByOtherMeans == null)
 				return c;
 			ss.setLimit(new LimitSpecification(LiteralExpression.makeLongLiteral(limitByOtherMeans.longValue()),

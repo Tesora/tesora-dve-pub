@@ -21,12 +21,21 @@ package com.tesora.dve.variables;
  * #L%
  */
 
-public interface GlobalVariableStore extends VariableStore {
+import com.tesora.dve.exceptions.PECodingException;
 
-	public void invalidate();
-	
-	public LocalVariableStore buildNewLocalStore();
+public abstract class AbstractVariableStore implements VariableStore {
 
-	public boolean isServer();
+	public AbstractVariableStore() {
+	}
+
+	public abstract <Type> ValueReference<Type> getReference(VariableHandler<Type> vh);
 	
+	public abstract <Type> void setValue(VariableHandler<Type> vh, Type t);
+		
+	public <Type> Type getValue(VariableHandler<Type> vh) {
+		ValueReference<Type> vr = (ValueReference<Type>) getReference(vh);
+		if (vr == null)
+			throw new PECodingException("Variable \'" + vh.getName() + "\' not found");
+		return vr.get();
+	}
 }

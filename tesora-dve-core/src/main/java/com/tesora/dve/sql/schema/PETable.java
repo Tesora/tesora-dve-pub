@@ -67,7 +67,7 @@ import com.tesora.dve.sql.schema.validate.ValidateResult;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryPredicate;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public class PETable extends PEAbstractTable<PETable> implements HasComment { 
 		
@@ -801,7 +801,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	private void forceStorage(SchemaContext pc) {
 		EngineTableModifier etm = (EngineTableModifier) modifiers.getModifier(TableModifierTag.ENGINE);
 		if (etm == null) { 
-			etm = new EngineTableModifier(Variables.STORAGE_ENGINE.getSessionValue(pc.getConnection().getVariableSource())); 
+			etm = new EngineTableModifier(KnownVariables.STORAGE_ENGINE.getSessionValue(pc.getConnection().getVariableSource())); 
 			modifiers.setModifier(etm);
 		}
 	}

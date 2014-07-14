@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -66,22 +65,17 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.groupmanager.GroupMessageEndpoint;
-import com.tesora.dve.groupmanager.OnGlobalConfigChangeMessage;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.upgrade.CatalogVersions;
-import com.tesora.dve.variable.ConfigVariableHandler;
-import com.tesora.dve.variable.ConfigVariableHandlerDynamicMBean;
-import com.tesora.dve.variable.GlobalVariableHandler;
 import com.tesora.dve.variable.ScopedVariableHandler;
-import com.tesora.dve.variable.SessionVariableHandler;
 import com.tesora.dve.variable.VariableConfig;
-import com.tesora.dve.variable.VariableHandler;
 import com.tesora.dve.variable.VariableInfo;
-import com.tesora.dve.variable.VariableValueStore;
 import com.tesora.dve.variable.status.StatusVariableHandler;
 import com.tesora.dve.variable.status.StatusVariableHandlerDynamicMBean;
-import com.tesora.dve.variables.GlobalVariableStore;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableHandlerDynamicMBean;
+import com.tesora.dve.variables.VariableManager;
 
 public class Host implements HostService {
     protected static Logger logger = Logger.getLogger(Host.class);
@@ -173,14 +167,14 @@ public class Host implements HostService {
 	
 	private Properties props;
 
-	private VariableConfig<GlobalVariableHandler> globalConfig;
-	private ConfigVariableHandlerDynamicMBean globalConfigMBean = new ConfigVariableHandlerDynamicMBean();
-
-	private VariableConfig<SessionVariableHandler> sessionConfigTemplate;
-	private VariableValueStore sessionConfigDefaults;
-
-	private GlobalVariableStore globalVariableStore;
+	private final VariableManager variables;
 	
+//	private VariableConfig<GlobalVariableHandler> globalConfig;
+	private VariableHandlerDynamicMBean globalConfigMBean = new VariableHandlerDynamicMBean();
+
+//	private VariableConfig<SessionVariableHandler> sessionConfigTemplate;
+//	private VariableValueStore sessionConfigDefaults;
+
 	private Map<String /* providerName */, VariableConfig<ScopedVariableHandler>> scopedVariables 
 		= new HashMap<String, VariableConfig<ScopedVariableHandler>>();
 
@@ -211,8 +205,9 @@ public class Host implements HostService {
         }
 
         this.executorService = new PEThreadPoolExecutor("Host");
-
+        
 		try {
+			this.variables = new VariableManager();
 			hostName = InetAddress.getLocalHost().getHostName();
 			
 			if (name == null) {
@@ -226,6 +221,10 @@ public class Host implements HostService {
 			dbNative = DBNative.DBNativeFactory.newInstance(dbType);
 			charSetNative = CharSetNative.CharSetNativeFactory.newInstance(dbType);
 
+			// we have to set this up early for the variables
+			broadcaster = new GroupMessageEndpoint("broadcast");
+            Singletons.replace(GroupTopicPublisher.class, broadcaster);
+			
 			CatalogDAO c = CatalogDAOFactory.newInstance();
 			try {
 				project = c.findProject(props.getProperty("defaultproject", Project.DEFAULT));
@@ -233,8 +232,10 @@ public class Host implements HostService {
 				// bootstrap host has already ensured we are part of a cluster if need be, therefore it
 				// is safe to initialize variables here.
 				
-				initialiseConfigVariables(c);
-				initialiseSessionVariableTemplate(false);
+				variables.initializeCatalog(c, globalConfigMBean);
+				
+//				initialiseConfigVariables(c);
+//				initialiseSessionVariableTemplate(false);
 				initialiseStatusVariables();
 			} finally {
 				c.close();
@@ -242,8 +243,6 @@ public class Host implements HostService {
 			
 			infoSchema = InformationSchemas.build(dbNative);
 
-			broadcaster = new GroupMessageEndpoint("broadcast");
-            Singletons.replace(GroupTopicPublisher.class, broadcaster);
 
 			startTime = System.currentTimeMillis();
 			
@@ -269,8 +268,9 @@ public class Host implements HostService {
         this.executorService = new PEThreadPoolExecutor("Host");
 
 		try {
+			variables = new VariableManager();
 			hostName = InetAddress.getLocalHost().getHostName();
-
+			
 			if ( startCatalog )
 				CatalogDAOFactory.setup(props);
 
@@ -281,7 +281,9 @@ public class Host implements HostService {
 			charSetNative = CharSetNative.CharSetNativeFactory.newInstance(dbType, startCatalog);
 			
 			infoSchema = InformationSchemas.build(dbNative);
-			initialiseSessionVariableTemplate(true);
+			// initialiseSessionVariableTemplate(true);
+			if (startCatalog)
+				variables.initializeCatalog(null,null);
 		} catch (Exception e) {
             throw new RuntimeException("Failed to start DVE server - " + e.getMessage(), e);
 		}
@@ -327,6 +329,7 @@ public class Host implements HostService {
 		}
 	}
 	
+    /*
 	@SuppressWarnings("unchecked")
 	private void initialiseSessionVariableTemplate(boolean sessionOnly) throws PEException {
 		Method ctor;
@@ -353,7 +356,9 @@ public class Host implements HostService {
 			}
 		}
 	}
-	
+	*/
+    
+	/*
 	@SuppressWarnings("unchecked")
 	private void initialiseConfigVariables(CatalogDAO c) throws PEException {
 		Method ctor;
@@ -388,6 +393,7 @@ public class Host implements HostService {
 		}
 
 	}
+	*/
 
     protected void stop() {
 		// do nothing?
@@ -493,6 +499,7 @@ public class Host implements HostService {
 		return statusVariables.getVariableInfo(variableName).getHandler().getValue(c, variableName);
 	}
 	
+	/*
 	@Override
     public String getGlobalVariable(CatalogDAO c, String variableName) throws PEException {
 		return globalConfig.getVariableInfo(variableName).getHandler().getValue(c, variableName);
@@ -524,6 +531,7 @@ public class Host implements HostService {
 		}
 		return out;
 	}	
+	*/
 	
 	@Override
     public String getServerVersion() {
@@ -543,7 +551,7 @@ public class Host implements HostService {
 	@Override
     public String getDveVersion(SSConnection ssCon) throws PEException {
 		if (dveVersion == null) {
-			dveVersion = getGlobalVariable(ssCon.getCatalogDAO(), "version"); 
+			return KnownVariables.VERSION.getGlobalValue(null);
 		}
 		return dveVersion;
 	}
@@ -602,6 +610,7 @@ public class Host implements HostService {
 		scopedVariables.put(scopeName, variableConfig);
 	}
 
+/*
 	@Override
     public VariableConfig<SessionVariableHandler> getSessionConfigTemplate() {
 		return sessionConfigTemplate;
@@ -625,7 +634,7 @@ public class Host implements HostService {
 		}
 		return sessionConfigDefaults;
 	}
-
+*/
 	@Override
     public InformationSchemas getInformationSchema() {
 		return infoSchema;
@@ -696,7 +705,7 @@ public class Host implements HostService {
 	}
 
 	@Override
-	public GlobalVariableStore getGlobalVariableStore() {
-		return globalVariableStore;
+	public VariableManager getVariableManager() {
+		return variables;
 	}
 }

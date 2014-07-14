@@ -21,13 +21,12 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.util.List;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -44,9 +43,9 @@ import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
-import com.tesora.dve.variable.GlobalConfigVariableConstants;
-import com.tesora.dve.variable.SchemaVariableConstants;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variable.VariableConstants;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableScope;
 
 public class InsertAutoincrementTest extends SchemaTest {
 
@@ -112,14 +111,14 @@ public class InsertAutoincrementTest extends SchemaTest {
 						nr, new Long(53), "trash53"));
 
 		// test new syntax
-		conn.execute("set " + SchemaVariableConstants.REPL_SLAVE_INSERT_ID + "=99");
+		conn.execute("set " + VariableConstants.REPL_SLAVE_INSERT_ID_NAME + "=99");
 //		conn.execute("insert into `autoinctab` (`junk`) values ('new trash') auto_increment=99");
 		conn.execute("insert into `autoinctab` (`junk`) values ('new trash')");
 		conn.assertResults("select * from `autoinctab` where `id`=99",
 				br(nr, new Long(99), "new trash"));
 
 		// new syntax with multivalue insert
-		conn.execute("set " + SchemaVariableConstants.REPL_SLAVE_INSERT_ID + "=100");
+		conn.execute("set " + VariableConstants.REPL_SLAVE_INSERT_ID_NAME + "=100");
 		conn.execute("insert into `autoinctab` (`junk`) values ('trash100'),('trash200'),('trash300')");
 		conn.assertResults(
 				"select * from `autoinctab` where `junk` in ('trash100','trash200','trash300')",
@@ -133,10 +132,10 @@ public class InsertAutoincrementTest extends SchemaTest {
 			conn.execute("insert into `autoinctab` (`id`, `junk`) values (500, 'trash500')");
 			fail("Cannot specify autoincrement field and auto_increment= syntax");
 		} catch (Exception e) {
-			SchemaTest.assertSchemaException(e, "Cannot specify both the autoincrement column value and " + SchemaVariableConstants.REPL_SLAVE_INSERT_ID);
+			SchemaTest.assertSchemaException(e, "Cannot specify both the autoincrement column value and " + VariableConstants.REPL_SLAVE_INSERT_ID_NAME);
 		}
 
-		conn.execute("set " + SchemaVariableConstants.REPL_SLAVE_INSERT_ID + "=null");
+		conn.execute("set " + VariableConstants.REPL_SLAVE_INSERT_ID_NAME + "=null");
 		conn.execute("insert into `autoinctab` (`id`, `junk`) values (500, 'trash500')");
 		conn.assertResults("select id from `autoinctab` where `junk` = 'trash500'",
 				br(nr, new Long(500)));
@@ -149,9 +148,11 @@ public class InsertAutoincrementTest extends SchemaTest {
 		conn.execute(buf.toString());
 
 		CatalogDAO c = CatalogDAOFactory.newInstance();
-		String orig = Singletons.require(HostService.class).getGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS);
+		Long orig = KnownVariables.CACHED_PLAN_LITERALS_MAX.getValue(null);
+//		String orig = Singletons.require(HostService.class).getGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS);
 		try {
-            Singletons.require(HostService.class).setGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS, "1");
+			KnownVariables.CACHED_PLAN_LITERALS_MAX.setValue(null, VariableScope.GLOBAL, "1");
+//            Singletons.require(HostService.class).setGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS, "1");
 
 			conn.execute("insert into `autoinctab` (`junk`) values ('trash1'),('trash2'),('trash3')");
 			conn.assertResults(
@@ -165,7 +166,8 @@ public class InsertAutoincrementTest extends SchemaTest {
 					br(nr, new Long(4), "trash4", nr, new Long(5), "trash5", nr, new Long(6), "trash6"));
 
 		} finally {
-            Singletons.require(HostService.class).setGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS, orig);
+			KnownVariables.CACHED_PLAN_LITERALS_MAX.setValue(null, VariableScope.GLOBAL, orig.toString());
+ //           Singletons.require(HostService.class).setGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS, orig);
         }
 	}
 

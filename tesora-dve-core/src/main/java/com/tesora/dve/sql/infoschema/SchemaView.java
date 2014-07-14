@@ -43,7 +43,7 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variables.Variables;
+import com.tesora.dve.variables.KnownVariables;
 
 public abstract class SchemaView implements
 		Schema<InformationSchemaTableView> {
@@ -141,7 +141,7 @@ public abstract class SchemaView implements
 	}
 	
 	protected boolean useExtensions(SchemaContext sc) {
-		return 	Variables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
+		return 	KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 	}
 
 	protected boolean hasPriviledge(SchemaContext sc) {
