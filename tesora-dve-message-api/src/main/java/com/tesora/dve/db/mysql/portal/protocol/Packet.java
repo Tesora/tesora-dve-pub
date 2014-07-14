@@ -32,6 +32,22 @@ import com.tesora.dve.db.mysql.MysqlNativeConstants;
 
 public class Packet {
 
+	public static final class ExtendedPacket extends Packet {
+
+		protected ExtendedPacket(final int initialCapacity) {
+			super(initialCapacity);
+		}
+
+		protected ExtendedPacket(final byte messageType, final int initialCapacity) {
+			super(messageType, initialCapacity);
+		}
+
+		@Override
+		public boolean isExtended() {
+			return true;
+		}
+	}
+
 	private static final Logger logger = Logger.getLogger(Packet.class);
 
 	private static final byte DEFAULT_SEQUENCE_ID = 0;
@@ -89,12 +105,12 @@ public class Packet {
 		this.messageType = messageType;
 	}
 
+	/**
+	 * The buffer is not managed by this class past allocation.
+	 * The caller is responsible for further memory management and cleanup.
+	 */
 	public final ByteBuf getPayload() {
 		return this.payloadBuffer;
-	}
-
-	public final boolean releasePayload() {
-		return this.payloadBuffer.release();
 	}
 
 	public boolean isExtended() {

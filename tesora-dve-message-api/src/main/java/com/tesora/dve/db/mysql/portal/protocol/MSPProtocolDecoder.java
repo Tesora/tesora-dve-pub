@@ -162,7 +162,7 @@ public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDe
 	private void reset() {
 		checkpoint(MyDecoderState.READ_PACKET);
 		if (packet != null) {
-			packet.releasePayload();
+			packet.getPayload().release();
 			packet = null;
 		}
 	}

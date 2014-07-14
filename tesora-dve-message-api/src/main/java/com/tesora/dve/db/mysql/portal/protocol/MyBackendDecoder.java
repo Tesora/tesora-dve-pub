@@ -53,6 +53,7 @@ import com.tesora.dve.db.mysql.libmy.MyOKResponse;
 import com.tesora.dve.db.mysql.libmy.MyPrepareOKResponse;
 import com.tesora.dve.db.mysql.libmy.MyRawMessage;
 import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
+import com.tesora.dve.db.mysql.portal.protocol.Packet.ExtendedPacket;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.singleton.Singletons;
@@ -482,7 +483,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 				final MyMessage message = parseAwaitRow(this.extendedPacket);
 
 				// reset
-				this.extendedPacket.releasePayload();
+				this.extendedPacket.getPayload().release();
 				this.extendedPacket = null;
 
 				return message;
