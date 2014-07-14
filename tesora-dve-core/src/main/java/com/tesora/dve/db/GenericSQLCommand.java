@@ -21,13 +21,12 @@ package com.tesora.dve.db;
  * #L%
  */
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.CharsetUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +35,9 @@ import org.apache.commons.lang.ArrayUtils;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.expression.DelegatingLiteralExpression;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -106,9 +107,36 @@ public class GenericSQLCommand {
 	
 	// for fetch support
 	public GenericSQLCommand modify(String toAppend) {
-		return new GenericSQLCommand(format + toAppend,entries, type, isUpdate, hasLimit);
+		return new GenericSQLCommand(format + toAppend, entries, type, isUpdate, hasLimit);
 	}
 	
+	public GenericSQLCommand append(final String formatToAppend) {
+		return this.append(formatToAppend.getBytes());
+	}
+
+	public GenericSQLCommand append(final GenericSQLCommand other) {
+		return this.append(other.entries).append(other.format);
+	}
+
+	public GenericSQLCommand append(final byte[] formatToAppend) {
+		this.format = ArrayUtils.addAll(this.format, formatToAppend);
+		return this;
+	}
+
+	/**
+	 * Append other command's entries and update their offsets.
+	 */
+	public GenericSQLCommand append(final OffsetEntry[] entriesToAppend) {
+		int numLocalEntries = this.entries.length;
+		this.entries = Arrays.copyOf(this.entries, numLocalEntries + entriesToAppend.length);
+		final int initialOffset = this.format.length;
+		for (final OffsetEntry entry : entriesToAppend) {
+			this.entries[numLocalEntries++] = entry.makeAdjusted(initialOffset + entry.getOffset());
+		}
+
+		return this;
+	}
+
 	private static final String forUpdate = "FOR UPDATE";
 	
 	// also for fetch support
