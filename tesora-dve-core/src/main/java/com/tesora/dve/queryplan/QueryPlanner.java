@@ -26,17 +26,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.tesora.dve.clock.NoopTimingService;
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
-import com.tesora.dve.groupmanager.GroupTopicPublisher;
-import com.tesora.dve.singleton.Singletons;
-import org.apache.commons.lang.StringUtils;
-
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.groupmanager.CacheInvalidationMessage;
+import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.parser.InputState;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.PlanningResult;
@@ -191,17 +191,27 @@ public class QueryPlanner {
 	
 	private static QueryPlan buildPlan(PlanningResult planningResult,
 			SSConnection connMgr, SchemaContext sc) throws PEException {
-		if (planningResult == null)
+		if (planningResult == null) {
 			return new QueryPlan();
-		List<ExecutionPlan> plans = planningResult.getPlans();
-		QueryPlan plan = new QueryPlan();
+		}
+		final List<ExecutionPlan> plans = planningResult.getPlans();
+		final QueryPlan plan = new QueryPlan();
 		plan.setInputStatement(planningResult.getOriginalSQL());
-		ExecutionPlanOptions opts = new ExecutionPlanOptions();
-		for(ExecutionPlan ep : plans) {
-			ep.logPlan(sc,"on conn " + connMgr.getName(),null);
-			List<QueryStep> steps = ep.schedule(opts, connMgr,sc);
-			for(QueryStep qs : steps)
+		final ExecutionPlanOptions opts = new ExecutionPlanOptions();
+		final int numExecutionPlans = plans.size();
+		for (int epIdx = 0; epIdx < numExecutionPlans; ++epIdx) {
+			final ExecutionPlan ep = plans.get(epIdx);
+			ep.logPlan(sc, "on conn " + connMgr.getName(), null);
+			final List<QueryStep> steps = ep.schedule(opts, connMgr, sc);
+			final int numQuerySteps = steps.size();
+			for (int qsIdx = 0; qsIdx < numQuerySteps; ++qsIdx) {
+				final QueryStep qs = steps.get(qsIdx);
 				plan.addStep(qs);
+				if ((epIdx > 0) && (qsIdx == 0)) {
+					final QueryStep leadingPlanStep = plan.getSteps().get(0);
+					leadingPlanStep.addDependencyStep(qs);
+				}
+			}
 			plan.setTrueUpdateCount(ep.getUpdateCount(sc));
 			if (ep.useRowCount()) {
 				plan.setUseRowCount();
