@@ -198,8 +198,8 @@ public class QueryPlanner {
 		final QueryPlan plan = new QueryPlan();
 		plan.setInputStatement(planningResult.getOriginalSQL());
 		final ExecutionPlanOptions opts = new ExecutionPlanOptions();
-		final int numExecutionPlans = plans.size();
-		for (int epIdx = 0; epIdx < numExecutionPlans; ++epIdx) {
+		final int lastExecutionPlanIndex = plans.size() - 1;
+		for (int epIdx = 0; epIdx <= lastExecutionPlanIndex; ++epIdx) {
 			final ExecutionPlan ep = plans.get(epIdx);
 			ep.logPlan(sc, "on conn " + connMgr.getName(), null);
 			final List<QueryStep> steps = ep.schedule(opts, connMgr, sc);
@@ -212,9 +212,12 @@ public class QueryPlanner {
 					leadingPlanStep.addDependencyStep(qs);
 				}
 			}
-			plan.setTrueUpdateCount(ep.getUpdateCount(sc));
-			if (ep.useRowCount()) {
-				plan.setUseRowCount();
+
+			if (epIdx == lastExecutionPlanIndex) {
+				plan.setTrueUpdateCount(ep.getUpdateCount(sc));
+				if (ep.useRowCount()) {
+					plan.setUseRowCount();
+				}
 			}
 		}
 		plan.setRuntimeUpdateCountAdjustment(opts);
