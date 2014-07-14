@@ -277,7 +277,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			}
 			buf.append(prefix).append(")");
 		} else if (hp instanceof AbstractProjectingExecutionStep) {
-			AbstractProjectingExecutionStep aes = (ProjectingExecutionStep) hp;
+			AbstractProjectingExecutionStep aes = (AbstractProjectingExecutionStep) hp;
 			buf.append(prefix).append("new ProjectingExpectedStep(");
 			if (aes.getExecutionType() == ExecutionType.SELECT) {
 				buf.append("ExecutionType.SELECT,").append(PEConstants.LINE_SEPARATOR);

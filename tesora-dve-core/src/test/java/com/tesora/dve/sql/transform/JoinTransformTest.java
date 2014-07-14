@@ -726,4 +726,62 @@ public class JoinTransformTest extends TransformTest {
 						null)
 				));
 	}
+	
+	@Test
+	public void testPE1560() throws Throwable {
+		SchemaContext db = buildSchema(TestName.MULTI,
+				"CREATE TABLE `commerce_order` ("
+						+ "`order_id` int(10) unsigned NOT NULL,"
+						+ "`order_number` varchar(255) DEFAULT NULL,"
+						+ "`revision_id` int(10) unsigned DEFAULT NULL,"
+						+ "`type` varchar(255) NOT NULL DEFAULT '',"
+						+ "`uid` int(11) NOT NULL DEFAULT '0',"
+						+ "`mail` varchar(255) NOT NULL DEFAULT '',"
+						+ "`status` varchar(255) NOT NULL,"
+						+ "`created` int(11) NOT NULL DEFAULT '0',"
+						+ "`changed` int(11) NOT NULL DEFAULT '0',"
+						+ "`hostname` varchar(128) NOT NULL DEFAULT '',"
+						+ "`data` longblob,"
+						+ "PRIMARY KEY (`order_id`),"
+						+ "UNIQUE KEY `order_number` (`order_number`),"
+						+ "UNIQUE KEY `revision_id` (`revision_id`)"
+						+ ") DEFAULT CHARSET=utf8",
+				"CREATE TABLE `field_data_commerce_line_items` ("
+						+ "`entity_type` varchar(128) NOT NULL DEFAULT '',"
+						+ "`bundle` varchar(128) NOT NULL DEFAULT '',"
+						+ "`deleted` tinyint(4) NOT NULL DEFAULT '0',"
+						+ "`entity_id` int(10) unsigned NOT NULL,"
+						+ "`revision_id` int(10) unsigned DEFAULT NULL,"
+						+ "`language` varchar(32) NOT NULL DEFAULT '',"
+						+ "`delta` int(10) unsigned NOT NULL,"
+						+ "`commerce_line_items_line_item_id` int(10) unsigned DEFAULT NULL,"
+						+ "PRIMARY KEY (`entity_type`,`entity_id`,`deleted`,`delta`,`language`)"
+						+ ") DEFAULT CHARSET=utf8",
+				"CREATE TABLE `commerce_line_item` ("
+						+ "`line_item_id` int(10) unsigned NOT NULL,"
+						+ "`order_id` int(11) NOT NULL DEFAULT '0',"
+						+ "`type` varchar(255) NOT NULL DEFAULT '',"
+						+ "`line_item_label` varchar(255) NOT NULL,"
+						+ "`quantity` decimal(10,2) NOT NULL DEFAULT '0.00',"
+						+ "`created` int(11) NOT NULL DEFAULT '0',"
+						+ "`changed` int(11) NOT NULL DEFAULT '0',"
+						+ "`data` longblob,"
+						+ "PRIMARY KEY (`line_item_id`)"
+						+ ") DEFAULT CHARSET=utf8"
+				);
+
+		String sql = 
+				"SELECT commerce_line_item_field_data_commerce_line_items.line_item_id AS commerce_line_item_field_data_commerce_line_items_line_item_"
+						+ " FROM commerce_order commerce_order"
+						+ " LEFT JOIN field_data_commerce_line_items field_data_commerce_line_items ON commerce_order.order_id = field_data_commerce_line_items.entity_id AND (field_data_commerce_line_items.entity_type = 'commerce_order' AND field_data_commerce_line_items.deleted = '0')"
+						+ " INNER JOIN commerce_line_item commerce_line_item_field_data_commerce_line_items ON field_data_commerce_line_items.commerce_line_items_line_item_id = commerce_line_item_field_data_commerce_line_items.line_item_id"
+						+ " WHERE (( (commerce_order.order_id = '0' ) )AND(( (commerce_line_item_field_data_commerce_line_items.type IN  ('product_discount', 'product')) )))AND (1 = 0) AND (1 = 0)";
+		
+		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
+		stmtTest(db,
+				sql,
+				SelectStatement.class,
+				null);
+		
+	}
 }
