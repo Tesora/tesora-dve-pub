@@ -107,6 +107,7 @@ public class DBHelperConnectionResource extends JdbcConnectionResource {
 			props.setProperty("characterEncoding","latin1");
 		}
 		props.setProperty("zeroDateTimeBehavior", "round");
+		props.setProperty("allowMultiQueries", "true");
 		jdbcConnParams.setURLOptions(props);
 	}
 	

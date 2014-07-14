@@ -784,4 +784,24 @@ public class InsertTest extends SchemaMirrorTest {
 		}
 	}
 	
+	@Test
+	public void testPE1569() throws Throwable {
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc(
+				"CREATE TABLE `test` ("
+						+ "`cid` varchar(255),"
+						+ "`data` varchar(255) "
+						+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8"));
+
+		tests.add(new StatementMirrorProc("INSERT INTO test VALUES ('0', '000'); INSERT INTO test VALUES ('1', '111'); INSERT INTO test VALUES ('2', '222');"));
+		tests.add(new StatementMirrorFun("SELECT * FROM test ORDER BY cid;"));
+
+		tests.add(new StatementMirrorProc("SET AUTOCOMMIT = 0"));
+		tests.add(new StatementMirrorProc("INSERT INTO test VALUES ('4', '444'); COMMIT;"));
+		tests.add(new StatementMirrorProc("ROLLBACK"));
+		tests.add(new StatementMirrorFun("SELECT * FROM test ORDER BY cid"));
+
+		runTest(tests);
+	}
+
 }

@@ -23,13 +23,18 @@ package com.tesora.dve.sql;
 
 import java.math.BigDecimal;
 
-import com.tesora.dve.sql.util.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.sql.util.ConnectionResource;
+import com.tesora.dve.sql.util.DBHelperConnectionResource;
+import com.tesora.dve.sql.util.PEDDL;
+import com.tesora.dve.sql.util.ProjectDDL;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
+import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
 
 public class SelectTest extends SchemaTest {
@@ -39,7 +44,7 @@ public class SelectTest extends SchemaTest {
 
 	@BeforeClass
 	public static void setup() throws Exception {
-		PETest.projectSetup(checkDDL, otherDDL,singleDDL);
+		PETest.projectSetup(checkDDL, otherDDL, singleDDL);
 		PETest.bootHost = BootstrapHost.startServices(PETest.class);
 	}
 
