@@ -44,4 +44,8 @@ public final class MathUtils {
 		return Math.round(value * factor) / factor;
 	}
 
+	public static boolean isInteger(final double value) {
+		return value == Math.rint(value);
+	}
+
 }

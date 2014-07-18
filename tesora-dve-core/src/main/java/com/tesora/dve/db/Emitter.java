@@ -35,6 +35,7 @@ import org.apache.commons.lang.time.FastDateFormat;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.common.catalog.IndexType;
 import com.tesora.dve.common.catalog.MultitenantMode;
@@ -213,6 +214,13 @@ public abstract class Emitter {
 	public static abstract class EmitterInvoker {
 
 		private final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+
+		public final String getValueAsString(final SchemaContext sc) {
+			final StringBuilder buf = new StringBuilder();
+			this.emitStatement(sc, buf);
+
+			return buf.toString();
+		}
 
 		public final GenericSQLCommand buildGenericCommand(final SchemaContext sc) {
 			final StringBuilder buf = new StringBuilder();
@@ -473,9 +481,10 @@ public abstract class Emitter {
 			error("Unknown persistable kind: " + p.getClass().getName());
 	}
 	
-	public void emitColumnDeclaration(SchemaContext sc, PEColumn c, StringBuilder buf) {
+	public void emitColumnDeclaration(final SchemaContext sc, final PEColumn c, final StringBuilder buf) {
+		final Type columnType = c.getType();
 		buf.append(c.getName().getQuotedName().getSQL()).append(" ");
-		emitDeclaration(c.getType(),c,buf, true);
+		emitDeclaration(columnType, c, buf, true);
 		// fixed order for the attributes
 		// here is the overall declaration order for a column
 		// name (root-type) (binary) (length/precision) (character set charset_name) (collate collation_name) (unsigned) (zerofill)
@@ -494,21 +503,69 @@ public abstract class Emitter {
 		// unsigned
 		// zerofill
 		// not nullable
-		if (c.isNotNullable())
+		if (c.isNotNullable()) {
 			buf.append(" NOT NULL");
-		else if (c.getType().isTimestampType()) 
+		} else if (columnType.isTimestampType()) {
 			buf.append(" NULL");
+		}
+
 		// default value
 		if (c.getDefaultValue() != null) {
 			buf.append(" DEFAULT ");
-			emitExpression(sc,c.getDefaultValue(),buf, -1);
+			String defaultValue = new EmitterInvoker() {
+				@Override
+				protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
+					emitExpression(sc, c.getDefaultValue(), buf, -1);
+				}
+			}.getValueAsString(sc);
+			
+			/*
+			 * The default value must be a constant. It cannot be a function or
+			 * an expression. The exception is that you can specify
+			 * CURRENT_TIMESTAMP as the default for TIMESTAMP and DATETIME
+			 * columns.
+			 * 
+			 * TODO: In numeric contexts, hexadecimal values act like integers
+			 * (64-bit precision). In string contexts, they act like binary
+			 * strings.
+			 * We currently push the hex value down and let the native do the
+			 * job, in order to exactly match the output of "SHOW CREATE", we
+			 * may need to resolve them here using the same charset as the one
+			 * used by the underlying database.
+			 */
+			if (!defaultValue.equalsIgnoreCase("NULL")
+					&& !(columnType.isTimestampType()
+							&& defaultValue.equalsIgnoreCase("CURRENT_TIMESTAMP")
+							|| defaultValue.equalsIgnoreCase("0"))
+					&& !PEStringUtils.isHexNumber(defaultValue)) {
+
+				if (columnType.isBitType()) {
+					if (defaultValue.length() == 1) { // Transform 0 and 1 literals to b'value' notation.
+						defaultValue = 'b' + PEStringUtils.singleQuote(defaultValue);
+					}
+				} else {
+					if (columnType.isFloatType()) { // Transform float literals that can be expressed as integers.
+						defaultValue = PEStringUtils.trimToInt(PEStringUtils.dequote(defaultValue));
+					}
+
+					defaultValue = PEStringUtils.singleQuote(defaultValue);
+				}
+
+			}
+			
+			buf.append(defaultValue);
 		}
+
 		// on update
-		if (c.isOnUpdated())
+		if (c.isOnUpdated()) {
 			buf.append(" ON UPDATE CURRENT_TIMESTAMP");
+		}
+
 		// auto increment
-		if (c.isAutoIncrement() && getOptions() != null && ((getOptions().isTableDefinition()) || getOptions().isExternalTableDeclaration()))
+		if (c.isAutoIncrement() && getOptions() != null && ((getOptions().isTableDefinition()) || getOptions().isExternalTableDeclaration())) {
 			buf.append(" AUTO_INCREMENT");
+		}
+
 		// comparison
 		// comment
 		emitComment(c.getComment(), buf);		
