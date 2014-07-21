@@ -21,19 +21,21 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import org.apache.commons.lang.StringUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.testng.Assert;
 
+import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
 import com.tesora.dve.sql.util.PEDDL;
@@ -41,7 +43,6 @@ import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
-import org.testng.Assert;
 
 public class LargeMaxPktTest extends MysqlConnSchemaMirrorTest {
 	private static final int SITES = 5;
@@ -101,7 +102,7 @@ public class LargeMaxPktTest extends MysqlConnSchemaMirrorTest {
 			tests.add(new StatementMirrorProc("CREATE TABLE `pe1512` (`data` longblob)"));
 			tests.add(new StatementMirrorProc("INSERT INTO `pe1512` VALUES ('" + StringUtils.repeat("0", 17000000) + "')"));
 			tests.add(new StatementMirrorFun("SELECT length(data) FROM `pe1512`"));
-			// There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
+			// TODO: There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
 			// that it doesn't handle extended packets properly 
 			//tests.add(new StatementMirrorFun("SELECT data FROM `pe1512`"));
 

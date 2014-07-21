@@ -394,8 +394,14 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 		}
 
 		if (maybeBuildDiffMessage(sc, messages, "distribution vector position", 
-				new Integer(getDistributionValuePosition()), new Integer(other.getDistributionValuePosition()), first, visited))
+				new Integer(getDistributionValuePosition()), new Integer(other.getDistributionValuePosition()), first, visited)) {
 			return true;
+		}
+		
+		if (maybeBuildDiffMessage(sc, messages, "default value", this.getDefaultValue(), other.getDefaultValue(), first, visited)) {
+			return true;
+		}
+		
 		return false;
 	}
 

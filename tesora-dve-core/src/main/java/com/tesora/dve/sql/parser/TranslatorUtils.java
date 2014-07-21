@@ -51,6 +51,8 @@ import com.tesora.dve.common.catalog.DynamicPolicy;
 import com.tesora.dve.common.catalog.ExternalService;
 import com.tesora.dve.common.catalog.FKMode;
 import com.tesora.dve.common.catalog.IndexType;
+import com.tesora.dve.common.catalog.Key;
+import com.tesora.dve.common.catalog.KeyColumn;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentTemplate;
@@ -60,6 +62,7 @@ import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
+import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.DistributionRange;
@@ -3060,7 +3063,42 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public List<AlterTableAction> buildDropColumnAction(Name columnName) {
-		return wrapAlterAction(new DropColumnAction(lookupAlteredColumn(columnName)));
+		List<AlterTableAction> actions = new ArrayList<AlterTableAction>();
+		PEColumn alteredCol = lookupAlteredColumn(columnName);
+
+		// cannot drop column if it is the target in an FK
+		for (UserTable ut : pc.getCatalog().findTablesWithFKSReferencing(alteredCol.getTable().getPersistentID())) {
+			for(Key k : ut.getKeys()) {
+				if (k.isForeignKey() && StringUtils.equals(k.getReferencedTable().getName(), alteredCol.getTable().getName().get())) {
+					for(KeyColumn c : k.getColumns()) {
+						if (StringUtils.equals(c.getTargetColumnName(), alteredCol.getName().get())) {
+							throw new SchemaException(Pass.SECOND, "Cannot drop column '" + columnName.get() + "' because it is part of foreign key '" + k.getName() + "'");
+						}
+					}
+				}
+			}
+		}
+		
+		for(PEKey key : alteredCol.getTable().getKeys(pc)) {
+			if (key.containsColumn(alteredCol)) {
+				if (key.isForeign()) {
+					throw new SchemaException(Pass.SECOND, "Cannot drop column '" + columnName.get() + "' because it is part of foreign key '" + key.getName().get() + "'");
+				}
+
+				actions.add(buildDropIndexAction(null, key.getName()).get(0));
+				
+				if (key.getColumns(pc).size() > 1) {
+					// rebuild index if multicol
+					PEKey newPEKey = key.copy(pc, alteredCol.getTable().asTable());
+					newPEKey.removeColumn(alteredCol);
+					
+					actions.add(buildAddIndexAction(newPEKey).get(0));
+				}
+			}
+		}
+		
+		actions.add(new DropColumnAction(alteredCol));
+		return actions;
 	}
 
 	public List<AlterTableAction> buildTableOptionAction(TableModifier tm) {
