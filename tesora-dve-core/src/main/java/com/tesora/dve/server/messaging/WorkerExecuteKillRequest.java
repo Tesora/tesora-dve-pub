@@ -44,7 +44,6 @@ public class WorkerExecuteKillRequest extends WorkerExecuteRequest {
 
 	public WorkerExecuteKillRequest(SSContext ssContext, SQLCommand command, int connectionId) {
 		super(ssContext, command);
-        System.out.println("WorkerExecuteKillRequest() constructed, connectionID = "+connectionId);
         this.connectionId = connectionId;
 	}
 
@@ -56,12 +55,14 @@ public class WorkerExecuteKillRequest extends WorkerExecuteRequest {
             PECodingException peCodingException = new PECodingException("Unknown thread id: " + connectionId);
             peCodingException.fillInStackTrace();
             callersResults.failure(peCodingException);
+            return;
         }
 
 		int siteConnId = connectionInfo.getSiteConnectionId(w.getWorkerSite());
 		if (siteConnId == 0){
 			// no corresponding thread on this site
 			callersResults.success(true);
+            return;
         }
 
 		StringBuilder sql = new StringBuilder(stmtCommand.getRawSQL());

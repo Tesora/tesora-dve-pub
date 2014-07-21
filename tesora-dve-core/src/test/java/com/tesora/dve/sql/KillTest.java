@@ -44,8 +44,6 @@ import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
 
-//SMG:disable to see if everything else is OK.
-@Ignore
 public class KillTest extends SchemaTest {
 
 	private static final ProjectDDL checkDDL = new PEDDL("checkdb",
