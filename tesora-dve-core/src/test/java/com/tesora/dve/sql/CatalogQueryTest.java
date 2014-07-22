@@ -22,11 +22,14 @@ package com.tesora.dve.sql;
  */
 
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -43,6 +46,7 @@ import org.junit.runners.MethodSorters;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
@@ -52,6 +56,7 @@ import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.PEDDL;
+import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
@@ -82,11 +87,11 @@ public class CatalogQueryTest extends SchemaTest {
 		PETest.bootHost = BootstrapHost.startServices(PETest.class);
 	}
 
-	ProxyConnectionResource conn = null;
+	PortalDBHelperConnectionResource conn = null;
 	
 	@Before
 	public void before() throws Throwable {
-		conn = new ProxyConnectionResource();
+		conn = new PortalDBHelperConnectionResource();
 		for(int i = 0; i < projects.length; i++) {
 			projects[i].clearCreated();
 			projects[i].create(conn);
@@ -196,8 +201,8 @@ public class CatalogQueryTest extends SchemaTest {
 		try {
 			testCommand(conn,"table",br(nr,"A","AB"),"A",0,br(nr,"A"),false);
 			fail("Should have no results on show tables with no database set");
-		} catch (PEException e) {
-			// ignore
+		} catch (SQLException e) {
+			assertSQLException(e,MySQLErrors.missingDatabaseFormatter,"No database selected");
 		}
 
 		conn.execute("use cqtdb");
@@ -227,14 +232,15 @@ public class CatalogQueryTest extends SchemaTest {
 		try {
 			conn.execute("describe foo");
 			fail("describe foo for missing foo should throw");
-		} catch (PEException e) {
-			// ok
+		} catch (SQLException e) {
+			assertSQLException(e,MySQLErrors.missingTableFormatter,
+					"Table 'cqtdb.foo' doesn't exist");
 		}
 	}
 	
 	// plural results are what you get from the plural forms, which is traditionally just the
 	// name for some commands, and 
-	private void testCommand(ProxyConnectionResource conn1,
+	private void testCommand(PortalDBHelperConnectionResource conn1,
 			String singular, Object[] pluralResults, String named, int offset, Object[] singularResults, boolean ext) throws Throwable {
 		conn1.execute("set session dve_metadata_extensions = " + (ext ? "true" : "false"));
 		String q1 = "show " + singular + "s";
@@ -311,7 +317,7 @@ public class CatalogQueryTest extends SchemaTest {
 						nr,"localhost","t1","cqtu2",
 						nr,"localhost","t2","cqtu1"));
 		conn.assertResults("select User from db where Db = 't2' order by User",	br(nr,"cqtu1"));
-		conn.assertResults("select count(*) from db where Db = 't1'",br(nr,new BigInteger("2")));
+		conn.assertResults("select count(*) from db where Db = 't1'",br(nr,2L));
 	}
 	
 	@Test
@@ -341,8 +347,13 @@ public class CatalogQueryTest extends SchemaTest {
 		// reset the current database
 		conn.connect();
 		
-		verifyRootExceptionMessage(conn, "SHOW TABLE STATUS", "Unable to build plan - Current database not set");
-		
+		try {
+			conn.execute("show table status");
+		} catch (SQLException e) {
+			assertSQLException(e,MySQLErrors.missingDatabaseFormatter,
+					"No database selected");
+		}
+				
 		rr = conn.fetch("show table status from " + project.getDatabaseName());
 		rows = rr.getResults();
 		assertEquals(1,rows.size());
@@ -352,8 +363,13 @@ public class CatalogQueryTest extends SchemaTest {
 
 		conn.assertResults("show table status from junk", br());
 
-		verifyRootExceptionMessage(conn, "SHOW TABLES", "Unable to build plan - Unable to show tables (unqualified) with no current database");
-
+		try {
+			conn.execute("show tables");
+		} catch (SQLException e) {
+			assertSQLException(e,MySQLErrors.missingDatabaseFormatter,
+					"No database selected");
+		}
+		
 		rr = conn.fetch("show tables from " + project.getDatabaseName());
 		rows = rr.getResults();
 		assertEquals(1,rows.size());
@@ -565,12 +581,27 @@ public class CatalogQueryTest extends SchemaTest {
 			
 			nonRootConn.assertResults("SELECT USER()", br(nr, "nonroot@localhost"));
 
-			verifyRootExceptionMessage(nonRootConn, "SHOW MASTER LOGS", "Unable to build plan - You do not have permission to show persistent sites");
-			
-			verifyRootExceptionMessage(nonRootConn, "SHOW MASTER STATUS", "Unable to build plan - You do not have permission to show persistent sites");
-			
-			verifyRootExceptionMessage(nonRootConn, "SHOW SLAVE STATUS", "Unable to build plan - You do not have permission to show persistent sites");
+			try {
+				nonRootConn.execute("show master logs");
+			} catch (SchemaException e) {
+				assertErrorInfo(e,MySQLErrors.internalFormatter,
+						"Internal error: You do not have permission to show persistent sites");
+			}
 
+			try {
+				nonRootConn.execute("show master status");
+			} catch (SchemaException e) {
+				assertErrorInfo(e,MySQLErrors.internalFormatter,
+						"Internal error: You do not have permission to show persistent sites");
+			}
+
+			try {
+				nonRootConn.execute("show slave status");
+			} catch (SchemaException e) {
+				assertErrorInfo(e,MySQLErrors.internalFormatter,
+						"Internal error: You do not have permission to show persistent sites");
+			}
+			
 			nonRootConn.assertResults("SELECT * FROM information_schema.character_sets", 
 					br(nr, "ascii", "US ASCII", Long.valueOf(1),
 					   nr, "latin1", "cp1252 West European", Long.valueOf(1),
@@ -645,24 +676,7 @@ public class CatalogQueryTest extends SchemaTest {
 			nonRootConn.disconnect();
 		}
 	}
-	
-	private void verifyRootExceptionMessage(ConnectionResource conn1, String command, String exceptionMessage) throws Throwable {
-		try {
-			conn1.execute(command);
-		} catch (Exception e) {
-			if (e instanceof PEException) {
-				assertEquals(exceptionMessage, e.getMessage());
-			} else {
-				StringBuilder s = new StringBuilder();
-				s.append(command);
-				s.append(" did not return expected PEException.  ");
-				s.append(" Actual: ");
-				s.append(e.toString());
-				fail(s.toString());
-			}
-		}
-	}
-	
+		
 	@Test
 	public void testScopedNameOnShowCreateTable() throws Throwable {
 		conn.execute("use " + project.getDatabaseName());
@@ -725,17 +739,17 @@ public class CatalogQueryTest extends SchemaTest {
 	public void literalExpressionInfoSchemaTest() throws Throwable {
 		conn.assertResults("select 'text' from information_schema.schemata limit 1", br(nr,"text"));
 		int intVal = Integer.MAX_VALUE;
-		conn.assertResults("select " + intVal + " from information_schema.schemata limit 1", br(nr,BigInteger.valueOf(intVal)));
+		conn.assertResults("select " + intVal + " from information_schema.schemata limit 1", br(nr,Long.valueOf(intVal)));
 		intVal = Integer.MIN_VALUE;
-		conn.assertResults("select " + intVal + " from information_schema.schemata limit 1", br(nr,BigInteger.valueOf(intVal)));
+		conn.assertResults("select " + intVal + " from information_schema.schemata limit 1", br(nr,Long.valueOf(intVal)));
 		double doubleVal = 1111111111.11111;
-		conn.assertResults("select " + doubleVal + " from information_schema.schemata limit 1", br(nr,doubleVal));
+		conn.assertResults("select " + doubleVal + " from information_schema.schemata limit 1", br(nr,BigDecimal.valueOf(doubleVal)));
 		doubleVal = -0.0000000000000000000001;
-		conn.assertResults("select " + doubleVal + " from information_schema.schemata limit 1", br(nr,doubleVal));
+		conn.assertResults("select " + doubleVal + " from information_schema.schemata limit 1", br(nr,BigDecimal.valueOf(doubleVal)));
 		long longVal = Long.MAX_VALUE;
-		conn.assertResults("select " + longVal + " from information_schema.schemata limit 1", br(nr,BigInteger.valueOf(longVal)));
+		conn.assertResults("select " + longVal + " from information_schema.schemata limit 1", br(nr,Long.valueOf(longVal)));
 		longVal = Long.MIN_VALUE;
-		conn.assertResults("select " + longVal + " from information_schema.schemata limit 1", br(nr,BigInteger.valueOf(longVal)));
+		conn.assertResults("select " + longVal + " from information_schema.schemata limit 1", br(nr,Long.valueOf(longVal)));
 	}
 	
 	@Test

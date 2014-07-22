@@ -1,6 +1,4 @@
-package com.tesora.dve.sql;
-
-import com.tesora.dve.errmap.ErrorInfo;
+package com.tesora.dve.errmap;
 
 /*
  * #%L
@@ -23,32 +21,10 @@ import com.tesora.dve.errmap.ErrorInfo;
  * #L%
  */
 
-public class SchemaException extends ParserException {
+public class TwoParamErrorCode<First, Second> extends ErrorCode {
 
-	private static final long serialVersionUID = 1L;
-
-	protected SchemaException() {
-		super();
+	public TwoParamErrorCode(String name, boolean logError) {
+		super(name, logError);
 	}
 	
-	public SchemaException(Pass p) {
-		super(p);
-	}
-
-	public SchemaException(Pass p, String message) {
-		super(p, message);
-	}
-
-	public SchemaException(Pass p, Throwable cause) {
-		super(p, cause);
-	}
-
-	public SchemaException(Pass p, String message, Throwable cause) {
-		super(p, message, cause);
-	}
-
-	public SchemaException(ErrorInfo ei) {
-		super(ei);
-	}
-		
 }

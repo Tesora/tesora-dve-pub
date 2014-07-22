@@ -37,6 +37,7 @@ import com.tesora.dve.groupmanager.CacheInvalidationMessage;
 import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.parser.InputState;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.PlanningResult;
@@ -157,6 +158,11 @@ public class QueryPlanner {
 			if (isFiltered(t,connMgr))
 				return null;
 			if (noisyErrors) t.printStackTrace();
+			if (t instanceof SchemaException) {
+				SchemaException se = (SchemaException) t;
+				if (se.getErrorInfo() != null)
+					throw se;
+			}
 			throw new PESQLException("Unable to build plan - " + t.getMessage(), t);
 		} finally {
             buildPlanTime.end();

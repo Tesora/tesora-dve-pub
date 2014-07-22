@@ -201,5 +201,11 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 		outboundCtx.write(respMsg);
 		outboundCtx.flush();
 	}
+	
+	public void sendError(MyErrorResponse constructed) {
+		constructed.setPacketNumber(++sequenceId);
+		outboundCtx.write(constructed);
+		outboundCtx.flush();		
+	}
 
 }

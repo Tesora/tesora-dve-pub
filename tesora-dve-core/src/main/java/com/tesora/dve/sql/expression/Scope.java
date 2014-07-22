@@ -68,7 +68,7 @@ public interface Scope {
 
 	public ExpressionNode buildColumnInstance(SchemaContext sc, Name given);
 
-	public TableInstance lookupTableInstance(Name given, boolean required);
+	public TableInstance lookupTableInstance(SchemaContext sc, Name given, boolean required);
 	
 	public void resolveProjection(SchemaContext sc);
 

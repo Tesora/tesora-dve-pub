@@ -29,6 +29,8 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.ShowSchema;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
@@ -98,8 +100,9 @@ public class ShowColumnInformationSchemaTable extends
 				throw new SchemaException(Pass.PLANNER, "No support for show columns ... where for temporary tables");
 		}
 		IntermediateResultSet irs = super.executeWhereSelect(sc, wc, scoping, options);
-		if (wc == null && scoping != null && scoping.size() == 1 && irs.isEmpty())
-			throw new SchemaException(Pass.PLANNER, "No such table: " + scoping.get(0).getSQL());
+		if (wc == null && scoping != null && scoping.size() == 1 && irs.isEmpty()) {
+			notFound(sc,scoping);
+		}
 
 		if (!options.isFull())
 			return irs;
@@ -107,6 +110,11 @@ public class ShowColumnInformationSchemaTable extends
 		return padResults(irs);
 	}
 
+	private static void notFound(SchemaContext sc, List<Name> scoping) throws SchemaException {
+		throw new SchemaException(new ErrorInfo(DVEErrors.TABLE_DNE,sc.getCurrentDatabase().getName().getUnquotedName().get(),
+				scoping.get(0).getUnqualified().getUnquotedName().get()));		
+	}
+	
 	@Override
 	public IntermediateResultSet executeLikeSelect(SchemaContext sc, String likeExpr, List<Name> scoping, ShowOptions options) {
 		List<ResultRow> tempTab = null;
@@ -125,7 +133,7 @@ public class ShowColumnInformationSchemaTable extends
 		}
 		
 		if (sc != null && likeExpr == null && scoping != null && scoping.size() == 1 && irs.isEmpty())
-			throw new SchemaException(Pass.PLANNER, "No such table: " + scoping.get(0).getSQL());
+			notFound(sc,scoping);
 		
 		if (!options.isFull())
 			return irs;

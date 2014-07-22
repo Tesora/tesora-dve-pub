@@ -50,8 +50,6 @@ public class RangeDistTypeEquivalencyTest extends TransientSchemaTest {
 							throw se;
 						// make sure it's invalid for the right reason
 						String message = se.getMessage();
-						if (se.getPass() != Pass.SECOND)
-							throw se;
 						if (message.indexOf("cannot be used with range") == -1)
 							throw se;
 					}

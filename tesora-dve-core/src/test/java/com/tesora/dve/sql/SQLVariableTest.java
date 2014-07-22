@@ -35,6 +35,7 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ColumnSet;
@@ -242,8 +243,9 @@ public class SQLVariableTest extends SchemaTest {
 		try {
 			conn.execute("set sql_auto_is_null = 1");
 			fail("should not be able to set sql_auto_is_null to 1");
-		} catch (PEException re) {
-			SchemaTest.assertSchemaException(re, "No support for sql_auto_is_null = 1 (planned)");
+		} catch (SchemaException e) {
+			assertErrorInfo(e,MySQLErrors.internalFormatter,
+					"Internal error: No support for sql_auto_is_null = 1 (planned)");
 		}
 		conn.execute("set sql_auto_is_null = 0");
 	}
@@ -265,12 +267,12 @@ public class SQLVariableTest extends SchemaTest {
 		conn.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED");
 		assertVariableValue(variableName, "READ-COMMITTED");
 
-		new ExpectedExceptionTester() {
-			@Override
-			public void test() throws Throwable {
-				conn.execute("SET GLOBAL TRANSACTION ISOLATION LEVEL SERIALIZABLE");
-			}
-		}.assertException(PESQLException.class, "Unable to build plan - No support for native global variables");
+		try {
+			conn.execute("SET GLOBAL TRANSACTION ISOLATION LEVEL SERIALIZABLE");			
+		} catch (SchemaException se) {
+			assertErrorInfo(se, MySQLErrors.internalFormatter,
+					"Internal error: No support for native global variables");
+		}		
 	}
 
 	@Test

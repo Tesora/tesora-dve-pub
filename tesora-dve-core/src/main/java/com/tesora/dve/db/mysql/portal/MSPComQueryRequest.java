@@ -21,6 +21,8 @@ package com.tesora.dve.db.mysql.portal;
  * #L%
  */
 
+
+import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPMessage;
 
@@ -32,9 +34,11 @@ import java.util.regex.Pattern;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.PEMysqlErrorException;
+import com.tesora.dve.errmap.ErrorMapper;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.messages.ExecuteRequestExecutor;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.worker.MysqlTextResultForwarder;
 
 public class MSPComQueryRequest extends MSPActionBase {
@@ -67,11 +71,22 @@ public class MSPComQueryRequest extends MSPActionBase {
 			if (logger.isDebugEnabled())
 				logger.debug("Exception returned directly to user: ", e);
 			// The result consumer has already processed the error, so we do nothing here
+		} catch (SchemaException se) {
+			MyErrorResponse err = ErrorMapper.makeResponse(se.getErrorInfo());
+			if (err != null) {
+				if (logger.isInfoEnabled() && se.getErrorInfo().getCode().log())
+					logger.info("Exception returned to user: ", se);
+				resultConsumer.sendError(err);
+				return;
+			} else {
+				resultConsumer.sendError(se);
+			}
 		} catch (PEException e) {
 			if (logger.isInfoEnabled())
 				logger.info("Exception returned to user: ", e);
-			if (!e.hasCause(PEMysqlErrorException.class))
+			if (!e.hasCause(PEMysqlErrorException.class)) {
 				resultConsumer.sendError(e.rootCause());
+			}
 		} catch (Throwable t) {
 			if (logger.isInfoEnabled())
 				logger.info("Exception returned to user: ", t);

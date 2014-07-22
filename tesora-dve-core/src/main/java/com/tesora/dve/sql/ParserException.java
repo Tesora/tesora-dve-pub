@@ -23,6 +23,8 @@ package com.tesora.dve.sql;
 
 import java.io.Serializable;
 
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PERuntimeException;
 
 public class ParserException extends PERuntimeException {
@@ -47,34 +49,41 @@ public class ParserException extends PERuntimeException {
 	}
 	
 	private static final long serialVersionUID = 1L;
-	private final Pass phase;
+	private final ErrorInfo error;
+	
 	
 	protected ParserException() {
 		super();
-		phase = null;
+		error = null;
 	}
 	
 	public ParserException(Pass p) {
-		phase = p;
+		super();
+		error = null;
 	}
 
 	public ParserException(Pass p, String message) {
 		super(message);
-		phase = p;
+		error = new ErrorInfo(DVEErrors.INTERNAL,message);
 	}
 
 	public ParserException(Pass p, Throwable cause) {
 		super(cause);
-		phase = p;
+		error = new ErrorInfo(DVEErrors.INTERNAL,cause.getMessage());
 	}
 
 	public ParserException(Pass p, String message, Throwable cause) {
 		super(message, cause);
-		phase = p;
+		error = new ErrorInfo(DVEErrors.INTERNAL, message);
 	}
 
-	public Pass getPass() {
-		return phase;
+	public ParserException(ErrorInfo ei) {
+		super();
+		error = ei;
+	}
+	
+	public ErrorInfo getErrorInfo() {
+		return error;
 	}
 	
 }

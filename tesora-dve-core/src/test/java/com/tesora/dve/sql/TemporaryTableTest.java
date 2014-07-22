@@ -30,6 +30,7 @@ import java.sql.SQLException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
@@ -88,7 +89,9 @@ public class TemporaryTableTest extends SchemaTest {
 				conn2.assertResults("show tables", br());
 				conn2.execute("select * from foo");
 			} catch (SQLException sqle) {
-				assertEquals(sqle.getMessage(), "SchemaException: No such Table: sysdb.foo");
+				assertSQLException(sqle,
+						MySQLErrors.missingTableFormatter,
+						"Table 'sysdb.foo' doesn't exist");
 			}
 		} finally {
 			if (conn1 != null)
@@ -194,7 +197,8 @@ public class TemporaryTableTest extends SchemaTest {
 			try {
 				conn.execute("select * from targ");
 			} catch (SQLException sqle) {
-				assertEquals(sqle.getMessage(), "SchemaException: No such Table: sysdb.targ");
+				assertSQLException(sqle,MySQLErrors.missingTableFormatter,
+						"Table 'sysdb.targ' doesn't exist");
 			}
 		}
 	}
@@ -222,7 +226,8 @@ public class TemporaryTableTest extends SchemaTest {
 				conn.execute("drop temporary table targ"); // should fail - doesn't exist
 				fail("should fail - no temporary table");
 			} catch (SQLException sqle) {
-				assertEquals(sqle.getMessage(),"SchemaException: No such temporary table: 'targ'");
+				assertSQLException(sqle,MySQLErrors.unknownTableFormatter,
+						"Unknown table 'targ'");
 			}
 			conn.execute("drop table targ"); // succeeds
 			conn.assertResults("show tables",br());

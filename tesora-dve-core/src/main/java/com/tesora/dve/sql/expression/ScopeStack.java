@@ -184,7 +184,7 @@ public class ScopeStack implements Scope {
 	}
 
 	private <ReturnType> ReturnType lookup(LookupFunction<ReturnType> f) {
-		SchemaException any = null;
+		RuntimeException any = null;
 		for(int i = scopes.size() - 1; i > -1; i--) {
 			try {
 				return f.lookup(scopes.get(i));
@@ -287,8 +287,8 @@ public class ScopeStack implements Scope {
 	}
 
 	@Override
-	public TableInstance lookupTableInstance(Name given, boolean required) {
-		return getScope().lookupTableInstance(given, required);
+	public TableInstance lookupTableInstance(SchemaContext sc, Name given, boolean required) {
+		return getScope().lookupTableInstance(sc, given, required);
 	}	
 	
 	@Override

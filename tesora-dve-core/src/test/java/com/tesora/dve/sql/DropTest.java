@@ -33,6 +33,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
@@ -193,18 +194,21 @@ public class DropTest extends SchemaTest {
 			// first off, let's make sure the nonroot user can't delete any of these things
 			try {
 				userConn.execute("drop range csysdb");
-			} catch (PEException e) {
-				assertSchemaException(e,"You do not have permission to drop a range");
+			} catch (SchemaException e) {
+				assertErrorInfo(e,MySQLErrors.internalFormatter,
+						"Internal error: You do not have permission to drop a range");
 			}
 			try {
 				userConn.execute("drop persistent group sysg");
-			} catch (PEException e) {
-				assertSchemaException(e,"You do not have permission to drop a persistent group");
+			} catch (SchemaException e) {
+				assertErrorInfo(e,MySQLErrors.internalFormatter,
+						"Internal error: You do not have permission to drop a persistent group");
 			}
 			try {
 				userConn.execute("drop persistent site sys1");
-			} catch (PEException e) {
-				assertSchemaException(e,"You do not have permission to drop a persistent site");
+			} catch (SchemaException e) {
+				assertErrorInfo(e,MySQLErrors.internalFormatter,
+						"Internal error: You do not have permission to drop a persistent site");
 			}
 		}
 	}
@@ -212,18 +216,21 @@ public class DropTest extends SchemaTest {
 	private void testDropsDataExisting() throws Throwable {
 		try {
 			conn.execute("drop range csysdb");
-		} catch (PEException e) {
-			assertSchemaException(e,"Unable to drop range csysdb because used by table ctab");
+		} catch (SchemaException e) {
+			assertErrorInfo(e,MySQLErrors.internalFormatter,
+					"Internal error: Unable to drop range csysdb because used by table ctab");
 		}
 		try {
 			conn.execute("drop persistent group sysg");
-		} catch (PEException e) {
-			assertSchemaException(e,"Unable to drop persistent group sysg because used by database sysdb");
+		} catch (SchemaException e) {
+			assertErrorInfo(e,MySQLErrors.internalFormatter,
+					"Internal error: Unable to drop persistent group sysg because used by database sysdb");
 		}
 		try {
 			conn.execute("drop persistent site sys1");
-		} catch (PEException e) {
-			assertSchemaException(e,"Unable to drop persistent site sys1 because used by group sysg");
+		} catch (SchemaException e) {
+			assertErrorInfo(e,MySQLErrors.internalFormatter,
+					"Internal error: Unable to drop persistent site sys1 because used by group sysg");
 		}
 	}
 	
@@ -234,8 +241,9 @@ public class DropTest extends SchemaTest {
 		conn.assertResults("show ranges like 'ssysdb'",br());
 		try {
 			conn.execute("drop range csysdb");
-		} catch (PEException e) {
-			assertSchemaException(e,"Unable to drop range csysdb because used by table ctab");
+		} catch (SchemaException e) {
+			assertErrorInfo(e,MySQLErrors.internalFormatter,
+					"Internal error: Unable to drop range csysdb because used by table ctab");
 		}
 		conn.execute("drop table ctab");
 		conn.assertResults("show tables like 'ctab'", br());
@@ -243,14 +251,16 @@ public class DropTest extends SchemaTest {
 		conn.assertResults("show ranges",br());
 		try {
 			conn.execute("drop persistent group sysg");
-		} catch (PEException e) {
-			assertSchemaException(e,"Unable to drop persistent group sysg because used by database sysdb");
+		} catch (SchemaException e) {
+			assertErrorInfo(e,MySQLErrors.internalFormatter,
+					"Internal error: Unable to drop persistent group sysg because used by database sysdb");
 		}
 		conn.execute("drop database sysdb");
 		try {
 			conn.execute("drop persistent site sys4");
-		} catch (PEException e) {
-			assertSchemaException(e,"Unable to drop persistent site sys4 because used by group sysg");
+		} catch (SchemaException e) {
+			assertErrorInfo(e,MySQLErrors.internalFormatter,
+					"Internal error: Unable to drop persistent site sys4 because used by group sysg");
 		}
 		conn.execute("drop persistent group sysg");
 		conn.assertResults("show persistent groups like 'sysg'",br());
@@ -446,13 +456,15 @@ public class DropTest extends SchemaTest {
 			conn.execute("drop table if exists knownNotExists");
 			try {
 				conn.execute("drop table knownNotExists");
-			} catch (PEException e) {
-				assertEquals("Unable to build plan - No such table(s) 'knownNotExists'", e.getMessage());
+			} catch (SchemaException e) {
+				assertErrorInfo(e,MySQLErrors.internalFormatter,
+						"Internal error: No such table(s) 'knownNotExists'");
 			}
 			try {
 				conn.execute("drop table knownNotExists1, knownNotExists2");
-			} catch (PEException e) {
-				assertEquals("Unable to build plan - No such table(s) 'knownNotExists1,knownNotExists2'", e.getMessage());
+			} catch (SchemaException e) {
+				assertErrorInfo(e,MySQLErrors.internalFormatter,
+						"Internal error: No such table(s) 'knownNotExists1,knownNotExists2'");
 			}
 
 			// make sure the storage sites actually were dropped so recreate same tables

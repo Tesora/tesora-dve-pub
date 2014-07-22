@@ -191,9 +191,9 @@ public class ContainerSqlTest extends SchemaTest {
 
 		try {
 			conn.execute("CREATE CONTAINER " + container1 + " PERSISTENT GROUP " + testDDL.getPersistentGroup().getName() + " BROADCAST DISTRIBUTE");
-		} catch (PEException e) {
+		} catch (Throwable e) {
 			assertTrue("Expected create if not exists range to throw exception", 
-					StringUtils.equals("Unable to build plan - Container " + container1 + " already exists.",
+					StringUtils.equals("Container " + container1 + " already exists.",
 							e.getMessage()));
 		}
 
@@ -234,9 +234,9 @@ public class ContainerSqlTest extends SchemaTest {
 		conn.execute("CREATE RANGE IF NOT EXISTS cont_range1 (int) PERSISTENT GROUP " + testDDL.getPersistentGroup().getName());
 		try {
 			conn.execute("CREATE RANGE cont_range2 (int, varchar(10)) PERSISTENT GROUP " + testDDL.getPersistentGroup().getName());
-		} catch (PEException e) {
+		} catch (Throwable e) {
 			assertTrue("Expected create if not exists range to throw exception", 
-					StringUtils.equals("Unable to build plan - Range cont_range2 already exists.",
+					StringUtils.equals("Range cont_range2 already exists.",
 							e.getMessage()));
 		}
 		

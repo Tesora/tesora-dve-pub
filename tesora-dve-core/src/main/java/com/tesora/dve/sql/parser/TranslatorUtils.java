@@ -66,6 +66,8 @@ import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.DistributionRange;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockManager;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
@@ -622,7 +624,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 					else
 						actual = new QualifiedName(nparts);
 				}
-				explicitDeletes.add(scope.lookupTableInstance(actual, true));
+				explicitDeletes.add(scope.lookupTableInstance(pc, actual, true));
 			}
 		}
 		DeleteStatement ds = new DeleteStatement(explicitDeletes, tableRefs, whereClause,
@@ -1154,7 +1156,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				unknownTables.add(givenName);
 			} else {
 				if (tempTabs && !ti.getTableKey().isUserlandTemporaryTable())
-					throw new SchemaException(Pass.SECOND, "No such temporary table: '" + givenName + "'");
+					throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_TABLE,givenName.getUnquotedName().get()));
 				tblKeys.add(ti.getTableKey());
 			}
 		}
@@ -2616,8 +2618,18 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			ts.getDerivedInfo().takeScope(scope);
 			return ts;
 		}
-		
-		throw new SchemaException(Pass.FIRST, "'" + name.getSQL() + "' is not a base table");
+		UnqualifiedName encName = null;
+		UnqualifiedName tname = null;
+		if (name.isQualified()) {
+			QualifiedName qn = (QualifiedName) name;
+			encName = qn.getNamespace();
+			tname = qn.getUnqualified();
+		} else {
+			tname = (UnqualifiedName) name;
+			encName = pc.getCurrentDatabase().getName().getUnqualified();
+		}
+			
+		throw new SchemaException(new ErrorInfo(DVEErrors.TABLE_DNE,encName.getUnquotedName().get(),tname.getUnquotedName().get()));
 	}
 
 	public ExpressionNode buildSubquery(Statement in, Name alias, Object orig, boolean makeVirtualTable) {
@@ -2953,8 +2965,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				// just do an empty statement
 				return new EmptyStatement("drop nonexistent user");
 			}
-			throw new SchemaException(Pass.SECOND, "User " + us.getSQL()
-					+ " does not exist");
+			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_USER,us.getUserName(),us.getScope()));
 		}
 		return new PEDropUserStatement(peu);
 	}
@@ -3262,7 +3273,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		} else if (args.size() == 1) {
 			return new RandFunctionCall(args.get(0));
 		} else {
-			throw new SchemaException(Pass.SECOND, "Incorrect parameter count in the call to native function 'RAND'");
+			throw new SchemaException(new ErrorInfo(DVEErrors.INCORRECT_PARAM_COUNT_FUNCTION_CALL,"RAND"));
 		}
 	}
 

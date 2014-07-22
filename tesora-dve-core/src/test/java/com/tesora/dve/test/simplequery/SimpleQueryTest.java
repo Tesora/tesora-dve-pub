@@ -44,8 +44,10 @@ import org.junit.Test;
 import com.mchange.v2.c3p0.C3P0Registry;
 import com.mchange.v2.c3p0.PooledDataSource;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
@@ -96,7 +98,7 @@ public class SimpleQueryTest extends SchemaTest {
 		conn.assertResults("select * from foo where 0=1", SchemaTest.br());
 	}
 
-	@Test(expected = PEException.class)
+	@Test(expected = SchemaException.class)
 	public void badTableName() throws Throwable {
 		conn.execute("select * from no_table_exists");
 	}
@@ -131,8 +133,9 @@ public class SimpleQueryTest extends SchemaTest {
 		try {
 			conn.execute("select * from no_table_exists");
 			fail("Exception not thrown for bad table name");
-		} catch (PEException re) {
-			// step succeeded
+		} catch (SchemaException se) {
+			assertErrorInfo(se,MySQLErrors.missingTableFormatter,
+					"TestDB","no_table_exists");
 		}
 
 		assertEquals(5, getRowCount(COUNT_ROWS_SELECT));

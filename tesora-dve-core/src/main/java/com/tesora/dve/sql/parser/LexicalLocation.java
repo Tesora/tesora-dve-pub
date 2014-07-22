@@ -1,6 +1,4 @@
-package com.tesora.dve.sql;
-
-import com.tesora.dve.errmap.ErrorInfo;
+package com.tesora.dve.sql.parser;
 
 /*
  * #%L
@@ -23,32 +21,14 @@ import com.tesora.dve.errmap.ErrorInfo;
  * #L%
  */
 
-public class SchemaException extends ParserException {
+public enum LexicalLocation {
 
-	private static final long serialVersionUID = 1L;
-
-	protected SchemaException() {
-		super();
-	}
+	// used for select projection, update field list
+	PROJECTION,
+	ONCLAUSE,
+	WHERECLAUSE,
+	GROUPBYCLAUSE,
+	HAVINGCLAUSE,
+	ORDERBYCLAUSE;
 	
-	public SchemaException(Pass p) {
-		super(p);
-	}
-
-	public SchemaException(Pass p, String message) {
-		super(p, message);
-	}
-
-	public SchemaException(Pass p, Throwable cause) {
-		super(p, cause);
-	}
-
-	public SchemaException(Pass p, String message, Throwable cause) {
-		super(p, message, cause);
-	}
-
-	public SchemaException(ErrorInfo ei) {
-		super(ei);
-	}
-		
 }

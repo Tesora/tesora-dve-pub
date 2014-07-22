@@ -59,6 +59,13 @@ public class MyErrorResponse extends MyResponseMessage {
 		setSQLErrorInformation(doTransforms(extractRootCause(e)));
 	}
 
+	public MyErrorResponse(int errNo, String state, String message) {
+		this();
+		errorNumber = errNo;
+		sqlState = state;
+		errorMsg = message;
+	}
+	
     @Override
     public boolean isErrorResponse() {
         return true;

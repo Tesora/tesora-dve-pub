@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.common.ShowSchema;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
@@ -85,7 +87,7 @@ public class ShowTableInformationSchemaTable extends ShowInformationSchemaTable 
 		List<Name> actualScoping = given;
 		if ((given == null || given.isEmpty())) {
 			if (sc.getCurrentDatabase(false) == null)
-				throw new SchemaException(Pass.PLANNER, "Unable to show tables (unqualified) with no current database");
+				throw new SchemaException(new ErrorInfo(DVEErrors.NO_DATABASE_SELECTED));
 			actualScoping = new ArrayList<Name>();
 			actualScoping.add(sc.getCurrentDatabase(false).getName());
 		}

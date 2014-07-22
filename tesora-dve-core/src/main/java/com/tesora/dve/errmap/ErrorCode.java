@@ -1,6 +1,4 @@
-package com.tesora.dve.sql;
-
-import com.tesora.dve.errmap.ErrorInfo;
+package com.tesora.dve.errmap;
 
 /*
  * #%L
@@ -23,32 +21,27 @@ import com.tesora.dve.errmap.ErrorInfo;
  * #L%
  */
 
-public class SchemaException extends ParserException {
+public abstract class ErrorCode {
 
-	private static final long serialVersionUID = 1L;
-
-	protected SchemaException() {
-		super();
+	private final String name;
+	private final boolean log;
+	
+	
+	public ErrorCode(String name, boolean logError) {
+		this.log = logError;
+		this.name = name;
 	}
 	
-	public SchemaException(Pass p) {
-		super(p);
+	public ErrorCode(String name) {
+		this(name,false);
 	}
-
-	public SchemaException(Pass p, String message) {
-		super(p, message);
+	
+	public boolean log() {
+		return log;
 	}
-
-	public SchemaException(Pass p, Throwable cause) {
-		super(p, cause);
+	
+	public String getName() {
+		return name;
 	}
-
-	public SchemaException(Pass p, String message, Throwable cause) {
-		super(p, message, cause);
-	}
-
-	public SchemaException(ErrorInfo ei) {
-		super(ei);
-	}
-		
+	
 }

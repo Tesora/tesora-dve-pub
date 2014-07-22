@@ -37,6 +37,7 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
@@ -584,12 +585,12 @@ public class FunctionsTest extends SchemaTest {
 
 	@Test
 	public void testPE1403_Rand() throws Throwable {
-		new ExpectedExceptionTester() {
-			@Override
-			public void test() throws Throwable {
-				conn.execute("SELECT RAND(1, 2, 3)");
-			}
-		}.assertException(PESQLException.class, "Unable to build plan - Incorrect parameter count in the call to native function 'RAND'");
+		try {
+			conn.execute("SELECT RAND(1,2,3)");
+		} catch (SchemaException se) {
+			assertErrorInfo(se,MySQLErrors.incorrectParamCountFormatter,
+					"RAND");
+		}
 
 		assertResultDistribution("SELECT RAND()", 1, 1, 10, true);
 		assertResultDistribution("SELECT RAND(0)", 1, 1, 10, false);

@@ -1,6 +1,7 @@
 package com.tesora.dve.dbc;
 
 /*
+
  * #%L
  * Tesora Inc.
  * Database Virtualization Engine
@@ -22,6 +23,7 @@ package com.tesora.dve.dbc;
  */
 
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -39,11 +41,14 @@ import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.dbc.ServerDBConnection;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.standalone.PETest;
+
+import com.tesora.dve.sql.SchemaException;
 
 public class DBCTest extends PETest {
 
@@ -117,8 +122,13 @@ public class DBCTest extends PETest {
 		}
 	}
 
-	@Test(expected = SQLException.class)
-	public void executeUpdateFailureTest() throws Exception {
-		conn.executeUpdate("INSERT INTO foo VALUES (1)");
+	@Test
+	public void executeUpdateFailureTest() throws Throwable {
+		try {
+			conn.executeUpdate("INSERT INTO foo VALUES (1)");
+		} catch (SQLException sqle) {
+			assertSQLException(sqle,MySQLErrors.missingDatabaseFormatter,
+					"No database selected");
+		}
 	}
 }

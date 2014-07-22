@@ -1,5 +1,7 @@
 package com.tesora.dve.sql.expression;
 
+import com.tesora.dve.sql.parser.LexicalLocation;
+
 /*
  * #%L
  * Tesora Inc.
@@ -22,10 +24,26 @@ package com.tesora.dve.sql.expression;
  */
 
 public enum ScopeParsePhase {
-	UNRESOLVING,              // projection
-	RESOLVING_CURRENT,        // from clauses
-	RESOLVING,                // where clause
-	GROUPBY,                  // group by clause
-	HAVING,                   // having clause
-	TRAILING                  // everything else
+	// projection
+	UNRESOLVING(LexicalLocation.PROJECTION),
+	// from clause
+	RESOLVING_CURRENT(LexicalLocation.ONCLAUSE), 
+	// where clause
+	RESOLVING(LexicalLocation.WHERECLAUSE),
+	// group by clause
+	GROUPBY(LexicalLocation.GROUPBYCLAUSE),            
+	// having clause
+	HAVING(LexicalLocation.HAVINGCLAUSE),             
+	// order by clause
+	TRAILING(LexicalLocation.ORDERBYCLAUSE);           
+	
+	private final LexicalLocation location;
+	
+	private ScopeParsePhase(LexicalLocation errLoc) {
+		this.location = errLoc;
+	}
+	
+	public LexicalLocation getLocation() {
+		return this.location;
+	}
 }
