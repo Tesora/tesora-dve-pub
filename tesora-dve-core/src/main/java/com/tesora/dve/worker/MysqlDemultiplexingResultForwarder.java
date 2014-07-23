@@ -112,7 +112,7 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 	@Override
 	public void consumeFieldEOF(MyMessage someMessage) {
 		byteLogger.printBuffer("consumeFieldEOF", someMessage);
-		sendMessage(someMessage,/* flush */ true);
+		sendMessage(someMessage,/* flush */ false);
 	}
 
 
