@@ -1,4 +1,4 @@
-package com.tesora.dve.db.mysql.portal.protocol;
+package com.tesora.dve.db.mysql;
 
 /*
  * #%L
@@ -21,21 +21,8 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
-import com.tesora.dve.db.mysql.MysqlMessage;
-import io.netty.buffer.ByteBuf;
-import io.netty.util.ReferenceCounted;
-
 /**
  *
  */
-public interface MSPMessage extends MysqlMessage, ReferenceCounted {
-    byte getMysqlMessageType();
-    byte getSequenceID();
-    void setSequenceID(byte sequence);
-    MSPMessage newPrototype(byte sequenceID, ByteBuf source);
-
-
-
-    ByteBuf unwrap();
-    void writeTo(ByteBuf destination);
+public interface MysqlMessage {
 }
