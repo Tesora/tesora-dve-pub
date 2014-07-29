@@ -21,11 +21,13 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -133,6 +135,18 @@ public class SingleDirectConnection implements WorkerConnection {
 	public void setCatalog(String databaseName) throws PESQLException {
 		getConnection().setCatalog(databaseName, null);
 	}
+
+    public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise) {
+        DBConnection connection = null;
+        try {
+            connection = getConnection();
+            connection.updateSessionVariables(desiredVariables, setBuilder, promise);
+        } catch (PESQLException e) {
+            promise.failure(e);
+        }
+    }
+
+
 
 	@Override
 	public void rollbackXA(DevXid xid, CompletionHandle<Boolean> promise) {

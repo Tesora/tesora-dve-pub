@@ -369,18 +369,6 @@ public class MysqlNative extends DBNative {
 		return buf.toString();
 	}
 
-	@Override
-	public void postConnect(DBConnection conn, String siteName) throws PESQLException {
-		try {
-            conn.sendPreamble(siteName, null);
-		} catch (Exception e) {
-            if (e instanceof PESQLException)
-                throw (PESQLException)e;
-            else
-			    throw new PESQLException(e);
-		}
-	}
-
     @Override
 	public String getEmptyCatalogName() {
 		return "mysql";

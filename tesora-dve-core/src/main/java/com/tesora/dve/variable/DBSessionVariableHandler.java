@@ -29,8 +29,8 @@ public class DBSessionVariableHandler extends SessionVariableHandler {
 	@Override
 	public void setValue(SSConnection ssCon, String name, String value)
 			throws PEException {
-		ssCon.updateWorkerState(getSessionAssignmentClause(name, value));
 		super.setValue(ssCon, name, value);
+        ssCon.updateWorkerState();
 	}
 
 	@Override

@@ -28,6 +28,7 @@ import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECommunicationsException;
@@ -198,8 +199,8 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void sendPreamble(String siteName, CompletionHandle<Boolean> promise)  {
-            dbConnection.sendPreamble(siteName, promise);
+        public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise){
+            dbConnection.updateSessionVariables(desiredVariables,setBuilder,promise);
         }
 
         @Override
@@ -322,7 +323,6 @@ public class DirectConnectionCache {
             if (SingleDirectConnection.logger.isDebugEnabled())
                 SingleDirectConnection.logger.debug("Re-activating JDBC connection to " + key.site.getName() + " ==> " + key.toString());
 
-            Singletons.require(HostService.class).getDBNative().postConnect(entry.dbConnection, key.site.getName());
         }
 
         @Override

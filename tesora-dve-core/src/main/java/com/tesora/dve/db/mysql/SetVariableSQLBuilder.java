@@ -1,4 +1,4 @@
-package com.tesora.dve.server.messaging;
+package com.tesora.dve.db.mysql;
 
 /*
  * #%L
@@ -21,19 +21,20 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
-import com.tesora.dve.server.connectionmanager.SSContext;
-import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.exceptions.PENotFoundException;
+import com.tesora.dve.server.messaging.SQLCommand;
 
-public class WorkerPreambleRequest extends WorkerExecuteRequest {
-	private static final long serialVersionUID = 1L;
+import java.util.Map;
 
-	public WorkerPreambleRequest(SSContext ssContext, SQLCommand command) {
-		super(ssContext, command);
-	}
+/**
+ *
+ */
+public interface SetVariableSQLBuilder {
 
-	@Override
-	public LogSiteStatisticRequest getStatisticsNotice() {
-		return null;
-	}
+    void add(String key, String value);
+    void remove(String key, String previousValue);
+    void update(String key, String previousValue, String newValue);
+    void same(String key, String sameValue);
 
+    SQLCommand generateSql() throws PENotFoundException;
 }

@@ -146,7 +146,7 @@ public class MSPProtocolDecoder extends ByteToMessageDecoder {
 				break;
 			}
 		} catch (Exception e){
-            LoggerFactory.getLogger(MSPProtocolDecoder.class).warn("SMG: problem decoding frame",e);
+            LoggerFactory.getLogger(MSPProtocolDecoder.class).warn("problem decoding frame",e);
         }finally {
 			//			Thread.currentThread().setName(origThreadName);
 			PEThreadContext.clear();

@@ -24,6 +24,7 @@ package com.tesora.dve.worker;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
@@ -31,6 +32,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.util.concurrent.Future;
 
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang.ObjectUtils;
@@ -224,6 +226,11 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 			}
 		}
 	}
+
+    public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise) {
+        WorkerConnection connection = getConnection();
+        connection.updateSessionVariables(desiredVariables, setBuilder, promise);
+    }
 	
 	// used in late resolution support
 	@Override

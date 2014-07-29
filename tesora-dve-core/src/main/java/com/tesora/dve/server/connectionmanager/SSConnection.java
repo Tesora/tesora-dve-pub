@@ -34,10 +34,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
 import com.tesora.dve.db.mysql.common.MysqlHandshake;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.variable.*;
 import io.netty.channel.Channel;
 import org.apache.log4j.Logger;
 
@@ -119,9 +121,6 @@ import com.tesora.dve.sql.schema.StructuralUtils;
 import com.tesora.dve.sql.schema.cache.NonMTCachedPlan;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.mt.IPETenant;
-import com.tesora.dve.variable.SessionVariableHandler;
-import com.tesora.dve.variable.VariableInfo;
-import com.tesora.dve.variable.VariableValueStore;
 import com.tesora.dve.worker.agent.Agent;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.StatementManager;
@@ -225,7 +224,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	private int uniqueValue = 0;
 	private long lastMessageProcessedTime = System.currentTimeMillis();
 	private String cacheName = NonMTCachedPlan.GLOBAL_CACHE_NAME;
-	private String sessionVariableSetStatement;
 	private boolean executingInContext;
 	private ClientCapabilities clientCapabilities = new ClientCapabilities();
     private Channel activeChannel;
@@ -1073,9 +1071,14 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public Map<String, String> getUserVariables() {
 		return userVariables.getVariableMap();
 	}
-	
-	public void updateWorkerState(String assignmentClause) throws PEException {
-		sendToAllGroups(new WorkerSetSessionVariableRequest(getNonTransactionalContext(), assignmentClause));
+
+    /**
+     * Ensures all the session variables set on the SSConnection are updated on the workers.
+     * Must be called after the variables are set, since this reads the current variable state.
+     * @throws PEException
+     */
+	public void updateWorkerState() throws PEException {
+        sendToAllGroups(new WorkerSetSessionVariableRequest(getNonTransactionalContext(), getSessionVariables(), new DefaultSetVariableBuilder()));
 	}
 	
 	void sendToAllGroups(WorkerRequest req) throws PEException {
@@ -1137,7 +1140,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public void setSessionVariableValue(String name, String value) throws PENotFoundException {
 		synchronized (sessionVariables) {
 			sessionVariables.setValue(name, value);
-			sessionVariableSetStatement = null;
 		}
 	}
 
@@ -1247,23 +1249,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		return getName();
 	}
 
-	public String getSessionVariableSetStatement() throws PEException {
-		synchronized (sessionVariables) {
-			if (sessionVariableSetStatement == null) {
-				sessionVariableSetStatement = "SET ";
-				int clause = 0;
-                for (VariableInfo<SessionVariableHandler> vInfo : Singletons.require(HostService.class).getSessionConfigTemplate().getInfoValues()) {
-					String name = vInfo.getName();
-					String sessionContextSetting = vInfo.getHandler().getSessionAssignmentClause(name, vInfo.getHandler().getValue(this, name));
-					if (sessionContextSetting != null)
-						sessionVariableSetStatement += (clause++ > 0 ? "," : "") + sessionContextSetting;
-				}
-			}
-		}
-		return sessionVariableSetStatement;
-	}
-	
-	public MyPreparedStatement<String> getPreparedStatement(String key) {
+    public MyPreparedStatement<String> getPreparedStatement(String key) {
 		return pStmtMap.get(key);
 	}
 	

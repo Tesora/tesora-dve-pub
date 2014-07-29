@@ -27,6 +27,7 @@ import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.portal.protocol.*;
+import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -37,8 +38,10 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
-
-import org.apache.log4j.Logger;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import com.google.common.base.Objects;
 import com.tesora.dve.common.PEThreadContext;
@@ -50,10 +53,11 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.DevXid;
 import com.tesora.dve.worker.UserCredentials;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
@@ -64,7 +68,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	// TODO what's the general strategy for mapping MySQL error codes? (see PE-5)
 	private static final int MYSQL_ERR_QUERY_INTERRUPTED = 1317;
 
-	static Logger logger = Logger.getLogger( MysqlConnection.class );
+	static Logger logger = LoggerFactory.getLogger(MysqlConnection.class);
 
     DeferredErrorHandle deferredErrorHandle = new DeferredErrorHandle();
 
@@ -90,16 +94,28 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	private boolean pendingUpdate = false;
 	private boolean hasActiveTransaction = false;
 
+    Map<String,String> currentSessionVariables = new HashMap<>();
+    Map<String,String> sessionDefaults = new HashMap<>();
+
 	public MysqlConnection(EventLoopGroup eventLoop, StorageSite site) {
         this.connectionEventGroup = eventLoop;
 		this.site = site;
+        setupDefaultSessionVars(site);
 	}
 
     public MysqlConnection(StorageSite site) {
         this(SharedEventLoopHolder.getLoop(),site);
     }
 
-	public void setShutdownQuietPeriod(final long seconds) {
+    private void setupDefaultSessionVars(StorageSite site) {
+        //provide some default session variables that can be overridden.
+        sessionDefaults.put("@" + DBNative.DVE_SITENAME_VAR,site.getName());
+        sessionDefaults.put("character_set_connection", MysqlNativeConstants.DB_CHAR_SET);
+        sessionDefaults.put("character_set_client", MysqlNativeConstants.DB_CHAR_SET);
+        sessionDefaults.put("character_set_results", MysqlNativeConstants.DB_CHAR_SET);
+    }
+
+    public void setShutdownQuietPeriod(final long seconds) {
 		this.shutdownQuietPeriod = seconds;
 	}
 
@@ -271,6 +287,77 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
         });
 	}
 
+    public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise){
+        final SQLCommand updateCommand;
+        final Map<String,String> updatesRequired = new HashMap<>();
+        try {
+
+            Set<String> mergedKeys = new HashSet<>( desiredVariables.keySet() );
+            mergedKeys.addAll( currentSessionVariables.keySet() );
+            mergedKeys.addAll( sessionDefaults.keySet() );
+
+            for (String variableName : mergedKeys){
+                String existingValue = currentSessionVariables.get(variableName);
+                String desiredValue;
+                if (desiredVariables.containsKey(variableName))
+                    desiredValue = desiredVariables.get(variableName);
+                else
+                    desiredValue = sessionDefaults.get(variableName);
+                if (desiredValue == null){
+                    updatesRequired.put(variableName,null);
+                    setBuilder.remove(variableName,existingValue);
+                } else if (existingValue == null) {
+                    updatesRequired.put(variableName,desiredValue);
+                    setBuilder.add(variableName, desiredValue);
+                } else if ( ! desiredValue.equals( existingValue ) ) {
+                    updatesRequired.put(variableName,desiredValue);
+                    setBuilder.update(variableName,existingValue,desiredValue);
+                } else
+                    setBuilder.same(variableName,desiredValue);
+            }
+
+            updateCommand = setBuilder.generateSql();
+        } catch (Exception e) {
+            callbackSetVariablesFailed(updatesRequired, null, e);
+            promise.failure(e);
+            return;
+        }
+
+        if (updateCommand == SQLCommand.EMPTY){
+            promise.success(true);
+        } else {
+            execute(updateCommand, DBEmptyTextResultConsumer.INSTANCE, new DelegatingCompletionHandle<Boolean>( promise ){
+                @Override
+                public void success(Boolean returnValue) {
+                    callbackSetVariablesOK(updatesRequired, updateCommand);
+                    super.success(returnValue);
+                }
+
+                @Override
+                public void failure(Exception e) {
+                    callbackSetVariablesFailed(updatesRequired, updateCommand, e);
+                    super.failure(e);
+                }
+            });
+        }
+    }
+
+    private void callbackSetVariablesFailed(Map<String, String> updatesRequired, SQLCommand updateCommand, Exception e) {
+        currentSessionVariables.clear();//not sure if this is ideal, but it forces variables to get set next attempt.
+        logger.warn("Problem updating session variables on connection {} via command {}",new Object[]{site,updateCommand,e});
+    }
+
+    private void callbackSetVariablesOK(Map<String, String> updatesRequired, SQLCommand updateCommand) {
+        for (Map.Entry<String,String> updateEntry : updatesRequired.entrySet()){
+            String key = updateEntry.getKey();
+            String value = updateEntry.getValue();
+            if (value == null)
+                currentSessionVariables.remove(key);
+            else
+                currentSessionVariables.put(key, value);
+        }
+    }
+
     private void clearActiveState() {
         pendingUpdate = false;
         hasActiveTransaction = false;
@@ -280,13 +367,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
         return mysqlError.getErrorNumber() == 1397 || //XAER_NOTA, XA id is completely unknown.
                (mysqlError.getErrorNumber() == 1399 && mysqlError.getErrorMsg().contains("NON-EXISTING")) //XAER_RMFAIL, because we are in NON-EXISTING state
         ;
-    }
-
-    @Override
-    public void sendPreamble(String siteName, CompletionHandle<Boolean> promise) {
-        execute(new SQLCommand("set @" + DBNative.DVE_SITENAME_VAR + "='" + siteName + "',character_set_connection='" + MysqlNativeConstants.DB_CHAR_SET
-                + "', character_set_client='" + MysqlNativeConstants.DB_CHAR_SET + "', character_set_results='" + MysqlNativeConstants.DB_CHAR_SET + "'"),
-                DBEmptyTextResultConsumer.INSTANCE, promise);
     }
 
     @Override

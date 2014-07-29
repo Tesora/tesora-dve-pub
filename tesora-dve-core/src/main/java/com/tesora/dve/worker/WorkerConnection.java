@@ -22,8 +22,11 @@ package com.tesora.dve.worker;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.exceptions.PESQLException;
 import io.netty.channel.EventLoopGroup;
+
+import java.util.Map;
 
 public interface WorkerConnection {
 	
@@ -34,6 +37,8 @@ public interface WorkerConnection {
 	void close(boolean isStateValid) throws PESQLException;
 
 	void setCatalog(String currentDatabaseName) throws PESQLException;
+
+    void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise);
 
 	void rollbackXA(DevXid xid, CompletionHandle<Boolean> promise);
 

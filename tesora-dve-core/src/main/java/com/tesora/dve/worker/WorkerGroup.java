@@ -21,7 +21,6 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
@@ -31,6 +30,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.server.connectionmanager.*;
 import com.tesora.dve.server.global.HostService;
@@ -61,15 +61,11 @@ import com.tesora.dve.server.messaging.GetWorkerRequest;
 import com.tesora.dve.server.messaging.GetWorkerResponse;
 import com.tesora.dve.server.messaging.ResetWorkerRequest;
 import com.tesora.dve.server.messaging.ReturnWorkerRequest;
-import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerCreateDatabaseRequest;
-import com.tesora.dve.server.messaging.WorkerPreambleRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
-
-import javax.transaction.xa.XAException;
 
 public class WorkerGroup {
 	
@@ -420,12 +416,13 @@ public class WorkerGroup {
 	
 	// unconditionally sets the session variables for the connection on the worker group
 	public void assureSessionVariables(SSConnection ssCon) throws PEException {
-		// Set all the session variables on the new workers
-		String sessionContext = ssCon.getSessionVariableSetStatement();
+        Map<String,String> currentSessionVars = ssCon.getSessionVariables();
 
-		execute(MappingSolution.AllWorkers,
-				new WorkerPreambleRequest(ssCon.getNonTransactionalContext(), new SQLCommand(sessionContext)),
-				DBEmptyTextResultConsumer.INSTANCE);	
+        execute(
+                MappingSolution.AllWorkers,
+				new WorkerSetSessionVariableRequest(ssCon.getNonTransactionalContext(), currentSessionVars, new DefaultSetVariableBuilder()),
+				DBEmptyTextResultConsumer.INSTANCE
+        );
 	}
 		
 	public void setDatabase(SSConnection ssCon, final PersistentDatabase uvd) throws PEException {
