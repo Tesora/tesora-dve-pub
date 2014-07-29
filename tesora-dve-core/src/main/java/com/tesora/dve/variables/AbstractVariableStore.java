@@ -28,14 +28,13 @@ public abstract class AbstractVariableStore implements VariableStore {
 	public AbstractVariableStore() {
 	}
 
-	public abstract <Type> ValueReference<Type> getReference(VariableHandler<Type> vh);
-	
 	public abstract <Type> void setValue(VariableHandler<Type> vh, Type t);
 		
+	@Override
 	public <Type> Type getValue(VariableHandler<Type> vh) {
 		ValueReference<Type> vr = (ValueReference<Type>) getReference(vh);
 		if (vr == null)
-			throw new PECodingException("Variable \'" + vh.getName() + "\' not found");
+			throw new PECodingException("Variable \'" + vh.getName() + "\' not found on " + System.identityHashCode(this));
 		return vr.get();
 	}
 }

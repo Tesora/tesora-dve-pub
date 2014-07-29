@@ -30,10 +30,10 @@ import com.tesora.dve.common.catalog.VariableConfig;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
-import com.tesora.dve.variable.GlobalConfig;
 
 /*
  * Every nonuser variable has an associated VariableConfig record in the catalog.
@@ -56,22 +56,33 @@ public class VariableHandler<Type> {
 	// information about the type, valid values, etc.
 	private final ValueMetadata<Type> metadata;
 	// valid scopes
-	private final EnumSet<VariableScope> scopes;
+	private final EnumSet<VariableScopeKind> scopes;
 	// if there is no record in the catalog, this is the default value
 	private Type defaultOnMissing;
 	// options
 	private final EnumSet<VariableOption> options;
+	// help
+	private final String help;
+	
+	public VariableHandler(String name, ValueMetadata<Type> md,
+			EnumSet<VariableScopeKind> applies,
+			Type defaultOnMissing,
+			EnumSet<VariableOption> options) {
+		this(name,md,applies,defaultOnMissing,options,null);
+	}	
 	
 	
 	public VariableHandler(String name, ValueMetadata<Type> md,
-			EnumSet<VariableScope> applies,
+			EnumSet<VariableScopeKind> applies,
 			Type defaultOnMissing,
-			EnumSet<VariableOption> options) {
+			EnumSet<VariableOption> options,
+			String help) {
 		this.variableName = name.toLowerCase(Locale.ENGLISH);
 		this.metadata = md;
 		this.scopes = applies;
 		this.defaultOnMissing = defaultOnMissing;
 		this.options = options;
+		this.help = help;
 	}
 	
 	public String getName() {
@@ -82,7 +93,7 @@ public class VariableHandler<Type> {
 		return metadata;
 	}
 
-	public EnumSet<VariableScope> getScopes() {
+	public EnumSet<VariableScopeKind> getScopes() {
 		return scopes;
 	}
 	
@@ -104,7 +115,7 @@ public class VariableHandler<Type> {
 
 		@Override
 		public boolean test(VariableHandler<?> object) {
-			return object.getScopes().contains(VariableScope.GLOBAL);
+			return object.getScopes().contains(VariableScopeKind.GLOBAL);
 		}
 		
 	};
@@ -113,7 +124,7 @@ public class VariableHandler<Type> {
 
 		@Override
 		public boolean test(VariableHandler<?> object) {
-			return object.getScopes().contains(VariableScope.SESSION);
+			return object.getScopes().contains(VariableScopeKind.SESSION);
 		}
 		
 	};
@@ -122,15 +133,15 @@ public class VariableHandler<Type> {
 	
 	// for global values the SSConn is not needed - need to extract an interface for that 
 	
-	public Type getValue(VariableStoreSource source, VariableScope vs) {
+	public Type getValue(VariableStoreSource source, VariableScopeKind vs) {
 		if (!scopes.contains(vs)) 
 			throw new VariableException("Attempt to obtain unsupported scope " + vs.name() + " value from variable " + variableName);
-		if (vs == VariableScope.GLOBAL) {
-			// global map
-			if (source == null)
-				// transient side
+		if (vs == VariableScopeKind.GLOBAL) {
+			// global map.  if the global map is the transient map, use that instead (for the tests)
+			if (source == null || source.getGlobalVariableStore().isServer())
 				return ServerGlobalVariableStore.INSTANCE.getValue(this);
-			return source.getGlobalVariableStore().getValue(this);
+			else
+				return source.getGlobalVariableStore().getValue(this);
 		} else {
 			// session map
 			return source.getSessionVariableStore().getValue(this);
@@ -146,26 +157,26 @@ public class VariableHandler<Type> {
 	
 	// maybe a little easier than saying session or global
 	public Type getSessionValue(VariableStoreSource source) {
-		return getValue(source,VariableScope.SESSION);
+		return getValue(source,VariableScopeKind.SESSION);
 	}
 	
 	public Type getGlobalValue(VariableStoreSource source) {
-		return getValue(source,VariableScope.GLOBAL);
+		return getValue(source,VariableScopeKind.GLOBAL);
 	}
 	
-	public void setValue(VariableStoreSource conn, VariableScope scope, String newValue) throws PEException {
-		if (options.contains(VariableOption.READONLY))
-			throw new PEException(String.format("Unable to set readonly variable '%s'",getName()));
-		if (scope == VariableScope.SESSION)
+	public void setValue(VariableStoreSource conn, VariableScopeKind scope, String newValue) throws PEException {
+		if (scope == VariableScopeKind.SESSION)
 			setSessionValue(conn,newValue);
-		else if (scope == VariableScope.GLOBAL)
+		else if (scope == VariableScopeKind.GLOBAL)
 			setGlobalValue(newValue);
 		else
 			throw new PEException("Unknown scope for set: " + scope);
 	}
 	
 	public void setSessionValue(VariableStoreSource conn, String newValue) throws PEException {
-		if (!scopes.contains(VariableScope.SESSION))
+		if (options.contains(VariableOption.READONLY))
+			throw new PEException(String.format("Variable '%s' not settable as session variable",getName()));
+		if (!scopes.contains(VariableScopeKind.SESSION))
 			throw new PECodingException("Attempt to set non existent session variable " + variableName);
 		AbstractVariableStore sessionValues = conn.getSessionVariableStore(); 
 		Type t = toInternal(newValue);
@@ -174,7 +185,9 @@ public class VariableHandler<Type> {
 	}
 	
 	public void setGlobalValue(String newValue) throws PEException {
-		if (!scopes.contains(VariableScope.GLOBAL))
+		if (options.contains(VariableOption.READONLY))
+			throw new PEException(String.format("Unable to set readonly variable '%s'",getName()));
+		if (!scopes.contains(VariableScopeKind.GLOBAL))
 			throw new PECodingException("Attempt to set non existent global variable " + variableName);
 		Type t =  toInternal(newValue);
 		// the global variable store propagates the change message
@@ -185,6 +198,7 @@ public class VariableHandler<Type> {
 		Type validType = toInternal(newValue);
 		persistValue(c,newValue);
 		// broadcast
+		setGlobalValue(newValue);
 	}
 	
 	protected void persistValue(final CatalogDAO c, final String newValue) throws PEException {
@@ -192,9 +206,9 @@ public class VariableHandler<Type> {
 			c.new EntityUpdater() {
 				@Override
 				public CatalogEntity update() throws Throwable {
-					GlobalConfig configEntity = c.findConfig(getName());
-					configEntity.setValue(newValue);
-					return configEntity;
+					VariableConfig vc = c.findVariableConfig(getName());
+					vc.setValue(newValue);
+					return vc;
 				}
 			}.execute();
 			return;
@@ -217,7 +231,7 @@ public class VariableHandler<Type> {
 	}
 
 	public String getSessionAssignmentClause(String value) {
-		if (scopes.contains(VariableScope.SESSION) && !isDVEOnly())
+		if (scopes.contains(VariableScopeKind.SESSION) && !isDVEOnly() && !options.contains(VariableOption.NO_SESSION_ASSIGNMENT))
 			return String.format("%s=%s",getName(),value);
 		return null;
 	}
@@ -226,28 +240,28 @@ public class VariableHandler<Type> {
 		// String name, String valueType, String value, String scopes, boolean emulated, String helpText) {
 		return new VariableConfig(getName(),
 				getMetadata().getTypeName(),
-				toExternal(getDefaultOnMissing()),
+				toRow(getDefaultOnMissing()),
 				convert(getScopes()),
 				!isDVEOnly(),
 				null);
 	}
 	
-	public static String convert(EnumSet<VariableScope> scopes) {
-		return Functional.join(scopes, ",", new UnaryFunction<String,VariableScope>() {
+	public static String convert(EnumSet<VariableScopeKind> scopes) {
+		return Functional.join(scopes, ",", new UnaryFunction<String,VariableScopeKind>() {
 
 			@Override
-			public String evaluate(VariableScope object) {
+			public String evaluate(VariableScopeKind object) {
 				return object.name();
 			}
 			
 		});
 	}
 	
-	public static EnumSet<VariableScope> convert(String in) {
+	public static EnumSet<VariableScopeKind> convert(String in) {
 		String[] bits = in.split(",");
-		EnumSet<VariableScope> out = EnumSet.noneOf(VariableScope.class);
+		EnumSet<VariableScopeKind> out = EnumSet.noneOf(VariableScopeKind.class);
 		for(String s : bits) {
-			out.add(VariableScope.valueOf(s));
+			out.add(VariableScopeKind.valueOf(s));
 		}
 		return out;
 	}
@@ -256,7 +270,7 @@ public class VariableHandler<Type> {
 		VariableConfig conf = c.findVariableConfig(getName(),false);
 		if (conf != null) {
 			defaultOnMissing = toInternal(conf.getValue());
-			if (scopes.contains(VariableScope.GLOBAL)) {
+			if (scopes.contains(VariableScopeKind.GLOBAL)) {
 				// check with the global version too.  we're going to go directly to the global variable store
 				ValueReference<Type> existing = ServerGlobalVariableStore.INSTANCE.getReference(this);
 				if (existing != null) {
@@ -278,6 +292,11 @@ public class VariableHandler<Type> {
 
 	public String toExternal(Type in) {
 		return getMetadata().convertToExternal(in);
+	}
+	
+	public String toRow(Type in) {
+		if (in == null) return "";
+		return getMetadata().toRow(in);
 	}
 	
 	public Type toInternal(String in) throws PEException {

@@ -74,8 +74,7 @@ public class SSConnectionContext implements ConnectionContext {
 
 	@Override
 	public List<List<String>> getVariables(VariableScope vs) throws PEException {
-		throw new PEException("Fill me in");
-//		return VariableAccessor.getValues(vs.getScopeKind(), vs.getScopeName(), backing);
+		return AbstractVariableAccessor.getValues(vs, getVariableSource());
 	}
 
 	@Override

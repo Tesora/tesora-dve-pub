@@ -28,6 +28,8 @@ public enum VariableOption {
 	// readonly - cannot be set
 	READONLY,
 	// are nulls allowed - by default they are not
-	NULLABLE
+	NULLABLE,
+	// if present, do not put value into session assignment clause, even if we have session scope
+	NO_SESSION_ASSIGNMENT
 	
 }

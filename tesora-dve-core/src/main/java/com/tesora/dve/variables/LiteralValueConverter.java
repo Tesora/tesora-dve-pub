@@ -40,4 +40,9 @@ public class LiteralValueConverter extends ValueMetadata<String> {
 		return "identifier";
 	}
 
+	@Override
+	public String toRow(String in) {
+		return in;
+	}
+
 }

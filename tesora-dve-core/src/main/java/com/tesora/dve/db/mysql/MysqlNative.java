@@ -21,15 +21,10 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import java.sql.Connection;
 import java.sql.ParameterMetaData;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -450,39 +445,19 @@ public class MysqlNative extends DBNative {
 	public int convertTransactionIsolationLevel(String in) throws PEException {
 		if (in == null)
 			throw new PEException("Missing isolation level");
-		String uc = in.toUpperCase(Locale.ENGLISH);
-		Integer value = isolationLevelForMysql.get(uc);
-		if (value == null)
+		MySQLTransactionIsolation isol = MySQLTransactionIsolation.find(in);
+		if (isol == null)
 			throw new PEException("Unknown isolation level '" + in + "'");
-		return value.intValue();
+		return isol.getJdbcConstant();
 	}
 
 	// use the mysql names - the ones you'd see in the show variables listing
 	@Override
 	public String convertTransactionIsolationLevel(int level) throws PEException {
-		switch (level) {
-		case Connection.TRANSACTION_READ_COMMITTED:
-			return "READ-COMMITTED";
-		case Connection.TRANSACTION_READ_UNCOMMITTED:
-			return "READ-UNCOMMITTED";
-		case Connection.TRANSACTION_REPEATABLE_READ:
-			return "REPEATABLE-READ";
-		case Connection.TRANSACTION_SERIALIZABLE:
-			return "SERIALIZABLE";
-		default:
+		MySQLTransactionIsolation isol = MySQLTransactionIsolation.find(level);
+		if (isol == null)
 			throw new PEException("Unknown transaction isolation level value: " + level);
-		}
-	}
-
-	private static final Map<String, Integer> isolationLevelForMysql = buildConvertIsolationLevel();
-
-	private static Map<String, Integer> buildConvertIsolationLevel() {
-		HashMap<String, Integer> out = new HashMap<String, Integer>();
-		out.put("READ-COMMITTED", Connection.TRANSACTION_READ_COMMITTED);
-		out.put("READ-UNCOMMITTED", Connection.TRANSACTION_READ_UNCOMMITTED);
-		out.put("REPEATABLE-READ", Connection.TRANSACTION_REPEATABLE_READ);
-		out.put("SERIALIZABLE", Connection.TRANSACTION_SERIALIZABLE);
-		return out;
+		return isol.getExternalName();
 	}
 
 	@Override

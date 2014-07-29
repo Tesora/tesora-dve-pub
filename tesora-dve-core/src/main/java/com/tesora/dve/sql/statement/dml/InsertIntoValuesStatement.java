@@ -317,7 +317,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 			// the id value is so we can set the last inserted id right
 			@SuppressWarnings("unchecked")
 			DistributionKey dk = new DistributionKey(tk, Collections.EMPTY_LIST, null);
-			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), getStorageGroup(pc), this,
+			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), tk.getAbstractTable().getStorageGroup(pc), this,
 					intoTI.getAbstractTable().asTable(),dk,adjustUpdateCount(getValues().size())),
 					requiresReferenceTimestamp);
 		} else if (dv.getDistributedWhollyOnTenantColumn(pc) != null 
@@ -328,7 +328,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 			ListOfPairs<PEColumn,ConstantExpression> values = new ListOfPairs<PEColumn,ConstantExpression>();
 			values.add(tenantColumn,pc.getPolicyContext().getTenantIDLiteral(true));
 			DistributionKey dk = new DistributionKey(tk, Collections.singletonList(tenantColumn), values);
-			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), getStorageGroup(pc), this,
+			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), tk.getAbstractTable().getStorageGroup(pc), this,
 					intoTI.getAbstractTable().asTable(),dk,adjustUpdateCount(getValues().size())),
 					requiresReferenceTimestamp);
 		} else {
@@ -336,7 +336,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 
 			if (intoTI.getAbstractTable().getStorageGroup(pc).isSingleSiteGroup() || parts.size() == 1) {
 				// push the whole thing down, and just use the first dist key
-				appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), getStorageGroup(pc), this,
+				appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), tk.getAbstractTable().getStorageGroup(pc), this,
 					intoTI.getAbstractTable().asTable(),parts.get(0).getSecond(),adjustUpdateCount(getValues().size())),
 					requiresReferenceTimestamp);
 				
@@ -351,7 +351,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 				if (!pc.getOptions().isPrepare())
 					pc.getValueManager().handleLateSortedInsert(pc);
 				appendStep(es, LateSortingInsertExecutionStep.build(pc, getDatabase(pc), 
-						getSingleGroup(pc), intoTI.getAbstractTable().asTable(), (onDuplicateKey.size()>0 || ignore)),requiresReferenceTimestamp);
+						tk.getAbstractTable().getStorageGroup(pc), intoTI.getAbstractTable().asTable(), (onDuplicateKey.size()>0 || ignore)),requiresReferenceTimestamp);
 			}
 		}
 		if (txnFlag != null) {

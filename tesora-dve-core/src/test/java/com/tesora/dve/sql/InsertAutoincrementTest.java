@@ -22,6 +22,7 @@ package com.tesora.dve.sql;
  */
 
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -36,6 +37,7 @@ import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
@@ -45,7 +47,6 @@ import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.variable.VariableConstants;
 import com.tesora.dve.variables.KnownVariables;
-import com.tesora.dve.variables.VariableScope;
 
 public class InsertAutoincrementTest extends SchemaTest {
 
@@ -149,10 +150,8 @@ public class InsertAutoincrementTest extends SchemaTest {
 
 		CatalogDAO c = CatalogDAOFactory.newInstance();
 		Long orig = KnownVariables.CACHED_PLAN_LITERALS_MAX.getValue(null);
-//		String orig = Singletons.require(HostService.class).getGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS);
 		try {
-			KnownVariables.CACHED_PLAN_LITERALS_MAX.setValue(null, VariableScope.GLOBAL, "1");
-//            Singletons.require(HostService.class).setGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS, "1");
+			KnownVariables.CACHED_PLAN_LITERALS_MAX.setValue(null, VariableScopeKind.GLOBAL, "1");
 
 			conn.execute("insert into `autoinctab` (`junk`) values ('trash1'),('trash2'),('trash3')");
 			conn.assertResults(
@@ -166,8 +165,7 @@ public class InsertAutoincrementTest extends SchemaTest {
 					br(nr, new Long(4), "trash4", nr, new Long(5), "trash5", nr, new Long(6), "trash6"));
 
 		} finally {
-			KnownVariables.CACHED_PLAN_LITERALS_MAX.setValue(null, VariableScope.GLOBAL, orig.toString());
- //           Singletons.require(HostService.class).setGlobalVariable(c, GlobalConfigVariableConstants.MAX_CACHED_PLAN_LITERALS, orig);
+			KnownVariables.CACHED_PLAN_LITERALS_MAX.setValue(null, VariableScopeKind.GLOBAL, orig.toString());
         }
 	}
 

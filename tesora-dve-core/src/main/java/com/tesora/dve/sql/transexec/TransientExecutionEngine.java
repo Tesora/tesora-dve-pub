@@ -129,7 +129,6 @@ import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.variable.VariableValueStore;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.GlobalVariableStore;
-import com.tesora.dve.variables.ServerGlobalVariableStore;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.VariableStoreSource;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
@@ -168,7 +167,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	
 	private LocalVariableStore sessionVariables;
 	private GlobalVariableStore globalVariables = new TransientGlobalVariableStore();
-	private VariableValueStore userVariables = new VariableValueStore("User",true);
+	private VariableValueStore userVariables = new VariableValueStore("User",false);
 	
 	private IPETenant currentTenant = null; 
 	private PEUser currentUser = null;

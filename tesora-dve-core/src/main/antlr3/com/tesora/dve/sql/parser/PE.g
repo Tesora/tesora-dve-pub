@@ -800,7 +800,7 @@ sql_text_pstmt_prepare_statement returns [Statement s] options {k=1;}:
   
 sql_text_pstmt_execute_statement returns [Statement s] options {k=1;}:
   { ArrayList vars = new ArrayList(); }
-  EXECUTE unqualified_identifier (USING f=rhs_variable_ref { vars.add($f.v); } (Comma t=rhs_variable_ref { vars.add($t.v); })*)?
+  EXECUTE unqualified_identifier (USING f=rhs_variable_ref { vars.add($f.vi); } (Comma t=rhs_variable_ref { vars.add($t.vi); })*)?
   { $s = utils.buildExecutePreparedStatement($unqualified_identifier.n, vars); }
   ;
   
@@ -825,50 +825,66 @@ set_user_password returns [Statement s] options {k=1;}:
   { $s = utils.buildSetPasswordStatement($userid.us, $Character_String_Literal.text); }
   ;
 
-option_value returns [SetExpression sve] options {k=1;}:
-  (s=simple_unqualified_identifier^ | v=rhs_variable_ref) Equals_Operator c=set_expr_or_default
-  { ArrayList rhs = new ArrayList(); rhs.add($c.expr);
-    if ($v.v != null) $sve = utils.buildSetVariableExpression($v.v, rhs);
-    else $sve = utils.buildSetVariableExpression(utils.buildVariableInstance($s.n, VariableScope.VariableKind.SESSION, $s.tree), rhs);
-  }
-  | (vsk=variable_scope_kind id=keyword_simple_identifier1?)? ((TRANSACTION ISOLATION LEVEL il=isolation_level) | (Equals_Operator r=set_expr_or_default))
-  { if ($il.il != null) $sve = utils.buildSetTransactionIsolation($il.il, $vsk.n);
-    else if ($vsk.n == null)
-      error("Missing variable scope","");
-    else if ($id.n == null)
-      error("Missing variable","");
-    else 
-      $sve = utils.buildSetVariableExpression(utils.buildVariableInstance($id.n,$vsk.n,$id.tree), Collections.singletonList($r.expr));
-  }
-  | NAMES^ charset_type collate_spec? // -> ^(SET ^(SYS_VARIABLE { utils.buildIdentifier(this.adaptor, "NAMES") } SESSION) charset_type collate_spec?)
-  { ArrayList rhs = new ArrayList(); rhs.add(utils.buildIdentifierLiteral($charset_type.n)); if ($collate_spec.n != null) rhs.add(utils.buildIdentifierLiteral($collate_spec.n));
-    $sve = utils.buildSetVariableExpression(utils.buildVariableInstance(bkn($NAMES), VariableScope.VariableKind.SESSION, $NAMES.tree),rhs); }
-  | charset_expr_tag cst=charset_type // -> ^(SET ^(SYS_VARIABLE charset_expr_tag) charset_type)
-  { $sve = utils.buildSetVariableExpression(utils.buildVariableInstance($charset_expr_tag.n, VariableScope.VariableKind.SESSION, $charset_expr_tag.tree), 
-    Collections.singletonList(utils.buildIdentifierLiteral($cst.n))); }
-  // lhs_variable_ref Equals_Operator set_expr_or_default // -> ^(SET lhs_variable_ref set_expr_or_default)
-  // | variable_scope_kind? TRANSACTION ISOLATION isolation_level // -> ^(TRANSACTION ISOLATION isolation_level variable_scope_kind?)
-  ;
+// we support global variables now.  persistent values are modified via alter dve.
+// the syntax we seek to support is:
+// [1] (rhs_variable_ref Equals_Operator set_expr_or_default) // user variable
+// [2] ((GLOBAL | SESSION)? unqualified_identifier Equas_Operator set_expr_or_default) // session/global variable variant 1
+// [3] ((@@global. | @@session. | @@)unqualified_identifier Equals_Operator set_expr_or_default) // session/global variable variant 2
+// @@session.<name>, @@<name>, session <name>, local <name>, @@local.<name> all mean session vars 
 
-lhs_variable_ref returns [VariableInstance v] options {k=1;}:
-  variable_scope_kind^ unqualified_identifier {
-    List parts = new ArrayList(); parts.add($variable_scope_kind.n); parts.add($unqualified_identifier.n); 
-    $v = utils.buildVariableInstance(utils.buildQualifiedName(parts),(Name)null, $variable_scope_kind.tree); }  
-  | simple_unqualified_identifier^ { $v = utils.buildVariableInstance($simple_unqualified_identifier.n, VariableScope.VariableKind.SESSION, $simple_unqualified_identifier.tree); }
-  | rhs_variable_ref { $v = $rhs_variable_ref.v; }
+option_value returns [SetExpression sve] options {k=1;}:
+  // TRANSACTION is an unqualified_identifier, so we have a special rule just so we can catch that case
+  // handle the exceptions first
+  (NAMES^ charset_type collate_spec? 
+  { ArrayList rhs = new ArrayList(); rhs.add(utils.buildIdentifierLiteral($charset_type.n)); if ($collate_spec.n != null) rhs.add(utils.buildIdentifierLiteral($collate_spec.n));
+    $sve = utils.buildSetVariableExpression(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.SESSION),bkn($NAMES),$NAMES.tree),rhs); })
+  | 
+  (charset_expr_tag cst=charset_type 
+  { $sve = utils.buildSetVariableExpression(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.SESSION),$charset_expr_tag.n,$charset_expr_tag.tree), 
+    utils.buildIdentifierLiteral($cst.n)); })
+  |
+  // this branch handles everything of the form @... = foo
+  (rhs_variable_ref Equals_Operator c=set_expr_or_default
+   { $sve = utils.buildSetVariableExpression($rhs_variable_ref.vi,$c.expr); })
+  |
+  // handle (global|session) (transaction isolation_level .. | unqualified_identifier = expr)
+  (lvsk=variable_scope_kind 
+    (
+      (TRANSACTION ISOLATION LEVEL il=isolation_level 
+       { $sve = utils.buildSetTransactionIsolation($il.il, $lvsk.vsk); }) 
+      | 
+      (keyword_simple_identifier1 Equals_Operator nsve=set_expr_or_default 
+       { $sve = utils.buildSetVariableExpression(utils.buildLHSVariableInstance(utils.buildVariableScope($lvsk.vsk),$keyword_simple_identifier1.n, $keyword_simple_identifier1.tree),$nsve.expr);})
+    )
+  )
+  |
+  // handle (transaction isolation level) | 
+  (TRANSACTION ISOLATION LEVEL il=isolation_level { $sve = utils.buildSetTransactionIsolation($il.il, VariableScopeKind.SESSION); } )
+  |
+  // handle keyword_simple_identifier2 = expr
+  (keyword_simple_identifier2 Equals_Operator ssve=set_expr_or_default
+   { $sve = utils.buildSetVariableExpression(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.SESSION), $keyword_simple_identifier2.n, $keyword_simple_identifier2.tree),$ssve.expr); }
+  )
+   ;
+  
+lhs_variable_ref returns [VariableInstance vi] options {k=1;}:
+  (rhs_variable_ref { $vi = $rhs_variable_ref.vi; })
+  | (variable_scope_kind? unqualified_identifier
+     {$vi = utils.buildLHSVariableInstance(utils.buildVariableScope($variable_scope_kind.vsk),$unqualified_identifier.n,$unqualified_identifier.tree); })
   ;
   
-rhs_variable_ref returns [VariableInstance v] options {k=1;}:
-  f=AT_Sign^ ((t=AT_Sign s=qualified_identifier) | vn=unqualified_identifier)
-  { $v = utils.buildVariableInstance($s.n, $vn.n, $f.tree); }
+rhs_variable_ref returns [VariableInstance vi] options {k=1;}:
+  (f=AT_Sign (t=AT_Sign (variable_scope_kind Period)?)? unqualified_identifier
+  { $vi = utils.buildRHSVariableInstance($f,$t,$variable_scope_kind.vsk, $unqualified_identifier.n, $unqualified_identifier.tree); })
   ;
 
-variable_scope_kind returns [Name n] options {k=1;}:
-  SESSION { $n = bkn($SESSION); }
-  | GLOBAL { $n = bkn($GLOBAL); }
-  | DVE { $n = bkn($DVE); }
+variable_scope_kind returns [VariableScopeKind vsk] options {k=1;}:
+  (GLOBAL { $vsk = VariableScopeKind.GLOBAL; })
+  | (SESSION { $vsk = VariableScopeKind.SESSION; })
+  | (DVE { $vsk = VariableScopeKind.SCOPED; })
+  | (LOCAL { $vsk = VariableScopeKind.SESSION; })
   ;
-
+  
 charset_type returns [Name n] options {k=1;}:
   unqualified_identifier { $n = $unqualified_identifier.n; }
   | BINARY { $n = bkn($BINARY); } 
@@ -1150,9 +1166,7 @@ pe_alter_target returns [Statement s] options {k=1;}:
     | INSTANCE unqualified_identifier config_options { $s = utils.buildAlterPersistentInstanceStatement($unqualified_identifier.n, $config_options.l); }
   )
   | DVE^ SET vn=unqualified_identifier Equals_Operator set_expr_or_default {
-    VariableScope vs = utils.buildVariableScope(utils.buildName($DVE.text),null);
-    VariableInstance vi = utils.buildVariableInstance($vn.n, vs,$DVE.tree);
-    $s = utils.buildAlterPersistentVariable(vi, $set_expr_or_default.expr);    
+    $s = utils.buildAlterPersistentVariable(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.PERSISTENT),$vn.n,$DVE.tree), $set_expr_or_default.expr);    
   } 
   | DYNAMIC SITE alter_dynamic_site_target { $s = $alter_dynamic_site_target.s; }
   | EXTERNAL SERVICE unqualified_identifier SET config_options { $s = utils.buildAlterExternalServiceStatement($unqualified_identifier.n, $config_options.l); }
@@ -1211,8 +1225,8 @@ alter_dynamic_site_provider_target returns [Statement s] options {k=1;}:
   ln=unqualified_identifier ((SET vn=unqualified_identifier Equals_Operator set_expr_or_default) | config_options) 
   { if ($config_options.l != null) $s = utils.buildAlterDynamicSiteProviderStatement($ln.n,$config_options.l);
     else {
-    VariableScope vs = utils.buildVariableScope(VariableScope.VariableKind.SCOPED, "group_provider", $ln.n);
-    VariableInstance vi = utils.buildVariableInstance($vn.n,vs,null);
+    VariableScope vs = utils.buildVariableScope($ln.n);
+    VariableInstance vi = utils.buildLHSVariableInstance(vs,$vn.n,$vn.tree);
     $s = utils.buildAlterPersistentVariable(vi,$set_expr_or_default.expr);
     }
   }  
@@ -1339,15 +1353,18 @@ sql_schema_show_statement_target returns [Statement s] options {k=1;}:
 show_dynamic_site_provider_target returns [Statement s] options {k=1;}:
   (simple_unqualified_identifier config_options { $s = utils.buildShowDynamicSiteProvider($simple_unqualified_identifier.n, $config_options.l); }) 
   | (VARIABLES simple_unqualified_identifier? sql_schema_like_or_where? {
-    VariableScope vs = utils.buildVariableScope(VariableScope.VariableKind.SCOPED, "group_provider", $simple_unqualified_identifier.n);
+    VariableScope vs = utils.buildVariableScope($simple_unqualified_identifier.n);
     $s = utils.buildShowVariables(vs, $sql_schema_like_or_where.pair);
   }) 
   ;
 
 regular_variable_scope returns [VariableScope vs] options {k=1;}:
-  SESSION { $vs = utils.buildVariableScope(bkn($SESSION),null); }
-  | GLOBAL { $vs = utils.buildVariableScope(bkn($GLOBAL),null); }
-  | DVE simple_unqualified_identifier? { $vs = utils.buildVariableScope(bkn($DVE),$simple_unqualified_identifier.n); }
+  SESSION { $vs = utils.buildVariableScope(VariableScopeKind.SESSION); }
+  | GLOBAL { $vs = utils.buildVariableScope(VariableScopeKind.GLOBAL); }
+  | DVE simple_unqualified_identifier? {
+     if ($simple_unqualified_identifier.n == null) $vs = utils.buildVariableScope(VariableScopeKind.GLOBAL); 
+     else $vs = utils.buildVariableScope($simple_unqualified_identifier.n); 
+   }
   ;
 
 sql_schema_show_scoping returns [List l] options {k=1;}:

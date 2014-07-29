@@ -21,71 +21,128 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import com.tesora.dve.sql.util.BinaryProcedure;
 import com.tesora.dve.sql.util.Functional;
 
 public class SQLMode {
 
-	private Set<String> modes;
+	public enum SQLModes {
+		NO_AUTO_CREATE_USER,
+		NO_ENGINE_SUBSTITUTION,
+		STRICT_TRANS_TABLES,
+		STRICT_ALL_TABLES,
+		PIPES_AS_CONCAT,
+		ANSI,
+		DB2,
+		MAXDB,
+		MSSQL,
+		ORACLE,
+		POSTGRESQL,
+		NO_AUTO_VALUE_ON_ZERO,
+		DEFAULT;
+		
+		public static SQLModes find(String raw) {
+			for(SQLModes m : SQLModes.values()) {
+				if (raw.equals(m.name()))
+					return m;
+			}
+			return null;
+		}			
+		
+	}
+
+	private Set<String> unknownModes;
+	private EnumSet<SQLModes> knownModes;
 	
 	@SuppressWarnings("unchecked")
 	public SQLMode(String raw) {
-		if (raw == null)
-			modes = Collections.EMPTY_SET;
-		else {
+		unknownModes = new LinkedHashSet<String>();
+		knownModes = EnumSet.noneOf(SQLModes.class);
+		if (raw != null) {
 			String traw = raw.trim();
-			if ("".equals(traw))
-				modes = Collections.EMPTY_SET;
-			else {
-				modes = new LinkedHashSet<String>();
+			if (!"".equals(traw)) {
 				String[] parts = traw.split(",");
 				for(String s : parts) {
-					modes.add(s.trim().toLowerCase());
+					String fixed = s.trim().toUpperCase();
+					SQLModes m = SQLModes.find(fixed);
+					if (m != null)
+						knownModes.add(m);
+					else
+						unknownModes.add(fixed);
 				}
 			}
 		}
 	}
 
-	public String toString() {
-		return Functional.join(modes, ",");
+	public SQLMode(SQLMode o) {
+		unknownModes = new LinkedHashSet<String>(o.unknownModes);
+		knownModes = EnumSet.noneOf(SQLModes.class);
+		knownModes.addAll(o.knownModes);
 	}
 	
+	public String toString() {
+		StringBuilder buf = new StringBuilder();
+		Functional.join(knownModes, buf, ",", new BinaryProcedure<SQLModes,StringBuilder>() {
+
+			@Override
+			public void execute(SQLModes aobj, StringBuilder bobj) {
+				bobj.append(aobj.name());				
+			}
+			
+		});
+		if (!unknownModes.isEmpty()) {
+			if (buf.length() > 0)
+				buf.append(",");
+			buf.append(Functional.join(unknownModes, ","));
+		}
+		return buf.toString();
+	}
+		
 	public boolean isStrictMode() {
-		return modes.contains("strict_trans_tables") || modes.contains("strict_all_tables");
+		return knownModes.contains(SQLModes.STRICT_TRANS_TABLES) || knownModes.contains(SQLModes.STRICT_ALL_TABLES);
 	}
 	
 	public boolean isPipesAsConcat() {
-		return modes.contains("pipes_as_concat") || isOracle() || isAnsi() || isDB2() || isMaxDB() || isMSSql()  || isPostgres();  
+		return knownModes.contains(SQLModes.PIPES_AS_CONCAT)
+				|| isOracle() || isAnsi() || isDB2() || isMaxDB() || isMSSql()  || isPostgres();  
 	}
 	
 	public boolean isAnsi() {
-		return modes.contains("ansi");
+		return knownModes.contains(SQLModes.ANSI);
 	}
 	
 	public boolean isDB2() {
-		return modes.contains("db2");
+		return knownModes.contains(SQLModes.DB2);
 	}
 	
 	public boolean isMaxDB() {
-		return modes.contains("maxdb");
+		return knownModes.contains(SQLModes.MAXDB);
 	}
 	
 	public boolean isMSSql() {
-		return modes.contains("mssql");
+		return knownModes.contains(SQLModes.MSSQL);
 	}
 	
 	public boolean isOracle() {
-		return modes.contains("oracle");
+		return knownModes.contains(SQLModes.ORACLE);
 	}
 	
 	public boolean isPostgres() {
-		return modes.contains("postgresql");
+		return knownModes.contains(SQLModes.POSTGRESQL);
 	}
 	
 	public boolean isNoAutoOnZero() {
-		return modes.contains("no_auto_value_on_zero");
+		return knownModes.contains(SQLModes.NO_AUTO_VALUE_ON_ZERO);
+	}
+	
+	public SQLMode add(SQLMode other) {
+		SQLMode out = new SQLMode(this);
+		out.knownModes.addAll(other.knownModes);
+		out.unknownModes.addAll(other.unknownModes);
+		return out;
 	}
 }

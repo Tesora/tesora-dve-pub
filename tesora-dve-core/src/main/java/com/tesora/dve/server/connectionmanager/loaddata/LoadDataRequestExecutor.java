@@ -22,8 +22,6 @@ package com.tesora.dve.server.connectionmanager.loaddata;
  */
 
 import com.tesora.dve.server.connectionmanager.messages.PrepareRequestExecutor;
-import com.tesora.dve.singleton.Singletons;
-
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
 
@@ -48,7 +46,6 @@ import com.tesora.dve.db.mysql.MysqlPrepareStatementDiscarder;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.server.connectionmanager.loaddata.MSPLoadDataDecoder ;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.schema.Name;
@@ -71,8 +68,7 @@ public class LoadDataRequestExecutor {
 		// parse the query
 		Charset charSet = cs;
 		if (charSet == null) {
-			charSet = Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
-					KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr), true).getJavaCharset();
+			charSet =  KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr).getJavaCharset();
 		}
 		String query = PECharsetUtils.getString(message, charSet, true);
 		if (logger.isDebugEnabled()) {

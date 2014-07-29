@@ -21,8 +21,10 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
@@ -36,12 +38,12 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
@@ -50,6 +52,8 @@ import com.tesora.dve.sql.util.ProxyConnectionResourceResponse;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.variables.VariableHandler;
+import com.tesora.dve.variables.VariableManager;
 
 public class SQLVariableTest extends SchemaTest {
 
@@ -57,13 +61,18 @@ public class SQLVariableTest extends SchemaTest {
 		new PEDDL("sysdb",
 				new StorageGroupDDL("sys",2,"sysg"),
 				"schema");
-
+	
+	private static final String nonRootUser = "ben";
+	private static final String nonRootAccess = "localhost";
+	
 	@BeforeClass
 	public static void setup() throws Throwable {
 		PETest.projectSetup(sysDDL);
 		PETest.bootHost = BootstrapHost.startServices(PETest.class);
 		ProxyConnectionResource pcr = new ProxyConnectionResource();
 		sysDDL.create(pcr);
+		removeUser(pcr,nonRootUser,nonRootAccess);
+		pcr.execute(String.format("create user '%s'@'%s' identified by '%s'",nonRootUser,nonRootAccess,nonRootUser));
 		pcr.disconnect();
 	}
 
@@ -86,17 +95,20 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", "latin1",
 				   nr,"character_set_connection", "latin1",
-				   nr,"character_set_results","latin1"));
+				   nr,"character_set_results","latin1",
+				   nr,"character_set_server","utf8"));
 		conn.assertResults("show variables like 'character%'",
 				br(nr,"character_set_client", "latin1",
 				   nr,"character_set_connection", "latin1",
-				   nr,"character_set_results","latin1"));
+				   nr,"character_set_results","latin1",
+				   nr,"character_set_server","utf8"));
 		conn.execute("set @prevcharset = @@character_set_connection");
 		conn.execute("set names utf8");
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", "utf8",
 				   nr,"character_set_connection", "utf8",
-				   nr,"character_set_results","utf8"));
+				   nr,"character_set_results","utf8",
+				   nr,"character_set_server","utf8"));
 		conn.assertResults("select @@character_set_client,@@session.character_set_connection,@@character_set_results",br(nr,"utf8","utf8","utf8"));
 		conn.execute("set @@character_set_connection = @prevcharset");
 		conn.assertResults("select @@character_set_connection",br(nr,"latin1"));
@@ -264,13 +276,6 @@ public class SQLVariableTest extends SchemaTest {
 		assertVariableValue(variableName, "SERIALIZABLE");
 		conn.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED");
 		assertVariableValue(variableName, "READ-COMMITTED");
-
-		new ExpectedExceptionTester() {
-			@Override
-			public void test() throws Throwable {
-				conn.execute("SET GLOBAL TRANSACTION ISOLATION LEVEL SERIALIZABLE");
-			}
-		}.assertException(PESQLException.class, "Unable to build plan - No support for native global variables");
 	}
 
 	@Test
@@ -298,4 +303,155 @@ public class SQLVariableTest extends SchemaTest {
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}
+	
+	@Test
+	public void testAccess() throws Throwable {
+		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		//			System.out.println(conn.printResults("select * from information_schema.variable_definitions"));
+		testAccess(vm.lookup("tx_isolation", true),new Values("REPEATABLE-READ","SERIALIZABLE","READ-COMMITTED"));
+		testAccess(vm.lookup("adaptive_cleanup_interval",true), new Values("1000","5000","10000"));
+		testAccess(vm.lookup("cost_based_planning", true),new Values("yes","no"));
+		testAccess(vm.lookup("debug_context", true), new Values("yes","no"));
+	}
+	
+	private static final VariableRoundTrip[] globals = new VariableRoundTrip[] {
+		new VariableRoundTrip(
+				"set global %s = '%s'",
+				"show global variables like '%s'") {
+
+			public Object[] buildExpectedResults(String varName, String varValue) {
+				return br(nr,varName,varValue);
+			}
+		},
+		new VariableRoundTrip(
+				"set @@global.%s = '%s'",
+				"select variable_value from information_schema.global_variables where variable_name like '%s'")
+	};
+
+	private static final VariableRoundTrip[] sessions = new VariableRoundTrip[] {
+		new VariableRoundTrip(
+				"set %s = '%s'",
+				"show session variables like '%s'") {
+			public Object[] buildExpectedResults(String varName, String varValue) {
+				return br(nr,varName,varValue);
+			}
+			
+		},
+		new VariableRoundTrip(
+				"set @@session.%s = '%s'",
+				"select variable_value from information_schema.session_variables where variable_name like '%s'"),
+		new VariableRoundTrip(
+				"set @@%s = '%s'",
+				"select variable_value from information_schema.session_variables where variable_name like '%s'"),
+		new VariableRoundTrip(
+				"set @@local.%s = '%s'",
+				"select variable_name, variable_value from information_schema.session_variables where variable_name = '%s'") {
+			public Object[] buildExpectedResults(String varName, String varValue) {
+				return br(nr,varName,varValue);
+			}			
+		}
+	};
+	
+	private static final String sessQuery = 
+			"select variable_value from information_schema.session_variables where variable_name = '%s'";
+			
+	private void testAccess(VariableHandler handler, Values values) throws Throwable {
+		ProxyConnectionResource nonRoot = new ProxyConnectionResource(nonRootUser,nonRootUser);
+		try {
+			// before we start modifying the global values, save off the session value to validate
+			// that it does not change
+			String sessVal = null;
+			if (handler.getScopes().contains(VariableScopeKind.SESSION)) 
+				sessVal = getSessionValue(nonRoot,handler);
+			if (handler.getScopes().contains(VariableScopeKind.GLOBAL)) {
+				// make sure all the root versions work
+				for(VariableRoundTrip vrt : globals) {
+					roundTrip(conn,handler,vrt,values);
+				}
+				// now, for each root version, make sure a nonroot user cannot set it
+				for(VariableRoundTrip vrt : globals) {
+					try {
+						nonRoot.execute(vrt.buildSet(handler.getName(), values.current()));
+						fail("non root should not be able to set global value of " + handler.getName());
+					} catch (PEException pe) {
+						if (!pe.getMessage().startsWith("Must be root"))
+							throw pe;
+					}
+				}
+			}
+			if (handler.getScopes().contains(VariableScopeKind.SESSION)) {
+				String stillValue = getSessionValue(nonRoot,handler);
+				assertEquals("sess value should not change",sessVal,stillValue);
+				
+				// make sure both root and nonroot can modify session values
+				for(VariableRoundTrip vrt : sessions) {
+					roundTrip(conn,handler,vrt,values);
+				}
+				for(VariableRoundTrip vrt : sessions) {
+					roundTrip(nonRoot,handler,vrt,values);
+				}
+			}
+		} finally {
+			nonRoot.disconnect();
+		}
+	}
+
+	private String getSessionValue(ProxyConnectionResource conn, VariableHandler handler) throws Throwable {
+		ResourceResponse rr = conn.execute(String.format(sessQuery,handler.getName()));
+		return (String) rr.getResults().get(0).getRow().get(0).getColumnValue();		
+	}
+	
+	private void roundTrip(ProxyConnectionResource proxyConn, VariableHandler handler,
+			VariableRoundTrip vrt, Values values) throws Throwable {
+		conn.execute(vrt.buildSet(handler.getName(), values.next()));
+		conn.assertResults(vrt.buildQuery(handler.getName()),
+				vrt.buildExpectedResults(handler.getName(), values.current()));
+	}
+	
+	private static class Values {
+		
+		private final String[] values;
+		private int index = -1;
+		
+		public Values(String... myValues) {
+			values = myValues;
+			index = -1;
+		}
+		
+		public String next() {
+			if (++index >= values.length)
+				index = 0;
+			return values[index];
+		}
+		
+		public String current() {
+			return values[index];
+		}
+	}
+	
+	private static class VariableRoundTrip {
+		
+		private String setFormat;
+		private String queryFormat;
+		
+		public VariableRoundTrip(String setFormat, String queryFormat) {
+			this.setFormat = setFormat;
+			this.queryFormat = queryFormat;
+		}
+		
+		public String buildSet(String varName, String varValue) {
+			return String.format(setFormat,varName,varValue);
+		}
+		
+		public String buildQuery(String varName) {
+			return String.format(queryFormat, varName);
+		}
+		
+		public Object[] buildExpectedResults(String varName, String varValue) {
+			return br(nr,varValue);
+		}
+		
+	}
+	
 }
+

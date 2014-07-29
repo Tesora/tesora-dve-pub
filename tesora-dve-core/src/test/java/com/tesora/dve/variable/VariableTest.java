@@ -54,6 +54,8 @@ import com.tesora.dve.queryplan.QueryStepGetSessionVariableOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSetScopedVariableOperation;
+import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.test.simplequery.SimpleQueryTest;
 import com.tesora.dve.variables.KnownVariables;
@@ -134,7 +136,7 @@ public class VariableTest extends PETest {
         		KnownVariables.VERSION.getGlobalValue(null));
 	}
 
-	@Test(expected = PENotFoundException.class)
+	@Test(expected = PEException.class)
 	public void setVersionCommentTest() throws PEException {
 		KnownVariables.VERSION_COMMENT.setGlobalValue("hello");
 	}
@@ -142,7 +144,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void globalVariableQSOTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.DVE, null, "sql_logging", "yes"),
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.GLOBAL), "sql_logging", "yes"),
 				results);
 		assertFalse(results.hasResults());
 
@@ -155,7 +157,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void sessionVariableQSOTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "character_set_client",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "character_set_client",
 				"latin1"), results);
 		assertFalse(results.hasResults());
 
@@ -165,7 +167,7 @@ public class VariableTest extends PETest {
 		assertEquals("latin1", results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "character_set_client",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "character_set_client",
 				"utf8"), results);
 		assertFalse(results.hasResults());
 
@@ -178,7 +180,7 @@ public class VariableTest extends PETest {
 	@Test(expected = PENotFoundException.class)
 	public void sessionVariableNotExistsTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "invalid-session-name",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "invalid-session-name",
 				"value1"), results);
 		assertFalse(results.hasResults());
 	}
@@ -186,12 +188,12 @@ public class VariableTest extends PETest {
 	@Test
 	public void setPolicyTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "dynamic_policy",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "dynamic_policy",
 				"OnPremisePolicy"), results);
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.DEFAULT_DYNAMIC_POLICY), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.DYNAMIC_POLICY), results);
 		assertTrue(results.hasResults());
 		assertEquals("OnPremisePolicy", results.getSingleColumnValue(1, 1));
 	}
@@ -199,7 +201,7 @@ public class VariableTest extends PETest {
 	@Test(expected = PENotFoundException.class)
 	public void setPolicyFailTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "dynamic_policy",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "dynamic_policy",
 				"value1"), results);
 		assertFalse(results.hasResults());
 	}
@@ -207,7 +209,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void setStorageGroupTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null,
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
 				PERSISTENT_GROUP_VARIABLE, PEConstants.DEFAULT_GROUP_NAME), results);
 		assertFalse(results.hasResults());
 
@@ -220,7 +222,7 @@ public class VariableTest extends PETest {
 	@Test(expected = PENotFoundException.class)
 	public void setStorageGroupFailTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null,
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
 				PERSISTENT_GROUP_VARIABLE, "value1"), results);
 		assertFalse(results.hasResults());
 	}
@@ -236,13 +238,13 @@ public class VariableTest extends PETest {
 	@Test
 	public void clientCharSet() throws Throwable {
 		String origCharSet =
-				KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(ssConnection);
+				KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(ssConnection).getName();
 		String newCharset = "utf8";
 		if (!origCharSet.toLowerCase().equals("utf8"))
 			newCharset = "latin1";
 
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null,
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
 				ClientCharSetSessionVariableHandler.VARIABLE_NAME, newCharset), results);
 		assertFalse(results.hasResults());
 
@@ -297,7 +299,7 @@ public class VariableTest extends PETest {
 
 	@Test
 	public void setInvalidCollation() throws Throwable {
-		QueryStepOperation step1op1 = new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null,
+		QueryStepOperation step1op1 = new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
 				CollationSessionVariableHandler.VARIABLE_NAME, "latin1_junk_ci");
 		QueryStep step1 = new QueryStep(sg, step1op1);
 		try {
@@ -390,6 +392,7 @@ public class VariableTest extends PETest {
 		}
 	}
 
+	/*
 	@Test
 	public void getLiteralSessionVariableTest() throws PEException {
 		throw new PEException("fill me in");
@@ -403,6 +406,7 @@ public class VariableTest extends PETest {
 //        Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo("have_innodb").getHandler()
 //				.setValue(ssConnection, "have_innodb", "NO");
 	}
+*/
 
 	@Test
 	public void setGroupServiceVariableTest() throws PEException {

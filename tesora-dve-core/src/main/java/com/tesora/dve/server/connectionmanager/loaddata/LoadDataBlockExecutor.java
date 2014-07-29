@@ -24,9 +24,6 @@ package com.tesora.dve.server.connectionmanager.loaddata;
 import com.tesora.dve.db.mysql.MyLoadDataInfileContext;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.server.connectionmanager.messages.ExecutePreparedStatementRequestExecutor;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -60,8 +57,8 @@ public class LoadDataBlockExecutor {
 		}
 
 		if (loadDataInfileContext.getCharset() == null) {
-			loadDataInfileContext.setCharset(Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
-					KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr), true).getJavaCharset());
+			loadDataInfileContext.setCharset(
+					KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr).getJavaCharset());
 		}
 
 		if (logger.isDebugEnabled()) {
@@ -95,8 +92,8 @@ public class LoadDataBlockExecutor {
 		}
 
 		if (loadDataInfileContext.getCharset() == null) {
-			loadDataInfileContext.setCharset(Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
-					KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr), true).getJavaCharset());
+			loadDataInfileContext.setCharset(
+					KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr).getJavaCharset());
 		}
 
 		List<String> params = new ArrayList<String>();

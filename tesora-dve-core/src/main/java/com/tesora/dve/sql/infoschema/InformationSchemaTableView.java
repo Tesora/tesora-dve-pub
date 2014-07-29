@@ -325,4 +325,9 @@ public class InformationSchemaTableView implements
 		return ((Database<?>)sc.getSource().find(sc, view.getCacheKey()));
 	}
 
+	// bit of a hack - variables table executes very differently
+	public boolean isVariablesTable() {
+		return false;
+	}
+	
 }

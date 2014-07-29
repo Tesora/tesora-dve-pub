@@ -26,7 +26,6 @@ import com.tesora.dve.lockmanager.LockManager;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.locks.Lock;
 
@@ -73,5 +72,7 @@ public interface CoordinationServices extends MembershipViewSource {
 	
 	long getGloballyUniqueId(String domain);	
 	
-	Map<String,String> getGlobalVariables();	
+	String getGlobalVariable(String name);
+
+	void setGlobalVariable(String name, String value);
 }

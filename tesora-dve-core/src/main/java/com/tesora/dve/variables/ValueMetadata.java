@@ -33,6 +33,8 @@ public abstract class ValueMetadata<Type> {
 
 	public abstract String convertToExternal(Type in);
 
+	public abstract String toRow(Type in);
+	
 	public ResultCollector getValueAsResult(Type in) throws PEException {
 		return ResultCollectorFactory.getInstance(Types.VARCHAR, convertToExternal(in));
 	}

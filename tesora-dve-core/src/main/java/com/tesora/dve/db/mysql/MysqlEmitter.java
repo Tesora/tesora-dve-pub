@@ -30,7 +30,6 @@ import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.IndexHint;
 import com.tesora.dve.sql.node.expression.TableInstance;
-import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WhenClause;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Comment;
@@ -44,7 +43,6 @@ import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaLookup;
 import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.cache.CacheAwareLookup;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifierTag;
@@ -52,10 +50,6 @@ import com.tesora.dve.sql.schema.modifiers.TableModifiers;
 import com.tesora.dve.sql.statement.ddl.PEDropStatement;
 import com.tesora.dve.sql.statement.ddl.SetPasswordStatement;
 import com.tesora.dve.sql.statement.session.LoadDataInfileStatement;
-import com.tesora.dve.sql.statement.session.SessionSetVariableStatement;
-import com.tesora.dve.sql.statement.session.SetExpression;
-import com.tesora.dve.sql.statement.session.SetTransactionIsolationExpression;
-import com.tesora.dve.sql.statement.session.SetVariableExpression;
 import com.tesora.dve.sql.util.BinaryProcedure;
 import com.tesora.dve.sql.util.Functional;
 
@@ -96,62 +90,7 @@ public class MysqlEmitter extends Emitter {
 		super.emitOperatorFunctionCall(sc,fc, buf, pretty);
 	}
 
-	@Override
-	public void emitSessionSetVariableStatement(final SchemaContext sc, 
-			SessionSetVariableStatement ssvs, StringBuilder buf, int indent) {
-		emitIndent(buf,indent,"SET ");
-		final MysqlEmitter me = this;
-		Functional.join(ssvs.getSetExpressions(), buf, ", ", new BinaryProcedure<SetExpression, StringBuilder>() {
-
-			@Override
-			public void execute(SetExpression aobj, StringBuilder bobj) {
-				me.emitSetExpression(sc, aobj, bobj, -1);
-			}
-			
-		});
-	}
-
-	public void emitSetExpression(SchemaContext sc, SetExpression se, StringBuilder buf, int pretty) {
-		if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION) {
-			emitSetTransactionIsolation((SetTransactionIsolationExpression)se, buf);
-		} else if (se.getKind() == SetExpression.Kind.VARIABLE) {
-			SetVariableExpression sve = (SetVariableExpression) se;
-			emitVariable(sve.getVariable(),buf);
-			buf.append(" ");
-			if (sve.getVariable().getVariableName().get().equalsIgnoreCase("names")) {
-				emitExpression(sc,sve.getValue().get(0),buf);
-				if (sve.getValue().size() > 1) {
-					buf.append(" COLLATE ");
-					emitExpression(sc,sve.getValue().get(1),buf);
-				}
-			} else {
-				emitExpressions(sc,sve.getValue(), buf, pretty);
-			}
-		}
-	}
-
-	// TODO: consider moving this back to base class
-	public void emitSetTransactionIsolation(SetTransactionIsolationExpression stie, StringBuilder buf) {
-		if (stie.getScope() != null)
-			buf.append(stie.getScope().getSQL()).append(" ");
-		buf.append("TRANSACTION ISOLATION ").append(stie.getLevel().getSQL());
-	}
 	
-	@Override
-	public void emitVariable(VariableInstance vi, StringBuilder buf) {
-		VariableScope vs = vi.getScope();
-		if (vs.getKind() == VariableScope.VariableKind.USER) {
-			buf.append("@").append(vi.getVariableName().getSQL());
-		} else {
-			String raw = vi.getVariableName().get().toUpperCase();
-			if ("NAMES".equals(raw)) {
-				// different, because Monty says so
-				buf.append(raw);
-			} else {
-				buf.append("@@").append(vs.getKind()).append(".").append(vi.getVariableName().getSQL());
-			}
-		}
-	}
 	
 	@Override
 	public void emitComment(Comment c, StringBuilder buf) {

@@ -39,10 +39,10 @@ public class BoundedIntegralConverter extends IntegralValueConverter {
 		Long number = super.convertToInternal(varName, in);
 		if (number == null) return number;
 		if (minimum != null && number.longValue() < minimum.longValue()) {
-			throw new PEException(String.format("Invalid value '%s' must be at least %d",in,minimum));
+			throw new PEException(String.format("Invalid value '%s' must be at least %d for variable '%s'",in,minimum,varName));
 		}
 		if (maximum != null && number.longValue() > maximum.longValue()) {
-			throw new PEException(String.format("Invalid value '%s' must be no more than %d",in,maximum));
+			throw new PEException(String.format("Invalid value '%s' must be no more than %d for variable '%s'",in,maximum, varName));
 		}
 		return number;
 	}

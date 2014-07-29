@@ -23,7 +23,7 @@ package com.tesora.dve.variables;
 
 public interface GlobalVariableStore extends VariableStore {
 
-	public void invalidate();
+	public void invalidate(VariableHandler vh);
 	
 	public LocalVariableStore buildNewLocalStore();
 

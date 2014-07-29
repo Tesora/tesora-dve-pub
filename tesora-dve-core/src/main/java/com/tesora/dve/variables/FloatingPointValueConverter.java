@@ -48,4 +48,9 @@ public class FloatingPointValueConverter extends ValueMetadata<Double> {
 		return "numeric";
 	}
 
+	@Override
+	public String toRow(Double in) {
+		return in.toString();
+	}
+
 }

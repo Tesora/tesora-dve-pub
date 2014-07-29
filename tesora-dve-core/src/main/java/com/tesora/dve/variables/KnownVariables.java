@@ -23,14 +23,22 @@ package com.tesora.dve.variables;
 
 
 import java.util.EnumSet;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.tesora.dve.charset.NativeCharSet;
+import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
+import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
+import com.tesora.dve.clock.TimingServiceConfiguration;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEThreadContext;
+import com.tesora.dve.common.catalog.AutoIncrementTracker;
+import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.Project;
 import com.tesora.dve.common.catalog.TemplateMode;
+import com.tesora.dve.db.mysql.MySQLTransactionIsolation;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.server.connectionmanager.ConnectionSemaphore;
@@ -43,6 +51,7 @@ import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.schema.SQLMode;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.schema.modifiers.EngineTableModifier.EngineTag;
@@ -56,13 +65,14 @@ public class KnownVariables implements VariableConstants {
 	public static final ValueMetadata<String> stringConverter = new StringValueConverter();
 	public static final ValueMetadata<String> literalConverter = new LiteralValueConverter();
 
-	public static final EnumSet<VariableScope> globalScope = EnumSet.of(VariableScope.GLOBAL);
-	public static final EnumSet<VariableScope> sessionScope = EnumSet.of(VariableScope.SESSION);
-	public static final EnumSet<VariableScope> bothScope = EnumSet.of(VariableScope.GLOBAL,VariableScope.SESSION);
+	public static final EnumSet<VariableScopeKind> globalScope = EnumSet.of(VariableScopeKind.GLOBAL);
+	public static final EnumSet<VariableScopeKind> sessionScope = EnumSet.of(VariableScopeKind.SESSION);
+	public static final EnumSet<VariableScopeKind> bothScope = EnumSet.of(VariableScopeKind.GLOBAL,VariableScopeKind.SESSION);
 	
 	public static final EnumSet<VariableOption> dveOnly = EnumSet.of(VariableOption.DVE_ONLY);
 	public static final EnumSet<VariableOption> noopt = EnumSet.noneOf(VariableOption.class);
 	public static final EnumSet<VariableOption> nullable = EnumSet.of(VariableOption.NULLABLE);
+	public static final EnumSet<VariableOption> readonly = EnumSet.of(VariableOption.READONLY);
 	
 	@SuppressWarnings("rawtypes")
 	static final ValueMetadata[] defaultConverters = new ValueMetadata[] {
@@ -102,12 +112,12 @@ public class KnownVariables implements VariableConstants {
 			new VariableHandler<Long>(LONG_PLAN_STEP_TIME_NAME,
 					integralConverter,
 					globalScope,
-					0L,
+					3L,
 					dveOnly);
 	public static final VariableHandler<Double> LONG_QUERY_TIME =
 			new VariableHandler<Double>(LONG_QUERY_TIME_NAME,
 					floatingPointConverter,
-					globalScope,
+					bothScope,
 					new Double(10.0),
 					noopt);
 	public static final VariableHandler<Boolean> EMULATE_MYSQL_LIMIT =
@@ -128,12 +138,47 @@ public class KnownVariables implements VariableConstants {
 					globalScope,
 					"",
 					dveOnly);
-	public static final VariableHandler<String> DEFAULT_DYNAMIC_POLICY =
-			new VariableHandler<String>(DEFAULT_DYNAMIC_POLICY_NAME,
-					stringConverter,
-					globalScope,
+	public static final VariableHandler<String> DYNAMIC_POLICY =
+			new VariableHandler<String>(DYNAMIC_POLICY_NAME,
+					new StringValueConverter() {
+				
+						@Override
+						public String convertToInternal(String varName, String in) throws PEException {
+							String raw = stringConverter.convertToInternal(varName, in);
+							CatalogDAO c = CatalogDAOFactory.newInstance();
+							try {
+								c.findDynamicPolicy(raw, true);
+							} finally {
+								c.close();
+							}
+							return raw;
+						}
+
+					},
+					bothScope,
 					OnPremiseSiteProvider.DEFAULT_POLICY_NAME,
-					dveOnly);
+					dveOnly) {
+		
+		// set it in both places for now
+		@Override
+		protected void persistValue(final CatalogDAO c, final String newValue) throws PEException {
+			super.persistValue(c, newValue);
+			final Project p = c.findByKey(Project.class, Singletons.require(HostService.class).getProject().getId());
+			try {
+				c.new EntityUpdater() {
+					@Override
+					public CatalogEntity update() throws Throwable {
+						p.setDefaultPolicy(c.findDynamicPolicy(newValue));
+						return p;
+					}
+				}.execute();
+			} catch (Throwable e) {
+				throw new PEException("Unable to set project variable persistent_group",e);
+			}
+		}
+
+		
+	};
 	public static final VariableHandler<Boolean> STEPWISE_STATISTICS =
 			new VariableHandler<Boolean>(STEPWISE_STATISTICS_NAME,
 					booleanConverter,
@@ -182,13 +227,7 @@ public class KnownVariables implements VariableConstants {
 			},
 			sessionScope,
 			null,
-			nullable) {
-		@Override
-		public String getSessionAssignmentClause(String value) {
-			return null;
-		}
-
-	};
+			EnumSet.of(VariableOption.NULLABLE,VariableOption.NO_SESSION_ASSIGNMENT));
 	public static final VariableHandler<Boolean> FOREIGN_KEY_CHECKS =
 			new VariableHandler<Boolean>(FOREIGN_KEY_CHECKS_NAME,
 					booleanConverter,
@@ -214,7 +253,7 @@ public class KnownVariables implements VariableConstants {
 					null,
 					EnumSet.of(VariableOption.DVE_ONLY, VariableOption.NULLABLE));
 	public static final VariableHandler<SQLMode> SQL_MODE =
-			new SqlModeHandler("sql_mode",
+			new VariableHandler<SQLMode>("sql_mode",
 					new ValueMetadata<SQLMode>() {
 
 						@Override
@@ -233,11 +272,38 @@ public class KnownVariables implements VariableConstants {
 						public String getTypeName() {
 							return "varchar";
 						}
+
+						@Override
+						public String toRow(SQLMode in) {
+							return in.toString();
+						}
 				
 					},
 					bothScope,
 					new SQLMode("NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"),
-					noopt);
+					noopt) {
+		
+		@Override
+		public void onSessionValueChange(VariableStoreSource conn, SQLMode newValue) throws PEException {
+			super.onSessionValueChange(conn,newValue);
+		}
+		
+		@Override
+		public void setSessionValue(VariableStoreSource conn, String value) throws PEException {
+			// make sure the global values are included
+			SQLMode globalValues = getGlobalValue(conn);
+			String raw = stringConverter.convertToInternal(getName(), value);
+			if ("default".equalsIgnoreCase(raw)) {
+				// set the session values to the global values
+				super.setSessionValue(conn,globalValues.toString());
+			} else {
+				// combine
+				SQLMode myValues = new SQLMode(raw);
+				SQLMode combined = globalValues.add(myValues);
+				super.setSessionValue(conn,combined.toString());
+			}
+		}
+	};
 	public static final VariableHandler<String> COLLATION_CONNECTION =
 			new VariableHandler<String>(COLLATION_CONNECTION_NAME,
 					new LiteralValueConverter() {
@@ -252,17 +318,55 @@ public class KnownVariables implements VariableConstants {
 					bothScope,
 					"utf8_general_ci",
 					noopt);
-	public static final VariableHandler<String> CHARACTER_SET_CLIENT =
-			new VariableHandler<String>(CHARACTER_SET_CLIENT_NAME,
-					literalConverter,
+	
+	public static final VariableHandler<NativeCharSet> CHARACTER_SET_CLIENT =
+			new VariableHandler<NativeCharSet>(CHARACTER_SET_CLIENT_NAME,
+					new ValueMetadata<NativeCharSet>() {
+
+						@Override
+						public NativeCharSet convertToInternal(String varName,
+								String in) throws PEException {
+							try {
+								return MysqlNativeCharSetCatalog.DEFAULT_CATALOG.findCharSetByName(in, true);
+							} catch (PEException e) {
+								throw new PEException(String.format("Unsupported charset for '%s': %s",varName,in));
+							}
+						}
+
+						@Override
+						public String convertToExternal(NativeCharSet in) {
+							return in.getName();
+						}
+
+						@Override
+						public String toRow(NativeCharSet in) {
+							return in.getName();
+						}
+
+						@Override
+						public String getTypeName() {
+							return "varchar";
+						}
+				
+					},
 					bothScope,
-					"utf8",
-					noopt);
+					MysqlNativeCharSet.UTF8,
+					noopt) {
+		
+		public void onSessionValueChange(VariableStoreSource conn, NativeCharSet in) throws PEException {
+			if (conn instanceof SSConnection) {
+				SSConnection ssconn = (SSConnection) conn;
+				ssconn.setClientCharSet(in);
+			}
+			super.onSessionValueChange(conn,in);
+		}
+		
+	};
 	public static final VariableHandler<Long> CACHE_LIMIT =
 			new VariableHandler<Long>("cache_limit",
 					integralConverter,
 					globalScope,
-					500L,
+					10000L,
 					dveOnly) {
 
 		@Override
@@ -322,7 +426,7 @@ public class KnownVariables implements VariableConstants {
 			new VariableHandler<Long>("raw_plan_cache_limit",
 					integralConverter,
 					globalScope,
-					100L,
+					0L,
 					dveOnly) {
 		@Override
 		public void onGlobalValueChange(Long newValue) throws PEException {
@@ -347,17 +451,22 @@ public class KnownVariables implements VariableConstants {
 					integralConverter,
 					globalScope,
 					16382L,
-					noopt);
+					noopt) {
+		@Override
+		public void onGlobalValueChange(Long newValue) throws PEException {
+			SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()),newValue.intValue());
+		}		
+	};
 	public static final VariableHandler<Long> REDIST_MAX_COLUMNS =
 			new VariableHandler<Long>("redist_max_columns",
 					integralConverter,
-					globalScope,
+					bothScope,
 					1000L,
 					dveOnly);
 	public static final VariableHandler<Long> REDIST_MAX_SIZE =
 			new VariableHandler<Long>("redist_max_size",
 					integralConverter,
-					globalScope,
+					bothScope,
 					16000000L,
 					dveOnly);
 	public static final VariableHandler<Long> WAIT_TIMEOUT =
@@ -395,7 +504,36 @@ public class KnownVariables implements VariableConstants {
 					stringConverter,
 					bothScope,
 					PEConstants.DEFAULT_GROUP_NAME,
-					dveOnly);
+					dveOnly) {
+		
+		@Override
+		public void setSessionValue(VariableStoreSource conn, String newValue) throws PEException {
+			if (conn instanceof SSConnection) {
+				SSConnection scon = (SSConnection) conn;
+				scon.getCatalogDAO().findPersistentGroup(newValue, /* check existence */ true);
+			}
+			super.setSessionValue(conn,newValue);
+		}
+		
+		// set it in both places for now
+		@Override
+		protected void persistValue(final CatalogDAO c, final String newValue) throws PEException {
+			super.persistValue(c, newValue);
+			final Project p = c.findByKey(Project.class, Singletons.require(HostService.class).getProject().getId());
+			try {
+				c.new EntityUpdater() {
+					@Override
+					public CatalogEntity update() throws Throwable {
+						p.setDefaultStorageGroup(c.findPersistentGroup(newValue));
+						return p;
+					}
+				}.execute();
+			} catch (Throwable e) {
+				throw new PEException("Unable to set project variable persistent_group",e);
+			}
+		}
+		
+	};
 	public static final VariableHandler<String> GROUP_SERVICE =
 			new VariableHandler<String>("group_service",
 					new StringValueConverter() {
@@ -428,12 +566,12 @@ public class KnownVariables implements VariableConstants {
 	public static final VariableHandler<String> VERSION_COMMENT =
 			new VariableHandler<String>("version_comment",
 					stringConverter,
-					globalScope,
+					bothScope,
 					"",
-					EnumSet.of(VariableOption.READONLY)) {
+					EnumSet.of(VariableOption.READONLY, VariableOption.DVE_ONLY)) {
 		
 		@Override
-		public String getValue(VariableStoreSource source, VariableScope vs) {
+		public String getValue(VariableStoreSource source, VariableScopeKind vs) {
 			return Singletons.require(HostService.class).getServerVersionComment();
 		}
 		
@@ -446,9 +584,9 @@ public class KnownVariables implements VariableConstants {
 	public static final VariableHandler<String> VERSION =
 			new VariableHandler<String>("version",
 					stringConverter,
-					globalScope,
+					bothScope,
 					"5.5.10",
-					EnumSet.of(VariableOption.READONLY));
+					EnumSet.of(VariableOption.READONLY, VariableOption.DVE_ONLY));
 	public static final VariableHandler<Boolean> SQL_LOGGING =
 			new VariableHandler<Boolean>("sql_logging",
 					booleanConverter,
@@ -461,6 +599,12 @@ public class KnownVariables implements VariableConstants {
 			InvokeParser.enableSqlLogging(newValue.booleanValue());
 		}
 	};
+	public static final VariableHandler<Long> MAX_ALLOWED_PACKET =
+			new VariableHandler<Long>("max_allowed_packet",
+					integralConverter,
+					globalScope,
+					16777216L,
+					noopt);
 	
 		
 	@SuppressWarnings("rawtypes")
@@ -473,7 +617,7 @@ public class KnownVariables implements VariableConstants {
 		EMULATE_MYSQL_LIMIT,
 		BALANCE_PERSISTENT_GROUPS,
 		BALANCE_PERSISTENT_GROUPS_PREFIX,
-		DEFAULT_DYNAMIC_POLICY,
+		DYNAMIC_POLICY,
 		STEPWISE_STATISTICS,
 		COST_BASED_PLANNING,
 		TEMPLATE_MODE,
@@ -505,7 +649,8 @@ public class KnownVariables implements VariableConstants {
 		MAX_CONCURRENT,
 		VERSION,
 		VERSION_COMMENT,
-		SQL_LOGGING
+		SQL_LOGGING,
+		MAX_ALLOWED_PACKET
 	};
 	
 	@SuppressWarnings("rawtypes")
@@ -514,7 +659,9 @@ public class KnownVariables implements VariableConstants {
 				integralConverter,
 				bothScope,
 				1024L,
-				noopt),
+				noopt) {
+			
+		},
 		new VariableHandler<String>("hostname",
 				stringConverter,
 				globalScope,
@@ -522,7 +669,7 @@ public class KnownVariables implements VariableConstants {
 				EnumSet.of(VariableOption.DVE_ONLY,VariableOption.READONLY)) {
 			
 			@Override
-			public String getValue(VariableStoreSource source, VariableScope vs) {
+			public String getValue(VariableStoreSource source, VariableScopeKind vs) {
 				return Singletons.require(HostService.class).getHostName();
 			}
 		},
@@ -541,6 +688,11 @@ public class KnownVariables implements VariableConstants {
 				bothScope,
 				"utf8",
 				nullable),
+		new VariableHandler<String>("character_set_server",
+				stringConverter,
+				bothScope,
+				"utf8",
+				noopt),
 		new VariableHandler<Long>(ADAPTIVE_CLEANUP_INTERVAL_NAME,
 				new BoundedIntegralConverter(-1L,10000L),
 				globalScope,
@@ -588,7 +740,190 @@ public class KnownVariables implements VariableConstants {
 				integralConverter,
 				sessionScope,
 				0L,
-				noopt)	
+				dveOnly),
+		new VariableHandler<String>("charset",
+				literalConverter,
+				sessionScope,
+				"utf8",
+				dveOnly),
+		new VariableHandler<Boolean>("sql_auto_is_null",
+				booleanConverter,
+				bothScope,
+				Boolean.FALSE,
+				noopt),
+		new VariableHandler<MySQLTransactionIsolation>("tx_isolation",
+				new ValueMetadata<MySQLTransactionIsolation>() {
+
+					@Override
+					public MySQLTransactionIsolation convertToInternal(String varName, String in) throws PEException {
+						String raw = stringConverter.convertToInternal(varName, in);
+						MySQLTransactionIsolation isol = MySQLTransactionIsolation.find(raw);
+						if (isol == null)
+							throw new PEException("Invalid value for '" + varName + "' (allowed values are " + 
+									StringUtils.join(MySQLTransactionIsolation.getExternalValuesAsList(), ", ") + ")");
+						return isol;
+					}
+
+					@Override
+					public String convertToExternal(MySQLTransactionIsolation in) {
+						if (in == null) return "";
+						return String.format("'%s'", in.getExternalName());
+					}
+
+					@Override
+					public String toRow(MySQLTransactionIsolation in) {
+						return in.getExternalName();
+					}
+
+					@Override
+					public String getTypeName() {
+						return "varchar";
+					}
+				},
+				bothScope,
+				MySQLTransactionIsolation.READ_COMMITTED,
+				noopt),
+		new VariableHandler<Boolean>("performance_trace",
+				booleanConverter,
+				globalScope,
+				Boolean.FALSE,
+				dveOnly) {
+
+			@Override
+			public void onGlobalValueChange(Boolean newValue) throws PEException {
+				TimingServiceConfiguration timingConfiguration = Singletons.lookup(TimingServiceConfiguration.class);
+				if (timingConfiguration != null)
+					timingConfiguration.setTimingEnabled(newValue.booleanValue());
+			}
+		},
+		new VariableHandler<Long>("rand_seed1",
+				integralConverter,
+				sessionScope,
+				0L,
+				noopt),
+		new VariableHandler<Long>("rand_seed2",
+				integralConverter,
+				sessionScope,
+				0L,
+				noopt),
+		new VariableHandler<Long>("insert_id",
+				integralConverter,
+				sessionScope,
+				0L,
+				noopt),
+		new VariableHandler<Long>(INNODB_LOCK_WAIT_TIMEOUT_NAME,
+				integralConverter,
+				bothScope,
+				3L,
+				noopt),
+		new VariableHandler<Boolean>("have_innodb",
+				booleanConverter,
+				bothScope,
+				Boolean.TRUE,
+				EnumSet.of(VariableOption.READONLY, VariableOption.NO_SESSION_ASSIGNMENT)),
+		new VariableHandler<Boolean>("unique_checks",
+				booleanConverter,
+				bothScope,
+				Boolean.TRUE,
+				noopt),
+		new VariableHandler<Boolean>("big_tables",
+				booleanConverter,
+				sessionScope,
+				Boolean.FALSE,
+				noopt),
+		new VariableHandler<Long>(AUTO_INCREMENT_MIN_BLOCK_SIZE,
+				new BoundedIntegralConverter(1L,null),
+				globalScope,
+				10L,
+				dveOnly) {
+			
+			public void onGlobalValueChange(Long newValue) throws PEException {
+				AutoIncrementTracker.setMinBlockSize(newValue.intValue());
+			}
+		},
+		new VariableHandler<Long>(AUTO_INCREMENT_PREFETCH_THRESHOLD,
+				new BoundedIntegralConverter(0L,100L),
+				globalScope,
+				50L,
+				dveOnly) {
+			public void onGlobalValueChange(Long newValue) throws PEException {
+				AutoIncrementTracker.setPrefetchThreshold(newValue.intValue());
+			}
+			
+		},
+		new VariableHandler<Long>(AUTO_INCREMENT_MAX_BLOCK_SIZE,
+				integralConverter,
+				globalScope,
+				1000L,
+				dveOnly) {
+			public void onGlobalValueChange(Long newValue) throws PEException {
+				AutoIncrementTracker.setMaxBlockSize(newValue.intValue());
+			}
+			
+		},
+		new VariableHandler<Long>("sql_quote_show_create",
+				new BoundedIntegralConverter(-1L,2L),
+				bothScope,
+				1L,
+				noopt),
+		new VariableHandler<String>("collation_database",
+				new LiteralValueConverter() {
+
+					@Override
+					public String convertToInternal(String varName, String in) throws PEException {
+						Singletons.require(HostService.class).getDBNative().assertValidCollation(in);
+						return in;
+					}
+				},
+				bothScope,
+				"utf8_general_ci",
+				noopt),
+		new VariableHandler<Long>("sql_notes",
+				new BoundedIntegralConverter(-1L,2L),
+				bothScope,
+				1L,
+				noopt),
+		new VariableHandler<String>("init_connect",
+				stringConverter,
+				globalScope,
+				"",
+				noopt),
+		new VariableHandler<Long>("interactive_timeout",
+				new BoundedIntegralConverter(0L,null),
+				bothScope,
+				28800L,
+				noopt),
+		new VariableHandler<Long>("lower_case_table_names",
+				new BoundedIntegralConverter(-1L,3L),
+				globalScope,
+				1L,
+				readonly),
+		new VariableHandler<Long>("net_buffer_length",
+				new BoundedIntegralConverter(1023L,1048577L),
+				bothScope,
+				16384L,
+				EnumSet.of(VariableOption.NO_SESSION_ASSIGNMENT)),
+		new VariableHandler<Long>("net_write_timeout",
+				new BoundedIntegralConverter(0L,null),
+				bothScope,
+				60L,
+				noopt),
+		new VariableHandler<String>("system_time_zone",
+				stringConverter,
+				globalScope,
+				"EDT", // todo: change this
+				readonly),
+		new VariableHandler<Long>("query_cache_size",
+				new BoundedIntegralConverter(-1L,4294967296L), // maybe not right?
+				globalScope,
+				41943040L,
+				noopt),
+		new VariableHandler<Long>("query_cache_type",
+				new BoundedIntegralConverter(-1L,3L),
+				bothScope,
+				1L,
+				noopt),
+
 	};
 
 }

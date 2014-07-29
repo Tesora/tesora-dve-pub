@@ -57,7 +57,7 @@ public interface VariableConstants {
 	public static final String BALANCE_PERSISTENT_GROUPS_PREFIX_NAME = "balance_persistent_groups_prefix";
 	
 	// dynamic policy
-	public static final String DEFAULT_DYNAMIC_POLICY_NAME = "default_dynamic_policy";
+	public static final String DYNAMIC_POLICY_NAME = "dynamic_policy";
 	
 	// template related
 	public static final String TEMPLATE_MODE_NAME = "template_mode";
@@ -77,5 +77,10 @@ public interface VariableConstants {
 	public static final String REDIST_MAX_COLUMNS_NAME = "redist_max_columns";
 	public static final String REDIST_MAX_SIZE_NAME = "redist_max_size";
 	public static final String GROUP_CONCAT_MAX_LEN_NAME = "group_concat_max_len";
+	
+	public static final String AUTO_INCREMENT_MIN_BLOCK_SIZE = "auto_increment_min_block_size";
+	public static final String AUTO_INCREMENT_MAX_BLOCK_SIZE = "auto_increment_max_block_size";
+	public static final String AUTO_INCREMENT_PREFETCH_THRESHOLD = "auto_increment_prefetch_threshold";
+
 
 }

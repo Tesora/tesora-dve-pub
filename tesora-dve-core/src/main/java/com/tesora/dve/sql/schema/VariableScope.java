@@ -21,82 +21,37 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import com.tesora.dve.sql.SchemaException;
-import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.variable.VariableScopeKind;
-
 public class VariableScope {
 
-	public enum VariableKind {
-		// transient session values (mysql and pe)
-		SESSION,
-		// transient user session values
-		USER,
-		// scoped persistent values (dve, <scope> <scope-name>)
-		SCOPED,
-		// mysql global variables - we detect them only so we can indicate that we don't support them
-		GLOBAL;
-		
-	}
-
-	protected VariableKind kind;
-	protected VariableScopeKind scopeKind;
-	protected UnqualifiedName scopeName;
+	protected VariableScopeKind kind;
+	protected String scopeName;
 	
-	public VariableScope(VariableKind vk, String sk, UnqualifiedName sn) {
+	// one of the builtin scopes
+	public VariableScope(VariableScopeKind vk) {
 		kind = vk;
-		if (sk != null) {
-			scopeKind = VariableScopeKind.lookup(sk);
-			if (scopeKind == null)
-				throw new SchemaException(Pass.SECOND, "No such scope kind: " + sk);
-		} else {
-			scopeKind = lookupInternalScopeKind(vk);
-		}
-		scopeName = sn;
-	}
-	
-	public VariableScope(VariableKind vk) {
-		kind = vk;
-		scopeKind = lookupInternalScopeKind(kind);
 		scopeName = null;
 	}
 	
-	private static VariableScopeKind lookupInternalScopeKind(VariableKind vk) {
-		if (vk == VariableKind.USER)
-			return VariableScopeKind.USER;
-		else if (vk == VariableKind.SESSION)
-			return VariableScopeKind.SESSION;
-		else if (vk == VariableKind.SCOPED)
-			throw new SchemaException(Pass.SECOND, "Must set scope kind");
-		return null;
+	// one of the nonbuiltin scopes
+	public VariableScope(String unq) {
+		kind = VariableScopeKind.SCOPED;
+		scopeName = unq;
 	}
 	
-	public VariableKind getKind() {
+	public VariableScopeKind getKind() {
 		return kind;
 	}
 
-	public VariableScopeKind getScopeKind() {
-		return scopeKind;
-	}
-	
 	public String getScopeName() {
-		if (scopeKind.hasName() && scopeName != null)			
-			return scopeName.get();
-		return null;
+		return scopeName;
 	}
 
-	public boolean isDveScope() {
-		return scopeKind == VariableScopeKind.DVE;
+	public boolean isDVEScope() {
+		return kind == VariableScopeKind.SCOPED;
 	}
 	
 	public boolean isUserScope() {
-		return scopeKind == VariableScopeKind.USER;
-	}
-	
-	public String getSQL() {
-		String candidate = getScopeName();
-		if (candidate == null) return scopeKind.name();
-		return candidate;
+		return kind == VariableScopeKind.USER;
 	}
 	
 	@Override
@@ -104,8 +59,6 @@ public class VariableScope {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((kind == null) ? 0 : kind.hashCode());
-		result = prime * result
-				+ ((scopeKind == null) ? 0 : scopeKind.hashCode());
 		result = prime * result
 				+ ((scopeName == null) ? 0 : scopeName.hashCode());
 		return result;
@@ -121,11 +74,6 @@ public class VariableScope {
 			return false;
 		VariableScope other = (VariableScope) obj;
 		if (kind != other.kind)
-			return false;
-		if (scopeKind == null) {
-			if (other.scopeKind != null)
-				return false;
-		} else if (!scopeKind.equals(other.scopeKind))
 			return false;
 		if (scopeName == null) {
 			if (other.scopeName != null)

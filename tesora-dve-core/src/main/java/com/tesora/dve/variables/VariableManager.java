@@ -30,6 +30,7 @@ import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.VariableConfig;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.Functional;
 
 // mostly just a helper class
@@ -63,6 +64,10 @@ public class VariableManager {
 	
 	public List<VariableHandler<?>> getGlobalHandlers() {
 		return Functional.select(handlers.values(), VariableHandler.isGlobalPredicate);
+	}
+	
+	public List<VariableHandler<?>> getAllHandlers() {
+		return Functional.toList(handlers.values());
 	}
 	
 	public VariableHandler<?> lookup(String name, boolean except) throws PEException {
@@ -123,7 +128,7 @@ public class VariableManager {
 			if (vr == null) {
 				// not set at all yet, so we get to do that
 				globals.setValue(vh, vh.getDefaultValueReference().get());
-			} else if (vh.getScopes().contains(VariableScope.GLOBAL)) {
+			} else if (vh.getScopes().contains(VariableScopeKind.GLOBAL)) {
 				// i.e. we got the current value, so set it
 				vh.onGlobalValueChange(vr.get());
 			}

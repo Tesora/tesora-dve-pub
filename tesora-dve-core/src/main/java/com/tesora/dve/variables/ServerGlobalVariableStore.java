@@ -21,7 +21,6 @@ package com.tesora.dve.variables;
  * #L%
  */
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.tesora.dve.exceptions.PEException;
@@ -46,44 +45,41 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 	
 	// this is a cache that's built from the group services copy
 	// we populate it lazily
-	private ConcurrentHashMap<VariableHandler<?>,ValueReference<?>> cache;
+	private final ConcurrentHashMap<VariableHandler<?>,ValueReference<?>> cache = 
+			new ConcurrentHashMap<VariableHandler<?>,ValueReference<?>>();
 	
 	// make it public for the trans exec engine
 	private ServerGlobalVariableStore() {
 		super();
-		cache = null;
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <Type> ValueReference<Type> getReference(VariableHandler<Type> vh) {
-		return (ValueReference<Type>) read().get(vh);
+		ValueReference vr = cache.get(vh);
+		if (vr == null)
+			vr = readValue(vh);
+		return vr;
 	}
 
-	private ConcurrentHashMap<VariableHandler<?>,ValueReference<?>> read() {
-		ConcurrentHashMap<VariableHandler<?>, ValueReference<?>> out = cache;
-		if (out == null) {
-			ClusterLock lock = getLock();
+	private <Type> ValueReference<Type> readValue(VariableHandler<Type> vh) {
+		ClusterLock lock = getLock();
+		try {
 			lock.sharedLock(this,"repopulate global var cache for read");
-			try {
-				// repopulate from the group manager
-				out = new ConcurrentHashMap<VariableHandler<?>,ValueReference<?>>();
-				VariableManager vm = Singletons.require(HostService.class).getVariableManager();
-				for(Map.Entry<String,String> me : GroupManager.getCoordinationServices().getGlobalVariables().entrySet()) {
-					VariableHandler<?> vh = vm.lookup(me.getKey(), false);
-					out.put(vh,new ValueReference(vh,vh.toInternal(me.getValue())));
-				}
-				if (cache == null)
-					cache = out;
-			} catch (PEException pe) {
-				throw new VariableException("Unable to reload global variable cache",pe);
-			} finally {
-				lock.sharedUnlock(this, "repopulate global var cache for read");
-			}
+
+			String value = GroupManager.getCoordinationServices().getGlobalVariable(vh.getName());
+			if (value == null)
+				return null;
+			ValueReference<Type> out = new ValueReference(vh,vh.toInternal(value)); 
+			cache.put(vh,out);
+			return out;
+		} catch (PEException pe) {
+			throw new VariableException(pe);
+		} finally {
+			lock.sharedUnlock(this, "repopulate global var cache for read");			
 		}
-		return out;
 	}
-		
+	
 	@Override
 	public <Type> void setValue(VariableHandler<Type> vh, Type t) {
 		// in the write scenario, we lock first, then write through to the group manager map
@@ -92,7 +88,7 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 		try {
 			lock.exclusiveLock(this, "set global var");
 			// call into the group manager for this bit
-			GroupManager.getCoordinationServices().getGlobalVariables().put(vh.getName(), newValue);
+			GroupManager.getCoordinationServices().setGlobalVariable(vh.getName(), newValue);
 			// then send a message invalidating
 	        Singletons.require(GroupTopicPublisher.class).publish(new OnGlobalConfigChangeMessage(vh.getName(), newValue));
 		} finally {
@@ -110,18 +106,15 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 	}
 
 	@Override
-	public void invalidate() {
-		cache = null;
+	public void invalidate(VariableHandler vh) {
+		cache.remove(vh);
 	}
 	
 	public LocalVariableStore buildNewLocalStore() {
-		ConcurrentHashMap<VariableHandler<?>,ValueReference<?>> copy = read();
+		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
 		LocalVariableStore out = new LocalVariableStore();
-		for(ValueReference<?> vr : copy.values()) {
-			VariableHandler<?> vh = vr.getVariable();
-			if (vh.getScopes().contains(VariableScope.SESSION)) {
-				out.setInternal(vh,vr.get());
-			}
+		for(VariableHandler vh : vm.getAllHandlers()) {
+			out.setInternal(vh, getReference(vh).get());
 		}
 		return out;
 	}

@@ -429,8 +429,7 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 		return getOurHazelcastInstance().getIdGenerator(domain).newId();
 	}
 
-	@Override
-	public Map<String, String> getGlobalVariables() {
+	private Map<String, String> getGlobalVariables() {
 		return getOurHazelcastInstance().getMap(GLOBAL_SESS_VAR_MAP_NAME);
 	}
 
@@ -496,5 +495,15 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 			return null;
 		}
 		
+	}
+
+	@Override
+	public String getGlobalVariable(String name) {
+		return getGlobalVariables().get(name);
+	}
+
+	@Override
+	public void setGlobalVariable(String name, String value) {
+		getGlobalVariables().put(name, value);
 	}
 }

@@ -61,4 +61,9 @@ public class BooleanValueConverter extends ValueMetadata<Boolean> {
 		return "boolean";
 	}
 
+	@Override
+	public String toRow(Boolean in) {
+		return (Boolean.TRUE.equals(in) ? "yes" : "no");
+	}
+
 }

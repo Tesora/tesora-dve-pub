@@ -51,5 +51,10 @@ public class StringValueConverter extends ValueMetadata<String> {
 	public String getTypeName() {
 		return "varchar";
 	}
+
+	@Override
+	public String toRow(String in) {
+		return PEStringUtils.dequote(in);
+	}
 	
 }

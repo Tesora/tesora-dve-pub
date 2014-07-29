@@ -565,7 +565,7 @@ public class AlterTest extends SchemaTest {
 				public void test() throws Throwable {
 					conn.execute("alter dve set " + VariableConstants.TEMPLATE_MODE_NAME + " = 'non_existing_mode'");
 				}
-			}.assertException(PEException.class, "Invalid value for template_mode (allowed values are OPTIONAL, REQUIRED, STRICT)");
+			}.assertException(PEException.class, "Invalid value for 'template_mode' (allowed values are OPTIONAL, REQUIRED, STRICT)");
 		} finally {
 			conn.execute(SchemaTest.buildAlterTemplateModeStmt(TemplateMode.REQUIRED));
 		}

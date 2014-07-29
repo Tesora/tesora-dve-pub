@@ -51,7 +51,7 @@ public class QueryStepGetSessionVariableOperation extends QueryStepOperation {
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		resultConsumer.inject(ColumnSet.singleColumn(alias, Types.VARCHAR),
-				ResultRow.singleRow(handler.toExternal(handler.getSessionValue(ssCon))));
+				ResultRow.singleRow(handler.toRow(handler.getSessionValue(ssCon))));
 	}
 
 }

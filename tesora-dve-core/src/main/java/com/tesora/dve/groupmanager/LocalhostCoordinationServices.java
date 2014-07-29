@@ -68,7 +68,7 @@ public class LocalhostCoordinationServices implements CoordinationServices {
 	
 	private ConcurrentMap<String, String> externalServicesMap = new ConcurrentHashMap<String, String>();
 	
-	private final ConcurrentHashMap<String, String> globalVariables = new ConcurrentHashMap<String,String>();
+	private final HashMap<String, String> globalVariables = new HashMap<String,String>();
 
 	public LocalhostCoordinationServices() {
 //		thisMember = new InetSocketAddress(getClass().getSimpleName(),memberId.incrementAndGet());
@@ -120,6 +120,7 @@ public class LocalhostCoordinationServices implements CoordinationServices {
 
 	@Override
 	public void shutdown() {
+		globalVariables.clear();
 		members.remove(getMemberAddress());
 		for (GroupMembershipListener l : membershipListeners)
 			l.onMembershipEvent(MembershipEventType.MEMBER_REMOVED, getMemberAddress());
@@ -216,8 +217,13 @@ public class LocalhostCoordinationServices implements CoordinationServices {
 	}
 
 	@Override
-	public Map<String, String> getGlobalVariables() {
-		return globalVariables;
+	public synchronized String getGlobalVariable(String name) {
+		return globalVariables.get(name);
+	}
+
+	@Override
+	public synchronized void setGlobalVariable(String name, String value) {
+		globalVariables.put(name, value);
 	}
 
 }

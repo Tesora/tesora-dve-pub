@@ -1,4 +1,4 @@
-package com.tesora.dve.variables;
+package com.tesora.dve.sql.schema;
 
 /*
  * #%L
@@ -21,13 +21,19 @@ package com.tesora.dve.variables;
  * #L%
  */
 
-public enum VariableScope {
+public enum VariableScopeKind {
 
 	// user variable
 	USER,
-	// session variable
+	// system session variable
 	SESSION,
-	// global variable
-	GLOBAL;
+	// dve scoped variable, for group providers
+	SCOPED,
+	// system global variable
+	GLOBAL,
+	
+	// not an actual variable kind - this is used for alter dve set ... to indicate that
+	// we are setting a persistent value.
+	PERSISTENT;
 	
 }

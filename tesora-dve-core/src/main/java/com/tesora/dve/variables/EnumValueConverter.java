@@ -23,6 +23,9 @@ package com.tesora.dve.variables;
 
 import java.util.LinkedHashMap;
 
+import org.apache.commons.lang.StringUtils;
+
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.exceptions.PEException;
 
 public class EnumValueConverter<E extends Enum<E>> extends ValueMetadata<E> {
@@ -38,20 +41,26 @@ public class EnumValueConverter<E extends Enum<E>> extends ValueMetadata<E> {
 	
 	@Override
 	public E convertToInternal(String varName, String in) throws PEException {
-		E any = universe.get(in);
+		String deq = PEStringUtils.dequote(in);
+		E any = universe.get(deq);
 		if (any == null)
-			throw new PEException("Invalid value '" + in + "'");
+			throw new PEException("Invalid value for '" + varName + "' (allowed values are " + StringUtils.join(universe.keySet(), ", ") + ")");
 		return any;
 	}
 
 	@Override
 	public String convertToExternal(E in) {
-		return in.name();
+		return String.format("'%s'", in.name());
 	}
 
 	@Override
 	public String getTypeName() {
 		return "varchar";
+	}
+
+	@Override
+	public String toRow(E in) {
+		return in.toString();
 	}
 
 }

@@ -22,6 +22,8 @@ package com.tesora.dve.variables;
  */
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 
 public class VariableAccessor extends AbstractVariableAccessor {
 
@@ -36,20 +38,20 @@ public class VariableAccessor extends AbstractVariableAccessor {
 	
 	@Override
 	public String getValue(VariableStoreSource conn) throws PEException {
-		return handler.toExternal(handler.getValue(conn, scope));
+		return handler.toExternal(handler.getValue(conn, scope.getKind()));
 	}
 
 	@Override
 	public void setValue(VariableStoreSource conn, String v) throws Throwable {
-		handler.setValue(conn, scope, v);
+		handler.setValue(conn, scope.getKind(), v);
 	}
 
 	@Override
 	public String getSQL() {
 		StringBuilder buf = new StringBuilder();
-		if (scope == VariableScope.GLOBAL) {
+		if (scope.getKind() == VariableScopeKind.GLOBAL) {
 			buf.append("@@global.");
-		} else if (scope == VariableScope.SESSION) {
+		} else if (scope.getKind() == VariableScopeKind.SESSION) {
 			buf.append("@@session.");
 		}
 		buf.append(handler.getName());

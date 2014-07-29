@@ -27,6 +27,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.lang.StringEscapeUtils;
 
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -107,7 +108,7 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 				continue;
 			final Edge<?, ExpressionNode> parentEdge = vi.getParentEdge();
 			final AbstractVariableAccessor va = vi.buildAccessor();
-			parentEdge.set(LiteralExpression.makeStringLiteral(sc.getConnection().getVariableValue(va)));
+			parentEdge.set(LiteralExpression.makeStringLiteral(PEStringUtils.dequote(sc.getConnection().getVariableValue(va))));
 		}
 	}
 

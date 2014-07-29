@@ -48,13 +48,12 @@ public class OnGlobalConfigChangeMessage extends GroupMessage {
 	@SuppressWarnings("rawtypes")
 	@Override
 	void execute(HostService hostService) {
-		ServerGlobalVariableStore.INSTANCE.invalidate();
 		try {
-			VariableHandler handler = Singletons.require(HostService.class).getVariableManager().lookup(variableName, true);
-
+			VariableHandler handler = Singletons.require(HostService.class).getVariableManager().lookup(variableName, false);
 			if (handler == null) {
 				logger.error("OnGlobalConfigChangeMessage handler not found for variable '" + variableName + "'");
 			} else {
+				ServerGlobalVariableStore.INSTANCE.invalidate(handler);
 				handler.onGlobalValueChange(handler.toInternal(newValue));
 
 				logger.info("OnGlobalConfigChangeMessage updated " + variableName + " = '" + newValue + "'");

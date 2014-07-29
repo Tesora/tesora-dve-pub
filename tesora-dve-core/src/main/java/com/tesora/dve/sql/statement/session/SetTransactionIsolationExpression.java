@@ -28,15 +28,16 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 
 public class SetTransactionIsolationExpression extends SetExpression {
 
 	private VariableScope scope;
 	private IsolationLevel level;
 	
-	public SetTransactionIsolationExpression(IsolationLevel level, VariableScope.VariableKind scope) {
+	public SetTransactionIsolationExpression(IsolationLevel level, VariableScopeKind scope) {
 		super();
-		this.scope = new VariableScope(scope == null ? VariableScope.VariableKind.SESSION : scope);
+		this.scope = new VariableScope(scope == null ? VariableScopeKind.SESSION : scope);
 		this.level = level;
 	}
 	

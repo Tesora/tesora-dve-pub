@@ -37,6 +37,7 @@ import javax.management.ReflectionException;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 
 public class VariableHandlerDynamicMBean implements DynamicMBean {
 
@@ -55,7 +56,7 @@ public class VariableHandlerDynamicMBean implements DynamicMBean {
 		if (variable == null)
 			throw new AttributeNotFoundException("No such variable: " + name);
 
-		return variable.toExternal(variable.getValue(null,VariableScope.GLOBAL));
+		return variable.toExternal(variable.getValue(null,VariableScopeKind.GLOBAL));
 	}
 
 	@Override

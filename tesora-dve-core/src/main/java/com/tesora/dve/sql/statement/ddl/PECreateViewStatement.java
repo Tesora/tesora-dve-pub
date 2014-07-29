@@ -162,7 +162,7 @@ public class PECreateViewStatement extends
 		
 		// figure out the collation and charset
 		String charset =
-				KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(sc.getConnection().getVariableSource());
+				KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(sc.getConnection().getVariableSource()).getName();
 		String collation = 
 				KnownVariables.COLLATION_CONNECTION.getSessionValue(sc.getConnection().getVariableSource());
 

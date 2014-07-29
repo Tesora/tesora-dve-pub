@@ -55,4 +55,9 @@ public class IntegralValueConverter extends ValueMetadata<Long> {
 		return "int";
 	}
 
+	@Override
+	public String toRow(Long in) {
+		return in.toString();
+	}
+
 }

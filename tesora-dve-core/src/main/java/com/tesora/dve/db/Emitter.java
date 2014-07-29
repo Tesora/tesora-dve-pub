@@ -119,6 +119,8 @@ import com.tesora.dve.sql.schema.SchemaLookup;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.schema.cache.CacheAwareLookup;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
@@ -147,6 +149,7 @@ import com.tesora.dve.sql.statement.ddl.PECreateViewStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropTableStatement;
 import com.tesora.dve.sql.statement.ddl.PEGroupProviderDDLStatement;
+import com.tesora.dve.sql.statement.ddl.PEQueryVariablesStatement;
 import com.tesora.dve.sql.statement.ddl.RenameTableStatement;
 import com.tesora.dve.sql.statement.ddl.SetPasswordStatement;
 import com.tesora.dve.sql.statement.ddl.alter.AddColumnAction;
@@ -180,6 +183,9 @@ import com.tesora.dve.sql.statement.session.RollbackTransactionStatement;
 import com.tesora.dve.sql.statement.session.SavepointStatement;
 import com.tesora.dve.sql.statement.session.SessionSetVariableStatement;
 import com.tesora.dve.sql.statement.session.SessionStatement;
+import com.tesora.dve.sql.statement.session.SetExpression;
+import com.tesora.dve.sql.statement.session.SetTransactionIsolationExpression;
+import com.tesora.dve.sql.statement.session.SetVariableExpression;
 import com.tesora.dve.sql.statement.session.ShowErrorsWarningsStatement;
 import com.tesora.dve.sql.statement.session.ShowPassthroughStatement;
 import com.tesora.dve.sql.statement.session.ShowProcesslistStatement;
@@ -342,6 +348,8 @@ public abstract class Emitter {
 			emitRenameStatement(sc, (RenameTableStatement) s, buf);
 		} else if (s instanceof PEGroupProviderDDLStatement) {
 			emitPEGroupProviderDDLStatement(sc, (PEGroupProviderDDLStatement)s,buf);
+		} else if (s instanceof PEQueryVariablesStatement) {
+			// nothing yet
 		} else {
 			error("Unknown DDL statement kind for emitter: " + s.getClass().getName());
 		}
@@ -1451,7 +1459,65 @@ public abstract class Emitter {
 		buf.append(ile.getValue(sc));
 	}
 	
-	public abstract void emitVariable(VariableInstance v, StringBuilder buf);
+	public void emitVariable(VariableInstance vi, StringBuilder buf) {
+		VariableScope vs = vi.getScope();
+		if (vs.getKind() == VariableScopeKind.USER) {
+			buf.append("@");
+		} else {
+			String raw = vi.getVariableName().get().toUpperCase();
+			if ("NAMES".equals(raw)) {
+				buf.append(raw);
+				return;
+			}
+			// if the rhs form, we're going to do @@<decorator><name>
+			// if the lhs form, then we can do global <name>
+			if (vi.getRHSForm()) {
+				buf.append("@@").append(vi.getScope().getKind().name()).append(".");
+			} else {
+				buf.append(vi.getScope().getKind().name()).append(" ");
+			}
+		}
+		buf.append(vi.getVariableName().getSQL());		
+	}
+	
+	public void emitSessionSetVariableStatement(final SchemaContext sc, 
+			SessionSetVariableStatement ssvs, StringBuilder buf, int indent) {
+		emitIndent(buf,indent,"SET ");
+		Functional.join(ssvs.getSetExpressions(), buf, ", ", new BinaryProcedure<SetExpression, StringBuilder>() {
+
+			@Override
+			public void execute(SetExpression aobj, StringBuilder bobj) {
+				emitSetExpression(sc, aobj, bobj, -1);
+			}
+			
+		});
+	}
+
+	public void emitSetExpression(SchemaContext sc, SetExpression se, StringBuilder buf, int pretty) {
+		if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION) {
+			emitSetTransactionIsolation((SetTransactionIsolationExpression)se, buf);
+		} else if (se.getKind() == SetExpression.Kind.VARIABLE) {
+			SetVariableExpression sve = (SetVariableExpression) se;
+			emitVariable(sve.getVariable(),buf);
+			buf.append(" ");
+			if (sve.getVariable().getVariableName().get().equalsIgnoreCase("names")) {
+				emitExpression(sc,sve.getValue().get(0),buf);
+				if (sve.getValue().size() > 1) {
+					buf.append(" COLLATE ");
+					emitExpression(sc,sve.getValue().get(1),buf);
+				}
+			} else {
+				emitExpressions(sc,sve.getValue(), buf, pretty);
+			}
+		}
+	}
+
+	public void emitSetTransactionIsolation(SetTransactionIsolationExpression stie, StringBuilder buf) {
+		if (stie.getScope() != null)
+			buf.append(stie.getScope().getKind().name()).append(" ");
+		buf.append("TRANSACTION ISOLATION ").append(stie.getLevel().getSQL());
+	}
+
 	
 	// for ddl
 	public void emitTable(SchemaContext sc, PEAbstractTable<?> pet, Database<?> defaultDB, StringBuilder buf) {
@@ -1843,8 +1909,6 @@ public abstract class Emitter {
 		}
 	}
 
-	public abstract void emitSessionSetVariableStatement(SchemaContext sc, SessionSetVariableStatement ssvs, StringBuilder buf, int indent);
-	
 	public void emitTransactionStatement(TransactionStatement ts, StringBuilder buf, int indent) {
 		if (ts.getXAXid() != null) {
 			XATransactionStatement xast = (XATransactionStatement) ts;

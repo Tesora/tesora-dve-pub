@@ -31,6 +31,7 @@ import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.transform.CopyContext;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.UserVariableAccessor;
@@ -41,8 +42,10 @@ public class VariableInstance extends ExpressionNode {
 
 	protected UnqualifiedName variableName;
 	protected VariableScope variableScope;
+	// for session, global variables - indicate whether we must use the '@@global.<name>' form vs 'global <name>' form
+	protected boolean rhsForm;
 		
-	public VariableInstance(UnqualifiedName varName, VariableScope scope, SourceLocation sloc) {
+	public VariableInstance(UnqualifiedName varName, VariableScope scope, SourceLocation sloc, boolean rhs) {
 		super(sloc);
 		variableName = varName;
 		variableScope = scope;
@@ -56,18 +59,22 @@ public class VariableInstance extends ExpressionNode {
 		return variableScope;
 	}
 	
+	public boolean getRHSForm() {
+		return rhsForm;
+	}
+	
 	@Override
 	public NameAlias buildAlias(SchemaContext sc) {
 		return new NameAlias(new UnqualifiedName("var_"));
 	}
 
 	public AbstractVariableAccessor buildAccessor() {
-		if (getScope().getScopeKind().getScope() == com.tesora.dve.variables.VariableScope.USER)
+		if (getScope().getKind() == VariableScopeKind.USER)
 			return new UserVariableAccessor(variableName.get());
 		else try {
 			VariableManager vm = Singletons.require(HostService.class).getVariableManager();
 			return new VariableAccessor(vm.lookup(variableName.get(), true),
-					getScope().getScopeKind().getScope());
+					getScope());
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.PLANNER, pe);
 		}
@@ -75,7 +82,7 @@ public class VariableInstance extends ExpressionNode {
 	
 	@Override
 	protected LanguageNode copySelf(CopyContext cc) {
-		VariableInstance nvi = new VariableInstance(variableName, variableScope, getSourceLocation());
+		VariableInstance nvi = new VariableInstance(variableName, variableScope, getSourceLocation(), rhsForm);
 		if (cc != null) 
 			cc.registerVariable(nvi);
 		return nvi;

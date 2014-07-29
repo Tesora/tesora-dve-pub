@@ -52,7 +52,7 @@ public class QueryStepGetGlobalVariableOperation extends QueryStepOperation {
 			throws Throwable {
         resultConsumer.inject(ColumnSet.singleColumn(alias, Types.VARCHAR),
 				ResultRow.singleRow(
-						handler.toExternal(handler.getGlobalValue(ssCon))));
+						handler.toRow(handler.getGlobalValue(ssCon))));
 	}
 
 }

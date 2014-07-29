@@ -203,8 +203,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	
 	LocalVariableStore localSessionVariables = new LocalVariableStore();
 	
-//	VariableValueStore sessionVariables = new VariableValueStore("Session");
-	
 	VariableValueStore userVariables = new VariableValueStore("User",false);
 
 	AcquiredLockSet txnLocks = new AcquiredLockSet();
@@ -1057,6 +1055,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 		VariableHandler<?> vh = vm.lookup(variableName, true);
 		vh.setSessionValue(this, value);
+		sessionVariableSetStatement = null;
 	}
 	
 //	public String getSessionVariable(String variableName) throws PEException {
