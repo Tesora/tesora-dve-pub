@@ -54,10 +54,14 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
     protected void encode(ChannelHandlerContext ctx, MysqlMessage msg, ByteBuf out) throws Exception {
         ByteBuf leBuf = out.order(ByteOrder.LITTLE_ENDIAN);
 
-        if (msg instanceof MyMessage)
-            encodeMyMessage(leBuf, (MyMessage)msg);
-        else
-            encodeMSPMessage((MSPMessage)msg,leBuf);
+        try{
+            if (msg instanceof MyMessage)
+                encodeMyMessage(leBuf, (MyMessage)msg);
+            else
+                encodeMSPMessage((MSPMessage)msg,leBuf);
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
     }
 
     protected void encodeMSPMessage(MSPMessage msg, ByteBuf littleEnd) throws Exception {
@@ -87,7 +91,7 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
     @Override
     public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
         try {
-            super.disconnect(ctx,promise);
+            super.disconnect(ctx, promise);
         } finally {
             releaseSlab();
         }
