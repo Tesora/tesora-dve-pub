@@ -47,12 +47,13 @@ import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor, RedistTargetSite.InsertPolicy {
+    static final Logger logger = Logger.getLogger(RedistTupleBuilder.class);
     static final String SIMPLE_CLASSNAME = RedistTupleBuilder.class.getSimpleName();
 
 	static private AtomicInteger nextId = new AtomicInteger();
 	private int thisId = nextId.incrementAndGet();
 
-    Logger logger = Logger.getLogger(RedistTupleBuilder.class.getName() +"."+thisId);
+
 
     Map<StorageSite, RedistTargetSite> siteCtxBySite = new HashMap<StorageSite, RedistTargetSite>();
 	Map<Channel, RedistTargetSite> siteCtxByChannel = new HashMap<Channel, RedistTargetSite>();
@@ -146,7 +147,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
     public int getUpdateCount() throws Exception {
         if (logger.isDebugEnabled())
-            logger.debug("About to call completionPromise.sync(): " + completionPromise);
+            logger.debug("redist # "+thisId+" , about to call completionPromise.sync(): " + completionPromise);
         return completionPromise.sync();
     }
 
@@ -349,7 +350,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
 		if (isProcessingComplete) {
 			if (logger.isDebugEnabled())
-				logger.debug("Redistribution of " + targetTable.displayName() + " complete - " + updatedRowsCount + " rows updated");
+				logger.debug("redist # "+thisId+" , redistribution of " + targetTable.displayName() + " complete - " + updatedRowsCount + " rows updated");
             try{
                 closeTargetSites();
                 completionPromise.trySuccess(updatedRowsCount);

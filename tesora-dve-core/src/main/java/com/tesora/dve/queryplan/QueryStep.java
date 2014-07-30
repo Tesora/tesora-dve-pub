@@ -63,8 +63,7 @@ import com.tesora.dve.worker.WorkerGroup;
  */
 @XmlRootElement(name="QueryStep")
 public class QueryStep {
-	
-	Logger logger = Logger.getLogger(QueryStep.class);
+    static final Logger logger = Logger.getLogger(QueryStep.class);
 	
 	@XmlElement(name="StorageGroup")
 	StorageGroup storageGroup;
