@@ -242,7 +242,7 @@ class RedistTargetSite implements AutoCloseable {
             // Close statement commands have no results from mysql, so we can just send the command directly on the channel context
 
             MSPComStmtCloseRequestMessage closeRequestMessage = MSPComStmtCloseRequestMessage.newMessage((byte) 0, this.pstmtId);
-            this.ctx.writeAndFlush(closeRequestMessage);
+            this.ctx.write(closeRequestMessage);//don't flush, let it piggyback on the next outbound message.
             this.pstmtId = -1;
             this.pstmtTupleCount = -1;
             this.needsNewParam = true;
