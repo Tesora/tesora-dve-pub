@@ -51,7 +51,6 @@ class RedistTargetSite implements AutoCloseable {
     private BufferedExecute pendingFlush = null;
     private int totalQueuedBytes = 0;
     private int totalQueuedRows = 0;
-    private boolean needsNewParam = true;
     private int pstmtTupleCount = 0;
     private AtomicInteger pendingStatementCount = new AtomicInteger();
     private AtomicInteger queuedRowSetCount = new AtomicInteger();
@@ -188,6 +187,10 @@ class RedistTargetSite implements AutoCloseable {
         return allWritesFlushed();
     }
 
+    public boolean hasPendingFlush(){
+        return this.pendingFlush != null;
+    }
+
     public boolean allWritesFlushed(){
         return this.bufferedExecute.isEmpty() && this.pendingFlush == null;
     }
@@ -198,7 +201,7 @@ class RedistTargetSite implements AutoCloseable {
         int currentStatementID = this.pstmtId;
 
         buffersToFlush.setStmtID(currentStatementID);
-        buffersToFlush.setNeedsNewParams(this.needsNewParam);
+        buffersToFlush.setNeedsNewParams(true); //TODO:this field can be managed by BufferedExecute. -gossard
         buffersToFlush.setRowSetMetadata(policy.getRowsetMetadata());
         buffersToFlush.setColumnsPerTuple(columnsPerTuple);
 
@@ -211,7 +214,6 @@ class RedistTargetSite implements AutoCloseable {
 
         // ********************
 
-        this.needsNewParam = false;
     }
 
     public int getTotalQueuedRows(){
@@ -245,7 +247,6 @@ class RedistTargetSite implements AutoCloseable {
             this.ctx.write(closeRequestMessage);//don't flush, let it piggyback on the next outbound message.
             this.pstmtId = -1;
             this.pstmtTupleCount = -1;
-            this.needsNewParam = true;
         }
     }
 
@@ -255,7 +256,7 @@ class RedistTargetSite implements AutoCloseable {
     }
 
     protected void prepareFailed(MyErrorResponse error){
-        //SMG: need a better way to propigate this backwards.
+        //TODO: need a better way to propigate this backwards. -gossard
         logger.error("prepare failed, error=" + error);
     }
 

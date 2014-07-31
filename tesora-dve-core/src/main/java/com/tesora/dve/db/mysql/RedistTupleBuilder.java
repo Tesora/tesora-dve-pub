@@ -55,13 +55,11 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
 
 
-    Map<StorageSite, RedistTargetSite> siteCtxBySite = new HashMap<StorageSite, RedistTargetSite>();
-	Map<Channel, RedistTargetSite> siteCtxByChannel = new HashMap<Channel, RedistTargetSite>();
+    Map<StorageSite, RedistTargetSite> siteCtxBySite = new HashMap<>();
+	Map<Channel, RedistTargetSite> siteCtxByChannel = new HashMap<>();
 
     IdentityHashMap<RedistTargetSite,RedistTargetSite> blockedTargetSites = new IdentityHashMap<>();
     IdentityHashMap<ChannelHandlerContext,ChannelHandlerContext> sourceSites = new IdentityHashMap<>();
-    boolean receivingSourcePackets = false;
-    boolean processFailed = false;
 
 	int updatedRowsCount = 0;
 
@@ -98,8 +96,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
 	public void processSourcePacket(MappingSolution mappingSolution, MyBinaryResultRow binRow, int fieldCount, ColumnSet columnSet, long[] autoIncrBlocks)
 			throws PEException {
-        if (!receivingSourcePackets)
-            receivingSourcePackets = true;
 
 		if (mappingSolution == MappingSolution.AllWorkers || mappingSolution == MappingSolution.AllWorkersSerialized) {
 			for (RedistTargetSite siteCtx : siteCtxBySite.values())
@@ -226,18 +222,16 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
             sourceSites.put(ctx,ctx);
 
             //new site, pause it if we are paused.
-            if (receivingSourcePackets && sourcePaused) {
+            if (sourcePaused) {
                 StreamValve.pipelinePause(ctx.pipeline());
             }
         }
     }
 
     protected void pauseSourceStreams(){
-        if (!sourcePaused){
-            sourcePaused = true;
-            for (ChannelHandlerContext ctx : sourceSites.keySet()){
-                StreamValve.pipelinePause(ctx.pipeline());
-            }
+        sourcePaused = true;
+        for (ChannelHandlerContext ctx : sourceSites.keySet()){
+            StreamValve.pipelinePause(ctx.pipeline());
         }
     }
 
@@ -307,7 +301,8 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
                 }
             } finally {
                 siteCtx.handleAck(message);
-                blockedTargetSites.remove(siteCtx);
+                if (! siteCtx.hasPendingFlush() )
+                    blockedTargetSites.remove(siteCtx);
                 if (blockedTargetSites.isEmpty())
                 resumeSourceStreams();
             }
@@ -340,7 +335,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
     }
 
     private void testRedistributionComplete() {
-		boolean isProcessingComplete = lastPacketSent;
+        boolean isProcessingComplete = lastPacketSent;
 		for (RedistTargetSite siteCtx : siteCtxBySite.values()) {
 			if ( siteCtx.hasPendingRows() ) {
 				isProcessingComplete = false;
