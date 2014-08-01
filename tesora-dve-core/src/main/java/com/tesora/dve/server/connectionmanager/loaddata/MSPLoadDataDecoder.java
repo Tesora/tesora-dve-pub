@@ -57,10 +57,17 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
  * the netty thread, and these paired methods redispatch the call onto the opposing pool.
  * <br/>
  * In order to wait for an insert to complete, this decoder toggles the netty channel autoRead on and off.  Since more data may
- * already be in the pipeline and will be delivered even after the pause, this data is decoded normally and held in a queue
+ * already be held by ByteToMessageDecoder and will be delivered even after the pause, we decoded normally and hold extra messages in a queue
  * for future processing.  The load data input could finish as part of this process, and so processing this queue cannot be
  * done solely on the channelRead() / decode() calls.  To keep things clean, other than the actual decoding, all state is
  * processed in a single loop (that exits when no more data is available/expected), inside the method processQueuedOutput().
+ * <br/>
+ * The ByteToMessageDecoder also holds on to any extra data that could not be decoded into a full frame, and when netty
+ * delivers more data off the socket, the decoder will append the two together and ask us to decode the new bigger frame.  If
+ * netty has already delivered the final bytes to the decoder and we pause, there will be no more messages from netty to
+ * notify the decoder it should try and decode what it is holding.  Because of this, when we unpause, we pass a zero length
+ * buffer to the decoder to simulate the arrival of more data.
+ *
  */
 
 public class MSPLoadDataDecoder extends ByteToMessageDecoder {
@@ -74,6 +81,7 @@ public class MSPLoadDataDecoder extends ByteToMessageDecoder {
     boolean decodedEOF = false;
     boolean waitingForInsert = false;
     Throwable encounteredError = null;
+    boolean paused = false;
 
 
 
@@ -183,13 +191,17 @@ public class MSPLoadDataDecoder extends ByteToMessageDecoder {
     }
 
     private void pauseInput(ChannelHandlerContext ctx) {
+        paused = true;
         //NOTE: may still get some data left in the decoder, which is why we have the decode queue.
         ctx.channel().config().setAutoRead(false);
     }
 
     private void resumeInput(ChannelHandlerContext ctx) {
-        ctx.channel().config().setAutoRead(true);
-        ctx.pipeline().fireChannelRead(Unpooled.EMPTY_BUFFER); //this flushes any partial packets held in the decoder.
+        if (paused){ //make sure we don't recurse infinitely.
+            paused = false;
+            ctx.channel().config().setAutoRead(true);
+            ctx.pipeline().fireChannelRead(Unpooled.EMPTY_BUFFER); //this flushes any partial packets held upstream (may cause recursion).
+        }
     }
 
     private void sendResponseAndRemove(ChannelHandlerContext ctx, byte packetNumber)  {
