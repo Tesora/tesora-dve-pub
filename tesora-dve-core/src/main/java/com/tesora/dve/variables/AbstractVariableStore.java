@@ -29,7 +29,9 @@ public abstract class AbstractVariableStore implements VariableStore {
 	}
 
 	public abstract <Type> void setValue(VariableHandler<Type> vh, Type t);
-		
+
+	public abstract <Type> void addVariable(VariableHandler<Type> vh, Type t);
+	
 	@Override
 	public <Type> Type getValue(VariableHandler<Type> vh) {
 		ValueReference<Type> vr = (ValueReference<Type>) getReference(vh);

@@ -1203,7 +1203,7 @@ used with JMX monitors.
             statistics="true"
             />
 
-    <cache name="com.tesora.dve.common.catalog.GlobalConfig"
+    <cache name="com.tesora.dve.common.catalog.VariableConfig"
            maxElementsInMemory="1000"
            eternal="true"
            overflowToDisk="false"

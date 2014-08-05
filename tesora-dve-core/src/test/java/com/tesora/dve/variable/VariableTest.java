@@ -245,7 +245,7 @@ public class VariableTest extends PETest {
 
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
 		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
-				ClientCharSetSessionVariableHandler.VARIABLE_NAME, newCharset), results);
+				VariableConstants.CHARACTER_SET_CLIENT_NAME, newCharset), results);
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
@@ -265,7 +265,7 @@ public class VariableTest extends PETest {
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
 
 		String utfCollation = "utf8_unicode_ci";
-		ssConnection.setSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME, utfCollation);
+		ssConnection.setSessionVariable(VariableConstants.COLLATION_CONNECTION_NAME, utfCollation);
 		assertEquals(utfCollation,
 				KnownVariables.COLLATION_CONNECTION.getSessionValue(ssConnection));
 
@@ -281,7 +281,7 @@ public class VariableTest extends PETest {
 		assertTrue(results.hasResults());
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
 
-		ssConnection.setSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME, origCollation);
+		ssConnection.setSessionVariable(VariableConstants.COLLATION_CONNECTION_NAME, origCollation);
 		assertEquals(origCollation, 
 				KnownVariables.COLLATION_CONNECTION.getSessionValue(ssConnection));
 
@@ -300,7 +300,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void setInvalidCollation() throws Throwable {
 		QueryStepOperation step1op1 = new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
-				CollationSessionVariableHandler.VARIABLE_NAME, "latin1_junk_ci");
+				VariableConstants.COLLATION_CONNECTION_NAME, "latin1_junk_ci");
 		QueryStep step1 = new QueryStep(sg, step1op1);
 		try {
 			plan.addStep(step1).executeStep(ssConnection, new MysqlTextResultChunkProvider());

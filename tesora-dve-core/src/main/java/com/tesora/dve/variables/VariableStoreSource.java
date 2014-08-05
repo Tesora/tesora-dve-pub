@@ -21,7 +21,6 @@ package com.tesora.dve.variables;
  * #L%
  */
 
-import com.tesora.dve.variable.VariableValueStore;
 
 public interface VariableStoreSource {
 

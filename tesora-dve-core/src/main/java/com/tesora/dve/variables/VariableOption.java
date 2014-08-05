@@ -23,13 +23,13 @@ package com.tesora.dve.variables;
 
 public enum VariableOption {
 
-	// not an emulated variable
-	DVE_ONLY,
+	// if present, this is an emulated variable; if not present a dve only variable
+	EMULATED,
+	// if present, then the variable is put into the session assignment stmt
+	PASSTHROUGH,	
 	// readonly - cannot be set
 	READONLY,
 	// are nulls allowed - by default they are not
-	NULLABLE,
-	// if present, do not put value into session assignment clause, even if we have session scope
-	NO_SESSION_ASSIGNMENT
+	NULLABLE
 	
 }

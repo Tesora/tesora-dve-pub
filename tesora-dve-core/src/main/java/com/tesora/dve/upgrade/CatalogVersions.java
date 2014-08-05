@@ -43,6 +43,7 @@ import com.tesora.dve.upgrade.versions.ColumnCardinality;
 import com.tesora.dve.upgrade.versions.CreateTableOptionsVersion;
 import com.tesora.dve.upgrade.versions.EncryptPasswordsVersion;
 import com.tesora.dve.upgrade.versions.ExtraInfoSchemaColumnsColumns;
+import com.tesora.dve.upgrade.versions.GlobalVariablesVersion;
 import com.tesora.dve.upgrade.versions.InfoSchemaServerTable;
 import com.tesora.dve.upgrade.versions.InfoSchemaTypeChanges;
 import com.tesora.dve.upgrade.versions.InfoSchemaUpgradeVersion;
@@ -78,7 +79,8 @@ public class CatalogVersions {
 		ADD_TEMPLATE_MODE(new AddTemplateMode(38)),
 		EXTRA_INFO_SCHEMA_COLUMNS_COLUMNS(new ExtraInfoSchemaColumnsColumns(39)),
 		EXTERNAL_SERVICE_SHOW_CONFIG(new InfoSchemaUpgradeVersion(40)),
-		TEMPORARY_TABLES(new UserlandTemporaryTables(41));
+		TEMPORARY_TABLES(new UserlandTemporaryTables(41)),
+		GLOBAL_VARIABLES(new GlobalVariablesVersion(42));
 		
 		private final CatalogVersion upgradeModule; 
 		

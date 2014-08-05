@@ -1,4 +1,4 @@
-package com.tesora.dve.variable;
+package com.tesora.dve.variable.status;
 
 /*
  * #%L
@@ -21,17 +21,31 @@ package com.tesora.dve.variable;
  * #L%
  */
 
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
+public abstract class EnumStatusVariableHandler<T> extends StatusVariableHandler {
 
-public class DynamicPolicySessionVariableHandler extends
-		GlobalShadowVariableHandler {
-
+	protected final T counter;
+	
+	public EnumStatusVariableHandler(String name, T counter) {
+		super(name);
+		this.counter = counter;
+	}
+	
 	@Override
-	public void setValue(SSConnection ssCon, String variableName, String value)
-			throws PEException {
-		ssCon.getCatalogDAO().findDynamicPolicy(value, /* check existence */ true);
-		super.setValue(ssCon, variableName, value);
+	protected String getValueInternal() throws Throwable {
+		return Long.toString(getCounterValue(counter));
 	}
 
+	@Override
+	protected void resetValueInternal() throws Throwable {
+		resetCounterValue(counter);
+	}
+	
+	protected T getCounter() {
+		return counter;
+	}
+	
+	protected abstract long getCounterValue(T counter) throws Throwable;
+	
+	protected abstract void resetCounterValue(T counter) throws Throwable;
+	
 }

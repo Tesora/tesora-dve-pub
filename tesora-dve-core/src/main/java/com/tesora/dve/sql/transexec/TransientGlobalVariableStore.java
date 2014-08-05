@@ -78,4 +78,10 @@ public class TransientGlobalVariableStore extends AbstractVariableStore implemen
 		}
 	}
 
+	@Override
+	public <Type> void addVariable(VariableHandler<Type> vh, Type t) {
+		// same thing as set
+		setValue(vh,t);
+	}
+
 }

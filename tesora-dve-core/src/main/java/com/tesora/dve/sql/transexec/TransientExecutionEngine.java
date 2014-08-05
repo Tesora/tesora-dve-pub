@@ -126,11 +126,11 @@ import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
-import com.tesora.dve.variable.VariableValueStore;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.GlobalVariableStore;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.VariableStoreSource;
+import com.tesora.dve.variables.VariableValueStore;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 /*
@@ -202,21 +202,6 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		}
 	}
 
-	/*
-	public static TwoDimensionalMap<VariableScopeKind,String,String> buildDefaultVariables() {
-		TwoDimensionalMap<VariableScopeKind,String,String> out = new TwoDimensionalMap<VariableScopeKind,String,String>();
-        VariableConfig<SessionVariableHandler>  config = Singletons.require(HostService.class).getSessionConfigTemplate();
-		for(VariableInfo<SessionVariableHandler> vi : config.getInfoValues()) {
-			String varname = vi.getName();
-			String defval = vi.getDefaultValue();
-			out.put(VariableScopeKind.SESSION, varname, defval);
-		}
-		// we turn on templates optional for all transient tests, including the analyzer
-		out.put(VariableScopeKind.DVE, SchemaVariableConstants.TEMPLATE_MODE_NAME, TemplateMode.OPTIONAL.toString());
-		return out;
-	}
-	*/
-	
 	public SchemaContext getPersistenceContext() {
 		return tpc;
 	}
@@ -722,11 +707,6 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		return null;
 	}
 	
-	@Override
-	public DynamicPolicy getDynamicGroupPolicy() {
-		return TransientExecutionEngine.transformTestPolicy;
-	}
-
 	@Override
 	public DynamicPolicy findPolicy(String name) {
 		if (OnPremiseSiteProvider.DEFAULT_POLICY_NAME.equals(name)) {

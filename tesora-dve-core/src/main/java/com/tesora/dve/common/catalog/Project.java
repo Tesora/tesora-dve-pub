@@ -65,6 +65,7 @@ public class Project implements CatalogEntity {
 
 	String name;
 
+	/*
 	@ForeignKey(name="fk_project_def_sg")
 	@ManyToOne
 	@JoinColumn(name = "default_persistent_group_id")
@@ -74,6 +75,7 @@ public class Project implements CatalogEntity {
 	@ManyToOne
 	@JoinColumn(name = "default_policy_id")
 	DynamicPolicy defaultPolicy;
+	*/
 
 	@ForeignKey(name="fk_project_root_user")
 	@ManyToOne
@@ -105,6 +107,7 @@ public class Project implements CatalogEntity {
 		this.name = name;
 	}
 
+	/*
 	@InfoSchemaColumn(logicalName = "default_storage_group", fieldName = "defaultStorageGroup", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
 			@ColumnView(view = InfoView.SHOW, name = "default_storage_group"),
 			@ColumnView(view = InfoView.INFORMATION, name = "default_storage_group") })
@@ -115,7 +118,7 @@ public class Project implements CatalogEntity {
 	public void setDefaultStorageGroup(PersistentGroup sg) {
 		defaultStorageGroup = sg;
 	}
-
+*/
 	@Override
 	public ColumnSet getShowColumnSet(CatalogQueryOptions cqo) {
 		if (showColumnSet == null) {
@@ -144,6 +147,7 @@ public class Project implements CatalogEntity {
 		return Collections.emptyList();
 	}
 
+	/*
 	@InfoSchemaColumn(logicalName = "default_policy", fieldName = "defaultPolicy", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
 			@ColumnView(view = InfoView.SHOW, name = "default_policy"),
 			@ColumnView(view = InfoView.INFORMATION, name = "default_policy") })
@@ -154,6 +158,7 @@ public class Project implements CatalogEntity {
 	public void setDefaultPolicy(DynamicPolicy dt) {
 		this.defaultPolicy = dt;
 	}
+	*/
 	
 	@InfoSchemaColumn(logicalName = "root_user", fieldName = "rootUser", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
 			@ColumnView(view = InfoView.SHOW, name = "root_user"),

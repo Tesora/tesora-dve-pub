@@ -78,6 +78,9 @@ public interface VariableConstants {
 	public static final String REDIST_MAX_SIZE_NAME = "redist_max_size";
 	public static final String GROUP_CONCAT_MAX_LEN_NAME = "group_concat_max_len";
 	
+	public static final String TRANSACTION_ISOLATION_LEVEL_NAME = "tx_isolation";
+
+	
 	public static final String AUTO_INCREMENT_MIN_BLOCK_SIZE = "auto_increment_min_block_size";
 	public static final String AUTO_INCREMENT_MAX_BLOCK_SIZE = "auto_increment_max_block_size";
 	public static final String AUTO_INCREMENT_PREFETCH_THRESHOLD = "auto_increment_prefetch_threshold";

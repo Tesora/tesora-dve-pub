@@ -288,9 +288,6 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 		msc.setSize(0);
 		msc.setMaxSizePolicy(MaxSizeConfig.POLICY_CLUSTER_WIDE_MAP_SIZE);
 		mc.setMaxSizeConfig(msc);
-		MapStoreConfig masc = new MapStoreConfig();
-		masc.setImplementation(new VariableLoader());
-		mc.setMapStoreConfig(masc);
 		
 		cfg.addMapConfig(mc);
 				
@@ -474,28 +471,6 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 //			}
 //		}
 //	}
-	
-	private static class VariableLoader implements MapLoader<String,String> {
-
-		@Override
-		public String load(String key) {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public Map<String, String> loadAll(Collection<String> keys) {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public Set<String> loadAllKeys() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-		
-	}
 
 	@Override
 	public String getGlobalVariable(String name) {

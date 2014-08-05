@@ -83,6 +83,10 @@ public class SchemaStateQuery {
 				}
 				target.take(keyCols, values);
 			}
+		} catch (Throwable t) {
+			if (t.getMessage().indexOf("doesn't exist") > -1)
+				return;
+			throw t;
 		} finally {
 			if (rs != null)
 				rs.close();

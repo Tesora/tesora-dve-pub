@@ -21,30 +21,41 @@ package com.tesora.dve.variable.status;
  * #L%
  */
 
-import java.sql.Types;
-
-import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.collector.ResultCollector;
-import com.tesora.dve.resultset.collector.ResultCollector.ResultCollectorFactory;
-import com.tesora.dve.variable.VariableHandler;
+import com.tesora.dve.exceptions.PENotFoundException;
 
 
-public abstract class StatusVariableHandler extends VariableHandler {
+public abstract class StatusVariableHandler {
 
-	String defaultValue;
-	String variableName;
+	private final String variableName;
 	
-	public void initialise(String name, String defaultValue) {
-		this.defaultValue = defaultValue;
+	public StatusVariableHandler(String name) {
 		this.variableName = name;
 	}
-
-	public abstract String getValue(CatalogDAO c, String name) throws PEException;
-
-	public abstract void reset(CatalogDAO c, String name) throws PEException;
 	
-	public ResultCollector getValueAsResult(CatalogDAO catalogDAO, String variableName) throws PEException {
-		return ResultCollectorFactory.getInstance(Types.VARCHAR, getValue(catalogDAO, variableName));
+	public String getName() {
+		return variableName;
+	}
+	
+	public final String getValue() throws PEException {
+		try {
+			return getValueInternal();
+		} catch (Throwable t) {
+			throw new PENotFoundException("Unable to find value for status variable " + getName(), t);
+		}
+	}
+
+	public final void reset() throws PEException {
+		try {
+			resetValueInternal();
+		} catch (Throwable t) {
+			throw new PEException("Unable to reset value for status variable " + getName(), t);
+		}
+	}
+	
+	protected abstract String getValueInternal() throws Throwable;
+	
+	protected void resetValueInternal() throws Throwable {
+		
 	}
 }

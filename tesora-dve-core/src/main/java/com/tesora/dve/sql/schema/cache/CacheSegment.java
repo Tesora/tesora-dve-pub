@@ -34,49 +34,51 @@ public enum CacheSegment {
 	 * The uncategorized cache is everything not stored in a particular cache
 	 * i.e. databases, persistent groups, persistent sites, users, privileges, etc.
 	 */
-	UNCATEGORIZED(KnownVariables.CACHE_LIMIT),
+	UNCATEGORIZED(KnownVariables.CACHE_LIMIT,""),
 	/*
 	 * Tenant scopes
 	 */
-	SCOPE(KnownVariables.SCOPE_CACHE_LIMIT),
+	SCOPE(KnownVariables.SCOPE_CACHE_LIMIT,"scope"),
 	/*
 	 * Tenants
 	 */
-	TENANT(KnownVariables.TENANT_CACHE_LIMIT),
+	TENANT(KnownVariables.TENANT_CACHE_LIMIT,"tenant"),
 	/*
 	 * Tables.  In multitenant mode this is the backing tables; in regular mode it's just tables.
 	 */
-	TABLE(KnownVariables.TABLE_CACHE_LIMIT),
+	TABLE(KnownVariables.TABLE_CACHE_LIMIT,"table"),
 	/*
 	 * Plans.  In multitenant mode this is on backing table plans; otherwise regular plans.
 	 */
-	PLAN(KnownVariables.PLAN_CACHE_LIMIT),
+	PLAN(KnownVariables.PLAN_CACHE_LIMIT,"plan"),
 	/*
 	 * Raw plans.  We use a separate limit so that they don't clutter up the general area.
 	 */
-	RAWPLAN(KnownVariables.RAW_PLAN_CACHE_LIMIT),
+	RAWPLAN(KnownVariables.RAW_PLAN_CACHE_LIMIT,"raw_plan"),
 	/* 
 	 * Templates.  We use a separate segment so that modifying templates doesn't flush the cache.
 	 * Modifying a template only effects create stmts anyways.
 	 */
-	TEMPLATE(KnownVariables.TEMPLATE_CACHE_LIMIT),
+	TEMPLATE(KnownVariables.TEMPLATE_CACHE_LIMIT,"template"),
 	/*
 	 * Prepared statements.  This is the global max.  Prepared statements are valid by connection only.
 	 */
-	PREPARED(KnownVariables.MAX_PREPARED_STMT_COUNT);
+	PREPARED(KnownVariables.MAX_PREPARED_STMT_COUNT,"prepared_stmt");
 	
 	private final VariableHandler<Long> variable;
+	private final String statusVariableSuffix;
 		
-	private CacheSegment(VariableHandler<Long> variable) {
+	private CacheSegment(VariableHandler<Long> variable, String statusVariableSuffix) {
 		this.variable = variable;
+		this.statusVariableSuffix = statusVariableSuffix;
 	}
 	
 	public String getVariableName() {
 		return variable.getName();
 	}
 	
-	public int getDefaultValue() {
-		return variable.getDefaultOnMissing().intValue();
+	public String getStatusVariableSuffix() {
+		return statusVariableSuffix;
 	}
 	
 	public VariableHandler<Long> getVariable() {

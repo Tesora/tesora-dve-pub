@@ -400,7 +400,7 @@ public class SchemaPolicyContext {
 				throw new SchemaException(Pass.SECOND, "Failed to find suitable persistent group for balanced database.");
 		} else {
 			// Use the default persistent group
-			pesg = sc.getDefaultProject().getDefaultStorageGroup();
+			pesg = sc.getPersistentGroup();
 			if (pesg == null) {
 				throw new SchemaException(Pass.SECOND, "Must specify persistent group.  No default persistent group set on project.");
 			}

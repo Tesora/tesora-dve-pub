@@ -47,6 +47,8 @@ public abstract class StateItemSet {
 	
 	public abstract void collectDifferences(StateItemSet other, List<String> messages);
 	
+	public abstract boolean isEmpty();
+	
 	static String buildMessage(Object[] values) {
 		return Functional.join(Arrays.asList(values), ",", new UnaryFunction<String,Object>() {
 

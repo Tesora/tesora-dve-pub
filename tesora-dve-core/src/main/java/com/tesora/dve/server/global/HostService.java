@@ -31,6 +31,8 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.variable.*;
+import com.tesora.dve.variables.ScopedVariableHandler;
+import com.tesora.dve.variables.ScopedVariables;
 import com.tesora.dve.variables.VariableManager;
 
 import java.util.Collection;
@@ -99,7 +101,7 @@ public interface HostService {
 
     void setScopedVariable(String scopeName, String variableName, String value) throws PEException;
 
-    void addScopedConfig(String scopeName, VariableConfig<ScopedVariableHandler> variableConfig);
+    void addScopedConfig(String scopeName, ScopedVariables config);
 
     InformationSchemas getInformationSchema();
 

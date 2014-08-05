@@ -1,4 +1,4 @@
-package com.tesora.dve.variable;
+package com.tesora.dve.variables;
 
 /*
  * #%L
@@ -33,18 +33,28 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.resultset.collector.ResultCollector.ResultCollectorFactory;
 
 
-public abstract class ScopedVariableHandler extends VariableHandler {
+public abstract class ScopedVariableHandler  {
 
 	private static final String RESULT_VALUE_COLUMN_NAME = "Value";
 
-	public abstract void setValue(String scopeName, String name, String value) throws PEException;
+	private final String name;
 	
-	public abstract String getValue(String scopeName, String name) throws PEException;
+	public ScopedVariableHandler(String name) {
+		this.name = name;
+	}
+	
+	public String getName() {
+		return name;
+	}
+	
+	public abstract void setValue(String value) throws PEException;
+	
+	public abstract String getValue() throws PEException;
 
-	public ResultCollector getValueAsResult(String scopeName, String variableName) throws PEException {
+	public ResultCollector getValueAsResult() throws PEException {
 		ColumnSet cs = new ColumnSet();
 		cs.addColumn(RESULT_VALUE_COLUMN_NAME, 255, "varchar", Types.VARCHAR);
-		ResultColumn rcol = new ResultColumn(getValue(scopeName, variableName));
+		ResultColumn rcol = new ResultColumn(getValue());
 		ResultRow row = new ResultRow(Arrays.asList(rcol));
 		ResultChunk rc = new ResultChunk(Arrays.asList(row));
 		return ResultCollectorFactory.getInstance(cs, rc);

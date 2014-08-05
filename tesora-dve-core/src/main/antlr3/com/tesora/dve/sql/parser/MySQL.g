@@ -989,7 +989,7 @@ keyword_escape_identifier_value1 options {k=1;}:
   | HASH | BTREE | RTREE | MEMORY | ROW_FORMAT | FIRST | AFTER | UUID | LAST_INSERT_ID | POOL
   | DATETIME | XML | SERVER | SERVERS | EVENTS | PLAN | PLANS | PARTITIONS | OR | ENABLED 
   | MODE | PREPARE | EXECUTE | DEALLOCATE | STATISTICS | CACHE | RECOVER | ONE | XA | CARDINALITY
-  | PHASE
+  | PHASE | VARIABLE
   
 // The keywords below do not work in DVE, however it's not just a simple case of making them identifiers,
 // so they are listed here for reference

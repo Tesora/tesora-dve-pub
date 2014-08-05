@@ -61,7 +61,6 @@ import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep.VariableValueSource;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.variable.SessionVariableHandler;
 import com.tesora.dve.variable.VariableConstants;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.VariableHandler;
@@ -189,7 +188,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 
 	private void handleSetTransactionIsolation(SchemaContext pc, SetTransactionIsolationExpression stie, ExecutionSequence es) throws PEException {
 		VariableValueSource nva = SetVariableExecutionStep.makeSource(stie.getLevel().getHostSQL());
-		es.append(new SetVariableExecutionStep(stie.getScope(),SessionVariableHandler.TRANSACTION_ISOLATION_LEVEL,nva, pc.getPersistentGroup()));
+		es.append(new SetVariableExecutionStep(stie.getScope(),VariableConstants.TRANSACTION_ISOLATION_LEVEL_NAME,nva, pc.getPersistentGroup()));
 	}
 
 	private void assertPrivilege(SchemaContext pc, VariableHandler handler, VariableScope requestedScope) throws PEException {

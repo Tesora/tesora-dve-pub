@@ -1165,9 +1165,14 @@ pe_alter_target returns [Statement s] options {k=1;}:
     alter_persistent_sub1 { $s = $alter_persistent_sub1.s; } 
     | INSTANCE unqualified_identifier config_options { $s = utils.buildAlterPersistentInstanceStatement($unqualified_identifier.n, $config_options.l); }
   )
-  | DVE^ SET vn=unqualified_identifier Equals_Operator set_expr_or_default {
-    $s = utils.buildAlterPersistentVariable(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.PERSISTENT),$vn.n,$DVE.tree), $set_expr_or_default.expr);    
-  } 
+  | (DVE
+     ( 
+     (SET vn=unqualified_identifier Equals_Operator set_expr_or_default 
+     { $s = utils.buildAlterPersistentVariable(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.PERSISTENT),$vn.n,$DVE.tree), $set_expr_or_default.expr); } )
+     |
+     (ADD VARIABLE nvn=unqualified_identifier config_options { $s = utils.buildAddVariable($nvn.n, $config_options.l); })
+     )
+    )
   | DYNAMIC SITE alter_dynamic_site_target { $s = $alter_dynamic_site_target.s; }
   | EXTERNAL SERVICE unqualified_identifier SET config_options { $s = utils.buildAlterExternalServiceStatement($unqualified_identifier.n, $config_options.l); }
   | TEMPLATE tempn=unqualified_identifier SET template_parameters

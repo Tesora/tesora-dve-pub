@@ -1,4 +1,4 @@
-package com.tesora.dve.variable;
+package com.tesora.dve.variables;
 
 /*
  * #%L

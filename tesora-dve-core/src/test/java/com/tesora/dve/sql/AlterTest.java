@@ -39,6 +39,7 @@ import org.junit.Test;
 
 import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.NativeCharSetCatalog;
+import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MysqlNativeType;
@@ -75,7 +76,20 @@ public class AlterTest extends SchemaTest {
 	
 	@BeforeClass
 	public static void setup() throws Exception {
+		// pe855 also creates some databases, make sure they get cleaned up appropriately in setup
+		String[] pe855names = new String[] { "pe855db", "pe855temp1", "pe855temp2", "pe855temp3" }; 
 		PETest.projectSetup(checkDDL,oDDL);
+		
+		DBHelper dbh = buildHelper();
+		try {
+			for (String sdb : pe855names) {
+				for (String s : sg.getSetupDrops(sdb))
+					dbh.executeQuery(s);
+			}
+		} finally {
+			dbh.disconnect();
+		}
+		
 		PETest.bootHost = BootstrapHost.startServices(PETest.class);
 	}
 

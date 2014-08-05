@@ -75,9 +75,7 @@ public interface CatalogContext {
 	public Project createProject(String name);
 
 	public Project getDefaultProject();
-	
-	public DynamicPolicy getDynamicGroupPolicy();
-	
+		
 	public DynamicPolicy findPolicy(String name);
 	
 	public PersistentGroup findPersistentGroup(String name);

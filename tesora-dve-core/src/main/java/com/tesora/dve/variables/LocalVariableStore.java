@@ -54,5 +54,11 @@ public class LocalVariableStore extends AbstractVariableStore {
 		ValueReference<?> vr = new ValueReference(vh,o);
 		values.put(vh.getName(),vr);
 	}
+
+	@Override
+	public <Type> void addVariable(VariableHandler<Type> vh, Type t) {
+		// for the local store, add is just like set
+		setValue(vh,t);
+	}
 	
 }

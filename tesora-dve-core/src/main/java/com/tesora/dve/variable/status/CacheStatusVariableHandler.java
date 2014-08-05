@@ -21,87 +21,132 @@ package com.tesora.dve.variable.status;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.sql.schema.cache.CacheLimits;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaCache;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 
-public class CacheStatusVariableHandler extends StatusVariableHandler {
+public class CacheStatusVariableHandler extends EnumStatusVariableHandler<CacheSegment> {
+
+	private final CacheStatisticHandler handler;
+	
+	public CacheStatusVariableHandler(CacheSegment segment, CacheStatisticHandler handler) {
+		super(buildVariableName(segment,handler),segment);
+		this.handler = handler;
+	}
+	
+	private static String buildVariableName(CacheSegment segment, CacheStatisticHandler handler) {
+		StringBuilder buf = new StringBuilder();
+		buf.append("Dve");
+		if (!"".equals(segment.getStatusVariableSuffix()))
+			buf.append("_").append(segment.getStatusVariableSuffix());
+		buf.append("_cache_").append(handler.getExternalName());
+		return buf.toString();
+	}
 
 	@Override
-	public String getValue(CatalogDAO c, String name) throws PENotFoundException {
+	protected long getCounterValue(CacheSegment counter) throws Throwable {
 		SchemaCache global = SchemaSourceFactory.peekGlobalCache();
 		CacheLimits limits = SchemaSourceFactory.peekCacheLimits();
-
+		
 		if (global == null)
-			return "0";
-
-		// The format of defaultValue should be <Cache Segment>,<metric>
-		int index = defaultValue.indexOf(',');
-
-		if (index == -1)
-			throw new PENotFoundException("Unable to parse status variable " + name + " defaultValue " + defaultValue);
-
-		String segment = defaultValue.substring(0, index).trim();
-		String metric = defaultValue.substring(index + 1).trim();
-
-		CacheSegment cs = CacheSegment.valueOf(segment);
-
-		if ("size".equalsIgnoreCase(metric))
-			return Long.toString(global.getCacheSize(cs));
-
-		if ("utilization".equalsIgnoreCase(metric)) {
-			int limit = limits.getLimit(cs);
-			return limit == 0 ? "0" : Long.toString((global.getCacheSize(cs) * 100) / limit);
-		}
-
-		if ("evictions".equalsIgnoreCase(metric))
-			return Long.toString(global.getCacheStats(cs).evictionCount());
-
-		if ("load_time".equalsIgnoreCase(metric))
-			// return in ms rather than nano
-			return Long.toString(global.getCacheStats(cs).totalLoadTime() / 1000000);
-
-		if ("hit_rate".equalsIgnoreCase(metric))
-			return Integer.toString((int) (global.getCacheStats(cs).hitRate() * 100));
-
-		if ("miss_rate".equalsIgnoreCase(metric))
-			return Integer.toString((int) (global.getCacheStats(cs).missRate() * 100));
-
-		throw new PENotFoundException("Unable to parse status variable " + name + " - unknown metric " + metric);
+			return 0;
+		
+		return handler.getValue(global, limits, counter);
 	}
 
 	@Override
-	public void reset(CatalogDAO c, String name) throws PENotFoundException {
+	protected void resetCounterValue(CacheSegment counter) throws Throwable {
 		SchemaCache global = SchemaSourceFactory.peekGlobalCache();
 
 		if (global == null)
 			return;
 
-		// The format of defaultValue should be <Cache Segment>,<metric>
-		int index = defaultValue.indexOf(',');
-
-		if (index == -1)
-			throw new PENotFoundException("Unable to parse status variable " + name + " defaultValue " + defaultValue);
-
-		String segment = defaultValue.substring(0, index).trim();
-		String metric = defaultValue.substring(index + 1).trim();
-
-		CacheSegment cs = CacheSegment.valueOf(segment);
-
-		if ("size".equalsIgnoreCase(metric) || "utilization".equalsIgnoreCase(metric)) {
-			// Do nothing here - not about to flush the cache
-			return;
+		handler.resetValue(global, counter);
+	}
+	
+	public static abstract class CacheStatisticHandler {
+		
+		private final String externalName;
+		
+		public CacheStatisticHandler(String extName) {
+			externalName = extName;
 		}
-
-		if ("evictions".equalsIgnoreCase(metric) || "load_time".equalsIgnoreCase(metric)
-				|| "hit_rate".equalsIgnoreCase(metric) || "miss_rate".equalsIgnoreCase(metric)) {
-			global.resetCacheStats(cs);
+		
+		public String getExternalName() {
+			return externalName;
 		}
-		else {
-			throw new PENotFoundException("Unable to parse status variable " + name + " - unknown metric " + metric);
+		
+		public abstract long getValue(SchemaCache sc, CacheLimits cl, CacheSegment cs);
+		
+		public void resetValue(SchemaCache sc, CacheSegment cs) {
+			sc.resetCacheStats(cs);			
 		}
 	}
+	
+	public static final CacheStatisticHandler sizeHandler = new CacheStatisticHandler("size") {
+		
+		@Override
+		public long getValue(SchemaCache sc, CacheLimits cl, CacheSegment cs) {
+			return sc.getCacheSize(cs);
+		}
+
+		@Override
+		public void resetValue(SchemaCache sc, CacheSegment cs) {
+		}
+				
+	};
+
+	public static final CacheStatisticHandler utilizationHandler = new CacheStatisticHandler("utilization") {
+
+		@Override
+		public long getValue(SchemaCache sc, CacheLimits cl, CacheSegment cs) {
+			int limit = cl.getLimit(cs);
+			if (limit == 0) return 0;
+			return sc.getCacheSize(cs) * 100 / limit;
+		}
+
+		@Override
+		public void resetValue(SchemaCache sc, CacheSegment cs) {
+			// TODO Auto-generated method stub
+			
+		}
+		
+	};
+
+	public static final CacheStatisticHandler evictionHandler = new CacheStatisticHandler("evictions") {
+
+		@Override
+		public long getValue(SchemaCache sc, CacheLimits cl, CacheSegment cs) {
+			return sc.getCacheStats(cs).evictionCount();
+		}
+		
+	};
+	
+	public static final CacheStatisticHandler loadTimeHandler = new CacheStatisticHandler("load_time") {
+
+		@Override
+		public long getValue(SchemaCache sc, CacheLimits cl, CacheSegment cs) {
+			return sc.getCacheStats(cs).totalLoadTime() / 1000000;
+		}
+
+	};
+	
+	public static final CacheStatisticHandler hitRateHandler = new CacheStatisticHandler("hit_rate") {
+
+		@Override
+		public long getValue(SchemaCache sc, CacheLimits cl, CacheSegment cs) {
+			return (long)(sc.getCacheStats(cs).hitRate() * 100);
+		}
+		
+	};
+	
+	public static final CacheStatisticHandler missRateHandler = new CacheStatisticHandler("miss_rate") {
+
+		@Override
+		public long getValue(SchemaCache sc, CacheLimits cl, CacheSegment cs) {
+			return (long)(sc.getCacheStats(cs).missRate() * 100);
+		}
+		
+	};
 }

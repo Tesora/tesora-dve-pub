@@ -75,12 +75,12 @@ import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variable.VariableValueStore;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.GlobalVariableStore;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.VariableStoreSource;
 import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableValueStore;
 import com.tesora.dve.worker.agent.Agent;
 
 public class SchemaContext {
@@ -427,7 +427,10 @@ public class SchemaContext {
 			if (peds != null)
 				return peds.getDefaultStorage(this);
 		}
-		return getDefaultProject().getDefaultStorageGroup();
+		String currentDefault = KnownVariables.PERSISTENT_GROUP.getGlobalValue(getConnection().getVariableSource());
+		if (currentDefault == null)
+			return null;
+		return findStorageGroup(new UnqualifiedName(currentDefault));
 	}
 	
 	public PEPersistentGroup getSessionStatementStorageGroup() throws PEException {

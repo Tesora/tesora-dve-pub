@@ -82,6 +82,15 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 	
 	@Override
 	public <Type> void setValue(VariableHandler<Type> vh, Type t) {
+		setValueInternal(vh,t,false);
+	}
+
+	@Override
+	public <Type> void addVariable(VariableHandler<Type> vh, Type t) {
+		setValueInternal(vh,t,true);
+	}
+
+	private <Type> void setValueInternal(VariableHandler<Type> vh, Type t, boolean added) {
 		// in the write scenario, we lock first, then write through to the group manager map
 		String newValue = vh.toMap(t);
 		ClusterLock lock = getLock();
@@ -90,11 +99,12 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 			// call into the group manager for this bit
 			GroupManager.getCoordinationServices().setGlobalVariable(vh.getName(), newValue);
 			// then send a message invalidating
-	        Singletons.require(GroupTopicPublisher.class).publish(new OnGlobalConfigChangeMessage(vh.getName(), newValue));
+	        Singletons.require(GroupTopicPublisher.class).publish(new OnGlobalConfigChangeMessage(vh.getName(), newValue,added));
 		} finally {
 			lock.exclusiveUnlock(this, "set global var");
-		}
+		}		
 	}
+	
 	
 	private ClusterLock getLock() {
 		return GroupManager.getCoordinationServices().getClusterLock(GLOBAL_VAR_STORE_LOCK_NAME);
@@ -123,5 +133,10 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 	public boolean isServer() {
 		return true;
 	}
+	
+	public void reset() {
+		cache.clear();
+	}
+
 	
 }

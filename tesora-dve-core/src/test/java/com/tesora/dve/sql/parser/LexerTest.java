@@ -29,6 +29,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.tesora.dve.server.connectionmanager.TestHost;
+import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.util.BinaryProcedure;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -60,8 +61,9 @@ public class LexerTest {
 	}
 
 	private void one(String line, int...tokens) throws Throwable {
+		TransientExecutionEngine tee = new TransientExecutionEngine("lextest");
 		Utils utils = new Utils(ParserOptions.TEST);
-		sql2003Lexer lex = InvokeParser.buildLexer(InvokeParser.buildInputState(line,null), utils);
+		sql2003Lexer lex = InvokeParser.buildLexer(InvokeParser.buildInputState(line,tee.getPersistenceContext()), utils);
 		ListOfPairs<Integer,String> actuals = new ListOfPairs<Integer,String>();
 		Token t = null;
 		do {

@@ -81,7 +81,7 @@ public abstract class TestTypes extends TransientSchemaTest {
 				// build the create table statement
 				String tableDecl = buildTableDeclaration(cases);
 				PECreateStatement<?,?> cts = 
-					(PECreateStatement<?,?>)(InvokeParser.parse(InvokeParser.buildInputState(tableDecl,null), ParserOptions.TEST, pc).getStatements().get(0));
+					(PECreateStatement<?,?>)(InvokeParser.parse(InvokeParser.buildInputState(tableDecl,pc), ParserOptions.TEST, pc).getStatements().get(0));
 				PETable t = (PETable)cts.getCreated().get();
 				for(TypeComboMixedCase tcmc : cases) {
 					tcmc.match(pc,t);

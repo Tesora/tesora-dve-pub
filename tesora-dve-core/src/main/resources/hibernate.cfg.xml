@@ -57,7 +57,7 @@
         <class-cache class="com.tesora.dve.common.catalog.DistributionModel" usage="read-write"/>
         <class-cache class="com.tesora.dve.common.catalog.DynamicPolicy" usage="read-write"/>
         <class-cache class="com.tesora.dve.common.catalog.ExternalService" usage="read-write"/>
-        <class-cache class="com.tesora.dve.variable.GlobalConfig" usage="read-write"/>
+        <class-cache class="com.tesora.dve.common.catalog.VariableConfig" usage="read-write"/>
         <class-cache class="com.tesora.dve.common.catalog.Project" usage="read-write"/>
         <class-cache class="com.tesora.dve.common.catalog.Provider" usage="read-write"/>
         <class-cache class="com.tesora.dve.distribution.RangeTableRelationship" usage="read-write"/>

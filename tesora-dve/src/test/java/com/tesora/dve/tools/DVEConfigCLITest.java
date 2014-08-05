@@ -47,6 +47,7 @@ import com.tesora.dve.server.connectionmanager.TestHost;
 import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
 import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.MasterMasterWorker;
 import com.tesora.dve.worker.SingleDirectWorker;
 
@@ -102,8 +103,8 @@ public class DVEConfigCLITest extends PETest {
 		Provider provider = verifyProvider(c, TEST_PROVIDER, 1);
 
 		// Verify default policy
-		DynamicPolicy policy = c.findDefaultProject().getDefaultPolicy();
-		assertEquals(DEFAULT_POLICY, policy.getName());
+		String defaultPolicyName = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c).getValue();
+		assertEquals(DEFAULT_POLICY, defaultPolicyName);
 
 		// Verify policy count
 		List<DynamicPolicy> policies = c.findAllDynamicPolicies();
@@ -113,7 +114,7 @@ public class DVEConfigCLITest extends PETest {
 		DynamicPolicy matchPolicy = new DynamicPolicy(DEFAULT_POLICY, true, provider.getName(), LOCAL, 1,
 				provider.getName(), LOCAL, 3, provider.getName(), LOCAL, 3, provider.getName(), LOCAL, 5);
 
-		verifyPolicy(policy, matchPolicy);
+		verifyPolicy(c.findDynamicPolicy(defaultPolicyName), matchPolicy);
 
 		c.close();
 		console.close();
@@ -151,8 +152,8 @@ public class DVEConfigCLITest extends PETest {
 		Provider provider = verifyProvider(c, TEST_PROVIDER, 1);
 
 		// Verify default policy
-		DynamicPolicy policy = c.findDefaultProject().getDefaultPolicy();
-		assertEquals(TEST_POLICY, policy.getName());
+		String defaultPolicyName = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c).getValue();
+		assertEquals(TEST_POLICY, defaultPolicyName);
 
 		// Verify policy count
 		List<DynamicPolicy> policies = c.findAllDynamicPolicies();
@@ -161,7 +162,7 @@ public class DVEConfigCLITest extends PETest {
 		// Ignore the configuration of the provider for now
 		DynamicPolicy matchPolicy = new DynamicPolicy(TEST_POLICY, true, provider.getName(), "none", 1,
 				provider.getName(), "none", 1, provider.getName(), "none", 2, provider.getName(), "none", 3);
-		verifyPolicy(policy, matchPolicy);
+		verifyPolicy(c.findDynamicPolicy(defaultPolicyName), matchPolicy);
 
 		c.close();
 		console.close();
@@ -199,8 +200,8 @@ public class DVEConfigCLITest extends PETest {
 		Provider provider = verifyProvider(c, TEST_PROVIDER, 1);
 
 		// Verify default policy
-		DynamicPolicy policy = c.findDefaultProject().getDefaultPolicy();
-		assertEquals(TEST_POLICY, policy.getName());
+		String defaultPolicyName = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c).getValue();
+		assertEquals(TEST_POLICY, defaultPolicyName);
 
 		// Verify policy count
 		List<DynamicPolicy> policies = c.findAllDynamicPolicies();
@@ -208,7 +209,7 @@ public class DVEConfigCLITest extends PETest {
 
 		DynamicPolicy matchPolicy = new DynamicPolicy(TEST_POLICY, true, provider.getName(), "none", 1,
 				provider.getName(), "none", 1, provider.getName(), "none", 2, provider.getName(), "none", 3);
-		verifyPolicy(policy, matchPolicy);
+		verifyPolicy(c.findDynamicPolicy(defaultPolicyName), matchPolicy);
 
 		c.close();
 		console.close();
@@ -256,8 +257,9 @@ public class DVEConfigCLITest extends PETest {
 		
 		c = CatalogDAOFactory.newInstance();
 
-		policy = c.findDefaultProject().getDefaultPolicy();
-		assertEquals(policy.getName(), TEST_POLICY);
+		String defaultPolicyName = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c).getValue();
+		policy = c.findDynamicPolicy(defaultPolicyName);
+		assertEquals(defaultPolicyName, TEST_POLICY);
 		
 		c.close();
 
@@ -350,10 +352,10 @@ public class DVEConfigCLITest extends PETest {
 
 	private void verifyGroup(CatalogDAO c, String name, int count) throws PEException {
 		// All of the persistent sites should be in the default persistent group
-		PersistentGroup group = c.findDefaultProject().getDefaultStorageGroup();
-		assertEquals(name, group.getName());
+		String defSGName = KnownVariables.PERSISTENT_GROUP.lookupPersistentConfig(c).getValue();
+		assertEquals(name, defSGName);
 
-		group = c.findPersistentGroup(name);
+		PersistentGroup group = c.findPersistentGroup(defSGName);
 		assertEquals(name, group.getName());
 
 		List<PersistentSite> groupSites = group.getStorageSites();

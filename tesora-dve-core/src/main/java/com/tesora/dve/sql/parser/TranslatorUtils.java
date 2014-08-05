@@ -54,7 +54,6 @@ import com.tesora.dve.common.catalog.IndexType;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentTemplate;
-import com.tesora.dve.common.catalog.Project;
 import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.TemplateMode;
@@ -162,7 +161,6 @@ import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEPolicy;
 import com.tesora.dve.sql.schema.PEPolicyClassConfig;
-import com.tesora.dve.sql.schema.PEProject;
 import com.tesora.dve.sql.schema.PEProvider;
 import com.tesora.dve.sql.schema.PERawPlan;
 import com.tesora.dve.sql.schema.PESiteInstance;
@@ -216,6 +214,7 @@ import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementTraits;
+import com.tesora.dve.sql.statement.ddl.AddGlobalVariableStatement;
 import com.tesora.dve.sql.statement.ddl.AddStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseTemplateStatement;
@@ -329,6 +328,7 @@ import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryProcedure;
 import com.tesora.dve.variable.VariableConstants;
 import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.SiteManagerCommand;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
@@ -1415,25 +1415,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 	}
 
-	public Statement buildCreateProject(Name projName, Name defPersistentGroup) {
-		if ( projName == null ) {
-			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
-		}
-
-		Project any = pc.getCatalog().findProject(projName.get());
-		if (any != null)
-			throw new SchemaException(Pass.SECOND, "Project "
-					+ projName.getSQL() + " already exists");
-		PEPersistentGroup defPersistent = null;
-		if (defPersistentGroup != null) {
-			defPersistent = pc.findStorageGroup(defPersistentGroup);
-			if (defPersistent == null)
-				throw new SchemaException(Pass.SECOND,
-						"No such persistent group: " + defPersistentGroup.getSQL());
-		}
-		return new PECreateStatement<PEProject, Project>(new PEProject(pc,projName, defPersistent), true, "PROJECT", false);
-	}
-
 	public Statement buildCreatePersistentInstance(Name persistentInstanceName,
 			List<Pair<Name, LiteralExpression>> options) {
 		pc.getPolicyContext().checkRootPermission("create a persistent instance");
@@ -2481,6 +2462,20 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new SessionSetVariableStatement(sets);
 	}
 
+	public Statement buildAddVariable(Name newName, List<Pair<Name,LiteralExpression>> options) {
+		pc.getPolicyContext().checkRootPermission("create a new system variable");
+		String varName = newName.getUnqualified().getUnquotedName().get();
+		VariableHandler exists = null;
+		try {
+			exists = Singletons.require(HostService.class).getVariableManager().lookup(varName, false);
+		} catch (PEException pe) {
+			throw new SchemaException(Pass.SECOND,"Unable to determine if new variable " + newName.getSQL() + " exists already",pe);
+		}
+		if (exists != null)
+			throw new SchemaException(Pass.SECOND,"Variable " + newName + " already exists");
+		return AddGlobalVariableStatement.decode(pc, varName, options);
+	}
+	
 	public Comment buildComment(String c) {
 		return new Comment(PEStringUtils.dequote(c));
 	}

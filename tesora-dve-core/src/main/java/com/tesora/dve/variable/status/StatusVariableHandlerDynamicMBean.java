@@ -21,10 +21,6 @@ package com.tesora.dve.variable.status;
  * #L%
  */
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
@@ -36,32 +32,25 @@ import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.ReflectionException;
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.exceptions.PENotFoundException;
 
 public class StatusVariableHandlerDynamicMBean implements DynamicMBean {
-
-	private Map<String, StatusVariableHandler> variables = new HashMap<String, StatusVariableHandler>();
-
-	public void add(String name, StatusVariableHandler variable) {
-		variables.put(name, variable);
-	}
 
 	@Override
 	public String getAttribute(String name) throws AttributeNotFoundException {
 
-		StatusVariableHandler variable = variables.get(name);
-
-		if (variable == null)
+		StatusVariableHandler variable = null;
+		
+		try {		
+			variable = StatusVariables.lookup(name, true);
+		} catch (PENotFoundException p) {
 			throw new AttributeNotFoundException("No such variable: " + name);
-
-		CatalogDAO c = CatalogDAOFactory.newInstance();
+		}
+		
 		try {
-			return variable.getValue(c, variable.variableName);
+			return variable.getValue();
 		} catch (Exception e) {
 			throw new AttributeNotFoundException("Failed to get value on variable: " + name);
-		} finally {
-			c.close();
 		}
 	}
 
@@ -74,18 +63,14 @@ public class StatusVariableHandlerDynamicMBean implements DynamicMBean {
 
 	@Override
 	public AttributeList getAttributes(String[] names) {
-		CatalogDAO c = CatalogDAOFactory.newInstance();
 		try {
 			AttributeList list = new AttributeList();
-			for (Entry<String, StatusVariableHandler> entry : variables.entrySet()) {
-				StatusVariableHandler handler = entry.getValue();
-				list.add(new Attribute(entry.getKey(), handler.getValue(c, handler.variableName)));
+			for(StatusVariableHandler svh : StatusVariables.getStatusVariables()) {
+				list.add(new Attribute(svh.getName(), svh.getValue()));
 			}
 			return list;
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to get attributes  - " + e.getMessage());
-		} finally {
-			c.close();
 		}
 	}
 
@@ -104,31 +89,26 @@ public class StatusVariableHandlerDynamicMBean implements DynamicMBean {
 	}
 
 	public void reset() {
-		CatalogDAO c = CatalogDAOFactory.newInstance();
-		try {
-			for (StatusVariableHandler handler : variables.values()) {
-				try {
-					handler.reset(c, handler.variableName);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+		for (StatusVariableHandler svh : StatusVariables.getStatusVariables()) {
+			try {
+				svh.reset();
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-		} finally {
-			c.close();
 		}
 	}
 
 	@Override
 	public MBeanInfo getMBeanInfo() {
 
-		MBeanAttributeInfo[] attributes = new MBeanAttributeInfo[variables.size()];
-		int i = 0;
-		for (Entry<String, StatusVariableHandler> entry : variables.entrySet()) {
-			attributes[i++] = new MBeanAttributeInfo(entry.getKey(), "java.lang.String", "variable " + entry.getKey(),
+		MBeanAttributeInfo[] attributes = new MBeanAttributeInfo[StatusVariables.getStatusVariables().length];
+		for(int i = 0; i < attributes.length; i++) {
+			StatusVariableHandler svh = StatusVariables.getStatusVariables()[i];
+			attributes[i] = new MBeanAttributeInfo(svh.getName(), "java.lang.String", "variable " + svh.getName(),
 					true, // isReadable
 					false, // isWritable
 					false); // isIs
-
+					
 		}
 
 		MBeanOperationInfo[] operations = new MBeanOperationInfo[1];

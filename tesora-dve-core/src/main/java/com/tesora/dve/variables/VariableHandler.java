@@ -49,7 +49,7 @@ import com.tesora.dve.sql.util.UnaryPredicate;
 
 public class VariableHandler<Type> {
 
-	public static final String NULL_VALUE = new String("null");
+	public static final String NULL_VALUE = new String("NULL");
 		
 	// name of the variable
 	private final String variableName;
@@ -57,8 +57,8 @@ public class VariableHandler<Type> {
 	private final ValueMetadata<Type> metadata;
 	// valid scopes
 	private final EnumSet<VariableScopeKind> scopes;
-	// if there is no record in the catalog, this is the default value
-	private Type defaultOnMissing;
+	// the compiled in default
+	private final Type compiledDefaultOnMissing;
 	// options
 	private final EnumSet<VariableOption> options;
 	// help
@@ -80,12 +80,21 @@ public class VariableHandler<Type> {
 		this.variableName = name.toLowerCase(Locale.ENGLISH);
 		this.metadata = md;
 		this.scopes = applies;
-		this.defaultOnMissing = defaultOnMissing;
+		this.compiledDefaultOnMissing = defaultOnMissing;
 		this.options = options;
-		this.help = help;
+		String actualHelp = help;
+		if (actualHelp == null && options.contains(VariableOption.EMULATED))
+			actualHelp = "emulated";
+		else if (actualHelp == null)
+			actualHelp = "";
+		this.help = actualHelp;
 	}
 	
 	public String getName() {
+		return variableName;
+	}
+	
+	public String toString() {
 		return variableName;
 	}
 	
@@ -96,19 +105,21 @@ public class VariableHandler<Type> {
 	public EnumSet<VariableScopeKind> getScopes() {
 		return scopes;
 	}
+
+	public EnumSet<VariableOption> getOptions() {
+		return options;
+	}
+	
+	public String getDescription() {
+		return help;
+	}
 	
 	public Type getDefaultOnMissing() {
-		return defaultOnMissing;
+		return compiledDefaultOnMissing;
 	}
 
 	public boolean isDVEOnly() {
-		return options.contains(VariableOption.DVE_ONLY);
-	}
-	
-	public ValueReference<Type> getDefaultValueReference() {
-		ValueReference<Type> out = new ValueReference<Type>(this);
-		out.set(getDefaultOnMissing());
-		return out;
+		return !options.contains(VariableOption.EMULATED);
 	}
 	
 	public static final UnaryPredicate<VariableHandler<?>> isGlobalPredicate = new UnaryPredicate<VariableHandler<?>>() {
@@ -195,23 +206,19 @@ public class VariableHandler<Type> {
 	}
 	
 	public void setPersistentValue(final CatalogDAO c, final String newValue) throws PEException {
-		Type validType = toInternal(newValue);
+		// validate
+		toInternal(newValue);
 		persistValue(c,newValue);
 		// broadcast
 		setGlobalValue(newValue);
 	}
 	
-	protected void persistValue(final CatalogDAO c, final String newValue) throws PEException {
+	public void persistValue(final CatalogDAO c, final String newValue) throws PEException {
 		try {
-			c.new EntityUpdater() {
-				@Override
-				public CatalogEntity update() throws Throwable {
-					VariableConfig vc = c.findVariableConfig(getName());
-					vc.setValue(newValue);
-					return vc;
-				}
-			}.execute();
-			return;
+			c.begin();
+			VariableConfig vc = c.findVariableConfig(getName());
+			vc.setValue(newValue);
+			c.commit();
 		} catch (Throwable e) {
 			throw new PEException("Cannot set variable " + getName(), e);
 		}		
@@ -222,7 +229,7 @@ public class VariableHandler<Type> {
 	}
 	
 	public void onSessionValueChange(VariableStoreSource conn, Type newValue) throws PEException {
-		if (!isDVEOnly()) {
+		if (options.contains(VariableOption.EMULATED) && options.contains(VariableOption.PASSTHROUGH)) {
 			if (conn instanceof SSConnection) {
 				SSConnection ssCon = (SSConnection) conn;
 				ssCon.updateWorkerState(getSessionAssignmentClause(toExternal(newValue)));
@@ -231,22 +238,27 @@ public class VariableHandler<Type> {
 	}
 
 	public String getSessionAssignmentClause(String value) {
-		if (scopes.contains(VariableScopeKind.SESSION) && !isDVEOnly() && !options.contains(VariableOption.NO_SESSION_ASSIGNMENT))
+		if (scopes.contains(VariableScopeKind.SESSION) && options.contains(VariableOption.EMULATED) &&
+				options.contains(VariableOption.PASSTHROUGH))
 			return String.format("%s=%s",getName(),value);
 		return null;
 	}
 
+	public VariableConfig lookupPersistentConfig(CatalogDAO c) throws PEException {
+		return c.findVariableConfig(getName(), true);
+	}
+	
 	public VariableConfig buildNewConfig() {
 		// String name, String valueType, String value, String scopes, boolean emulated, String helpText) {
 		return new VariableConfig(getName(),
 				getMetadata().getTypeName(),
 				toRow(getDefaultOnMissing()),
-				convert(getScopes()),
-				!isDVEOnly(),
-				null);
+				convertScopes(getScopes()),
+				convertOptions(getOptions()),
+				getDescription());
 	}
 	
-	public static String convert(EnumSet<VariableScopeKind> scopes) {
+	public static String convertScopes(EnumSet<VariableScopeKind> scopes) {
 		return Functional.join(scopes, ",", new UnaryFunction<String,VariableScopeKind>() {
 
 			@Override
@@ -257,28 +269,57 @@ public class VariableHandler<Type> {
 		});
 	}
 	
-	public static EnumSet<VariableScopeKind> convert(String in) {
+	public static EnumSet<VariableScopeKind> convertScopes(String in) {
 		String[] bits = in.split(",");
 		EnumSet<VariableScopeKind> out = EnumSet.noneOf(VariableScopeKind.class);
 		for(String s : bits) {
-			out.add(VariableScopeKind.valueOf(s));
+			out.add(VariableScopeKind.valueOf(s.trim()));
 		}
 		return out;
 	}
+
+	public static String convertOptions(EnumSet<VariableOption> options) {
+		return Functional.join(options, ",", new UnaryFunction<String,VariableOption>() {
+
+			@Override
+			public String evaluate(VariableOption object) {
+				return object.name();
+			}
+			
+		});
+		
+	}
 	
-	public void initialise(CatalogDAO c) throws PEException {
+	public static EnumSet<VariableOption> convertOptions(String in) {
+		String[] bits = in.split(",");
+		EnumSet<VariableOption> out = EnumSet.noneOf(VariableOption.class);
+		for(String s : bits)
+			out.add(VariableOption.valueOf(s.trim()));
+		return out;
+	}
+	
+	// for catalog helper
+	public VariableConfig initialiseCatalog(CatalogDAO c) throws PEException {
+		VariableConfig vc = buildNewConfig(); 
+		c.persistToCatalog(vc);
+		return vc;
+	}
+	
+	public Type initialise(CatalogDAO c) throws PEException {
 		VariableConfig conf = c.findVariableConfig(getName(),false);
+		Type out = null;
 		if (conf != null) {
-			defaultOnMissing = toInternal(conf.getValue());
+			out = toInternal(conf.getValue());
 			if (scopes.contains(VariableScopeKind.GLOBAL)) {
 				// check with the global version too.  we're going to go directly to the global variable store
 				ValueReference<Type> existing = ServerGlobalVariableStore.INSTANCE.getReference(this);
 				if (existing != null) {
-					defaultOnMissing = existing.get();
+					out = existing.get();
 				}
 			}
 		} else {
 			conf = buildNewConfig();
+			out = getDefaultOnMissing();
 			try {
 				c.begin();
 				c.persistToCatalog(conf);
@@ -286,8 +327,9 @@ public class VariableHandler<Type> {
 			} catch (Throwable t) {
 				c.rollback(t);
 				throw new PEException("Unable to initialise catalog for variable '" + getName() + "'");
-			}
+			}		
 		}
+		return out;
 	}
 
 	public String toExternal(Type in) {
@@ -295,7 +337,7 @@ public class VariableHandler<Type> {
 	}
 	
 	public String toRow(Type in) {
-		if (in == null) return "";
+		if (in == null) return NULL_VALUE;
 		return getMetadata().toRow(in);
 	}
 	

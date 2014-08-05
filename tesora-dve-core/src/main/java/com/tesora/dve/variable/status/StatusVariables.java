@@ -1,139 +1,307 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-  #%L
-  Tesora Inc.
-  Database Virtualization Engine
-  %%
-  Copyright (C) 2011 - 2014 Tesora Inc.
-  %%
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU Affero General Public License, version 3,
-  as published by the Free Software Foundation.
-  
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU Affero General Public License for more details.
-  
-  You should have received a copy of the GNU Affero General Public License
-  along with this program. If not, see <http://www.gnu.org/licenses/>.
-  #L%
-  -->
+package com.tesora.dve.variable.status;
 
-<VariableConfig>
-	<VariableList>
-		<Variable name="Uptime" defaultValue="ServerUptime" handler="com.tesora.dve.variable.status.HostStatusVariableHandler"/>
+/*
+ * #%L
+ * Tesora Inc.
+ * Database Virtualization Engine
+ * %%
+ * Copyright (C) 2011 - 2014 Tesora Inc.
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License, version 3,
+ * as published by the Free Software Foundation.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * #L%
+ */
 
-		<Variable name="Threads_connected" defaultValue="ConnectionCount" handler="com.tesora.dve.variable.status.PerHostStatusVariableHandler"/>
-		<Variable name="Connections" defaultValue="TotalConnections" handler="com.tesora.dve.variable.status.PerHostStatusVariableHandler"/>
-		<Variable name="Connections_max_concurrent" defaultValue="MaxConcurrentConnections" handler="com.tesora.dve.variable.status.PerHostStatusVariableHandler"/>
-		<Variable name="Aborted_connects" defaultValue="TotalConnectionFailures" handler="com.tesora.dve.variable.status.PerHostStatusVariableHandler"/>
-		<Variable name="Aborted_clients" defaultValue="TotalClientFailures" handler="com.tesora.dve.variable.status.PerHostStatusVariableHandler"/>
-		
-		<Variable name="Com_begin" defaultValue="BEGIN" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_commit" defaultValue="COMMIT" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_create_db" defaultValue="CREATE_DB" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_create_table" defaultValue="CREATE_TABLE" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_create_index" defaultValue="CREATE_INDEX" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_create_user" defaultValue="CREATE_USER" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_delete" defaultValue="DELETE" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_drop_db" defaultValue="DROP_DB" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_drop_table" defaultValue="DROP_TABLE" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_drop_index" defaultValue="DROP_INDEX" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_grant" defaultValue="GRANT" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_insert" defaultValue="INSERT" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_insert_select" defaultValue="INSERT_INTO_SELECT" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_lock_tables" defaultValue="LOCK_TABLES" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_rollback" defaultValue="ROLLBACK" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_select" defaultValue="SELECT" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_show_processlist" defaultValue="SHOW_PROCESSLIST" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_show_grants" defaultValue="SHOW_GRANTS" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_show_master_status" defaultValue="SHOW_MASTER_STATUS" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_show_slave_status" defaultValue="SHOW_SLAVE_STATUS" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_show_plugins" defaultValue="SHOW_PLUGINS" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_truncate" defaultValue="TRUNCATE" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_unlock_tables" defaultValue="UNLOCK_TABLES" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_update" defaultValue="UPDATE" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_stmt_close" defaultValue="CLOSE_PREPARE" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_stmt_execute" defaultValue="EXEC_PREPARE" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Com_stmt_prepare" defaultValue="PREPARE" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		
-		<Variable name="Queries" defaultValue="0" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		<Variable name="Questions" defaultValue="0" handler="com.tesora.dve.variable.status.SqlStatusVariableHandler"/>
-		
-		<Variable name="Dve_cache_size" defaultValue="UNCATEGORIZED,size" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_cache_utilization" defaultValue="UNCATEGORIZED,utilization" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_cache_evictions" defaultValue="UNCATEGORIZED,evictions" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_cache_load_time" defaultValue="UNCATEGORIZED,load_time" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_cache_hit_rate" defaultValue="UNCATEGORIZED,hit_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_cache_miss_rate" defaultValue="UNCATEGORIZED,miss_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		
-		<Variable name="Dve_plan_cache_size" defaultValue="PLAN,size" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_plan_cache_utilization" defaultValue="PLAN,utilization" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_plan_cache_evictions" defaultValue="PLAN,evictions" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_plan_cache_hit_rate" defaultValue="PLAN,hit_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_plan_cache_miss_rate" defaultValue="PLAN,miss_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_plan_cache_uncacheable_string" defaultValue="UNCACHEABLE_CANDIDATE_PARSE" handler="com.tesora.dve.variable.status.PlannerStatisticsVariableHandler"/>
-		<Variable name="Dve_plan_cache_invalid_key" defaultValue="UNCACHEABLE_INVALID_CANDIDATE" handler="com.tesora.dve.variable.status.PlannerStatisticsVariableHandler"/>
-        <Variable name="Dve_plan_cache_uncacheable_maxliterals" defaultValue="UNCACHEABLE_EXCEEDED_LITERAL_LIMIT" handler="com.tesora.dve.variable.status.PlannerStatisticsVariableHandler"/>
-        <Variable name="Dve_plan_cache_uncacheable_dyn_funct" defaultValue="UNCACHEABLE_DYNAMIC_FUNCTION" handler="com.tesora.dve.variable.status.PlannerStatisticsVariableHandler"/>
-		<Variable name="Dve_plan_cache_uncacheable" defaultValue="UNCACHEABLE_PLAN" handler="com.tesora.dve.variable.status.PlannerStatisticsVariableHandler"/>
-		
-		<Variable name="Dve_scope_cache_size" defaultValue="SCOPE,size" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_scope_cache_utilization" defaultValue="SCOPE,utilization" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_scope_cache_evictions" defaultValue="SCOPE,evictions" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_scope_cache_load_time" defaultValue="SCOPE,load_time" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_scope_cache_hit_rate" defaultValue="SCOPE,hit_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_scope_cache_miss_rate" defaultValue="SCOPE,miss_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		
-		<Variable name="Dve_table_cache_size" defaultValue="TABLE,size" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_table_cache_utilization" defaultValue="TABLE,utilization" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_table_cache_evictions" defaultValue="TABLE,evictions" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_table_cache_load_time" defaultValue="TABLE,load_time" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_table_cache_hit_rate" defaultValue="TABLE,hit_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_table_cache_miss_rate" defaultValue="TABLE,miss_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		
-		<Variable name="Dve_tenant_cache_size" defaultValue="TENANT,size" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_tenant_cache_utilization" defaultValue="TENANT,utilization" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_tenant_cache_evictions" defaultValue="TENANT,evictions" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_tenant_cache_load_time" defaultValue="TENANT,load_time" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_tenant_cache_hit_rate" defaultValue="TENANT,hit_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_tenant_cache_miss_rate" defaultValue="TENANT,miss_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		
-		<Variable name="Dve_raw_plan_cache_size" defaultValue="RAWPLAN,size" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_raw_plan_cache_utilization" defaultValue="RAWPLAN,utilization" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_raw_plan_cache_evictions" defaultValue="RAWPLAN,evictions" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_raw_plan_cache_load_time" defaultValue="RAWPLAN,load_time" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_raw_plan_cache_hit_rate" defaultValue="RAWPLAN,hit_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_raw_plan_cache_miss_rate" defaultValue="RAWPLAN,miss_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		
-		<Variable name="Dve_template_cache_size" defaultValue="TEMPLATE,size" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_template_cache_utilization" defaultValue="TEMPLATE,utilization" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_template_cache_evictions" defaultValue="TEMPLATE,evictions" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_template_cache_load_time" defaultValue="TEMPLATE,load_time" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_template_cache_hit_rate" defaultValue="TEMPLATE,hit_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_template_cache_miss_rate" defaultValue="TEMPLATE,miss_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		
-		<Variable name="Dve_prepared_stmt_cache_size" defaultValue="PREPARED,size" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_prepared_stmt_cache_utilization" defaultValue="PREPARED,utilization" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_prepared_stmt_cache_evictions" defaultValue="PREPARED,evictions" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_prepared_stmt_cache_load_time" defaultValue="PREPARED,load_time" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_prepared_stmt_cache_hit_rate" defaultValue="PREPARED,hit_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		<Variable name="Dve_prepared_stmt_cache_miss_rate" defaultValue="PREPARED,miss_rate" handler="com.tesora.dve.variable.status.CacheStatusVariableHandler"/>
-		
-		<Variable name="Dve_redist_aggregation" defaultValue="AGGREGATE" handler="com.tesora.dve.variable.status.RedistStatusVariableHandler"/>
-		<Variable name="Dve_redist_small" defaultValue="SMALL" handler="com.tesora.dve.variable.status.RedistStatusVariableHandler"/>
-		<Variable name="Dve_redist_medium" defaultValue="MEDIUM" handler="com.tesora.dve.variable.status.RedistStatusVariableHandler"/>
-		<Variable name="Dve_redist_large" defaultValue="LARGE" handler="com.tesora.dve.variable.status.RedistStatusVariableHandler"/>
-		
-		<Variable name="Dve_memory_max" defaultValue="MemoryMax" handler="com.tesora.dve.variable.status.JVMStatusVariableHandler"/>
-		<Variable name="Dve_memory_total" defaultValue="MemoryTotal" handler="com.tesora.dve.variable.status.JVMStatusVariableHandler"/>
-		<Variable name="Dve_memory_free" defaultValue="MemoryFree" handler="com.tesora.dve.variable.status.JVMStatusVariableHandler"/>
-		<Variable name="Dve_memory_used" defaultValue="MemoryUsed" handler="com.tesora.dve.variable.status.JVMStatusVariableHandler"/>
-		<Variable name="Dve_threads_active" defaultValue="ThreadsActive" handler="com.tesora.dve.variable.status.JVMStatusVariableHandler"/>
+import java.util.HashMap;
+import java.util.Map;
 
-		<!--  
-		<Variable name="Binlog_cache_disk_use" defaultValue="0" handler="com.tesora.dve.variable.status.DefaultStatusVariableHandler"/>
+import com.tesora.dve.common.catalog.StorageGroup.GroupScale;
+import com.tesora.dve.exceptions.PENotFoundException;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.PlannerStatisticType;
+import com.tesora.dve.sql.parser.SqlStatistics;
+import com.tesora.dve.sql.schema.cache.CacheSegment;
+import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.variables.VariableManager;
+
+public class StatusVariables {
+
+	private static final StatusVariableHandler[] statusVariables = new StatusVariableHandler[] {
+		new StatusVariableHandler("Queries") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(SqlStatistics.getTotalValue());
+			}
+
+			@Override
+			protected void resetValueInternal() throws Throwable {
+				SqlStatistics.resetAllValues();
+			}
+			
+		},
+		new StatusVariableHandler("Questions") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(SqlStatistics.getTotalValue());
+			}
+
+			@Override
+			protected void resetValueInternal() throws Throwable {
+				SqlStatistics.resetAllValues();
+			}
+			
+		},
+		new SqlStatusVariableHandler("Com_begin",StatementType.BEGIN),
+		new SqlStatusVariableHandler("Com_commit",StatementType.COMMIT),
+		new SqlStatusVariableHandler("Com_create_db",StatementType.CREATE_DB),
+		new SqlStatusVariableHandler("Com_create_table",StatementType.CREATE_TABLE),
+		new SqlStatusVariableHandler("Com_create_index",StatementType.CREATE_INDEX),
+		new SqlStatusVariableHandler("Com_create_user",StatementType.CREATE_USER),
+		new SqlStatusVariableHandler("Com_delete",StatementType.DELETE),
+		new SqlStatusVariableHandler("Com_drop_db",StatementType.DROP_DB),
+		new SqlStatusVariableHandler("Com_drop_table",StatementType.DROP_TABLE),
+		new SqlStatusVariableHandler("Com_drop_index",StatementType.DROP_INDEX),
+		new SqlStatusVariableHandler("Com_grant",StatementType.GRANT),
+		new SqlStatusVariableHandler("Com_insert",StatementType.INSERT),
+		new SqlStatusVariableHandler("Com_insert_select",StatementType.INSERT_INTO_SELECT),
+		new SqlStatusVariableHandler("Com_lock_tables",StatementType.LOCK_TABLES),
+		new SqlStatusVariableHandler("Com_rollback",StatementType.ROLLBACK),
+		new SqlStatusVariableHandler("Com_show_processlist",StatementType.SHOW_PROCESSLIST),
+		new SqlStatusVariableHandler("Com_show_grants",StatementType.SHOW_GRANTS),
+		new SqlStatusVariableHandler("Com_show_master_status",StatementType.SHOW_MASTER_STATUS),
+		new SqlStatusVariableHandler("Com_show_slave_status",StatementType.SHOW_SLAVE_STATUS),
+		new SqlStatusVariableHandler("Com_show_plugins",StatementType.SHOW_PLUGINS),
+		new SqlStatusVariableHandler("Com_truncate",StatementType.TRUNCATE),
+		new SqlStatusVariableHandler("Com_unlock_tables",StatementType.UNLOCK_TABLES),
+		new SqlStatusVariableHandler("Com_update",StatementType.UPDATE),
+		new SqlStatusVariableHandler("Com_stmt_close",StatementType.CLOSE_PREPARE),
+		new SqlStatusVariableHandler("Com_stmt_execute",StatementType.EXEC_PREPARE),
+		new SqlStatusVariableHandler("Com_stmt_prepare",StatementType.PREPARE),
+		
+		new StatusVariableHandler("Dve_memory_max") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(Runtime.getRuntime().maxMemory());
+			}
+			
+		},
+		new StatusVariableHandler("Dve_memory_total") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(Runtime.getRuntime().totalMemory());
+			}
+			
+		},
+		new StatusVariableHandler("Dve_memory_free") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(Runtime.getRuntime().freeMemory());
+			}
+			
+		},
+		new StatusVariableHandler("Dve_memory_used") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				Runtime rt = Runtime.getRuntime();
+				return Long.toString(rt.totalMemory() - rt.freeMemory());
+			}
+			
+		},
+		new StatusVariableHandler("Dve_threads_active") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(Thread.activeCount());
+			}
+			
+		},
+		new RedistStatusVariableHandler("Dve_redist_aggregation",GroupScale.AGGREGATE),
+		new RedistStatusVariableHandler("Dve_redist_small",GroupScale.SMALL),
+		new RedistStatusVariableHandler("Dve_redist_medium",GroupScale.MEDIUM),
+		new RedistStatusVariableHandler("Dve_redist_large",GroupScale.LARGE),
+		new PlannerStatisticsVariableHandler("Dve_plan_cache_uncacheable_string",PlannerStatisticType.UNCACHEABLE_CANDIDATE_PARSE),
+		new PlannerStatisticsVariableHandler("Dve_plan_cache_invalid_key",PlannerStatisticType.UNCACHEABLE_INVALID_CANDIDATE),
+		new PlannerStatisticsVariableHandler("Dve_plan_cache_uncacheable_maxliterals",PlannerStatisticType.UNCACHEABLE_EXCEEDED_LITERAL_LIMIT),
+		new PlannerStatisticsVariableHandler("Dve_plan_cache_uncacheable_dyn_funct",PlannerStatisticType.UNCACHEABLE_DYNAMIC_FUNCTION),
+		new PlannerStatisticsVariableHandler("Dve_plan_cache_uncacheable",PlannerStatisticType.UNCACHEABLE_PLAN),
+		
+		new CacheStatusVariableHandler(CacheSegment.UNCATEGORIZED,CacheStatusVariableHandler.sizeHandler),
+		new CacheStatusVariableHandler(CacheSegment.UNCATEGORIZED,CacheStatusVariableHandler.utilizationHandler),
+		new CacheStatusVariableHandler(CacheSegment.UNCATEGORIZED,CacheStatusVariableHandler.evictionHandler),
+		new CacheStatusVariableHandler(CacheSegment.UNCATEGORIZED,CacheStatusVariableHandler.loadTimeHandler),
+		new CacheStatusVariableHandler(CacheSegment.UNCATEGORIZED,CacheStatusVariableHandler.hitRateHandler),
+		new CacheStatusVariableHandler(CacheSegment.UNCATEGORIZED,CacheStatusVariableHandler.missRateHandler),
+
+		new CacheStatusVariableHandler(CacheSegment.PLAN,CacheStatusVariableHandler.sizeHandler),
+		new CacheStatusVariableHandler(CacheSegment.PLAN,CacheStatusVariableHandler.utilizationHandler),
+		new CacheStatusVariableHandler(CacheSegment.PLAN,CacheStatusVariableHandler.evictionHandler),
+		new CacheStatusVariableHandler(CacheSegment.PLAN,CacheStatusVariableHandler.hitRateHandler),
+		new CacheStatusVariableHandler(CacheSegment.PLAN,CacheStatusVariableHandler.missRateHandler),
+
+		new CacheStatusVariableHandler(CacheSegment.SCOPE,CacheStatusVariableHandler.sizeHandler),
+		new CacheStatusVariableHandler(CacheSegment.SCOPE,CacheStatusVariableHandler.utilizationHandler),
+		new CacheStatusVariableHandler(CacheSegment.SCOPE,CacheStatusVariableHandler.evictionHandler),
+		new CacheStatusVariableHandler(CacheSegment.SCOPE,CacheStatusVariableHandler.loadTimeHandler),
+		new CacheStatusVariableHandler(CacheSegment.SCOPE,CacheStatusVariableHandler.hitRateHandler),
+		new CacheStatusVariableHandler(CacheSegment.SCOPE,CacheStatusVariableHandler.missRateHandler),
+
+		new CacheStatusVariableHandler(CacheSegment.TABLE,CacheStatusVariableHandler.sizeHandler),
+		new CacheStatusVariableHandler(CacheSegment.TABLE,CacheStatusVariableHandler.utilizationHandler),
+		new CacheStatusVariableHandler(CacheSegment.TABLE,CacheStatusVariableHandler.evictionHandler),
+		new CacheStatusVariableHandler(CacheSegment.TABLE,CacheStatusVariableHandler.loadTimeHandler),
+		new CacheStatusVariableHandler(CacheSegment.TABLE,CacheStatusVariableHandler.hitRateHandler),
+		new CacheStatusVariableHandler(CacheSegment.TABLE,CacheStatusVariableHandler.missRateHandler),
+
+		new CacheStatusVariableHandler(CacheSegment.TENANT,CacheStatusVariableHandler.sizeHandler),
+		new CacheStatusVariableHandler(CacheSegment.TENANT,CacheStatusVariableHandler.utilizationHandler),
+		new CacheStatusVariableHandler(CacheSegment.TENANT,CacheStatusVariableHandler.evictionHandler),
+		new CacheStatusVariableHandler(CacheSegment.TENANT,CacheStatusVariableHandler.loadTimeHandler),
+		new CacheStatusVariableHandler(CacheSegment.TENANT,CacheStatusVariableHandler.hitRateHandler),
+		new CacheStatusVariableHandler(CacheSegment.TENANT,CacheStatusVariableHandler.missRateHandler),
+
+		new CacheStatusVariableHandler(CacheSegment.RAWPLAN,CacheStatusVariableHandler.sizeHandler),
+		new CacheStatusVariableHandler(CacheSegment.RAWPLAN,CacheStatusVariableHandler.utilizationHandler),
+		new CacheStatusVariableHandler(CacheSegment.RAWPLAN,CacheStatusVariableHandler.evictionHandler),
+		new CacheStatusVariableHandler(CacheSegment.RAWPLAN,CacheStatusVariableHandler.loadTimeHandler),
+		new CacheStatusVariableHandler(CacheSegment.RAWPLAN,CacheStatusVariableHandler.hitRateHandler),
+		new CacheStatusVariableHandler(CacheSegment.RAWPLAN,CacheStatusVariableHandler.missRateHandler),
+
+		new CacheStatusVariableHandler(CacheSegment.TEMPLATE,CacheStatusVariableHandler.sizeHandler),
+		new CacheStatusVariableHandler(CacheSegment.TEMPLATE,CacheStatusVariableHandler.utilizationHandler),
+		new CacheStatusVariableHandler(CacheSegment.TEMPLATE,CacheStatusVariableHandler.evictionHandler),
+		new CacheStatusVariableHandler(CacheSegment.TEMPLATE,CacheStatusVariableHandler.loadTimeHandler),
+		new CacheStatusVariableHandler(CacheSegment.TEMPLATE,CacheStatusVariableHandler.hitRateHandler),
+		new CacheStatusVariableHandler(CacheSegment.TEMPLATE,CacheStatusVariableHandler.missRateHandler),
+
+		new CacheStatusVariableHandler(CacheSegment.PREPARED,CacheStatusVariableHandler.sizeHandler),
+		new CacheStatusVariableHandler(CacheSegment.PREPARED,CacheStatusVariableHandler.utilizationHandler),
+		new CacheStatusVariableHandler(CacheSegment.PREPARED,CacheStatusVariableHandler.evictionHandler),
+		new CacheStatusVariableHandler(CacheSegment.PREPARED,CacheStatusVariableHandler.loadTimeHandler),
+		new CacheStatusVariableHandler(CacheSegment.PREPARED,CacheStatusVariableHandler.hitRateHandler),
+		new CacheStatusVariableHandler(CacheSegment.PREPARED,CacheStatusVariableHandler.missRateHandler),
+
+		new StatusVariableHandler("Uptime") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(Singletons.require(HostService.class).getServerUptime());
+			}
+			
+			@Override
+			protected void resetValueInternal() throws Throwable {
+				Singletons.require(HostService.class).resetServerUptime();
+			}
+			
+		},
+		
+		new StatusVariableHandler("Threads_connected") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Integer.toString(PerHostConnectionManager.INSTANCE.getConnectionCount());
+			}
+		},
+		
+		new StatusVariableHandler("Connections") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(PerHostConnectionManager.INSTANCE.getTotalConnections());
+			}
+
+			@Override
+			protected void resetValueInternal() throws Throwable {
+				PerHostConnectionManager.INSTANCE.resetTotalConnections();
+			}
+			
+		},
+		
+		new StatusVariableHandler("Connections_max_concurrent") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(PerHostConnectionManager.INSTANCE.getMaxConcurrentConnections());
+			}
+
+			@Override
+			protected void resetValueInternal() throws Throwable {
+				PerHostConnectionManager.INSTANCE.resetMaxConcurrentConnections();
+			}
+		},
+		
+		new StatusVariableHandler("Aborted_connects") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(PerHostConnectionManager.INSTANCE.getTotalConnectionFailures());
+			}
+
+			@Override
+			protected void resetValueInternal() throws Throwable {
+				PerHostConnectionManager.INSTANCE.resetTotalConnectionFailures();
+			}
+
+		},
+		
+		new StatusVariableHandler("Aborted_clients") {
+
+			@Override
+			protected String getValueInternal() throws Throwable {
+				return Long.toString(PerHostConnectionManager.INSTANCE.getTotalClientFailures());
+			}
+
+			@Override
+			protected void resetValueInternal() throws Throwable {
+				PerHostConnectionManager.INSTANCE.resetTotalClientFailures();
+			}
+
+			
+		},
+	};
+
+	
+	private static final Map<String,StatusVariableHandler> statusVariableMap = buildStatusVariableMap();
+	
+	public static StatusVariableHandler[] getStatusVariables() {
+		return statusVariables;
+	}
+	
+	public static StatusVariableHandler lookup(String name, boolean except) throws PENotFoundException {
+		StatusVariableHandler handler = statusVariableMap.get(VariableManager.normalize(name));
+		if (handler == null && except)
+			throw new PENotFoundException("No such status variable: '" + name + "'");
+		return handler;
+	}
+	
+	private static Map<String,StatusVariableHandler> buildStatusVariableMap() {
+		HashMap<String,StatusVariableHandler> out = new HashMap<String,StatusVariableHandler>();
+		for(StatusVariableHandler svh : statusVariables) {
+			out.put(VariableManager.normalize(svh.getName()), svh);
+		}
+		return out;
+	}
+	
+	/*
+	 * Variables to add at some point
+	 * 
+	 * 		<Variable name="Binlog_cache_disk_use" defaultValue="0" handler="com.tesora.dve.variable.status.DefaultStatusVariableHandler"/>
 		<Variable name="Binlog_cache_use" defaultValue="0" handler="com.tesora.dve.variable.status.DefaultStatusVariableHandler"/>
 		<Variable name="Binlog_stmt_cache_disk_use" defaultValue="0" handler="com.tesora.dve.variable.status.DefaultStatusVariableHandler"/>
 		<Variable name="Binlog_stmt_cache_use" defaultValue="0" handler="com.tesora.dve.variable.status.DefaultStatusVariableHandler"/>
@@ -410,7 +578,6 @@
 		<Variable name="Threads_created" defaultValue="0" handler="com.tesora.dve.variable.status.DefaultStatusVariableHandler"/>
 		<Variable name="Threads_running" defaultValue="0" handler="com.tesora.dve.variable.status.DefaultStatusVariableHandler"/>
 		<Variable name="Uptime_since_flush_status" defaultValue="0" handler="com.tesora.dve.variable.status.DefaultStatusVariableHandler"/>
-		-->
-	</VariableList>
-</VariableConfig>
 
+	 */
+}

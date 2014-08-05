@@ -1,4 +1,4 @@
-package com.tesora.dve.variable;
+package com.tesora.dve.variables;
 
 /*
  * #%L
@@ -64,19 +64,19 @@ public class VariableValueStore {
 	}
 	
 	public void setValue(String name, String value) throws PENotFoundException {
-		String key = VariableConfig.canonicalise(name);
+		String key = VariableManager.normalize(name);
 		validateVariableName(key);
 		valueStore.put(key, value);
 	}
 
 	public String getValue(String name) throws PENotFoundException {
-		String key = VariableConfig.canonicalise(name);
+		String key = VariableManager.normalize(name);
 		validateVariableName(key);
 		return valueStore.get(key);
 	}
 	
 	public boolean hasValue(String name) {
-		String key = VariableConfig.canonicalise(name);
+		String key = VariableManager.normalize(name);
 		return valueStore.containsKey(key);
 	}
 	

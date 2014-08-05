@@ -54,10 +54,13 @@ import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.SiteInstance;
+import com.tesora.dve.common.catalog.VariableConfig;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.HazelcastCoordinationServices;
 import com.tesora.dve.groupmanager.LocalhostCoordinationServices;
 import com.tesora.dve.siteprovider.onpremise.jaxb.OnPremiseSiteProviderConfig;
+import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.template.jaxb.Template;
 import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.standalone.Main;
@@ -69,7 +72,6 @@ import com.tesora.dve.tools.jaxb.persistent.PersistentSiteCfgList;
 import com.tesora.dve.tools.jaxb.policy.PolicyConfig;
 import com.tesora.dve.upgrade.CatalogSchemaVersion;
 import com.tesora.dve.upgrade.CatalogVersions;
-import com.tesora.dve.variable.GlobalConfig;
 import com.tesora.dve.variable.VariableConstants;
 
 public class DVEConfigCLI extends CLIBuilder {
@@ -622,11 +624,12 @@ public class DVEConfigCLI extends CLIBuilder {
 
 	@SuppressWarnings("unused")
 	public void cmd_show_variables(Scanner scanner) throws PEException {
-		final List<GlobalConfig> variables = catHelper.getAllVariables();
+		final List<VariableConfig> variables = catHelper.getAllVariables();
 
 		printlnDots("Variables size: " + variables.size());
-		for (final GlobalConfig variable : variables) {
-			println(variable.getName() + " = " + variable.getValue());
+		for (final VariableConfig variable : variables) {
+			if (variable.getScopes().indexOf(VariableScopeKind.GLOBAL.name()) > -1)
+				println(variable.getName() + " = " + variable.getValue());
 		}
 	}
 

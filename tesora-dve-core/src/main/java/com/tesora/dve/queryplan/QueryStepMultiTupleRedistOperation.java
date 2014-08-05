@@ -234,7 +234,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			// redistribute it back in.
 			
 			CatalogDAO c = ssCon.getCatalogDAO();
-			StorageGroup cacheGroup = new AggregationGroup(c.findDefaultProject().getDefaultPolicy());
+			StorageGroup cacheGroup = new AggregationGroup(
+					c.findDynamicPolicy(KnownVariables.DYNAMIC_POLICY.getSessionValue(ssCon)));
 			WorkerGroup cacheWG = WorkerGroupFactory.newInstance(ssCon, cacheGroup, getContextDatabase());
 			
 			try {

@@ -129,6 +129,7 @@ import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.ddl.AddGlobalVariableStatement;
 import com.tesora.dve.sql.statement.ddl.AddStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseTemplateStatement;
@@ -767,8 +768,8 @@ public abstract class Emitter {
 	
 	public void emitProjectDeclaration(PEProject pep, StringBuilder buf) {
 		buf.append("PROJECT ").append(pep.getName().getSQL());
-		if (pep.getDefaultStorageGroup() != null)
-			buf.append(" DEFAULT PERSISTENT GROUP ").append(pep.getDefaultStorageGroup().getName().getSQL());
+//		if (pep.getDefaultStorageGroup() != null)
+//			buf.append(" DEFAULT PERSISTENT GROUP ").append(pep.getDefaultStorageGroup().getName().getSQL());
 	}
 	
 	@SuppressWarnings("rawtypes")
@@ -1839,6 +1840,8 @@ public abstract class Emitter {
 			emitAlterDatabaseStatement(sc, (AlterDatabaseStatement) as, buf);
 		} else if (as instanceof AlterDatabaseTemplateStatement) {
 			emitAlterDatabaseTemplateStatement(sc, (AlterDatabaseTemplateStatement) as, buf);
+		} else if (as instanceof AddGlobalVariableStatement) {
+			// don't care right now
 		} else {
 			error("Unknown alter statement kind: " + as.getClass().getName());
 		}

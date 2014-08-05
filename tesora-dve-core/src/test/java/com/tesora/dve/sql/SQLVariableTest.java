@@ -45,6 +45,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.ComparisonOptions;
+import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
@@ -176,21 +177,27 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
-				   nr,"character_set_results",charSet));
+				   nr,"character_set_results",charSet,
+				   nr,"character_set_server","utf8"
+				   ));
 		
 		charSet = "utf8";
 		conn.execute("set names " + "'" + charSet + "'");
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
-				   nr,"character_set_results",charSet));
+				   nr,"character_set_results",charSet,
+				   nr,"character_set_server","utf8"
+				   ));
 		
 		charSet = "ascii";
 		conn.execute("set names " + "\"" + charSet + "\"");
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
-				   nr,"character_set_results",charSet));
+				   nr,"character_set_results",charSet,
+				   nr,"character_set_server","utf8"
+				   ));
 	}
 
 	@Test
@@ -304,10 +311,36 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}
 	
+	// this is a cheesy test
+	@Test
+	public void testDynamicAdd() throws Throwable {
+		String infoQuery = "select * from information_schema.variable_definitions where name like 'fromage'";
+		conn.assertResults(infoQuery,br());
+		conn.execute("alter dve add variable fromage scopes='SESSION,GLOBAL' valuetype='varchar' value='blue' options='NULLABLE' description='cheese!'");
+		conn.assertResults(infoQuery, br(nr,"fromage","blue","varchar","SESSION,GLOBAL","NULLABLE","cheese!"));
+		ProxyConnectionResource nonRoot = new ProxyConnectionResource(nonRootUser,nonRootUser);
+		try {
+			nonRoot.assertResults("show variables like 'fromage'", br(nr,"fromage","blue"));
+		} finally {
+			nonRoot.disconnect();
+		}
+	}
+	
+	@Test
+	public void testDocStrings() throws Throwable {
+		ResourceResponse rr = conn.execute("select name from information_schema.variable_definitions where description = ''");
+		List<String> missing = new ArrayList<String>();
+		for(ResultRow row : rr.getResults()) {
+			missing.add((String)row.getResultColumn(1).getColumnValue());
+		}
+		if (!missing.isEmpty()) 
+			fail("Empty variable docstrings: " + Functional.join(missing, ","));
+//		System.out.println(conn.printResults("select * from information_schema.variable_definitions"));
+	}
+	
 	@Test
 	public void testAccess() throws Throwable {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
-		//			System.out.println(conn.printResults("select * from information_schema.variable_definitions"));
 		testAccess(vm.lookup("tx_isolation", true),new Values("REPEATABLE-READ","SERIALIZABLE","READ-COMMITTED"));
 		testAccess(vm.lookup("adaptive_cleanup_interval",true), new Values("1000","5000","10000"));
 		testAccess(vm.lookup("cost_based_planning", true),new Values("yes","no"));

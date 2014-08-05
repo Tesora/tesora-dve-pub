@@ -56,7 +56,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.sql.util.Functional;
-import com.tesora.dve.variable.GlobalConfig;
 
 public class CatalogDAO {
 	private static Logger logger = Logger.getLogger(CatalogDAO.class);
@@ -374,15 +373,6 @@ public class CatalogDAO {
 		return extServ;
 	}
 
-	public GlobalConfig createConfig(final String variable, final String defaultValue) throws Throwable {
-		return (GlobalConfig) new EntityGenerator() {
-			@Override
-			public CatalogEntity generate() throws Throwable {
-				return new GlobalConfig(variable, defaultValue);
-			}
-		}.execute();
-	}
-
 	// -----------------------------------------------------------------
 	// FIND Methods
 	// 
@@ -403,10 +393,6 @@ public class CatalogDAO {
 		return findAllByClass(PersistentSite.class);
 	}
 	
-	public List<GlobalConfig> findAllConfig() {
-		return findAllByClass(GlobalConfig.class);
-	}
-	
 	public PersistentGroup findDefaultPersistentGroup() throws PEException {
 		return findByName(PersistentGroup.class, "Default", true);
 	}
@@ -422,15 +408,6 @@ public class CatalogDAO {
 	public Project findProject(String projectName, boolean except) throws PEException {
 		return (Project) CatalogDAOFactory.INSTANCE.getLookupCache(Project.class, "name").findByValue(this,
 				projectName, except);
-	}
-
-	public GlobalConfig findConfig(String variableName) throws PENotFoundException {
-		return findConfig(variableName, true);
-	}
-
-	public GlobalConfig findConfig(String variableName, boolean except) throws PENotFoundException {
-		return (GlobalConfig) CatalogDAOFactory.INSTANCE.getLookupCache(GlobalConfig.class, "name").findByValue(this,
-				variableName, except);
 	}
 
 	public VariableConfig findVariableConfig(String variableName) throws PENotFoundException {

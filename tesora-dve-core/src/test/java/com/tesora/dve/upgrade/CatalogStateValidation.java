@@ -1,4 +1,4 @@
-package com.tesora.dve.variable;
+package com.tesora.dve.upgrade;
 
 /*
  * #%L
@@ -21,21 +21,23 @@ package com.tesora.dve.variable;
  * #L%
  */
 
-import com.tesora.dve.common.PEThreadContext;
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.upgrade.versions.GlobalVariablesValidator;
 
-public class DebugContextVariableHandler extends ConfigVariableHandler {
+// specifically concerned with testing the state of the catalog after an upgrade
+public class CatalogStateValidation {
 
-	@Override
-	public void setValue(CatalogDAO c, String name, String value) throws PEException {
-		VariableValueConverter.toInternalBoolean(value);
-		super.setValue(c, name, value);
+	// line your validators up here
+	private static final CatalogStateValidator validators[] = new CatalogStateValidator[] {
+		new GlobalVariablesValidator()
+	};
+	
+	public static CatalogStateValidator findValidator(CatalogVersion forVersion) {
+		for(CatalogStateValidator csv : validators) {
+			if (forVersion == csv.getVersionNumber().getCatalogVersion())
+				return csv;
+		}
+		return null;
 	}
-
-	@Override
-	public void onValueChange(String variableName, String newValue) throws PEException {
-		boolean enable = VariableValueConverter.toInternalBoolean(newValue);
-		PEThreadContext.setEnabled(enable);
-	}
+	
+	
 }

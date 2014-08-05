@@ -42,7 +42,7 @@ import com.tesora.dve.sql.infoschema.annos.ColumnView;
 
 @InfoSchemaTable(logicalName="variable_defs",
 	views={@TableView(view=InfoView.INFORMATION, name="variable_definitions", pluralName="",
-		        columnOrder={"name","value","type","scopes","emulated","description"})})
+		        columnOrder={"name","value","type","scopes","options","description"})})
 @Entity
 @Table(name="varconfig", uniqueConstraints=@UniqueConstraint(columnNames = { "name" }))
 public class VariableConfig implements CatalogEntity {
@@ -76,19 +76,19 @@ public class VariableConfig implements CatalogEntity {
 	String help;
 	
 	// 1 for emulated, 0 for not (i.e. dve only)
-	@Column(name="emulated",nullable=false)
-	int emulated;
+	@Column(name="options",nullable=false)
+	String options;
 	
 	public VariableConfig() {
 		
 	}
 	
-	public VariableConfig(String name, String valueType, String value, String scopes, boolean emulated, String helpText) {
+	public VariableConfig(String name, String valueType, String value, String scopes, String options, String helpText) {
 		this.name = name;
 		this.valueType = valueType;
 		this.value = value;
 		this.scopes = scopes;
-		this.emulated = (emulated ? 1 : 0);
+		this.options = options;
 		this.help = helpText;
 	}
 	
@@ -124,11 +124,11 @@ public class VariableConfig implements CatalogEntity {
 		return scopes;
 	}
 	
-	@InfoSchemaColumn(logicalName="emulated", fieldName="emulated",
-			sqlType=java.sql.Types.INTEGER,
-			views={@ColumnView(view=InfoView.INFORMATION,name="emulated",orderBy=false,ident=false)})
-	public boolean isDVEOnly() {
-		return emulated == 0;
+	@InfoSchemaColumn(logicalName="options", fieldName="options",
+			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
+			views={@ColumnView(view=InfoView.INFORMATION,name="options",orderBy=false,ident=false)})
+	public String getOptions() {
+		return options;
 	}
 
 	@InfoSchemaColumn(logicalName="description",fieldName="help",

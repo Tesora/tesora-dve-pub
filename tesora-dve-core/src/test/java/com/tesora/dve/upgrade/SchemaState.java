@@ -48,6 +48,10 @@ public class SchemaState {
 		for(Map.Entry<String, TableState> me : state.entrySet()) {
 			TableState mine = me.getValue();
 			TableState yours = other.state.get(me.getKey());
+			if (yours.isEmpty()) {
+				// we removed a table, that's ok
+				continue;
+			}
 			String diffs = mine.differs(yours);
 			if (diffs != null)
 				messages.add("On table " + me.getKey() + ": " + diffs);

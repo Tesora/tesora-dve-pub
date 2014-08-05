@@ -695,7 +695,7 @@ Signed_Float
   TENANT                      :   T E N A N T;
   TENANTS                     :   T E N A N T S;
   XML                         :   X M L;
-
+  VARIABLE                    :   V A R I A B L E;
 
 //  Punctuation and Arithmetic/Logical Operators
 

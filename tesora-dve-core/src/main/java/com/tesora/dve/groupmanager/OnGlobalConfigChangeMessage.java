@@ -25,6 +25,8 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.exceptions.PEException;
@@ -39,10 +41,12 @@ public class OnGlobalConfigChangeMessage extends GroupMessage {
 
 	final String variableName;
 	final String newValue;
+	final boolean newVariable;
 
-	public OnGlobalConfigChangeMessage(String variableName, String newValue) {
+	public OnGlobalConfigChangeMessage(String variableName, String newValue, boolean newVariable) {
 		this.variableName = variableName;
 		this.newValue = newValue;
+		this.newVariable = newVariable;
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -51,13 +55,17 @@ public class OnGlobalConfigChangeMessage extends GroupMessage {
 		try {
 			VariableHandler handler = Singletons.require(HostService.class).getVariableManager().lookup(variableName, false);
 			if (handler == null) {
-				logger.error("OnGlobalConfigChangeMessage handler not found for variable '" + variableName + "'");
-			} else {
-				ServerGlobalVariableStore.INSTANCE.invalidate(handler);
-				handler.onGlobalValueChange(handler.toInternal(newValue));
-
-				logger.info("OnGlobalConfigChangeMessage updated " + variableName + " = '" + newValue + "'");
+				if (newVariable)
+					handler = Singletons.require(HostService.class).getVariableManager().postInitializationAddVariable(variableName);
 			}
+			if (handler == null) {
+				logger.error("OnGlobalConfigChangeMessage handler not found for variable '" + variableName + "'");
+				return;
+			}
+			ServerGlobalVariableStore.INSTANCE.invalidate(handler);
+			handler.onGlobalValueChange(handler.toInternal(newValue));
+
+			logger.info("OnGlobalConfigChangeMessage updated " + variableName + " = '" + newValue + "'");
 		} catch (PEException e) {
 			logger.error(
 					"Exception in OnGlobalConfigChangeMessage " + variableName + " = '" + newValue + "' - "

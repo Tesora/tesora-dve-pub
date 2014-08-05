@@ -237,11 +237,6 @@ public class VariablesLogicalInformationSchemaTable extends LogicalInformationSc
 		return cs;
 	}
 
-	private boolean showScopeName(VariableScope vs) {
-		// only for scoped scopes where the scope name is missing
-		return (vs.getKind() == VariableScopeKind.SCOPED && vs.getScopeName() == null);
-	}
-
 	private VariableScope rebuildScope(String scopeName) {
 		if (SESSION_TABLE_NAME.equals(scopeName)) {
 			return new VariableScope(VariableScopeKind.SESSION);
