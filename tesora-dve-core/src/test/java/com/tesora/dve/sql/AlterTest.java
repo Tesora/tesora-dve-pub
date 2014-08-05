@@ -807,7 +807,7 @@ public class AlterTest extends SchemaTest {
 				br(nr, (!dvColumnNames.isEmpty()) ? StringUtils.join(dvColumnNames, ',') : null, tableModel.value()));
 	}
 
-	private static Type buildTypeFromNative(final MysqlType type) throws PEException {
+	private static Type buildTypeFromNative(final MysqlType type) {
 		return BasicType.buildType(new MysqlNativeType(type), 0, Collections.<TypeModifier> emptyList()).normalize();
 	}
 
