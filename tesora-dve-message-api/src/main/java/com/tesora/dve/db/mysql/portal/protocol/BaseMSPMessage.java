@@ -77,15 +77,20 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
     }
 
     protected void defaultWriteTo(ByteBuf destination, boolean supressType) {
+        boolean writeTypeOctect = !supressType && !(this instanceof MSPUntypedMessage);
+        ByteBuf slice = this.readBuffer().slice();
+        int payloadLength = slice.readableBytes() + (writeTypeOctect ? 1 : 0);
+
         ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
-        int payloadSizeIndex = leBuf.writerIndex();
-        leBuf.writeMedium(0);
+        leBuf.ensureWritable(payloadLength + 4);
+
+        leBuf.writeMedium(payloadLength);
         leBuf.writeByte(this.getSequenceID());
-        int payloadStart = leBuf.writerIndex();
-        if (!supressType && !(this instanceof MSPUntypedMessage))
+
+        if (writeTypeOctect)
             leBuf.writeByte(this.getMysqlMessageType());
-        leBuf.writeBytes(this.readBuffer().slice());
-        leBuf.setMedium(payloadSizeIndex, leBuf.writerIndex() - payloadStart);//patch up the length field.
+
+        leBuf.writeBytes(slice);
     }
 
     protected S readState() {

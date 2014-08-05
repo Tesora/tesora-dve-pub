@@ -24,11 +24,13 @@ package com.tesora.dve.worker;
 import java.sql.ResultSet;
 import java.util.concurrent.Callable;
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.exceptions.PEException;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PESQLException;
@@ -51,62 +53,87 @@ public class SingleDirectStatement implements WorkerStatement {
 		this.worker = w;
 		this.dbConnection = dbConnection;
 	}
-	
-	protected boolean doExecute(SQLCommand sqlCommand, DBResultConsumer resultConsumer) throws PESQLException {
-		try {
+
+	protected void doExecute(SQLCommand sqlCommand, DBResultConsumer resultConsumer, final CompletionHandle<Boolean> promise) {
 		if (sqlCommand.hasReferenceTime()) {
-			String setTimestampSQL = "SET TIMESTAMP=" + sqlCommand.getReferenceTime() + ";";
-			dbConnection.execute(new SQLCommand(setTimestampSQL), DBEmptyTextResultConsumer.INSTANCE);
+            dbConnection.setTimestamp( sqlCommand.getReferenceTime(), null);
 		}
 
-		return dbConnection.execute(sqlCommand.getResolvedCommand(worker), resultConsumer, 
-				new PEDefaultPromise<Boolean>()
-				).sync();
-		} catch (Exception e) {
-			if (e instanceof PESQLException)
-				throw (PESQLException)e;
-			else
-				throw new PESQLException(e);
-		}
+        CompletionHandle<Boolean> transformErrors = new DelegatingCompletionHandle<Boolean>(promise) {
+
+            @Override
+            public void failure(Exception e) {
+                if (e instanceof PESQLException)
+                    super.failure(e);
+                else {
+                    PESQLException convert = new PESQLException(e);
+                    convert.fillInStackTrace();
+                    super.failure(convert);
+                }
+            }
+
+        };
+        dbConnection.execute(sqlCommand.getResolvedCommand(worker), resultConsumer, transformErrors);
 	}
-	
-	@Override
-	public boolean execute(int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer) throws PESQLException {
-		boolean hasResults = false;
+
+    @Override
+	public void execute(final int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+
 		StatementManager.INSTANCE.registerStatement(connectionId, this);
 		PerHostConnectionManager.INSTANCE.changeConnectionState(
 				connectionId, "Query", "", (sql == null) ? "Null Query" : sql.getRawSQL());
-		try {
-			
-			hasResults = connectionSafeJDBCCall(new Callable<Boolean>() {
-				@Override
-				public Boolean call() throws Exception {
-					return doExecute(sql, resultConsumer);
-				}
-			});
-			
-		} catch (PESQLException e) {
-			throw new PESQLException(e.getMessage(), new PESQLException("On statement: " + sql.getDisplayForLog(), e));
-		} finally {
-			StatementManager.INSTANCE.unregisterStatement(connectionId, this);
-			PerHostConnectionManager.INSTANCE.resetConnectionState(connectionId);
-		}
-		return hasResults;
+
+        CompletionHandle<Boolean> wrapped = new DelegatingCompletionHandle<Boolean>(promise){
+            @Override
+            public void success(Boolean returnValue) {
+                onFinish();
+                super.success(returnValue);
+            }
+
+            @Override
+            public void failure(Exception e) {
+                Exception convert = processException(sql,e);
+                onFinish();
+                super.failure(convert);
+            }
+
+            void onFinish(){
+                StatementManager.INSTANCE.unregisterStatement(connectionId, SingleDirectStatement.this);
+                PerHostConnectionManager.INSTANCE.resetConnectionState(connectionId);
+            }
+        };
+
+		doExecute(sql, resultConsumer, wrapped);
 	}
-	
-	private <T> T connectionSafeJDBCCall(Callable<T> safeCall) throws PESQLException {
+
+    private PESQLException processException(SQLCommand sql, Exception e) {
+        PESQLException psqlError;
+        if (e instanceof PECommunicationsException){
+            try{
+                onCommunicationFailure(worker);
+            } catch (PESQLException closeError){
+                //we got a comm error, then had a failure trying to cleanup, probably because of the comm error.  ignore.
+            }
+        }
+
+        if (e instanceof PESQLException)
+            psqlError = (PESQLException)e;
+        else
+            psqlError = new PESQLException(e);
+
+        worker.setLastException(psqlError);
+
+        if (sql != null)
+            return new PESQLException(psqlError.getMessage(), new PESQLException("On statement: " + sql.getDisplayForLog(), psqlError));
+        else
+            return psqlError;
+    }
+
+    private <T> T connectionSafeJDBCCall(Callable<T> safeCall) throws PESQLException {
 		try {
 			return safeCall.call();
-		} catch (PECommunicationsException c) {
-			worker.setLastException(c);
-			onCommunicationFailure(worker);
-			throw c;
-		} catch (PESQLException e) {
-			worker.setLastException(e);
-			throw e;
 		} catch (Exception e) {
-			worker.setLastException(e);
-			throw new PESQLException(e);
+			throw processException(null,e);
 		}
 	}
 

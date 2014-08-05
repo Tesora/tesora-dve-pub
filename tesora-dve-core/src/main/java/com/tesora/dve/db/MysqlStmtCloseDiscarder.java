@@ -21,13 +21,12 @@ package com.tesora.dve.db;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
 import io.netty.channel.Channel;
 
 import java.util.List;
 
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
@@ -77,11 +76,10 @@ public class MysqlStmtCloseDiscarder implements DBResultConsumer {
 	public void setNumRowsAffected(long rowcount) {
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel,
-			StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
+    @Override
+    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		channel.write(new MysqlStmtCloseCommand(pstmt));
-		return promise.success(false);
+		promise.success(false);
 	}
 
 	@Override

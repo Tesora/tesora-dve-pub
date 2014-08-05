@@ -71,4 +71,9 @@ public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandR
 	public MysqlCommandResultsProcessor getResultHandler() {
 		return this;
 	}
+
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //NOOP.
+    }
 }

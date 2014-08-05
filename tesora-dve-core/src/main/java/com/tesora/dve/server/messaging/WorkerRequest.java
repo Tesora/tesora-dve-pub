@@ -25,6 +25,13 @@ import java.sql.SQLException;
 
 import javax.transaction.xa.XAException;
 
+import com.tesora.dve.comms.client.messages.ExecuteResponse;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.DBEmptyTextResultConsumer;
+import com.tesora.dve.exceptions.PESQLException;
+import com.tesora.dve.worker.WorkerStatement;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.comms.client.messages.RequestMessage;
@@ -74,9 +81,64 @@ public abstract class WorkerRequest extends RequestMessage {
 		return connectionContext.getTransId();
 	}
 
-	public abstract ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException;
-	
-	@Override
+    public final void executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
+        try {
+            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+            executeRequest(w,resultConsumer,promise);
+            promise.sync();
+        } catch (Exception e) {
+            if (e instanceof PEException)
+                throw (PEException)e;
+            if (e instanceof SQLException)
+                throw (SQLException)e;
+            if (e instanceof XAException)
+                throw (XAException)e;
+            else
+                throw new PEException(e);
+        }
+    }
+
+	public abstract void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise);
+
+    protected void simpleExecute(final Worker w, final DBResultConsumer resultConsumer, SQLCommand ddl, final CompletionHandle<Boolean> promise) {
+        if (WorkerDropDatabaseRequest.logger.isDebugEnabled()) {
+            WorkerDropDatabaseRequest.logger.debug(w.getName()+": Current database is "+ w.getCurrentDatabaseName());
+            WorkerDropDatabaseRequest.logger.debug(w.getName()+":executing statement " + ddl);
+        }
+
+        CompletionHandle<Boolean> resultTracker = new DelegatingCompletionHandle<Boolean>(promise) {
+            @Override
+            public void success(Boolean returnValue) {
+                try {
+                    new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
+                    super.success(returnValue);
+                } catch (PEException e) {
+                    this.failure(e);
+                }
+            }
+
+            @Override
+            public void failure(Exception e) {
+                if (e instanceof PEException)
+                    super.failure(e);
+                else {
+                    PEException convert = new PEException(e);
+                    convert.fillInStackTrace();
+                    super.failure(convert);
+                }
+            }
+        };
+
+        WorkerStatement stmt = null;
+        try {
+            stmt = w.getStatement();
+            stmt.execute(getConnectionId(), ddl, resultConsumer,resultTracker);
+        } catch (PESQLException e) {
+            resultTracker.failure(e);
+        }
+    }
+
+    @Override
 	public String toString() {
 		return new StringBuffer(getClass()
 				.getSimpleName()+"{type=").append(getMessageType())

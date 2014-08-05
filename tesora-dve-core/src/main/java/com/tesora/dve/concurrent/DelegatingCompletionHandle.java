@@ -1,4 +1,4 @@
-package com.tesora.dve.server.messaging;
+package com.tesora.dve.concurrent;
 
 /*
  * #%L
@@ -21,19 +21,34 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
-import com.tesora.dve.server.connectionmanager.SSContext;
-import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+/**
+ *
+ */
+public class DelegatingCompletionHandle<T> implements CompletionHandle<T> {
+    CompletionHandle<T> delegate;
 
-public class WorkerPreambleRequest extends WorkerExecuteRequest {
-	private static final long serialVersionUID = 1L;
 
-	public WorkerPreambleRequest(SSContext ssContext, SQLCommand command) {
-		super(ssContext, command);
-	}
+    public DelegatingCompletionHandle(CompletionHandle<T> delegate) {
+        this.delegate = delegate;
+    }
 
-	@Override
-	public LogSiteStatisticRequest getStatisticsNotice() {
-		return null;
-	}
+    @Override
+    public boolean trySuccess(T returnValue) {
+        return delegate.trySuccess(returnValue);
+    }
 
+    @Override
+    public boolean isFulfilled() {
+        return delegate.isFulfilled();
+    }
+
+    @Override
+    public void success(T returnValue) {
+        delegate.success(returnValue);
+    }
+
+    @Override
+    public void failure(Exception e) {
+        delegate.failure(e);
+    }
 }

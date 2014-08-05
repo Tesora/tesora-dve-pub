@@ -214,16 +214,6 @@ public abstract class DBNative implements Serializable {
 		return new StringBuffer(getLiteralQuoteChar()).append(name).append(getLiteralQuoteChar()).toString();
 	}
 
-	/**
-	 * @param dbConnection
-	 * @param siteName
-	 * @throws SQLException
-	 * @throws PESQLException 
-	 */
-	public void postConnect(DBConnection dbConnection, String siteName) throws PESQLException {
-		// do nothing by default
-	}
-
 	public static class DBNativeFactory {
 		public static DBNative newInstance(DBType dbType) throws PEException {
 			DBNative dbNative = null;

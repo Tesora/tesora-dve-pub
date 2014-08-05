@@ -1,4 +1,4 @@
-package com.tesora.dve.concurrent;
+package com.tesora.dve.db.mysql;
 
 /*
  * #%L
@@ -21,13 +21,26 @@ package com.tesora.dve.concurrent;
  * #L%
  */
 
-public interface PEPromise<T> extends PEFuture<T> {
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 
-	PEPromise<T> success(T returnValue);
-	
-	PEPromise<T> failure(Exception t);
-	
-	boolean trySuccess(T returnValue);
-	
-	boolean isFulfilled();
+import java.util.concurrent.ThreadFactory;
+
+/**
+ * A static holder of a single netty thread that can be used when the netty thread handling the client socket doesn't exist or isn't known.
+ */
+public class SharedEventLoopHolder {
+    static NioEventLoopGroup loop;
+    static {
+        loop = new NioEventLoopGroup(1, new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                return new Thread(r,"netty-default");
+            }
+        });
+    }
+
+    public static NioEventLoopGroup getLoop() {
+        return loop;
+    }
 }

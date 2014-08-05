@@ -29,6 +29,7 @@ import com.tesora.dve.comms.client.messages.GenericResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.comms.client.messages.ResponseMessage;
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSContext;
@@ -51,13 +52,11 @@ public class WorkerCommitRequest extends WorkerRequest {
     public boolean isOnePhase(){
         return this.onePhase;
     }
-	
-	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException,
-			PEException, XAException {
-		w.commit(getTransId(), onePhase);
-		return new GenericResponse().success();
-	}
+
+    @Override
+    public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+        w.commit(getTransId(), onePhase, promise);
+    }
 
 	@Override
 	public MessageType getMessageType() {

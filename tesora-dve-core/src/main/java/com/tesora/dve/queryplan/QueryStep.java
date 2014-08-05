@@ -63,8 +63,7 @@ import com.tesora.dve.worker.WorkerGroup;
  */
 @XmlRootElement(name="QueryStep")
 public class QueryStep {
-	
-	Logger logger = Logger.getLogger(QueryStep.class);
+    static final Logger logger = Logger.getLogger(QueryStep.class);
 	
 	@XmlElement(name="StorageGroup")
 	StorageGroup storageGroup;
@@ -107,7 +106,7 @@ public class QueryStep {
 	 * @throws Throwable 
 	 */
 	public void executeStep(SSConnection ssCon, DBResultConsumer resultConsumer) throws Throwable  {
-		PEThreadContext.pushFrame(getClass().getSimpleName()).put("storageGroup", storageGroup).logDebug();
+		PEThreadContext.pushFrame(getClass()).put("storageGroup", storageGroup).logDebug();
 		try {
 			validateStep();
 			needsCleanup = true;

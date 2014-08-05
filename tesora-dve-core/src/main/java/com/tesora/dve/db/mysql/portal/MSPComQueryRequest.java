@@ -62,6 +62,7 @@ public class MSPComQueryRequest extends MSPActionBase {
 		final MysqlTextResultForwarder resultConsumer = new MysqlTextResultForwarder(ctx, sequenceId);
 		try {
 			ExecuteRequestExecutor.execute(ssCon, resultConsumer, query);
+            //TODO: this response should really be generated inside execution.  Doing it here forces synchronous behavior and extra locking + context switching. -sgossard.
 			resultConsumer.sendSuccess(ssCon);
 		} catch (PEMysqlErrorException e) {
 			if (logger.isDebugEnabled())

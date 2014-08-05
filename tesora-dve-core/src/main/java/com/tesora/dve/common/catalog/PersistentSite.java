@@ -39,6 +39,7 @@ import javax.persistence.OrderBy;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import io.netty.channel.EventLoopGroup;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.ShowSchema;
@@ -230,12 +231,12 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 	}
 
 	@Override
-	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo) throws PEException {
+	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {
 		// If the user is the admin user then use site creds instead of user creds
 		if(auth.isAdminUser())
-			return getWorkerFactory().newWorker(getMasterInstance().getAuthentication(), additionalConnInfo, this);
+			return getWorkerFactory().newWorker(getMasterInstance().getAuthentication(), additionalConnInfo, this, preferredEventLoop);
 		
-		return getWorkerFactory().newWorker(auth, additionalConnInfo, this);
+		return getWorkerFactory().newWorker(auth, additionalConnInfo, this, preferredEventLoop);
 	}
 
 	public static Worker.Factory getWorkerFactory(String haType) {

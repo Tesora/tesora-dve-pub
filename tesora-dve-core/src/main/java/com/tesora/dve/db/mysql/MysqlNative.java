@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -368,18 +369,7 @@ public class MysqlNative extends DBNative {
 		return buf.toString();
 	}
 
-	@Override
-	public void postConnect(DBConnection conn, String siteName) throws PESQLException {
-		try {
-			conn.execute(new SQLCommand("set @" + DVE_SITENAME_VAR + "='" + siteName + "',character_set_connection='" + MysqlNativeConstants.DB_CHAR_SET
-						+ "', character_set_client='" + MysqlNativeConstants.DB_CHAR_SET + "', character_set_results='" + MysqlNativeConstants.DB_CHAR_SET + "'"),
-						DBEmptyTextResultConsumer.INSTANCE);
-		} catch (Exception e) {
-			throw new PESQLException(e);
-		}
-	}
-
-	@Override
+    @Override
 	public String getEmptyCatalogName() {
 		return "mysql";
 	}

@@ -27,6 +27,7 @@ import com.tesora.dve.comms.client.messages.GenericResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.comms.client.messages.ResponseMessage;
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
@@ -41,10 +42,13 @@ public class ResetWorkerRequest extends WorkerRequest {
 	private static final long serialVersionUID = 1L;
 	
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException {
-		w.resetStatement();
-		return new GenericResponse().success();
-	}
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+        try {
+            w.resetStatement(promise);
+        } catch (SQLException e) {
+            promise.failure(e);
+        }
+    }
 
 	@Override
 	public MessageType getMessageType() {

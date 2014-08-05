@@ -22,17 +22,21 @@ package com.tesora.dve.db;
  */
 
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.CompletionTarget;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.DevXid;
+import io.netty.channel.EventLoopGroup;
 
-public interface DBConnection extends PEFuture.Listener<Boolean> {
+import java.util.Map;
+
+public interface DBConnection extends CompletionTarget<Boolean> {
 	
 	interface Factory {
-		DBConnection newInstance(StorageSite site);
+		DBConnection newInstance(EventLoopGroup eventLoop,StorageSite site);
 	}
 	
 	interface Monitor {
@@ -42,15 +46,19 @@ public interface DBConnection extends PEFuture.Listener<Boolean> {
 	void connect(String url, String userid, String password, long clientCapabilities) throws PEException;
 	void close();
 	
-	PEFuture<Boolean> execute(SQLCommand sql, DBResultConsumer consumer, PEPromise<Boolean> promise) throws PESQLException;
-	void execute(SQLCommand sql, DBResultConsumer consumer) throws PESQLException;
+	void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise);
 	
-	void start(DevXid xid) throws Exception;
-	void end(DevXid xid) throws Exception;
-	void prepare(DevXid xid) throws Exception;
-	void commit(DevXid xid, boolean onePhase) throws Exception;
-	void rollback(DevXid xid) throws Exception;
-	void setCatalog(String databaseName) throws Exception;
+	void start(DevXid xid, CompletionHandle<Boolean> promise);
+	void end(DevXid xid, CompletionHandle<Boolean> promise);
+	void prepare(DevXid xid, CompletionHandle<Boolean> promise);
+	void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise);
+	void rollback(DevXid xid, CompletionHandle<Boolean> promise);
+
+    void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise);
+    void setCatalog(String databaseName, CompletionHandle<Boolean> promise);
+    void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise);
+
+    @Deprecated
 	void cancel();
 
 	boolean hasPendingUpdate();
