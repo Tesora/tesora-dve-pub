@@ -35,6 +35,7 @@ import org.apache.commons.lang.time.FastDateFormat;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.common.catalog.IndexType;
 import com.tesora.dve.common.catalog.MultitenantMode;
@@ -90,6 +91,7 @@ import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Comment;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionVector;
+import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.HasName;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
@@ -214,6 +216,13 @@ public abstract class Emitter {
 
 		private final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
 
+		public final String getValueAsString(final SchemaContext sc) {
+			final StringBuilder buf = new StringBuilder();
+			this.emitStatement(sc, buf);
+
+			return buf.toString();
+		}
+
 		public final GenericSQLCommand buildGenericCommand(final SchemaContext sc) {
 			final StringBuilder buf = new StringBuilder();
 			this.emitStatement(sc, buf);
@@ -259,6 +268,10 @@ public abstract class Emitter {
 		return options;
 	}
 
+	public boolean hasOptions() {
+		return this.options != null;
+	}
+
 	public void pushContext(TokenStream in) {
 		cntxt = new EmitContext(in);
 	}
@@ -278,7 +291,7 @@ public abstract class Emitter {
 	}
 	
 	protected boolean isResultSetMetadata() {
-		return (getOptions() != null && getOptions().isResultSetMetadata());
+		return (this.hasOptions() && getOptions().isResultSetMetadata());
 	}
 	
 	protected int bumpIndent(int in) {
@@ -473,9 +486,10 @@ public abstract class Emitter {
 			error("Unknown persistable kind: " + p.getClass().getName());
 	}
 	
-	public void emitColumnDeclaration(SchemaContext sc, PEColumn c, StringBuilder buf) {
+	public void emitColumnDeclaration(final SchemaContext sc, final PEColumn c, final StringBuilder buf) {
+		final Type columnType = c.getType();
 		buf.append(c.getName().getQuotedName().getSQL()).append(" ");
-		emitDeclaration(c.getType(),c,buf, true);
+		emitDeclaration(columnType, c, buf, true);
 		// fixed order for the attributes
 		// here is the overall declaration order for a column
 		// name (root-type) (binary) (length/precision) (character set charset_name) (collate collation_name) (unsigned) (zerofill)
@@ -494,21 +508,69 @@ public abstract class Emitter {
 		// unsigned
 		// zerofill
 		// not nullable
-		if (c.isNotNullable())
+		if (c.isNotNullable()) {
 			buf.append(" NOT NULL");
-		else if (c.getType().isTimestampType()) 
+		} else if (columnType.isTimestampType()) {
 			buf.append(" NULL");
+		}
+
 		// default value
 		if (c.getDefaultValue() != null) {
 			buf.append(" DEFAULT ");
-			emitExpression(sc,c.getDefaultValue(),buf, -1);
+			String defaultValue = new EmitterInvoker() {
+				@Override
+				protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
+					emitExpression(sc, c.getDefaultValue(), buf, -1);
+				}
+			}.getValueAsString(sc);
+			
+			/*
+			 * The default value must be a constant. It cannot be a function or
+			 * an expression. The exception is that you can specify
+			 * CURRENT_TIMESTAMP as the default for TIMESTAMP and DATETIME
+			 * columns.
+			 * 
+			 * TODO: In numeric contexts, hexadecimal values act like integers
+			 * (64-bit precision). In string contexts, they act like binary
+			 * strings.
+			 * We currently push the hex value down and let the native do the
+			 * job, in order to exactly match the output of "SHOW CREATE", we
+			 * may need to resolve them here using the same charset as the one
+			 * used by the underlying database.
+			 */
+			if (!defaultValue.equalsIgnoreCase("NULL")
+					&& !(columnType.isTimestampType()
+							&& defaultValue.equalsIgnoreCase("CURRENT_TIMESTAMP")
+							|| defaultValue.equalsIgnoreCase("0"))
+					&& !PEStringUtils.isHexNumber(defaultValue)) {
+
+				if (columnType.isBitType()) {
+					if (defaultValue.length() == 1) { // Transform 0 and 1 literals to b'value' notation.
+						defaultValue = 'b' + PEStringUtils.singleQuote(defaultValue);
+					}
+				} else {
+					if (columnType.isFloatType()) { // Transform float literals that can be expressed as integers.
+						defaultValue = PEStringUtils.trimToInt(PEStringUtils.dequote(defaultValue));
+					}
+
+					defaultValue = PEStringUtils.singleQuote(defaultValue);
+				}
+
+			}
+			
+			buf.append(defaultValue);
 		}
+
 		// on update
-		if (c.isOnUpdated())
+		if (c.isOnUpdated()) {
 			buf.append(" ON UPDATE CURRENT_TIMESTAMP");
+		}
+
 		// auto increment
-		if (c.isAutoIncrement() && getOptions() != null && ((getOptions().isTableDefinition()) || getOptions().isExternalTableDeclaration()))
+		if (c.isAutoIncrement() && this.hasOptions() && ((getOptions().isTableDefinition()) || getOptions().isExternalTableDeclaration())) {
 			buf.append(" AUTO_INCREMENT");
+		}
+
 		// comparison
 		// comment
 		emitComment(c.getComment(), buf);		
@@ -563,7 +625,7 @@ public abstract class Emitter {
 	public void emitTableDeclaration(final SchemaContext sc, PEAbstractTable<?> t, StringBuilder buf) {
 		// if pretty printing, add a newline after each column
 		String newline = null;
-		final boolean isExternalTableDecl = getOptions() != null && getOptions().isExternalTableDeclaration();
+		final boolean isExternalTableDecl = this.hasOptions() && getOptions().isExternalTableDeclaration();
 		if (isExternalTableDecl)
 			newline = getLineTerminator();
 		else 
@@ -573,7 +635,7 @@ public abstract class Emitter {
 		if (!t.getKeys(sc).isEmpty()) {
 			buf.append(",").append(newline);
 			List<PEKey> filtered = null;
-			if (getOptions() != null && (getOptions().isExternalTableDeclaration() || getOptions().isTableDefinition()))
+			if (this.hasOptions() && (getOptions().isExternalTableDeclaration() || getOptions().isTableDefinition()))
 				filtered = t.getKeys(sc);
 			else
 				filtered = Functional.select(t.getKeys(sc), new UnaryPredicate<PEKey>() {
@@ -606,7 +668,7 @@ public abstract class Emitter {
 
 		boolean emitDistVect = (sc != null && t.getEnclosingDatabaseMTMode(sc) == MultitenantMode.OFF); 
 		
-		boolean omitDistVect = (getOptions() != null && getOptions().isOmitDistVect());
+		boolean omitDistVect = (this.hasOptions() && getOptions().isOmitDistVect());
 		
 		if (!omitDistVect &&
 				((emitExtensions() || (isExternalTableDecl && emitDistVect)) && t.getDistributionVector(sc) != null)) {
@@ -638,7 +700,7 @@ public abstract class Emitter {
 		if (t.isZeroFill())
 			buf.append(" zerofill");
 		// what to do about comparison?
-		if (t.getComparison() != null && getOptions() != null && getOptions().isExternalTableDeclaration()) 
+		if (t.getComparison() != null && this.hasOptions() && getOptions().isExternalTableDeclaration())
 			buf.append(" /*#dve comparator '").append(t.getComparison()).append("' */");
 	}
 
@@ -672,15 +734,18 @@ public abstract class Emitter {
 		// must be a foreign key constraint, go find it
 		if (key.getSymbol() != null) {
 			buf.append("CONSTRAINT ");
-			if (getOptions() != null && getOptions().isTableDefinition())
+			if (this.hasOptions() && getOptions().isTableDefinition()) {
 				buf.append(key.getSymbol().getQuoted());
-			else
+			} else {
 				buf.append(key.getPhysicalSymbol().getQuoted());
+			}
 			buf.append(" ");
 		}
 		buf.append("FOREIGN KEY ");
 		if (key.getName() != null) {
-			buf.append(key.getName()).append(" ");
+			if (!this.hasOptions() || getOptions().isTableDefinition()) {
+				buf.append(key.getName()).append(" ");
+			}
 		}
 		buf.append("(");
 		boolean first = true;
@@ -704,10 +769,16 @@ public abstract class Emitter {
 			buf.append(pefkc.getTargetColumnName().getQuotedName().getSQL());
 		}
 		buf.append(")");
-		if (key.getDeleteAction() != null)
-			buf.append(" ON DELETE ").append(key.getDeleteAction().getSQL());
-		if (key.getUpdateAction() != null)
-			buf.append(" ON UPDATE ").append(key.getUpdateAction().getSQL());
+
+		final DBNative nativeDb = Singletons.require(HostService.class).getDBNative();
+		final ForeignKeyAction onDeleteFkAction = key.getDeleteAction();
+		final ForeignKeyAction onUpdateFkAction = key.getUpdateAction();
+		if ((onDeleteFkAction != null) && (onDeleteFkAction != nativeDb.getDefaultOnDeleteAction())) {
+			buf.append(" ON DELETE ").append(onDeleteFkAction.getSQL());
+		}
+		if ((onUpdateFkAction != null) && (onUpdateFkAction != nativeDb.getDefaultOnUpdateAction())) {
+			buf.append(" ON UPDATE ").append(onUpdateFkAction.getSQL());
+		}
 	}
 	
 	public void emitDeclaration(SchemaContext sc, PEKey key, StringBuilder buf) {
@@ -732,7 +803,7 @@ public abstract class Emitter {
 			buf.append("USING ").append(key.getType().getSQL()).append(" ");
 
 		buf.append("(");
-		Functional.join(key.getKeyColumns(),	buf, ", ", new BinaryProcedure<PEKeyColumnBase, StringBuilder>() {
+		Functional.join(key.getKeyColumns(), buf, ",", new BinaryProcedure<PEKeyColumnBase, StringBuilder>() {
 
 			@Override
 			public void execute(PEKeyColumnBase aobj, StringBuilder bobj) {
@@ -833,7 +904,7 @@ public abstract class Emitter {
 	}
 			
 	public void emitSelectStatement(SchemaContext sc, SelectStatement s, StringBuilder buf, int indent) {
-		boolean entityQuery = (getOptions() != null && getOptions().isInfoSchema() && s.getProjectionEdge().isEmpty()) && false;
+		boolean entityQuery = (this.hasOptions() && getOptions().isInfoSchema() && s.getProjectionEdge().isEmpty()) && false;
 		if (!entityQuery) {
 			emitIndent(buf,indent, "SELECT ");
 			if (s.getSetQuantifier() != null)
@@ -1161,7 +1232,7 @@ public abstract class Emitter {
 		buf.append(".");
 		if (sci.getColumn() instanceof LogicalInformationSchemaColumn) {
 			LogicalInformationSchemaColumn isc = (LogicalInformationSchemaColumn) sci.getColumn();
-			if (getOptions() == null)
+			if (!this.hasOptions())
 				buf.append(isc.getName().getSQL());
 			else if (getOptions().isInfoSchema())
 				buf.append(isc.getFieldName());
@@ -1174,7 +1245,7 @@ public abstract class Emitter {
 	
 	public void emitColumnInstance(SchemaContext sc,ColumnInstance cr, StringBuilder buf) {
 		// in order for the plan cache to work correctly, need to emit the table instance separately
-		if (getOptions() == null || (!getOptions().isResultSetMetadata() && !getOptions().isInfoSchema() && !getOptions().isInfoSchemaRaw())) {
+		if (!this.hasOptions() || (!getOptions().isResultSetMetadata() && !getOptions().isInfoSchema() && !getOptions().isInfoSchemaRaw())) {
 			if (cr.getColumn() == null)
 				buf.append(cr.getSpecifiedAs().getSQL());
 			else if (cr.getSpecifiedAs() == null || !cr.getSpecifiedAs().isQualified()) {
@@ -1194,7 +1265,7 @@ public abstract class Emitter {
 				else
 					buf.append(cr.getSpecifiedAs().getSQL());
 			} else {
-				if (getOptions() != null && getOptions().isGenericSQL()) {
+				if (this.hasOptions() && getOptions().isGenericSQL()) {
 					emitTableInstance(sc,cr.getTableInstance(),buf,false);
 					buf.append(".").append(cr.getColumn().getName().getUnqualified());
 				} else {
@@ -1221,7 +1292,7 @@ public abstract class Emitter {
 	}
 	
 	public void emitAliasInstance(SchemaContext sc, AliasInstance ai, StringBuilder buf) {
-		if (getOptions() != null && getOptions().isInfoSchema()) {
+		if (this.hasOptions() && getOptions().isInfoSchema()) {
 			// info schema entity query clears projection so an alias can't be used
 			ExpressionNode e = ExpressionUtils.getTarget(ai.getTarget());
 			emitExpression(sc, e, buf, -1);
@@ -1243,7 +1314,7 @@ public abstract class Emitter {
 		if (opts != null && opts.isForceParamValues()) {
 			buf.append(sc.getValueManager().getValue(sc, p));
 		} else {
-			boolean decorate = getOptions() != null && getOptions().isGenericSQL();
+			boolean decorate = this.hasOptions() && getOptions().isGenericSQL();
 			String tok = null;
 			if (decorate) {
 				tok = "_p" + p.getPosition();
@@ -1266,7 +1337,7 @@ public abstract class Emitter {
 	}
 
 	public void emitLateResolvingVariableExpression(SchemaContext sc, LateResolvingVariableExpression lrve, StringBuilder buf) {
-		boolean decorate = getOptions() != null && getOptions().isGenericSQL();
+		boolean decorate = this.hasOptions() && getOptions().isGenericSQL();
 		String tok = null;
 		if (decorate) {
 			tok = lrve.getAccessor().getSQL();
@@ -1398,7 +1469,7 @@ public abstract class Emitter {
 			else if (fc.getFunctionName().isNotIs())
 				fn = "IS NOT";
 			String around = " ";
-			if (fc.getFunctionName().isEquals() && getOptions() != null && getOptions().isExternalTableDeclaration())
+			if (fc.getFunctionName().isEquals() && this.hasOptions() && getOptions().isExternalTableDeclaration())
 				around = "";
 			Functional.join(fc.getParameters(), buf,around + fn + around,
 					new BinaryProcedure<ExpressionNode, StringBuilder>() {
@@ -1432,7 +1503,7 @@ public abstract class Emitter {
 			return;
 		}
 		
-		if (getOptions() != null && getOptions().isAnalyzerLiteralsAsParameters()) {
+		if (this.hasOptions() && getOptions().isAnalyzerLiteralsAsParameters()) {
 			buf.append("?");
 			return;
 		}
@@ -1440,7 +1511,7 @@ public abstract class Emitter {
 		DelegatingLiteralExpression dle = null;
 		if (le instanceof DelegatingLiteralExpression)
 			dle = (DelegatingLiteralExpression) le;
-		boolean deltoken = (dle != null) && getOptions() != null && getOptions().isGenericSQL();
+		boolean deltoken = (dle != null) && this.hasOptions() && getOptions().isGenericSQL();
 		
 		int offset = -1;
 		if (dle != null)
@@ -1542,7 +1613,7 @@ public abstract class Emitter {
 				buf.append(tr.getTable().getName().getSQL());				
 		} else {
 			// info schema
-			if (getOptions() == null) {
+			if (!this.hasOptions()) {
 				if (!includeAlias && tr.getAlias() != null)
 					buf.append(tr.getAlias().getSQL());
 				else

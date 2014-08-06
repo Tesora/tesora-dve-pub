@@ -367,6 +367,8 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_bin"));
 		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_utf8"));
 		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS search_api_db_product_display_text"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_child"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_parent"));
 
 		tests.add(new StatementMirrorProc("CREATE TABLE pe1511 (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci)"));
 		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_large (value1 VARCHAR(32000), value2 TEXT, value3 VARCHAR(1000), value4 VARCHAR(32000)) CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
@@ -380,6 +382,9 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 				+ "PRIMARY KEY (`item_id`, `field_name`, `word`),"
 				+ "INDEX `word_field` (`word`(20), `field_name`)"
 				+ ") ENGINE = InnoDB DEFAULT CHARACTER SET utf8"));
+		
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_parent (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci, KEY (value1)) /*#dve  BROADCAST DISTRIBUTE */"));
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_child (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci, CONSTRAINT pe1511_child_fk FOREIGN KEY (value1) REFERENCES pe1511_parent (value1)) /*#dve  BROADCAST DISTRIBUTE */"));
 
 		tests.add(new StatementMirrorProc("ALTER TABLE pe1511 CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci"));
 		tests.addAll(buildAssertColumnTypeFun("pe1511", Arrays.asList("value1", "value2")));
@@ -407,6 +412,10 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 
 		tests.add(new StatementMirrorProc("ALTER TABLE search_api_db_product_display_text CONVERT TO CHARACTER SET 'utf8' COLLATE 'utf8_bin'"));
 		tests.addAll(buildAssertColumnTypeFun("search_api_db_product_display_text", Arrays.asList("item_id", "field_name", "word", "score")));
+
+		// Test with FKs.
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_parent CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_child CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
 
 		runTest(tests);
 	}

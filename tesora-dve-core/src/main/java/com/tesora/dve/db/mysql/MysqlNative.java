@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -41,15 +40,12 @@ import com.tesora.dve.charset.mysql.MysqlNativeCollationCatalog;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserColumn;
-import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ColumnAttribute;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -58,6 +54,7 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.types.Type;
 
 public class MysqlNative extends DBNative {
@@ -499,5 +496,15 @@ public class MysqlNative extends DBNative {
 	@Override
 	public int getMaxNumColsInIndex() {
 		return 16;
+	}
+
+	@Override
+	public ForeignKeyAction getDefaultOnDeleteAction() {
+		return ForeignKeyAction.RESTRICT;
+	}
+
+	@Override
+	public ForeignKeyAction getDefaultOnUpdateAction() {
+		return ForeignKeyAction.RESTRICT;
 	}
 }
