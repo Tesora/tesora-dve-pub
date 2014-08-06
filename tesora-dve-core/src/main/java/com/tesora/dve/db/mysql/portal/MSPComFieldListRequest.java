@@ -38,7 +38,7 @@ public class MSPComFieldListRequest extends MSPActionBase {
                         SSConnection ssCon, MSPMessage protocolMessage) throws PEException {
 		// TODO actually implement this method to return the correct
 		// response packets
-		ctx.channel().write(new MyErrorResponse());
+		ctx.channel().writeAndFlush(new MyErrorResponse());
 	}
 
 	@Override
