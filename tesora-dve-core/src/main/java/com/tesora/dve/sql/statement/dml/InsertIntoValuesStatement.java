@@ -32,11 +32,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.TransformException;
-import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
@@ -341,12 +339,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 					requiresReferenceTimestamp);
 				
 			} else {
-				StringBuilder prefixBuf = new StringBuilder();
-				StringBuilder suffixBuf = new StringBuilder();
-                Singletons.require(HostService.class).getDBNative().getEmitter().emitInsertPrefix(pc, this, prefixBuf);
-                Singletons.require(HostService.class).getDBNative().getEmitter().emitInsertSuffix(pc, this, suffixBuf);
-				
-				LateSortedInsert lsi = new LateSortedInsert(intoTI.getAbstractTable().asTable(),parts,prefixBuf.toString(),suffixBuf.toString(),getKeyOpType(),getSingleGroup(pc));
+				final LateSortedInsert lsi = new LateSortedInsert(this, parts);
 				pc.getValueManager().registerLateSortedInsert(lsi);
 				if (!pc.getOptions().isPrepare())
 					pc.getValueManager().handleLateSortedInsert(pc);

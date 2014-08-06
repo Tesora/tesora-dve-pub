@@ -87,7 +87,7 @@ public class GroupManager {
 			Connection con = DriverManager.getConnection(url,userId,password);
 			try {
 				Statement stmt = con.createStatement();
-				ResultSet rs = stmt.executeQuery("select value from " + database + ".config where name = '" + VariableConstants.GROUP_SERVICE_NAME + "'");
+				ResultSet rs = stmt.executeQuery("select value from " + database + ".varconfig where name = '" + VariableConstants.GROUP_SERVICE_NAME + "'");
 				while(rs.next())
 					groupServicesType = rs.getString("value");
 				stmt.close();

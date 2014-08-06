@@ -68,6 +68,7 @@ import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
+import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.SchemaMapper;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
@@ -352,10 +353,13 @@ public class UpdateRewriteTransformFactory extends TransformFactory {
 		 */
 		updateStmtCopy = CopyVisitor.copy(us);
 		ListSet<ExpressionNode> projs = new ListSet<ExpressionNode>();
-
+		Set<ColumnKey> projsColKeys = new HashSet<ColumnKey>();
+		
 		// we need all of the columns on the base table + all columns that are needed for rhs exprs
 		for(PEColumn c : updateTable.getColumns(sc)) {
-			projs.add(new ColumnInstance(c,btk.toInstance()));
+			ColumnInstance ci = new ColumnInstance(c,btk.toInstance());
+			projs.add(ci);
+			projsColKeys.add(new ColumnKey(ci));
 		}
 		// add in any columns which are needed by the update exprs which aren't in the update table
 		ListOfPairs<Integer,RHSUpdateState> updateOffsets = new ListOfPairs<Integer,RHSUpdateState>();
@@ -365,12 +369,18 @@ public class UpdateRewriteTransformFactory extends TransformFactory {
 			} else {
 				updateOffsets.add(uex.getFirst().getPEColumn().getPosition(), new RHSUpdateState(projs.size()));
 				projs.add(uex.getSecond());
+				projsColKeys.add(uex.getFirst());
 			}
-		}		
+		}
+		for (ColumnInstance ci : ColumnInstanceCollector.getColumnInstances(updateStmtCopy.getWhereClause())) {
+			ColumnKey ck = new ColumnKey(ci);
+			if (!projsColKeys.contains(ck))
+				projs.add(ci);
+		}
 
 		SelectStatement select = new SelectStatement(new AliasInformation())
 				.setTables(updateStmtCopy.getTables())
-			.setProjection(projs)
+				.setProjection(projs)
 				.setWhereClause(updateStmtCopy.getWhereClause());
 		select.setOrderBy(updateStmtCopy.getOrderBys());
 		select.setLimit(updateStmtCopy.getLimit());
@@ -440,6 +450,8 @@ public class UpdateRewriteTransformFactory extends TransformFactory {
 		}
 		tempTableUpdate.setUpdateExpressions(tempTableUpdateExpressions);
 
+		tempTableUpdate.setWhereClause(tempSelect.getMapper().copyForward(updateStmtCopy.getWhereClause()));
+		
 		tempTableUpdate.getDerivedInfo().addLocalTable(tti.getTableKey());
 		FeatureStep tempTableUpdateStep =
 				buildPlan(tempTableUpdate,pc,DefaultFeaturePlannerFilter.INSTANCE);

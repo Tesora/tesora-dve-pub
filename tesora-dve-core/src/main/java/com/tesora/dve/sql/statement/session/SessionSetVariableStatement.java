@@ -111,7 +111,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		for(SetExpression se : sets) {
 			if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION) {
 				SetTransactionIsolationExpression stie = (SetTransactionIsolationExpression) se;
-				assertPrivilege(pc,vm.lookup("tx_isolation", true),stie.getScope());
+				assertPrivilege(pc,vm.lookupMustExist(VariableConstants.TRANSACTION_ISOLATION_LEVEL_NAME),stie.getScope());
 				handleSetTransactionIsolation(pc, stie,es);
 			} else {
 				SetVariableExpression sve = (SetVariableExpression) se;
@@ -127,7 +127,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 						throw new PEException("Illegal set expression, multiple values");
 					}
 					if (vi.getScope().getKind() != VariableScopeKind.USER && vi.getScope().getKind() != VariableScopeKind.SCOPED) {
-						assertPrivilege(pc,vm.lookup(vi.getVariableName().getUnquotedName().get(), true),vi.getScope());
+						assertPrivilege(pc,vm.lookupMustExist(vi.getVariableName().getUnquotedName().get()),vi.getScope());
 					}
 
 					if (variableName.equalsIgnoreCase(VariableConstants.SLOW_QUERY_LOG_NAME)

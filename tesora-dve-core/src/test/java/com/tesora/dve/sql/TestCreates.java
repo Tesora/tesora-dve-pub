@@ -1006,4 +1006,24 @@ public class TestCreates extends SchemaTest {
 				br(nr, "dve1496", "CREATE TABLE `dve1496` (\n  `a` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
 		rootConnection.execute("alter table dve1496 change `a` `a` varchar(255) character set utf8mb4 collate utf8mb4_unicode_ci DEFAULT NULL");
 	}
+
+	@Ignore
+	@Test
+	public void testPE736() throws Throwable {
+		rootConnection.execute("CREATE TABLE `t1` (`a` int(11) DEFAULT '10' )");
+		rootConnection.assertResults("show create table t1",
+				br(nr, "t1", "CREATE TABLE `t1` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+
+		rootConnection.execute("CREATE TABLE `t2` (`a` int(11) DEFAULT 10 )");
+		rootConnection.assertResults("show create table t2",
+				br(nr, "t2", "CREATE TABLE `t2` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+
+		rootConnection.execute("CREATE TABLE `t3` (`a` double DEFAULT 10.0 )");
+		rootConnection.assertResults("show create table t3",
+				br(nr, "t3", "CREATE TABLE `t3` (\n  `a` double DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+
+		rootConnection.execute("CREATE TABLE `t4` (`a` double DEFAULT 10.5 )");
+		rootConnection.assertResults("show create table t4",
+				br(nr, "t4", "CREATE TABLE `t4` (\n  `a` double DEFAULT '10.5'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+	}
 }

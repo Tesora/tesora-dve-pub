@@ -22,6 +22,7 @@ package com.tesora.dve.variables;
  */
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.connectionmanager.SSConnection;
 
 public class UserVariableAccessor extends AbstractVariableAccessor {
 
@@ -40,6 +41,9 @@ public class UserVariableAccessor extends AbstractVariableAccessor {
 	@Override
 	public void setValue(VariableStoreSource conn, String v) throws Throwable {
 		conn.getUserVariableStore().setValue(name, v);
+		if (conn instanceof SSConnection) {
+			((SSConnection)conn).updateWorkerState();
+		}
 	}
 
 	@Override

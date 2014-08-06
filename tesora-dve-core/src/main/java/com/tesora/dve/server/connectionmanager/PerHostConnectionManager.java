@@ -49,7 +49,7 @@ public enum PerHostConnectionManager {
 	ConcurrentMap<Integer, ConnectionInfo> connectionInfoMap = new ConcurrentHashMap<Integer, ConnectionInfo>();
 	
 	void registerConnection(int connectionId, SSConnection ssCon) {
-		connectionIdMap.put(connectionId, ssCon);
+        connectionIdMap.put(connectionId, ssCon);
 		connectionInfoMap.put(connectionId, new ConnectionInfo(connectionId, "user"));
 		incrementCounters();
 	}
@@ -191,7 +191,7 @@ public enum PerHostConnectionManager {
 	}
 
 	public void registerSiteConnection(int connId, StorageSite site, int siteConnId) {
-		if (connectionInfoMap.containsKey(connId)) {
+        if (connectionInfoMap.containsKey(connId)) {
 			ConnectionInfo connectionInfo = connectionInfoMap.get(connId);
 			connectionInfo.registerSiteConnection(site, siteConnId);
 		}

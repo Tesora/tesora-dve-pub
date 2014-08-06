@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
@@ -94,15 +95,23 @@ public class PEQueryVariablesStatement extends DDLStatement {
 		columns.add(new TempColumn(pc,new UnqualifiedName("variable_name"),BasicType.buildType(java.sql.Types.VARCHAR,64, dbn)));
 		columns.add(new TempColumn(pc,new UnqualifiedName("variable_value"),BasicType.buildType(java.sql.Types.VARCHAR,1024,dbn)));
 		// crap, we need a database, any database, if the current database doesn't exist
+		// well, almost any database - we need one that is not in information_schema.
 		PEDatabase cdb = getDatabase(pc);
+		UserDatabase udb = null;
 		if (cdb == null) {
 			List<UserDatabase> udbs = pc.getCatalog().findAllUserDatabases();
-			if (udbs.isEmpty())
+			for(UserDatabase db : udbs) {
+				if (!db.getName().toUpperCase().equals(PEConstants.INFORMATION_SCHEMA_DBNAME)) {
+					udb = db;
+					break;
+				}
+			}
+			if (udb == null)
 				throw new PEException("No database present");
-			cdb = PEDatabase.load(udbs.get(0), pc);
+			cdb = PEDatabase.load(udb, pc);
 		}
 		TempTable tt = TempTable.buildAdHoc(pc, cdb, columns, DistributionVector.Model.BROADCAST, Collections.<PEColumn> emptyList(), aggSite, false);
-		es.append(new CreateTempTableExecutionStep(getDatabase(pc),aggSite,tt));
+		es.append(new CreateTempTableExecutionStep(cdb,aggSite,tt));
 		List<List<String>> rawValues = pc.getConnection().getVariables(scope);
 		final TableInstance ti = new TempTableInstance(pc,tt,new UnqualifiedName("tt"));
 		List<ExpressionNode> colspec = Functional.apply(columns,new UnaryFunction<ExpressionNode,PEColumn>() {

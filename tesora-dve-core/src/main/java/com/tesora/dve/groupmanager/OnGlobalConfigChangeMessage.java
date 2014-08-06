@@ -53,7 +53,7 @@ public class OnGlobalConfigChangeMessage extends GroupMessage {
 	@Override
 	void execute(HostService hostService) {
 		try {
-			VariableHandler handler = Singletons.require(HostService.class).getVariableManager().lookup(variableName, false);
+			VariableHandler handler = Singletons.require(HostService.class).getVariableManager().lookup(variableName);
 			if (handler == null) {
 				if (newVariable)
 					handler = Singletons.require(HostService.class).getVariableManager().postInitializationAddVariable(variableName);

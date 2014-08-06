@@ -155,14 +155,15 @@ public class LoadDataRequestExecutor {
 		if (connMgr.getReplicationOptions().connectionFromReplicationSlave()) {
 			return;
 		}
-		
-		// if local flag is not set then the file is on the machine PE is on so make sure we can read it
+
+        //It's counter intuitive, but local means the file is local to the calling client (IE, mysqlimport), not local the database (mysqld, dve).
 		if (stmt.isLocal()) {
-			// check the client capabiilities flag to see if local is supported by the client
+			// check the client capabilities flag to see if it supports loading client local files.
 			if (!connMgr.getClientCapabilities().allowLocalInfile()) {
 				throw new PEException("The client does not support the LOCAL option.");
 			}
 		} else {
+            //check if the sepcified filename exists on this server.
 			try {
 				Path p1 = Paths.get(stmt.getFileName());
 				boolean exists = Files.exists(p1);

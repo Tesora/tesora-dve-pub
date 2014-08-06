@@ -64,15 +64,13 @@ public class MysqlLoadDataInfileRequestCollector {
 	}
 
 	public void sendStartDataRequest() {
-		ctx.write(new MyLoadDataResponse(getFileName())
+		ctx.writeAndFlush(new MyLoadDataResponse(getFileName())
 				.withPacketNumber(sequenceId + 1));
-		ctx.flush();
 	}
 
 	public void sendError(Exception e) {
 		MyMessage respMsg = new MyErrorResponse(e);
 		respMsg.setPacketNumber(++sequenceId);
-		ctx.write(respMsg);
-		ctx.flush();
+		ctx.writeAndFlush(respMsg);
 	}
 }

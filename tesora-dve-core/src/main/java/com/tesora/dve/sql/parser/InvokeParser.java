@@ -28,24 +28,25 @@ import java.util.Collections;
 import java.util.List;
 
 import org.antlr.runtime.ANTLRStringStream;
+import org.antlr.runtime.RecognitionException;
 import org.antlr.runtime.TokenRewriteStream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.sql.parser.PE;
-import com.tesora.dve.sql.parser.sql2003Lexer;
 import com.tesora.dve.common.PECharsetUtils;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.ParserException;
+import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.PlannerStatisticType;
 import com.tesora.dve.sql.PlannerStatistics;
-import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CandidateCachedPlan;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils.PlanCacheCallback;
+import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.CacheableStatement;
 import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
@@ -188,6 +189,17 @@ public class InvokeParser {
 			}	
 		}
 		return new Pair<TranslatorUtils, List<Statement>>(utils, stmts);
+	}
+
+	public static Type parseType(final SchemaContext pc, final ParserOptions opts, final String typeDescriptor) {
+		final InputState icmd = buildInputState(typeDescriptor, pc);
+		final TranslatorUtils utils = new TranslatorUtils(opts, pc, icmd);
+		final PE parser = buildParser(icmd, utils);
+		try {
+			return parser.type_description().type;
+		} catch (final RecognitionException e) {
+			throw new PECodingException("Could not parse the type descriptor: '" + typeDescriptor + "'", e);
+		}
 	}
 
 	@SuppressWarnings("unchecked")

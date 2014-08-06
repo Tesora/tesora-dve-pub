@@ -21,6 +21,7 @@ package com.tesora.dve.db.mysql.portal;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
 import com.tesora.dve.db.mysql.portal.protocol.MSPProtocolDecoder;
 import com.tesora.dve.server.global.HostService;
@@ -74,43 +75,40 @@ public class MySqlPortal implements MySqlPortalService {
 		InternalLoggerFactory.setDefaultFactory(new Log4JLoggerFactory());
 
 		int max_concurrent = KnownVariables.MAX_CONCURRENT.getValue(null).intValue();
-/*
-		CatalogDAO catalog = CatalogDAOFactory.newInstance();
-		try {
-            max_concurrent = Integer.parseInt(Singletons.require(HostService.class).getGlobalVariable(catalog, "max_concurrent"));
-		} catch (NumberFormatException e) {
-			throw new PEException("Unable to parse config setting 'max_concurrent' as integer", e);
-		} finally {
-			catalog.close();
-		}
-*/
+
+        //TODO: parse/plan is on this pool, which is probably ok, especially with blocking calls to catalog.  Check for responses that can be done by backend netty threads and avoid two context shifts.
+
 		clientExecutorService = new PEThreadPoolExecutor(max_concurrent,
 				max_concurrent,
 				30L, TimeUnit.SECONDS,
-				new LinkedBlockingQueue<Runnable>(),
+				new LinkedBlockingQueue<Runnable>(),  //The thread count limits concurrency here.  Using a bounded queue here would block netty threads (very bad), so this pool could be overrun by 'bad' clients that pipeline. -sgossard
 				new PEDefaultThreadFactory("msp-client"));
 		clientExecutorService.allowCoreThreadTimeOut(true);
 		
 		bossGroup = new NioEventLoopGroup(1, new PEDefaultThreadFactory("msp-boss"));
-		workerGroup = new NioEventLoopGroup(0, new PEDefaultThreadFactory("msp-worker"));
+
+        //fixes the number of Netty NIO threads to the number of available CPUs.
+        workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors(), new PEDefaultThreadFactory("netty-worker"));
+
 		ServerBootstrap b = new ServerBootstrap();
 		try {
 			b.group(bossGroup, workerGroup)
 			.channel(NioServerSocketChannel.class)
 			.childHandler(new ChannelInitializer<SocketChannel>() {
 
-				@Override
-				protected void initChannel(SocketChannel ch) throws Exception {
+                @Override
+                protected void initChannel(SocketChannel ch) throws Exception {
                     if (PACKET_LOGGER)
                         ch.pipeline().addFirst(new LoggingHandler(LogLevel.INFO));
-					ch.pipeline()
-					.addLast(MSPEncoder.getInstance())
-                    .addLast(MSPProtocolDecoder.class.getSimpleName(), new MSPProtocolDecoder(MSPProtocolDecoder.MyDecoderState.READ_CLIENT_AUTH))
-					.addLast(new MSPAuthenticateHandlerV10())
-                    .addLast(MSPCommandHandler.class.getSimpleName(), new MSPCommandHandler(clientExecutorService))
-					.addLast(ConnectionHandlerAdapter.getInstance());
-				}
-			})
+                    ch.pipeline()
+                            .addLast(MSPEncoder.getInstance())
+                            .addLast(MSPProtocolDecoder.class.getSimpleName(), new MSPProtocolDecoder(MSPProtocolDecoder.MyDecoderState.READ_CLIENT_AUTH))
+                            .addLast(new MSPAuthenticateHandlerV10())
+                            .addLast(MSPCommandHandler.class.getSimpleName(), new MSPCommandHandler(clientExecutorService))
+                            .addLast(ConnectionHandlerAdapter.getInstance());
+                }
+            })
+                    
 			.childOption(ChannelOption.ALLOCATOR, USE_POOLED_BUFFERS ? PooledByteBufAllocator.DEFAULT : UnpooledByteBufAllocator.DEFAULT)
 			.childOption(ChannelOption.TCP_NODELAY, true)
 			.childOption(ChannelOption.SO_KEEPALIVE, true)

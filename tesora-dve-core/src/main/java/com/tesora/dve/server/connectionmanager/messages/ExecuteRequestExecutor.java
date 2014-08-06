@@ -49,7 +49,7 @@ public class ExecuteRequestExecutor {
 		long stepStartTime = System.currentTimeMillis();
 		long totalUpdateCount = 0;		
 		InputState continuationState = null;
-		
+
 		do {
 			Pair<QueryPlan,InputState> results = null;
 			if (continuationState == null)

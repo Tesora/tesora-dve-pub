@@ -25,6 +25,7 @@ import java.sql.ParameterMetaData;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -35,15 +36,12 @@ import com.tesora.dve.charset.mysql.MysqlNativeCollationCatalog;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserColumn;
-import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ColumnAttribute;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -363,18 +361,7 @@ public class MysqlNative extends DBNative {
 		return buf.toString();
 	}
 
-	@Override
-	public void postConnect(DBConnection conn, String siteName) throws PESQLException {
-		try {
-			conn.execute(new SQLCommand("set @" + DVE_SITENAME_VAR + "='" + siteName + "',character_set_connection='" + MysqlNativeConstants.DB_CHAR_SET
-						+ "', character_set_client='" + MysqlNativeConstants.DB_CHAR_SET + "', character_set_results='" + MysqlNativeConstants.DB_CHAR_SET + "'"),
-						DBEmptyTextResultConsumer.INSTANCE);
-		} catch (Exception e) {
-			throw new PESQLException(e);
-		}
-	}
-
-	@Override
+    @Override
 	public String getEmptyCatalogName() {
 		return "mysql";
 	}

@@ -82,8 +82,7 @@ public class MSPAuthenticateV10Message extends MSPActionBase {
 			mysqlResp.setPacketNumber(sequenceId + 1);
 		}
 		
-		ctx.write(mysqlResp);
-		ctx.flush();
+		ctx.writeAndFlush(mysqlResp);
 	}
 
 	@Override

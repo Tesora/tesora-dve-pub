@@ -29,8 +29,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.collections.ListUtils;
+
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
@@ -40,38 +43,40 @@ import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepFilterOperation.OperationFilter;
 import com.tesora.dve.queryplan.QueryStepOperation;
-import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
-import com.tesora.dve.sql.node.expression.Wildcard;
-import com.tesora.dve.sql.node.structural.FromTableReference;
+import com.tesora.dve.sql.parser.InvokeParser;
+import com.tesora.dve.sql.parser.ParserOptions;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.schema.PEStorageGroup;
+import com.tesora.dve.sql.schema.PEDatabase;
+import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.TableComponent;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
+import com.tesora.dve.sql.schema.modifiers.TableModifier;
+import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.ddl.alter.AlterTableAction;
 import com.tesora.dve.sql.statement.ddl.alter.AlterTableAction.ClonableAlterTableAction;
 import com.tesora.dve.sql.statement.ddl.alter.ConvertToAction;
-import com.tesora.dve.sql.statement.dml.AliasInformation;
-import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.FilterExecutionStep;
+import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
 import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
 import com.tesora.dve.sql.util.Functional;
@@ -298,45 +303,55 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 
 	private static class ComplexAlterTableActionCallback extends NestedOperationDDLCallback {
 
-		private static class ResultMetadataFilter implements OperationFilter {
+		private static class ColumnTypeMetadataCollector implements OperationFilter {
 
-			private final Map<String, ColumnMetadata> columnMetadata;
+			private final PETable forTable;
+			private final Map<String, Type> columnMetadata;
 
-			protected ResultMetadataFilter(final Map<String, ColumnMetadata> metadataContainer) {
-				if (metadataContainer == null) {
-					throw new NullPointerException("Must specify a container for the metadata.");
+			protected ColumnTypeMetadataCollector(final PETable forTable, final Map<String, Type> metadataContainer) {
+				if (forTable == null) {
+					throw new PECodingException("Must provide the source table.");
+				} else if (metadataContainer == null) {
+					throw new PECodingException("Must provide a container for the metadata.");
 				}
+
+				this.forTable = forTable;
 				this.columnMetadata = metadataContainer;
+			}
+
+			public FilterExecutionStep getCollectorExecutionStep(final SchemaContext sc) throws PEException {
+				return new FilterExecutionStep(ProjectingExecutionStep.build(null, this.forTable.getStorageGroup(sc), this.buildSQL()), this);
+			}
+
+			private String buildSQL() {
+				return "SHOW COLUMNS IN " + this.forTable.getName().getSQL() + "";
 			}
 
 			@Override
 			public void filter(SSConnection ssCon, ColumnSet columnSet, List<ArrayList<String>> rowData, DBResultConsumer results) throws Throwable {
-				if (results instanceof MysqlTextResultCollector) {
-					final MysqlTextResultCollector metadataCollector = (MysqlTextResultCollector) results;
-					for (final ColumnMetadata column : metadataCollector.getColumnSet().getColumnList()) {
-						this.columnMetadata.put(column.getName(), column);
-					}
-
-					return;
+				for (final List<String> row : rowData) {
+					final String columnName = row.get(0);
+					final ParserOptions options = ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly().setActualLiterals();
+					final Type columnType = InvokeParser.parseType(null, options, row.get(1));
+					this.columnMetadata.put(columnName, columnType);
 				}
-				
-				throw new PECodingException("A result collector of type 'MysqlTextResultCollector' is required.");
 			}
 
 			@Override
 			public String describe() {
-				return "ResultMetadataFilter";
+				return "ColumnTypeMetadataCollector";
 			}
 		}
 
 		private final PETable alterTarget;
 		private final ClonableAlterTableAction alterAction;
 		private final List<QueryStep> plan = new ArrayList<QueryStep>();
-		private final Map<String, ColumnMetadata> metadata;
+		private final Map<String, Type> metadata;
 
 		private PEAlterTableStatement alterTargetTableStatement;
 
-		protected ComplexAlterTableActionCallback(final PETable target, final ClonableAlterTableAction action, final Map<String, ColumnMetadata> metadataContainer) {
+		protected ComplexAlterTableActionCallback(final PETable target, final ClonableAlterTableAction action,
+				final Map<String, Type> metadataContainer) {
 			this.alterTarget = target;
 			this.alterAction = action;
 			this.metadata = metadataContainer;
@@ -347,33 +362,55 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			final SchemaContext sc = SchemaContext.createContext(conn);
 			sc.forceMutableSource();
 
+			/*
+			 * Build a sample table on which we then perform a trial conversion
+			 * to get the resultant column types.
+			 */
 			final PETable sampleTarget = this.alterTarget.recreate(sc, this.alterTarget.getDeclaration(), new LockInfo(
 					com.tesora.dve.lockmanager.LockType.RSHARED, "transient alter table statement"));
-			sampleTarget.setName(new UnqualifiedName(UserTable.getNewTempTableName()));
-			sampleTarget.setDeclaration(sc, sampleTarget);
 
-			final TableInstance targetTableInstance = new TableInstance(sampleTarget, sampleTarget.getName(), null, true);
+			final PEDatabase sampleTargetDatabase = sampleTarget.getPEDatabase(sc);
+			final List<TableModifier> sampleTargetModifiers = new ArrayList<TableModifier>();
+			for (final TableModifier entry : sampleTarget.getModifiers().getModifiers()) {
+				if (entry != null) {
+					sampleTargetModifiers.add(entry);
+				}
+			}
+			final List<TableComponent<?>> sampleTargetFieldsAndKeys = ListUtils.union(sampleTarget.getColumns(sc), sampleTarget.getKeys(sc));
+			final QualifiedName sampleTargetName = new QualifiedName(
+					sampleTargetDatabase.getName().getUnqualified(),
+					new UnqualifiedName(UserTable.getNewTempTableName())
+					);
 
-			final PECreateTableStatement createSampleTable = new PECreateTableStatement(sampleTarget, false);
+			final PEPersistentGroup sg = buildOneSiteGroup(sc, false);
+
+			/*
+			 * Make sure the actual sample gets created as a TEMPORARY table in
+			 * the user database so that it always gets removed.
+			 */
+			final ComplexPETable temporarySampleTarget = new ComplexPETable(sc,
+					sampleTargetName, sampleTargetFieldsAndKeys,
+					sampleTarget.getDistributionVector(sc), sampleTargetModifiers,
+					sg, sampleTargetDatabase, TableState.SHARED);
+			temporarySampleTarget.withTemporaryTable(sc);
+
+			final TableInstance targetTableInstance = new TableInstance(temporarySampleTarget, temporarySampleTarget.getName(), null, true);
+
+			final PECreateTableStatement createSampleTable = new PECreateTableStatement(temporarySampleTarget, false);
 
 			final PEAlterTableStatement alterSampleTable =
 					new PEAlterTableStatement(sc, targetTableInstance.getTableKey(), Collections.singletonList(this.alterAction.makeTransientOnlyClone()));
-			
-			final SelectStatement selectSampleTableMetadata = new SelectStatement(Collections.singletonList(new FromTableReference(targetTableInstance)),
-					Collections.<ExpressionNode> singletonList(new Wildcard(null)), null, null, null, null, null, null, null, null, new AliasInformation(),
-					null);
+
+			final ColumnTypeMetadataCollector metadataFilter = new ColumnTypeMetadataCollector(temporarySampleTarget, this.metadata);
 
 			final PEDropTableStatement dropSampleTable = new PEDropTableStatement(sc, Collections.singletonList(targetTableInstance.getTableKey()), Collections.<Name> emptyList(), true, 
 					targetTableInstance.getTableKey().isUserlandTemporaryTable());
 
 			final ExecutionSequence es = new ExecutionSequence(null);
-
-			final PEStorageGroup sg = buildOneSiteGroup(sc, false);
-
+			
 			es.append(new SessionExecutionStep(null, sg, createSampleTable.getSQL(sc)));
 			es.append(new SessionExecutionStep(null, sg, alterSampleTable.getSQL(sc)));
-			es.append(new FilterExecutionStep(new SessionExecutionStep(null, sg, selectSampleTableMetadata.getSQL(sc)),
-					new ResultMetadataFilter(this.metadata)));
+			es.append(metadataFilter.getCollectorExecutionStep(sc));
 			es.append(new SessionExecutionStep(null, sg, dropSampleTable.getSQL(sc)));
 
 			es.schedule(null, this.plan, null, sc);
@@ -397,7 +434,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 
 		@Override
 		public boolean canRetry(Throwable t) {
-			return true;
+			return false;
 		}
 
 		@Override

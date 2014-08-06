@@ -456,7 +456,7 @@ public final class TempTable extends PETable {
 	@Override
 	protected UserTable createEmptyNew(SchemaContext pc) throws PEException {
 		String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, this);
-		UserDatabase pdb = getPEDatabase(pc).persistTree(pc); 
+		UserDatabase pdb = (getPEDatabase(pc) != null ? getPEDatabase(pc).persistTree(pc) : null);
 		DistributionModel dm = getDistributionVector(pc).persistTree(pc);
 		UserTable ut = pc.getCatalog().createTempTable(pdb, persistName, dm);
 		pc.getSaveContext().add(this,ut);

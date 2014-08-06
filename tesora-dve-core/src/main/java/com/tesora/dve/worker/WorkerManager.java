@@ -30,6 +30,7 @@ import java.util.Set;
 
 import com.tesora.dve.server.connectionmanager.log.ShutdownLog;
 import com.tesora.dve.worker.agent.Agent;
+import io.netty.channel.EventLoopGroup;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.RemoteException;
@@ -69,8 +70,8 @@ public class WorkerManager extends Agent {
 		}
 	}
 
-	public Worker getWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PEException {
-		Worker theWorker = site.createWorker(auth, additionalConnInfo);
+	public Worker getWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
+		Worker theWorker = site.createWorker(auth, additionalConnInfo, preferredEventLoop);
 		activeWorkers.add(theWorker);
 		return theWorker;
 	}
@@ -111,11 +112,11 @@ public class WorkerManager extends Agent {
 	}
 
 	public Map<StorageSite, Worker> getWorkerMap(UserAuthentication auth,
-			AdditionalConnectionInfo additionalConnInfo, Collection<? extends StorageSite> storageSites) throws PEException {
+			AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop, Collection<? extends StorageSite> storageSites) throws PEException {
 		Map<StorageSite, Worker> workerMap = new HashMap<StorageSite, Worker>();
 		
 		for (StorageSite site : storageSites) {
-			workerMap.put(site, getWorker(auth, additionalConnInfo, site));
+			workerMap.put(site, getWorker(auth, additionalConnInfo, site, preferredEventLoop));
 		}
 		return workerMap;
 	}

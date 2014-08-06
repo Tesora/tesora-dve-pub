@@ -121,7 +121,7 @@ public class VariableTest extends PETest {
 
 	@Test(expected = PENotFoundException.class)
 	public void globalVariableNotExistsTest() throws PEException {
-		Singletons.require(HostService.class).getVariableManager().lookup("no-such-variable", true);
+		Singletons.require(HostService.class).getVariableManager().lookupMustExist("no-such-variable");
 	}
 
 	@Test
@@ -326,7 +326,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void setGroupConcatMaxLen() throws Throwable {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
-		VariableHandler<Long> var = (VariableHandler<Long>) vm.lookup("group_concat_max_len", true); 
+		VariableHandler<Long> var = (VariableHandler<Long>) vm.lookupMustExist("group_concat_max_len"); 
 		assertEquals(new Long(1024), var.getSessionValue(ssConnection));
 		var.setSessionValue(ssConnection, "5");
 		assertEquals(new Long(5), var.getSessionValue(ssConnection)); 

@@ -1289,7 +1289,15 @@ used with JMX monitors.
            eternal="true"
            overflowToDisk="false"
            memoryStoreEvictionPolicy="LFU"
-            statistics="true"
-            />
+           statistics="true"
+           />
+            
+	<cache name="com.tesora.dve.common.catalog.TemporaryTable"
+           maxElementsInMemory="1000"
+           eternal="true"
+           overflowToDisk="false"
+           memoryStoreEvictionPolicy="LFU"
+           statistics="true"
+           />
             
 </ehcache>

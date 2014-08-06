@@ -21,7 +21,12 @@ package com.tesora.dve.variables;
  * #L%
  */
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 
 public class LocalVariableStore extends AbstractVariableStore {
 
@@ -59,6 +64,17 @@ public class LocalVariableStore extends AbstractVariableStore {
 	public <Type> void addVariable(VariableHandler<Type> vh, Type t) {
 		// for the local store, add is just like set
 		setValue(vh,t);
+	}
+	
+	public Map<String,String> getView() {
+		HashMap<String,String> out = new HashMap<String,String>();
+		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		for(VariableHandler vh : vm.getSessionHandlers()) {
+			// specifically those that are passthrough (only)
+			if (vh.getOptions().contains(VariableOption.PASSTHROUGH))
+				out.put(vh.getName(),vh.toExternal(getValue(vh)));
+		}
+		return out;
 	}
 	
 }

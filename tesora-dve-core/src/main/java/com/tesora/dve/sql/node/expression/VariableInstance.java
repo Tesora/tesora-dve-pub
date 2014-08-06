@@ -73,7 +73,7 @@ public class VariableInstance extends ExpressionNode {
 			return new UserVariableAccessor(variableName.get());
 		else try {
 			VariableManager vm = Singletons.require(HostService.class).getVariableManager();
-			return new VariableAccessor(vm.lookup(variableName.get(), true),
+			return new VariableAccessor(vm.lookupMustExist(variableName.get()),
 					getScope());
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.PLANNER, pe);

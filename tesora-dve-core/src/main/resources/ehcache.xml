@@ -1282,5 +1282,13 @@ used with JMX monitors.
            memoryStoreEvictionPolicy="LFU"
             statistics="true"
             />
+    
+    <cache name="com.tesora.dve.common.catalog.TemporaryTable"
+           maxElementsInMemory="1000"
+           eternal="true"
+           overflowToDisk="false"
+           memoryStoreEvictionPolicy="LFU"
+            statistics="true"
+            />
             
 </ehcache>

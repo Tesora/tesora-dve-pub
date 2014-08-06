@@ -87,14 +87,17 @@ public class VariableManager {
 		return Functional.toList(handlers.values());
 	}
 	
-	public VariableHandler<?> lookup(String name, boolean except) throws PEException {
+	public VariableHandler<?> lookupMustExist(String name) throws PEException {
 		VariableHandler<?> vh = handlers.get(normalize(name));
-		if (vh == null && except)
+		if (vh == null)
 			throw new PENotFoundException(String.format("No such variable: '%s'", name));
-		return vh;
-		
+		return vh;		
 	}
-		
+	
+	public VariableHandler<?> lookup(String name) {
+		return handlers.get(normalize(name));
+	}
+	
 	public void initializeDynamicMBeanHandlers(VariableHandlerDynamicMBean mbean) throws PEException {
 		if (mbean != null) {
 			for(VariableHandler<?> vh : getGlobalHandlers()) {

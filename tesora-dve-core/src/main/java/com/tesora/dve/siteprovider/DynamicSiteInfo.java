@@ -24,6 +24,7 @@ package com.tesora.dve.siteprovider;
 import java.util.Comparator;
 import java.util.Map;
 
+import io.netty.channel.EventLoopGroup;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.ShowSchema;
@@ -155,10 +156,10 @@ public class DynamicSiteInfo extends AbstractDynamicSiteInfo implements StorageS
 	private static SingleDirectWorker.Factory factory = new SingleDirectWorker.Factory();
 
 	@Override
-	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo) throws PEException {
+	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {
 		// For dynamic sites we will use the site credentials rather than the
 		// ones passed in
-		return factory.newWorker(siteAuth, additionalConnInfo, this);
+		return factory.newWorker(siteAuth, additionalConnInfo, this, preferredEventLoop);
 	}
 
 	@Override

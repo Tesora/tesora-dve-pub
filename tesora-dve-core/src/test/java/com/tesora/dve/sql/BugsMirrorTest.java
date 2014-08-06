@@ -22,9 +22,12 @@ package com.tesora.dve.sql;
  */
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -351,6 +354,131 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 				+ "left outer join pe1500b fr18 on this_.id=fr18.wri "
 				+ "left outer join pe1500c wr25 on this_.id=wr25.wri "
 				+ "where (this_.id in (5567))"));
+
+		runTest(tests);
+	}
+	
+	@Test
+	public void testPE1511() throws Throwable {
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_large"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_bin"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_utf8"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS search_api_db_product_display_text"));
+
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511 (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci)"));
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_large (value1 VARCHAR(32000), value2 TEXT, value3 VARCHAR(1000), value4 VARCHAR(32000)) CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_bin (value1 VARCHAR(256), value2 TEXT) CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_utf8 (value1 VARCHAR(256), value2 TEXT)"));
+		tests.add(new StatementMirrorProc("CREATE TABLE search_api_db_product_display_text ("
+				+ "`item_id` BIGINT NOT NULL COMMENT 'The primary identifier of the item.',"
+				+ "`field_name` VARCHAR(255) NOT NULL COMMENT 'The name of the field in which the token appears, or an MD5 hash of the field.',"
+				+ "`word` VARCHAR(50) NOT NULL COMMENT 'The text of the indexed token.',"
+				+ "`score` INT unsigned NOT NULL DEFAULT 0 COMMENT 'The score associated with this token.',"
+				+ "PRIMARY KEY (`item_id`, `field_name`, `word`),"
+				+ "INDEX `word_field` (`word`(20), `field_name`)"
+				+ ") ENGINE = InnoDB DEFAULT CHARACTER SET utf8"));
+
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511 CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci"));
+		tests.addAll(buildAssertColumnTypeFun("pe1511", Arrays.asList("value1", "value2")));
+
+		/*
+		 * JDBC is throwing a "Column length too big..." exception.
+		 * 
+		 * I believe this is a bug in JDBC as according to the documentation
+		 * ALTER TABLE ... CONVERT TO ... should perform automatic type
+		 * conversion as necessary to ensure that the new column is long enough
+		 * to store as many characters as the original column. The statement
+		 * indeed runs in the native MySQL client performing the necessary
+		 * conversions.
+		 */
+		//		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_large CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci"));
+		//		tests.addAll(buildAssertColumnTypeFun("pe1511_large", Arrays.asList("value1", "value2", "value3", "value4")));
+		//		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_large CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		//		tests.addAll(buildAssertColumnTypeFun("pe1511_large", Arrays.asList("value1", "value2", "value3", "value4")));
+
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_utf8 CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		tests.addAll(buildAssertColumnTypeFun("pe1511_utf8", Arrays.asList("value1", "value2")));
+
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_bin CONVERT TO CHARACTER SET utf8 COLLATE utf8_bin"));
+		tests.addAll(buildAssertColumnTypeFun("pe1511_bin", Arrays.asList("value1", "value2")));
+
+		tests.add(new StatementMirrorProc("ALTER TABLE search_api_db_product_display_text CONVERT TO CHARACTER SET 'utf8' COLLATE 'utf8_bin'"));
+		tests.addAll(buildAssertColumnTypeFun("search_api_db_product_display_text", Arrays.asList("item_id", "field_name", "word", "score")));
+
+		runTest(tests);
+	}
+
+	private List<StatementMirrorFun> buildAssertColumnTypeFun(final String tableName, final List<String> columnNames) throws Throwable {
+		final List<StatementMirrorFun> tests = new ArrayList<StatementMirrorFun>();
+		for (final String column : columnNames) {
+			tests.add(new StatementMirrorFun(true, true,
+					"SELECT DISTINCT COLUMN_TYPE, CHARACTER_SET_NAME, COLLATION_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE (TABLE_NAME = '"
+							+ tableName + "' AND COLUMN_NAME = '" + column + "')"));
+		}
+
+		return tests;
+	}
+	
+	@Ignore
+	@Test
+	public void testPE1560() throws Throwable {
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS commerce_order"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS field_data_commerce_line_items"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS commerce_line_item"));
+		
+		tests.add(new StatementMirrorProc("CREATE TABLE `commerce_order` ("
+				+ "`order_id` int(10) unsigned NOT NULL,"
+				+ "`order_number` varchar(255) DEFAULT NULL,"
+				+ "`revision_id` int(10) unsigned DEFAULT NULL,"
+				+ "`type` varchar(255) NOT NULL DEFAULT '',"
+				+ "`uid` int(11) NOT NULL DEFAULT '0',"
+				+ "`mail` varchar(255) NOT NULL DEFAULT '',"
+				+ "`status` varchar(255) NOT NULL,"
+				+ "`created` int(11) NOT NULL DEFAULT '0',"
+				+ "`changed` int(11) NOT NULL DEFAULT '0',"
+				+ "`hostname` varchar(128) NOT NULL DEFAULT '',"
+				+ "`data` longblob,"
+				+ "PRIMARY KEY (`order_id`),"
+				+ "UNIQUE KEY `order_number` (`order_number`),"
+				+ "UNIQUE KEY `revision_id` (`revision_id`)"
+				+ ") DEFAULT CHARSET=utf8"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `field_data_commerce_line_items` ("
+				+ "`entity_type` varchar(128) NOT NULL DEFAULT '',"
+				+ "`bundle` varchar(128) NOT NULL DEFAULT '',"
+				+ "`deleted` tinyint(4) NOT NULL DEFAULT '0',"
+				+ "`entity_id` int(10) unsigned NOT NULL,"
+				+ "`revision_id` int(10) unsigned DEFAULT NULL,"
+				+ "`language` varchar(32) NOT NULL DEFAULT '',"
+				+ "`delta` int(10) unsigned NOT NULL,"
+				+ "`commerce_line_items_line_item_id` int(10) unsigned DEFAULT NULL,"
+				+ "PRIMARY KEY (`entity_type`,`entity_id`,`deleted`,`delta`,`language`)"
+				+ ") DEFAULT CHARSET=utf8"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `commerce_line_item` ("
+				+ "`line_item_id` int(10) unsigned NOT NULL,"
+				+ "`order_id` int(11) NOT NULL DEFAULT '0',"
+				+ "`type` varchar(255) NOT NULL DEFAULT '',"
+				+ "`line_item_label` varchar(255) NOT NULL,"
+				+ "`quantity` decimal(10,2) NOT NULL DEFAULT '0.00',"
+				+ "`created` int(11) NOT NULL DEFAULT '0',"
+				+ "`changed` int(11) NOT NULL DEFAULT '0',"
+				+ "`data` longblob,"
+				+ "PRIMARY KEY (`line_item_id`)"
+				+ ") DEFAULT CHARSET=utf8"));
+		
+		tests.add(new StatementMirrorProc("INSERT INTO `commerce_order` VALUES (1,'1',1,'commerce_order',4,'customer@example.com','cart',1404095055,1404095055,'127.0.0.1','a:0:{}'),(2,'2',8,'commerce_order',4,'customer@example.com','pending',1404095055,1404095055,'127.0.0.1','a:3:{s:14:\"payment_method\";s:66:\"commerce_payment_example|commerce_payment_commerce_payment_example\";s:24:\"commerce_payment_example\";a:1:{s:11:\"credit_card\";a:3:{s:6:\"number\";s:16:\"4111111111111111\";s:9:\"exp_month\";s:2:\"06\";s:8:\"exp_year\";s:4:\"2012\";}}s:43:\"commerce_payment_order_paid_in_full_invoked\";b:1;}'),(3,'3',15,'commerce_order',4,'customer@example.com','pending',1404095055,1404095055,'127.0.0.1','a:3:{s:14:\"payment_method\";s:66:\"commerce_payment_example|commerce_payment_commerce_payment_example\";s:24:\"commerce_payment_example\";a:1:{s:11:\"credit_card\";a:3:{s:6:\"number\";s:16:\"4111111111111111\";s:9:\"exp_month\";s:2:\"06\";s:8:\"exp_year\";s:4:\"2012\";}}s:43:\"commerce_payment_order_paid_in_full_invoked\";b:1;}')"));
+		tests.add(new StatementMirrorProc("INSERT INTO `field_data_commerce_line_items` VALUES ('commerce_order','commerce_order',0,1,1,'und',0,1),('commerce_order','commerce_order',0,1,1,'und',1,2),('commerce_order','commerce_order',0,2,8,'und',0,3),('commerce_order','commerce_order',0,2,8,'und',1,4),('commerce_order','commerce_order',0,2,8,'und',2,5),('commerce_order','commerce_order',0,2,8,'und',3,6),('commerce_order','commerce_order',0,2,8,'und',4,7),('commerce_order','commerce_order',0,3,15,'und',0,8),('commerce_order','commerce_order',0,3,15,'und',1,9),('commerce_order','commerce_order',0,3,15,'und',2,10)"));
+		tests.add(new StatementMirrorProc("INSERT INTO `commerce_line_item` VALUES (1,1,'product','SWT1-PNK-LG',1.00,1404095055,1404095055,'a:0:{}'),(2,1,'product','SWT1-GRY-SM',1.00,1404095055,1404095055,'a:0:{}'),(3,2,'product','SWT2-BLU-LG',1.00,1404095055,1404095055,'a:0:{}'),(4,2,'product','LAP1-BLK-13',1.00,1404095055,1404095055,'a:0:{}'),(5,2,'product','WTR-BLU-OS',1.00,1404095055,1404095055,'a:0:{}'),(6,2,'product','TOT1-GRN-OS',1.00,1404095055,1404095055,'a:0:{}'),(7,2,'product','SHO2-PRL-09',1.00,1404095055,1404095055,'a:0:{}'),(8,3,'product','LAP1-BLK-17',1.00,1404095055,1404095055,'a:0:{}'),(9,3,'product','LAP1-BLK-15',1.00,1404095055,1404095055,'a:0:{}'),(10,3,'product','MG2-YLW-OS',1.00,1404095055,1404095055,'a:0:{}')"));
+		
+		tests.add(new StatementMirrorFun("SELECT commerce_line_item_field_data_commerce_line_items.line_item_id AS commerce_line_item_field_data_commerce_line_items_line_item_"
+				+ " FROM commerce_order commerce_order"
+				+ " LEFT JOIN field_data_commerce_line_items field_data_commerce_line_items ON commerce_order.order_id = field_data_commerce_line_items.entity_id AND (field_data_commerce_line_items.entity_type = 'commerce_order' AND field_data_commerce_line_items.deleted = '0')"
+				+ " INNER JOIN commerce_line_item commerce_line_item_field_data_commerce_line_items ON field_data_commerce_line_items.commerce_line_items_line_item_id = commerce_line_item_field_data_commerce_line_items.line_item_id"
+				+ " WHERE (( (commerce_order.order_id = '0' ) )AND(( (commerce_line_item_field_data_commerce_line_items.type IN  ('product_discount', 'product')) )))AND (1 = 0) AND (1 = 0)"));
 
 		runTest(tests);
 	}

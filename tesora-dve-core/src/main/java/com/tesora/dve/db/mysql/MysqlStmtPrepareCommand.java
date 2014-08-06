@@ -21,6 +21,7 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
@@ -29,7 +30,6 @@ import java.nio.charset.Charset;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.exceptions.PEException;
 
 public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements MysqlCommandResultsProcessor {
@@ -46,7 +46,7 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 	private int numParams;
 
 	public MysqlStmtPrepareCommand(String sql,
-			MysqlPrepareParallelConsumer mysqlStatementPrepareConsumer, PEPromise<Boolean> promise) {
+			MysqlPrepareParallelConsumer mysqlStatementPrepareConsumer, CompletionHandle<Boolean> promise) {
 		super(promise);
 		this.sqlCommand = sql;
 		this.consumer = mysqlStatementPrepareConsumer;
@@ -60,11 +60,16 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
         ctx.write(prepStmt);
     }
 
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //NOOP.
+    }
+
 
     //this is a prepare response, which returns a ERR, or [PREPARE_OK, N*param defs, an EOF, M*column defs, final EOF]
 	@Override
 	public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-
+		
         try {
 			switch (state) {
                 case AWAIT_HEADER:
@@ -88,9 +93,9 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
                     MyErrorResponse error = (MyErrorResponse)message;
 					try {
 						consumer.errorResponse(ctx, error);
-						getPromise().failure( error.asException() );
+						getCompletionHandle().failure( error.asException() );
 					} catch (Exception e) {
-						getPromise().failure(e);
+						getCompletionHandle().failure(e);
 					} finally {
                         state = ResponseState.DONE;
                     }
@@ -103,14 +108,14 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
                     state = ResponseState.AWAIT_PARAM_DEF_EOF;
                 MyFieldPktResponse paramDef = (MyFieldPktResponse)message;
 
-				if (!getPromise().isFulfilled()){
+				if (!getCompletionHandle().isFulfilled()){
 					consumer.paramDef(ctx, paramDef);
                 }
 				break;
 			case AWAIT_PARAM_DEF_EOF:
                 MyEOFPktResponse paramEof  = (MyEOFPktResponse)message;
                 state = (numCols == 0) ? ResponseState.DONE : ResponseState.AWAIT_COL_DEF;
-				if (!getPromise().isFulfilled()) {
+				if (!getCompletionHandle().isFulfilled()) {
 					consumer.paramDefEOF(ctx, paramEof);
 					if (state == ResponseState.DONE)
 						onCompletion();
@@ -120,14 +125,14 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
                 if (--numCols == 0)
                     state = ResponseState.AWAIT_COL_DEF_EOF;
                 MyFieldPktResponse columnDef = (MyFieldPktResponse)message;
-                if (!getPromise().isFulfilled()){
+                if (!getCompletionHandle().isFulfilled()){
 					consumer.colDef(ctx, columnDef);
                 }
 				break;
 			case AWAIT_COL_DEF_EOF:
                 MyEOFPktResponse colEof = (MyEOFPktResponse)message;
 				state = ResponseState.DONE;
-				if (!getPromise().isFulfilled()) {
+				if (!getCompletionHandle().isFulfilled()) {
 					consumer.colDefEOF(ctx, colEof);
 					onCompletion();
 				}
@@ -138,7 +143,7 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
                 break;
 			}
 		} catch (Exception e) {
-			getPromise().failure(e);
+			getCompletionHandle().failure(e);
 		}
 		return state == ResponseState.DONE;
 	}
@@ -156,7 +161,7 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 		if (logger.isDebugEnabled())
 			logger.debug("Promise fulfilled on " + this);
 
-		super.getPromise().success(false);
+		super.getCompletionHandle().success(false);
 
 		state = ResponseState.DONE;
 	}
@@ -168,12 +173,12 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 
 	@Override
 	public void failure(Exception e) {
-		getPromise().failure(e);
+		getCompletionHandle().failure(e);
 	}
 
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName() + "{" + getPromise() + ", " + state + ", " + sqlCommand + "}";
+		return this.getClass().getSimpleName() + "{" + getCompletionHandle() + ", " + state + ", " + sqlCommand + "}";
 	}
 
 }

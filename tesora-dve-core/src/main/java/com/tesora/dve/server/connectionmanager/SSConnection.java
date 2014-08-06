@@ -22,6 +22,7 @@ package com.tesora.dve.server.connectionmanager;
  */
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -33,10 +34,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
 import com.tesora.dve.db.mysql.common.MysqlHandshake;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.variable.*;
+import io.netty.channel.Channel;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.charset.NativeCharSet;
@@ -226,9 +230,10 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	private int uniqueValue = 0;
 	private long lastMessageProcessedTime = System.currentTimeMillis();
 	private String cacheName = NonMTCachedPlan.GLOBAL_CACHE_NAME;
-	private String sessionVariableSetStatement;
 	private boolean executingInContext;
 	private ClientCapabilities clientCapabilities = new ClientCapabilities();
+    private Channel activeChannel;
+
 	
 	public SSConnection() throws PEException {
 		super("SSConnection");
@@ -656,6 +661,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 			// to commit, we push on and commit the rest anyways, so just log exceptions and keep 
 			// processing the replies from the other sites.  If the site is brought back online and 
 			// made the master again, the "set master" functionality will recover the transaction.
+
+            //SMG:NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO!!!!!!!!!!!!!!!!!!
+
 			try {
 				f.get();
 			} catch (Throwable t) {
@@ -666,24 +674,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 				    logger.warn("Site failed during XA commit phase - exception ignored", t);
 			}
 		}
-		
-//		WorkerGroup.executeOnAllGroups(availableWG.values(), MappingSolution.AllWorkers, req, resultConsumer);
-//		int receiveCount = 0;
-//		for (WorkerGroup wg : availableWG.values()) {
-//			wg.sendToAllWorkers(this, req);
-//			receiveCount += wg.size();
-//		}
-//		while (receiveCount-- > 0) {
-//			// At this point we have recorded the transaction as committed.  If any of the sites fail
-//			// to commit, we push on and commit the rest anyways, so just log exceptions and keep 
-//			// processing the replies from the other sites.  If the site is brought back online and 
-//			// made the master again, the "set master" functionality will recover the transaction.
-//			try {
-//				receive();
-//			} catch (Throwable t) {
-//				logger.warn("Site failed during XA commit phase - exception ignored", t);
-//			}
-//		}
 
 		setTempCleanupRequired(true);
 	}
@@ -1053,9 +1043,8 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public void setSessionVariable(String variableName, String value) throws PEException {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
 
-		VariableHandler<?> vh = vm.lookup(variableName, true);
+		VariableHandler<?> vh = vm.lookupMustExist(variableName);
 		vh.setSessionValue(this, value);
-		sessionVariableSetStatement = null;
 	}
 	
 //	public String getSessionVariable(String variableName) throws PEException {
@@ -1073,9 +1062,19 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public Map<String, String> getUserVariables() {
 		return userVariables.getVariableMap();
 	}
+
+	// specifically, any passthrough variables
+	public Map<String,String> getSessionVariables() {
+		return getSessionVariableStore().getView();
+	}
 	
-	public void updateWorkerState(String assignmentClause) throws PEException {
-		sendToAllGroups(new WorkerSetSessionVariableRequest(getNonTransactionalContext(), assignmentClause));
+    /**
+     * Ensures all the session variables set on the SSConnection are updated on the workers.
+     * Must be called after the variables are set, since this reads the current variable state.
+     * @throws PEException
+     */
+	public void updateWorkerState() throws PEException {
+        sendToAllGroups(new WorkerSetSessionVariableRequest(getNonTransactionalContext(), getSessionVariables(), new DefaultSetVariableBuilder()));
 	}
 	
 	void sendToAllGroups(WorkerRequest req) throws PEException {
@@ -1092,12 +1091,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 //		}
 //		consumeReplies(receiveCount);
 	}
-
-	/*
-	public ResultCollector getSessionVariableAsResult(String variableName) throws PEException {
-        return Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo(variableName).getHandler().getValueAsResult(this, variableName);
-	}
-	*/
 	
 	public PersistentGroup getCurrentPersistentGroup() throws PEException {
 		return getCatalogDAO().findPersistentGroup(STORAGE_GROUP_VARIABLE_NAME);
@@ -1136,33 +1129,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		return ++uniqueValue ;
 	}
 
-	/*
-	public void setSessionVariableValue(String name, String value) throws PENotFoundException {
-		
-		synchronized (sessionVariables) {
-			sessionVariables.setValue(name, value);
-			sessionVariableSetStatement = null;
-		}
-	}
-
-    public String getSessionVariableValue(String name) throws PENotFoundException {
-        return sessionVariables.getValue(name);
-    }
-    */
-	
-    /*
-	public Map<String,String> getSessionVariables() throws PEException {
-        HashMap<String, String> vMap = new HashMap<String, String>();
-        for (String name : sessionVariables.getNames())
-                vMap.put(name, getSessionVariable(name));
-        return Collections.unmodifiableMap(vMap);		
-	}
-	*/
-	
-	public LocalVariableStore getSessionVariablesStore() {
-		return null;
-	}
-	
 	public SSContext getTransactionalContext() {
 		return new SSContext(currentConnId, currentTransId);
 	}
@@ -1264,25 +1230,8 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public String toString() {
 		return getName();
 	}
-
-	public String getSessionVariableSetStatement() throws PEException {
-		synchronized (localSessionVariables) {
-			if (sessionVariableSetStatement == null) {
-				StringBuilder buf = new StringBuilder();
-				buf.append("SET ");
-				int clause = 0;
-				for(VariableHandler vh : Singletons.require(HostService.class).getVariableManager().getSessionHandlers()) {
-					String value = vh.getSessionAssignmentClause(vh.toExternal(vh.getSessionValue(this)));
-					if (value != null)
-						buf.append(clause++ > 0 ? "," : "").append(value);
-				}
-                sessionVariableSetStatement = buf.toString();
-			}
-		}
-		return sessionVariableSetStatement;
-	}
 	
-	public MyPreparedStatement<String> getPreparedStatement(String key) {
+    public MyPreparedStatement<String> getPreparedStatement(String key) {
 		return pStmtMap.get(key);
 	}
 	
@@ -1330,5 +1279,13 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		return userVariables;
 	}
 		
+    public void injectChannel(Channel channel) {
+        this.activeChannel = channel;
+    }
+
+    public Channel getChannel(){
+        return this.activeChannel;
+    }
+
 }
 

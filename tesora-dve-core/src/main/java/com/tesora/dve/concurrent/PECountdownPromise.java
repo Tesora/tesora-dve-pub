@@ -32,10 +32,9 @@ public class PECountdownPromise<T> extends PEDefaultPromise<T> {
 	}
 
 	@Override
-	public PECountdownPromise<T> success(T returnValue) {
+	public void success(T returnValue) {
 		if (countdown.decrementAndGet() == 0)
 			super.success(returnValue);
-		return this;
 	}
 
 	

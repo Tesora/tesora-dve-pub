@@ -56,6 +56,7 @@ public class LoadDataBlockExecutor {
 			throw new PEException("Cannot process Load Data Infile data block because load data infile context is missing.");
 		}
 
+        //TODO: this is the only place we touch the session during the parse.  As long as this isn't sensitive to being in the session context, we can move the decode into the netty thread. -sgossard
 		if (loadDataInfileContext.getCharset() == null) {
 			loadDataInfileContext.setCharset(
 					KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr).getJavaCharset());

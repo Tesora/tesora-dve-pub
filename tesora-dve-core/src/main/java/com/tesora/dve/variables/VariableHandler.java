@@ -232,7 +232,7 @@ public class VariableHandler<Type> {
 		if (options.contains(VariableOption.EMULATED) && options.contains(VariableOption.PASSTHROUGH)) {
 			if (conn instanceof SSConnection) {
 				SSConnection ssCon = (SSConnection) conn;
-				ssCon.updateWorkerState(getSessionAssignmentClause(toExternal(newValue)));
+				ssCon.updateWorkerState();
 			}
 		}
 	}

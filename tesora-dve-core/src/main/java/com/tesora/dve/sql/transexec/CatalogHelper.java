@@ -638,7 +638,7 @@ public class CatalogHelper {
 
 				
 				try {
-					VariableHandler handler = VariableManager.getManager().lookup(key, true);
+					VariableHandler handler = VariableManager.getManager().lookupMustExist(key);
 					VariableConfig vc = handler.buildNewConfig();
 					vc.setValue(value);
 					c.persistToCatalog(vc);

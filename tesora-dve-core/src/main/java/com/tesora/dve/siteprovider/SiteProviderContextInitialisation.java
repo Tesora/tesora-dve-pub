@@ -43,14 +43,14 @@ public class SiteProviderContextInitialisation implements SiteProviderContext {
 
 	@Override
 	public void setGlobalVariable(String variableName, String value) throws PEException {
-		VariableHandler<?> vh = Singletons.require(HostService.class).getVariableManager().lookup(variableName, true);
+		VariableHandler<?> vh = Singletons.require(HostService.class).getVariableManager().lookupMustExist(variableName);
 		vh.setGlobalValue(value);
 	}
 
 	@SuppressWarnings("rawtypes")
 	@Override
 	public String getGlobalVariable(String variableName) throws PEException {
-		VariableHandler vh = Singletons.require(HostService.class).getVariableManager().lookup(variableName, true);
+		VariableHandler vh = Singletons.require(HostService.class).getVariableManager().lookupMustExist(variableName);
 		return vh.toExternal(vh.getValue(null));
 	}
 

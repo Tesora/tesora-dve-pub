@@ -70,8 +70,7 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 	@Override
 	public void consumeError(MyErrorResponse errorResp) {
 		byteLogger.printBuffer("consumeError", errorResp);
-		outboundCtx.write(errorResp);
-        outboundCtx.flush();
+		outboundCtx.writeAndFlush(errorResp);
 		if (logger.isDebugEnabled()) {
 			logger.debug("Error forwarded to user: " + errorResp);
 		}
@@ -86,9 +85,16 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
     }
 
     public void sendMessage(MyMessage msg) {
+        sendMessage(msg,false);
+    }
+
+    public void sendMessage(MyMessage msg, boolean flush) {
         msg.setPacketNumber(++sequenceId);
         byteLogger.printBuffer("writtenMessage", msg);
-        outboundCtx.write(msg);
+        if (flush)
+            outboundCtx.writeAndFlush(msg);
+        else
+            outboundCtx.write(msg);
     }
 
     @Override
@@ -106,8 +112,7 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 	@Override
 	public void consumeFieldEOF(MyMessage someMessage) {
 		byteLogger.printBuffer("consumeFieldEOF", someMessage);
-		sendMessage(someMessage);
-		outboundCtx.flush();
+		sendMessage(someMessage,/* flush */ false);
 	}
 
 
@@ -178,7 +183,7 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 		eofPacket1.setPacketNumber(++sequenceId);
 		eofPacket1.setStatusFlags(statusFlags);
 		eofPacket1.setWarningCount(warnings);
-        outboundCtx.write(eofPacket1);
+        outboundCtx.writeAndFlush(eofPacket1);
 	}
 
 
@@ -191,15 +196,14 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 		okPacket1.setInsertId(ssConn.getLastInsertedId());
 		okPacket1.setWarningCount(ssConn.getMessageManager().getNumberOfMessages());
 		okPacket1.setMessage(infoString);
-		outboundCtx.write(okPacket1);
+		outboundCtx.writeAndFlush(okPacket1);
 	}
 
 
 	public void sendError(Exception e) {
 		MyMessage respMsg = new MyErrorResponse(e);
 		respMsg.setPacketNumber(++sequenceId);
-		outboundCtx.write(respMsg);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(respMsg);
 	}
 
 }

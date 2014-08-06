@@ -22,153 +22,260 @@ package com.tesora.dve.mysqlapi.repl.messages;
  */
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import io.netty.util.CharsetUtil;
 
+import java.math.BigDecimal;
+import java.nio.ByteOrder;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
+import com.tesora.dve.sql.util.Pair;
 
 public class MyUserVarLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
 			.getLogger(MyUserVarLogEvent.class);
 
-	ByteBuf variableData; 
-//	int nameLen;
-//	String variableName;
-//	byte variableValue;
-//	MyItemResultCode variableType = null;
-//	Integer charSetNum = null;
-//	Integer variableSize = null;
-//	String variableValueString = null;
-//	Double variableValueReal = null; 
-//	Long variableValueInteger = null;
-//	String variableValueDecimal = null;
-//	
-//	public enum MyItemResultCode {
-//		STRING_RESULT((byte) 0x00), 
-//		REAL_RESULT((byte) 0x01), 
-//		INT_RESULT((byte) 0x02),
-//		ROW_RESULT((byte) 0x03), 
-//		DECIMAL_RESULT((byte) 0x04);
-//
-//		private final byte code;
-//
-//		MyItemResultCode(byte b) {
-//			code = b;
-//		}
-//
-//		public static MyItemResultCode fromByte(byte b) {
-//			for (MyItemResultCode mt : values()) {
-//				if (mt.code == b) {
-//					return mt;
-//				}
-//			}
-//			return null;
-//		}
-//
-//		public byte getByteValue() {
-//			return code;
-//		}
-//	}
+	private static final int DIG_PER_DEC1 = 9;
+	private static final int dig2bytes[] = { 0, 1, 1, 2, 2, 3, 3, 4, 4, 4 };
+	
+	int variableNameLen;
+	String variableName;
+	byte nullByte;
+	MyItemResultCode valueType;
+	int valueCharSet;
+	int valueLen;
+	ByteBuf valueBytes;
+
+	String variableValue;
+	
+	public enum MyItemResultCode {
+		STRING_RESULT((byte) 0x00), 
+		REAL_RESULT((byte) 0x01), 
+		INT_RESULT((byte) 0x02),
+		ROW_RESULT((byte) 0x03), 
+		DECIMAL_RESULT((byte) 0x04);
+
+		private final byte code;
+
+		MyItemResultCode(byte b) {
+			code = b;
+		}
+
+		public static MyItemResultCode fromByte(byte b) {
+			for (MyItemResultCode mt : values()) {
+				if (mt.code == b) {
+					return mt;
+				}
+			}
+			return null;
+		}
+
+		public byte getByteValue() {
+			return code;
+		}
+	}
 
 	public MyUserVarLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
 	@Override
-	public void unmarshallMessage(ByteBuf cb) {
-//		nameLen = cb.readInt();
-//		variableName = cb.readBytes(nameLen).toString(CharsetUtil.UTF_8);
-//		variableValue = cb.readByte();
-//		processVariableValue(cb, variableValue);
-		// TODO: need to parse out the variable part of the data
-		variableData = Unpooled.buffer(cb.readableBytes());
-		variableData.writeBytes(cb);
+	public void unmarshallMessage(ByteBuf cb) throws PEException {
+		variableNameLen = cb.readInt();
+		variableName = MysqlAPIUtils.readBytesAsString(cb, variableNameLen, CharsetUtil.UTF_8);
+		nullByte = cb.readByte();
+		if (nullByte != 1) {
+			variableValue = processVariableValue(cb);
+		} else {
+			variableValue = "NULL";
+		}
 	}
 
-	/**
-	 * INCOMPLETE IMPLEMENTATION
-	 * @param cb
-	 * @param varValue
-	 */
-//	void processVariableValue(ByteBuf cb, byte varValue) {
-//		if (varValue != 0) {
-//			// Non-zero if the variable value is the SQL NULL value
-//		} else {
-//			// If this byte is 0, the following parts exist in the event.
-//			// 1 byte. The user variable type. The value corresponds to elements 
-//			// of enum Item_result defined in include/mysql_com.h 
-//			// (STRING_RESULT=0, REAL_RESULT=1, INT_RESULT=2, ROW_RESULT=3, DECIMAL_RESULT=4).
-//			variableType = MyItemResultCode.fromByte(cb.readByte());
-//			
-//			// 4 bytes. The number of the character set for the user variable 
-//			// (needed for a string variable). The character set number is 
-//			// really a collation number that indicates a character set/collation pair.
-//			charSetNum = cb.readInt();
-//			
-//			// 4 bytes. The size of the user variable value 
-//			// (corresponds to member val_len of class Item_string).
-//			variableSize = cb.readInt();
-//			
-//			// Variable-sized. For a string variable, this is the string. 
-//			// For a float or integer variable, this is its value in 8 bytes. 
-//			// For a decimal this value is a packed value - 1 byte for the 
-//			// precision, 1 byte for the scale, and $size - 2 bytes for the 
-//			// actual value. See the decimal2bin function in strings/decimal.c 
-//			// for the format of this packed value. 
-//			switch(variableType) {
-//			case STRING_RESULT:
-//				variableValueString = cb.readBytes(variableSize).toString();
-//				break;
-//			case REAL_RESULT:
-//				variableValueReal = Double.valueOf(cb.readDouble());
-//				break;
-//			case INT_RESULT:
-//				variableValueInteger = Long.valueOf(cb.readLong());
-//				break;
-//			case DECIMAL_RESULT:
-////				byte precision = cb.readByte();
-////				byte scale = cb.readByte();
-////				byte sign = cb.readByte();
-////				ByteBuf decBuf = cb.readBytes(variableSize-3);
-////				int integerPortionLen = precision-scale;
-////
-////				String decimalValue = "";
-////				// read integer part as 4 byte chunks
-////				while (true) {
-////					int nextLen = (integerPortionLen < 4) ? integerPortionLen : 4;
-////					long intValue;
-////					if (nextLen == 4) {
-////						intValue = decBuf.readUnsignedInt();
-////					} else if (nextLen == 3) {
-////						intValue = decBuf.readMedium();
-////					} else if (nextLen == 3) {
-////						intValue = decBuf.readShort();
-////					} else if (nextLen == 1) {
-////						intValue = decBuf.readByte();
-////					}
-////					decimalValue += Long.toString(intValue);
-////				}
-////				
-////				// read fraction 
-//				break;
-//			case ROW_RESULT:
-//			default:
-//				// unsupported, throw??
-//			}
-//		}
-//	} 
+	String processVariableValue(ByteBuf cb) throws PEException {
+		String value = StringUtils.EMPTY;
+
+		valueType = MyItemResultCode.fromByte(cb.readByte());
+		valueCharSet = cb.readInt();
+		valueLen = cb.readInt();
+		valueBytes = Unpooled.buffer(cb.readableBytes()).order(ByteOrder.LITTLE_ENDIAN);
+		valueBytes.writeBytes(cb);
+
+		
+		switch(valueType) {
+			case DECIMAL_RESULT:
+				value = processDecimalValue(valueBytes, valueLen);
+				break;
+			case INT_RESULT:
+				value = processIntValue(valueBytes, valueLen);
+				break;
+			case REAL_RESULT:
+				value = Double.toString(valueBytes.readDouble());
+				break;
+			case STRING_RESULT:
+				value = "'" + StringUtils.replace(MysqlAPIUtils.readBytesAsString(valueBytes, valueLen, CharsetUtil.UTF_8), "'", "''") + "'";
+				break;
+			case ROW_RESULT:
+			default:
+				throw new PEException("Unsupported variable type '" + valueType + "' for variable '" + variableName + "'");
+		}
+		return value;
+	} 
+
+	String processDecimalValue(ByteBuf cb, int valueLen) throws PEException {
+		String value = StringUtils.EMPTY;
+		
+		byte precision = cb.readByte();
+		byte scale = cb.readByte();
+		
+		Pair<Integer, Integer> intAndFracBinSize = getIntegerAndFractionBinSize(precision, scale);
+		int binSize = intAndFracBinSize.getFirst() + intAndFracBinSize.getSecond();
+
+		int readableBytes = cb.readableBytes();
+		if ((intAndFracBinSize.getFirst() < 1 && intAndFracBinSize.getSecond() < 1) || readableBytes < binSize) {
+			throw new PEException("Cannot decode binary decimal");
+		}
+		
+		ByteBuf chunk = PooledByteBufAllocator.DEFAULT.heapBuffer(binSize);
+		cb.readBytes(chunk);
+
+		// 1st byte is special cause it determines the sign
+		byte firstByte = chunk.getByte(0);
+		int sign = (firstByte & 0x80) == 0x80 ? 1 : -1;
+		// invert sign
+		chunk.setByte(0, (firstByte ^ 0x80) );
+		
+		if (sign == -1) {
+			// invert all the bytes
+			for (int i = 0; i < binSize; i++) {
+				chunk.setByte(i, ~chunk.getByte(i));
+			}
+		}
+
+		BigDecimal integerPortion = decodeBinDecimal(chunk, intAndFracBinSize.getFirst(), true);
+		BigDecimal fractionPortion = decodeBinDecimal(chunk, intAndFracBinSize.getSecond(), false);
+		
+		value = ((sign == -1) ? "-" : StringUtils.EMPTY) + integerPortion.toPlainString() + "." + fractionPortion.toPlainString();
+		
+		return value;
+	}
+	
+	
+	Pair<Integer, Integer> getIntegerAndFractionBinSize(int precision, int scale)
+	{
+		int intg = precision - scale;
+		int intg0 = intg / DIG_PER_DEC1;
+		int frac0 = scale / DIG_PER_DEC1;
+		int intg0x = intg - intg0 * DIG_PER_DEC1;
+		int frac0x = scale - frac0 * DIG_PER_DEC1;
+
+		return new Pair<Integer, Integer>(intg0 * 4 + dig2bytes[intg0x], frac0 * 4 + dig2bytes[frac0x]);
+	}
+
+	BigDecimal decodeBinDecimal(ByteBuf cb, int bufferLen, boolean isIntegerPortion) throws PEException {
+		BigDecimal decimalPortion = new BigDecimal(0);
+		if (bufferLen > 0) {
+
+			ByteBuf decimalPortionBuf = cb.readBytes(bufferLen);
+
+			if (isIntegerPortion) {
+				int initialBytes = bufferLen % 4;
+				if (initialBytes > 0) {
+					long intValue = readValue(decimalPortionBuf, initialBytes);
+					decimalPortion = BigDecimal.valueOf(intValue);
+				}
+			}
+
+			int decimalPortionLen = decimalPortionBuf.readableBytes();
+
+			while (decimalPortionLen > 0) {
+				int nextLen = (decimalPortionLen < 4) ? decimalPortionLen : 4;
+				long intValue = readValue(decimalPortionBuf, nextLen);
+				
+				if (intValue > 0) {
+					if (decimalPortion.longValue() == 0) {
+						decimalPortion = decimalPortion.add(BigDecimal.valueOf(intValue));
+					} else {
+						int digits = (int)(Math.log10(intValue)+1);
+						decimalPortion = decimalPortion.movePointRight(digits).add(BigDecimal.valueOf(intValue));
+					}
+				}
+				
+				decimalPortionLen = decimalPortionBuf.readableBytes();
+			}
+		}
+		return decimalPortion;
+	}
+
+	long readValue(ByteBuf decimalPortionBuf, int valueLen) throws PEException {
+		if (valueLen < 1 || valueLen > 4) throw new PEException("Cannot decode decimal buffer.  Invalid read length of " + valueLen);
+		
+		long value = 0;
+		if (valueLen == 4) {
+			value = decimalPortionBuf.readUnsignedInt();
+		} else if (valueLen == 3) {
+			value = decimalPortionBuf.readUnsignedMedium();
+		} else if (valueLen == 2) {
+			value = decimalPortionBuf.readUnsignedShort();
+		} else if (valueLen == 1) {
+			value = decimalPortionBuf.readUnsignedByte();
+		}
+		return value;
+	}
+	
+	String processIntValue(ByteBuf cb, int valueLen) throws PEException {
+		String value = StringUtils.EMPTY;
+		
+		switch(valueLen) {
+			case 8:
+				value = Long.toString(cb.readLong());
+				break;
+			case 7:
+			case 6:
+			case 5:
+				throw new PEException("Cannot decode INT value of length '" + valueLen + "' for variable '" + variableName + "'");
+			case 4:
+				value = Long.toString(cb.readInt());
+				break;
+			case 3:
+				value = Long.toString(cb.readMedium());
+				break;
+			case 2:
+				value = Long.toString(cb.readShort());
+				break;
+			case 1:
+				value = Byte.toString(cb.readByte());
+				break;
+		}
+		return value;
+	}
 	
 	@Override
 	public void marshallMessage(ByteBuf cb) throws PEException {
-		cb.writeBytes(variableData);
+		cb.writeInt(variableNameLen);
+		cb.writeBytes(variableName.getBytes(CharsetUtil.UTF_8));
+		cb.writeByte(nullByte);
+		if (nullByte != 1) {
+			cb.writeByte(valueType.getByteValue());
+			cb.writeInt(valueCharSet);
+			cb.writeInt(valueLen);
+			cb.writeBytes(valueBytes);
+		}
 	}
 
 	@Override
 	public void processEvent(MyReplicationSlaveService plugin) {
-//		logger.debug("** START UserVarLog Event **");
-//		logger.debug("** END UserVarLog Event **");
-		logger.warn("Message is parsed but no handler is implemented for log event type: USER_VAR_EVENT");
+		if (logger.isDebugEnabled()) {
+			logger.debug("** START UserVarLog Event **");
+			logger.debug("Var Name: " + variableName);
+			logger.debug("Var Value: " + variableValue);
+			logger.debug("** END UserVarLog Event **");
+		}
+		plugin.getSessionVariableCache().setUserVariable(new Pair<String, String>(variableName, variableValue));
 	}
 }

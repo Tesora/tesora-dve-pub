@@ -42,6 +42,8 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.db.mysql.MysqlNativeConstants;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
@@ -211,6 +213,27 @@ import com.tesora.dve.sql.util.UnaryPredicate;
 // presumably we will have different versions of this (via subclassing)
 // for different databases or purposes
 public abstract class Emitter {
+
+	/**
+	 * Convenience function object for in-place Emitter invocations.
+	 */
+	public static abstract class EmitterInvoker {
+
+		private final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+
+		public final GenericSQLCommand buildGenericCommand(final SchemaContext sc) {
+			final StringBuilder buf = new StringBuilder();
+			this.emitStatement(sc, buf);
+
+			return this.emitter.buildGenericCommand(buf.toString());
+		}
+
+		public final Emitter getEmitter() {
+			return this.emitter;
+		}
+
+		protected abstract void emitStatement(final SchemaContext sc, final StringBuilder buf);
+	}
 
 	protected static Logger logger = Logger.getLogger(Emitter.class);
 	

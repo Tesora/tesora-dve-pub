@@ -50,11 +50,16 @@ public class PEContext {
 		return new PEContext(frames);
 	}
 
+    void push(Class<?> clazz){
+        this.push(clazz.getSimpleName());
+    }
+
 	void push(String name) {
 		frames.push(new Frame(name));
 	}
 
 	void pop() {
+		if (frames.isEmpty()) return;
 		frames.pop();
 	}
 
@@ -185,6 +190,9 @@ public class PEContext {
 
 		@Override
 		public PEContext copy() { return this; }
+
+        @Override
+        void push(Class<?> clazz){ }
 
 		@Override
 		void push(String name) { }
