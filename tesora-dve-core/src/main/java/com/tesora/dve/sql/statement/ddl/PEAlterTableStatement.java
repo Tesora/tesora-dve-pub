@@ -376,6 +376,10 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 					sampleTargetModifiers.add(entry);
 				}
 			}
+
+			/* FKs would not resolve on the sample site. */
+			sampleTarget.removeForeignKeys(sc);
+
 			final List<TableComponent<?>> sampleTargetFieldsAndKeys = ListUtils.union(sampleTarget.getColumns(sc), sampleTarget.getKeys(sc));
 			final QualifiedName sampleTargetName = new QualifiedName(
 					sampleTargetDatabase.getName().getUnqualified(),

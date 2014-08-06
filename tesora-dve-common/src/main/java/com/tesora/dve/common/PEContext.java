@@ -59,8 +59,9 @@ public class PEContext {
 	}
 
 	void pop() {
-		if (frames.isEmpty()) return;
-		frames.pop();
+		if (!frames.isEmpty()) {
+			frames.pop();
+		}
 	}
 
 	void put(String key, Object value) {

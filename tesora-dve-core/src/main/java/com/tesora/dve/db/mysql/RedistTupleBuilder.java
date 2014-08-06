@@ -29,6 +29,7 @@ import io.netty.channel.ChannelHandlerContext;
 
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -68,6 +69,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
     boolean sourcePaused = false;
 
 	boolean lastPacketSent = false;
+    boolean failedRedist = false;
 
 	final Future<SQLCommand> insertStatementFuture;
 	final PersistentTable targetTable;
@@ -96,6 +98,9 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
 	public void processSourcePacket(MappingSolution mappingSolution, MyBinaryResultRow binRow, int fieldCount, ColumnSet columnSet, long[] autoIncrBlocks)
 			throws PEException {
+
+        if (failedRedist)
+            return;//throw out source rows if redist has failed.
 
 		if (mappingSolution == MappingSolution.AllWorkers || mappingSolution == MappingSolution.AllWorkersSerialized) {
 			for (RedistTargetSite siteCtx : siteCtxBySite.values())
@@ -133,6 +138,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
     @Override
     public void failure(Exception e) {
+        failedRedist = true;
         completionPromise.failure(e);
     }
 
@@ -271,7 +277,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
             if (siteCtx.getTotalQueuedRows() >= maximumRowCount || siteCtx.getTotalQueuedBytes() >= maxDataSize){
                 siteCtx.flush();
-                if (!siteCtx.allWritesFlushed()){
+                if (! siteCtx.willAcceptMoreRows() ){
                     blockedTargetSites.put(siteCtx,siteCtx);
                 }
             }
@@ -301,16 +307,25 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
                 }
             } finally {
                 siteCtx.handleAck(message);
-                if (! siteCtx.hasPendingFlush() )
-                    blockedTargetSites.remove(siteCtx);
-                if (blockedTargetSites.isEmpty())
-                resumeSourceStreams();
+                checkIfSitesAreUnblocked();
             }
         }
 
         testRedistributionComplete();
 
         return isProcessingComplete(siteCtx);
+    }
+
+    private void checkIfSitesAreUnblocked(){
+        Iterator<RedistTargetSite> blockedSites = blockedTargetSites.keySet().iterator();
+        while (blockedSites.hasNext()){
+            RedistTargetSite site = blockedSites.next();
+            if (site.willAcceptMoreRows())
+                blockedSites.remove();
+        }
+        if (blockedTargetSites.isEmpty()) {
+            resumeSourceStreams();
+        }
     }
 
     private boolean isProcessingComplete(RedistTargetSite siteCtx) {
@@ -330,7 +345,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
     private void flushTargetSites() {
         for (RedistTargetSite siteContext : siteCtxBySite.values()) {
-            boolean isFlushed = siteContext.flush();
+            siteContext.flush();
         }
     }
 

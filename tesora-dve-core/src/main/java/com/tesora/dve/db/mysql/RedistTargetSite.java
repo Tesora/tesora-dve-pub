@@ -46,6 +46,7 @@ class RedistTargetSite implements AutoCloseable {
 
     private ChannelHandlerContext ctx;
     private int pstmtId = -1;
+    private boolean waitingForPrepare = false;
     private BufferedExecute bufferedExecute = new BufferedExecute();
 
     private BufferedExecute pendingFlush = null;
@@ -92,7 +93,7 @@ class RedistTargetSite implements AutoCloseable {
         }
     }
 
-    public boolean flush() {
+    public void flush() {
         final BufferedExecute buffersToFlush = this.bufferedExecute;
         if (!buffersToFlush.isEmpty()) {
             final int rowsToFlush = this.totalQueuedRows;
@@ -172,6 +173,8 @@ class RedistTargetSite implements AutoCloseable {
                     //TODO: this execute immediately stuff is a hack to send/receive a query before some fake "query" has "completed".  We should just get rid of fake queries and move to a 1 request to 1 response model. -sgossard
                     prepareCmd.setExecuteImmediately(true);
 
+                    this.waitingForPrepare = true; //we flip this back when the prepare response comes back in.
+
                     //sends the prepare with the callback that will issue the execute.
                     this.ctx.channel().writeAndFlush(prepareCmd);
                 } else {
@@ -184,15 +187,11 @@ class RedistTargetSite implements AutoCloseable {
                 this.queuedRowSetCount.addAndGet(-1 * buffersToFlush.size());
             }
         }
-        return allWritesFlushed();
     }
 
-    public boolean hasPendingFlush(){
-        return this.pendingFlush != null;
-    }
-
-    public boolean allWritesFlushed(){
-        return this.bufferedExecute.isEmpty() && this.pendingFlush == null;
+    public boolean willAcceptMoreRows(){
+        boolean channelBackedUp = (ctx.channel().isOpen() && !ctx.channel().isWritable());
+        return !waitingForPrepare && !channelBackedUp;
     }
 
     private void executePendingInsert() {
@@ -251,11 +250,13 @@ class RedistTargetSite implements AutoCloseable {
     }
 
     protected void prepareFinished(long stmtID, int tupleCount){
+        this.waitingForPrepare = false;
         this.pstmtId = (int)stmtID;
         this.pstmtTupleCount = tupleCount;
     }
 
     protected void prepareFailed(MyErrorResponse error){
+        this.waitingForPrepare = false;
         //TODO: need a better way to propigate this backwards. -gossard
         logger.error("prepare failed, error=" + error);
     }

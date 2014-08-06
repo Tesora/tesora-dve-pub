@@ -50,6 +50,7 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.types.Type;
 
 public class MysqlNative extends DBNative {
@@ -471,5 +472,15 @@ public class MysqlNative extends DBNative {
 	@Override
 	public int getMaxNumColsInIndex() {
 		return 16;
+	}
+
+	@Override
+	public ForeignKeyAction getDefaultOnDeleteAction() {
+		return ForeignKeyAction.RESTRICT;
+	}
+
+	@Override
+	public ForeignKeyAction getDefaultOnUpdateAction() {
+		return ForeignKeyAction.RESTRICT;
 	}
 }

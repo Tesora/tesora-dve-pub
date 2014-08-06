@@ -29,6 +29,7 @@ import java.util.List;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.Key;
+import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBNative;
@@ -40,8 +41,8 @@ import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.MTTableKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
@@ -126,6 +127,7 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 			} else { 
 				tschema = tempTab.getAbstractTable().recreate(sc, tempTab.getAbstractTable().getDeclaration(), lock);
 			}
+
 			StringBuilder buf = new StringBuilder();
 
 			TableKey tk = null;
@@ -187,7 +189,19 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 					}
 				}
 
-			}	
+			}
+
+			/* Make sure we do not emit implicit default values. */
+			if (ut != null) {
+				for (final UserColumn uc : ut.getUserColumns()) {
+					if (!uc.hasDefault()) {
+						final PEColumn tc = tschema.lookup(sc, uc.getName());
+						if (tc != null) {
+							tc.setDefaultValue(null);
+						}
+					}
+				}
+			}
 
 			if (tk.getAbstractTable().isTable()) {
 				long nextVal = -1;

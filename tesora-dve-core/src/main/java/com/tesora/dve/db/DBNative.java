@@ -35,11 +35,11 @@ import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.db.mysql.MariaDBNative;
 import com.tesora.dve.db.mysql.MysqlNative;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.types.Type;
 
 public abstract class DBNative implements Serializable {
@@ -320,4 +320,14 @@ public abstract class DBNative implements Serializable {
 	public int getMaxNumColsInIndex() {
 		return Integer.MAX_VALUE;
 	}
+
+	/**
+	 * Default ON DELETE FK referential action.
+	 */
+	public abstract ForeignKeyAction getDefaultOnDeleteAction();
+
+	/**
+	 * Default ON UPDATE FK referential action.
+	 */
+	public abstract ForeignKeyAction getDefaultOnUpdateAction();
 }
