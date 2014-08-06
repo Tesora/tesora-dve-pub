@@ -56,7 +56,7 @@ public class AlterColumnAction extends AbstractAlterColumnAction {
 	public AlterTableAction alterTable(SchemaContext sc, PETable tab) {
 		PEColumn c = alteredColumn.getIn(sc, tab);
 		c.setDefaultValue(defEx);
-		c.normalize();
+		c.normalize(this.isDropDefault());
 		return null;
 	}
 

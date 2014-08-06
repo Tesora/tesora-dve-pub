@@ -1118,7 +1118,7 @@ public class AlterTest extends SchemaTest {
 		// ADD [CONSTRAINT [symbol]] FOREIGN KEY [index_name] (index_col_name,...) reference_definition
 		conn.execute("ALTER TABLE `pe1404_child` ADD FOREIGN KEY `child_to_middle` (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)");
 		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
-				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_child_ibfk_1` FOREIGN KEY `child_to_middle` (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`) ON DELETE RESTRICT ON UPDATE RESTRICT\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
 		conn.assertResults("DESCRIBE `pe1404_child`",
 				br(nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"parent_id","int(11)","NO","",null,"",
@@ -1128,8 +1128,8 @@ public class AlterTest extends SchemaTest {
 				   nr,"pe1404_child",0,"index2",1,"alt_id","A",BigInteger.valueOf(-1),null,null,"","BTREE","","",
 				   nr,"pe1404_child",0,"PRIMARY",1,"id","A",BigInteger.valueOf(-1),null,null,"","BTREE","",""));
 		
-		// DROP FOREIGN KEY fk_symbol		
-		conn.execute("ALTER TABLE `pe1404_child` DROP FOREIGN KEY `child_to_middle`");
+		// DROP FOREIGN KEY fk_symbol (foreign key constraint has to be dropped by constraint name and not the index name)
+		conn.execute("ALTER TABLE `pe1404_child` DROP FOREIGN KEY `pe1404_child_ibfk_1`");
 		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
 				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
 		conn.assertResults("DESCRIBE `pe1404_child`",
@@ -1144,7 +1144,7 @@ public class AlterTest extends SchemaTest {
 		// add the FK again
 		conn.execute("ALTER TABLE `pe1404_child` ADD FOREIGN KEY `child_to_middle` (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)");
 		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
-				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_child_ibfk_1` FOREIGN KEY `child_to_middle` (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`) ON DELETE RESTRICT ON UPDATE RESTRICT\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
 		conn.assertResults("DESCRIBE `pe1404_child`",
 				br(nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"parent_id","int(11)","NO","",null,"",
@@ -1161,7 +1161,7 @@ public class AlterTest extends SchemaTest {
 			}
 		}.assertException(SchemaException.class, "Cannot drop column 'parent_id' because it is part of foreign key 'middle_to_parent'", true);
 		conn.assertResults("SHOW CREATE TABLE `pe1404_middle`",
-				br(nr,"pe1404_middle","CREATE TABLE `pe1404_middle` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_middle_ibfk_1` FOREIGN KEY `middle_to_parent` (`parent_id`) REFERENCES `pe1404_parent` (`alt_id`) ON DELETE RESTRICT ON UPDATE RESTRICT\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+				br(nr,"pe1404_middle","CREATE TABLE `pe1404_middle` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_middle_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_parent` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
 		conn.assertResults("DESCRIBE `pe1404_middle`",
 				br(nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"parent_id","int(11)","NO","",null,"",
@@ -1178,7 +1178,7 @@ public class AlterTest extends SchemaTest {
 			}
 		}.assertException(SchemaException.class, "Cannot drop column 'alt_id' because it is part of foreign key 'child_to_middle'", true);
 		conn.assertResults("SHOW CREATE TABLE `pe1404_middle`",
-				br(nr,"pe1404_middle","CREATE TABLE `pe1404_middle` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_middle_ibfk_1` FOREIGN KEY `middle_to_parent` (`parent_id`) REFERENCES `pe1404_parent` (`alt_id`) ON DELETE RESTRICT ON UPDATE RESTRICT\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+				br(nr,"pe1404_middle","CREATE TABLE `pe1404_middle` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_middle_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_parent` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
 		conn.assertResults("DESCRIBE `pe1404_middle`",
 				br(nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"parent_id","int(11)","NO","",null,"",
@@ -1188,7 +1188,7 @@ public class AlterTest extends SchemaTest {
 				   nr,"pe1404_middle",0,"index2",1,"alt_id","A",BigInteger.valueOf(-1),null,null,"","BTREE","","",
 				   nr,"pe1404_middle",0,"PRIMARY",1,"id","A",BigInteger.valueOf(-1),null,null,"","BTREE","",""));
 		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
-				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_child_ibfk_1` FOREIGN KEY `child_to_middle` (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`) ON DELETE RESTRICT ON UPDATE RESTRICT\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
 		conn.assertResults("DESCRIBE `pe1404_child`",
 				br(nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"parent_id","int(11)","NO","",null,"",
@@ -1199,12 +1199,12 @@ public class AlterTest extends SchemaTest {
 				   nr,"pe1404_child",0,"PRIMARY",1,"id","A",BigInteger.valueOf(-1),null,null,"","BTREE","",""));
 
 		// drop a column of multipart key
-		conn.execute("ALTER TABLE `pe1404_child` DROP FOREIGN KEY `child_to_middle`");
+		conn.execute("ALTER TABLE `pe1404_child` DROP FOREIGN KEY `pe1404_child_ibfk_1`");
 		conn.execute("ALTER TABLE `pe1404_child` DROP INDEX `index1`");
 		conn.execute("ALTER TABLE `pe1404_child` DROP INDEX `index2`");
 		conn.execute("ALTER TABLE `pe1404_child` ADD UNIQUE INDEX `index1` (`parent_id`, `alt_id`)");
 		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
-				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`, `alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`,`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
 		conn.assertResults("DESCRIBE `pe1404_child`",
 				br(nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"parent_id","int(11)","NO","",null,"",
