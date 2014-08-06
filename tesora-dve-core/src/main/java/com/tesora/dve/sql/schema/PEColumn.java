@@ -32,9 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -44,8 +41,11 @@ import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.Traversable;
 import com.tesora.dve.sql.node.expression.ActualLiteralExpression;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -689,6 +689,10 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 	}
 	
 	public void normalize() {
+		this.normalize(false);
+	}
+
+	public void normalize(final boolean useImplicitNull) {
 		type = type.normalize();
 		if (defaultValue == null) {
 			if (type.isTimestampType() && isNotNullable()) {
@@ -698,8 +702,9 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 					defaultValue = LiteralExpression.makeStringLiteral("0000-00-00 00:00:00");
 			} else if (!type.supportsDefaultValue()) {
 
-			} else if (!isNotNullable())
+			} else if (!isNotNullable() && !useImplicitNull) {
 				defaultValue = LiteralExpression.makeNullLiteral();
+			}
 		}
 	}
 	

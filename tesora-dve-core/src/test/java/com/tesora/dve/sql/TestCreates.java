@@ -535,7 +535,8 @@ public class TestCreates extends SchemaTest {
 	
 	@Test
 	public void testPE742() throws Throwable {
-		rootConnection.execute("create table t1 (c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment', c2 INTEGER,c3 INTEGER COMMENT '012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789', c4 INTEGER, c5 INTEGER, c6 INTEGER, c7 INTEGER, INDEX i1 (c1),INDEX i2(c2)) COMMENT='abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd';");
+		rootConnection
+				.execute("create table pe742_t1 (c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment', c2 INTEGER,c3 INTEGER COMMENT '012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789', c4 INTEGER, c5 INTEGER, c6 INTEGER, c7 INTEGER, INDEX i1 (c1),INDEX i2(c2)) COMMENT='abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd';");
 	}
 	
 	@Test
@@ -1007,23 +1008,45 @@ public class TestCreates extends SchemaTest {
 		rootConnection.execute("alter table dve1496 change `a` `a` varchar(255) character set utf8mb4 collate utf8mb4_unicode_ci DEFAULT NULL");
 	}
 
-	@Ignore
 	@Test
-	public void testPE736() throws Throwable {
-		rootConnection.execute("CREATE TABLE `t1` (`a` int(11) DEFAULT '10' )");
-		rootConnection.assertResults("show create table t1",
-				br(nr, "t1", "CREATE TABLE `t1` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+	public void testPE735_PE736_PE737() throws Throwable {
+		rootConnection.execute("CREATE TABLE `pe73567_t0` (b BIT DEFAULT 1, i INT DEFAULT NULL);");
+		rootConnection
+				.assertResults(
+						"show create table pe73567_t0",
+						br(nr, "pe73567_t0",
+								"CREATE TABLE `pe73567_t0` (\n  `b` bit(1) DEFAULT b'1',\n  `i` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
 
-		rootConnection.execute("CREATE TABLE `t2` (`a` int(11) DEFAULT 10 )");
-		rootConnection.assertResults("show create table t2",
-				br(nr, "t2", "CREATE TABLE `t2` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+		rootConnection.execute("CREATE TABLE `pe73567_t1` (`a` int(11) DEFAULT '10' )");
+		rootConnection.assertResults(
+				"show create table pe73567_t1",
+				br(nr, "pe73567_t1",
+						"CREATE TABLE `pe73567_t1` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
 
-		rootConnection.execute("CREATE TABLE `t3` (`a` double DEFAULT 10.0 )");
-		rootConnection.assertResults("show create table t3",
-				br(nr, "t3", "CREATE TABLE `t3` (\n  `a` double DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+		rootConnection.execute("CREATE TABLE `pe73567_t2` (`a` int(11) DEFAULT 10 )");
+		rootConnection.assertResults(
+				"show create table pe73567_t2",
+				br(nr, "pe73567_t2",
+						"CREATE TABLE `pe73567_t2` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
 
-		rootConnection.execute("CREATE TABLE `t4` (`a` double DEFAULT 10.5 )");
-		rootConnection.assertResults("show create table t4",
-				br(nr, "t4", "CREATE TABLE `t4` (\n  `a` double DEFAULT '10.5'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+		rootConnection.execute("CREATE TABLE `pe73567_t3` (`a` double DEFAULT 10.0 )");
+		rootConnection.assertResults(
+				"show create table pe73567_t3",
+				br(nr, "pe73567_t3",
+						"CREATE TABLE `pe73567_t3` (\n  `a` double DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+
+		rootConnection.execute("CREATE TABLE `pe73567_t4` (`a` double DEFAULT 10.5 )");
+		rootConnection.assertResults(
+				"show create table pe73567_t4",
+				br(nr, "pe73567_t4",
+						"CREATE TABLE `pe73567_t4` (\n  `a` double DEFAULT '10.5'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+
+		rootConnection.execute("CREATE TABLE `pe73567_t5` (`a` varchar(14) DEFAULT 'Hello, World!' ) DEFAULT CHARSET=latin1 DEFAULT COLLATE=latin1_swedish_ci");
+		rootConnection
+				.assertResults(
+						"show create table pe73567_t5",
+						br(nr,
+								"pe73567_t5",
+								"CREATE TABLE `pe73567_t5` (\n  `a` varchar(14) DEFAULT 'Hello, World!'\n) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci /*#dve  RANDOM DISTRIBUTE */"));
 	}
 }

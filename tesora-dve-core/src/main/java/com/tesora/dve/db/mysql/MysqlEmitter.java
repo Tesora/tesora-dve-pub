@@ -155,7 +155,8 @@ public class MysqlEmitter extends Emitter {
 	
 	@Override
 	public void emitComment(Comment c, StringBuilder buf) {
-		if (c == null || getOptions() != null && getOptions().isTableDefinition()) return;
+		if (c == null || this.hasOptions() && getOptions().isTableDefinition())
+			return;
 		buf.append(" COMMENT '").append(c.getComment()).append("'");
 	}
 
@@ -164,7 +165,8 @@ public class MysqlEmitter extends Emitter {
 		for(TableModifierTag tmt : TableModifierTag.values()) {
 			TableModifier tm = mods.getModifier(tmt);
 			if (tm == null) continue;
-			if (tmt == TableModifierTag.AUTOINCREMENT && (getOptions() == null || !getOptions().isExternalTableDeclaration())) continue;
+			if (tmt == TableModifierTag.AUTOINCREMENT && (!this.hasOptions() || !getOptions().isExternalTableDeclaration()))
+				continue;
 			if (tmt == TableModifierTag.DEFAULT_COLLATION && tab != null && !tab.shouldEmitCollation(sc)) continue;
 			buf.append(" ");
 			tm.emit(sc,this,buf);
@@ -173,7 +175,7 @@ public class MysqlEmitter extends Emitter {
 
 	@Override
 	public void emitColumnInstance(SchemaContext sc, ColumnInstance cr, StringBuilder buf) {
-		if (getOptions() != null && getOptions().isResultSetMetadata()) {
+		if (this.hasOptions() && getOptions().isResultSetMetadata()) {
 			boolean useSpecified = (cr.getParent() instanceof FunctionCall || cr.getParent() instanceof WhenClause || cr.getParent() instanceof CaseExpression);
 			Name specified = cr.getSpecifiedAs();
 			if (useSpecified && specified != null)
