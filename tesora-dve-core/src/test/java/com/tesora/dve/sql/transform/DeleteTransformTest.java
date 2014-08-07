@@ -35,7 +35,7 @@ public class DeleteTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testPE610() throws Exception {
+	public void testPE610() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table pe610a (`id` int, `fid` int, primary key (`id`)) random distribute",
 				"create table pe610b (`id` int, `fid` int, primary key (`id`)) broadcast distribute");

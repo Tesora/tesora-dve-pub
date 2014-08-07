@@ -51,6 +51,7 @@ import com.tesora.dve.worker.MysqlPreparedStmtExecuteCollector;
 import com.tesora.dve.worker.MysqlTextResultChunkProvider;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
+import io.netty.channel.EventLoopGroup;
 
 public class MysqlConnectionResource extends ConnectionResource {
 
@@ -99,7 +100,9 @@ public class MysqlConnectionResource extends ConnectionResource {
 	private ResourceResponse execute(SQLCommand sqlc) throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
 
-		mysqlConn.execute(sqlc, results, new PEDefaultPromise<Boolean>()).sync();
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+        mysqlConn.execute(sqlc, results, promise);
+        promise.sync();
 		
 		return new ProxyConnectionResourceResponse(results);
 	}
@@ -108,8 +111,10 @@ public class MysqlConnectionResource extends ConnectionResource {
 	public Object prepare(LineInfo info, String stmt) throws Throwable {
 
 		MysqlPrepareStatementCollector collector = new MysqlPrepareStatementCollector();
-		
-		mysqlConn.execute(new SQLCommand(stmt), collector, new PEDefaultPromise<Boolean>()).sync();
+
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+        mysqlConn.execute(new SQLCommand(stmt), collector, promise);
+        promise.sync();
 		return collector.getPreparedStatement();
 	}
 
@@ -122,7 +127,9 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlPreparedStmtExecuteCollector collector = new MysqlPreparedStmtExecuteCollector(pstmt);
 		
 		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand("EXEC PREPARED"), parameters);
-		mysqlConn.execute(sqlc, collector, new PEDefaultPromise<Boolean>()).sync();
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+        mysqlConn.execute(sqlc, collector, promise);
+        promise.sync();
 		
 		return new ProxyConnectionResourceResponse(collector);
 	}
@@ -133,7 +140,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id; 
 		MysqlStmtCloseDiscarder discarder = new MysqlStmtCloseDiscarder(pstmt);
 		
-		mysqlConn.execute(new SQLCommand(new GenericSQLCommand("CLOSE PREP STMT")), discarder);
+		mysqlConn.execute(new SQLCommand(new GenericSQLCommand("CLOSE PREP STMT")), discarder, new PEDefaultPromise<Boolean>() );
 	}
 
 	@Override
@@ -215,7 +222,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		}
 
 		@Override
-		public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo) throws PEException {
+		public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {
 			return null;
 		}
 

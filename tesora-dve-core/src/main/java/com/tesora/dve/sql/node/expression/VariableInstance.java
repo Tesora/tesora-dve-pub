@@ -21,20 +21,31 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.transform.CopyContext;
-import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.UserVariableAccessor;
+import com.tesora.dve.variables.VariableAccessor;
+import com.tesora.dve.variables.VariableManager;
 
 public class VariableInstance extends ExpressionNode {
 
 	protected UnqualifiedName variableName;
 	protected VariableScope variableScope;
+	// for session, global variables - indicate whether we must use the '@@global.<name>' form vs 'global <name>' form
+	protected boolean rhsForm;
 		
-	public VariableInstance(UnqualifiedName varName, VariableScope scope, SourceLocation sloc) {
+	public VariableInstance(UnqualifiedName varName, VariableScope scope, SourceLocation sloc, boolean rhs) {
 		super(sloc);
 		variableName = varName;
 		variableScope = scope;
@@ -48,18 +59,30 @@ public class VariableInstance extends ExpressionNode {
 		return variableScope;
 	}
 	
+	public boolean getRHSForm() {
+		return rhsForm;
+	}
+	
 	@Override
 	public NameAlias buildAlias(SchemaContext sc) {
 		return new NameAlias(new UnqualifiedName("var_"));
 	}
 
-	public VariableAccessor buildAccessor() {
-		return new VariableAccessor(getScope().getScopeKind(), getScope().getScopeName(), variableName.get());
+	public AbstractVariableAccessor buildAccessor() {
+		if (getScope().getKind() == VariableScopeKind.USER)
+			return new UserVariableAccessor(variableName.get());
+		else try {
+			VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+			return new VariableAccessor(vm.lookupMustExist(variableName.get()),
+					getScope());
+		} catch (PEException pe) {
+			throw new SchemaException(Pass.PLANNER, pe);
+		}
 	}
 	
 	@Override
 	protected LanguageNode copySelf(CopyContext cc) {
-		VariableInstance nvi = new VariableInstance(variableName, variableScope, getSourceLocation());
+		VariableInstance nvi = new VariableInstance(variableName, variableScope, getSourceLocation(), rhsForm);
 		if (cc != null) 
 			cc.registerVariable(nvi);
 		return nvi;

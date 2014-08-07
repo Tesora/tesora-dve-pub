@@ -40,7 +40,7 @@ public class NullLiteralColumnTransformTest extends TransformTest {
 	private static final String[] leftySchema = new String[] { "create table `A` (`id` int unsigned not null, `col1` varchar(50) not null, `id2` int, `col2` varchar(10) ) random distribute", };
 
 	@Test
-	public void redistPlanTest() throws Exception {
+	public void redistPlanTest() throws Throwable {
 		// cause a redist by selecting everything from the random tables and
 		// order by
 		SchemaContext db = buildSchema(TestName.MULTI, leftySchema);

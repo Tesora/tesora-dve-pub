@@ -70,5 +70,9 @@ public interface CoordinationServices extends MembershipViewSource {
 
 	String getExternalServiceRegisteredAddress(String name);
 	
-	long getGloballyUniqueId(String domain);
+	long getGloballyUniqueId(String domain);	
+	
+	String getGlobalVariable(String name);
+
+	void setGlobalVariable(String name, String value);
 }

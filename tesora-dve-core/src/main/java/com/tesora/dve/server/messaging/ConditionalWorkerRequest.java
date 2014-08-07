@@ -21,16 +21,10 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
-import java.sql.SQLException;
-
-import javax.transaction.xa.XAException;
-
-import com.tesora.dve.comms.client.messages.GenericResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
-import com.tesora.dve.comms.client.messages.ResponseMessage;
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.worker.Worker;
 
@@ -50,13 +44,11 @@ public class ConditionalWorkerRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public ResponseMessage executeRequest(Worker w,
-			DBResultConsumer resultConsumer) throws SQLException, PEException,
-			XAException {
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
 		if (guard.proceed(w,resultConsumer))
-			return target.executeRequest(w, resultConsumer);
-		else
-			return new GenericResponse();
+			target.executeRequest(w, resultConsumer, promise);
+        else
+            promise.success(true);
 	}
 
 	@Override
@@ -76,7 +68,7 @@ public class ConditionalWorkerRequest extends WorkerRequest {
 
 	public interface GuardFunction {
 		
-		public boolean proceed(Worker w, DBResultConsumer consumer) throws PEException;
+		public boolean proceed(Worker w, DBResultConsumer consumer);
 		
 	}
 	

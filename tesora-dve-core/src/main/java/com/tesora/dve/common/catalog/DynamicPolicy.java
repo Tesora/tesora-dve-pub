@@ -48,7 +48,7 @@ import com.tesora.dve.sql.infoschema.annos.ColumnView;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.variable.VariableValueConverter;
+import com.tesora.dve.variables.VariableValueConverter;
 
 @InfoSchemaTable(logicalName="dynamic_policy",
 		views={})

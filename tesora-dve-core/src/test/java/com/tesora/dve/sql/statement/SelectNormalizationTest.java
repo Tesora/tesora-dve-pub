@@ -47,7 +47,7 @@ public class SelectNormalizationTest extends TransientSchemaTest {
 		"create table bar (`id` integer unsigned not null, `description` varchar(50)) static distribute on (`id`);"
 	};
 	
-	public SchemaContext buildDatabase() throws Exception {
+	public SchemaContext buildDatabase() throws Throwable {
 		return buildDatabase(TestName.MULTI,sqlschema);
 	}
 	
@@ -64,7 +64,7 @@ public class SelectNormalizationTest extends TransientSchemaTest {
 	}
 	
 	@Test
-	public void wildcardExpansion() throws Exception {
+	public void wildcardExpansion() throws Throwable {
 		SchemaContext db = buildDatabase();
 		String sql = "select * from foo;";
 		SelectStatement ss = parseSelect(db, sql);
@@ -73,7 +73,7 @@ public class SelectNormalizationTest extends TransientSchemaTest {
 	}
 	
 	@Test
-	public void wildcardTableExpansionA() throws Exception {
+	public void wildcardTableExpansionA() throws Throwable {
 		SchemaContext db = buildDatabase();
 		String sql = "select f.* from foo f;";
 		SelectStatement ss = parseSelect(db, sql);
@@ -82,7 +82,7 @@ public class SelectNormalizationTest extends TransientSchemaTest {
 	}
 	
 	@Test
-	public void wildcardTableExpansionB() throws Exception {
+	public void wildcardTableExpansionB() throws Throwable {
 		SchemaContext db = buildDatabase();
 		String sql = "select f.*, b.* from foo f, bar b";
 		SelectStatement ss = parseSelect(db, sql);
@@ -91,7 +91,7 @@ public class SelectNormalizationTest extends TransientSchemaTest {
 	}
 	
 	@Test
-	public void projectionAliases() throws Exception {
+	public void projectionAliases() throws Throwable {
 		SchemaContext db = buildDatabase();
 		String sql = "select id, payload, flags f from foo;";
 		SelectStatement ss = parseSelect(db, sql);
@@ -100,7 +100,7 @@ public class SelectNormalizationTest extends TransientSchemaTest {
 	}
 	
 	@Test
-	public void ambiguousPrimaryTable() throws Exception {
+	public void ambiguousPrimaryTable() throws Throwable {
 		SchemaContext db = buildDatabase();
 		String sql = "select * from foo f, bar b where f.id = b.id;";
 		SelectStatement ss = parseSelect(db,sql);
@@ -109,7 +109,7 @@ public class SelectNormalizationTest extends TransientSchemaTest {
 	}	
 	
 	@Test
-	public void testExplicitJoin() throws Exception {
+	public void testExplicitJoin() throws Throwable {
 		SchemaContext db = buildDatabase();
 		SelectStatement ss = parseSelect(db, "select * from foo f inner join bar b on f.id = b.id where b.description = 'wha'");
 		assertEquals("projection size",5,ss.getProjection().size());

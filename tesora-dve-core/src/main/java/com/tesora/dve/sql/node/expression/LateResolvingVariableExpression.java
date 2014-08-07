@@ -30,18 +30,18 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.transform.CopyContext;
-import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
 
 public class LateResolvingVariableExpression extends ConstantExpression {
 
-	private final VariableAccessor accessor;
+	private final AbstractVariableAccessor accessor;
 	
-	public LateResolvingVariableExpression(VariableAccessor va) {
+	public LateResolvingVariableExpression(AbstractVariableAccessor va) {
 		super((SourceLocation)null);
 		accessor = va;
 	}
 	
-	public VariableAccessor getAccessor() {
+	public AbstractVariableAccessor getAccessor() {
 		return accessor;
 	}
 	
@@ -64,7 +64,7 @@ public class LateResolvingVariableExpression extends ConstantExpression {
 	@Override
 	public Object getValue(SchemaContext sc) {
 		try {
-			return sc.getConnection().getVariableValue(accessor);
+			return accessor.getValue(sc.getConnection().getVariableSource());
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.PLANNER, "Unable to obtain late resolving variable value",pe);
 		}

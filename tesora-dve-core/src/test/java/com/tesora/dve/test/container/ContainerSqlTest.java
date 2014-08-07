@@ -42,7 +42,6 @@ import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.distribution.ContainerDistributionModel;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.template.TemplateBuilder;

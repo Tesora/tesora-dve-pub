@@ -22,13 +22,14 @@ package com.tesora.dve.db.mysql.libmy;
  */
 
 
+import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.ByteOrder;
 
-public abstract class MyMessage implements MyMarshallMessage, MyUnmarshallMessage {
+public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUnmarshallMessage {
 	public static final short MESSAGE_HEADER_LENGTH = 4;
 	
 	private byte packetNumber;

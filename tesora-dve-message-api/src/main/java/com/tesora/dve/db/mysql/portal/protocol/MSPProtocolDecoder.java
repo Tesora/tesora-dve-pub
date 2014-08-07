@@ -23,8 +23,7 @@ package com.tesora.dve.db.mysql.portal.protocol;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.ReplayingDecoder;
-
+import io.netty.handler.codec.ByteToMessageDecoder;
 import java.nio.ByteOrder;
 import java.util.List;
 
@@ -32,8 +31,9 @@ import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.db.mysql.MysqlNativeConstants;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
+import org.slf4j.LoggerFactory;
 
-public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDecoderState> {
+public class MSPProtocolDecoder extends ByteToMessageDecoder {
 
 	private static final int MESSAGE_HEADER_LENGTH = 4;
 
@@ -62,13 +62,16 @@ public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDe
 
 	private final MSPMessage[] messageExecutor;
 
+    private MyDecoderState currentState;
+
 	public MSPProtocolDecoder() throws PEException {
 		this(MyDecoderState.READ_CLIENT_AUTH);
 	}
 
 	public MSPProtocolDecoder(MyDecoderState initialState) throws PEException {
-		super(initialState);
+		super();
 		this.messageExecutor = messageMap;
+        this.currentState = initialState;
 	}
 
 	@Override
@@ -78,15 +81,28 @@ public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDe
 		//		logger.debug("got packet " + in);
 
 		try {
-			final ByteBuf inBuf = in.order(ByteOrder.LITTLE_ENDIAN);
+            final ByteBuf inBuf = in.order(ByteOrder.LITTLE_ENDIAN);
 
-			final MyDecoderState state = this.state();
+            if (inBuf.readableBytes() < MESSAGE_HEADER_LENGTH)
+                return;
+
+            inBuf.markReaderIndex();
+            final int payloadLength = inBuf.readUnsignedMedium();
+            final byte sequenceId = inBuf.readByte();
+
+            if (inBuf.readableBytes() < payloadLength){
+                inBuf.resetReaderIndex();
+                return;
+            }
+
+            //OK, now we know we have an entire frame available for read.
+
+			final MyDecoderState state = currentState;
 			switch (state) {
 			case READ_SERVER_GREETING:
 			case READ_CLIENT_AUTH: {
-				final int length = inBuf.readUnsignedMedium();
-				final byte sequenceId = inBuf.readByte();
-				final ByteBuf authPayload = inBuf.readSlice(length).order(ByteOrder.LITTLE_ENDIAN);
+
+				final ByteBuf authPayload = inBuf.readSlice(payloadLength).order(ByteOrder.LITTLE_ENDIAN);
 				authPayload.retain();//required, since we won't be holding a reference to the original buffer.
 				MSPMessage authMessage;
 				if (state == MyDecoderState.READ_CLIENT_AUTH) {
@@ -102,30 +118,22 @@ public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDe
 			}
 
 			case READ_PACKET:
-				if (inBuf.readableBytes() >= MESSAGE_HEADER_LENGTH) {
-					final int payloadLength = inBuf.readUnsignedMedium();
-					final byte sequenceId = inBuf.readByte();
-					final byte messageType = inBuf.readByte();
 
-					this.packet = Packet.buildPacket(payloadLength);
-					this.packet.setSequenceId(sequenceId);
-					this.packet.setMessageType(messageType);
-					this.packet.writePacketPayload(inBuf, payloadLength - 1, sequenceId);
 
-					if (this.packet.isExtended()) {
-						checkpoint(MyDecoderState.READ_NEXT_EXTENDEDPACKET);
-					} else {
-						if (inBuf.readableBytes() >= payloadLength) {
-							emitMessageAndResetDecoder(out);
-						}
-					}
-				}
+                final byte messageType = inBuf.readByte();
+                this.packet = Packet.buildPacket(payloadLength);//TODO: this is weird, we are passing length, but already pulled off one octect. -sgossard
+                this.packet.setSequenceId(sequenceId);
+                this.packet.setMessageType(messageType);
+                this.packet.writePacketPayload(inBuf, payloadLength - 1, sequenceId);
+
+                if (this.packet.isExtended()) {
+                    checkpoint(MyDecoderState.READ_NEXT_EXTENDEDPACKET);
+                } else {
+                    emitMessageAndResetDecoder(out);
+                }
 				break;
 
 			case READ_NEXT_EXTENDEDPACKET:
-				final int payloadLength = inBuf.readUnsignedMedium();
-				final byte sequenceId = inBuf.readByte(); // need to store the last packet num - the OK response needs to use it.
-
 				this.packet.writePacketPayload(inBuf, payloadLength, sequenceId); // append the payload to the frame
 
 				if (payloadLength < MysqlNativeConstants.MAX_PAYLOAD_SIZE) {
@@ -135,7 +143,9 @@ public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDe
 				}
 				break;
 			}
-		} finally {
+		} catch (Exception e){
+            LoggerFactory.getLogger(MSPProtocolDecoder.class).warn("problem decoding frame",e);
+        }finally {
 			//			Thread.currentThread().setName(origThreadName);
 			PEThreadContext.clear();
 		}
@@ -159,8 +169,12 @@ public class MSPProtocolDecoder extends ReplayingDecoder<MSPProtocolDecoder.MyDe
 		}
 	}
 
+    protected void checkpoint(MyDecoderState state) {
+        this.currentState = state;
+    }
+
 	private void reset() {
-		checkpoint(MyDecoderState.READ_PACKET);
+		this.checkpoint(MyDecoderState.READ_PACKET);
 		if (packet != null) {
 			packet.getPayload().release();
 			packet = null;

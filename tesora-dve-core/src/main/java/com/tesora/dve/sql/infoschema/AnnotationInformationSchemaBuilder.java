@@ -57,6 +57,7 @@ import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.common.catalog.UserView;
+import com.tesora.dve.common.catalog.VariableConfig;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.distribution.RangeTableRelationship;
@@ -121,7 +122,8 @@ public class AnnotationInformationSchemaBuilder implements
 		new InfoTableConfig(RawPlan.class),
 		new InfoTableConfig(UserView.class).withLogical(ViewCatalogInformationSchemaTable.class),
 		new InfoTableConfig(Collations.class),
-		new InfoTableConfig(TemporaryTable.class)
+		new InfoTableConfig(TemporaryTable.class),
+		new InfoTableConfig(VariableConfig.class)
 	};
 	
 	private static Type buildType(Class<?> retVal, InfoSchemaColumn info, Class<?> enc, DBNative dbn) throws PEException {

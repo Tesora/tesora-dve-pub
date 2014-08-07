@@ -27,6 +27,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.lang.StringEscapeUtils;
 
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -65,7 +66,7 @@ import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.NonDMLFeatureStep;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
 
 /*
  * Applies when variables are present in the query.  If found, we sub in the current values of
@@ -106,8 +107,8 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 			if (vi.getScope().isUserScope() && DBNative.DVE_SITENAME_VAR.equals(vi.getVariableName().get().toLowerCase()))
 				continue;
 			final Edge<?, ExpressionNode> parentEdge = vi.getParentEdge();
-			final VariableAccessor va = vi.buildAccessor();
-			parentEdge.set(LiteralExpression.makeStringLiteral(sc.getConnection().getVariableValue(va)));
+			final AbstractVariableAccessor va = vi.buildAccessor();
+			parentEdge.set(LiteralExpression.makeStringLiteral(PEStringUtils.dequote(sc.getConnection().getVariableValue(va))));
 		}
 	}
 

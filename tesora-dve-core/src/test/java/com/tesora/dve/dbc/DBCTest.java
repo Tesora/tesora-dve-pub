@@ -48,8 +48,6 @@ import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.standalone.PETest;
 
-import com.tesora.dve.sql.SchemaException;
-
 public class DBCTest extends PETest {
 
 	private static final String myDB = "NotTheDefault";

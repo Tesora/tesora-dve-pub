@@ -43,7 +43,7 @@ public class EmptyStatementTransformTest extends TransformTest {
 	}
 
     @Test
-    public void testPE1152_GrantProcessIgnored() throws Exception {
+    public void testPE1152_GrantProcessIgnored() throws Throwable {
         SchemaContext db = buildSchema(TestName.MULTI, schema);
         stmtTest(db, "GRANT process ON *.* TO `f5_db_user`@`%` IDENTIFIED BY 'S'", EmptyStatement.class, null);
         stmtTest(db, "GRANT process ON *.* TO `f5_db_user`@`%`", EmptyStatement.class, null);

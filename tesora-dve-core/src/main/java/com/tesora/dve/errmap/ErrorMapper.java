@@ -28,6 +28,7 @@ import java.util.Map;
 import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.variables.KnownVariables;
 
 public class ErrorMapper {
 
@@ -42,24 +43,32 @@ public class ErrorMapper {
 		}
 	}
 	
+	private static StackTraceElement getLocation(Throwable t) {
+		if (KnownVariables.ERROR_MIGRATOR.getGlobalValue(null)) {
+			return t.getStackTrace()[0];
+		}
+		return null;
+	}
+	
 	
 	// namespace
-	public static final MyErrorResponse makeResponse(ErrorInfo ex) {
+	public static final MyErrorResponse makeResponse(SchemaException se) {
+		ErrorInfo ex = se.getErrorInfo();
 		ErrorCodeFormatter ecf = formatters.get(ex.getCode());
 		if (ecf == null) return null;
 		try {
-			return ecf.buildResponse(ex.getParams());
+			return ecf.buildResponse(ex.getParams(),getLocation(se));
 		} catch (Throwable t) {
 			return null;
 		}
 
 	}
 
-	public static final SQLException makeException(ErrorInfo ex) {
+	private static final SQLException makeException(ErrorInfo ex, StackTraceElement location) {
 		ErrorCodeFormatter ecf = formatters.get(ex.getCode());
 		if (ecf == null) return null;
 		try {
-			return ecf.buildException(ex.getParams());
+			return ecf.buildException(ex.getParams(), location);
 		} catch (Throwable t) {
 			return null;
 		}
@@ -67,7 +76,7 @@ public class ErrorMapper {
 	
 	public static final SQLException makeException(SchemaException se) {
 		if (se.getErrorInfo() == null) return new SQLException(se);
-		SQLException any = makeException(se.getErrorInfo());
+		SQLException any = makeException(se.getErrorInfo(),getLocation(se));
 		if (any == null) return new SQLException(se);
 		return any;
 	}

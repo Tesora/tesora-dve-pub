@@ -23,9 +23,6 @@ package com.tesora.dve.common.catalog;
 
 
 import java.net.InetSocketAddress;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,8 +31,6 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import javax.sql.DataSource;
-
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;

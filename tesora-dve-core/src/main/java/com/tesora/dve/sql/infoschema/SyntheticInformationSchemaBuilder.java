@@ -37,6 +37,7 @@ import com.tesora.dve.sql.infoschema.info.InfoSchemaSchemataSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaScopesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaSessionTemporaryTablesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaTableConstraintsInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.info.InfoSchemaVariablesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaViewInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.DistributionLogicalTable;
 import com.tesora.dve.sql.infoschema.logical.EventsInformationSchemaTable;
@@ -77,7 +78,8 @@ import com.tesora.dve.sql.infoschema.show.ShowTemplateOnDatabaseSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowTriggersInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowView;
 import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.VariablesInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.show.ShowVariablesInformationSchemaTable;
+import com.tesora.dve.sql.schema.UnqualifiedName;
 
 // synthetic info schema tables come in two varieties:
 // - they may transform other info schema tables 
@@ -96,7 +98,7 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		showSchema.addTable(null, new ShowTemplateOnDatabaseSchemaTable(databaseInfoSchemaTable));
 		addGenerationSiteTable(logicalSchema,showSchema,infoSchema,dbn);
 		addMysqlDBTable(logicalSchema,mysqlSchema,dbn);
-		addVariablesTable(logicalSchema, showSchema, dbn);
+		addVariablesTable(logicalSchema, showSchema, infoSchema, dbn);
 		addTableStatusTable(showSchema,dbn);
 		addStatusTable(logicalSchema, showSchema, dbn);
 		addTriggersTable(showSchema,dbn);
@@ -140,10 +142,16 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		infoSchema.addTable(null,new MysqlDBInformationSchemaTable(baseTable));
 	}
 	
-	private void addVariablesTable(LogicalInformationSchema logical, ShowView showSchema, DBNative dbn) {
+	private void addVariablesTable(LogicalInformationSchema logical, ShowView showSchema, InformationSchemaView infoSchema, DBNative dbn) {
 		VariablesLogicalInformationSchemaTable baseTable = new VariablesLogicalInformationSchemaTable(dbn);
 		logical.addTable(null,baseTable);
-		showSchema.addTable(null,new VariablesInformationSchemaTable(baseTable));
+		showSchema.addTable(null,new ShowVariablesInformationSchemaTable(baseTable));
+		infoSchema.addTable(null, new InfoSchemaVariablesInformationSchemaTable(baseTable, 
+				new UnqualifiedName(VariablesLogicalInformationSchemaTable.GLOBAL_TABLE_NAME), 
+				VariablesLogicalInformationSchemaTable.GLOBAL_TABLE_NAME));
+		infoSchema.addTable(null, new InfoSchemaVariablesInformationSchemaTable(baseTable, 
+				new UnqualifiedName(VariablesLogicalInformationSchemaTable.SESSION_TABLE_NAME),
+				VariablesLogicalInformationSchemaTable.SESSION_TABLE_NAME));
 	}
 
 	private void addStatusTable(LogicalInformationSchema logical, ShowView showSchema, DBNative dbn) {

@@ -23,42 +23,41 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBType;
-import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
-import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
-import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
-import com.tesora.dve.db.mysql.portal.protocol.MSPProtocolEncoder;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.db.DBNative;
+import com.tesora.dve.db.mysql.portal.protocol.*;
 import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.log4j.Logger;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.base.Objects;
 import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.concurrent.PEDefaultThreadFactory;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.DevXid;
 import com.tesora.dve.worker.UserCredentials;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
@@ -69,15 +68,17 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	// TODO what's the general strategy for mapping MySQL error codes? (see PE-5)
 	private static final int MYSQL_ERR_QUERY_INTERRUPTED = 1317;
 
-	static Logger logger = Logger.getLogger( MysqlConnection.class );
+	static Logger logger = LoggerFactory.getLogger(MysqlConnection.class);
+
+    DeferredErrorHandle deferredErrorHandle = new DeferredErrorHandle();
 
 	private long shutdownQuietPeriod = 2;
 	private long shutdownTimeout = 15;
 
 	public static class Factory implements DBConnection.Factory {
 		@Override
-		public DBConnection newInstance(StorageSite site) {
-			return new MysqlConnection(site);
+		public DBConnection newInstance(EventLoopGroup eventLoop, StorageSite site) {
+			return new MysqlConnection(eventLoop, site);
 		}
 	}
 
@@ -86,19 +87,35 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	private Channel channel;
 	private ChannelFuture pendingConnection;
 	private MysqlClientAuthenticationHandler authHandler;
-	final PEPromise<Boolean> sharedExceptionCatcher;
+
 	private Exception pendingException = null;
 	private final StorageSite site;
 
 	private boolean pendingUpdate = false;
 	private boolean hasActiveTransaction = false;
 
-	public MysqlConnection(StorageSite site) {
-		sharedExceptionCatcher = getExceptionCatcher();
+    Map<String,String> currentSessionVariables = new HashMap<>();
+    Map<String,String> sessionDefaults = new HashMap<>();
+
+	public MysqlConnection(EventLoopGroup eventLoop, StorageSite site) {
+        this.connectionEventGroup = eventLoop;
 		this.site = site;
+        setupDefaultSessionVars(site);
 	}
 
-	public void setShutdownQuietPeriod(final long seconds) {
+    public MysqlConnection(StorageSite site) {
+        this(SharedEventLoopHolder.getLoop(),site);
+    }
+
+    private void setupDefaultSessionVars(StorageSite site) {
+        //provide some default session variables that can be overridden.
+        sessionDefaults.put("@" + DBNative.DVE_SITENAME_VAR,site.getName());
+        sessionDefaults.put("character_set_connection", MysqlNativeConstants.DB_CHAR_SET);
+        sessionDefaults.put("character_set_client", MysqlNativeConstants.DB_CHAR_SET);
+        sessionDefaults.put("character_set_results", MysqlNativeConstants.DB_CHAR_SET);
+    }
+
+    public void setShutdownQuietPeriod(final long seconds) {
 		this.shutdownQuietPeriod = seconds;
 	}
 
@@ -124,7 +141,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
 		InetSocketAddress serverAddress = new InetSocketAddress(peUrl.getHost(), peUrl.getPort());
         final MyBackendDecoder.CharsetDecodeHelper charsetHelper = new CharsetDecodeHelper();
-		connectionEventGroup = new NioEventLoopGroup(1, new PEDefaultThreadFactory("mysql-" + site.getName()));
 		mysqlBootstrap = new Bootstrap();
 		mysqlBootstrap // .group(inboundChannel.eventLoop())
 		.channel(NioSocketChannel.class)
@@ -133,24 +149,28 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 		.handler(new ChannelInitializer<Channel>() {
 			@Override
 			protected void initChannel(Channel ch) throws Exception {
-				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));
+				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));           
 
-				if (PACKET_LOGGER)
-					ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
+                if (PACKET_LOGGER)
+                    ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
 
-				ch.pipeline()
-				.addLast(authHandler)
-                .addLast(MSPProtocolEncoder.class.getSimpleName(), new MSPProtocolEncoder())
-                .addLast(MSPEncoder.class.getSimpleName(), MSPEncoder.getInstance())
-                .addLast(MyBackendDecoder.class.getSimpleName(), new MyBackendDecoder(site.getName(),charsetHelper))
-				.addLast(MysqlCommandSenderHandler.class.getSimpleName(), new MysqlCommandSenderHandler(site.getName()));
-			}
-		});
+                ch.pipeline()
+                        .addLast(authHandler)
+                        .addLast(MSPEncoder.class.getSimpleName(), MSPEncoder.getInstance())
+                        .addLast(MyBackendDecoder.class.getSimpleName(), new MyBackendDecoder(site.getName(), charsetHelper))
+                        .addLast(StreamValve.class.getSimpleName(), new StreamValve())
+                        .addLast(MysqlCommandSenderHandler.class.getSimpleName(), new MysqlCommandSenderHandler(site.getName()));
+            }
+        });
 
 		pendingConnection = mysqlBootstrap.connect(serverAddress);
 
 //		System.out.println("Create connection: Allocated " + totalConnections.incrementAndGet() + ", active " + activeConnections.incrementAndGet());
 		channel = pendingConnection.channel();
+
+        //TODO: this was moved from execute to connect, which avoids blocking on the execute to be netty friendly, but causes lag on checkout.  Should make this event driven like everything else. -sgossard
+        syncToServerConnect();
+        authHandler.assertAuthenticated();
 //		channel.closeFuture().addListener(new GenericFutureListener<Future<Void>>() {
 //			@Override
 //			public void operationComplete(Future<Void> future) throws Exception {
@@ -159,16 +179,11 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 //		});
 	}
 
-	@Override
-	public void execute(SQLCommand sql, DBResultConsumer consumer) throws PESQLException {
-		execute(sql, consumer, sharedExceptionCatcher);
-	}
+    @Override
+	public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) {
+        CompletionHandle<Boolean> resultTracker = wrapHandler(promise);
 
-	@Override
-	public PEFuture<Boolean> execute(SQLCommand sql, DBResultConsumer consumer, PEPromise<Boolean> promise) throws PESQLException {
-		PEFuture<Boolean> executionResult = promise;
-
-		PEThreadContext.pushFrame(getClass().getSimpleName())
+		PEThreadContext.pushFrame(getClass())
 				.put("site", site.getName())
 				.put("connectionId", getConnectionId())
 				.put("channel", channel.toString())
@@ -185,18 +200,15 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 						+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+consumer+","+promise+")");
 
 			if (!channel.isOpen()) {
-				promise.failure(new PECommunicationsException("Channel closed: " + channel));
+                resultTracker.failure(new PECommunicationsException("Channel closed: " + channel));
 			} else if (pendingException == null) {
-				syncToServerConnect();
-				authHandler.assertAuthenticated();
-				executionResult = consumer.writeCommandExecutor(channel, site, this, sql, promise);
-				channel.flush();
+				consumer.writeCommandExecutor(channel, site, this, sql, resultTracker);
+                channel.flush();
 			} else {
-				promise.failure(new PEException("Queued exception from previous execution", pendingException));
-				pendingException = null;
+                Exception currentError = pendingException;
+                pendingException = null; //if no tracker was provided, will just save it for the next call.
+                resultTracker.failure(currentError);
 			}
-
-			return executionResult;
 		} finally {
 			PEThreadContext.popFrame();
 		}
@@ -212,63 +224,147 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	@Override
 	public synchronized void close() {
 		if (connectionEventGroup != null) {
-//			if (channel.isOpen()) {
-//				ChannelFuture f = channel.write(MysqlQuitCommand.INSTANCE);
-//				channel.flush();
-//				f.syncUninterruptibly();
-//				channel.close().syncUninterruptibly();
-//			}
-//			System.out.println("Close connection: Allocated " + totalConnections.get() + ", active " + activeConnections.decrementAndGet());
-			connectionEventGroup.shutdownGracefully(shutdownQuietPeriod, shutdownTimeout, TimeUnit.SECONDS);
+			if (channel.isOpen()) {
+                try {
+                    channel.writeAndFlush(new MysqlQuitCommand());
+                } finally {
+				    channel.close().syncUninterruptibly();
+                }
+			}
+            //NOTE: we don't shutdown the event loop. Under the shared thread model, we don't know if someone else is using it. -sgossard
 			connectionEventGroup = null;
 		}
 	}
 
 	@Override
-	public void start(DevXid xid) throws Exception {
+	public void start(DevXid xid, CompletionHandle<Boolean> promise) {
 		hasActiveTransaction = true;
-		execute(new SQLCommand("XA START " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE);
+        execute(new SQLCommand("XA START " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, promise);
+    }
+
+	@Override
+	public void end(DevXid xid, CompletionHandle<Boolean> promise) {
+        execute(new SQLCommand("XA END " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, promise);
+    }
+
+	@Override
+	public void prepare(DevXid xid, CompletionHandle<Boolean> promise) {
+        execute(new SQLCommand("XA PREPARE " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, promise);
 	}
 
 	@Override
-	public void end(DevXid xid) throws Exception {
-		execute(new SQLCommand("XA END " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE);
-	}
-
-	@Override
-	public void prepare(DevXid xid) throws Exception {
-		execute(new SQLCommand("XA PREPARE " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE,
-				new PEDefaultPromise<Boolean>()).sync();
-	}
-
-	@Override
-	public void commit(DevXid xid, boolean onePhase) throws Exception {
+	public void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) {
 		String sql = "XA COMMIT " + xid.getMysqlXid();
 		if (onePhase)
 			sql += " ONE PHASE";
-		execute(new SQLCommand(sql), DBEmptyTextResultConsumer.INSTANCE, new PEDefaultPromise<Boolean>()).sync();
-		pendingUpdate = false;
-		hasActiveTransaction = false;
+        execute(new SQLCommand(sql), DBEmptyTextResultConsumer.INSTANCE, new DelegatingCompletionHandle<Boolean>(promise){
+            @Override
+            public void success(Boolean returnValue) {
+                clearActiveState();
+                super.success(returnValue);
+            }
+        });
 	}
 	@Override
-	public void rollback(DevXid xid) throws Exception {
-        try{
-		    execute(new SQLCommand("XA ROLLBACK " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE,
-				new PEDefaultPromise<Boolean>()).sync();
-        } catch (PEException e){
-            Exception root = e.rootCause();
-            if (root instanceof PESQLStateException){
-                PESQLStateException mysqlError = (PESQLStateException)root;
-                //watch for rollback failing because we don't actually have an XA transaction. -sgossard
-                if (backendErrorImpliesNoOpenXA(mysqlError))
-                    logger.warn("tried to rollback transaction, but response implied no XA exists, " + mysqlError.getMessage());
-                else
-                    throw root;
+	public void rollback(DevXid xid, CompletionHandle<Boolean> promise) {
+        execute(new SQLCommand("XA ROLLBACK " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, new DelegatingCompletionHandle<Boolean>(promise){
+            @Override
+            public void success(Boolean returnValue) {
+                clearActiveState();
+                super.success(returnValue);
             }
-        }
-		pendingUpdate = false;
-		hasActiveTransaction = false;
+
+            @Override
+            public void failure(Exception e) {
+                if (e instanceof PESQLStateException && backendErrorImpliesNoOpenXA((PESQLStateException)e)){
+                    logger.warn("tried to rollback transaction, but response implied no XA exists, " + e.getMessage());
+                    clearActiveState();
+                    super.success(true);
+                } else {
+                    super.failure(e);
+                }
+            }
+        });
 	}
+
+	private static final AtomicLong updates = new AtomicLong(0);
+	
+    public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise){
+        final SQLCommand updateCommand;
+        final Map<String,String> updatesRequired = new HashMap<>();
+        try {
+
+            Set<String> mergedKeys = new HashSet<>( desiredVariables.keySet() );
+            mergedKeys.addAll( currentSessionVariables.keySet() );
+            mergedKeys.addAll( sessionDefaults.keySet() );
+
+            for (String variableName : mergedKeys){
+                String existingValue = currentSessionVariables.get(variableName);
+                String desiredValue;
+                if (desiredVariables.containsKey(variableName))
+                    desiredValue = desiredVariables.get(variableName);
+                else
+                    desiredValue = sessionDefaults.get(variableName);
+                if (desiredValue == null){
+                    updatesRequired.put(variableName,null);
+                    setBuilder.remove(variableName,existingValue);
+                } else if (existingValue == null) {
+                    updatesRequired.put(variableName,desiredValue);
+                    setBuilder.add(variableName, desiredValue);
+                } else if ( ! desiredValue.equals( existingValue ) ) {
+                    updatesRequired.put(variableName,desiredValue);
+                    setBuilder.update(variableName,existingValue,desiredValue);
+                } else
+                    setBuilder.same(variableName,desiredValue);
+            }
+
+            updateCommand = setBuilder.generateSql();
+//            System.out.println(updates.getAndIncrement() + ": " + updateCommand);
+        } catch (Exception e) {
+            callbackSetVariablesFailed(updatesRequired, null, e);
+            promise.failure(e);
+            return;
+        }
+
+        if (updateCommand == SQLCommand.EMPTY){
+            promise.success(true);
+        } else {
+            execute(updateCommand, DBEmptyTextResultConsumer.INSTANCE, new DelegatingCompletionHandle<Boolean>( promise ){
+                @Override
+                public void success(Boolean returnValue) {
+                    callbackSetVariablesOK(updatesRequired, updateCommand);
+                    super.success(returnValue);
+                }
+
+                @Override
+                public void failure(Exception e) {
+                    callbackSetVariablesFailed(updatesRequired, updateCommand, e);
+                    super.failure(e);
+                }
+            });
+        }
+    }
+
+    private void callbackSetVariablesFailed(Map<String, String> updatesRequired, SQLCommand updateCommand, Exception e) {
+        currentSessionVariables.clear();//not sure if this is ideal, but it forces variables to get set next attempt.
+        logger.warn("Problem updating session variables on connection {} via command {}",new Object[]{site,updateCommand,e});
+    }
+
+    private void callbackSetVariablesOK(Map<String, String> updatesRequired, SQLCommand updateCommand) {
+        for (Map.Entry<String,String> updateEntry : updatesRequired.entrySet()){
+            String key = updateEntry.getKey();
+            String value = updateEntry.getValue();
+            if (value == null)
+                currentSessionVariables.remove(key);
+            else
+                currentSessionVariables.put(key, value);
+        }
+    }
+
+    private void clearActiveState() {
+        pendingUpdate = false;
+        hasActiveTransaction = false;
+    }
 
     public boolean backendErrorImpliesNoOpenXA(PESQLStateException mysqlError) {
         return mysqlError.getErrorNumber() == 1397 || //XAER_NOTA, XA id is completely unknown.
@@ -277,47 +373,43 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
     }
 
     @Override
-	public void setCatalog(String databaseName) throws Exception {
-		execute(new SQLCommand("use " + databaseName), DBEmptyTextResultConsumer.INSTANCE,
-				sharedExceptionCatcher);
+    public void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) {
+        String setTimestampSQL = "SET TIMESTAMP=" + referenceTime + ";";
+        execute(new SQLCommand(setTimestampSQL), DBEmptyTextResultConsumer.INSTANCE, promise);
+    }
+
+    @Override
+	public void setCatalog(String databaseName, CompletionHandle<Boolean> promise) {
+		execute(new SQLCommand("use " + databaseName), DBEmptyTextResultConsumer.INSTANCE, promise);
 	}
 
+    @Deprecated
 	@Override
 	public void cancel() {
-		try {
-			execute(new SQLCommand("KILL QUERY " + authHandler.getThreadID()), MysqlKillResultDiscarder.INSTANCE);
-		} catch (PESQLException e) {
-			logger.warn("Failed to cancel active query", e);
-		}
+        logger.warn("Cancelling running query via MysqlConnection.cancel() currently not supported.");
+        //KILL QUERY needs to be sent on a different socket than the target query.  Sent on the same socket, it pends until the target query finishes, oops.  -sgossard
+//		try {
+//            execute(new SQLCommand("KILL QUERY " + authHandler.getThreadID()), MysqlKillResultDiscarder.INSTANCE, wrapHandler(null));
+//        } catch (PESQLException e) {
+//			logger.warn("Failed to cancel active query", e);
+//		}
 	}
 
-	private PEPromise<Boolean> getExceptionCatcher() {
-
-		// re-usable promise that forwards success/failure calls; result is ignored
-		PEDefaultPromise<Boolean> catcher = new PEDefaultPromise<Boolean>() {
-			@Override
-			public PEDefaultPromise<Boolean> success(Boolean returnValue) {
-				onSuccess(returnValue);
-				return this;
-			}
-
-			@Override
-			public PEDefaultPromise<Boolean> failure(Exception e) {
-				onFailure(e);
-				return this;
-			}
-
-		};
-		return catcher.addListener(this);
-	}
+    private CompletionHandle<Boolean> wrapHandler(final CompletionHandle<Boolean> target) {
+        if (target != null)
+            return target;  //caller supplied a handler to track success/failure.
+        else {
+            return deferredErrorHandle;
+        }
+    }
 
 	@Override
-	public void onFailure(Exception e) {
+	public void failure(Exception e) {
 		pendingException = new PEException("Unhandled exception received on server housekeeping sql statement", e);
 	}
 
 	@Override
-	public void onSuccess(Boolean returnValue) {
+	public void success(Boolean returnValue) {
 	}
 
 	@Override
@@ -348,4 +440,18 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 				.toString();
 	}
 
+    private class DeferredErrorHandle extends PEDefaultPromise<Boolean> {
+        //supply our own handler that will report failures on some call in the future.
+        //TODO: since query results generally come back in order, it would be good for these handlers to signal the next provided handler, not some arbitrary execute in the future. -sgossard
+        @Override
+        public void success(Boolean returnValue) {
+            MysqlConnection.this.success(returnValue);
+        }
+
+        @Override
+        public void failure(Exception e) {
+            MysqlConnection.this.failure(e);
+        }
+
+    }
 }

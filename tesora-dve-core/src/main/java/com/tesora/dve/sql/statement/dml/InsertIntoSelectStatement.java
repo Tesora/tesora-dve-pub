@@ -40,12 +40,12 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
+import com.tesora.dve.variables.KnownVariables;
 
 public class InsertIntoSelectStatement extends InsertStatement {
 
@@ -123,7 +123,8 @@ public class InsertIntoSelectStatement extends InsertStatement {
 			
 		});
 
-		SQLMode sqlMode = SchemaVariables.getSQLMode(sc);
+		SQLMode sqlMode = 
+				KnownVariables.SQL_MODE.getSessionValue(sc.getConnection().getVariableSource()); 
 		
 		SelectStatement src = null;
 		if (sourceSelect.get() instanceof SelectStatement) {

@@ -35,7 +35,6 @@ import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.distribution.RangeDistributionModel;
 import com.tesora.dve.errmap.MySQLErrors;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.template.jaxb.FkModeType;

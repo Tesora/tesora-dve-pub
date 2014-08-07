@@ -43,7 +43,6 @@ import com.tesora.dve.sql.PlannerStatisticType;
 import com.tesora.dve.sql.PlannerStatistics;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.cache.CandidateCachedPlan;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils.PlanCacheCallback;
@@ -57,6 +56,7 @@ import com.tesora.dve.sql.statement.session.TransactionStatement;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.variables.KnownVariables;
 
 public class InvokeParser {
 
@@ -95,7 +95,8 @@ public class InvokeParser {
 	}
 
 	public static InputState buildInputState(String icmd, SchemaContext pc) {
-		long maxLen = (pc == null ? defaultLargeInsertThreshold : SchemaVariables.getLargeInsertThreshold(pc));
+		long maxLen =  
+			KnownVariables.LARGE_INSERT_CUTOFF.getValue(pc == null ? null : pc.getConnection().getVariableSource()).longValue();
 		if (icmd.length() > maxLen)
 			return new ContinuationInputState(icmd,maxLen);
 		return new InitialInputState(icmd);

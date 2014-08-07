@@ -24,9 +24,11 @@ package com.tesora.dve.common.catalog;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import com.tesora.dve.sql.transexec.CatalogHelper;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEConstants;
@@ -37,6 +39,8 @@ import com.tesora.dve.db.DBNative.DBNativeFactory;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
 import com.tesora.dve.siteprovider.onpremise.jaxb.OnPremiseSiteProviderConfig;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableHandler;
 
 public class TestCatalogHelper extends CatalogHelper {
 
@@ -258,14 +262,16 @@ public class TestCatalogHelper extends CatalogHelper {
 	}
 
 	private Project createTestCatalog(CatalogDAO c) throws PEException {
-		return createTestCatalog(c, getCatalogUser(), getCatalogPassword());
+		return createTestCatalog(c, getCatalogUser(), getCatalogPassword()).getFirst();
 	}
 
-	private Project createTestCatalog(CatalogDAO c, String user, String password) throws PEException {
-		Project p = createMinimalCatalog(c, user, password);
+	private Pair<Project,Map<VariableHandler,VariableConfig>> createTestCatalog(CatalogDAO c, String user, String password) throws PEException {
+		Pair<Project,Map<VariableHandler,VariableConfig>> minimal = 
+				createMinimalCatalog(c,user,password);
+		Project p = minimal.getFirst();
 
 		// Create a default dynamic site policy
-		addTestDefaultDynamicPolicy(p, c);
+		addTestDefaultDynamicPolicy(minimal, c);
 
 		// Register the built in Providers
 		addTestDefaultSiteProviders(c);
@@ -274,7 +280,7 @@ public class TestCatalogHelper extends CatalogHelper {
 		// providers that actually exist and that the site providers are using
 		// siteClasses that are specified in the policies ?
 
-		return p;
+		return minimal;
 	}
 
 	private PersistentGroup createTestStorageGroup(CatalogDAO c, String name, int numStorageSites, String prefix)
@@ -310,15 +316,16 @@ public class TestCatalogHelper extends CatalogHelper {
 		try {
 			c.begin();
 
-			Project p = createTestCatalog(c, user, password);
+			Pair<Project,Map<VariableHandler,VariableConfig>> minimal = createTestCatalog(c, user, password); 
 
 			PersistentGroup sg = createTestStorageGroup(c, PEConstants.DEFAULT_GROUP_NAME, numStorageSites, "");
-			p.setDefaultStorageGroup(sg);
+			
+			minimal.getSecond().get(KnownVariables.PERSISTENT_GROUP).setValue(sg.getName());
 
 			if (withDB) {
 				DBNative dbn = DBNativeFactory.newInstance(DBType.fromDriverClass(catalogProperties
 						.getProperty(PEConstants.PROP_FULL_JDBC_DRIVER)));
-				c.createDatabase(UserDatabase.DEFAULT, p.getDefaultStorageGroup(), dbn.getDefaultServerCharacterSet(),
+				c.createDatabase(UserDatabase.DEFAULT, sg, dbn.getDefaultServerCharacterSet(),
 						dbn.getDefaultServerCollation());
 			}
 
@@ -330,13 +337,13 @@ public class TestCatalogHelper extends CatalogHelper {
 
 	private int siteCount = 5;
 
-	private DynamicPolicy addTestDefaultDynamicPolicy(Project p, CatalogDAO c) throws PEException {
+	private DynamicPolicy addTestDefaultDynamicPolicy(Pair<Project,Map<VariableHandler,VariableConfig>> minimal, CatalogDAO c) throws PEException {
 		try {
 			DynamicPolicy policy = generatePolicyConfig(siteCount, OnPremiseSiteProvider.DEFAULT_NAME);
 
 			c.persistToCatalog(policy);
 
-			p.setDefaultPolicy(policy);
+			minimal.getSecond().get(KnownVariables.DYNAMIC_POLICY).setValue(policy.getName());
 
 			return policy;
 		} catch (Throwable t) {

@@ -28,8 +28,6 @@ import java.util.List;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.SchemaException;
-import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
@@ -48,12 +46,12 @@ import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
+import com.tesora.dve.variables.KnownVariables;
 
 public class InformationSchemaTableView implements
 		Table<AbstractInformationSchemaColumnView> {
@@ -218,11 +216,7 @@ public class InformationSchemaTableView implements
 	}
 	
 	protected boolean useExtensions(SchemaContext sc) {
-		try {
-			return SchemaVariables.isShowMetadataExtensions(sc);
-		} catch (PEException pe) {
-			throw new SchemaException(Pass.PLANNER, "Unable to obtain metadata extension flag value",pe);
-		}
+		return 	KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 	}
 
 	public static void derefEntities(LanguageNode in) {
@@ -331,4 +325,9 @@ public class InformationSchemaTableView implements
 		return ((Database<?>)sc.getSource().find(sc, view.getCacheKey()));
 	}
 
+	// bit of a hack - variables table executes very differently
+	public boolean isVariablesTable() {
+		return false;
+	}
+	
 }

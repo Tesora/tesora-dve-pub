@@ -481,7 +481,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 		for(PEColumn col : getColumns(pc)) {
 			p.addUserColumn(col.persistTree(pc));
 		}
-		if (db != null)
+		if (db != null && db.get(pc) != null)
 			p.setDatabase(this.db.get(pc).persistTree(pc));
 
 		p.setCreateTableStmt(createTableStatement);

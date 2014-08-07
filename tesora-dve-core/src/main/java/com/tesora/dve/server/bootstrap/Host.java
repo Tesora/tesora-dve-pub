@@ -22,7 +22,6 @@ package com.tesora.dve.server.bootstrap;
  */
 
 import java.lang.management.ManagementFactory;
-import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,7 +30,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -64,23 +62,19 @@ import com.tesora.dve.concurrent.NamedTaskExecutorService;
 import com.tesora.dve.concurrent.PEThreadPoolExecutor;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.groupmanager.GroupMessageEndpoint;
-import com.tesora.dve.groupmanager.OnGlobalConfigChangeMessage;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.upgrade.CatalogVersions;
-import com.tesora.dve.variable.ConfigVariableHandler;
-import com.tesora.dve.variable.ConfigVariableHandlerDynamicMBean;
-import com.tesora.dve.variable.GlobalVariableHandler;
-import com.tesora.dve.variable.ScopedVariableHandler;
-import com.tesora.dve.variable.SessionVariableHandler;
-import com.tesora.dve.variable.VariableConfig;
-import com.tesora.dve.variable.VariableHandler;
-import com.tesora.dve.variable.VariableInfo;
-import com.tesora.dve.variable.VariableValueStore;
 import com.tesora.dve.variable.status.StatusVariableHandler;
 import com.tesora.dve.variable.status.StatusVariableHandlerDynamicMBean;
+import com.tesora.dve.variable.status.StatusVariables;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.ScopedVariableHandler;
+import com.tesora.dve.variables.ScopedVariables;
+import com.tesora.dve.variables.ServerGlobalVariableStore;
+import com.tesora.dve.variables.VariableHandlerDynamicMBean;
+import com.tesora.dve.variables.VariableManager;
 
 public class Host implements HostService {
     protected static Logger logger = Logger.getLogger(Host.class);
@@ -89,7 +83,6 @@ public class Host implements HostService {
 	private static final String MBEAN_GLOBAL_STATUS = "com.tesora.dve:name=StatusVariables";
 	private static final String MBEAN_AUTO_INCR  =  "com.tesora.dve:name=AutoIncrementTracker";
 
-	private static final String CONFIG_VARIABLES_XML = "configVariables.xml";
 	private static final String TIMEOUT_KEY = "worker.timeout";
 	private static final String TIMEOUT_DEFAULT = "10";
 	
@@ -172,16 +165,12 @@ public class Host implements HostService {
 	
 	private Properties props;
 
-	private VariableConfig<GlobalVariableHandler> globalConfig;
-	private ConfigVariableHandlerDynamicMBean globalConfigMBean = new ConfigVariableHandlerDynamicMBean();
+	private final VariableManager variables;
+	
+	private VariableHandlerDynamicMBean globalConfigMBean = new VariableHandlerDynamicMBean();
 
-	private VariableConfig<SessionVariableHandler> sessionConfigTemplate;
-	private VariableValueStore sessionConfigDefaults;
+	private Map<String /* providerName */, ScopedVariables> scopedVariables	= new HashMap<String, ScopedVariables>();
 
-	private Map<String /* providerName */, VariableConfig<ScopedVariableHandler>> scopedVariables 
-		= new HashMap<String, VariableConfig<ScopedVariableHandler>>();
-
-	private VariableConfig<StatusVariableHandler> statusVariables;
 	private StatusVariableHandlerDynamicMBean globalStatusMBean = new StatusVariableHandlerDynamicMBean();
 	private DynamicMBean autoIncrementTrackerMBean = new AutoIncrementTrackerDynamicMBean();
 
@@ -208,8 +197,10 @@ public class Host implements HostService {
         }
 
         this.executorService = new PEThreadPoolExecutor("Host");
-
+        
 		try {
+			this.variables = VariableManager.getManager();
+			ServerGlobalVariableStore.INSTANCE.reset();
 			hostName = InetAddress.getLocalHost().getHostName();
 			
 			if (name == null) {
@@ -223,21 +214,25 @@ public class Host implements HostService {
 			dbNative = DBNative.DBNativeFactory.newInstance(dbType);
 			charSetNative = CharSetNative.CharSetNativeFactory.newInstance(dbType);
 
+			// we have to set this up early for the variables
+			broadcaster = new GroupMessageEndpoint("broadcast");
+            Singletons.replace(GroupTopicPublisher.class, broadcaster);
+			
 			CatalogDAO c = CatalogDAOFactory.newInstance();
 			try {
 				project = c.findProject(props.getProperty("defaultproject", Project.DEFAULT));
 				
-				initialiseConfigVariables(c);
-				initialiseSessionVariableTemplate(false);
-				initialiseStatusVariables();
+				// bootstrap host has already ensured we are part of a cluster if need be, therefore it
+				// is safe to initialize variables here.
+				variables.initialize(c);
+				variables.initializeDynamicMBeanHandlers(globalConfigMBean);
+				
 			} finally {
 				c.close();
 			}
 			
 			infoSchema = InformationSchemas.build(dbNative);
 
-			broadcaster = new GroupMessageEndpoint("broadcast");
-            Singletons.replace(GroupTopicPublisher.class, broadcaster);
 
 			startTime = System.currentTimeMillis();
 			
@@ -263,8 +258,10 @@ public class Host implements HostService {
         this.executorService = new PEThreadPoolExecutor("Host");
 
 		try {
+			variables = VariableManager.getManager();
+			ServerGlobalVariableStore.INSTANCE.reset();
 			hostName = InetAddress.getLocalHost().getHostName();
-
+			
 			if ( startCatalog )
 				CatalogDAOFactory.setup(props);
 
@@ -275,7 +272,9 @@ public class Host implements HostService {
 			charSetNative = CharSetNative.CharSetNativeFactory.newInstance(dbType, startCatalog);
 			
 			infoSchema = InformationSchemas.build(dbNative);
-			initialiseSessionVariableTemplate(true);
+			// initialiseSessionVariableTemplate(true);
+			if (startCatalog)
+				variables.initialize(null);
 		} catch (Exception e) {
             throw new RuntimeException("Failed to start DVE server - " + e.getMessage(), e);
 		}
@@ -295,93 +294,6 @@ public class Host implements HostService {
         Singletons.replace(TimingService.class, concreteImpl);
         Singletons.replace(TimingServiceConfiguration.class, concreteImpl);
     }
-
-    @SuppressWarnings("unchecked")
-	private void initialiseStatusVariables() throws PEException {
-		statusVariables = VariableConfig.parseXML(dbNative.getStatusVariableConfigName());
-
-		Method ctor;
-		for (VariableInfo<StatusVariableHandler> vInfo : statusVariables.getInfoValues()) {
-			StatusVariableHandler vHandler = vInfo.getHandler();
-			
-			if (vHandler == null)
-				throw new PENotFoundException("Handler for Status variable '" + vInfo.getName() + "' not found");
-			
-			// we initialise variables with handlers that define initialise(String, String).
-			try {
-				ctor = vHandler.getClass().getMethod("initialise", new Class[] {String.class, String.class});
-				ctor.invoke(vHandler, vInfo.getName(), vInfo.getDefaultValue());
-			} catch (NoSuchMethodException e1) {
-				// this is OK, it just means that the handler hasn't supplied an initialise method we know
-			} catch (Exception e2) {
-				throw new PEException("Exception looking up initialiser for Status variable '" + vInfo.getName() + "'", e2);
-			}
-			
-			globalStatusMBean.add(vInfo.getName(), (StatusVariableHandler)vHandler);
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	private void initialiseSessionVariableTemplate(boolean sessionOnly) throws PEException {
-		Method ctor;
-		sessionConfigTemplate = VariableConfig.parseXML(dbNative.getSessionVariableConfigName());
-
-		for (VariableInfo<SessionVariableHandler> vInfo : sessionConfigTemplate.getInfoValues()) {
-			VariableHandler vHandler = vInfo.getHandler();
-			
-			if (vHandler == null)
-				throw new PENotFoundException("Handler for Session variable '" + vInfo.getName() + "' not found");
-
-			if (sessionOnly && ((SessionVariableHandler)vHandler).defaultValueRequiresConnection())
-				continue;
-			
-			// we initialise variables with handlers that define initialise(String, String).
-			try {
-				ctor = vHandler.getClass().getMethod("initialise", new Class[] {String.class, String.class});
-				ctor.invoke(vHandler, vInfo.getName(), vInfo.getDefaultValue());
-			} catch (NoSuchMethodException e1) {
-				// this is OK, it just means that the handler hasn't supplied an initialise method we know
-				// TODO: what if there is an initialise method with different parameters?
-			} catch (Exception e2) {
-				throw new PEException("Exception looking up initialiser for Config variable '" + vInfo.getName() + "'", e2);
-			}
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	private void initialiseConfigVariables(CatalogDAO c) throws PEException {
-		Method ctor;
-
-		globalConfig = VariableConfig.parseXML(CONFIG_VARIABLES_XML);
-		for (VariableInfo<GlobalVariableHandler> vInfo : globalConfig.getInfoValues()) {
-			VariableHandler vHandler = vInfo.getHandler();
-
-			// we initialise variables with handlers that define either initialise(CatalogDAO, String, String)
-			// or just initialise(String, String).
-			try {
-				ctor = vHandler.getClass().getMethod("initialise", new Class[] {CatalogDAO.class, String.class, String.class});
-				ctor.invoke(vHandler, c, vInfo.getName(), vInfo.getDefaultValue());
-			} catch (NoSuchMethodException e) {
-				// Constructor with CatalogDAO not found so try the other one
-				
-				try {
-					ctor = vHandler.getClass().getMethod("initialise", new Class[] {String.class, String.class});
-					ctor.invoke(vHandler, vInfo.getName(), vInfo.getDefaultValue());
-				} catch (NoSuchMethodException e1) {
-					// this is OK, it just means that the handler hasn't supplied an initialise method we know
-					// TODO: what if there is an initialise method with different parameters?
-				} catch (Exception e2) {
-					throw new PEException("Exception looking up initialiser for " + vInfo.getName(), e2);
-				}
-			} catch (Exception e) {
-				throw new PEException("Exception looking up initialiser for " + vInfo.getName(), e);
-			}
-			
-			if (vHandler instanceof ConfigVariableHandler)
-				globalConfigMBean.add(vInfo.getName(), (ConfigVariableHandler)vHandler);
-		}
-
-	}
 
     protected void stop() {
 		// do nothing?
@@ -475,49 +387,18 @@ public class Host implements HostService {
 	@Override
     public List<Pair<String,String>> getStatusVariables(CatalogDAO c) throws PEException {
 		List<Pair<String,String>> out = new ArrayList<Pair<String,String>>();
-		
-		for(VariableInfo<StatusVariableHandler>  vi : statusVariables.getInfoValues()) {
-			out.add(new Pair<String,String>(vi.getName(), vi.getHandler().getValue(c, vi.getName())));
+
+		for(StatusVariableHandler svh : StatusVariables.getStatusVariables()) {
+			out.add(new Pair<String,String>(svh.getName(),svh.getValue()));
 		}
+		
 		return out;
 	}
 
 	@Override
     public String getStatusVariable(CatalogDAO c, String variableName) throws PEException {
-		return statusVariables.getVariableInfo(variableName).getHandler().getValue(c, variableName);
+		return StatusVariables.lookup(variableName, true).getValue();
 	}
-	
-	@Override
-    public String getGlobalVariable(CatalogDAO c, String variableName) throws PEException {
-		return globalConfig.getVariableInfo(variableName).getHandler().getValue(c, variableName);
-	}
-
-	@Override
-    public GlobalVariableHandler getGlobalVariableHandler(String variableName) throws PEException {
-		return globalConfig.getVariableInfo(variableName).getHandler();
-	}
-	
-	@Override
-    public void setGlobalVariable(CatalogDAO c, String variableName, String value) throws PEException {
-		GlobalVariableHandler handler =  globalConfig.getVariableInfo(variableName).getHandler();
-		handler.setValue(c, variableName, value);
-		
-		synchronized(sessionConfigTemplate) {
-			sessionConfigDefaults = null;
-		}
-
-        Singletons.require(GroupTopicPublisher.class).publish(new OnGlobalConfigChangeMessage(variableName, value));
-	}
-	
-	@Override
-    public Map<String,String> getGlobalVariables(CatalogDAO c) throws PEException {
-		HashMap<String, String> out = new HashMap<String,String>();
-		
-		for(VariableInfo<GlobalVariableHandler>  vi : globalConfig.getInfoValues()) {
-			out.put(vi.getName(), vi.getHandler().getValue(c, vi.getName()));
-		}
-		return out;
-	}	
 	
 	@Override
     public String getServerVersion() {
@@ -537,7 +418,7 @@ public class Host implements HostService {
 	@Override
     public String getDveVersion(SSConnection ssCon) throws PEException {
 		if (dveVersion == null) {
-			dveVersion = getGlobalVariable(ssCon.getCatalogDAO(), "version"); 
+			return KnownVariables.VERSION.getGlobalValue(null);
 		}
 		return dveVersion;
 	}
@@ -559,16 +440,16 @@ public class Host implements HostService {
                 PEConstants.MYSQL_PORTAL_DEFAULT_PORT));
     }
 
-	private VariableConfig<ScopedVariableHandler> getScopedConfig(String providerName) throws PEException {
+    public ScopedVariables getScopedConfig(String providerName) throws PEException {
 		if (scopedVariables.containsKey(providerName))
 			return scopedVariables.get(providerName);
 
-		throw new PEException("No variable configuration defined for provider " + providerName);
-	}
-	
+		throw new PEException("No variable configuration defined for provider " + providerName);    	
+    }
+    
 	@Override
     public String getScopedVariable(String scopeName, String variableName) throws PEException {
-		return getScopedConfig(scopeName).getVariableInfo(variableName).getHandler().getValue(scopeName, variableName);
+		return getScopedConfig(scopeName).getScopedVariableHandler(variableName).getValue();
 	}
 	
 	@Override
@@ -580,44 +461,21 @@ public class Host implements HostService {
     public Map<String, String> getScopedVariables(String scopeName) throws PEException {
 		HashMap<String, String> out = new HashMap<String,String>();
 
-		for(VariableInfo<ScopedVariableHandler> vi : getScopedConfig(scopeName).getInfoValues()) {
-			out.put(vi.getName(), vi.getHandler().getValue(scopeName,vi.getName()));
+		for(ScopedVariableHandler svh : getScopedConfig(scopeName).getHandlers()) {
+			out.put(svh.getName(),svh.getValue());
 		}
 		return out;
 	}
 	
 	@Override
     public void setScopedVariable(String scopeName, String variableName, String value) throws PEException {
-		getScopedConfig(scopeName).getVariableInfo(variableName).getHandler().setValue(scopeName, variableName, value);
+		getScopedConfig(scopeName).getScopedVariableHandler(variableName).setValue(value);
 	}
 	
 	@Override
-    public void addScopedConfig(String scopeName, VariableConfig<ScopedVariableHandler> variableConfig) {
-		scopedVariables.put(scopeName, variableConfig);
-	}
-
-	@Override
-    public VariableConfig<SessionVariableHandler> getSessionConfigTemplate() {
-		return sessionConfigTemplate;
-	}
-	
-	@Override
-    public VariableValueStore getSessionConfigDefaults(SSConnection ssCon) throws PEException {
-		synchronized(sessionConfigTemplate) {
-			if(sessionConfigDefaults == null) {
-				sessionConfigDefaults = new VariableValueStore("DefaultSession");
-
-				for (Entry<String, VariableInfo<SessionVariableHandler>> vEntry : sessionConfigTemplate.getInfoEntrySet()) {
-					try {
-						sessionConfigDefaults.initialiseVariableWithKey(vEntry.getKey(), vEntry.getValue().getHandler().getDefaultValue(ssCon));
-					} catch (Throwable e) {
-						throw new PEException("Looking up default value for variable " + vEntry.getValue().getName() + " by handler " + 
-								vEntry.getValue().getHandler().getClass().getSimpleName(), e);
-					}
-				}
-			}
-		}
-		return sessionConfigDefaults;
+    public void addScopedConfig(String scopeName, ScopedVariables variableConfig) {
+		if (variableConfig == null) return;
+		scopedVariables.put(scopeName,variableConfig);
 	}
 
 	@Override
@@ -687,5 +545,10 @@ public class Host implements HostService {
 	@Override
     public void onGarbageEvent() {
 		// does nothing by default
+	}
+
+	@Override
+	public VariableManager getVariableManager() {
+		return variables;
 	}
 }

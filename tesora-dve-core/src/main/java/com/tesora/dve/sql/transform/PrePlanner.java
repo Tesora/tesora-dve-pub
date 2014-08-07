@@ -23,9 +23,7 @@ package com.tesora.dve.sql.transform;
 
 
 
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaException;
-import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -40,12 +38,12 @@ import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.util.ListSet;
+import com.tesora.dve.variables.KnownVariables;
 
 public class PrePlanner {
 
@@ -67,12 +65,8 @@ public class PrePlanner {
 			SelectStatement ss = (SelectStatement) c;
 			if (ss.getLimitEdge().has())
 				return c;
-			Long limitByOtherMeans = null;
-			try {
-				limitByOtherMeans = SchemaVariables.getSelectLimit(sc);
-			} catch (PEException pe) {
-				throw new SchemaException(Pass.PLANNER, "Unable to obtain sql_select_limit value",pe);
-			}
+			Long limitByOtherMeans = 
+						KnownVariables.SELECT_LIMIT.getValue(sc.getConnection().getVariableSource());
 			if (limitByOtherMeans == null)
 				return c;
 			ss.setLimit(new LimitSpecification(LiteralExpression.makeLongLiteral(limitByOtherMeans.longValue()),

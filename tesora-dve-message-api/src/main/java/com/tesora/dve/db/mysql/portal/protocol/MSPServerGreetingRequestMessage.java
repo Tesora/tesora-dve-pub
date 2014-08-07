@@ -74,8 +74,7 @@ public class MSPServerGreetingRequestMessage extends BaseMSPMessage implements M
 
             out.setMedium(0, out.writerIndex()-4);
 
-            ctx.channel().write(out);
-            ctx.flush();
+            ctx.channel().writeAndFlush(out);
         } finally {
             serverCapabilitiesBuf.release();
         }

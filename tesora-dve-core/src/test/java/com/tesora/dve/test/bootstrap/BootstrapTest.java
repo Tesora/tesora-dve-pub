@@ -262,6 +262,8 @@ public class BootstrapTest extends PETest {
 		catalogDAO.refresh(p);
 		assertTrue(p.getName().equals(projName));
 
+		/*
+		
 		catalogDAO.new EntityUpdater() {
 			@Override
 			public CatalogEntity update() {
@@ -273,6 +275,7 @@ public class BootstrapTest extends PETest {
 		assertTrue(p.getDefaultStorageGroup().equals(sg));
 		catalogDAO.refresh(p);
 		assertTrue(p.getDefaultStorageGroup().equals(sg));
+		*/
 	}
 
 	private Project utilCreateProject(final String projName) throws Throwable {

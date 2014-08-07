@@ -37,22 +37,20 @@ import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.variable.VariableAccessor;
-import com.tesora.dve.variable.VariableScopeKind;
+import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class SetVariableExecutionStep extends ExecutionStep {
 
-	protected VariableScopeKind scopeKind;
-	protected String scopeName;
+	protected VariableScope scope;
 	protected String variableName;
 	
 	protected VariableValueSource valueSource;
 	
-	public SetVariableExecutionStep(VariableScopeKind vsk, String scopeName, String variableName, VariableValueSource valueSource, PEStorageGroup storageGroup) {
+	public SetVariableExecutionStep(VariableScope vs, String variableName, VariableValueSource valueSource, PEStorageGroup storageGroup) {
 		super(null, storageGroup, ExecutionType.SESSION);
-		this.scopeKind = vsk;
-		this.scopeName = scopeName;
+		this.scope = vs;
 		this.variableName = variableName;
 		this.valueSource = valueSource;
 	}
@@ -72,11 +70,12 @@ public class SetVariableExecutionStep extends ExecutionStep {
 	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		boolean requireWorkers = getStorageGroup(sc) != null;
-		addStep(sc,qsteps,new QueryStepSetScopedVariableOperation(scopeKind, scopeName, variableName, valueSource.buildAccessor(sc), requireWorkers));
+		addStep(sc,qsteps,new QueryStepSetScopedVariableOperation(scope, variableName, valueSource.buildAccessor(sc), requireWorkers));
 	}
 
 	public String getScopeName() {
-		return (scopeName != null ? scopeName : scopeKind.name());
+		if (scope.getScopeName() == null) return scope.getKind().name();
+		return scope.getScopeName();
 	}
 	
 	public String getVariableName() {
@@ -101,7 +100,7 @@ public class SetVariableExecutionStep extends ExecutionStep {
 		return new LiteralVariableValueSource(ce);
 	}
 	
-	public static VariableValueSource makeSource(VariableAccessor va) {
+	public static VariableValueSource makeSource(AbstractVariableAccessor va) {
 		return new VariableVariableValueSource(va);
 	}
 	
@@ -141,9 +140,9 @@ public class SetVariableExecutionStep extends ExecutionStep {
 	
 	private static class VariableVariableValueSource implements VariableValueSource {
 		
-		private final VariableAccessor accessor;
+		private final AbstractVariableAccessor accessor;
 		
-		public VariableVariableValueSource(VariableAccessor acc) {
+		public VariableVariableValueSource(AbstractVariableAccessor acc) {
 			accessor = acc;
 		}
 

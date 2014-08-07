@@ -22,10 +22,6 @@ package com.tesora.dve.errmap;
  */
 
 import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
-
-import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.sql.parser.LexicalLocation;
 
 public class MySQLErrors {
@@ -42,10 +38,14 @@ public class MySQLErrors {
 					1054,
 					"42S22") {
 		@Override
-		public String format(Object[] params) {
-			LexicalLocation ll = (LexicalLocation) params[1];
+		public String formatInternal(Object[] params, boolean verbose) {
+			String loc = locationStrings.get((LexicalLocation)params[1]);
 			
-			return String.format(format,new Object[] { params[0], locationStrings.get(ll) }); 
+			if (verbose) {
+				return String.format(format + " (at %s)",new Object[] { params[0], loc, params[2] });
+			} else {
+				return String.format(format,new Object[] { params[0], loc });
+			}
 		}
 
 	};

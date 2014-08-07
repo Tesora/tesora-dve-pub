@@ -403,11 +403,6 @@ public class DAOContext implements CatalogContext {
 	}
 
 	@Override
-	public DynamicPolicy getDynamicGroupPolicy() {
-		return getDefaultProject().getDefaultPolicy();
-	}
-
-	@Override
 	public DynamicPolicy findPolicy(String name) {
 		try {
 			return getDAO().findDynamicPolicy(name, false);

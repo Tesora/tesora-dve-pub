@@ -34,6 +34,7 @@ import org.junit.Test;
 
 import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.NullInformationCallback;
 import com.tesora.dve.server.connectionmanager.TestHost;
 import com.tesora.dve.standalone.PETest;
 
@@ -76,15 +77,23 @@ public class TestStructuralUpgrade {
 			if(current.getSchemaVersion() <= firstTested.getSchemaVersion())
 				continue;
 
+			CatalogStateValidator validator = CatalogStateValidation.findValidator(current);
+			
 			String[] currentCommands = UpgradeTestUtils.getGoldVersion(current.getSchemaVersion());
 			installSchema(currentCommands);
 			List<String> tableNames = findTableNames(currentCommands);
 			SchemaState currentState = buildState(tableNames);
 			String[] prevCommands = UpgradeTestUtils.getGoldVersion(prev.getSchemaVersion());
 			installSchema(prevCommands);
-			current.upgrade(helper);
+			if (validator != null)
+				validator.populate(helper);
+			current.upgrade(helper, new NullInformationCallback());
 			SchemaState upgradedState = buildState(tableNames);
 			String diffs = currentState.differs(upgradedState);
+			if (diffs != null)
+				fail(diffs);
+			if (validator != null)
+				diffs = validator.validate(helper);
 			if (diffs != null)
 				fail(diffs);
 			prev = current;
@@ -118,4 +127,5 @@ public class TestStructuralUpgrade {
 		}
 		return out;
 	}
+	
 }

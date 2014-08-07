@@ -123,8 +123,7 @@ public abstract class InboundMysqlAuthenticationHandlerV10 extends ChannelInboun
         else
             currentAuthState = AuthState.FAILED;
 
-        ctx.write(mysqlResp);
-        ctx.flush();
+        ctx.writeAndFlush(mysqlResp);
     }
 
     protected abstract MyMessage doAuthenticate(ChannelHandlerContext ctx, MSPAuthenticateV10MessageMessage authMessage) throws Throwable;

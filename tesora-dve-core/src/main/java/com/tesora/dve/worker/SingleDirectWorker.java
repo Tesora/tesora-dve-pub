@@ -24,6 +24,7 @@ package com.tesora.dve.worker;
 import com.tesora.dve.common.catalog.ISiteInstance;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PEException;
+import io.netty.channel.EventLoopGroup;
 
 public class SingleDirectWorker extends Worker {
 	
@@ -31,9 +32,9 @@ public class SingleDirectWorker extends Worker {
 
 	public static class Factory implements Worker.Factory {
 		@Override
-		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site)
+		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop)
 				throws PEException {
-			return new SingleDirectWorker(auth, additionalConnInfo, site);
+			return new SingleDirectWorker(auth, additionalConnInfo, site, preferredEventLoop);
 		}
 
 		@Override
@@ -49,13 +50,13 @@ public class SingleDirectWorker extends Worker {
 
 	public static final String HA_TYPE = "Single";
 
-	protected SingleDirectWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PEException {
-		super(auth, additionalConnInfo, site);
+	protected SingleDirectWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
+		super(auth, additionalConnInfo, site, preferredEventLoop);
 	}
 
 	@Override
-	public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth) {
-		SingleDirectConnection wConnection = new SingleDirectConnection(auth, additionalConnInfo, site);
+	public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
+		SingleDirectConnection wConnection = new SingleDirectConnection(auth, additionalConnInfo, site, preferredEventLoop);
 //		if (logger.isDebugEnabled())
 //			try {
 //				logger.debug("Worker " + getName() + " gets JDBC connection " + wConnection.getConnection().toString());

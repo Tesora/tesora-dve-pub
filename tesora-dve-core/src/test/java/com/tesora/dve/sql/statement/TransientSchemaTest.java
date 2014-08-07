@@ -107,11 +107,11 @@ public class TransientSchemaTest extends SchemaTest {
 		return "using template " + TemplateMode.OPTIONAL;
 	}
 	
-	public SchemaContext buildSchema(TestName tn, String ...schema) throws Exception {
+	public SchemaContext buildSchema(TestName tn, String ...schema) throws Throwable {
 		return buildSchema(null,tn,schema);
 	}
 	
-	public SchemaContext buildSchema(String templateDecl, TestName tn,String ...schema) throws Exception {
+	public SchemaContext buildSchema(String templateDecl, TestName tn,String ...schema) throws Throwable {
 		SchemaContext pc = buildDatabase(tn,templateDecl, schema);
 		pc.beginSaveContext();
 		try {
@@ -122,29 +122,29 @@ public class TransientSchemaTest extends SchemaTest {
 		return pc;
 	}
 		
-	public SchemaContext buildDatabase(String[] peschema, String[] sqlschema, TestName tn) throws Exception {
+	public SchemaContext buildDatabase(String[] peschema, String[] sqlschema, TestName tn) throws Throwable {
 		String[] sql = add(peschema, sqlschema);
 		return buildDatabaseExecute(sql,tn);
 	}
 	
-	public SchemaContext buildDatabase(TestName tn, String[] sqlschema) throws Exception {
+	public SchemaContext buildDatabase(TestName tn, String[] sqlschema) throws Throwable {
 		return buildDatabase(tn,null,sqlschema);
 	}
 	
-	public SchemaContext buildDatabase(TestName tn, String templateDecl, String[] sqlschema) throws Exception {
+	public SchemaContext buildDatabase(TestName tn, String templateDecl, String[] sqlschema) throws Throwable {
 		return buildDatabase(getPESchemaDeclarations(tn,templateDecl), sqlschema, tn);
 	}
 
-	public SchemaContext buildDatabase(TestName tn) throws Exception {
+	public SchemaContext buildDatabase(TestName tn) throws Throwable {
 		return buildDatabase(tn,(String)null);
 	}
 	
-	public SchemaContext buildDatabase(TestName tn, String templateDecl) throws Exception {
+	public SchemaContext buildDatabase(TestName tn, String templateDecl) throws Throwable {
 		return buildDatabase(getPESchemaDeclarations(tn, templateDecl), null, tn);
 	}
 	
 	// mini execution engine to convert sql creates into the transient schema
-	public SchemaContext buildDatabaseExecute(String[] in, TestName tn) throws Exception {
+	public SchemaContext buildDatabaseExecute(String[] in, TestName tn) throws Throwable {
 		return buildExecutionEngine(in, tn).getPersistenceContext();
 	}
 	
@@ -162,7 +162,7 @@ public class TransientSchemaTest extends SchemaTest {
 		return new TransientExecutionEngine(ttkern);
 	}
 	
-	public TransientExecutionEngine buildExecutionEngine(String[] in, TestName tn) throws Exception {
+	public TransientExecutionEngine buildExecutionEngine(String[] in, TestName tn) throws Throwable {
 		TransientExecutionEngine tee = newExecutionEngine(tn);
 		tee.parse(in);
 		return tee;

@@ -26,8 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import org.apache.commons.lang.StringUtils;
-
 import com.tesora.dve.clock.NoopTimingService;
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;

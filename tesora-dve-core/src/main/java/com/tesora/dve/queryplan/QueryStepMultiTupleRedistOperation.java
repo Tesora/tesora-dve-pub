@@ -49,6 +49,7 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.AggregationGroup;
 import com.tesora.dve.worker.MysqlRedistTupleForwarder;
 import com.tesora.dve.worker.WorkerGroup;
@@ -233,7 +234,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			// redistribute it back in.
 			
 			CatalogDAO c = ssCon.getCatalogDAO();
-			StorageGroup cacheGroup = new AggregationGroup(c.findDefaultProject().getDefaultPolicy());
+			StorageGroup cacheGroup = new AggregationGroup(
+					c.findDynamicPolicy(KnownVariables.DYNAMIC_POLICY.getSessionValue(ssCon)));
 			WorkerGroup cacheWG = WorkerGroupFactory.newInstance(ssCon, cacheGroup, getContextDatabase());
 			
 			try {
@@ -377,9 +379,9 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			// Use a thread to build the default insert statement (assuming we'll need it more often than not)
 			final PersistentTable tableForInsertStatement = givenTargetTable;
 			final int tableColumnCount = tableForInsertStatement.getNumberOfColumns(); 
-			final int maxColumnCount = Integer.parseInt(ssCon.getSessionVariable("redist_max_columns"));
+			final int maxColumnCount = KnownVariables.REDIST_MAX_COLUMNS.getGlobalValue(ssCon).intValue(); 
 			final int maxTupleCount = (maxColumnCount > tableColumnCount) ? (maxColumnCount / tableColumnCount) : 1;
-			final int maxDataSize = Integer.parseInt(ssCon.getSessionVariable("redist_max_size"));
+			final int maxDataSize = KnownVariables.REDIST_MAX_SIZE.getGlobalValue(ssCon).intValue(); 
 			//			Future<SQLCommand> insertStatementFuture = Host.submit(new Callable<SQLCommand>() {
 			//				public SQLCommand call() throws Exception {
 			//					return getTableInsertStatement(tableForInsertStatement, insertOptions, resultMetadata, maxTupleCount);
@@ -396,6 +398,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			//			targetWG.execute(MappingSolution.AllWorkers, redistInsertRequest, insertCollector);
 			////			System.out.println("insertCollector A " + insertCollector.getPreparedStatement());
 
+
+            //TODO: the futures handshake between update consumer, forwarder, and tuple builder works, but is pretty messy. -sgossard
 			// Set up the update consumer on the target WG to accept updates
 			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
 			updateConsumer.setInsertIgnore(insertIgnore);

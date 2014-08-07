@@ -24,9 +24,9 @@ package com.tesora.dve.sql;
 
 
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.sql.ResultSet;
@@ -40,9 +40,6 @@ import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.errmap.ErrorCode;
-import com.tesora.dve.errmap.ErrorCodeFormatter;
-import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultColumn;
@@ -69,7 +66,7 @@ import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.TestResource;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.standalone.PETest;
-import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 /**
  * Class for tests requiring a complete DVE system up and running, not just the engine. 
@@ -595,6 +592,6 @@ public class SchemaTest extends PETest {
 	}
 
 	public static String buildAlterTemplateModeStmt(final TemplateMode mode) {
-		return "alter dve set " + SchemaVariableConstants.TEMPLATE_MODE_NAME + " = '" + mode + "'";
+		return "alter dve set " + VariableConstants.TEMPLATE_MODE_NAME + " = '" + mode + "'";
 	}
 }

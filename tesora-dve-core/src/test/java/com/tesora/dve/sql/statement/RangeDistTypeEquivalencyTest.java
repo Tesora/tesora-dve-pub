@@ -26,7 +26,6 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import com.tesora.dve.sql.SchemaException;
-import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.util.TestName;
 
 public class RangeDistTypeEquivalencyTest extends TransientSchemaTest {

@@ -66,13 +66,14 @@ public class MSPComQueryRequest extends MSPActionBase {
 		final MysqlTextResultForwarder resultConsumer = new MysqlTextResultForwarder(ctx, sequenceId);
 		try {
 			ExecuteRequestExecutor.execute(ssCon, resultConsumer, query);
+            //TODO: this response should really be generated inside execution.  Doing it here forces synchronous behavior and extra locking + context switching. -sgossard.
 			resultConsumer.sendSuccess(ssCon);
 		} catch (PEMysqlErrorException e) {
 			if (logger.isDebugEnabled())
 				logger.debug("Exception returned directly to user: ", e);
 			// The result consumer has already processed the error, so we do nothing here
 		} catch (SchemaException se) {
-			MyErrorResponse err = ErrorMapper.makeResponse(se.getErrorInfo());
+			MyErrorResponse err = ErrorMapper.makeResponse(se);
 			if (err != null) {
 				if (logger.isInfoEnabled() && se.getErrorInfo().getCode().log())
 					logger.info("Exception returned to user: ", se);

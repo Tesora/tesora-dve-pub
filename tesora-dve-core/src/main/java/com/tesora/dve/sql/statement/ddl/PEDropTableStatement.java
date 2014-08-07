@@ -49,7 +49,6 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
@@ -60,6 +59,7 @@ import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.util.ListOfPairs;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class PEDropTableStatement extends
@@ -195,7 +195,9 @@ public class PEDropTableStatement extends
 	
 	protected static void checkForeignKeys(SchemaContext pc, PETable targetTable, 
 			List<PEForeignKey> updatedKeys, boolean ignoreFKChecks) {
-		boolean required = SchemaVariables.hasForeignKeyChecks(pc) && !ignoreFKChecks;
+		boolean required = 
+				KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(pc.getConnection().getVariableSource()).booleanValue()
+				&& !ignoreFKChecks;
 		MultiMap<PETable, PEForeignKey> referencing = pc.findFKSReferencing(targetTable);
 		if (referencing.isEmpty()) return;
 		if (required) 

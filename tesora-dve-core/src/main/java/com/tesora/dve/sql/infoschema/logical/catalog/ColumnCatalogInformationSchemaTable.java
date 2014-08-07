@@ -24,7 +24,6 @@ package com.tesora.dve.sql.infoschema.logical.catalog;
 import java.util.List;
 
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
@@ -43,11 +42,11 @@ import com.tesora.dve.sql.node.structural.FromTableReference;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.mt.AdaptiveMultitenantSchemaPolicyContext;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.ListSet;
+import com.tesora.dve.variables.KnownVariables;
 
 public class ColumnCatalogInformationSchemaTable extends
 		CatalogInformationSchemaTable {
@@ -147,12 +146,8 @@ public class ColumnCatalogInformationSchemaTable extends
 			decompAnd.add(joinUserScope);
 		if (restrictTenant != null)
 			decompAnd.add(restrictTenant);
-		boolean showTenantColumn = false;
-		try {
-			showTenantColumn = SchemaVariables.isShowMetadataExtensions(sc);
-		} catch (PEException pe) {
-			throw new InformationSchemaException("Unable to determine whether metadata extensions are enabled",pe);
-		}
+		boolean showTenantColumn = 
+					KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 
 		if (!showTenantColumn) {
 			FunctionCall excludeTenantColumn = new FunctionCall(FunctionName.makeNotEquals(), new ColumnInstance(columnNameColumn,ours.toInstance()),

@@ -21,6 +21,7 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.CharsetUtil;
@@ -39,7 +40,7 @@ import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 import com.tesora.dve.mysqlapi.repl.messages.MyIntvarLogEvent.MyIntvarEventVariableType;
 import com.tesora.dve.mysqlapi.repl.messages.MyStatusVariables.BaseQueryEvent;
 import com.tesora.dve.sql.util.Pair;
-import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 public class MyQueryLogEvent extends MyLogEventPacket {
 	static final Logger logger = Logger.getLogger(MyQueryLogEvent.class);
@@ -127,12 +128,12 @@ public class MyQueryLogEvent extends MyLogEventPacket {
 
 			// since we don't want to parse here to determine if a time function is specified 
 			// set the TIMESTAMP variable to the master statement execution time
-			conn.executeUpdate("set " + SchemaVariableConstants.REPL_SLAVE_TIMESTAMP + "=" + getCommonHeader().getTimestamp());
+			conn.executeUpdate("set " + VariableConstants.REPL_SLAVE_TIMESTAMP_NAME + "=" + getCommonHeader().getTimestamp());
 			
 			boolean unset = handleAutoIncrement(conn,plugin.getSessionVariableCache().getIntVarValue());
 			conn.executeUpdate(query.array());
 			if (unset)
-				conn.executeUpdate("set " + SchemaVariableConstants.REPL_SLAVE_INSERT_ID + "=null");
+				conn.executeUpdate("set " + VariableConstants.REPL_SLAVE_INSERT_ID_NAME + "=null");
 
 			updateBinLogPosition(plugin);
 
@@ -162,7 +163,7 @@ public class MyQueryLogEvent extends MyLogEventPacket {
 		if (intVarValue.getFirst() != null && intVarValue.getSecond() != null && 
 				intVarValue.getFirst() == MyIntvarEventVariableType.INSERT_ID_EVENT.getByteValue()) {
 
-			conn.executeUpdate("set " + SchemaVariableConstants.REPL_SLAVE_INSERT_ID + "=" + intVarValue.getSecond().toString());
+			conn.executeUpdate("set " + VariableConstants.REPL_SLAVE_INSERT_ID_NAME + "=" + intVarValue.getSecond().toString());
 			return true;
 		}
 		return false;

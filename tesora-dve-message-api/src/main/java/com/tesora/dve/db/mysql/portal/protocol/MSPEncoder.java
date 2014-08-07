@@ -22,6 +22,7 @@ package com.tesora.dve.db.mysql.portal.protocol;
  */
 
 
+import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyResponseMessage;
 import com.tesora.dve.exceptions.PESQLStateException;
@@ -29,85 +30,119 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.handler.codec.EncoderException;
 import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.internal.PlatformDependent;
 
-import java.io.IOException;
 import java.nio.ByteOrder;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.exceptions.PEException;
 
-@Sharable
-public class MSPEncoder extends MessageToByteEncoder<MyMessage> {
+public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
+    private static final Logger logger = Logger.getLogger(MSPEncoder.class);
+    public static final int SLAB_SIZE = 1024 * 8;//start with a 8K slab for transcoding outbound writes.
 
-	private static final Logger logger = Logger.getLogger(MSPEncoder.class);
+    static boolean PREFER_DIRECT = PlatformDependent.directBufferPreferred();
 
-	@Override
-	protected void encode(ChannelHandlerContext ctx, MyMessage msg, ByteBuf out) throws Exception {
-		ByteBuf leBuf = out.order(ByteOrder.LITTLE_ENDIAN);
+    ByteBuf cachedSlab;
 
-        //TODO:It doesn't look like we ever instantiate MyResultSetResponse, and the dependency is problematic because of the usage of DBNative.  Need to verify this is OK.
-//		if (msg instanceof MyResultSetResponse) {
-//			MyResultSetResponse rsresp = (MyResultSetResponse) msg;
-//			if (((MyResultSetResponse) msg).getMessageType() == MyMessageType.RESULTSET_RESPONSE)
-//				encodeMessage(leBuf, rsresp);
-//			Iterator<MyResponseMessage> iter = rsresp.getListIterator();
-//			while (iter.hasNext()) {
-//				encodeMessage(leBuf, (MyResponseMessage) iter.next());
-//			}
-//		} else {
-        encodeMessage(leBuf, (MyMessage) msg);
-//		}
-	}
+    @Override
+    protected void encode(ChannelHandlerContext ctx, MysqlMessage msg, ByteBuf out) throws Exception {
+        ByteBuf leBuf = out.order(ByteOrder.LITTLE_ENDIAN);
 
-	static boolean PREFER_DIRECT = PlatformDependent.directBufferPreferred();
+        try{
+            if (msg instanceof MyMessage)
+                encodeMyMessage(leBuf, (MyMessage)msg);
+            else
+                encodeMSPMessage((MSPMessage)msg,leBuf);
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
+    }
 
-	// Taken from Netty so that we can control the size and location of the
+    protected void encodeMSPMessage(MSPMessage msg, ByteBuf littleEnd) throws Exception {
+        msg.writeTo(littleEnd);
+    }
+
+
+
+    private void allocateSlabIfNeeded(ChannelHandlerContext ctx) {
+        if (cachedSlab != null) //we already have a slab.
+            return;
+
+        if (PREFER_DIRECT) {
+            cachedSlab = ctx.alloc().ioBuffer(SLAB_SIZE);
+        } else {
+            cachedSlab = ctx.alloc().heapBuffer(SLAB_SIZE);
+        }
+
+        cachedSlab = cachedSlab.order(ByteOrder.LITTLE_ENDIAN);
+    }
+
+    private void releaseSlab() {
+        ReferenceCountUtil.release(cachedSlab);
+        cachedSlab = null;
+    }
+
+    @Override
+    public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
+        try {
+            super.disconnect(ctx, promise);
+        } finally {
+            releaseSlab();
+        }
+    }
+
+    @Override
+    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+        try {
+            super.handlerRemoved(ctx);
+        } finally {
+            releaseSlab();
+        }
+    }
+
+    // Taken from Netty so that we can control the size and location of the
 	// buffer we allocate
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-		ByteBuf buf = null;
 		try {
 			if (acceptOutboundMessage(msg)) {
 				@SuppressWarnings("unchecked")
-				MyMessage cast = (MyMessage) msg;
-				if (PREFER_DIRECT) {
-					buf = ctx.alloc().ioBuffer(512);
-				} else {
-					buf = ctx.alloc().heapBuffer(512);
-				}
-				try {
-					encode(ctx, cast, buf);
-				} finally {
-					ReferenceCountUtil.release(cast);
-				}
+                MysqlMessage cast = (MysqlMessage) msg;
 
-				if (buf.isReadable()) {
-					ctx.write(buf, promise);
+                allocateSlabIfNeeded(ctx);
+
+                //if we don't have any outbound slices holding references, reset to full slab.
+				if (cachedSlab.refCnt() == 1){
+                    cachedSlab.clear();
+                }
+
+                int startingWriterIndex = cachedSlab.writerIndex();
+                encode(ctx,cast,cachedSlab);
+                int writtenLength = cachedSlab.writerIndex() - startingWriterIndex;
+
+				if (writtenLength > 0) {
+                    ByteBuf sliceWritten = cachedSlab.slice(startingWriterIndex, writtenLength);
+                    sliceWritten.retain(); //slices aren't retained by default, increments the ref count on the parent buffer.
+					ctx.write(sliceWritten, promise);
+                    //TODO: we may want to consider recycling large slabs, to avoid holding an unusually big bufferindefinitely. -sgossard
 				} else {
-					buf.release();
 					ctx.write(Unpooled.EMPTY_BUFFER, promise);
 				}
-				buf = null;
 			} else {
 				ctx.write(msg, promise);
 			}
 		} catch (EncoderException e) {
-			throw e;
+            throw e;
 		} catch (Throwable e) {
 			throw new EncoderException(e);
-		} finally {
-			if (buf != null) {
-				buf.release();
-			}
 		}
 	}
 
-	private void encodeMessage(ByteBuf out, MyMessage message) throws PEException {
+	private void encodeMyMessage(ByteBuf out, MyMessage message) throws PEException {
 
 		if (message instanceof MyResponseMessage) {
 
@@ -150,20 +185,8 @@ public class MSPEncoder extends MessageToByteEncoder<MyMessage> {
 		out.setByte(msgSizeIndex + 3, message.getPacketNumber());
 	}
 
-	private static final class InstanceHolder {
-		private static final MSPEncoder INSTANCE = new MSPEncoder();
-	}
-
 	public static MSPEncoder getInstance() {
-		return InstanceHolder.INSTANCE;
+		return new MSPEncoder();
 	}
 
-	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		if (logger.isDebugEnabled())
-			logger.debug(this.getClass().getSimpleName()
-					+ " caught exception - exception ignored (possibly due to client disconnect)", cause);
-		if (!IOException.class.equals(cause.getClass()) || !"Connection reset by peer".equals(cause.getMessage()))
-			super.exceptionCaught(ctx, cause);
-	}
 }

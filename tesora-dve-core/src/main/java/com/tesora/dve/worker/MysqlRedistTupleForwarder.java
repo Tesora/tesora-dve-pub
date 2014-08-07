@@ -23,13 +23,13 @@ package com.tesora.dve.worker;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.SynchronousCompletion;
 import io.netty.channel.Channel;
 
+import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.*;
@@ -37,8 +37,6 @@ import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
@@ -62,10 +60,11 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	
 	static Logger logger = Logger.getLogger(MysqlRedistTupleForwarder.class);
 
-	AtomicInteger senderCount = new AtomicInteger();
-	AtomicInteger rowCount = new AtomicInteger();
+    //these are read outside netty thread, make them volatile.
+	volatile int senderCount = 0;
+	volatile int rowCount = 0;
 
-	private final PEFuture<RedistTupleBuilder> handlerFuture;
+	private final SynchronousCompletion<RedistTupleBuilder> handlerFuture;
 	private final CatalogDAO catalogDAO;
 	private final DistributionModel distModel;
 	private final WorkerGroup targetWG;
@@ -80,9 +79,9 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	private MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt;
 
 	private ColumnSet resultColumnMetadata = new ColumnSet();
-	private AtomicInteger fieldIndex = new AtomicInteger();
-	Semaphore fieldBarrier = new Semaphore(0);
-	AtomicBoolean columnInspectorComputed = new AtomicBoolean();
+	private int fieldIndex = 0;
+
+	boolean columnInspectorComputed = false;
 
 	// this class gets setup for columns in the result set that we need to inspect the value
 	// from the incoming result set. Currently this is columns in a distrubtion vector and specfied
@@ -128,7 +127,7 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 			SSContext ssContext, CatalogDAO c, WorkerGroup targetWG, 
 			DistributionModel distModel, KeyValue distValue, TableHints tableHints, 
 			boolean useResultSetAliases, MyPreparedStatement<MysqlGroupedPreparedStatementId> selectPStatement, 
-			PEFuture<RedistTupleBuilder> handlerFuture) 
+			SynchronousCompletion<RedistTupleBuilder> handlerFuture)
 	{
 		this.catalogDAO = c;
 		this.distModel = distModel;
@@ -149,11 +148,9 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 		throw new PECodingException(this.getClass().getSimpleName()+".inject not supported");
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel,
-			StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
+    @Override
+    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), this, promise));
-		return promise;
 	}
 
 	private RedistTupleBuilder getTargetHandler() throws PEException {
@@ -171,7 +168,7 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 
 	@Override
 	public void setSenderCount(int senderCount) {
-		this.senderCount.set(senderCount);
+		this.senderCount = senderCount;
 	}
 
 	@Override
@@ -202,8 +199,19 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	}
 
     @Override
+    public void active(ChannelHandlerContext ctx) {
+        //called when redist source is ready to start receiving packets.
+        try {
+            getTargetHandler().sourceActive(ctx);
+        } catch (PEException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public boolean emptyResultSet(MyOKResponse ok) throws PEException {
-        if (senderCount.decrementAndGet() == 0)
+        senderCount--;
+        if (senderCount == 0)
             getTargetHandler().setProcessingComplete();
         return ok.getAffectedRows() > 0;
     }
@@ -219,70 +227,67 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 
     @Override
     public void fieldCount(MyColumnCount colCount) {
-		synchronized (this) {
-			if (this.fieldCount == -1) {
-				this.fieldCount = colCount.getColumnCount();
-				resultColumnMetadata = new ColumnSet(fieldCount);
-				for (int i = 0; i < fieldCount; ++i)
-					resultColumnMetadata.addColumn(null);
+        if (this.fieldCount == -1) {
+            this.fieldCount = colCount.getColumnCount();
+            resultColumnMetadata = new ColumnSet(fieldCount);
+            for (int i = 0; i < fieldCount; ++i)
+                resultColumnMetadata.addColumn(null);
 //				System.out.println("Set column result " + resultColumnMetadata.size());
-			}
-		}
+        }
 	}
 
 	@Override
 	public void fieldEOF(MyMessage unknown)
 			throws PEException {
-		synchronized (this) {
-			if (columnInspectorComputed.compareAndSet(false, true)) {
-				fieldBarrier.acquireUninterruptibly(fieldCount);
-				getTargetHandler().setRowSetMetadata(tableHints.addAutoIncMetadata(resultColumnMetadata));
+        if (columnInspectorComputed == false) {
+            columnInspectorComputed = true;
+            getTargetHandler().setRowSetMetadata(tableHints.addAutoIncMetadata(resultColumnMetadata));
 
-				int keyCount = 0;
-				if (columnInspectorList == null) {
-					columnInspectorList = new ArrayList<MysqlRedistTupleForwarder.ColumnValueInspector>();
-                    typeEncoders = new ArrayList<>();
-					// if we don't have any distribution vector columns and auto incr values weren't specified
-					// we can skip populating the ColumnValueInspector
-					if ( !distValue.isEmpty() || tableHints.usesExistingAutoIncs() ) {
-						String colName;
-                        boolean addMoreInspectors = true;
-						for (ColumnMetadata columnMetadata : resultColumnMetadata.getColumnList()) {
-                            DataTypeValueFunc typeEncoder = DBTypeBasedUtils.getMysqlTypeFunc(columnMetadata);
-                            typeEncoders.add(typeEncoder);
-                            if (addMoreInspectors){
-                                ColumnValueInspector dvm = new ColumnValueInspector();
-                                dvm.typeReader = typeEncoder;
-                                // if the caller ask to use aliases, still only use if alias set on the ColumnMetadata
-                                colName = useResultSetAliases ?
-                                        (columnMetadata.usingAlias() ? columnMetadata.getAliasName(): columnMetadata.getName())
-                                        : columnMetadata.getName();
-                                        if (distValue.containsKey(colName)) {
-                                            dvm.dvCol = colName;
-                                            ++keyCount;
-                                        }
-                                        dvm.isIncrCol = (tableHints.usesExistingAutoIncs() && tableHints.isExistingAutoIncColumn(columnMetadata.getOrderInTable()));
-                                        columnInspectorList.add(dvm);
+            int keyCount = 0;
+            if (columnInspectorList == null) {
+                columnInspectorList = new ArrayList<MysqlRedistTupleForwarder.ColumnValueInspector>();
+                typeEncoders = new ArrayList<>();
+                // if we don't have any distribution vector columns and auto incr values weren't specified
+                // we can skip populating the ColumnValueInspector
+                if ( !distValue.isEmpty() || tableHints.usesExistingAutoIncs() ) {
+                    String colName;
+                    boolean addMoreInspectors = true;
+                    for (ColumnMetadata columnMetadata : resultColumnMetadata.getColumnList()) {
+                        DataTypeValueFunc typeEncoder = DBTypeBasedUtils.getMysqlTypeFunc(columnMetadata);
+                        typeEncoders.add(typeEncoder);
+                        if (addMoreInspectors){
+                            ColumnValueInspector dvm = new ColumnValueInspector();
+                            dvm.typeReader = typeEncoder;
+                            // if the caller ask to use aliases, still only use if alias set on the ColumnMetadata
+                            colName = useResultSetAliases ?
+                                    (columnMetadata.usingAlias() ? columnMetadata.getAliasName(): columnMetadata.getName())
+                                    : columnMetadata.getName();
+                                    if (distValue.containsKey(colName)) {
+                                        dvm.dvCol = colName;
+                                        ++keyCount;
+                                    }
+                                    dvm.isIncrCol = (tableHints.usesExistingAutoIncs() && tableHints.isExistingAutoIncColumn(columnMetadata.getOrderInTable()));
+                                    columnInspectorList.add(dvm);
 
-                                        if (logger.isDebugEnabled())
-                                            logger.debug("inspecting field " + columnInspectorList.size() + " from " + columnMetadata + " using " + dvm.typeReader);
-                                        if (keyCount == distValue.size() && (!tableHints.usesExistingAutoIncs() || (tableHints.usesExistingAutoIncs() && dvm.isIncrCol)))
-                                            addMoreInspectors = false;
-                            }
-						}
-						//					if ( keyCount != distValue.size() )
-						//					throw new PEException("Columns required for distribution vector not found in result set metadata. Expected " 
-						//							+ distValue.size() + " found " + keyCount);
-					}
-				}
-			}
-		}
+                                    if (logger.isDebugEnabled())
+                                        logger.debug("inspecting field " + columnInspectorList.size() + " from " + columnMetadata + " using " + dvm.typeReader);
+                                    if (keyCount == distValue.size() && (!tableHints.usesExistingAutoIncs() || (tableHints.usesExistingAutoIncs() && dvm.isIncrCol)))
+                                        addMoreInspectors = false;
+                        }
+                    }
+                    //					if ( keyCount != distValue.size() )
+                    //					throw new PEException("Columns required for distribution vector not found in result set metadata. Expected "
+                    //							+ distValue.size() + " found " + keyCount);
+                }
+            }
+        }
 	}
 	
 	@Override
 	public void rowEOF(MyEOFPktResponse wholePacket)
 			throws PEException {
-		if (senderCount.decrementAndGet() == 0)
+        senderCount --;
+		if (senderCount == 0)
 			getTargetHandler().setProcessingComplete();
 	}
 
@@ -302,7 +307,7 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
         if ( BroadcastDistributionModel.SINGLETON.equals(distModel) && !tableHints.isUsingAutoIncColumn()) {
             mappingSolution = MappingSolution.AllWorkersSerialized;
 
-            getTargetHandler().execute(mappingSolution, binRow, fieldCount, resultColumnMetadata, autoIncrBlocks);
+            getTargetHandler().processSourcePacket(mappingSolution, binRow, fieldCount, resultColumnMetadata, autoIncrBlocks);
         } else {
             long nextAutoIncr = tableHints.tableHasAutoIncs() ? autoIncrBlocks[0] : 0;
 
@@ -322,7 +327,7 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 
                 long[] rowAutoIncrBlock = tableHints.tableHasAutoIncs() ? new long[] {nextAutoIncr++} : null;
 
-                getTargetHandler().execute(mappingSolution, binRow, fieldCount, resultColumnMetadata, rowAutoIncrBlock);
+                getTargetHandler().processSourcePacket(mappingSolution, binRow, fieldCount, resultColumnMetadata, rowAutoIncrBlock);
             }
 
             if (maxAutoIncr != null && maxAutoIncr.isSet())
@@ -344,22 +349,23 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
     @Override
 	public void field(int fieldIndex, MyFieldPktResponse columnDef, ColumnInfo columnProjection)
 			throws PEException {
-		if (this.fieldIndex.compareAndSet(fieldIndex, fieldIndex + 1)) {
+
+		if (this.fieldIndex == fieldIndex) {
+            this.fieldIndex ++;
             ColumnMetadata columnMeta = FieldMetadataAdapter.buildMetadata(columnDef);
             columnMeta.setOrderInTable(fieldIndex);
 			resultColumnMetadata.setColumn(fieldIndex, columnMeta);
-			fieldBarrier.release();
 //			System.out.println("Released permit");
 		}
 	}
 	
 	public int getNumRowsForwarded() {
-		return rowCount.get();
+		return rowCount;
 	}
 
 	@Override
 	public void rollback() {
-		rowCount.set(0);
+		rowCount = 0;
 	}
 
 

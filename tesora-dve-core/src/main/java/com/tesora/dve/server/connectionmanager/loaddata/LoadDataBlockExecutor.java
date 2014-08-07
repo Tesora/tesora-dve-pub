@@ -24,9 +24,6 @@ package com.tesora.dve.server.connectionmanager.loaddata;
 import com.tesora.dve.db.mysql.MyLoadDataInfileContext;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.server.connectionmanager.messages.ExecutePreparedStatementRequestExecutor;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -45,7 +42,7 @@ import com.tesora.dve.db.mysql.MyFieldType;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.variable.ClientCharSetSessionVariableHandler;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.MysqlSyntheticPreparedResultForwarder;
 
 public class LoadDataBlockExecutor {
@@ -59,9 +56,10 @@ public class LoadDataBlockExecutor {
 			throw new PEException("Cannot process Load Data Infile data block because load data infile context is missing.");
 		}
 
+        //TODO: this is the only place we touch the session during the parse.  As long as this isn't sensitive to being in the session context, we can move the decode into the netty thread. -sgossard
 		if (loadDataInfileContext.getCharset() == null) {
-			loadDataInfileContext.setCharset(Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
-                    connMgr.getSessionVariable(ClientCharSetSessionVariableHandler.VARIABLE_NAME), true).getJavaCharset());
+			loadDataInfileContext.setCharset(
+					KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr).getJavaCharset());
 		}
 
 		if (logger.isDebugEnabled()) {
@@ -95,8 +93,8 @@ public class LoadDataBlockExecutor {
 		}
 
 		if (loadDataInfileContext.getCharset() == null) {
-			loadDataInfileContext.setCharset(Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
-                    connMgr.getSessionVariable(ClientCharSetSessionVariableHandler.VARIABLE_NAME), true).getJavaCharset());
+			loadDataInfileContext.setCharset(
+					KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr).getJavaCharset());
 		}
 
 		List<String> params = new ArrayList<String>();

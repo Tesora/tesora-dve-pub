@@ -67,6 +67,8 @@ public class LocalhostCoordinationServices implements CoordinationServices {
 	private AtomicInteger globalConnectionId = new AtomicInteger();
 	
 	private ConcurrentMap<String, String> externalServicesMap = new ConcurrentHashMap<String, String>();
+	
+	private final HashMap<String, String> globalVariables = new HashMap<String,String>();
 
 	public LocalhostCoordinationServices() {
 //		thisMember = new InetSocketAddress(getClass().getSimpleName(),memberId.incrementAndGet());
@@ -80,6 +82,8 @@ public class LocalhostCoordinationServices implements CoordinationServices {
 
 		for (GroupMembershipListener l : membershipListeners)
 			l.onMembershipEvent(MembershipEventType.MEMBER_ADDED, getMemberAddress());
+		
+		// load the global vars somehow here
 	}
 
 	@Override
@@ -116,6 +120,7 @@ public class LocalhostCoordinationServices implements CoordinationServices {
 
 	@Override
 	public void shutdown() {
+		globalVariables.clear();
 		members.remove(getMemberAddress());
 		for (GroupMembershipListener l : membershipListeners)
 			l.onMembershipEvent(MembershipEventType.MEMBER_REMOVED, getMemberAddress());
@@ -210,5 +215,15 @@ public class LocalhostCoordinationServices implements CoordinationServices {
 	public long getGloballyUniqueId(String domain) {
 		return globalIdGenerator.incrementAndGet();
 	}
-	
+
+	@Override
+	public synchronized String getGlobalVariable(String name) {
+		return globalVariables.get(name);
+	}
+
+	@Override
+	public synchronized void setGlobalVariable(String name, String value) {
+		globalVariables.put(name, value);
+	}
+
 }

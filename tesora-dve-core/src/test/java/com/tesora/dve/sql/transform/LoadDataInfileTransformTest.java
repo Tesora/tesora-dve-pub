@@ -39,7 +39,7 @@ public class LoadDataInfileTransformTest extends TransformTest {
 
 	@Ignore
 	@Test
-	public void basicTest() throws Exception {
+	public void basicTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, leftySchema);
 //		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(

@@ -28,7 +28,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -47,7 +46,6 @@ import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.errmap.MySQLErrors;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;

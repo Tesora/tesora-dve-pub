@@ -68,6 +68,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.test.simplequery.SimpleQueryTest;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.AggregationGroup;
 import com.tesora.dve.worker.DynamicGroup;
 import com.tesora.dve.worker.MysqlTextResultCollector;
@@ -109,7 +110,9 @@ public class QueryStepBasicTest extends PETest {
 		db = ssConnection.getPersistentDatabase();
 		sg = db.getDefaultStorageGroup();
 		sg.getStorageSites();
-		dynamicPolicy = ssConnection.getCatalogDAO().findDefaultProject().getDefaultPolicy();
+		dynamicPolicy = 
+				ssConnection.getCatalogDAO()
+				.findDynamicPolicy(KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(ssConnection.getCatalogDAO()).getValue());
         populateSites(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
 		++currentId;
 		plan = new QueryPlan();

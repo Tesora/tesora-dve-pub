@@ -115,16 +115,7 @@ public class InformationSchemaRewriteTransformFactory extends TransformFactory {
 
 			};
 		} else {
-			root = new NonDMLFeatureStep(this, null) {
-
-				@Override
-				public void scheduleSelf(PlannerContext sc, ExecutionSequence es)
-						throws PEException {
-					IntermediateResultSet irs = LogicalSchemaQueryEngine.execute(sc.getContext(),(SelectStatement) stmt);
-					es.append(new DDLQueryExecutionStep("select",irs));					
-				}
-
-			}.withCachingFlag(false);
+			root = LogicalSchemaQueryEngine.execute(ipc.getContext(), (SelectStatement)stmt, this);
 		}
 		return root;
 	}

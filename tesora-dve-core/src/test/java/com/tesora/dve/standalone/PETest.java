@@ -404,7 +404,7 @@ public class PETest extends PEBaseTest {
 		if (formatter == MySQLErrors.internalFormatter) {
 			// first param is the message
 			String message = (String) params[0];
-			assertEquals("should have same message",formatter.format(info.getParams()),message);
+			assertEquals("should have same message",formatter.format(info.getParams(),null),message);
 		} else {
 			assertEquals("Should have same number of parameters",params.length,info.getParams().length);
 			for(int i = 0; i < params.length; i++) {

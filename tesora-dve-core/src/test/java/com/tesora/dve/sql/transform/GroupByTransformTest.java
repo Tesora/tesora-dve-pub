@@ -53,7 +53,7 @@ public class GroupByTransformTest extends TransformTest {
 	// order by non ref expr (expr in order by)
 	// going to do all of these twice: once on the random table, and once on the bcast table
 	@Test
-	public void testNonRefColRandom() throws Exception {
+	public void testNonRefColRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -82,7 +82,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testNonRefColBCast() throws Exception {
+	public void testNonRefColBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select desc from B group by id",
@@ -94,7 +94,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testRefColAliasRandom() throws Exception {
+	public void testRefColAliasRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -123,7 +123,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testRefColAliasBCast() throws Exception {
+	public void testRefColAliasBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select id as me, desc from B group by me",
@@ -136,7 +136,7 @@ public class GroupByTransformTest extends TransformTest {
 
 	
 	@Test
-	public void testRefColRandom() throws Exception {
+	public void testRefColRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -165,7 +165,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testRefColBCast() throws Exception {
+	public void testRefColBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select id, desc from B group by id",
@@ -177,7 +177,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testRefExprRandom() throws Exception {
+	public void testRefExprRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -205,7 +205,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testRefExprBCast() throws Exception {
+	public void testRefExprBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select id,length(desc) as l from B group by l",
@@ -217,7 +217,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testNonRefExprRandom() throws Exception {
+	public void testNonRefExprRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -245,7 +245,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testNonRefExprBCast() throws Exception {
+	public void testNonRefExprBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select id, desc from B group by length(desc)",
@@ -258,7 +258,7 @@ public class GroupByTransformTest extends TransformTest {
 
 	
 	@Test
-	public void testSimpleA() throws Exception {
+	public void testSimpleA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"select desc from A group by flags",
@@ -286,7 +286,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testSimpleB() throws Exception {
+	public void testSimpleB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"select desc from A group by id",
@@ -309,7 +309,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testComplexA() throws Exception {
+	public void testComplexA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -341,7 +341,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testComplexB() throws Exception {
+	public void testComplexB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -367,7 +367,7 @@ public class GroupByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testComplexC() throws Exception {
+	public void testComplexC() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,

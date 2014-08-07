@@ -22,6 +22,7 @@ package com.tesora.dve.sql.statement.session;
  */
 
 
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,6 +32,8 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepFilterOperation.OperationFilter;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
@@ -41,7 +44,10 @@ import com.tesora.dve.sql.node.expression.LateResolvingVariableExpression;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.statement.CacheableStatement;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -55,10 +61,10 @@ import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep.VariableValueSource;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.variable.SchemaVariableConstants;
-import com.tesora.dve.variable.SessionVariableHandler;
-import com.tesora.dve.variable.VariableAccessor;
-import com.tesora.dve.variable.VariableScopeKind;
+import com.tesora.dve.variable.VariableConstants;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.VariableHandler;
+import com.tesora.dve.variables.VariableManager;
 
 
 public class SessionSetVariableStatement extends SessionStatement implements CacheableStatement {
@@ -100,9 +106,12 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		List<SetExpression> sets = new ArrayList<SetExpression>(exprs);
 		exprs.clear();
 		
+		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		
 		for(SetExpression se : sets) {
 			if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION) {
 				SetTransactionIsolationExpression stie = (SetTransactionIsolationExpression) se;
+				assertPrivilege(pc,vm.lookupMustExist(VariableConstants.TRANSACTION_ISOLATION_LEVEL_NAME),stie.getScope());
 				handleSetTransactionIsolation(pc, stie,es);
 			} else {
 				SetVariableExpression sve = (SetVariableExpression) se;
@@ -117,9 +126,12 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 					if (sve.getValue().size() > 1) {
 						throw new PEException("Illegal set expression, multiple values");
 					}
+					if (vi.getScope().getKind() != VariableScopeKind.USER && vi.getScope().getKind() != VariableScopeKind.SCOPED) {
+						assertPrivilege(pc,vm.lookupMustExist(vi.getVariableName().getUnquotedName().get()),vi.getScope());
+					}
 
-					if (variableName.equalsIgnoreCase(SchemaVariableConstants.SLOW_QUERY_LOG_NAME)
-							|| variableName.equalsIgnoreCase(SchemaVariableConstants.LONG_QUERY_TIME_NAME)) {
+					if (variableName.equalsIgnoreCase(VariableConstants.SLOW_QUERY_LOG_NAME)
+							|| variableName.equalsIgnoreCase(VariableConstants.LONG_QUERY_TIME_NAME)) {
 						handleSetGlobalVariableExpression(pc,sve, es);
 					} else {
 						handleSetVariableExpression(pc,sve, es);
@@ -138,12 +150,12 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		String[] mapsTo = new String[] { "character_set_client", "character_set_connection", "character_set_results" };
 		for(String vn : mapsTo) {
 			// do we need to set the persistent group here?
-			es.append(new SetVariableExecutionStep(VariableScopeKind.SESSION, null, vn, nva,pc.getPersistentGroup()));
+			es.append(new SetVariableExecutionStep(new VariableScope(VariableScopeKind.SESSION), vn, nva,pc.getPersistentGroup()));
 		}
 		if (value.size() == 2) {
 			VariableValueSource cva = getRHSSource(pc,value.get(1));
 			// do we need to set the persistent group here?
-			es.append(new SetVariableExecutionStep(VariableScopeKind.SESSION,null,"collation_connection",cva, pc.getPersistentGroup()));
+			es.append(new SetVariableExecutionStep(new VariableScope(VariableScopeKind.SESSION),"collation_connection",cva, pc.getPersistentGroup()));
 		}
 		if (value.size() > 2)
 			throw new PEException("Too many parameters to set names");
@@ -155,7 +167,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 			return SetVariableExecutionStep.makeSource(litex);
 		} else if (EngineConstant.VARIABLE.has(rhs)) {
 			VariableInstance rvi = (VariableInstance) rhs;
-			final VariableAccessor va = rvi.buildAccessor();
+			final AbstractVariableAccessor va = rvi.buildAccessor();
 			return SetVariableExecutionStep.makeSource(va);
 		}
 		return null;
@@ -165,11 +177,10 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		VariableInstance vi = sve.getVariable();
 		List<ExpressionNode> value = sve.getValue();
 		// figure out the scope
-		String scopeName = vi.getScope().getScopeName();
 		ExpressionNode rhs = value.get(0);
 		VariableValueSource nva = getRHSSource(pc,rhs);
 		if (nva != null)
-			es.append(new SetVariableExecutionStep(vi.getScope().getScopeKind(),scopeName, vi.getVariableName().get(), nva, pc.getPersistentGroup()));
+			es.append(new SetVariableExecutionStep(vi.getScope(),vi.getVariableName().get(), nva, pc.getPersistentGroup()));
 		else 
 			// the rhs is complex - we need to execute it on a p.site or a dyn site (most likely a p.site)
 			handleComplexSetVariableExpression(pc,vi, rhs, es);
@@ -177,7 +188,17 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 
 	private void handleSetTransactionIsolation(SchemaContext pc, SetTransactionIsolationExpression stie, ExecutionSequence es) throws PEException {
 		VariableValueSource nva = SetVariableExecutionStep.makeSource(stie.getLevel().getHostSQL());
-		es.append(new SetVariableExecutionStep(stie.getScope().getScopeKind(),stie.getScope().getScopeName(),SessionVariableHandler.TRANSACTION_ISOLATION_LEVEL,nva, pc.getPersistentGroup()));
+		es.append(new SetVariableExecutionStep(stie.getScope(),VariableConstants.TRANSACTION_ISOLATION_LEVEL_NAME,nva, pc.getPersistentGroup()));
+	}
+
+	private void assertPrivilege(SchemaContext pc, VariableHandler handler, VariableScope requestedScope) throws PEException {
+		PEUser currentUser = pc.getCurrentUser().get(pc);
+		if (currentUser.isRoot()) return; // root has all privileges
+		// we must be root if the requested scope is persistent or if the target handler contains a global scope & we are requesting one
+		if (requestedScope.getKind() == VariableScopeKind.PERSISTENT)
+			throw new PEException("Must be root to set persistent value of " + handler.getName());
+		if (requestedScope.getKind() == VariableScopeKind.GLOBAL && handler.getScopes().contains(VariableScopeKind.GLOBAL)) 
+			throw new PEException("Must be root to set global value of " + handler.getName());
 	}
 	
 	@Override
@@ -186,16 +207,16 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		for(SetExpression se : exprs) {
 			if (se.getKind() == SetExpression.Kind.VARIABLE) {
 				SetVariableExpression sve = (SetVariableExpression) se;
-				if (sve.getVariable().getScope().getScopeKind() == VariableScopeKind.SESSION) {
+				if (sve.getVariable().getScope().getKind() == VariableScopeKind.SESSION) {
 					String vn = sve.getVariable().getVariableName().get();
-					if (SchemaVariableConstants.SQL_AUTO_IS_NULL.equals(vn.toLowerCase())) {
+					if (VariableConstants.SQL_AUTO_IS_NULL_NAME.equals(vn.toLowerCase())) {
 						// only catch the literal variety for now
 						ExpressionNode value = sve.getValue().get(0);
 						if (value instanceof LiteralExpression) {
 							LiteralExpression litex = (LiteralExpression) value;
 							String strval = litex.getValue(pc).toString();
 							if ("1".equals(strval.trim())) {
-								throw new SchemaException(Pass.PLANNER, "No support for " + SchemaVariableConstants.SQL_AUTO_IS_NULL + " = 1 (planned)");
+								throw new SchemaException(Pass.PLANNER, "No support for " + VariableConstants.SQL_AUTO_IS_NULL_NAME + " = 1 (planned)");
 							}
 						}
 					}					
@@ -221,19 +242,18 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 	private void handleSetGlobalVariableExpression(SchemaContext pc, final SetVariableExpression sve, final ExecutionSequence es)
 			throws PEException {
 		final VariableInstance vi = sve.getVariable();
-		final String scopeName = vi.getScope().getScopeName();
 		final String variableName = vi.getVariableName().get();
 		final VariableValueSource nva = getRHSSource(pc,sve.getValue().get(0));
 		es.append(new
-				SetVariableExecutionStep(VariableScopeKind.DVE,
-						scopeName, variableName, nva, pc.getPersistentGroup()));
+				SetVariableExecutionStep(vi.getScope(),
+						variableName, nva, pc.getPersistentGroup()));
 	}
 
 	private static class SetVariableOperationFilter implements OperationFilter {
 
-		private final VariableAccessor target;
+		private final AbstractVariableAccessor target;
 		
-		public SetVariableOperationFilter(VariableAccessor targ) {
+		public SetVariableOperationFilter(AbstractVariableAccessor targ) {
 			target = targ;
 		}
 		

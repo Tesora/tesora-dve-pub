@@ -28,7 +28,4 @@ public class ZeroParamErrorCodeFormatter extends ErrorCodeFormatter {
 		super(ec, format, mysqlErrorCode, state);
 	}
 
-	public String format(Object[] params) {
-		return format;
-	}
 }

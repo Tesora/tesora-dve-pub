@@ -38,6 +38,11 @@ public class PEThreadContext {
 
 	};
 
+    public static Ref pushFrame(Class<?> clazz) {
+        context().push(clazz);
+        return REF;
+    }
+
 	public static Ref pushFrame(String name) {
 		context().push(name);
 		return REF;
@@ -79,10 +84,12 @@ public class PEThreadContext {
 
 	public static void inherit(PEContext context) {
 		THREAD_CONTEXT.set(context);
-		if (!Thread.currentThread().getName().equals(context.getSourceThread()))
-			pushFrame("ThreadSwitch")
-				.put("from", context.getSourceThread())
-				.put("to", Thread.currentThread().getName());
+        if (context != PEContext.NO_OP_CONTEXT){
+            if (!Thread.currentThread().getName().equals(context.getSourceThread()))
+                pushFrame("ThreadSwitch")
+                    .put("from", context.getSourceThread())
+                    .put("to", Thread.currentThread().getName());
+        }
 	}
 
 	public static void clear() {

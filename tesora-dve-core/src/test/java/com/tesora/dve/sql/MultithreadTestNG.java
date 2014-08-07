@@ -44,7 +44,7 @@ import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
-import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
 
 // seems to be stable, but will hold off on turning it on for reals
@@ -81,7 +81,7 @@ public class MultithreadTestNG extends SchemaTest {
 			.toCreateStatement());
 //		rootConnection.execute("alter dve set cache_limit = 0");
 		rootConnection.execute("alter dve set statistics_interval=0");
-		rootConnection.execute("alter dve set " + SchemaVariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1000");
+		rootConnection.execute("alter dve set " + VariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1000");
 		testDDL.getPersistentGroup().create(rootConnection);
 	}
 

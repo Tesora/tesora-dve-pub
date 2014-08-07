@@ -38,7 +38,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.errmap.MySQLErrors;
-import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;

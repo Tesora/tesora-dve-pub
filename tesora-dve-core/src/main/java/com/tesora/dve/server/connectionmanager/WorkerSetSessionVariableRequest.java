@@ -22,21 +22,35 @@ package com.tesora.dve.server.connectionmanager;
  */
 
 import com.tesora.dve.comms.client.messages.MessageType;
-import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
-import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.worker.Worker;
+
+import java.util.Map;
 
 public class WorkerSetSessionVariableRequest extends WorkerExecuteRequest {
 
 	public static final long serialVersionUID = 1L;
-	
-	public WorkerSetSessionVariableRequest(SSContext ssContext, String assignmentClause) {
-        super(ssContext, new SQLCommand(Singletons.require(HostService.class).getDBNative().getSetSessionVariableStatement(assignmentClause)));
-	}
 
-	@Override
+    final Map<String,String> currentSessionVariables;
+    final SetVariableSQLBuilder sqlBuilder;
+
+    public WorkerSetSessionVariableRequest(SSContext ssContext, Map<String,String> sessionVariables, SetVariableSQLBuilder sqlBuilder) {
+        super(ssContext, SQLCommand.EMPTY);
+        this.currentSessionVariables = sessionVariables;
+        this.sqlBuilder = sqlBuilder;
+    }
+
+    @Override
+    public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+        w.updateSessionVariables(currentSessionVariables,sqlBuilder,promise);
+    }
+
+    @Override
 	public MessageType getMessageType() {
 		return MessageType.SET_SESSION_VAR;
 	}

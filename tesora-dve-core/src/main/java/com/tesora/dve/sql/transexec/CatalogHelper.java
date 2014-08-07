@@ -21,10 +21,13 @@ package com.tesora.dve.sql.transexec;
  * #L%
  */
 
+
+
 import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.lang.StringEscapeUtils;
@@ -54,6 +57,7 @@ import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.ServerRegistration;
 import com.tesora.dve.common.catalog.SiteInstance;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.common.catalog.VariableConfig;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.ContainerDistributionModel;
@@ -67,8 +71,11 @@ import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
 import com.tesora.dve.siteprovider.onpremise.jaxb.OnPremiseSiteProviderConfig;
 import com.tesora.dve.siteprovider.onpremise.jaxb.PoolConfig;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.upgrade.CatalogSchemaGenerator;
-import com.tesora.dve.variable.GlobalConfig;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableHandler;
+import com.tesora.dve.variables.VariableManager;
 
 public class CatalogHelper {
 	private static final String DEFAULT_ACCESSSPEC = "%";
@@ -79,7 +86,7 @@ public class CatalogHelper {
 
 	private String rootUser;
 	private String rootPassword;
-
+	
 	public CatalogHelper(Class<?> bootClass) throws PEException {
 		catalogProperties = PEFileUtils.loadPropertiesFile(bootClass, PEConstants.CONFIG_FILE_NAME);
 
@@ -169,7 +176,9 @@ public class CatalogHelper {
 		try {
 			c.begin();
 
-			Project p = createMinimalCatalog(c, getRootUser(), getRootPassword());
+			Pair<Project,Map<VariableHandler,VariableConfig>> minimal = 
+					createMinimalCatalog(c, getRootUser(), getRootPassword());
+			Project p = minimal.getFirst();
 
 			// Generate a Site Provider configuration with encrypted passwords
 			OnPremiseSiteProviderConfig providerConfig = generateProviderConfig(dynamicSites, providerName,
@@ -184,7 +193,7 @@ public class CatalogHelper {
 			c.persistToCatalog(policy);
 
 			// Set this policy as default
-			p.setDefaultPolicy(policy);
+			minimal.getSecond().get(KnownVariables.DYNAMIC_POLICY).setValue(policy.getName());
 
 			// Create a persistent group with the required number of persistent
 			// sites on the catalog host
@@ -196,7 +205,7 @@ public class CatalogHelper {
 			PersistentGroup sg = createStorageGroup(c, sgName, sites);
 
 			// Set this persistent group as the default
-			p.setDefaultStorageGroup(sg);
+			minimal.getSecond().get(KnownVariables.PERSISTENT_GROUP).setValue(sg.getName());
 
 			c.commit();
 		} finally {
@@ -214,14 +223,16 @@ public class CatalogHelper {
 		try {
 			c.begin();
 
-			Project p = createMinimalCatalog(c, getRootUser(), getRootPassword());
+			Pair<Project,Map<VariableHandler,VariableConfig>> minimal = 
+					createMinimalCatalog(c, getRootUser(), getRootPassword());
+			Project p = minimal.getFirst();
 
 			// We are going to do the policy first since we need the name
 			// of the dynamic provider out of the policy
 			c.persistToCatalog(policy);
 
 			// Set this policy as default
-			p.setDefaultPolicy(policy);
+			minimal.getSecond().get(KnownVariables.DYNAMIC_POLICY).setValue(policy.getName());
 
 			// For now just grab the provider name from the aggregation class
 			String providerName = policy.getAggregationClass().getProvider();
@@ -259,7 +270,7 @@ public class CatalogHelper {
 			}
 
 			if (defaultGroup != null)
-				p.setDefaultStorageGroup(defaultGroup);
+				minimal.getSecond().get(KnownVariables.PERSISTENT_GROUP).setValue(defaultGroup.getName());
 
 			c.commit();
 		} finally {
@@ -286,7 +297,7 @@ public class CatalogHelper {
 		}
 	}
 
-	protected Project createMinimalCatalog(CatalogDAO c, String user, String password) throws PEException {
+	protected Pair<Project,Map<VariableHandler,VariableConfig>> createMinimalCatalog(CatalogDAO c, String user, String password) throws PEException {
 		createSchema(c);
 
 		// Create the distribution models
@@ -302,6 +313,9 @@ public class CatalogHelper {
 
 		project.setRootUser(c.createUser(user, password, DEFAULT_ACCESSSPEC, true));
 
+		// set up the variables, so that we can indicate the default group/policy
+		Map<VariableHandler,VariableConfig> variables = VariableManager.getManager().initializeCatalog(c);
+		
 		// load the information schema
 		PersistentGroup infoSchemaGroup = c.createPersistentGroup(PEConstants.INFORMATION_SCHEMA_GROUP_NAME);
 
@@ -329,7 +343,7 @@ public class CatalogHelper {
 		InsertEngine ie = new InsertEngine(ents, new DAOPersistProvider(c));
 		ie.populate();
 
-		return project;
+		return new Pair<Project,Map<VariableHandler,VariableConfig>>(project,variables);
 	}
 
 	protected void createSchema(CatalogDAO c) throws PEException {
@@ -407,7 +421,8 @@ public class CatalogHelper {
 				throw new PEException("Persistent Group '" + name + "' not found in the catalog");
 
 			c.begin();
-			c.findDefaultProject().setDefaultStorageGroup(sg);
+			VariableConfig vc = KnownVariables.PERSISTENT_GROUP.lookupPersistentConfig(c);
+			vc.setValue(sg.getName());
 			c.commit();
 
 			return sg;
@@ -583,8 +598,9 @@ public class CatalogHelper {
 			if (policy == null)
 				throw new PEException("Dynamic Policy '" + name + "' not found in the catalog");
 
-			c.findDefaultProject().setDefaultPolicy(policy);
-
+			VariableConfig vc = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c);
+			vc.setValue(policy.getName());
+			
 			c.commit();
 
 			return policy;
@@ -597,31 +613,36 @@ public class CatalogHelper {
 	// VARIABLES METHODS
 	//
 
-	public List<GlobalConfig> getAllVariables() throws PEException {
+	public List<VariableConfig> getAllVariables() throws PEException {
 		CatalogDAO c = CatalogDAOFactory.newInstance(catalogProperties);
 
 		try {
-			return c.findAllConfig();
+			return c.findAllVariableConfigs();
 		} finally {
 			c.close();
 		}
 	}
 
-	public GlobalConfig setVariable(String key, String value, boolean create) throws PEException {
+	public VariableConfig setVariable(String key, String value, boolean create) throws PEException {
 		CatalogDAO c = CatalogDAOFactory.newInstance(catalogProperties);
 
+		VariableManager vm = VariableManager.getManager();
+		
 		try {
 
-			GlobalConfig config = c.findConfig(key, false);
+			VariableConfig config = c.findVariableConfig(key, false);
 
 			if (config == null) {
 				if (!create)
 					throw new PEException("Variable '" + key + "' not found in the catalog");
 
+				
 				try {
-					c.createConfig(key, value);
-
-					return c.findConfig(key, false);
+					VariableHandler handler = VariableManager.getManager().lookupMustExist(key);
+					VariableConfig vc = handler.buildNewConfig();
+					vc.setValue(value);
+					c.persistToCatalog(vc);
+					return vc;
 				} catch (Throwable th) {
 					throw new PEException("Failed to create variable '" + key + "'", th);
 				}
@@ -637,7 +658,7 @@ public class CatalogHelper {
 			c.close();
 		}
 	}
-
+	
 	// -------------------------------------------------------------------------
 	// EXTERNAL SERVICES METHODS
 	//
@@ -795,12 +816,15 @@ public class CatalogHelper {
 		try {
 			Project p = c.findDefaultProject();
 
+			VariableConfig dpgvc = KnownVariables.PERSISTENT_GROUP.lookupPersistentConfig(c); 
+			VariableConfig dpvc = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c); 
+			
 			if (p != null) {
 				pw.println("Default project found in catalog");
 				pw.println("    Default Persistent Group = "
-						+ (p.getDefaultStorageGroup() != null ? p.getDefaultStorageGroup().getName() : "not set"));
+						+ (dpgvc.getValue() != null ? dpgvc.getValue() : "not set"));
 				pw.println("    Default Policy Group     = "
-						+ (p.getDefaultPolicy() != null ? p.getDefaultPolicy().getName() : "not set"));
+						+ (dpvc.getValue() != null ? dpvc.getValue() : "not set"));
 				pw.println("    Root User                = "
 						+ (p.getRootUser() != null ? p.getRootUser().getName() : "not set"));
 			} else {

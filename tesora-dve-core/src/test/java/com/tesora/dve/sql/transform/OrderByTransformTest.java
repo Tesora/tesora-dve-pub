@@ -50,7 +50,7 @@ public class OrderByTransformTest extends TransformTest {
 	// order by non ref expr (expr in order by)
 	// going to do all of these twice: once on the random table, and once on the bcast table
 	@Test
-	public void testNonRefColRandom() throws Exception {
+	public void testNonRefColRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -66,7 +66,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testNonRefColBCast() throws Exception {
+	public void testNonRefColBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select desc from B order by id for update",
@@ -77,7 +77,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testRefColAliasRandom() throws Exception {
+	public void testRefColAliasRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -94,7 +94,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testRefColAliasBCast() throws Exception {
+	public void testRefColAliasBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select id as me, desc from B order by me",
@@ -107,7 +107,7 @@ public class OrderByTransformTest extends TransformTest {
 
 	
 	@Test
-	public void testRefColRandom() throws Exception {
+	public void testRefColRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -123,7 +123,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testRefColBCast() throws Exception {
+	public void testRefColBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select id, desc from B order by id",
@@ -135,7 +135,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testRefExprRandom() throws Exception {
+	public void testRefExprRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -151,7 +151,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testRefExprBCast() throws Exception {
+	public void testRefExprBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select id,length(desc) as l from B order by l",
@@ -163,7 +163,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testNonRefExprRandom() throws Exception {
+	public void testNonRefExprRandom() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -179,7 +179,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testNonRefExprBCast() throws Exception {
+	public void testNonRefExprBCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db,
 				"select id, desc from B order by length(desc)",
@@ -191,7 +191,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testSimpleA() throws Exception {
+	public void testSimpleA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db, 
@@ -208,7 +208,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testSimpleB() throws Exception {
+	public void testSimpleB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);		
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db, 
@@ -226,7 +226,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testSimpleC() throws Exception {
+	public void testSimpleC() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db, 
 				"select id from B where slug = 'title' order by desc",
@@ -238,7 +238,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testSimpleD() throws Exception {
+	public void testSimpleD() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db, 
@@ -256,7 +256,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testComplexA() throws Exception {
+	public void testComplexA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db, 
 				"select desc from A where id = 1 order by slug",
@@ -268,7 +268,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testComplexB() throws Exception {
+	public void testComplexB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -297,7 +297,7 @@ public class OrderByTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testMTDemoFailure() throws Exception {
+	public void testMTDemoFailure() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,
 				"create table mtdemo ( " 
 				+ " `id` int, `pa` int, `pb` int, `___mtid` int, primary key (`id`, `___mtid`) ) static distribute on (`___mtid`)");

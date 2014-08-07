@@ -56,7 +56,6 @@ import com.tesora.dve.common.catalog.KeyColumn;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentTemplate;
-import com.tesora.dve.common.catalog.Project;
 import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.TemplateMode;
@@ -92,7 +91,7 @@ import com.tesora.dve.sql.infoschema.show.ShowColumnInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowOptions;
 import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.VariablesInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.show.ShowVariablesInformationSchemaTable;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.MigrationException;
@@ -167,7 +166,6 @@ import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEPolicy;
 import com.tesora.dve.sql.schema.PEPolicyClassConfig;
-import com.tesora.dve.sql.schema.PEProject;
 import com.tesora.dve.sql.schema.PEProvider;
 import com.tesora.dve.sql.schema.PERawPlan;
 import com.tesora.dve.sql.schema.PESiteInstance;
@@ -180,7 +178,6 @@ import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.RangeDistribution;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.SizeTypeAttribute;
 import com.tesora.dve.sql.schema.SubqueryTable;
 import com.tesora.dve.sql.schema.Table;
@@ -191,6 +188,7 @@ import com.tesora.dve.sql.schema.UnresolvedDistributionVector;
 import com.tesora.dve.sql.schema.UserScope;
 import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
@@ -221,6 +219,7 @@ import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementTraits;
+import com.tesora.dve.sql.statement.ddl.AddGlobalVariableStatement;
 import com.tesora.dve.sql.statement.ddl.AddStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseTemplateStatement;
@@ -332,8 +331,9 @@ import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryProcedure;
-import com.tesora.dve.variable.GlobalConfigVariableHandler;
-import com.tesora.dve.variable.VariableScopeKind;
+import com.tesora.dve.variable.VariableConstants;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.SiteManagerCommand;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
@@ -523,7 +523,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				i++;
 			}
 		}
-		if (literals.size() > SchemaVariables.getLiteralsCutoff(pc)) {
+		if (literals.size() > KnownVariables.CACHED_PLAN_LITERALS_MAX.getValue(pc.getConnection().getVariableSource()).intValue()) { 
 			forceUncacheable(ValueManager.CacheStatus.NOCACHE_TOO_MANY_LITERALS);
 		} else {
 			TreeMap<SourceLocation, DelegatingLiteralExpression> map = new TreeMap<SourceLocation, DelegatingLiteralExpression>();
@@ -746,7 +746,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public void reportContinuationOnDupKey() {
-		throw new ParserException(Pass.FIRST, "Statement is too large. Consider increasing the '" + GlobalConfigVariableHandler.LARGE_INSERT_THRESHOLD
+		throw new ParserException(Pass.FIRST, "Statement is too large. Consider increasing the '" + VariableConstants.LARGE_INSERT_THRESHOLD_NAME
 				+ "' value.", null);
 	}
 
@@ -1326,7 +1326,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 
 		if ((mode != null) && !mode.requiresTemplate()) {
-			throw new SchemaException(Pass.SECOND, "Redundant template specification '" + templateName.getSQL() + "' for " + SchemaVariables.TEMPLATE_MODE_NAME
+			throw new SchemaException(Pass.SECOND, "Redundant template specification '" + templateName.getSQL() + "' for " + VariableConstants.TEMPLATE_MODE_NAME
 					+ " '" + mode.toString() + "'; syntax error");
 		}
 
@@ -1418,25 +1418,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		} catch (final PEException e) {
 			throw new SchemaException(Pass.FIRST, e.getMessage());
 		}
-	}
-
-	public Statement buildCreateProject(Name projName, Name defPersistentGroup) {
-		if ( projName == null ) {
-			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
-		}
-
-		Project any = pc.getCatalog().findProject(projName.get());
-		if (any != null)
-			throw new SchemaException(Pass.SECOND, "Project "
-					+ projName.getSQL() + " already exists");
-		PEPersistentGroup defPersistent = null;
-		if (defPersistentGroup != null) {
-			defPersistent = pc.findStorageGroup(defPersistentGroup);
-			if (defPersistent == null)
-				throw new SchemaException(Pass.SECOND,
-						"No such persistent group: " + defPersistentGroup.getSQL());
-		}
-		return new PECreateStatement<PEProject, Project>(new PEProject(pc,projName, defPersistent), true, "PROJECT", false);
 	}
 
 	public Statement buildCreatePersistentInstance(Name persistentInstanceName,
@@ -1838,7 +1819,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public PEKey buildForeignKey(Name name, List<PEKeyColumnBase> mycols, Name targetTableName, List<UnqualifiedName> targetColumns,
 			ForeignKeyAction deleteAction, ForeignKeyAction updateAction) {
 		// are unknown tables ok?
-		boolean required = (pc != null && SchemaVariables.hasForeignKeyChecks(pc));
+		boolean required = (pc != null && 
+				KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(pc.getConnection().getVariableSource()).booleanValue());
 		
 		// figure out whether the target table is known or not
 		PETable targetTab = null;
@@ -2033,7 +2015,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (pc != null) {
 			if (unqualifiedName.isPipes()) {
 				forceUncacheable(ValueManager.CacheStatus.NOCACHE_DYNAMIC_FUNCTION);
-				SQLMode mode = SchemaVariables.getSQLMode(pc);
+				SQLMode mode = 
+						KnownVariables.SQL_MODE.getSessionValue(pc.getConnection().getVariableSource()); 
 				if (mode.isPipesAsConcat()) {
 					// rewrite to use the concat function call
 					unqualifiedName = new FunctionName("CONCAT",-1,false);
@@ -2398,80 +2381,49 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return buildFunctionCall(eqop, params, null, tree);
 	}
 
-	public VariableInstance buildVariableInstance(Name scopeName,
-			Name variableName, Object orig) {
-		if (scopeName == null)
-			return buildVariableInstance(variableName,
-					VariableScope.VariableKind.USER, orig);
-		else if (!scopeName.isQualified())
-			return buildVariableInstance(
-					scopeName,
-					buildVariableScope(VariableScope.VariableKind.SESSION,
-							null, null), orig);
-		else {
-			QualifiedName qn = (QualifiedName) scopeName;
-			VariableScope vs = buildVariableScope(qn, null);
-			return buildVariableInstance(qn.getUnqualified(), vs, orig);
-		}
+	public VariableInstance buildLHSVariableInstance(VariableScope vs, Name n, Object tree) {
+		return captureVariable(new VariableInstance(n.getUnqualified(), vs, SourceLocation.make(tree), false));
 	}
-
-	public VariableScope buildVariableScope(Name n, Name anyTrailingIdentifier) {
-		if ( n == null ) {
-			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
+	
+	public VariableInstance buildRHSVariableInstance(Object fat, Object sat, VariableScopeKind vsk, Name n, Object tree) {
+		VariableScopeKind kind = vsk;
+		if (kind == null) {
+			if (fat != null) {
+				if (sat != null) {
+					kind = VariableScopeKind.SESSION;
+				} else {
+					kind = VariableScopeKind.USER;
+				}
+			} else {
+				kind = VariableScopeKind.SESSION;
+			}
 		}
-
-		Name nmspc = n;
-		if (n.isQualified())
-			nmspc = ((QualifiedName) n).getNamespace();
-		VariableScope vs = null;
-		if ("SESSION".equals(nmspc.getCapitalized().get()))
-			vs = buildVariableScope(VariableScope.VariableKind.SESSION, null,
-					null);
-		else if ("GLOBAL".equals(nmspc.getCapitalized().get()))
-			vs = buildVariableScope(VariableScope.VariableKind.GLOBAL, null,
-					null);
-		else if ("DVE".equals(nmspc.getCapitalized().get()))
-			vs = buildVariableScope(VariableScope.VariableKind.SCOPED,
-					"dve", anyTrailingIdentifier);
-		else
-			throw new SchemaException(Pass.FIRST,
-					"Unknown variable scope reference: " + n.getSQL());
-		return vs;
+		return captureVariable(new VariableInstance(n.getUnqualified(), new VariableScope(kind), SourceLocation.make(tree), true));
 	}
-
-	public VariableInstance buildVariableInstance(Name varname,
-			VariableScope.VariableKind scopeKind, Object orig) {
-		VariableInstance vi = buildVariableInstance(varname, new VariableScope(
-				scopeKind), orig);
+	
+	private VariableInstance captureVariable(VariableInstance vi) {
 		if (!scope.isEmpty())
 			scope.getVariables().add(vi);
 		return vi;
 	}
-
-	public VariableInstance buildVariableInstance(Name varname,
-			VariableScope vs, Object orig) {
-		if ( varname == null ) {
-			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
-		}
-
-		return new VariableInstance((UnqualifiedName) varname, vs,
-				SourceLocation.make(orig));
+	
+	public VariableScope buildVariableScope(VariableScopeKind vsk) {
+		return new VariableScope(vsk);
 	}
-
-	public VariableScope buildVariableScope(
-			VariableScope.VariableKind scopeKind, String kindName,
-			Name scopeName) {
-		return new VariableScope(scopeKind, kindName,
-				(UnqualifiedName) scopeName);
+	
+	public VariableScope buildVariableScope(Name scoped) {
+		if (scoped == null)
+			return new VariableScope(VariableScopeKind.SCOPED);		
+		return new VariableScope(scoped.getUnquotedName().get());
 	}
-
+	
+	public SetExpression buildSetVariableExpression(VariableInstance v, ExpressionNode en) {
+		return buildSetVariableExpression(v,Collections.singletonList(en));
+	}
+	
 	public SetExpression buildSetVariableExpression(VariableInstance v,
 			List<ExpressionNode> l) {
-		if (v.getScope().getScopeKind().compareTo(VariableScopeKind.DVE) == 0) {
-			throw new SchemaException(Pass.FIRST,
-					"Unknown variable scope reference: " + v.getScope().getScopeKind().name().toLowerCase() + "." + v.getVariableName().getSQL());
-		}
-		
+
 		if (StringUtils.endsWithIgnoreCase(v.getVariableName().get(), "NAMES")) {
 			// validate NAME variable is one of our supported ones
 			// should only be one item in l
@@ -2499,12 +2451,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public SetExpression buildSetTransactionIsolation(
-			SetTransactionIsolationExpression.IsolationLevel il, Name scopeName) {
-		if ((scopeName != null) && (!scopeName.get().equalsIgnoreCase(VariableScope.VariableKind.SESSION.name()))) {
-			throw new SchemaException(Pass.SECOND, "No support for native global variables");
-		}
-
-		return new SetTransactionIsolationExpression(il, VariableScope.VariableKind.SESSION);
+			SetTransactionIsolationExpression.IsolationLevel il, VariableScopeKind scopeKind) {
+		return new SetTransactionIsolationExpression(il, scopeKind);
 	}
 
 	public SessionSetVariableStatement buildSessionSetVarStatement(
@@ -2519,6 +2467,16 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new SessionSetVariableStatement(sets);
 	}
 
+	public Statement buildAddVariable(Name newName, List<Pair<Name,LiteralExpression>> options) {
+		pc.getPolicyContext().checkRootPermission("create a new system variable");
+		String varName = newName.getUnqualified().getUnquotedName().get();
+		VariableHandler exists =
+				Singletons.require(HostService.class).getVariableManager().lookup(varName);
+		if (exists != null)
+			throw new SchemaException(Pass.SECOND,"Variable " + newName + " already exists");
+		return AddGlobalVariableStatement.decode(pc, varName, options);
+	}
+	
 	public Comment buildComment(String c) {
 		return new Comment(PEStringUtils.dequote(c));
 	}
@@ -3872,18 +3830,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	@SuppressWarnings("unchecked")
 	public Statement buildShowVariables(VariableScope ivs,
 			Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
-        VariablesInformationSchemaTable ist = (VariablesInformationSchemaTable) Singletons.require(HostService.class).
+        ShowVariablesInformationSchemaTable ist = (ShowVariablesInformationSchemaTable) Singletons.require(HostService.class).
 				getInformationSchema().lookupShowTable(
 						new UnqualifiedName("variables"));
 		VariableScope vs = ivs;
 		if (vs == null)
-			vs = new VariableScope(VariableScope.VariableKind.SESSION);
-		else if (VariableScope.VariableKind.GLOBAL.equals(vs.getKind())) {
-			// return dve scope
-			vs = buildVariableScope(buildName("DVE"), null);
-//			throw new SchemaException(Pass.SECOND,
-//					"No support for native global variables");
-		}
+			vs = new VariableScope(VariableScopeKind.SESSION);
 		ExpressionNode likeExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getFirst());
 		ExpressionNode whereExpr = (likeOrWhere == null ? null : likeOrWhere

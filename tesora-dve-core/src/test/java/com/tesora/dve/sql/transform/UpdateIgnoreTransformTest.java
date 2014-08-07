@@ -49,7 +49,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	};
 	
 	@Test
-	public void testUpdateIgnoreBroadcast() throws Exception {
+	public void testUpdateIgnoreBroadcast() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -63,7 +63,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreRandom() throws Exception {
+	public void testUpdateIgnoreRandom() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -76,7 +76,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreStatic() throws Exception {
+	public void testUpdateIgnoreStatic() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -98,7 +98,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreStaticNonDvUpdate() throws Exception {
+	public void testUpdateIgnoreStaticNonDvUpdate() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -111,7 +111,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreRange() throws Exception {
+	public void testUpdateIgnoreRange() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -134,7 +134,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreRangeNonDvUpdate() throws Exception {
+	public void testUpdateIgnoreRangeNonDvUpdate() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -148,7 +148,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreRangePE771() throws Exception {
+	public void testUpdateIgnoreRangePE771() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(

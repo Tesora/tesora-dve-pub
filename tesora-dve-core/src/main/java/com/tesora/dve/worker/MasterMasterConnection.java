@@ -23,11 +23,12 @@ package com.tesora.dve.worker;
 
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PESQLException;
+import io.netty.channel.EventLoopGroup;
 
 public class MasterMasterConnection extends SingleDirectConnection {
 
-	public MasterMasterConnection(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) {
-		super(auth, additionalConnInfo, site);
+	public MasterMasterConnection(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) {
+		super(auth, additionalConnInfo, site, preferredEventLoop);
 	}
 
 	@Override

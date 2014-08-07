@@ -27,29 +27,31 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.WorkerGroup;
 
 
 public class QueryStepGetSessionVariableOperation extends QueryStepOperation {
 	
-	String variableName;
+	VariableHandler handler;
 	private String alias;
 
-	public QueryStepGetSessionVariableOperation(String variableName, String alias) {
+	public QueryStepGetSessionVariableOperation(VariableHandler<?> handler, String alias) {
 		super();
-		this.variableName = variableName;
+		this.handler = handler;
 		this.alias = alias;
 	}
 	
-	public QueryStepGetSessionVariableOperation(String variableName) {
-		this(variableName, variableName);
+	public QueryStepGetSessionVariableOperation(VariableHandler<?> handler) {
+		this(handler, handler.getName());
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
-		resultConsumer.inject(ColumnSet.singleColumn(alias, Types.VARCHAR), 
-				ResultRow.singleRow(ssCon.getSessionVariable(variableName)));
+		resultConsumer.inject(ColumnSet.singleColumn(alias, Types.VARCHAR),
+				ResultRow.singleRow(handler.toRow(handler.getSessionValue(ssCon))));
 	}
 
 }

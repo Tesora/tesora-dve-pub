@@ -21,6 +21,7 @@ package com.tesora.dve.groupmanager;
  * #L%
  */
 
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -35,7 +36,7 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.lockmanager.LockManager;
-import com.tesora.dve.variable.GlobalConfigVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 public class GroupManager {
 	
@@ -86,7 +87,7 @@ public class GroupManager {
 			Connection con = DriverManager.getConnection(url,userId,password);
 			try {
 				Statement stmt = con.createStatement();
-				ResultSet rs = stmt.executeQuery("select value from " + database + ".config where name = '" + GlobalConfigVariableConstants.GROUP_SERVICE + "'");
+				ResultSet rs = stmt.executeQuery("select value from " + database + ".varconfig where name = '" + VariableConstants.GROUP_SERVICE_NAME + "'");
 				while(rs.next())
 					groupServicesType = rs.getString("value");
 				stmt.close();

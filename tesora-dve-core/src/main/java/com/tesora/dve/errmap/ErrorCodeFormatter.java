@@ -32,24 +32,36 @@ public abstract class ErrorCodeFormatter {
 	protected final String sqlState;
 	// for the most part, I think a format string will work
 	protected final String format;
+	protected final String verboseFormat;
 	
 	public ErrorCodeFormatter(ErrorCode ec, String format, int mysqlErrorCode, String state) {
 		this.handledCodes = new ErrorCode[] { ec };
 		this.myErrorCode = mysqlErrorCode;
 		this.sqlState = state;
 		this.format = format;
+		this.verboseFormat = format + " (at %s)";
 	}
 
-	public String format(Object[] params) {
-		return String.format(format,params);
+	protected String formatInternal(Object[] params, boolean verbose) {
+		return String.format(verbose ? verboseFormat : format, params);
 	}
 	
-	public MyErrorResponse buildResponse(Object[] params) {
-		return new MyErrorResponse(myErrorCode, sqlState, format(params));
+	public final String format(Object[] params, StackTraceElement location) {
+		if (location != null) {
+			Object[] nps = new Object[params.length + 1];
+			System.arraycopy(params, 0, nps, 0, params.length);
+			nps[params.length] = location.toString();
+			return formatInternal(nps,true);
+		}
+		return formatInternal(params,false);
 	}
 	
-	public SQLException buildException(Object[] params) {
-		return new SQLException(format(params),sqlState,myErrorCode);
+	public MyErrorResponse buildResponse(Object[] params, StackTraceElement location) {
+		return new MyErrorResponse(myErrorCode, sqlState, format(params, location));
+	}
+	
+	public SQLException buildException(Object[] params, StackTraceElement location) {
+		return new SQLException(format(params,location),sqlState,myErrorCode);
 	}
 	
 	public ErrorCode[] getHandledCodes() {

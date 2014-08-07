@@ -63,7 +63,7 @@ import com.tesora.dve.sql.schema.mt.AdaptiveMultitenantSchemaPolicyContext;
 import com.tesora.dve.sql.schema.mt.TenantColumn;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
-import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 public class SimpleMultitenantTest extends MultitenantTest {
 
@@ -260,7 +260,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 		setContext("testScoping");
 		// also have to create a second user
 		rootConnection.execute(testDDL.getCreateDatabaseStatement());
-		rootConnection.execute("alter dve set " + SchemaVariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1001");
+		rootConnection.execute("alter dve set " + VariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1001");
 		rootConnection.execute("use mtdb");
 		createTenant(0);
 		createTenant(1);
@@ -419,7 +419,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 	public void testMTAdaptive() throws Throwable {
 		setContext("testMTAdaptive");
 		rootConnection.execute(testDDL.withMTMode(MultitenantMode.ADAPTIVE).getCreateDatabaseStatement());
-		rootConnection.execute("alter dve set " + SchemaVariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1001");
+		rootConnection.execute("alter dve set " + VariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1001");
 		
 		createTenant(0);
 		createTenant(1);

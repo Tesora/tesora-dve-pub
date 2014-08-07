@@ -27,6 +27,7 @@ import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
+import io.netty.channel.ChannelHandlerContext;
 
 public abstract class MysqlParallelResultConsumer implements MysqlQueryResultConsumer, DBResultConsumer {
 
@@ -54,6 +55,11 @@ public abstract class MysqlParallelResultConsumer implements MysqlQueryResultCon
 	public MysqlParallelResultConsumer() {
 		super();
 	}
+
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //NOOP.
+    }
 
     public boolean emptyResultSet(MyOKResponse ok) {
 		synchronized (this) {

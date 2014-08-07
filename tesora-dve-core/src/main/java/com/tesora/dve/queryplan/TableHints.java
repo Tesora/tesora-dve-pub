@@ -54,6 +54,8 @@ public class TableHints {
 	}
 	
 	public ColumnSet addAutoIncMetadata(ColumnSet cs) {
+		if (cs == null)
+			System.out.println("BOOM!");
 		ColumnSet adjustedCS = new ColumnSet(cs);
 		if (tableHasAutoIncs()) {
 			ColumnMetadata cm = autoIncColumn.getFirst().getColumnMetadata();

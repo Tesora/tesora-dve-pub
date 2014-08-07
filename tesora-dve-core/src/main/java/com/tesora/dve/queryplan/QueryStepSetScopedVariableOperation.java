@@ -21,48 +21,50 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.variable.VariableScopeKind;
+import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepSetScopedVariableOperation extends
 		QueryStepOperation {
 
-	protected VariableScopeKind scopeKind;
-	protected String scopeName;
+	protected VariableScope scope;
 	protected String variableName;
 	protected ValueAccessor accessor;
 	protected boolean requireWorkers = false;
 	
-	public QueryStepSetScopedVariableOperation(VariableScopeKind vsk, String scopeName, String variableName, ValueAccessor accessor, boolean requireWorkers) {
+	public QueryStepSetScopedVariableOperation(VariableScope vs, String variableName, ValueAccessor accessor, boolean requireWorkers) {
 		super();
-		this.scopeKind = vsk;
-		this.scopeName = scopeName;
+		this.scope = vs;
 		this.variableName = variableName;
 		this.accessor = accessor;
 		this.requireWorkers = requireWorkers;
 	}
 
-	public QueryStepSetScopedVariableOperation(VariableScopeKind vsk, String scopeName, String variableName, String value) {
-		this(vsk, scopeName, variableName, new ConstantValueAccessor(value), false);
+	public QueryStepSetScopedVariableOperation(VariableScope vs, String variableName, String value) {
+		this(vs, variableName, new ConstantValueAccessor(value), false);
 	}
 	
 	@Override
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		String nv = accessor.getValue(ssCon, wg);
-		if (VariableScopeKind.DVE == scopeKind) {
-            Singletons.require(HostService.class).setGlobalVariable(ssCon.getCatalogDAO(), variableName, nv);
-		} else if (VariableScopeKind.SESSION == scopeKind) {
+		if (VariableScopeKind.GLOBAL == scope.getKind()) {
+			Singletons.require(HostService.class).getVariableManager().lookupMustExist(variableName).setGlobalValue(nv);
+		} else if (VariableScopeKind.SESSION == scope.getKind()) {
 			ssCon.setSessionVariable(variableName, nv);
-		} else if (VariableScopeKind.USER == scopeKind) {
+		} else if (VariableScopeKind.USER == scope.getKind()) {
 			ssCon.setUserVariable(variableName, nv);
+		} else if (VariableScopeKind.PERSISTENT == scope.getKind()) {
+			Singletons.require(HostService.class).getVariableManager().lookupMustExist(variableName).setPersistentValue(ssCon.getCatalogDAO(), nv);
 		} else {
-            Singletons.require(HostService.class).setScopedVariable(scopeName, variableName, nv);
+            Singletons.require(HostService.class).setScopedVariable(scope.getScopeName(), variableName, nv);
 		}
 	}
 
@@ -95,6 +97,4 @@ public class QueryStepSetScopedVariableOperation extends
 		}
 		
 	}
-	
-
 }

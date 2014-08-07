@@ -27,6 +27,7 @@ import java.util.Properties;
 
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.DBType;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.upgrade.CatalogVersions.CatalogVersionNumber;
@@ -40,7 +41,7 @@ public class Upgrader {
 		connectProperties = props;
 	}
 	
-	public void upgrade() throws PEException {
+	public void upgrade(InformationCallback stdout) throws PEException {
 		DBHelper helper = new DBHelper(connectProperties);
 		String driver = DBHelper.loadDriver(connectProperties.getProperty(DBHelper.CONN_DRIVER_CLASS));
 		DBType dbType = DBType.fromDriverClass(driver);
@@ -70,19 +71,19 @@ public class Upgrader {
 				if (cv.hasInfoSchemaUpgrade())
 					requiresInfoSchemaUpgrade = true;
 				if (cv.getSchemaVersion() == latest.getSchemaVersion()) 
-					upgrade(helper,cv,latest,(requiresInfoSchemaUpgrade ? dbn : null));
+					upgrade(helper,cv,latest,(requiresInfoSchemaUpgrade ? dbn : null),stdout);
 				else
-					upgrade(helper,cv,new CatalogSchemaVersion(cv.getSchemaVersion(),"via upgrade","current"),null);
+					upgrade(helper,cv,new CatalogSchemaVersion(cv.getSchemaVersion(),"via upgrade","current"),null,stdout);
 			}
 		} finally {
 			helper.disconnect();
 		}
 	}
 	
-	private void upgrade(DBHelper helper, CatalogVersion cv, CatalogSchemaVersion finalVersion, DBNative dbn) throws PEException {
+	private void upgrade(DBHelper helper, CatalogVersion cv, CatalogSchemaVersion finalVersion, DBNative dbn, InformationCallback stdout) throws PEException {
 		try {
 			helper.executeQuery("update pe_version set state = 'upgrading'");
-			cv.upgrade(helper);
+			cv.upgrade(helper, stdout);
 			if (dbn != null)
 				upgradeInfoSchema(helper,dbn);
 			helper.executeQuery("delete from pe_version");

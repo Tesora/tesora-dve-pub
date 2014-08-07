@@ -22,6 +22,7 @@ package com.tesora.dve.upgrade;
  */
 
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.exceptions.PEException;
 
 // implementors know the version they represent, and how to upgrade from the previous version.
@@ -31,6 +32,6 @@ public interface CatalogVersion {
 	
 	abstract public boolean hasInfoSchemaUpgrade();
 
-	abstract public void upgrade(DBHelper helper) throws PEException;
+	abstract public void upgrade(DBHelper helper, InformationCallback stdout) throws PEException;
 	
 }

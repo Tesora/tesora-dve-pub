@@ -56,6 +56,7 @@ import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.SyntheticInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.GeneralCollectingTraversal;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
@@ -70,11 +71,18 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.BasicType;
 import com.tesora.dve.sql.schema.types.Type;
+import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.transform.FunCollector;
+import com.tesora.dve.sql.transform.execution.DDLQueryExecutionStep;
+import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.strategy.PlannerContext;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.NonDMLFeatureStep;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 
@@ -96,12 +104,49 @@ public class LogicalSchemaQueryEngine {
 	
 	// planning entry point
 	@SuppressWarnings("unchecked")
-	public static IntermediateResultSet execute(SchemaContext sc, SelectStatement ss) {
+	public static FeatureStep execute(SchemaContext sc, SelectStatement ss, FeaturePlanner planner) {
 		ProjectionInfo pi = ss.getProjectionMetadata(sc);
 		ViewQuery vq = new ViewQuery(ss, Collections.EMPTY_MAP, null);
 		annotate(sc,vq,ss);
-		return buildResultSet(sc, vq, pi);
+		boolean haveVariable = false;
+		boolean haveOthers = false;
+		for(TableKey tk : ss.getAllTableKeys()) {
+			InformationSchemaTableView istv = (InformationSchemaTableView) tk.getTable();
+			if (istv.isVariablesTable())
+				haveVariable = true;
+			else
+				haveOthers = true;
+		}
+		if (!haveVariable) {
+		
+			final IntermediateResultSet irs = buildResultSet(sc, vq, pi);
+			return new NonDMLFeatureStep(planner, null) {
+
+				@Override
+				public void scheduleSelf(PlannerContext sc, ExecutionSequence es)
+						throws PEException {
+					es.append(new DDLQueryExecutionStep("select",irs));					
+				}
+
+			}.withCachingFlag(false);
+		} else if (haveVariable && haveOthers) {
+			throw new InformationSchemaException("Illegla information schema query: across variables table and others");
+		} else {
+			// all variables
+			VariablesLogicalInformationSchemaTable varTab = 
+					(VariablesLogicalInformationSchemaTable) Singletons.require(HostService.class).getInformationSchema().getLogical().lookup(VariablesLogicalInformationSchemaTable.TABLE_NAME);
+			final Statement planned = varTab.execute(sc, vq,pi);
+			return new NonDMLFeatureStep(planner, null) {
+
+				@Override
+				public void scheduleSelf(PlannerContext sc, ExecutionSequence es)
+						throws PEException {
+					planned.plan(sc.getContext(), es, sc.getBehaviorConfiguration());
+				}
+			}.withCachingFlag(false);
+		}
 	}
+	
 	
 	// main entry point.  
 	public static IntermediateResultSet buildResultSet(SchemaContext sc, ViewQuery vq, ProjectionInfo pi) {

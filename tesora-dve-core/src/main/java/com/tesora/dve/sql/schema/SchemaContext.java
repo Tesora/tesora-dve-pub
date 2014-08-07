@@ -72,11 +72,17 @@ import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.schema.mt.TableScope.ScopeCacheKey;
+import com.tesora.dve.sql.transexec.TransientGlobalVariableStore;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.GlobalVariableStore;
+import com.tesora.dve.variables.LocalVariableStore;
+import com.tesora.dve.variables.VariableStoreSource;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableValueStore;
 import com.tesora.dve.worker.agent.Agent;
 
 public class SchemaContext {
@@ -423,7 +429,10 @@ public class SchemaContext {
 			if (peds != null)
 				return peds.getDefaultStorage(this);
 		}
-		return getDefaultProject().getDefaultStorageGroup();
+		String currentDefault = KnownVariables.PERSISTENT_GROUP.getGlobalValue(getConnection().getVariableSource());
+		if (currentDefault == null)
+			return null;
+		return findStorageGroup(new UnqualifiedName(currentDefault));
 	}
 	
 	public PEPersistentGroup getSessionStatementStorageGroup() throws PEException {
@@ -544,7 +553,9 @@ public class SchemaContext {
 	}
 	
 	public IDynamicPolicy getGroupPolicy() {
-		String defName = SchemaVariables.getDefaultPolicyName(this);
+		// q: should this be the global or the session value?
+		String defName =
+				KnownVariables.DYNAMIC_POLICY.getValue(getConnection().getVariableSource(),VariableScopeKind.SESSION);
 		if (defName == null) return null;
 		return (IDynamicPolicy)schemaSource.find(this, PEPolicy.getPolicyKey(defName));
 	}
@@ -847,7 +858,7 @@ public class SchemaContext {
 	}
 
 	// used when we don't have a connection, either transient impl or SSCon
-	private static class NullConnectionContext implements ConnectionContext {
+	private static class NullConnectionContext implements ConnectionContext, VariableStoreSource {
 
 		private SchemaContext sc = null;
 		private SchemaEdge<PEUser> root = null;
@@ -856,8 +867,14 @@ public class SchemaContext {
 		
 		private final CatalogDAO dao;
 		
+		private LocalVariableStore sessionVariables;
+		private GlobalVariableStore globalVariables = new TransientGlobalVariableStore();
+		private VariableValueStore userVariables = new VariableValueStore("User",true);
+		
 		public NullConnectionContext(CatalogDAO c) {
 			dao = c;
+			Singletons.require(HostService.class).getVariableManager().initialiseTransient(globalVariables);
+			sessionVariables = globalVariables.buildNewLocalStore();
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -885,7 +902,7 @@ public class SchemaContext {
 		}
 
 		@Override
-		public String getVariableValue(VariableAccessor va) throws PEException {
+		public String getVariableValue(AbstractVariableAccessor va) throws PEException {
 			return null;
 		}
 
@@ -981,6 +998,26 @@ public class SchemaContext {
 		@Override
 		public boolean isInXATxn() {
 			return false;
+		}
+
+		@Override
+		public VariableStoreSource getVariableSource() {
+			return this;
+		}
+
+		@Override
+		public LocalVariableStore getSessionVariableStore() {
+			return sessionVariables;
+		}
+
+		@Override
+		public GlobalVariableStore getGlobalVariableStore() {
+			return globalVariables;
+		}
+
+		@Override
+		public VariableValueStore getUserVariableStore() {
+			return userVariables;
 		}
 	}	
 }

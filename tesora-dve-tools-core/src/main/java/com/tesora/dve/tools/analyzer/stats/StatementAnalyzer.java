@@ -45,7 +45,7 @@ public class StatementAnalyzer extends Analyzer {
 
 	private final StatsVisitor visitor;
 
-	public StatementAnalyzer(AnalyzerOptions opts, StatsVisitor sv) throws Exception {
+	public StatementAnalyzer(AnalyzerOptions opts, StatsVisitor sv) throws Throwable {
 		super(opts);
 		this.visitor = sv;
 	}

@@ -38,9 +38,8 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.GetWorkerRequest;
 import com.tesora.dve.siteprovider.SiteProviderContextForProvision;
 import com.tesora.dve.siteprovider.SiteProviderPlugin;
-import com.tesora.dve.variable.ScopedVariableHandler;
-import com.tesora.dve.variable.VariableConfig;
-import com.tesora.dve.variable.VariableInfo;
+import com.tesora.dve.variables.ScopedVariableHandler;
+import com.tesora.dve.variables.ScopedVariables;
 import com.tesora.dve.worker.SiteManagerCommand;
 
 public class StaticSiteProvider implements SiteProviderPlugin {
@@ -86,14 +85,12 @@ public class StaticSiteProvider implements SiteProviderPlugin {
 		providerConfig = parseXML();
 	}
 
-	@Override
-	public VariableConfig<ScopedVariableHandler> getVariableConfiguration() throws PEException {
-		VariableConfig<ScopedVariableHandler> varConfig = new VariableConfig<ScopedVariableHandler>();
-		varConfig.add(new VariableInfo<EnabledVariableHandler>(providerName, "true", EnabledVariableHandler.class));
-		varConfig.add(new VariableInfo<ConfigVariableHandler>(providerName, "testConfig", ConfigVariableHandler.class));
-		return varConfig;
+	public ScopedVariables getVariableConfiguration() throws PEException {
+		return new ScopedVariables(providerName,
+				new EnabledVariableHandler(providerName,"enabled"),
+				new ConfigVariableHandler(providerName,"config"));
 	}
-
+	
 	@Override
 	public boolean isEnabled() {
 		return isEnabled;
@@ -198,13 +195,20 @@ public class StaticSiteProvider implements SiteProviderPlugin {
 
 	class EnabledVariableHandler extends ScopedVariableHandler {
 		
+		private final String scopeName;
+		
+		public EnabledVariableHandler(String scopeName, String myName) {
+			super(myName);
+			this.scopeName = scopeName;
+		}
+		
 		@Override
-		public void setValue(String scopeName, String name, String value) throws PEException {
+		public void setValue(String value) throws PEException {
 			getProvider(scopeName).setEnabled(Boolean.parseBoolean(value));
 		}
 
 		@Override
-		public String getValue(String scopeName, String name) throws PEException {
+		public String getValue() throws PEException {
 			return Boolean.toString(getProvider(scopeName).isEnabled());
 		}
 		
@@ -212,13 +216,20 @@ public class StaticSiteProvider implements SiteProviderPlugin {
 
 	class ConfigVariableHandler extends ScopedVariableHandler {
 
+		private final String scopeName;
+		
+		public ConfigVariableHandler(String scopeName, String myName) {
+			super(myName);
+			this.scopeName = scopeName;
+		}
+		
 		@Override
-		public void setValue(String scopeName, String name, String value) throws PEException {
+		public void setValue(String value) throws PEException {
 			getProvider(scopeName).setProviderConfig(value);
 		}
 
 		@Override
-		public String getValue(String scopeName, String name) throws PEException {
+		public String getValue() throws PEException {
 			return getProvider(scopeName).getProviderConfig();
 		}
 		

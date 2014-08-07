@@ -21,7 +21,6 @@ package com.tesora.dve.sql;
  * #L%
  */
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.After;
@@ -30,7 +29,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.tesora.dve.errmap.MySQLErrors;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;

@@ -30,7 +30,8 @@ import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.lockmanager.LockType;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.mt.IPETenant;
-import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.VariableStoreSource;
 
 public interface ConnectionContext {
 
@@ -46,7 +47,7 @@ public interface ConnectionContext {
 	
 	public void setSchemaContext(SchemaContext sc);
 	
-	public String getVariableValue(VariableAccessor va) throws PEException;
+	public String getVariableValue(AbstractVariableAccessor va) throws PEException;
 	
 	public List<List<String>> getVariables(VariableScope vs) throws PEException;	
 	
@@ -73,4 +74,6 @@ public interface ConnectionContext {
 	public long getLastInsertedId();
 	
 	public CatalogDAO getDAO();
+	
+	public VariableStoreSource getVariableSource();
 }

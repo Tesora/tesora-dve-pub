@@ -27,6 +27,7 @@ import java.util.Properties;
 import java.util.TreeMap;
 
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PELogUtils;
 import com.tesora.dve.exceptions.PEException;
@@ -43,6 +44,7 @@ import com.tesora.dve.upgrade.versions.ColumnCardinality;
 import com.tesora.dve.upgrade.versions.CreateTableOptionsVersion;
 import com.tesora.dve.upgrade.versions.EncryptPasswordsVersion;
 import com.tesora.dve.upgrade.versions.ExtraInfoSchemaColumnsColumns;
+import com.tesora.dve.upgrade.versions.GlobalVariablesVersion;
 import com.tesora.dve.upgrade.versions.InfoSchemaServerTable;
 import com.tesora.dve.upgrade.versions.InfoSchemaTypeChanges;
 import com.tesora.dve.upgrade.versions.InfoSchemaUpgradeVersion;
@@ -78,7 +80,8 @@ public class CatalogVersions {
 		ADD_TEMPLATE_MODE(new AddTemplateMode(38)),
 		EXTRA_INFO_SCHEMA_COLUMNS_COLUMNS(new ExtraInfoSchemaColumnsColumns(39)),
 		EXTERNAL_SERVICE_SHOW_CONFIG(new InfoSchemaUpgradeVersion(40)),
-		TEMPORARY_TABLES(new UserlandTemporaryTables(41));
+		TEMPORARY_TABLES(new UserlandTemporaryTables(41)),
+		GLOBAL_VARIABLES(new GlobalVariablesVersion(42));
 		
 		private final CatalogVersion upgradeModule; 
 		
@@ -148,13 +151,13 @@ public class CatalogVersions {
 		return versionHistory;
 	}	
 	
-	public static void upgradeToLatest(Properties props) throws PEException {
+	public static void upgradeToLatest(Properties props, InformationCallback stdout) throws PEException {
         if (Singletons.lookup(HostService.class) == null) {
 			props.put(DBHelper.CONN_DRIVER_CLASS, PEConstants.MYSQL_DRIVER_CLASS);
 			// we can't start the catalog here - otherwise we would modify it while sitting on it
 			new Host(props, false /* startCatalog */);
 		}
 		Upgrader upgrader = new Upgrader(props);
-		upgrader.upgrade();
+		upgrader.upgrade(stdout);
 	}
 }
