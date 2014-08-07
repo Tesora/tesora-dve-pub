@@ -67,6 +67,8 @@ public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtEx
 
     @Override
     public MSPComStmtExecuteRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComStmtExecuteRequestMessage(sequenceID,source);
     }
 

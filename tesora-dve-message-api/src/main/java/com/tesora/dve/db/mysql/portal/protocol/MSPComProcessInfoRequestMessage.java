@@ -40,6 +40,8 @@ public class MSPComProcessInfoRequestMessage extends BaseMSPMessage {
 
     @Override
     public MSPComProcessInfoRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComProcessInfoRequestMessage(sequenceID,source);
     }
 }

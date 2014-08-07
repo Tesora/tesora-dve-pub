@@ -39,6 +39,8 @@ public class MSPComStatisticsRequestMessage extends BaseMSPMessage {
 
     @Override
     public MSPComStatisticsRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComStatisticsRequestMessage(sequenceID,source);
     }
 }

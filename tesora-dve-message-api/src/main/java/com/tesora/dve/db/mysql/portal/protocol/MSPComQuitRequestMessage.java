@@ -43,6 +43,8 @@ public class MSPComQuitRequestMessage extends BaseMSPMessage {
 
     @Override
     public MSPComQuitRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComQuitRequestMessage(sequenceID,source);
     }
 

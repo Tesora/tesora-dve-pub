@@ -40,6 +40,8 @@ public class MSPComFieldListRequestMessage extends BaseMSPMessage {
 
     @Override
     public MSPComFieldListRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComFieldListRequestMessage(sequenceID,source);
     }
 }

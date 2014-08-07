@@ -42,6 +42,8 @@ public class MSPComStmtCloseRequestMessage extends BaseMSPMessage<Long> {
 
     @Override
     public MSPComStmtCloseRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComStmtCloseRequestMessage(sequenceID,source);
     }
 

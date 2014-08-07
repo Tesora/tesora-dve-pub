@@ -87,6 +87,8 @@ public class MSPServerGreetingRequestMessage extends BaseMSPMessage implements M
 
     @Override
     public MSPServerGreetingRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPServerGreetingRequestMessage(sequenceID,source);
     }
 }

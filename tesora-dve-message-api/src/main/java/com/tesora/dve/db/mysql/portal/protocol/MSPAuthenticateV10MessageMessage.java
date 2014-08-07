@@ -51,6 +51,8 @@ public class MSPAuthenticateV10MessageMessage extends BaseMSPMessage<MSPAuthenti
 
     @Override
     public MSPAuthenticateV10MessageMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPAuthenticateV10MessageMessage(sequenceID,source);
     }
 

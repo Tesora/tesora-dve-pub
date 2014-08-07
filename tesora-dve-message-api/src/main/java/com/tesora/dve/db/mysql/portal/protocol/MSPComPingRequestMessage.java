@@ -40,6 +40,8 @@ public class MSPComPingRequestMessage extends BaseMSPMessage {
 
     @Override
     public MSPComPingRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComPingRequestMessage(sequenceID,source);
     }
 }

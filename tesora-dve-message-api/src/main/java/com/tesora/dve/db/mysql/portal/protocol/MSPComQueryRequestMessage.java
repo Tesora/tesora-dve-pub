@@ -52,6 +52,8 @@ public class MSPComQueryRequestMessage extends BaseMSPMessage {
 
     @Override
     public MSPComQueryRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComQueryRequestMessage(sequenceID,source);
     }
 

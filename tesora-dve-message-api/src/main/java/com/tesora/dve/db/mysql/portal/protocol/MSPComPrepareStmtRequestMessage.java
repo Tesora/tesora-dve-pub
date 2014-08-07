@@ -45,6 +45,8 @@ public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
 
     @Override
     public MSPComPrepareStmtRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComPrepareStmtRequestMessage(sequenceID,source);
     }
 

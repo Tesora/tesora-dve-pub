@@ -43,6 +43,8 @@ public class MSPComInitDBRequestMessage extends BaseMSPMessage<String> {
 
     @Override
     public MSPComInitDBRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComInitDBRequestMessage(sequenceID,source);
     }
 

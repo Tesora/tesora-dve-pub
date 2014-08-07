@@ -47,6 +47,7 @@ public class MSPUnknown extends BaseMSPMessage {
 
     @Override
     public MSPUnknown newPrototype(byte sequenceID, ByteBuf source) {
+        source = source.slice();
         return new MSPUnknown(sequenceID,source);
     }
 }

@@ -46,6 +46,8 @@ public class MSPComSetOptionRequestMessage extends BaseMSPMessage<Short> {
 
     @Override
     public MSPComSetOptionRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPComSetOptionRequestMessage(sequenceID,source);
     }
 
