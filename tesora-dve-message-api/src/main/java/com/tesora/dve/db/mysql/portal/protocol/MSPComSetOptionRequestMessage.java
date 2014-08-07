@@ -24,13 +24,14 @@ package com.tesora.dve.db.mysql.portal.protocol;
 import io.netty.buffer.ByteBuf;
 
 public class MSPComSetOptionRequestMessage extends BaseMSPMessage<Short> {
+    public static final MSPComSetOptionRequestMessage PROTOTYPE = new MSPComSetOptionRequestMessage();
     static final int INDEX_OF_OPTIONFLAG = 0;
 
-    public MSPComSetOptionRequestMessage() {
+    protected MSPComSetOptionRequestMessage() {
         super();
     }
 
-    public MSPComSetOptionRequestMessage(byte sequenceID, ByteBuf backing) {
+    protected MSPComSetOptionRequestMessage(byte sequenceID, ByteBuf backing) {
         super(sequenceID, backing);
     }
 
@@ -41,12 +42,12 @@ public class MSPComSetOptionRequestMessage extends BaseMSPMessage<Short> {
 
     @Override
     protected Short unmarshall(ByteBuf source) {
+        source.skipBytes(1);//toss message identifier
         return source.getShort(INDEX_OF_OPTIONFLAG);
     }
 
     @Override
     public MSPComSetOptionRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        final byte messageType = source.readByte();
         source = source.slice();
         return new MSPComSetOptionRequestMessage(sequenceID,source);
     }

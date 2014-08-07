@@ -26,15 +26,16 @@ import io.netty.buffer.ByteBuf;
 import java.nio.charset.Charset;
 
 public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
+    public static final MSPComPrepareStmtRequestMessage PROTOTYPE = new MSPComPrepareStmtRequestMessage();
     public static final byte TYPE_IDENTIFIER = (byte) 0x16;
 
     Charset decodingCharset;
 
-    public MSPComPrepareStmtRequestMessage() {
+    protected MSPComPrepareStmtRequestMessage() {
         super();
     }
 
-    public MSPComPrepareStmtRequestMessage(byte sequenceID, ByteBuf backing) {
+    protected MSPComPrepareStmtRequestMessage(byte sequenceID, ByteBuf backing) {
         super(sequenceID, backing);
     }
 
@@ -45,7 +46,6 @@ public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
 
     @Override
     public MSPComPrepareStmtRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        final byte messageType = source.readByte();
         source = source.slice();
         return new MSPComPrepareStmtRequestMessage(sequenceID,source);
     }
@@ -68,16 +68,24 @@ public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
 
     @Override
     protected String unmarshall(ByteBuf source) {
+        source.skipBytes(1);//skip type field.
         return source.toString(decodingCharset);
     }
 
     @Override
     protected void marshall(String state, ByteBuf destination) {
+        destination.writeByte( getMysqlMessageType() );
         destination.writeBytes( decodingCharset.encode( state ));
     }
 
     public byte[] getPrepareBytes() {
-        return MysqlAPIUtils.unwrapOrCopyReadableBytes(readBuffer());
+        return MysqlAPIUtils.unwrapOrCopyReadableBytes(getRemainingBuf());
+    }
+
+    private ByteBuf getRemainingBuf() {
+        ByteBuf readBuf = readBuffer();
+        ByteBuf remainingBuf = readBuf.slice(1,readBuf.readableBytes() - 1);//skip over type field.
+        return remainingBuf;
     }
 
     public static MSPComPrepareStmtRequestMessage newMessage(byte sequenceID, String sql, Charset charset) {

@@ -24,11 +24,12 @@ package com.tesora.dve.db.mysql.portal.protocol;
 import io.netty.buffer.ByteBuf;
 
 public class MSPComStatisticsRequestMessage extends BaseMSPMessage {
-    public MSPComStatisticsRequestMessage() {
+    public static final MSPComStatisticsRequestMessage PROTOTYPE = new MSPComStatisticsRequestMessage();
+    protected MSPComStatisticsRequestMessage() {
         super();
     }
 
-    public MSPComStatisticsRequestMessage(byte sequenceID, ByteBuf backing) {
+    protected MSPComStatisticsRequestMessage(byte sequenceID, ByteBuf backing) {
         super(sequenceID, backing);
     }
 
@@ -39,7 +40,6 @@ public class MSPComStatisticsRequestMessage extends BaseMSPMessage {
 
     @Override
     public MSPComStatisticsRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        final byte messageType = source.readByte();
         source = source.slice();
         return new MSPComStatisticsRequestMessage(sequenceID,source);
     }

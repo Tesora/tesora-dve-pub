@@ -35,17 +35,17 @@ import org.slf4j.LoggerFactory;
 public class MSPProtocolDecoder extends ByteToMessageDecoder {
 
 	private final static MSPMessage mspMessages[] = {
-			new MSPComQueryRequestMessage(),
-			new MSPComFieldListRequestMessage(),
-			new MSPComQuitRequestMessage(),
-			new MSPComSetOptionRequestMessage(),
-			new MSPComPingRequestMessage(),
-			new MSPComInitDBRequestMessage(),
-			new MSPComPrepareStmtRequestMessage(),
-			new MSPComStmtExecuteRequestMessage(), //TODO:when we receive ok prepare responses, need to update the execute prototype, since the message is context sensitive.
-			new MSPComStmtCloseRequestMessage(),
-			new MSPComProcessInfoRequestMessage(),
-			new MSPComStatisticsRequestMessage()
+			MSPComQueryRequestMessage.PROTOTYPE,
+			MSPComFieldListRequestMessage.PROTOTYPE,
+			MSPComQuitRequestMessage.PROTOTYPE,
+			MSPComSetOptionRequestMessage.PROTOTYPE,
+			MSPComPingRequestMessage.PROTOTYPE,
+			MSPComInitDBRequestMessage.PROTOTYPE,
+			MSPComPrepareStmtRequestMessage.PROTOTYPE,
+			MSPComStmtExecuteRequestMessage.PROTOTYPE,
+			MSPComStmtCloseRequestMessage.PROTOTYPE,
+			MSPComProcessInfoRequestMessage.PROTOTYPE,
+			MSPComStatisticsRequestMessage.PROTOTYPE
 	};
 
 	private final static MSPMessage[] messageMap = new MSPMessage[256];
@@ -100,7 +100,7 @@ public class MSPProtocolDecoder extends ByteToMessageDecoder {
 			case READ_CLIENT_AUTH: {
 				MSPMessage authMessage;
 				if (state == MyDecoderState.READ_CLIENT_AUTH) {
-					authMessage = new MSPAuthenticateV10MessageMessage((byte)sequenceId, payload);
+					authMessage = MSPAuthenticateV10MessageMessage.newMessage((byte)sequenceId, payload);
 				} else if (state == MyDecoderState.READ_SERVER_GREETING) {
 					authMessage = new MSPServerGreetingRequestMessage((byte)sequenceId, payload);
 				} else {

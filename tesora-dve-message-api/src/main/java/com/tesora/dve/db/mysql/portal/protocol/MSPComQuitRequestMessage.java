@@ -25,15 +25,19 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 public class MSPComQuitRequestMessage extends BaseMSPMessage {
-
+    public static final MSPComQuitRequestMessage PROTOTYPE = new MSPComQuitRequestMessage();
     public static final byte TYPE_IDENTIFIER = (byte) 0x01;
 
-    public MSPComQuitRequestMessage() {
+    protected MSPComQuitRequestMessage() {
         super((byte)0, Unpooled.buffer());
     }
 
-    public MSPComQuitRequestMessage(byte sequenceID, ByteBuf backing) {
+    protected MSPComQuitRequestMessage(byte sequenceID, ByteBuf backing) {
         super(sequenceID, backing);
+    }
+
+    public static MSPComQuitRequestMessage newMessage(){
+        return new MSPComQuitRequestMessage();
     }
 
     @Override
@@ -43,7 +47,6 @@ public class MSPComQuitRequestMessage extends BaseMSPMessage {
 
     @Override
     public MSPComQuitRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        final byte messageType = source.readByte();
         source = source.slice();
         return new MSPComQuitRequestMessage(sequenceID,source);
     }

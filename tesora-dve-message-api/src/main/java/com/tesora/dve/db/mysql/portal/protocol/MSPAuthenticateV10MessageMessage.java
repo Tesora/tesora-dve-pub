@@ -29,7 +29,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 
-public class MSPAuthenticateV10MessageMessage extends BaseMSPMessage<MSPAuthenticateV10MessageMessage.ParsedData> implements MSPUntypedMessage {
+public class MSPAuthenticateV10MessageMessage extends BaseMSPMessage<MSPAuthenticateV10MessageMessage.ParsedData> {
+    public static final MSPAuthenticateV10MessageMessage PROTOTYPE = new MSPAuthenticateV10MessageMessage();
     private static final int MAX_PACKET_SIZE = 0xffffff;
 
     static class ParsedData {
@@ -41,17 +42,20 @@ public class MSPAuthenticateV10MessageMessage extends BaseMSPMessage<MSPAuthenti
         String initialDatabase;
     }
 
-    public MSPAuthenticateV10MessageMessage() {
+    protected MSPAuthenticateV10MessageMessage() {
         super();
     }
 
-    public MSPAuthenticateV10MessageMessage(byte sequenceID, ByteBuf backing) {
+    protected MSPAuthenticateV10MessageMessage(byte sequenceID, ByteBuf backing) {
         super(sequenceID,backing);
+    }
+
+    public static MSPAuthenticateV10MessageMessage newMessage(byte sequenceID, ByteBuf backing){
+        return new MSPAuthenticateV10MessageMessage(sequenceID,backing.slice());
     }
 
     @Override
     public MSPAuthenticateV10MessageMessage newPrototype(byte sequenceID, ByteBuf source) {
-        final byte messageType = source.readByte();
         source = source.slice();
         return new MSPAuthenticateV10MessageMessage(sequenceID,source);
     }

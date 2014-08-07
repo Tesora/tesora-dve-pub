@@ -34,7 +34,7 @@ import java.nio.ByteOrder;
 import java.util.List;
 
 public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtExecuteRequestMessage.ParsedData> {
-
+    public static final MSPComStmtExecuteRequestMessage PROTOTYPE = new MSPComStmtExecuteRequestMessage();
     public static final byte TYPE_IDENTIFIER = (byte) 0x17;
 
 
@@ -48,15 +48,15 @@ public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtEx
         List<Object> values;
     }
 
-    public MSPComStmtExecuteRequestMessage() {
+    protected MSPComStmtExecuteRequestMessage() {
         super();
     }
 
-    public MSPComStmtExecuteRequestMessage(byte sequenceID, ByteBuf backing) {
+    protected MSPComStmtExecuteRequestMessage(byte sequenceID, ByteBuf backing) {
         super(sequenceID, backing);
     }
 
-    public MSPComStmtExecuteRequestMessage(byte sequenceID, ParsedData data) {
+    protected MSPComStmtExecuteRequestMessage(byte sequenceID, ParsedData data) {
         super(sequenceID,data);
     }
 
@@ -67,7 +67,6 @@ public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtEx
 
     @Override
     public MSPComStmtExecuteRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        final byte messageType = source.readByte();
         source = source.slice();
         return new MSPComStmtExecuteRequestMessage(sequenceID,source);
     }
@@ -75,6 +74,7 @@ public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtEx
     @Override
     protected ParsedData unmarshall(ByteBuf source) {
         ParsedData parseValues = new ParsedData();
+        source.skipBytes(1);//skip the type identifier.
         parseValues.statementID = source.readUnsignedInt();
         parseValues.flags = source.readByte();
         parseValues.iterationCount = source.readUnsignedInt();
@@ -89,6 +89,7 @@ public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtEx
     @Override
     protected void marshall(ParsedData state, ByteBuf destination) {
         ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
+        leBuf.writeByte(TYPE_IDENTIFIER);
         leBuf.writeInt((int) state.statementID);
         leBuf.writeByte(state.flags);
         leBuf.writeInt((int)state.iterationCount);

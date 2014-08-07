@@ -24,12 +24,13 @@ package com.tesora.dve.db.mysql.portal.protocol;
 import io.netty.buffer.ByteBuf;
 
 public class MSPComProcessInfoRequestMessage extends BaseMSPMessage {
+    public static final MSPComProcessInfoRequestMessage PROTOTYPE = new MSPComProcessInfoRequestMessage();
 
-    public MSPComProcessInfoRequestMessage() {
+    protected MSPComProcessInfoRequestMessage() {
         super();
     }
 
-    public MSPComProcessInfoRequestMessage(byte sequenceID, ByteBuf backing) {
+    protected MSPComProcessInfoRequestMessage(byte sequenceID, ByteBuf backing) {
         super(sequenceID, backing);
     }
 
@@ -40,7 +41,6 @@ public class MSPComProcessInfoRequestMessage extends BaseMSPMessage {
 
     @Override
     public MSPComProcessInfoRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        final byte messageType = source.readByte();
         source = source.slice();
         return new MSPComProcessInfoRequestMessage(sequenceID,source);
     }

@@ -26,6 +26,7 @@ import io.netty.buffer.Unpooled;
 import java.nio.ByteOrder;
 
 public abstract class BaseMSPMessage<S> implements MSPMessage {
+    private static final int MAX_MYSQL_PAYLOAD_SIZE = 0xFFFFFF; //16777215=(2 raised to the 24th, minus 1).
     public static final int INITIAL_CAPACITY = 256;
 
     byte sequenceID;
@@ -73,24 +74,28 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
     }
 
     public void writeTo(ByteBuf destination){
-        defaultWriteTo(destination, false);
-    }
-
-    protected void defaultWriteTo(ByteBuf destination, boolean supressType) {
-        boolean writeTypeOctect = !supressType && !(this instanceof MSPUntypedMessage);
-        ByteBuf slice = this.readBuffer().slice();
-        int payloadLength = slice.readableBytes() + (writeTypeOctect ? 1 : 0);
+        ByteBuf sliceContents = readBuffer().slice().order(ByteOrder.LITTLE_ENDIAN);
 
         ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
-        leBuf.ensureWritable(payloadLength + 4);
+        leBuf.ensureWritable(sliceContents.readableBytes() + 4);
 
-        leBuf.writeMedium(payloadLength);
-        leBuf.writeByte(this.getSequenceID());
+        int sequenceIter = this.getSequenceID();
+        boolean lastChunkWasMaximumLength;
+        do {
+            int initialSize = sliceContents.readableBytes();
+            int maxSlice = MAX_MYSQL_PAYLOAD_SIZE;
+            int sendingPayloadSize = Math.min(maxSlice, initialSize);//will send a zero payload packet if packet is exact multiple of MAX_MYSQL_PAYLOAD_SIZE.
+            lastChunkWasMaximumLength = (sendingPayloadSize == maxSlice);
 
-        if (writeTypeOctect)
-            leBuf.writeByte(this.getMysqlMessageType());
+            ByteBuf nextChunk = sliceContents.readSlice(sendingPayloadSize);
+            int payloadLength = nextChunk.readableBytes();
 
-        leBuf.writeBytes(slice);
+            leBuf.writeMedium(payloadLength);
+            leBuf.writeByte(sequenceIter);
+            leBuf.writeBytes(nextChunk);
+
+            sequenceIter++;
+        } while (sliceContents.readableBytes() > 0 || lastChunkWasMaximumLength);
     }
 
     protected S readState() {
