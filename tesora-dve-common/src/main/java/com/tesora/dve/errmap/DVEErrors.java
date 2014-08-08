@@ -21,8 +21,6 @@ package com.tesora.dve.errmap;
  * #L%
  */
 
-import com.tesora.dve.sql.parser.LexicalLocation;
-
 public class DVEErrors {
 
 	public static final OneParamErrorCode<String> INTERNAL = 
@@ -31,8 +29,8 @@ public class DVEErrors {
 	public static final TwoParamErrorCode<String,String> TABLE_DNE = 
 			new TwoParamErrorCode<String,String>("TABLE_DNE",false);
 	// first param is the column name, second is the location
-	public static final TwoParamErrorCode<String,LexicalLocation> COLUMN_DNE = 
-			new TwoParamErrorCode<String,LexicalLocation>("COLUMN_DNE",false);
+	public static final TwoParamErrorCode<String,String> COLUMN_DNE = 
+			new TwoParamErrorCode<String,String>("COLUMN_DNE",false);
 	// only param is table name
 	public static final OneParamErrorCode<String> UNKNOWN_TABLE =
 			new OneParamErrorCode<String>("UNKNOWN_TABLE",false);

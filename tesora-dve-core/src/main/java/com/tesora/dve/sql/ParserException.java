@@ -25,9 +25,12 @@ import java.io.Serializable;
 
 import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
+import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.exceptions.PERuntimeException;
+import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.variables.KnownVariables;
 
-public class ParserException extends PERuntimeException {
+public class ParserException extends PEMappedRuntimeException {
 
 	// TODO: change to Component
 	public enum Pass implements Serializable {
@@ -49,41 +52,41 @@ public class ParserException extends PERuntimeException {
 	}
 	
 	private static final long serialVersionUID = 1L;
-	private final ErrorInfo error;
 	
 	
 	protected ParserException() {
-		super();
-		error = null;
+		super(new ErrorInfo(DVEErrors.INTERNAL,"(unknown error)"));
 	}
 	
 	public ParserException(Pass p) {
-		super();
-		error = null;
+		super(new ErrorInfo(DVEErrors.INTERNAL,"(unknown error)"));
 	}
 
 	public ParserException(Pass p, String message) {
-		super(message);
-		error = new ErrorInfo(DVEErrors.INTERNAL,message);
+		super(new ErrorInfo(DVEErrors.INTERNAL,message),message);
 	}
 
 	public ParserException(Pass p, Throwable cause) {
-		super(cause);
-		error = new ErrorInfo(DVEErrors.INTERNAL,cause.getMessage());
+		super(new ErrorInfo(DVEErrors.INTERNAL,cause.getMessage()),cause);
 	}
 
 	public ParserException(Pass p, String message, Throwable cause) {
-		super(message, cause);
-		error = new ErrorInfo(DVEErrors.INTERNAL, message);
+		super(new ErrorInfo(DVEErrors.INTERNAL, message),message, cause);
 	}
 
 	public ParserException(ErrorInfo ei) {
-		super();
-		error = ei;
+		super(ei);
 	}
-	
-	public ErrorInfo getErrorInfo() {
-		return error;
+
+	@Override
+	public StackTraceElement getLocation() {
+		// ugh, what a freaking hack, but I don't want to add a callback everywhere
+		SchemaContext current = SchemaContext.threadContext.get();
+		if (current != null && current.getCatalog().isPersistent() &&
+				KnownVariables.ERROR_MIGRATOR.getGlobalValue(null)) {
+			return getStackTrace()[0];
+		}
+		return null;
 	}
-	
+		
 }

@@ -21,14 +21,13 @@ package com.tesora.dve.errmap;
  * #L%
  */
 
+
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.SchemaException;
-import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.exceptions.PEMappedRuntimeException;
 
 public class ErrorMapper {
 
@@ -42,41 +41,42 @@ public class ErrorMapper {
 			}
 		}
 	}
-	
+
+	/*
 	private static StackTraceElement getLocation(Throwable t) {
 		if (KnownVariables.ERROR_MIGRATOR.getGlobalValue(null)) {
 			return t.getStackTrace()[0];
 		}
 		return null;
 	}
-	
+	*/
 	
 	// namespace
-	public static final MyErrorResponse makeResponse(SchemaException se) {
+	public static final FormattedErrorInfo makeResponse(PEMappedRuntimeException se) {
 		ErrorInfo ex = se.getErrorInfo();
 		ErrorCodeFormatter ecf = formatters.get(ex.getCode());
 		if (ecf == null) return null;
 		try {
-			return ecf.buildResponse(ex.getParams(),getLocation(se));
+			return ecf.buildResponse(ex.getParams(),ex.getLocation());
 		} catch (Throwable t) {
 			return null;
 		}
 
 	}
 
-	private static final SQLException makeException(ErrorInfo ex, StackTraceElement location) {
+	private static final SQLException makeException(ErrorInfo ex) {
 		ErrorCodeFormatter ecf = formatters.get(ex.getCode());
 		if (ecf == null) return null;
 		try {
-			return ecf.buildException(ex.getParams(), location);
+			return ecf.buildException(ex.getParams(), ex.getLocation());
 		} catch (Throwable t) {
 			return null;
 		}
 	}
 	
-	public static final SQLException makeException(SchemaException se) {
+	public static final SQLException makeException(PEMappedRuntimeException se) {
 		if (se.getErrorInfo() == null) return new SQLException(se);
-		SQLException any = makeException(se.getErrorInfo(),getLocation(se));
+		SQLException any = makeException(se.getErrorInfo());
 		if (any == null) return new SQLException(se);
 		return any;
 	}

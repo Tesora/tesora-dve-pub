@@ -67,6 +67,7 @@ public class KnownVariables implements VariableConstants {
 	
 	// normally emulated variables are just passed through
 	public static final EnumSet<VariableOption> emulated = EnumSet.of(VariableOption.EMULATED,VariableOption.PASSTHROUGH);
+	public static final EnumSet<VariableOption> emulatedOnly = EnumSet.of(VariableOption.EMULATED);
 	public static final EnumSet<VariableOption> dveOnly = EnumSet.noneOf(VariableOption.class);
 	public static final EnumSet<VariableOption> nullable = EnumSet.of(VariableOption.NULLABLE);
 	public static final EnumSet<VariableOption> readonly = EnumSet.of(VariableOption.READONLY);
@@ -100,7 +101,7 @@ public class KnownVariables implements VariableConstants {
 					booleanConverter,
 					globalScope,
 					Boolean.FALSE,
-					emulated) {
+					emulatedOnly) {
 
 		@Override
 		public void onGlobalValueChange(Boolean newValue) throws PEException {
@@ -119,7 +120,7 @@ public class KnownVariables implements VariableConstants {
 					floatingPointConverter,
 					bothScope,
 					new Double(10.0),
-					emulated);
+					emulatedOnly);
 	public static final VariableHandler<Boolean> EMULATE_MYSQL_LIMIT =
 			new VariableHandler<Boolean>(LIMIT_ORDERBY_EMULATION_NAME,
 					booleanConverter,
@@ -452,7 +453,7 @@ public class KnownVariables implements VariableConstants {
 					integralConverter,
 					globalScope,
 					16382L,
-					EnumSet.of(VariableOption.EMULATED)) {
+					emulatedOnly) {
 		@Override
 		public void onGlobalValueChange(Long newValue) throws PEException {
 			SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()),newValue.intValue());
@@ -757,12 +758,12 @@ public class KnownVariables implements VariableConstants {
 				integralConverter,
 				sessionScope,
 				0L,
-				EnumSet.of(VariableOption.EMULATED)),
+				emulatedOnly),
 		new VariableHandler<String>("charset",
 				literalConverter,
 				sessionScope,
 				"utf8",
-				EnumSet.of(VariableOption.EMULATED)),
+				emulatedOnly),
 		new VariableHandler<Boolean>("sql_auto_is_null",
 				booleanConverter,
 				bothScope,
@@ -911,7 +912,7 @@ public class KnownVariables implements VariableConstants {
 				new BoundedIntegralConverter(1023L,1048577L),
 				bothScope,
 				16384L,
-				EnumSet.of(VariableOption.EMULATED)),
+				emulatedOnly),
 		new VariableHandler<Long>("net_write_timeout",
 				new BoundedIntegralConverter(0L,null),
 				bothScope,
@@ -931,7 +932,7 @@ public class KnownVariables implements VariableConstants {
 				new BoundedIntegralConverter(-1L,3L),
 				bothScope,
 				1L,
-				EnumSet.of(VariableOption.EMULATED)),
+				emulatedOnly),
 
 	};
 

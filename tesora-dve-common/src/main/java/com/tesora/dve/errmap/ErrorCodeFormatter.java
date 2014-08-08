@@ -21,9 +21,8 @@ package com.tesora.dve.errmap;
  * #L%
  */
 
-import java.sql.SQLException;
 
-import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
+import java.sql.SQLException;
 
 public abstract class ErrorCodeFormatter {
 
@@ -56,8 +55,8 @@ public abstract class ErrorCodeFormatter {
 		return formatInternal(params,false);
 	}
 	
-	public MyErrorResponse buildResponse(Object[] params, StackTraceElement location) {
-		return new MyErrorResponse(myErrorCode, sqlState, format(params, location));
+	public FormattedErrorInfo buildResponse(Object[] params, StackTraceElement location) {
+		return new FormattedErrorInfo(myErrorCode, sqlState, format(params, location));
 	}
 	
 	public SQLException buildException(Object[] params, StackTraceElement location) {

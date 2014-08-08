@@ -177,7 +177,7 @@ public class ScopeEntry implements Scope {
 	private static void columnNotFound(Name columnName, LexicalLocation location) throws SchemaException {
 		throw new SchemaException(new ErrorInfo(DVEErrors.COLUMN_DNE,
 				columnName.getUnquotedName().get(),
-				location));
+				location.getExternal()));
 	}
 	
 	private static final TableResolver resolver = new TableResolver().withMTChecks()

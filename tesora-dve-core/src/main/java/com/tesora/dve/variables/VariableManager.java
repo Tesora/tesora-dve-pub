@@ -21,7 +21,9 @@ package com.tesora.dve.variables;
  * #L%
  */
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -124,9 +126,11 @@ public class VariableManager {
 		HashMap<VariableHandler,Object> values = new HashMap<VariableHandler,Object>();
 		try {
 			for(VariableHandler<?> vh : handlers.values()) {
+				// this will add the variable to the catalog if it is missing
 				values.put(vh,vh.initialise(c));
 			}
-			for(VariableConfig vc : c.findAllVariableConfigs()) {
+			List<VariableConfig> allConfigs = c.findAllVariableConfigs();
+			for(VariableConfig vc : allConfigs) {
 				VariableHandler<?> exists = handlers.get(normalize(vc.getName()));
 				if (exists == null) {
 					// add it

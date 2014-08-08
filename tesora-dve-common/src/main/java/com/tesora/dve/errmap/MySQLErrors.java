@@ -22,7 +22,6 @@ package com.tesora.dve.errmap;
  */
 
 import java.util.EnumMap;
-import com.tesora.dve.sql.parser.LexicalLocation;
 
 public class MySQLErrors {
 	
@@ -33,22 +32,10 @@ public class MySQLErrors {
 					"Table '%s.%s' doesn't exist",
 					1146,"42S02");
 	public static final ErrorCodeFormatter missingColumnFormatter =
-			new TwoParamErrorCodeFormatter<String,LexicalLocation>(DVEErrors.COLUMN_DNE,
+			new TwoParamErrorCodeFormatter<String,String>(DVEErrors.COLUMN_DNE,
 					"Unknown column '%s' in '%s'",
 					1054,
-					"42S22") {
-		@Override
-		public String formatInternal(Object[] params, boolean verbose) {
-			String loc = locationStrings.get((LexicalLocation)params[1]);
-			
-			if (verbose) {
-				return String.format(format + " (at %s)",new Object[] { params[0], loc, params[2] });
-			} else {
-				return String.format(format,new Object[] { params[0], loc });
-			}
-		}
-
-	};
+					"42S22");
 	public static final ErrorCodeFormatter unknownTableFormatter =
 			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_TABLE,
 					"Unknown table '%s'",
@@ -97,17 +84,5 @@ public class MySQLErrors {
 
 	};
 
-	private static final EnumMap<LexicalLocation,String> locationStrings = buildLocationStrings();
-	
-	private static EnumMap<LexicalLocation,String> buildLocationStrings() {
-		EnumMap<LexicalLocation,String> out = new EnumMap<LexicalLocation,String>(LexicalLocation.class);
-		out.put(LexicalLocation.PROJECTION,"field-list");
-		out.put(LexicalLocation.HAVINGCLAUSE,"having clause");
-		out.put(LexicalLocation.GROUPBYCLAUSE,"group statement");
-		out.put(LexicalLocation.ONCLAUSE,"on clause");
-		out.put(LexicalLocation.WHERECLAUSE,"where clause");
-		out.put(LexicalLocation.ORDERBYCLAUSE,"order clause");
-		return out;
-	}
 			
 }

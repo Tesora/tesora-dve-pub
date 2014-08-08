@@ -1,6 +1,4 @@
-package com.tesora.dve.sql.parser;
-
-import java.util.EnumMap;
+package com.tesora.dve.errmap;
 
 /*
  * #%L
@@ -23,24 +21,29 @@ import java.util.EnumMap;
  * #L%
  */
 
-public enum LexicalLocation {
+public class FormattedErrorInfo {
 
-	// used for select projection, update field list
-	PROJECTION("field-list"),
-	ONCLAUSE("on clause"),
-	WHERECLAUSE("where clause"),
-	GROUPBYCLAUSE("group statement"),
-	HAVINGCLAUSE("having clause"),
-	ORDERBYCLAUSE("order clause");
+	private final int errorNumber;
+	private final String sqlState;
+	private final String errorMsg;
 
-	private final String external;
 	
-	private LexicalLocation(String ext) {
-		this.external = ext;
+	public FormattedErrorInfo(int errno, String sqlState, String errMsg) {
+		this.errorNumber = errno;
+		this.sqlState = sqlState;
+		this.errorMsg = errMsg;
+	}
+
+	public int getErrNo() {
+		return errorNumber;
 	}
 	
-	public String getExternal() {
-		return external;
+	public String getSQLState() {
+		return sqlState;
 	}
-		
+	
+	public String getErrorMessage() {
+		return errorMsg;
+	}
+	
 }

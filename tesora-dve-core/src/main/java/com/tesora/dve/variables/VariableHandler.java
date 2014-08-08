@@ -214,7 +214,8 @@ public class VariableHandler<Type> {
 		// validate
 		toInternal(newValue);
 		persistValue(c,newValue);
-		// broadcast
+		// broadcast; note that we skip access checking here, because persistent set always updates
+		// the global map.  (i.e. setting the pers value for a session variable should effect new sesssions)
 		storeGlobalValue(newValue);
 	}
 	

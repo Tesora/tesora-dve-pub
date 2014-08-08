@@ -38,7 +38,7 @@ import com.tesora.dve.worker.WorkerGroup;
 public class QueryStepBeginTransactionOperation extends QueryStepOperation {
 	
 	boolean withConsistentSnapshot = false;
-	UserXid xaXid;
+	UserXid xaXid = null;
 	
 	public QueryStepBeginTransactionOperation(boolean withConsistentSnapshot) {
 		this.withConsistentSnapshot = withConsistentSnapshot;
@@ -59,7 +59,7 @@ public class QueryStepBeginTransactionOperation extends QueryStepOperation {
 	
 	@Override
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
-		ssCon.userBeginTransaction(withConsistentSnapshot);
+		ssCon.userBeginTransaction(withConsistentSnapshot, xaXid);
 	}
 
 	@Override

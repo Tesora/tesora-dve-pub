@@ -199,6 +199,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 	int transactionDepth = 0;
 	String currentTransId = null;
+	Boolean currentTransIsXA = null;
 	boolean autoCommitMode = true;
 	
 	long lastInsertedId = 0;
@@ -543,8 +544,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		tempCleanupRequired = required;
 	}
 
-	void doBeginTransaction() {
+	void doBeginTransaction(boolean xa) {
 		currentTransId = UUID.randomUUID().toString();
+		currentTransIsXA = xa;
 		setTempCleanupRequired(false);
 	}
 	
@@ -676,9 +678,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		setTempCleanupRequired(true);
 	}
 
-	public void autoBeginTransaction() {
+	public void autoBeginTransaction(boolean xa) {
 		if (currentTransId == null)
-			doBeginTransaction();
+			doBeginTransaction(xa);
 	}
 
 	public void autoCommitTransaction() throws Throwable {
@@ -708,6 +710,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	void transactionCleanup() throws PEException {
 		transactionDepth = 0;
 		currentTransId = null;
+		currentTransIsXA = null;
 		activeWG.clear();
 //		clearWorkerGroups();
 		setTempCleanupRequired(true);
@@ -715,12 +718,12 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 	
 	public void userBeginTransaction() throws PEException {
-		userBeginTransaction(false);
+		userBeginTransaction(false,null);
 	}
 
-	public void userBeginTransaction(boolean withConsistentSnapshot) throws PEException {
+	public void userBeginTransaction(boolean withConsistentSnapshot, UserXid xaID) throws PEException {
 		if (transactionDepth++ == 0)
-			doBeginTransaction();
+			doBeginTransaction(xaID != null);
 		
 		if (withConsistentSnapshot) {
 
@@ -1018,7 +1021,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 	
 	public boolean hasActiveXATransaction() {
-		return hasActiveTransaction();
+		return currentTransIsXA == Boolean.TRUE;
 	}
 	
 	public SchemaContext getSchemaContext() {

@@ -25,6 +25,8 @@ public class ErrorInfo {
 
 	private final ErrorCode ec;
 	private final Object[] params;
+
+	private StackTraceElement location;
 	
 	// generics are used here to ensure we have the right parameters
 	public <First> ErrorInfo(OneParamErrorCode<First> ec, First arg0) {
@@ -53,4 +55,13 @@ public class ErrorInfo {
 		return params;
 	}
 
+	public StackTraceElement getLocation() {
+		return location;
+	}
+	
+	public ErrorInfo withLocation(StackTraceElement ste) {
+		location = ste;
+		return this;
+	}
+	
 }
