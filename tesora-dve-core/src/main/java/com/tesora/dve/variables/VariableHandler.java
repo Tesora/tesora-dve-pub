@@ -204,12 +204,18 @@ public class VariableHandler<Type> {
 		ServerGlobalVariableStore.INSTANCE.setValue(this, t);
 	}
 	
+	public void storeGlobalValue(String newValue) throws PEException {
+		Type t =  toInternal(newValue);
+		// the global variable store propagates the change message
+		ServerGlobalVariableStore.INSTANCE.setValue(this, t);		
+	}
+	
 	public void setPersistentValue(final CatalogDAO c, final String newValue) throws PEException {
 		// validate
 		toInternal(newValue);
 		persistValue(c,newValue);
 		// broadcast
-		setGlobalValue(newValue);
+		storeGlobalValue(newValue);
 	}
 	
 	public void persistValue(final CatalogDAO c, final String newValue) throws PEException {

@@ -151,7 +151,7 @@ public class VariableTest extends PETest {
 		results = new MysqlTextResultChunkProvider();
 		executeQuery(new QueryStepGetGlobalVariableOperation(KnownVariables.SQL_LOGGING), results);
 		assertTrue(results.hasResults());
-		assertEquals("yes", results.getSingleColumnValue(1, 1));
+		assertEquals("YES", results.getSingleColumnValue(1, 1));
 	}
 
 	@Test
