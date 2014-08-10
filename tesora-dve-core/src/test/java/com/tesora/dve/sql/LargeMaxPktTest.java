@@ -36,7 +36,6 @@ import org.junit.Test;
 import org.testng.Assert;
 
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
 import com.tesora.dve.sql.util.PEDDL;
@@ -118,7 +117,7 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 			//tester.add(new StatementMirrorFun("SELECT data FROM `cache_views`"));
 
 			tester.runTests();
-		} catch (final PEException e) {
+		} catch (final LargeTestResourceNotAvailable e) {
 			System.err.println("WARNING: This test will be ignored: " + e.getMessage());
 			return;
 		}
