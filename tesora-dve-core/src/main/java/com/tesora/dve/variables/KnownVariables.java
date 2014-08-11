@@ -927,13 +927,22 @@ public class KnownVariables implements VariableConstants {
 				new BoundedIntegralConverter(-1L,4294967296L), // maybe not right?
 				globalScope,
 				41943040L,
-				EnumSet.of(VariableOption.EMULATED)),
+				emulatedOnly),
 		new VariableHandler<Long>("query_cache_type",
 				new BoundedIntegralConverter(-1L,3L),
 				bothScope,
 				1L,
 				emulatedOnly),
-
+		new VariableHandler<Boolean>("have_dynamic_loading",
+				booleanConverter,
+				bothScope,
+				Boolean.FALSE,
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+		new VariableHandler<String>("version_compile_os",
+				stringConverter,
+				bothScope,
+				"debian-linux-gnu",
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
 	};
 
 }

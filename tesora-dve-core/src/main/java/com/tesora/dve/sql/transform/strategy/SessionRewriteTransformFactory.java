@@ -107,7 +107,7 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 			if (vi.getScope().isUserScope() && DBNative.DVE_SITENAME_VAR.equals(vi.getVariableName().get().toLowerCase()))
 				continue;
 			final Edge<?, ExpressionNode> parentEdge = vi.getParentEdge();
-			final AbstractVariableAccessor va = vi.buildAccessor();
+			final AbstractVariableAccessor va = vi.buildAccessor(sc);
 			parentEdge.set(LiteralExpression.makeStringLiteral(PEStringUtils.dequote(sc.getConnection().getVariableValue(va))));
 		}
 	}

@@ -32,6 +32,7 @@ import com.tesora.dve.sql.template.TemplateBuilder;
 public class PEDatabaseDDL extends DatabaseDDL {
 
 	private String template;
+	private boolean loadTemplate = true;
 	private Boolean strict;
 	private MultitenantMode mtmode;
 	private FKMode fkmode;
@@ -66,6 +67,11 @@ public class PEDatabaseDDL extends DatabaseDDL {
 	
 	public PEDatabaseDDL withFKMode(FKMode fkm) {
 		this.fkmode = fkm;
+		return this;
+	}
+	
+	public PEDatabaseDDL withLoadTemplate(boolean v) {
+		this.loadTemplate = v;
 		return this;
 	}
 	
@@ -117,7 +123,7 @@ public class PEDatabaseDDL extends DatabaseDDL {
 		if (isCreated()) 
 			buf.add("drop" + (mtmode != null ? " multitenant " : " ") + "database if exists " + dbn);
 		// here
-		if (template != null) {
+		if (template != null && loadTemplate) {
 			buf.add(TemplateBuilder.getClassPathCreate(template));
 		}
 		buf.add(getCreateDatabaseStatement());

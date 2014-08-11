@@ -79,14 +79,11 @@ public class ParserException extends PEMappedRuntimeException {
 	}
 
 	@Override
-	public StackTraceElement getLocation() {
+	public boolean hasLocation() {
 		// ugh, what a freaking hack, but I don't want to add a callback everywhere
 		SchemaContext current = SchemaContext.threadContext.get();
-		if (current != null && current.getCatalog().isPersistent() &&
-				KnownVariables.ERROR_MIGRATOR.getGlobalValue(null)) {
-			return getStackTrace()[0];
-		}
-		return null;
+		return (current != null && current.getCatalog().isPersistent() &&
+				KnownVariables.ERROR_MIGRATOR.getGlobalValue(null));
 	}
 		
 }

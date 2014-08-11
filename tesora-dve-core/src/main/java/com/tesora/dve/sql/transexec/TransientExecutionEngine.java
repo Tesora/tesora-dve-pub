@@ -742,7 +742,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 			if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION)
 				throw new SchemaException(Pass.PLANNER, "No support for setting txn isolation in trans exec engine");
 			SetVariableExpression sve = (SetVariableExpression) se;
-			sve.getVariable().buildAccessor().setValue(this, sve.getVariableValue(tpc).toString());
+			sve.getVariable().buildAccessor(getPersistenceContext()).setValue(this, sve.getVariableValue(tpc).toString());
 		}
 	}
 	

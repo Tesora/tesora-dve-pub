@@ -23,49 +23,39 @@ package com.tesora.dve.exceptions;
 
 import com.tesora.dve.errmap.ErrorInfo;
 
-public class PEMappedRuntimeException extends PERuntimeException implements HasErrorInfo {
+public class PEMappedException extends PEException implements HasErrorInfo {
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private final ErrorInfo error;
 	private boolean hasLocation = false;
-
 	
-	public PEMappedRuntimeException(ErrorInfo info) {
+	
+	public PEMappedException(ErrorInfo info) {
 		super();
 		this.error = info;
 		addLocation();
 	}
 
-	public PEMappedRuntimeException(ErrorInfo info, boolean emitLocation) {
+	public PEMappedException(ErrorInfo info, boolean emitLocation) {
 		super();
 		this.error = info;
 		hasLocation = emitLocation;
 		addLocation();
 	}
 	
-	public PEMappedRuntimeException(ErrorInfo info, String message, Throwable cause,
-			boolean enableSuppression, boolean writableStackTrace) {
-		super(message, cause, enableSuppression, writableStackTrace);
-		this.error = info;
-		addLocation();
-	}
-
-	public PEMappedRuntimeException(ErrorInfo info, String message, Throwable cause) {
+	public PEMappedException(ErrorInfo info, String message, Throwable cause) {
 		super(message, cause);
 		this.error = info;
 		addLocation();
 	}
 
-	public PEMappedRuntimeException(ErrorInfo info, String message) {
+	public PEMappedException(ErrorInfo info, String message) {
 		super(message);
 		this.error = info;
 		addLocation();
 	}
 
-	public PEMappedRuntimeException(ErrorInfo info, Throwable cause) {
+	public PEMappedException(ErrorInfo info, Throwable cause) {
 		super(cause);
 		this.error = info;
 		addLocation();
@@ -88,5 +78,5 @@ public class PEMappedRuntimeException extends PERuntimeException implements HasE
 			this.error.withLocation(getStackTrace()[0]);
 		}
 	}
-	
+
 }

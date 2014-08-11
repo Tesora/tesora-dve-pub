@@ -343,10 +343,10 @@ public class SQLVariableTest extends SchemaTest {
 	@Test
 	public void testAccess() throws Throwable {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
-		testAccess(vm.lookupMustExist("tx_isolation"),new Values("REPEATABLE-READ","SERIALIZABLE","READ-COMMITTED"));
-		testAccess(vm.lookupMustExist("adaptive_cleanup_interval"), new Values("1000","5000","10000"));
-		testAccess(vm.lookupMustExist("cost_based_planning"),new Values("YES","NO"));
-		testAccess(vm.lookupMustExist("debug_context"), new Values("YES","NO"));
+		testAccess(vm.lookupMustExist(null,"tx_isolation"),new Values("REPEATABLE-READ","SERIALIZABLE","READ-COMMITTED"));
+		testAccess(vm.lookupMustExist(null,"adaptive_cleanup_interval"), new Values("1000","5000","10000"));
+		testAccess(vm.lookupMustExist(null,"cost_based_planning"),new Values("YES","NO"));
+		testAccess(vm.lookupMustExist(null,"debug_context"), new Values("YES","NO"));
 	}
 	
 	private static final VariableRoundTrip[] globals = new VariableRoundTrip[] {
