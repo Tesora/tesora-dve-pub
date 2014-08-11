@@ -22,9 +22,9 @@ package com.tesora.dve.sql;
  */
 
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
@@ -300,13 +300,6 @@ public class SQLVariableTest extends SchemaTest {
 		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,ALLOW_INVALID_DATES");
 		conn.execute("SET sql_mode=\"\";");
 		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
-
-		// new ExpectedExceptionTester() {
-		// @Override
-		// public void test() throws Throwable {
-		// conn.execute("SET sql_mode=NON_EXISTING_MODE_PE336;");
-		// }
-		// }.assertException(PEException.class);
 	}
 
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
