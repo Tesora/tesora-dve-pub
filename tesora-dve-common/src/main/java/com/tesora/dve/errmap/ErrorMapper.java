@@ -26,6 +26,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.tesora.dve.exceptions.HasErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
 
@@ -52,7 +53,7 @@ public class ErrorMapper {
 	*/
 	
 	// namespace
-	public static final FormattedErrorInfo makeResponse(PEMappedRuntimeException se) {
+	public static final FormattedErrorInfo makeResponse(HasErrorInfo se) {
 		ErrorInfo ex = se.getErrorInfo();
 		ErrorCodeFormatter ecf = formatters.get(ex.getCode());
 		if (ecf == null) return null;

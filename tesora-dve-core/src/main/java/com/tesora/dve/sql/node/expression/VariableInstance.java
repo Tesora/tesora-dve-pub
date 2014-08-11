@@ -68,12 +68,12 @@ public class VariableInstance extends ExpressionNode {
 		return new NameAlias(new UnqualifiedName("var_"));
 	}
 
-	public AbstractVariableAccessor buildAccessor() {
+	public AbstractVariableAccessor buildAccessor(SchemaContext sc) {
 		if (getScope().getKind() == VariableScopeKind.USER)
 			return new UserVariableAccessor(variableName.get());
 		else try {
 			VariableManager vm = Singletons.require(HostService.class).getVariableManager();
-			return new VariableAccessor(vm.lookupMustExist(variableName.get()),
+			return new VariableAccessor(vm.lookupMustExist(sc.getConnection().getVariableSource(),variableName.get()),
 					getScope());
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.PLANNER, pe);

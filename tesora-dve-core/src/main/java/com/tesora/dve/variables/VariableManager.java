@@ -32,7 +32,11 @@ import java.util.Map;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.VariableConfig;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PEMappedException;
+import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.Functional;
@@ -89,10 +93,14 @@ public class VariableManager {
 		return Functional.toList(handlers.values());
 	}
 	
-	public VariableHandler<?> lookupMustExist(String name) throws PEException {
+	public VariableHandler<?> lookupMustExist(VariableStoreSource src, String name) throws PEException {
 		VariableHandler<?> vh = handlers.get(normalize(name));
-		if (vh == null)
-			throw new PENotFoundException(String.format("No such variable: '%s'", name));
+		if (vh == null) {
+			boolean verbose = false;
+			if (src != null) 
+				verbose = KnownVariables.ERROR_MIGRATOR.getGlobalValue(src);
+			throw new PEMappedException(new ErrorInfo(DVEErrors.UNKNOWN_SYS_VAR,name),verbose);
+		}
 		return vh;		
 	}
 	

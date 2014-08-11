@@ -243,7 +243,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 						if (current instanceof VariableInstance) {
 							cacheable = false;
 							VariableInstance vi = (VariableInstance) current;
-							AbstractVariableAccessor va = vi.buildAccessor();
+							AbstractVariableAccessor va = vi.buildAccessor(sc);
 							try {
 								String value = va.getValue(sc.getConnection().getVariableSource()); 
 								actual = LiteralExpression.makeStringLiteral(value);

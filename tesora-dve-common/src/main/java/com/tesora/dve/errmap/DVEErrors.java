@@ -38,6 +38,10 @@ public class DVEErrors {
 	// this will probably change
 	public static final TwoParamErrorCode<String,String> UNKNOWN_USER =
 			new TwoParamErrorCode<String,String>("UNKNOWN_USER",false);
+	// we make this loggable since we don't really support a lot of them yet
+	public static final OneParamErrorCode<String> UNKNOWN_SYS_VAR =
+			new OneParamErrorCode<String>("UNKNOWN_SYS_VAR",true);
+	
 	// no use database
 	public static final ZeroParamErrorCode NO_DATABASE_SELECTED =
 			new ZeroParamErrorCode("NO_DATABASE_SELECTED",false);
@@ -61,6 +65,7 @@ public class DVEErrors {
 		NO_DATABASE_SELECTED,
 		UNKNOWN_DATABASE,
 		INCORRECT_PARAM_COUNT_FUNCTION_CALL,
+		UNKNOWN_SYS_VAR,
 		
 		
 		INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,

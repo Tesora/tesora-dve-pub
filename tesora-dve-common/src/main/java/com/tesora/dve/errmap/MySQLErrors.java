@@ -68,6 +68,11 @@ public class MySQLErrors {
 					"Invalid delete on container base table '%s'.  Not restricted by discriminant columns",
 					6001,
 					"DVECO");
+	public static final ErrorCodeFormatter unknownSysVarFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_SYS_VAR,
+					"Unknown system variable '%s'",
+					1193,
+					"HY000");
 			
 	
 	public static final ErrorCodeFormatter[] myFormatters = new ErrorCodeFormatter[] {
@@ -80,6 +85,7 @@ public class MySQLErrors {
 		incorrectParamCountFormatter,
 		invalidDiscriminantUpdateFormatter,
 		invalidContainerDeleteFormatter,
+		unknownSysVarFormatter,
 		internalFormatter
 
 	};

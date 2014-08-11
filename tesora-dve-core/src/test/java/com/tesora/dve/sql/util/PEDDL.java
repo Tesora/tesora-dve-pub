@@ -40,7 +40,8 @@ public class PEDDL extends ProjectDDL {
 	private List<StorageGroupDDL> persGroups;
 	private boolean tenant = false;
 	private boolean throwDropRangeInUseException = true;
-
+	private List<String> templateDeclarations = new ArrayList<String>();
+	
 	public PEDDL() {
 		super();
 		persGroups = new ArrayList<StorageGroupDDL>();
@@ -49,6 +50,7 @@ public class PEDDL extends ProjectDDL {
 	public PEDDL(PEDDL other) {
 		super(other);
 		persGroups = other.persGroups;
+		this.templateDeclarations = new ArrayList<String>(other.templateDeclarations);
 	}
 	
 	@Override
@@ -68,6 +70,7 @@ public class PEDDL extends ProjectDDL {
 			for(StorageGroupDDL sgddl : persGroups) {
 				buf.addAll(sgddl.getCreateStatements());
 			}
+			buf.addAll(templateDeclarations);
 			for(DatabaseDDL dbddl : getDatabases()) {
 				buf.addAll(dbddl.getCreateStatements());
 			}
@@ -185,6 +188,19 @@ public class PEDDL extends ProjectDDL {
 		return this;
 	}
 		
+	public PEDDL withTemplateDeclarations(String...decls) {
+		for(String s : decls) {
+			templateDeclarations.add(s);
+		}
+		if (templateDeclarations.size() > 0) {
+			for(DatabaseDDL db : getDatabases()) {
+				PEDatabaseDDL pedb = (PEDatabaseDDL) db;
+				pedb.withLoadTemplate(false);
+			}
+		}
+		return this;
+	}
+	
 	public MultitenantMode getMultitenantMode() {
 		return getSinglePEDB().getMultitenantMode();
 	}

@@ -46,6 +46,7 @@ import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PEMappedException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.queryplan.QueryPlan;
 import com.tesora.dve.queryplan.QueryStep;
@@ -119,9 +120,9 @@ public class VariableTest extends PETest {
 		assertEquals(Boolean.TRUE, KnownVariables.SLOW_QUERY_LOG.getValue(null));
 	}
 
-	@Test(expected = PENotFoundException.class)
+	@Test(expected = PEMappedException.class)
 	public void globalVariableNotExistsTest() throws PEException {
-		Singletons.require(HostService.class).getVariableManager().lookupMustExist("no-such-variable");
+		Singletons.require(HostService.class).getVariableManager().lookupMustExist(null,"no-such-variable");
 	}
 
 	@Test
@@ -177,7 +178,7 @@ public class VariableTest extends PETest {
 		assertEquals("utf8", results.getSingleColumnValue(1, 1));
 	}
 
-	@Test(expected = PENotFoundException.class)
+	@Test(expected = PEMappedException.class)
 	public void sessionVariableNotExistsTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
 		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "invalid-session-name",
@@ -326,7 +327,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void setGroupConcatMaxLen() throws Throwable {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
-		VariableHandler<Long> var = (VariableHandler<Long>) vm.lookupMustExist("group_concat_max_len"); 
+		VariableHandler<Long> var = (VariableHandler<Long>) vm.lookupMustExist(null,"group_concat_max_len"); 
 		assertEquals(new Long(1024), var.getSessionValue(ssConnection));
 		var.setSessionValue(ssConnection, "5");
 		assertEquals(new Long(5), var.getSessionValue(ssConnection)); 

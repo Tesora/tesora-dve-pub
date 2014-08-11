@@ -49,7 +49,7 @@ public class ExecutePStmtStatement extends PStmtStatement {
 	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		List<String> values = new ArrayList<String>();
 		for(VariableInstance vi : vars) {
-			String v = sc.getConnection().getVariableValue(vi.buildAccessor());
+			String v = sc.getConnection().getVariableValue(vi.buildAccessor(sc));
 			if (v == null)
 				values.add(null);
 			else
