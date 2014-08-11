@@ -226,9 +226,9 @@ public class MysqlNativeCollation extends NativeCollation {
 		};
 	
 
-	public MysqlNativeCollation(String name, String collation, int id,
+	public MysqlNativeCollation(String name, String collation, long collationId,
 			boolean isDefault, boolean isCompiled, long sortLen) {
-		super(id, name, collation, isDefault, isCompiled, sortLen);
+		super(collationId, name, collation, isDefault, isCompiled, sortLen);
 	}
 
 }

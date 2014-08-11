@@ -33,8 +33,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -49,6 +47,8 @@ import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.util.ConnectionResource;
@@ -607,59 +607,59 @@ public class CatalogQueryTest extends SchemaTest {
 					   nr, "utf8mb4", "UTF-8 Unicode", Long.valueOf(4)));
 			
 			nonRootConn.assertResults("SELECT * FROM information_schema.collations", br(
-					nr,"ascii_bin","ascii",65,"","YES",Long.valueOf(1),
-					nr,"ascii_general_ci","ascii",11,"YES","YES",Long.valueOf(1),
-					nr,"latin1_bin","latin1",47,"","YES",Long.valueOf(1),
-					nr,"latin1_danish_ci","latin1",15,"","YES",Long.valueOf(1),
-					nr,"latin1_general_ci","latin1",48,"","YES",Long.valueOf(1),
-					nr,"latin1_general_cs","latin1",49,"","YES",Long.valueOf(1),
-					nr,"latin1_german2_ci","latin1",31,"","YES",Long.valueOf(2),
-					nr,"latin1_spanish_ci","latin1",94,"","YES",Long.valueOf(1),
-					nr,"latin1_swedish_ci","latin1",8,"YES","YES",Long.valueOf(1),
-					nr,"utf8mb4_bin","utf8mb4",46,"","YES",Long.valueOf(1),
-					nr,"utf8mb4_czech_ci","utf8mb4",234,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_danish_ci","utf8mb4",235,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_esperanto_ci","utf8mb4",241,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_estonian_ci","utf8mb4",230,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_general_ci","utf8mb4",45,"YES","YES",Long.valueOf(1),
-					nr,"utf8mb4_hungarian_ci","utf8mb4",242,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_icelandic_ci","utf8mb4",225,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_latvian_ci","utf8mb4",226,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_lithuanian_ci","utf8mb4",236,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_persian_ci","utf8mb4",240,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_polish_ci","utf8mb4",229,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_romanian_ci","utf8mb4",227,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_roman_ci","utf8mb4",239,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_sinhala_ci","utf8mb4",243,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_slovak_ci","utf8mb4",237,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_slovenian_ci","utf8mb4",228,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_spanish2_ci","utf8mb4",238,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_spanish_ci","utf8mb4",231,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_swedish_ci","utf8mb4",232,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_turkish_ci","utf8mb4",233,"","YES",Long.valueOf(8),
-					nr,"utf8mb4_unicode_ci","utf8mb4",224,"","YES",Long.valueOf(8),
-					nr,"utf8_bin","utf8",83,"","YES",Long.valueOf(1),
-					nr,"utf8_czech_ci","utf8",202,"","YES",Long.valueOf(8),
-					nr,"utf8_danish_ci","utf8",203,"","YES",Long.valueOf(8),
-					nr,"utf8_esperanto_ci","utf8",209,"","YES",Long.valueOf(8),
-					nr,"utf8_estonian_ci","utf8",198,"","YES",Long.valueOf(8),
-					nr,"utf8_general_ci","utf8",33,"YES","YES",Long.valueOf(1),
-					nr,"utf8_hungarian_ci","utf8",210,"","YES",Long.valueOf(8),
-					nr,"utf8_icelandic_ci","utf8",193,"","YES",Long.valueOf(8),
-					nr,"utf8_latvian_ci","utf8",194,"","YES",Long.valueOf(8),
-					nr,"utf8_lithuanian_ci","utf8",204,"","YES",Long.valueOf(8),
-					nr,"utf8_persian_ci","utf8",208,"","YES",Long.valueOf(8),
-					nr,"utf8_polish_ci","utf8",197,"","YES",Long.valueOf(8),
-					nr,"utf8_romanian_ci","utf8",195,"","YES",Long.valueOf(8),
-					nr,"utf8_roman_ci","utf8",207,"","YES",Long.valueOf(8),
-					nr,"utf8_sinhala_ci","utf8",211,"","YES",Long.valueOf(8),
-					nr,"utf8_slovak_ci","utf8",205,"","YES",Long.valueOf(8),
-					nr,"utf8_slovenian_ci","utf8",196,"","YES",Long.valueOf(8),
-					nr,"utf8_spanish2_ci","utf8",206,"","YES",Long.valueOf(8),
-					nr,"utf8_spanish_ci","utf8",199,"","YES",Long.valueOf(8),
-					nr,"utf8_swedish_ci","utf8",200,"","YES",Long.valueOf(8),
-					nr,"utf8_turkish_ci","utf8",201,"","YES",Long.valueOf(8),
-					nr,"utf8_unicode_ci","utf8",192,"","YES",Long.valueOf(8)
+					nr, "ascii_bin", "ascii", Long.valueOf(65), "", "Yes", Long.valueOf(1),
+					nr, "ascii_general_ci", "ascii", Long.valueOf(11), "Yes", "Yes", Long.valueOf(1),
+					nr, "latin1_bin", "latin1", Long.valueOf(47), "", "Yes", Long.valueOf(1),
+					nr, "latin1_danish_ci", "latin1", Long.valueOf(15), "", "Yes", Long.valueOf(1),
+					nr, "latin1_general_ci", "latin1", Long.valueOf(48), "", "Yes", Long.valueOf(1),
+					nr, "latin1_general_cs", "latin1", Long.valueOf(49), "", "Yes", Long.valueOf(1),
+					nr, "latin1_german2_ci", "latin1", Long.valueOf(31), "", "Yes", Long.valueOf(2),
+					nr, "latin1_spanish_ci", "latin1", Long.valueOf(94), "", "Yes", Long.valueOf(1),
+					nr, "latin1_swedish_ci", "latin1", Long.valueOf(8), "Yes", "Yes", Long.valueOf(1),
+					nr, "utf8mb4_bin", "utf8mb4", Long.valueOf(46), "", "Yes", Long.valueOf(1),
+					nr, "utf8mb4_czech_ci", "utf8mb4", Long.valueOf(234), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_danish_ci", "utf8mb4", Long.valueOf(235), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_esperanto_ci", "utf8mb4", Long.valueOf(241), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_estonian_ci", "utf8mb4", Long.valueOf(230), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_general_ci", "utf8mb4", Long.valueOf(45), "Yes", "Yes", Long.valueOf(1),
+					nr, "utf8mb4_hungarian_ci", "utf8mb4", Long.valueOf(242), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_icelandic_ci", "utf8mb4", Long.valueOf(225), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_latvian_ci", "utf8mb4", Long.valueOf(226), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_lithuanian_ci", "utf8mb4", Long.valueOf(236), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_persian_ci", "utf8mb4", Long.valueOf(240), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_polish_ci", "utf8mb4", Long.valueOf(229), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_romanian_ci", "utf8mb4", Long.valueOf(227), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_roman_ci", "utf8mb4", Long.valueOf(239), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_sinhala_ci", "utf8mb4", Long.valueOf(243), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_slovak_ci", "utf8mb4", Long.valueOf(237), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_slovenian_ci", "utf8mb4", Long.valueOf(228), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_spanish2_ci", "utf8mb4", Long.valueOf(238), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_spanish_ci", "utf8mb4", Long.valueOf(231), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_swedish_ci", "utf8mb4", Long.valueOf(232), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_turkish_ci", "utf8mb4", Long.valueOf(233), "", "Yes", Long.valueOf(8),
+					nr, "utf8mb4_unicode_ci", "utf8mb4", Long.valueOf(224), "", "Yes", Long.valueOf(8),
+					nr, "utf8_bin", "utf8", Long.valueOf(83), "", "Yes", Long.valueOf(1),
+					nr, "utf8_czech_ci", "utf8", Long.valueOf(202), "", "Yes", Long.valueOf(8),
+					nr, "utf8_danish_ci", "utf8", Long.valueOf(203), "", "Yes", Long.valueOf(8),
+					nr, "utf8_esperanto_ci", "utf8", Long.valueOf(209), "", "Yes", Long.valueOf(8),
+					nr, "utf8_estonian_ci", "utf8", Long.valueOf(198), "", "Yes", Long.valueOf(8),
+					nr, "utf8_general_ci", "utf8", Long.valueOf(33), "Yes", "Yes", Long.valueOf(1),
+					nr, "utf8_hungarian_ci", "utf8", Long.valueOf(210), "", "Yes", Long.valueOf(8),
+					nr, "utf8_icelandic_ci", "utf8", Long.valueOf(193), "", "Yes", Long.valueOf(8),
+					nr, "utf8_latvian_ci", "utf8", Long.valueOf(194), "", "Yes", Long.valueOf(8),
+					nr, "utf8_lithuanian_ci", "utf8", Long.valueOf(204), "", "Yes", Long.valueOf(8),
+					nr, "utf8_persian_ci", "utf8", Long.valueOf(208), "", "Yes", Long.valueOf(8),
+					nr, "utf8_polish_ci", "utf8", Long.valueOf(197), "", "Yes", Long.valueOf(8),
+					nr, "utf8_romanian_ci", "utf8", Long.valueOf(195), "", "Yes", Long.valueOf(8),
+					nr, "utf8_roman_ci", "utf8", Long.valueOf(207), "", "Yes", Long.valueOf(8),
+					nr, "utf8_sinhala_ci", "utf8", Long.valueOf(211), "", "Yes", Long.valueOf(8),
+					nr, "utf8_slovak_ci", "utf8", Long.valueOf(205), "", "Yes", Long.valueOf(8),
+					nr, "utf8_slovenian_ci", "utf8", Long.valueOf(196), "", "Yes", Long.valueOf(8),
+					nr, "utf8_spanish2_ci", "utf8", Long.valueOf(206), "", "Yes", Long.valueOf(8),
+					nr, "utf8_spanish_ci", "utf8", Long.valueOf(199), "", "Yes", Long.valueOf(8),
+					nr, "utf8_swedish_ci", "utf8", Long.valueOf(200), "", "Yes", Long.valueOf(8),
+					nr, "utf8_turkish_ci", "utf8", Long.valueOf(201), "", "Yes", Long.valueOf(8),
+					nr, "utf8_unicode_ci", "utf8", Long.valueOf(192), "", "Yes", Long.valueOf(8)
 					));
 
 			nonRootConn.assertResults("SELECT * FROM information_schema.events", br());
