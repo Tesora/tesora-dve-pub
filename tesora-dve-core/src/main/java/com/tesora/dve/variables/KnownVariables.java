@@ -942,6 +942,11 @@ public class KnownVariables implements VariableConstants {
 				stringConverter,
 				bothScope,
 				"debian-linux-gnu",
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+		new VariableHandler<Boolean>("have_geometry",
+				booleanConverter,
+				bothScope,
+				Boolean.TRUE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
 	};
 
