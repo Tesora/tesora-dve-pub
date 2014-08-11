@@ -117,7 +117,7 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 			//tester.add(new StatementMirrorFun("SELECT data FROM `cache_views`"));
 
 			tester.runTests();
-		} catch (final LargeTestResourceNotAvailable e) {
+		} catch (final LargeTestResourceNotAvailableException e) {
 			System.err.println("WARNING: This test will be ignored: " + e.getMessage());
 			return;
 		}

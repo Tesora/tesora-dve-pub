@@ -47,11 +47,11 @@ import com.tesora.dve.exceptions.PEException;
  */
 public abstract class PEBaseTest {
 	
-	protected static class LargeTestResourceNotAvailable extends PEException {
+	protected static class LargeTestResourceNotAvailableException extends PEException {
 
 		private static final long serialVersionUID = -1629221497003489808L;
 
-		public LargeTestResourceNotAvailable(final String m) {
+		public LargeTestResourceNotAvailableException(final String m) {
 			super(m);
 		}
 		
@@ -100,15 +100,15 @@ public abstract class PEBaseTest {
 		deleteWorkDirectoryAfterEachTest = false;
 	}
 	
-	protected static File getFileFromLargeFileRepository(final String fileName) throws LargeTestResourceNotAvailable {
+	protected static File getFileFromLargeFileRepository(final String fileName) throws LargeTestResourceNotAvailableException {
 		final String largeFileRepositoryPath = System.getProperty(LARGE_RESOURCE_DIR_VAR);
 		if (largeFileRepositoryPath == null) {
-			throw new LargeTestResourceNotAvailable("Environment variable '" + LARGE_RESOURCE_DIR_VAR + "' is undefined.");
+			throw new LargeTestResourceNotAvailableException("Environment variable '" + LARGE_RESOURCE_DIR_VAR + "' is undefined.");
 		}
 
 		final File returnFile = new File(new File(largeFileRepositoryPath), fileName);
 		if (!returnFile.canRead()) {
-			throw new LargeTestResourceNotAvailable("The file '" + returnFile.getAbsolutePath() + "' is not accessible.");
+			throw new LargeTestResourceNotAvailableException("The file '" + returnFile.getAbsolutePath() + "' is not accessible.");
 		}
 
 		return returnFile;
