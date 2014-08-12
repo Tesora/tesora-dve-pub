@@ -23,10 +23,8 @@ package com.tesora.dve.server.messaging;
 
 import java.sql.SQLException;
 
-import com.tesora.dve.comms.client.messages.GenericResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
-import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.server.connectionmanager.SSContext;

@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.variables.KnownVariables;
@@ -68,17 +69,8 @@ public class GlobalVariablesVersion extends ComplexCatalogVersion {
 			+"scopes varchar(255) not null, "
 			+"value varchar(255), value_type varchar(255) not null, primary key (id), unique(name)) engine=innodb";
 	
-	private static final String[] postSQL = new String[] {
-		"drop table config",
-		"alter table project drop foreign key fk_project_def_sg",
-		"alter table project drop foreign key fk_project_def_policy",
-		"alter table project drop column default_policy_id",
-		"alter table project drop column default_persistent_group_id"
-	};
-			
-	
 	@Override
-	public void upgrade(DBHelper helper) throws PEException {
+	public void upgrade(DBHelper helper, InformationCallback stdout) throws PEException {
 		// TODO Auto-generated method stub
 		// can't really rely on the HostService here
 		VariableManager vm = VariableManager.getManager();
@@ -90,14 +82,16 @@ public class GlobalVariablesVersion extends ComplexCatalogVersion {
 		}
 		
 		Map<String,String> persistentValues = buildPersistentValues(helper);
-		loadVariableDefinitions(helper,vm,persistentValues);
+		loadVariableDefinitions(helper,vm,persistentValues, stdout);
 
-		for(String s : postSQL) try {
-			helper.executeQuery(s);
+		// not all catalogs will have the new fk constraint names, go find them
+		try {
+			modifyProjectTable(helper);
+			helper.executeQuery("drop table config");
 		} catch (SQLException sqle) {
-			throw new PEException("Unable to execute '" + s + "'",sqle);
+			throw new PEException("Unable to upgrade catalog structure",sqle);
 		}
-		
+				
 	}
 	
 	private Map<String,String> buildPersistentValues(DBHelper helper) throws PEException {
@@ -155,7 +149,9 @@ public class GlobalVariablesVersion extends ComplexCatalogVersion {
 		return persistentValues;
 	}
 	
-	private void loadVariableDefinitions(DBHelper helper, VariableManager vm, Map<String,String> persistentValues) throws PEException {
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void loadVariableDefinitions(DBHelper helper, VariableManager vm, Map<String,String> persistentValues,
+			InformationCallback stdout) throws PEException {
 		try {
 			helper.prepare("insert into varconfig (options, description, name, scopes, value, value_type) values (?,?,?,?,?,?)");
 		} catch (SQLException sqle) {
@@ -171,7 +167,20 @@ public class GlobalVariablesVersion extends ComplexCatalogVersion {
 					pValue = persistentValues.remove(VariableManager.normalize("default_time_zone"));
 				} 
 			} else {
-				converted = vh.toInternal(pValue);
+				try {
+					converted = vh.toInternal(pValue);
+				} catch (PEException pe) {
+					stdout.println("Variable " + vh.getName() + " has an incorrect value, will use default (" + vh.getDefaultOnMissing() + ") instead");
+					converted = null;
+				} catch (Throwable t) {
+					// any variable that relies on the catalog for validation is kind of pooched here, since the catalog is dead
+					// fortunately these three variables are all string values, so let's just say they are ok
+					if (vh == KnownVariables.DYNAMIC_POLICY || vh == KnownVariables.COLLATION_CONNECTION || vh == KnownVariables.COLLATION_DATABASE) {
+						converted = pValue;
+					} else {
+						throw t;
+					}
+				}
 			}
 			if (converted == null)
 				converted = vh.getDefaultOnMissing();
@@ -206,5 +215,29 @@ public class GlobalVariablesVersion extends ComplexCatalogVersion {
 				throw new PEException("Unable to insert varconfig for " + me.getKey());
 			}
 		}
+	}
+	
+	private void modifyProjectTable(DBHelper helper) throws SQLException {
+		ResultSet rs = null;
+		List<String> names = new ArrayList<String>();
+		try {
+			if (helper.executeQuery("select constraint_name "
+					+"from information_schema.key_column_usage "
+					+"where table_schema = 'dve_catalog' "
+					+"and table_name = 'project' "
+					+"and column_name in ('default_persistent_group_id','default_policy_id')")) {
+				rs = helper.getResultSet();
+				while(rs.next())
+					names.add(rs.getString(1));
+			}
+		} finally {
+			if (rs != null)
+				rs.close();
+		}
+		for(String s : names)
+			helper.executeQuery("alter table project drop foreign key " + s);
+		String[] columns = new String[] { "default_policy_id", "default_persistent_group_id" };
+		for(String s : columns) 
+			helper.executeQuery("alter table project drop column " + s);
 	}
 }

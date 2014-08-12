@@ -21,16 +21,9 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
-import java.sql.SQLException;
-
-import javax.transaction.xa.XAException;
-
-import com.tesora.dve.comms.client.messages.GenericResponse;
-import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.ConnectionInfo;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSContext;

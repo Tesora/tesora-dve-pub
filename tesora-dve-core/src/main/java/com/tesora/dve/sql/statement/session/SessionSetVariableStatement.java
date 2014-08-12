@@ -111,7 +111,8 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		for(SetExpression se : sets) {
 			if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION) {
 				SetTransactionIsolationExpression stie = (SetTransactionIsolationExpression) se;
-				assertPrivilege(pc,vm.lookupMustExist(VariableConstants.TRANSACTION_ISOLATION_LEVEL_NAME),stie.getScope());
+				assertPrivilege(pc,vm.lookupMustExist(pc.getConnection().getVariableSource(),
+						VariableConstants.TRANSACTION_ISOLATION_LEVEL_NAME),stie.getScope());
 				handleSetTransactionIsolation(pc, stie,es);
 			} else {
 				SetVariableExpression sve = (SetVariableExpression) se;
@@ -127,7 +128,8 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 						throw new PEException("Illegal set expression, multiple values");
 					}
 					if (vi.getScope().getKind() != VariableScopeKind.USER && vi.getScope().getKind() != VariableScopeKind.SCOPED) {
-						assertPrivilege(pc,vm.lookupMustExist(vi.getVariableName().getUnquotedName().get()),vi.getScope());
+						assertPrivilege(pc,vm.lookupMustExist(pc.getConnection().getVariableSource(),
+								vi.getVariableName().getUnquotedName().get()),vi.getScope());
 					}
 
 					if (variableName.equalsIgnoreCase(VariableConstants.SLOW_QUERY_LOG_NAME)
@@ -167,7 +169,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 			return SetVariableExecutionStep.makeSource(litex);
 		} else if (EngineConstant.VARIABLE.has(rhs)) {
 			VariableInstance rvi = (VariableInstance) rhs;
-			final AbstractVariableAccessor va = rvi.buildAccessor();
+			final AbstractVariableAccessor va = rvi.buildAccessor(pc);
 			return SetVariableExecutionStep.makeSource(va);
 		}
 		return null;
@@ -229,12 +231,12 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 			ExpressionNode rhs, ExecutionSequence es) throws PEException {
 		CopyContext cc = new CopyContext("complex set var");
 		ExpressionNode copy = CopyVisitor.copy(rhs,cc);
-		new ReplaceVariablesTraversal().traverse(copy);
+		new ReplaceVariablesTraversal(pc).traverse(copy);
 		SelectStatement ss = new SelectStatement(new AliasInformation());
 		ss.setProjection(Collections.singletonList(copy));
 		ProjectingExecutionStep adhocStep = 
 				ProjectingExecutionStep.build(pc, pc.getCurrentDatabase(), buildOneSiteGroup(pc), null, null, ss, null);
-		SetVariableOperationFilter filter = new SetVariableOperationFilter(vi.buildAccessor());
+		SetVariableOperationFilter filter = new SetVariableOperationFilter(vi.buildAccessor(pc));
 		es.append(new FilterExecutionStep(adhocStep, filter));		
 	}
 	
@@ -272,16 +274,18 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 
 	private static class ReplaceVariablesTraversal extends Traversal {
 
+		private final SchemaContext cntxt;
 		
-		public ReplaceVariablesTraversal() {
+		public ReplaceVariablesTraversal(SchemaContext sc) {
 			super(Order.POSTORDER,ExecStyle.ONCE);
+			this.cntxt = sc;
 		}
 		
 		@Override
 		public LanguageNode action(LanguageNode in) {
 			if (EngineConstant.VARIABLE.has(in)) {
 				VariableInstance vi = (VariableInstance) in;
-				return new LateResolvingVariableExpression(vi.buildAccessor());
+				return new LateResolvingVariableExpression(vi.buildAccessor(cntxt));
 			}
 			return in;
 		}

@@ -108,6 +108,10 @@ public class DBHelperConnectionResource extends JdbcConnectionResource {
 		}
 		props.setProperty("zeroDateTimeBehavior", "round");
 		props.setProperty("allowMultiQueries", "true");
+
+		// Forces the driver to get actual charsets and collations from server each time connection establishes.
+		props.setProperty("detectCustomCollations", "true");
+
 		jdbcConnParams.setURLOptions(props);
 	}
 	

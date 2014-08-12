@@ -32,7 +32,6 @@ import java.util.Map;
 
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import org.apache.commons.lang.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -40,6 +39,7 @@ import org.junit.Test;
 
 import com.tesora.dve.common.catalog.ExternalService;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceContext;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
@@ -221,9 +221,8 @@ public class ExternalServiceTest extends SchemaTest {
 				conn.execute("USE " + datastore);
 			} catch (SQLException e) {
 				// expected
-				String msg = e.getMessage();
-				assertTrue("Expecting parse error for non existent database in use",
-						StringUtils.startsWith(msg, "SchemaException: No such database:"));
+				assertSQLException(e,MySQLErrors.unknownDatabaseFormatter,
+						"Unknown database '" + datastore + "'");
 			}
 		}
 		

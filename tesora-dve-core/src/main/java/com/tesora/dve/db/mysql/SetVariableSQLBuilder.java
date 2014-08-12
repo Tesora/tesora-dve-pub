@@ -24,8 +24,6 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-import java.util.Map;
-
 /**
  *
  */

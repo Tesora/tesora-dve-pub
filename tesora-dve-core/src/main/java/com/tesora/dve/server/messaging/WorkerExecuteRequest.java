@@ -23,10 +23,6 @@ package com.tesora.dve.server.messaging;
 
 
 import java.sql.ResultSet;
-import java.sql.SQLException;
-
-import javax.transaction.xa.XAException;
-
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.log4j.Logger;
@@ -35,7 +31,6 @@ import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
-import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;

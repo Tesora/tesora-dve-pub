@@ -47,7 +47,7 @@ public class EnumValueConverter<E extends Enum<E>> extends ValueMetadata<E> {
 			throw new PEException("Invalid value for '" + varName + "' (allowed values are " + StringUtils.join(universe.keySet(), ", ") + ")");
 		return any;
 	}
-
+	
 	@Override
 	public String convertToExternal(E in) {
 		return String.format("'%s'", in.name());

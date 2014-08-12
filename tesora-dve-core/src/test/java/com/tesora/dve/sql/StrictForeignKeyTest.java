@@ -35,7 +35,6 @@ import org.apache.commons.lang.StringUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
@@ -101,7 +100,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 
 		@Override
 		public Class<?> getExceptionClass() {
-			return PEException.class;
+			return SchemaException.class;
 		}
 
 		@Override
@@ -642,7 +641,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 1");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate key name: sameindexname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate key name: sameindexname"));
 			}
 
 			try {
@@ -657,7 +656,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 2");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate key name: sameindexname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate key name: sameindexname"));
 			}
 
 			try {
@@ -670,7 +669,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 3");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate key name: sameindexname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate key name: sameindexname"));
 			}
 
 			try {
@@ -685,7 +684,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 4");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate foreign key name: sameconstraintname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate foreign key name: sameconstraintname"));
 			}
 
 			try {
@@ -700,7 +699,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 5");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate foreign key name: sameconstraintname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate foreign key name: sameconstraintname"));
 			}
 
 			// this should succeed!
@@ -742,7 +741,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 6");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate foreign key name: sameconstraintname2"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate foreign key name: sameconstraintname2"));
 			}
 			
 			conn.execute("create table d (`id` int, `aid` int, `bid` int, `uid1` int, `uid2` int, `kid1` int, `kid2` int, " +

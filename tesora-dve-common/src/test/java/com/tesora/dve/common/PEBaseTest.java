@@ -45,8 +45,18 @@ import com.tesora.dve.exceptions.PEException;
  * work directories.  Useful when no DVE specific infrastructure is required
  *
  */
-public abstract class PEBaseTest
-{	
+public abstract class PEBaseTest {
+	
+	protected static class LargeTestResourceNotAvailableException extends PEException {
+
+		private static final long serialVersionUID = -1629221497003489808L;
+
+		public LargeTestResourceNotAvailableException(final String m) {
+			super(m);
+		}
+		
+	}
+	
 	private static final String BT_PROPERTIES_FILENAME = "local.properties";
 	
 	protected static final String LARGE_RESOURCE_DIR_VAR = "parelastic.test.resourcedir";
@@ -90,15 +100,15 @@ public abstract class PEBaseTest
 		deleteWorkDirectoryAfterEachTest = false;
 	}
 	
-	protected static File getFileFromLargeFileRepository(final String fileName) throws PEException {
+	protected static File getFileFromLargeFileRepository(final String fileName) throws LargeTestResourceNotAvailableException {
 		final String largeFileRepositoryPath = System.getProperty(LARGE_RESOURCE_DIR_VAR);
 		if (largeFileRepositoryPath == null) {
-			throw new PEException("Environment variable '" + LARGE_RESOURCE_DIR_VAR + "' is undefined.");
+			throw new LargeTestResourceNotAvailableException("Environment variable '" + LARGE_RESOURCE_DIR_VAR + "' is undefined.");
 		}
 
 		final File returnFile = new File(new File(largeFileRepositoryPath), fileName);
 		if (!returnFile.canRead()) {
-			throw new PEException("The file '" + returnFile.getAbsolutePath() + "' is not accessible.");
+			throw new LargeTestResourceNotAvailableException("The file '" + returnFile.getAbsolutePath() + "' is not accessible.");
 		}
 
 		return returnFile;

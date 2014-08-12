@@ -34,6 +34,7 @@ import org.junit.Test;
 
 import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.NullInformationCallback;
 import com.tesora.dve.server.connectionmanager.TestHost;
 import com.tesora.dve.standalone.PETest;
 
@@ -86,7 +87,7 @@ public class TestStructuralUpgrade {
 			installSchema(prevCommands);
 			if (validator != null)
 				validator.populate(helper);
-			current.upgrade(helper);
+			current.upgrade(helper, new NullInformationCallback());
 			SchemaState upgradedState = buildState(tableNames);
 			String diffs = currentState.differs(upgradedState);
 			if (diffs != null)
@@ -126,4 +127,5 @@ public class TestStructuralUpgrade {
 		}
 		return out;
 	}
+	
 }

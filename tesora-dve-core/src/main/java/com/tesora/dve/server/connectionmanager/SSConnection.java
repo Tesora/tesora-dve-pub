@@ -22,7 +22,6 @@ package com.tesora.dve.server.connectionmanager;
  */
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -39,7 +38,6 @@ import com.tesora.dve.db.mysql.common.MysqlHandshake;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.variable.*;
 import io.netty.channel.Channel;
 import org.apache.log4j.Logger;
 
@@ -201,6 +199,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 	int transactionDepth = 0;
 	String currentTransId = null;
+	Boolean currentTransIsXA = null;
 	boolean autoCommitMode = true;
 	
 	long lastInsertedId = 0;
@@ -545,8 +544,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		tempCleanupRequired = required;
 	}
 
-	void doBeginTransaction() {
+	void doBeginTransaction(boolean xa) {
 		currentTransId = UUID.randomUUID().toString();
+		currentTransIsXA = xa;
 		setTempCleanupRequired(false);
 	}
 	
@@ -678,9 +678,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		setTempCleanupRequired(true);
 	}
 
-	public void autoBeginTransaction() {
+	public void autoBeginTransaction(boolean xa) {
 		if (currentTransId == null)
-			doBeginTransaction();
+			doBeginTransaction(xa);
 	}
 
 	public void autoCommitTransaction() throws Throwable {
@@ -710,6 +710,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	void transactionCleanup() throws PEException {
 		transactionDepth = 0;
 		currentTransId = null;
+		currentTransIsXA = null;
 		activeWG.clear();
 //		clearWorkerGroups();
 		setTempCleanupRequired(true);
@@ -717,12 +718,12 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 	
 	public void userBeginTransaction() throws PEException {
-		userBeginTransaction(false);
+		userBeginTransaction(false,null);
 	}
 
-	public void userBeginTransaction(boolean withConsistentSnapshot) throws PEException {
+	public void userBeginTransaction(boolean withConsistentSnapshot, UserXid xaID) throws PEException {
 		if (transactionDepth++ == 0)
-			doBeginTransaction();
+			doBeginTransaction(xaID != null);
 		
 		if (withConsistentSnapshot) {
 
@@ -1020,7 +1021,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 	
 	public boolean hasActiveXATransaction() {
-		return hasActiveTransaction();
+		return currentTransIsXA == Boolean.TRUE;
 	}
 	
 	public SchemaContext getSchemaContext() {
@@ -1043,7 +1044,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public void setSessionVariable(String variableName, String value) throws PEException {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
 
-		VariableHandler<?> vh = vm.lookupMustExist(variableName);
+		VariableHandler<?> vh = vm.lookupMustExist(this,variableName);
 		vh.setSessionValue(this, value);
 	}
 	
@@ -1076,6 +1077,25 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public void updateWorkerState() throws PEException {
         sendToAllGroups(new WorkerSetSessionVariableRequest(getNonTransactionalContext(), getSessionVariables(), new DefaultSetVariableBuilder()));
 	}
+	
+	/*
+	 * Make sure we send down passthrough global variable updates
+	 */
+	public void updateGlobalVariableState(String sql) throws PEException {
+		// blech, need to build the "all sites" storage group for this
+		PersistentGroup allSites = getCatalogDAO().buildAllSitesGroup();
+		WorkerExecuteRequest setSQL =
+				new WorkerExecuteRequest(getNonTransactionalContext(),new SQLCommand(sql));
+		WorkerGroup wg = null;
+		try {
+			wg = getWorkerGroup(allSites,null);
+			wg.submit(MappingSolution.AnyWorker, setSQL, DBEmptyTextResultConsumer.INSTANCE);
+		} finally {
+			returnWorkerGroup(wg);
+		}
+		
+	}
+	
 	
 	void sendToAllGroups(WorkerRequest req) throws PEException {
 		List<WorkerGroup> allGroups = new ArrayList<WorkerGroup>(availableWG.values());

@@ -31,6 +31,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import com.google.common.collect.ImmutableMap;
+import com.tesora.dve.errmap.FormattedErrorInfo;
 import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import com.tesora.dve.exceptions.PEException;
@@ -53,6 +54,13 @@ public class MyErrorResponse extends MyResponseMessage {
 		setPacketNumber(1);
 	}
 
+	public MyErrorResponse(FormattedErrorInfo fei) {
+		this();
+		this.errorNumber = fei.getErrNo();
+		this.sqlState = fei.getSQLState();
+		this.errorMsg = fei.getErrorMessage();
+	}
+	
 	public MyErrorResponse(Exception e) {
 		this();
 		setException(e);

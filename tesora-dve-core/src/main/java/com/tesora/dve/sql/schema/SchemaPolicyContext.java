@@ -28,6 +28,8 @@ import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
@@ -179,7 +181,7 @@ public class SchemaPolicyContext {
 			if (tenant != null)
 				return new UseTenantStatement(tenant,tenant.getDatabase(sc));
 		}
-		throw new SchemaException(Pass.SECOND,"No such database: " + dbName.getSQL());
+		throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_DATABASE,dbName.getUnquotedName().get()));
 	}
 	
 	public Statement buildCreateTenantStatement(PEDatabase peds, Name tenantName, String description) {

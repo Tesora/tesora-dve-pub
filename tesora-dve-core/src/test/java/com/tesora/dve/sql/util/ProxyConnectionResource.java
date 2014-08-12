@@ -35,6 +35,7 @@ import com.tesora.dve.comms.client.messages.DisconnectRequest;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.messages.ExecuteRequestExecutor;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.parser.ParserInvoker.LineInfo;
 import com.tesora.dve.worker.DBConnectionParameters;
@@ -119,6 +120,8 @@ public class ProxyConnectionResource extends ConnectionResource {
 					ExecuteRequestExecutor.execute(proxy, results, stmt);
 				} catch (PEException e) {
 					throw e;
+				} catch (SchemaException se) {
+					throw se;
 				} catch (Throwable e) {
 					throw new PEException("Test statement encountered exception", e);
 				}

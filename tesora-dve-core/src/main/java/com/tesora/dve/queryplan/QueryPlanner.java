@@ -26,17 +26,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import org.apache.commons.lang.StringUtils;
-
 import com.tesora.dve.clock.NoopTimingService;
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
+import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.groupmanager.CacheInvalidationMessage;
 import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.parser.InputState;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.PlanningResult;
@@ -157,6 +157,11 @@ public class QueryPlanner {
 			if (isFiltered(t,connMgr))
 				return null;
 			if (noisyErrors) t.printStackTrace();
+			if (t instanceof SchemaException) {
+				SchemaException se = (SchemaException) t;
+				if (se.getErrorInfo() != null)
+					throw se;
+			}
 			throw new PESQLException("Unable to build plan - " + t.getMessage(), t);
 		} finally {
             buildPlanTime.end();
@@ -170,15 +175,15 @@ public class QueryPlanner {
     static private boolean isFiltered(Throwable t, SSConnection connMgr) {
 		if (!connMgr.getConnectionContext().hasFilter())
 			return false;
-		String msg = t.getMessage();
-		if (!StringUtils.isEmpty(msg) && msg.startsWith("No such Table:")) {
-			String table = StringUtils.substringAfter(msg, "No such Table:").trim();
-			List<UnqualifiedName> names = new ArrayList<UnqualifiedName>();
-			String[] parts = StringUtils.split(table, ".");
-			for(String part : parts) {
-				names.add(new UnqualifiedName(part));
+		if (t instanceof SchemaException) {
+			SchemaException se = (SchemaException) t;
+			if (se.getErrorInfo().getCode() == DVEErrors.TABLE_DNE) {
+				List<UnqualifiedName> names = new ArrayList<UnqualifiedName>();
+				for(Object o : se.getErrorInfo().getParams()) {
+					names.add(new UnqualifiedName((String)o));
+				}
+				return connMgr.getConnectionContext().isFilteredTable(new QualifiedName(names));				
 			}
-			return connMgr.getConnectionContext().isFilteredTable(new QualifiedName(names));
 		}
 		return false;
 	}

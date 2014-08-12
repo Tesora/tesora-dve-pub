@@ -40,6 +40,7 @@ import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
@@ -251,12 +252,15 @@ public class SchemaTest extends PETest {
 		} catch (SQLException se) {
 			// re.printStackTrace();
 			// ignore: reasons: the user doesn't exist, or the user exists on some but not all sites
-			assertException(se, SQLException.class,
-					"SchemaException: User " + accessSpec + " does not exist");
+			assertSQLException(se,MySQLErrors.unknownUserFormatter,
+					"Operation DROP USER failed for " + accessSpec);
 		} catch (PEException pe) {
 			// re.printStackTrace();
 			// ignore: reasons: the user doesn't exist, or the user exists on some but not all sites
 			assertSchemaException(pe,"User " + accessSpec + " does not exist");
+		} catch (SchemaException se) {
+			assertErrorInfo(se,MySQLErrors.unknownUserFormatter,
+					username,host1);
 		}
 		DBHelper dbh = PETest.buildHelper();
 		removeUser(dbh, username, host1);

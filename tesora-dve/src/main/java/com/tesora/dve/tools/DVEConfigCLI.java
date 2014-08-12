@@ -59,7 +59,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.HazelcastCoordinationServices;
 import com.tesora.dve.groupmanager.LocalhostCoordinationServices;
 import com.tesora.dve.siteprovider.onpremise.jaxb.OnPremiseSiteProviderConfig;
-import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.template.jaxb.Template;
 import com.tesora.dve.sql.transexec.CatalogHelper;
@@ -721,7 +720,7 @@ public class DVEConfigCLI extends CLIBuilder {
 
 				if ((line != null) && (line.equalsIgnoreCase("y") || line.equalsIgnoreCase("yes"))) {
 					printlnDots("Starting DVE catalog upgrade at '" + catalogLocation + "'");
-					CatalogVersions.upgradeToLatest(props);
+					CatalogVersions.upgradeToLatest(props,DVEConfigCLI.this);
 					printlnDots("Catalog upgrade complete");
 				}
 			}

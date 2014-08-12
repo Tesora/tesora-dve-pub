@@ -46,6 +46,7 @@ import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PEMappedException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.queryplan.QueryPlan;
 import com.tesora.dve.queryplan.QueryStep;
@@ -115,13 +116,13 @@ public class VariableTest extends PETest {
 	@Test
 	public void globalVariableTest() throws PEException {
 		assertEquals(Boolean.FALSE, KnownVariables.SLOW_QUERY_LOG.getValue(null));
-		KnownVariables.SLOW_QUERY_LOG.setGlobalValue("yes");
+		KnownVariables.SLOW_QUERY_LOG.setGlobalValue(ssConnection,"yes");
 		assertEquals(Boolean.TRUE, KnownVariables.SLOW_QUERY_LOG.getValue(null));
 	}
 
-	@Test(expected = PENotFoundException.class)
+	@Test(expected = PEMappedException.class)
 	public void globalVariableNotExistsTest() throws PEException {
-		Singletons.require(HostService.class).getVariableManager().lookupMustExist("no-such-variable");
+		Singletons.require(HostService.class).getVariableManager().lookupMustExist(null,"no-such-variable");
 	}
 
 	@Test
@@ -138,7 +139,7 @@ public class VariableTest extends PETest {
 
 	@Test(expected = PEException.class)
 	public void setVersionCommentTest() throws PEException {
-		KnownVariables.VERSION_COMMENT.setGlobalValue("hello");
+		KnownVariables.VERSION_COMMENT.setGlobalValue(ssConnection,"hello");
 	}
 
 	@Test
@@ -151,7 +152,7 @@ public class VariableTest extends PETest {
 		results = new MysqlTextResultChunkProvider();
 		executeQuery(new QueryStepGetGlobalVariableOperation(KnownVariables.SQL_LOGGING), results);
 		assertTrue(results.hasResults());
-		assertEquals("yes", results.getSingleColumnValue(1, 1));
+		assertEquals("YES", results.getSingleColumnValue(1, 1));
 	}
 
 	@Test
@@ -177,7 +178,7 @@ public class VariableTest extends PETest {
 		assertEquals("utf8", results.getSingleColumnValue(1, 1));
 	}
 
-	@Test(expected = PENotFoundException.class)
+	@Test(expected = PEMappedException.class)
 	public void sessionVariableNotExistsTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
 		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "invalid-session-name",
@@ -317,7 +318,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void setLongQueryTime() throws Throwable {
 		assertEquals(new Double(10.0), KnownVariables.LONG_QUERY_TIME.getGlobalValue(ssConnection));
-		KnownVariables.LONG_QUERY_TIME.setGlobalValue("25.5");
+		KnownVariables.LONG_QUERY_TIME.setGlobalValue(ssConnection,"25.5");
 		assertEquals(new Double(25.5), KnownVariables.LONG_QUERY_TIME.getGlobalValue(ssConnection));
 	}
 
@@ -326,7 +327,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void setGroupConcatMaxLen() throws Throwable {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
-		VariableHandler<Long> var = (VariableHandler<Long>) vm.lookupMustExist("group_concat_max_len"); 
+		VariableHandler<Long> var = (VariableHandler<Long>) vm.lookupMustExist(null,"group_concat_max_len"); 
 		assertEquals(new Long(1024), var.getSessionValue(ssConnection));
 		var.setSessionValue(ssConnection, "5");
 		assertEquals(new Long(5), var.getSessionValue(ssConnection)); 
@@ -379,7 +380,7 @@ public class VariableTest extends PETest {
 		assertEquals("+05:00", KnownVariables.TIME_ZONE.getSessionValue(ssConnection));
 
 		// change the default PE time zone
-		KnownVariables.TIME_ZONE.setGlobalValue("-09:00");
+		KnownVariables.TIME_ZONE.setGlobalValue(ssConnection,"-09:00");
 		// new connection should have new default
 		SSConnectionProxy conProxy = new SSConnectionProxy();
 		try {
@@ -411,17 +412,17 @@ public class VariableTest extends PETest {
 	@Test
 	public void setGroupServiceVariableTest() throws PEException {
 //        HostService hostService = Singletons.require(HostService.class);
-		KnownVariables.GROUP_SERVICE.setPersistentValue(catalogDAO, "HaZeLCaST");
+		KnownVariables.GROUP_SERVICE.setPersistentValue(ssConnection, "HaZeLCaST");
 		assertEquals("HaZeLCaST",
 				KnownVariables.GROUP_SERVICE.getValue(null));
-		KnownVariables.GROUP_SERVICE.setPersistentValue(catalogDAO, "Localhost");
+		KnownVariables.GROUP_SERVICE.setPersistentValue(ssConnection, "Localhost");
 		assertEquals("Localhost", 
 				KnownVariables.GROUP_SERVICE.getValue(null));
 	}
 
 	@Test(expected = PEException.class)
 	public void setGroupServiceVariableFailTest() throws PEException {
-		KnownVariables.GROUP_SERVICE.setPersistentValue(catalogDAO, "InvalidValue");
+		KnownVariables.GROUP_SERVICE.setPersistentValue(ssConnection, "InvalidValue");
 
 	}
 

@@ -22,22 +22,17 @@ package com.tesora.dve.worker;
  */
 
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PESQLException;
-import com.tesora.dve.exceptions.PESQLQueryInterruptedException;
 
 public class SingleDirectConnection implements WorkerConnection {
 	static Logger logger = Logger.getLogger(SingleDirectConnection.class);

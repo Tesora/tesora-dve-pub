@@ -32,6 +32,8 @@ import java.util.Set;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepOperation;
@@ -89,9 +91,9 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 				FunctionCall fc = (FunctionCall) iter.next();
 				ColumnInstance lhs = (ColumnInstance) fc.getParametersEdge().get(0);
 				if (lhs.getPEColumn().isPartOfContainerDistributionVector())
-					throw new SchemaException(Pass.PLANNER, "Invalid update: discriminant column " 
-							+ lhs.getPEColumn().getName().getSQL() 
-							+ " of container base table " + lhs.getPEColumn().getTable().getName().getSQL() + " cannot be updated");
+					throw new SchemaException(new ErrorInfo(DVEErrors.INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
+							lhs.getPEColumn().getName().getUnquotedName().get(),
+							lhs.getPEColumn().getTable().getName().getUnquotedName().get()));
 			}
 			return false;
 		} else if (stmt instanceof DeleteStatement) {
@@ -100,9 +102,8 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 			if (pet.isContainerBaseTable(sc)) {
 				List<Part> parts = DiscriminantCollector.getDiscriminants(sc, ds.getWhereClause());
 				if (parts == null || parts.isEmpty())
-					throw new SchemaException(Pass.PLANNER, "Invalid delete on container base table "
-							+ pet.getName().getSQL() 
-							+ ".  Not restricted by discriminant columns");
+					throw new SchemaException(new ErrorInfo(DVEErrors.INVALID_CONTAINER_DELETE,
+							pet.getName().getUnquotedName().get()));
 				else {
 					List<SchemaCacheKey<PEContainerTenant>> matchingTenants = convert(sc, parts);
 					stmt.getBlock().store(ContainerBaseTableRewriteTransformFactory.class, matchingTenants);

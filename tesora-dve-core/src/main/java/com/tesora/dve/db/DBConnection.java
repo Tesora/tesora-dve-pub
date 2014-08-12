@@ -26,7 +26,6 @@ import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.CompletionTarget;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.DevXid;
 import io.netty.channel.EventLoopGroup;

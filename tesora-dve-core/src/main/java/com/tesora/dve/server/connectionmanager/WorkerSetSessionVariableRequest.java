@@ -25,11 +25,9 @@ import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.Worker;
 
 import java.util.Map;

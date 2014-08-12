@@ -21,6 +21,7 @@ package com.tesora.dve.sql.expression;
  * #L%
  */
 
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,6 +34,8 @@ import java.util.Set;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.MultiMap;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.expression.Alias;
@@ -45,6 +48,7 @@ import com.tesora.dve.sql.node.expression.NameInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WildcardTable;
+import com.tesora.dve.sql.parser.LexicalLocation;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.LockInfo;
@@ -150,12 +154,30 @@ public class ScopeEntry implements Scope {
 	}
 	
 	// the errors we throw.
-	private static void objectNotFound(String what, Name origName) throws SchemaException {
-		throw new SchemaException(Pass.SECOND, "No such " + what + ": " + origName.getSQL());
-	}
-	
 	private void objectAmbiguous(String what, Name origName) throws SchemaException {
 		throw new SchemaException(Pass.SECOND, "Ambiguous " + what + " reference: " + origName.getSQL());
+	}
+	
+	private static void tableNotFound(SchemaContext sc, Schema<?> schema, Name givenName) throws SchemaException {
+		ErrorInfo ei = null;
+		if (givenName.isQualified()) {
+			QualifiedName qn = (QualifiedName) givenName;
+			ei = new ErrorInfo(DVEErrors.TABLE_DNE,
+					qn.getNamespace().getUnquotedName().get(),
+					qn.getUnqualified().getUnquotedName().get());
+		} else {
+			UnqualifiedName db = schema.getSchemaName(sc);
+			ei = new ErrorInfo(DVEErrors.TABLE_DNE,
+					db.getUnquotedName().get(),
+					givenName.getUnquotedName().get());
+		}
+		throw new SchemaException(ei);
+	}
+	
+	private static void columnNotFound(Name columnName, LexicalLocation location) throws SchemaException {
+		throw new SchemaException(new ErrorInfo(DVEErrors.COLUMN_DNE,
+				columnName.getUnquotedName().get(),
+				location.getExternal()));
 	}
 	
 	private static final TableResolver resolver = new TableResolver().withMTChecks()
@@ -164,8 +186,7 @@ public class ScopeEntry implements Scope {
 				@Override
 				public void onMissingTable(SchemaContext sc, Schema<?> schema,
 						Name name) {
-					UnqualifiedName db = schema.getSchemaName(sc);
-					objectNotFound("Table", new QualifiedName(db,name.getUnqualified())); 
+					tableNotFound(sc,schema,name);
 				}
 				
 			});
@@ -223,12 +244,12 @@ public class ScopeEntry implements Scope {
 	}
 	
 	@Override
-	public TableInstance lookupTableInstance(Name given, boolean required) {
+	public TableInstance lookupTableInstance(SchemaContext sc, Name given, boolean required) {
 		if (!given.isQualified()) {
 			Collection<TableInstance> sub = tableNamespace.get(given);
 			if (sub == null || sub.isEmpty()) {
 				if (required) {
-					objectNotFound("Table",given);
+					tableNotFound(sc,sc.getCurrentDatabase().getSchema(),given);
 				} else {
 					return null;
 				}
@@ -263,16 +284,16 @@ public class ScopeEntry implements Scope {
 			QualifiedName qn = (QualifiedName)given;
 			UnqualifiedName tableName = qn.getNamespace();
 			UnqualifiedName columnName = given.getUnqualified();
-			TableInstance ti = lookupTableInstance(tableName, false);
+			TableInstance ti = lookupTableInstance(sc, tableName, false);
 			if (ti == null) 
-				objectNotFound("Table", tableName);
+				columnNotFound(given,phase.getLocation());
 			@SuppressWarnings("null")
 			Column<?> c = ti.getTable().lookup(sc,given.getUnqualified());
 			if (columnName.isAsterisk()) {
 				return new WildcardTable(tableName, ti);
 			}
 			if (c == null) 
-				objectNotFound("Column", given);
+				columnNotFound(given,phase.getLocation());
 			return buildColumnInstance(sc,given,c,ti);
 		}
 		// if we're in a restricted namespace, try to build by derived first, then try by table
@@ -317,8 +338,8 @@ public class ScopeEntry implements Scope {
 		default:
 			throw new IllegalArgumentException("Invalid scope parse phase: " + phase);
 		}
-		if (any == null) 
-			objectNotFound("Column", given);
+		if (any == null)
+			columnNotFound(given,phase.getLocation());
 		return any;
 	}
 

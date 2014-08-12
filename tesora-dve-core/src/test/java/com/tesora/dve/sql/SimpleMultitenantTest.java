@@ -49,6 +49,7 @@ import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.node.expression.TableInstance;
@@ -75,7 +76,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			fail("shouldn't be able to create tenants when not in multitenant mode");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: No multitenant database found");
+					"Internal error: No multitenant database found");
 		}
 		// create the database - for this test we use relaxed
 		rootConnection.execute(testDDL.withMTMode(MultitenantMode.ADAPTIVE).getCreateDatabaseStatement());
@@ -89,14 +90,14 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			fail("tenant shouldn't be able to create tenants");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: You do not have permission to create a tenant");
+					"Internal error: You do not have permission to create a tenant");
 		}
 		try {
 			tenantConnection.execute("show tenants");
 			fail("tenant shouldn't be able to show tenants");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: You do not have permission to show tenants");
+					"Internal error: You do not have permission to show tenants");
 		}
 		// create the second tenant now via the create database statement
 		createTenant(1);
@@ -112,7 +113,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			fail("suspended tenant shouldn't be able to do squat");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: Your account has been disabled");
+					"Internal error: Your account has been disabled");
 		}
 		rootConnection.execute("resume tenant " + tenantNames[0]);
 		rootConnection.assertResults("show tenants", 
@@ -136,7 +137,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			fail("should be unable to drop a multitenant database without using drop multitenant database");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: Illegal drop database statement.  Use DROP MULTITENANT DATABASE to drop a multitenant database");
+					"Internal error: Illegal drop database statement.  Use DROP MULTITENANT DATABASE to drop a multitenant database");
 		}
 	}
 
@@ -247,8 +248,10 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			// make sure that if you do an insert as the null tenant, you have to specify everything
 			rootConnection.execute("insert into " + tn + " (`module`, `delta`, `theme`) values ('c','c','c')");
 			fail("should not be able to insert in null tenant mode if mtid not specified");
-		} catch (Exception e) {
-			assertException(e, SQLException.class, "SchemaException: No database selected");
+		} catch (SQLException e) {
+			assertSQLException(e,
+					MySQLErrors.missingDatabaseFormatter,
+					"No database selected");
 		}
 	}
 
@@ -273,9 +276,10 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			try {
 				tenantConnection.execute("select * from block");
 				fail("tenant connection should not be able to see block");
-			} catch (Exception e) {
-				assertException(e, SQLException.class,
-						"SchemaException: No such Table: mtdb.block");
+			} catch (SQLException e) {
+				assertSQLException(e,
+						MySQLErrors.missingTableFormatter,
+						"Table 'mtdb.block' doesn't exist");
 			}
 			tenantConnection.execute(block_table_decl);
 			// verify that the backing table exists and is shared
@@ -514,7 +518,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			tenantConnection.execute(declAprime);
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: Invalid redeclaration of table: table definitions differ");
+					"Internal error: Invalid redeclaration of table: table definitions differ");
 		}
 		tenantConnection.execute("drop table tmtAA");
 		tenantConnection.assertResults("show tables",br(nr,"tmtBB"));

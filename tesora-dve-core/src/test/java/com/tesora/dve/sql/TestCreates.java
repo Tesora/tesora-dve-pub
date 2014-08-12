@@ -44,8 +44,8 @@ import com.tesora.dve.common.catalog.FKMode;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeTypeCatalog;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
@@ -118,8 +118,9 @@ public class TestCreates extends SchemaTest {
 		rootConnection.assertResults("show columns in testB like 'fund%'",br(nr,"funding","enum('angel','bridge','A','B')","NO","","angel",""));
 		try {
 			rootConnection.execute("create table uncreatable (`id` int, `funding` enum ('bankrupt')) static distribute on (`funding`)");
-		} catch (PEException pe) {
-			assertSchemaException(pe,"Invalid distribution column type: enum('bankrupt')");
+		} catch (SchemaException pe) {
+			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+					"Internal error: Invalid distribution column type: enum('bankrupt')");
 		}
 	}
 	
@@ -214,8 +215,9 @@ public class TestCreates extends SchemaTest {
 		try {
 			rootConnection.execute("create database mtdb default persistent group pg using template " + TemplateMode.OPTIONAL);
 			fail("dup db should throw");
-		} catch (PEException pe) {
-			SchemaTest.assertSchemaException(pe, "Database mtdb already exists");
+		} catch (SchemaException pe) {
+			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+					"Internal error: Database mtdb already exists");
 		}
 	}
 
@@ -276,7 +278,7 @@ public class TestCreates extends SchemaTest {
 				createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
 				executeCreateDB(createDBSql.toString(), db, utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
+		}.assertException(SchemaException.class, "COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -289,7 +291,7 @@ public class TestCreates extends SchemaTest {
 				createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
 				executeCreateDB(createDBSql.toString(), db, "big5", "big5_chinese_ci");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No collations found for character set 'big5'");
+		}.assertException(SchemaException.class, "No collations found for character set 'big5'");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -302,7 +304,7 @@ public class TestCreates extends SchemaTest {
 				createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
 				executeCreateDB(createDBSql.toString(), db, utf8.getName(), "utf8_junk_ci");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - Unsupported COLLATION 'utf8_junk_ci'");
+		}.assertException(SchemaException.class, "Unsupported COLLATION 'utf8_junk_ci'");
 		
 		db = "UTF8MB4_charset";
 		createDBSql = new StringBuilder();
@@ -936,8 +938,8 @@ public class TestCreates extends SchemaTest {
 			public void test() throws Throwable {
 				rootConnection.execute("create table pe432_db.pe432 (id int not null)");
 			}
-		}.assertException(PESQLException.class,
-				"Unable to build plan - com.tesora.dve.sql.SchemaException: No such range from template 'pe432_template' on storage group pg: pe432_range");
+		}.assertException(SchemaException.class,
+				"com.tesora.dve.sql.SchemaException: No such range from template 'pe432_template' on storage group pg: pe432_range");
 		} finally {
 			try {
 				rootConnection.execute("drop database if exists pe432_db");
@@ -964,7 +966,7 @@ public class TestCreates extends SchemaTest {
 			public void test() throws Throwable {
 				rootConnection.execute("create table pe359 (n int not null, key(n)) delay_key_write = 1");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No support for DELAY_KEY_WRITE table option");
+		}.assertException(SchemaException.class, "No support for DELAY_KEY_WRITE table option");
 	}
 	
 	@Test
@@ -976,14 +978,14 @@ public class TestCreates extends SchemaTest {
 			public void test() throws Throwable {
 				rootConnection.execute("CREATE TABLE pe743 (a ENUM(0xE4, '1', '2') not null default 5)");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No value at position 5 in the ENUM");
+		}.assertException(SchemaException.class, "No value at position 5 in the ENUM");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				rootConnection.execute("CREATE TABLE pe743 (a SET(0xE4, '1', '2') not null default 5)");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No value at position 5 in the SET");
+		}.assertException(SchemaException.class, "No value at position 5 in the SET");
 
 		new ExpectedExceptionTester() {
 			@Override

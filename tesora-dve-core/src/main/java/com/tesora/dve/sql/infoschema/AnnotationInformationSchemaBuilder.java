@@ -140,9 +140,9 @@ public class AnnotationInformationSchemaBuilder implements
 				return BasicType.buildType(info.sqlType(), info.sqlWidth(), dbn);
 			else if (Enum.class.isAssignableFrom(retVal)) 
 				return BasicType.buildType(info.sqlType(), info.sqlWidth(), dbn);			
-		} else if (info.sqlType() == java.sql.Types.INTEGER) {
+		} else if ((info.sqlType() == java.sql.Types.INTEGER) || info.sqlType() == java.sql.Types.BIGINT) {
 			return BasicType.buildType(info.sqlType(),info.sqlWidth(),dbn);
-		} 
+		}
 		throw new PEException("Unable to compute metadata for info schema column " + info.logicalName() + " of class " + enc.getSimpleName());
 	}
 

@@ -57,6 +57,7 @@ import com.tesora.dve.comms.client.messages.GlobalRecoveryRequest;
 import com.tesora.dve.db.mysql.portal.MySqlPortal;
 import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.distribution.RangeDistributionModel;
+import com.tesora.dve.errmap.ErrorMapper;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
 import com.tesora.dve.groupmanager.GroupManager;
@@ -244,6 +245,8 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 		
 		SchemaSourceFactory.reset();
 
+		ErrorMapper.initialize();
+		
 		Agent.setPluginProvider(SimpleMQPlugin.class);
 		Agent.startServices(props);
 

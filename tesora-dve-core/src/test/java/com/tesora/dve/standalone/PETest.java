@@ -21,6 +21,8 @@ package com.tesora.dve.standalone;
  * #L%
  */
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.tesora.dve.singleton.Singletons;
@@ -55,6 +57,10 @@ import com.tesora.dve.comms.client.messages.ExecuteRequest;
 import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.comms.client.messages.FetchRequest;
 import com.tesora.dve.comms.client.messages.FetchResponse;
+import com.tesora.dve.errmap.ErrorCode;
+import com.tesora.dve.errmap.ErrorCodeFormatter;
+import com.tesora.dve.errmap.ErrorInfo;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockManager;
 import com.tesora.dve.resultset.ResultChunk;
@@ -62,6 +68,7 @@ import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.StorageGroupDDL;
@@ -384,4 +391,41 @@ public class PETest extends PEBaseTest {
 			myHelper.disconnect();
 		}
 	}
+	
+	protected static void assertErrorInfo(ErrorInfo info, ErrorCodeFormatter formatter, Object...params) throws Throwable {
+		boolean found = false;
+		for(ErrorCode ec : formatter.getHandledCodes()) {
+			if (info.getCode().equals(ec)) {
+				found = true;
+				break;
+			}
+		}
+		assertTrue("Should contain error code",found);
+		if (formatter == MySQLErrors.internalFormatter) {
+			// first param is the message
+			String message = (String) params[0];
+			assertEquals("should have same message",formatter.format(info.getParams(),null),message);
+		} else {
+			assertEquals("Should have same number of parameters",params.length,info.getParams().length);
+			for(int i = 0; i < params.length; i++) {
+				assertEquals(String.format("should have same parameter for index %d",i),params[i],info.getParams()[i]);
+			}
+		}
+	}
+	
+	protected static void assertSQLException(SQLException sqle, ErrorCodeFormatter formatter,
+			String message) throws Throwable {
+		assertEquals("Should have same native code",formatter.getNativeCode(), sqle.getErrorCode());
+		assertEquals("Should have same sql state", formatter.getSQLState(), sqle.getSQLState());
+		assertEquals(message, sqle.getMessage());
+	}
+	
+	protected static void assertErrorInfo(SchemaException se, ErrorCodeFormatter formatter, Object...params) throws Throwable {
+		ErrorInfo ei = se.getErrorInfo();
+		assertNotNull("should have error info",ei);
+		assertErrorInfo(ei,formatter,params);
+	}
+	
+
+
 }

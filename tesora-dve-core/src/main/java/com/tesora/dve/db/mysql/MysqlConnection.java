@@ -27,7 +27,6 @@ import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.portal.protocol.*;
-import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;

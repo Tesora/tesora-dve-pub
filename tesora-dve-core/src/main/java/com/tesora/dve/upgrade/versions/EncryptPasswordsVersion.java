@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.common.PECryptoUtils;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.Pair;
@@ -51,7 +52,7 @@ public class EncryptPasswordsVersion extends ComplexCatalogVersion {
 	}
 
 	@Override
-	public void upgrade(DBHelper helper) throws PEException {
+	public void upgrade(DBHelper helper, InformationCallback stdout) throws PEException {
 		Pair<Long, Long> bounds = getSimpleBounds(helper, "user", "id");
 		for (long id = bounds.getFirst(); id <= bounds.getSecond(); id++) {
 			encryptPassword(helper, id);

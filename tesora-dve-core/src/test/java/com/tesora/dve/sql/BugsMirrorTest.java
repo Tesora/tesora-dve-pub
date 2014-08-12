@@ -491,4 +491,15 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 
 		runTest(tests);
 	}
+	
+	@Test
+	public void testPE1584() throws Throwable {
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc("create table pe1584 (`a` int(11) default null) /*#dve random distribute */"));
+		tests.add(new StatementMirrorProc("insert into pe1584 values (1),(2)"));
+		tests.add(new StatementMirrorProc("start transaction"));
+		tests.add(new StatementMirrorFun("select * from pe1584 order by a for update"));
+		tests.add(new StatementMirrorProc("drop table pe1584"));
+		runTest(tests);
+	}
 }

@@ -159,7 +159,7 @@ public class QueryPlan implements LogSubject {
 		QueryStep theStep = querySteps.get(currentStep);
 		boolean txnNeeded = theStep.requiresTransaction() && theStep.hasDependents();
 		if (txnNeeded) 
-			ssCon.autoBeginTransaction();
+			ssCon.autoBeginTransaction(false);
 		beforeLogger.end();
         preStep.end();
 		try {

@@ -21,18 +21,14 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Iterator;
-
-import javax.transaction.xa.XAException;
 
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
-import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBResultConsumer;

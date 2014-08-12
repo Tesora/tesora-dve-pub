@@ -45,11 +45,11 @@ public abstract class NativeCollationCatalog implements Serializable {
 	
 	private Map<String, NativeCollation> collationsByName;
 	private Map<String, List<NativeCollation>> collationsByCharsetName;
-	private Map<Integer, NativeCollation> collationsById;
+	private Map<Long, NativeCollation> collationsById;
 
 	public NativeCollationCatalog() {
 		collationsByName = new HashMap<String, NativeCollation>();
-		collationsById = new HashMap<Integer, NativeCollation>();
+		collationsById = new HashMap<Long, NativeCollation>();
 		collationsByCharsetName = new HashMap<String, List<NativeCollation>>();
 	}
 
@@ -121,7 +121,7 @@ public abstract class NativeCollationCatalog implements Serializable {
 	public void save(CatalogDAO c) {
 		for (NativeCollation nc : collationsByName.values()) {
 			Collations cs = new Collations(nc.getName(), nc.getCharacterSetName(), 
-					nc.getId(), nc.isDefault(), nc.isCompiled(), nc.getSortLen());
+					(int) nc.getId(), nc.isDefault(), nc.isCompiled(), nc.getSortLen());
 			c.persistToCatalog(cs);
 		}
 	}

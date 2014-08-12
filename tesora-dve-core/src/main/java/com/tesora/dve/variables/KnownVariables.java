@@ -23,6 +23,7 @@ package com.tesora.dve.variables;
 
 
 import java.util.EnumSet;
+import java.util.Locale;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -30,6 +31,7 @@ import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
 import com.tesora.dve.clock.TimingServiceConfiguration;
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -67,6 +69,7 @@ public class KnownVariables implements VariableConstants {
 	
 	// normally emulated variables are just passed through
 	public static final EnumSet<VariableOption> emulated = EnumSet.of(VariableOption.EMULATED,VariableOption.PASSTHROUGH);
+	public static final EnumSet<VariableOption> emulatedOnly = EnumSet.of(VariableOption.EMULATED);
 	public static final EnumSet<VariableOption> dveOnly = EnumSet.noneOf(VariableOption.class);
 	public static final EnumSet<VariableOption> nullable = EnumSet.of(VariableOption.NULLABLE);
 	public static final EnumSet<VariableOption> readonly = EnumSet.of(VariableOption.READONLY);
@@ -100,7 +103,7 @@ public class KnownVariables implements VariableConstants {
 					booleanConverter,
 					globalScope,
 					Boolean.FALSE,
-					emulated) {
+					emulatedOnly) {
 
 		@Override
 		public void onGlobalValueChange(Boolean newValue) throws PEException {
@@ -119,7 +122,7 @@ public class KnownVariables implements VariableConstants {
 					floatingPointConverter,
 					bothScope,
 					new Double(10.0),
-					emulated);
+					emulatedOnly);
 	public static final VariableHandler<Boolean> EMULATE_MYSQL_LIMIT =
 			new VariableHandler<Boolean>(LIMIT_ORDERBY_EMULATION_NAME,
 					booleanConverter,
@@ -226,7 +229,20 @@ public class KnownVariables implements VariableConstants {
 					emulated);
 	public static final VariableHandler<EngineTag> STORAGE_ENGINE =
 			new VariableHandler<EngineTag>(STORAGE_ENGINE_NAME,
-					new EnumValueConverter<EngineTag>(EngineTag.values()),
+					new EnumValueConverter<EngineTag>(EngineTag.values()) {
+				@Override
+				public String convertToExternal(EngineTag in) {
+					return String.format("'%s'", in.getSQL());
+				}
+
+				@Override
+				public EngineTag convertToInternal(String varName, String in) throws PEException {
+					String deq = PEStringUtils.dequote(in);
+					String uc = deq.toUpperCase(Locale.ENGLISH);
+					return super.convertToInternal(varName, uc);
+				}
+				
+			},
 					bothScope,
 					EngineTag.INNODB,
 					emulated);
@@ -452,7 +468,7 @@ public class KnownVariables implements VariableConstants {
 					integralConverter,
 					globalScope,
 					16382L,
-					EnumSet.of(VariableOption.EMULATED)) {
+					emulatedOnly) {
 		@Override
 		public void onGlobalValueChange(Long newValue) throws PEException {
 			SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()),newValue.intValue());
@@ -595,6 +611,26 @@ public class KnownVariables implements VariableConstants {
 					globalScope,
 					16777216L,
 					emulated);
+	public static final VariableHandler<String> COLLATION_DATABASE =
+			new VariableHandler<String>("collation_database",
+					new LiteralValueConverter() {
+
+				@Override
+				public String convertToInternal(String varName, String in) throws PEException {
+					Singletons.require(HostService.class).getDBNative().assertValidCollation(in);
+					return in;
+				}
+			},
+			bothScope,
+			"utf8_general_ci",
+			emulated);
+	public static final VariableHandler<Boolean> ERROR_MIGRATOR =
+			new VariableHandler<Boolean>("verbose_error_handling",
+					booleanConverter,
+					globalScope,
+					Boolean.FALSE,
+					dveOnly,
+					"Enable location information in error messages");
 	
 		
 	@SuppressWarnings("rawtypes")
@@ -640,7 +676,9 @@ public class KnownVariables implements VariableConstants {
 		VERSION,
 		VERSION_COMMENT,
 		SQL_LOGGING,
-		MAX_ALLOWED_PACKET
+		MAX_ALLOWED_PACKET,
+		COLLATION_DATABASE,
+		ERROR_MIGRATOR
 	};
 	
 	@SuppressWarnings("rawtypes")
@@ -735,12 +773,12 @@ public class KnownVariables implements VariableConstants {
 				integralConverter,
 				sessionScope,
 				0L,
-				EnumSet.of(VariableOption.EMULATED)),
+				emulatedOnly),
 		new VariableHandler<String>("charset",
 				literalConverter,
 				sessionScope,
 				"utf8",
-				EnumSet.of(VariableOption.EMULATED)),
+				emulatedOnly),
 		new VariableHandler<Boolean>("sql_auto_is_null",
 				booleanConverter,
 				bothScope,
@@ -865,18 +903,6 @@ public class KnownVariables implements VariableConstants {
 				bothScope,
 				1L,
 				emulated),
-		new VariableHandler<String>("collation_database",
-				new LiteralValueConverter() {
-
-					@Override
-					public String convertToInternal(String varName, String in) throws PEException {
-						Singletons.require(HostService.class).getDBNative().assertValidCollation(in);
-						return in;
-					}
-				},
-				bothScope,
-				"utf8_general_ci",
-				emulated),
 		new VariableHandler<Long>("sql_notes",
 				new BoundedIntegralConverter(-1L,2L),
 				bothScope,
@@ -901,7 +927,7 @@ public class KnownVariables implements VariableConstants {
 				new BoundedIntegralConverter(1023L,1048577L),
 				bothScope,
 				16384L,
-				EnumSet.of(VariableOption.EMULATED)),
+				emulatedOnly),
 		new VariableHandler<Long>("net_write_timeout",
 				new BoundedIntegralConverter(0L,null),
 				bothScope,
@@ -916,13 +942,27 @@ public class KnownVariables implements VariableConstants {
 				new BoundedIntegralConverter(-1L,4294967296L), // maybe not right?
 				globalScope,
 				41943040L,
-				emulated),
+				emulatedOnly),
 		new VariableHandler<Long>("query_cache_type",
 				new BoundedIntegralConverter(-1L,3L),
 				bothScope,
 				1L,
-				emulated),
-
+				emulatedOnly),
+		new VariableHandler<Boolean>("have_dynamic_loading",
+				booleanConverter,
+				bothScope,
+				Boolean.FALSE,
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+		new VariableHandler<String>("version_compile_os",
+				stringConverter,
+				bothScope,
+				"debian-linux-gnu",
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+		new VariableHandler<Boolean>("have_geometry",
+				booleanConverter,
+				bothScope,
+				Boolean.TRUE,
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
 	};
 
 }

@@ -64,7 +64,7 @@ public class Collations implements CatalogEntity {
 	String characterSetName;
 
 	@Id
-	@Column(name="id",columnDefinition="int(11)",nullable=false)
+	@Column(name = "id", columnDefinition = "int(11)", nullable = false)
 	int id;
 
 	@Column(name="is_default",columnDefinition="int(11) default '0'",nullable=false)
@@ -103,11 +103,15 @@ public class Collations implements CatalogEntity {
 		return characterSetName;
 	}
 	
-	@Override
 	@InfoSchemaColumn(logicalName="id", fieldName="id",
-			sqlType=java.sql.Types.INTEGER,
+			sqlType = java.sql.Types.BIGINT,
 			views={@ColumnView(view=InfoView.SHOW, name = ShowSchema.Collation.ID),
 				   @ColumnView(view=InfoView.INFORMATION, name="ID")})
+	public long getCollationId() {
+		return id;
+	}
+
+	@Override
 	public int getId() {
 		return id;
 	}
@@ -116,7 +120,7 @@ public class Collations implements CatalogEntity {
 			sqlType=java.sql.Types.VARCHAR,sqlWidth=3,
 			views={@ColumnView(view=InfoView.SHOW, name = ShowSchema.Collation.DEFAULT),
 				   @ColumnView(view=InfoView.INFORMATION, name="IS_DEFAULT")},
-			booleanStringTrueFalseValue={"YES", ""})
+			booleanStringTrueFalseValue = { "Yes", "" })
 	public boolean getIsDefault() {
 		return BooleanUtils.toBoolean(isDefault);
 	}
@@ -125,7 +129,7 @@ public class Collations implements CatalogEntity {
 			sqlType=java.sql.Types.VARCHAR,sqlWidth=60,
 			views={@ColumnView(view=InfoView.SHOW, name = ShowSchema.Collation.COMPILED),
 				   @ColumnView(view=InfoView.INFORMATION, name="IS_COMPILED")},
-			booleanStringTrueFalseValue={"YES", ""})
+			booleanStringTrueFalseValue = { "Yes", "" })
 	public boolean getIsCompiled() {
 		return BooleanUtils.toBoolean(isCompiled);
 	}

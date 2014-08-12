@@ -21,8 +21,6 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.common.DBType;
-import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
@@ -34,9 +32,7 @@ import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
-import com.tesora.dve.singleton.Singletons;
 import io.netty.channel.EventLoopGroup;
 
 import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
@@ -47,8 +43,6 @@ import org.apache.log4j.Logger;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  *

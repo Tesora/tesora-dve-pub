@@ -28,10 +28,9 @@ import com.tesora.dve.common.catalog.Project;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.util.Pair;
-import com.tesora.dve.variable.*;
-import com.tesora.dve.variables.ScopedVariableHandler;
 import com.tesora.dve.variables.ScopedVariables;
 import com.tesora.dve.variables.VariableManager;
 
@@ -128,4 +127,6 @@ public interface HostService {
     DBNative getDBNative();
     
     VariableManager getVariableManager();
+    
+    SSConnectionProxy getRootProxy() throws PEException;
 }

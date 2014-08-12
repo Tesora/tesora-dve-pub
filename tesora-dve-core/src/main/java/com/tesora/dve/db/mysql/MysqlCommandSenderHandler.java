@@ -35,11 +35,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
 import java.nio.charset.Charset;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
-
 import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
 

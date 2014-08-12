@@ -34,7 +34,7 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.distribution.RangeDistributionModel;
-import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.template.jaxb.FkModeType;
@@ -108,7 +108,9 @@ public class MetadataInjectionTest extends SchemaTest {
 			// this should fail, as we had strict on
 			conn.execute("create table `titles` (`id` int auto_increment, `name` varchar(50))");
 			fail("strict template should cause failure on missing template");
-		} catch (PEException pe) {
+		} catch (SchemaException pe) {
+			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+					"Internal error: No matching template found for table `titles`");
 		}
 
 		conn.execute("drop database mitdb");
@@ -123,8 +125,9 @@ public class MetadataInjectionTest extends SchemaTest {
 		try {
 			conn.execute("create table `laws` (`id` int auto_increment, `law` longtext)");
 			fail("Missing range should be caught");
-		} catch (PEException pe) {
-			// ok
+		} catch (SchemaException pe) {
+			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+					"Internal error: No such range from template 'mit' on storage group mitg: longrange");
 		}
 		
 		conn.execute("drop database mitdb");

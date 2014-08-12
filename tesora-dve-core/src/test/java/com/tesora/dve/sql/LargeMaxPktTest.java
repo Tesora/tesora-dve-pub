@@ -27,8 +27,8 @@ import io.netty.buffer.Unpooled;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -40,11 +40,10 @@ import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
-import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
 
-public class LargeMaxPktTest extends MysqlConnSchemaMirrorTest {
+public class LargeMaxPktTest extends SchemaMirrorTest {
 	private static final int SITES = 5;
 
 	private static final ProjectDDL sysDDL = new PEDDL("sysdb",
@@ -82,36 +81,45 @@ public class LargeMaxPktTest extends MysqlConnSchemaMirrorTest {
 	
 	@Test
 	public void testPE1512() throws Throwable {
-		Long saveMaxPkt = null;
+		final ExtendedPacketTester tester = new ExtendedPacketTester(67108864);
+		tester.add(new StatementMirrorProc("CREATE TABLE `pe1512` (`data` longblob)"));
+		tester.add(new StatementMirrorProc("INSERT INTO `pe1512` VALUES ('" + StringUtils.repeat("0", 17000000) + "')"));
+		tester.add(new StatementMirrorFun("SELECT length(data) FROM `pe1512`"));
+		// TODO: There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
+		// that it doesn't handle extended packets properly 
+		//tester.add(new StatementMirrorFun("SELECT data FROM `pe1512`"));
+
+		tester.runTests();
+	}
+
+	@Test
+	public void testPE1559() throws Throwable {
 		try {
-			// We need to exceed the default value of 16M.
-			ResourceResponse saveMaxPktRR = nativeResource.getConnection().execute("SHOW GLOBAL VARIABLES like 'max_allowed_packet'");
-			saveMaxPkt = (Long.valueOf((String) saveMaxPktRR.getResults().get(0).getResultColumn(2).getColumnValue())).longValue();
+			final String payload = FileUtils.readFileToString(getFileFromLargeFileRepository("pe1559_payload.dat"));
 
-			nativeResource.getConnection().execute("SET GLOBAL max_allowed_packet = 67108864");
-
-			/* Refresh the 'max_allowed_packet' variable. */
-			disconnect();
-            TimeUnit.SECONDS.sleep(10);//TODO: hack to deal with race condition where fast disconnect/reconnect after a response still picks up old value. -sgossard
-			connect();
-
-			// Avoid out of heap.
-			ResourceResponse.BLOB_COLUMN.useFormatedOutput(false);
-
-			final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
-			tests.add(new StatementMirrorProc("CREATE TABLE `pe1512` (`data` longblob)"));
-			tests.add(new StatementMirrorProc("INSERT INTO `pe1512` VALUES ('" + StringUtils.repeat("0", 17000000) + "')"));
-			tests.add(new StatementMirrorFun("SELECT length(data) FROM `pe1512`"));
+			final ExtendedPacketTester tester = new ExtendedPacketTester(67108864);
+			tester.add(new StatementMirrorProc(
+					"CREATE TABLE `cache_views` ("
+							+ "`cid` varchar(255) NOT NULL DEFAULT '',"
+							+ "`data` longblob,"
+							+ "`expire` int(11) NOT NULL DEFAULT '0',"
+							+ "`created` int(11) NOT NULL DEFAULT '0',"
+							+ "`serialized` smallint(6) NOT NULL DEFAULT '0',"
+							+ "PRIMARY KEY (`cid`),"
+							+ "KEY `expire` (`expire`)"
+							+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve BROADCAST DISTRIBUTE */"));
+			tester.add(new StatementMirrorProc("INSERT INTO `cache_views` (cid) VALUES ('views_data:en')"));
+			tester.add(new StatementMirrorProc("UPDATE `cache_views` SET serialized='1', created='1403888529', expire='0', data='"
+					+ payload + "' WHERE (cid = 'views_data:en')"));
+			tester.add(new StatementMirrorFun("SELECT length(data) FROM `cache_views`"));
 			// TODO: There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
 			// that it doesn't handle extended packets properly 
-			//tests.add(new StatementMirrorFun("SELECT data FROM `pe1512`"));
+			//tester.add(new StatementMirrorFun("SELECT data FROM `cache_views`"));
 
-			runTest(tests);
-		} finally {
-			ResourceResponse.BLOB_COLUMN.useFormatedOutput(true);
-			if (saveMaxPkt != null) {
-				nativeResource.getConnection().execute("SET GLOBAL max_allowed_packet = " + saveMaxPkt);
-			}
+			tester.runTests();
+		} catch (final LargeTestResourceNotAvailableException e) {
+			System.err.println("WARNING: This test will be ignored: " + e.getMessage());
+			return;
 		}
 	}
 

@@ -77,6 +77,16 @@ public class PEException extends Exception implements PEContextAwareException {
 		return hasClassAsCause;
 	}
 
+	public <Type> Type getCause(Class<Type> causeClass) {
+		Throwable t = this;
+		while(t != null) {
+			if (causeClass.equals(t.getClass()))
+				return (Type)t;
+			t = t.getCause();
+		}
+		return null;
+	}
+	
 	@Override
 	public PEContext getContext() {
 		return context;

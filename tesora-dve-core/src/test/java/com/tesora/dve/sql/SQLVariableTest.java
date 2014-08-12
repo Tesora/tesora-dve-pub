@@ -22,11 +22,12 @@ package com.tesora.dve.sql;
  */
 
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +38,9 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.PEStringUtils;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
@@ -261,8 +265,9 @@ public class SQLVariableTest extends SchemaTest {
 		try {
 			conn.execute("set sql_auto_is_null = 1");
 			fail("should not be able to set sql_auto_is_null to 1");
-		} catch (PEException re) {
-			SchemaTest.assertSchemaException(re, "No support for sql_auto_is_null = 1 (planned)");
+		} catch (SchemaException e) {
+			assertErrorInfo(e,MySQLErrors.internalFormatter,
+					"Internal error: No support for sql_auto_is_null = 1 (planned)");
 		}
 		conn.execute("set sql_auto_is_null = 0");
 	}
@@ -298,13 +303,6 @@ public class SQLVariableTest extends SchemaTest {
 		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,ALLOW_INVALID_DATES");
 		conn.execute("SET sql_mode=\"\";");
 		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
-
-		// new ExpectedExceptionTester() {
-		// @Override
-		// public void test() throws Throwable {
-		// conn.execute("SET sql_mode=NON_EXISTING_MODE_PE336;");
-		// }
-		// }.assertException(PEException.class);
 	}
 
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
@@ -338,13 +336,58 @@ public class SQLVariableTest extends SchemaTest {
 //		System.out.println(conn.printResults("select * from information_schema.variable_definitions"));
 	}
 	
+	private static String getCurrentGlobalValue(DBHelper helper, String varName) throws Throwable {
+		ResultSet rs = null;
+		String out = null;
+		try {
+			if (helper.executeQuery("select @@global." + varName)) {
+				rs = helper.getResultSet();
+				if (!rs.next())
+					fail("Variable " + varName + " apparently does not exist on native");
+				out = rs.getString(1);
+			}
+		} finally {
+			if (rs != null) 
+				rs.close();
+		}
+		return out;
+	}
+	
+	@Test
+	public void testGlobalPushdown() throws Throwable {
+		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		DBHelper helper = null;
+		
+		String execFormat = "set global %s = %s";
+		
+		try {
+			helper = buildHelper();
+			for(VariableHandler vh : vm.getGlobalHandlers()) {
+				if (!vh.isEmulatedPassthrough()) continue;
+				Object defVal = vh.getDefaultOnMissing();
+				if (defVal == null) continue;
+				String currentGlobal = getCurrentGlobalValue(helper,vh.getName());
+				String setTo = vh.toExternal(defVal);
+				conn.execute(String.format(execFormat,vh.getName(),setTo));
+				String newGlobal = getCurrentGlobalValue(helper,vh.getName());
+				assertEquals(PEStringUtils.dequote(setTo),newGlobal);
+				Object oldGlobalConverted = vh.toInternal(currentGlobal);
+				String oldGlobalExternal = vh.toExternal(oldGlobalConverted);
+				helper.executeQuery("set global " + vh.getName() + " = " + oldGlobalExternal);
+			}
+		} finally {
+			helper.disconnect();
+		}
+		
+	}
+	
 	@Test
 	public void testAccess() throws Throwable {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
-		testAccess(vm.lookupMustExist("tx_isolation"),new Values("REPEATABLE-READ","SERIALIZABLE","READ-COMMITTED"));
-		testAccess(vm.lookupMustExist("adaptive_cleanup_interval"), new Values("1000","5000","10000"));
-		testAccess(vm.lookupMustExist("cost_based_planning"),new Values("yes","no"));
-		testAccess(vm.lookupMustExist("debug_context"), new Values("yes","no"));
+		testAccess(vm.lookupMustExist(null,"tx_isolation"),new Values("REPEATABLE-READ","SERIALIZABLE","READ-COMMITTED"));
+		testAccess(vm.lookupMustExist(null,"adaptive_cleanup_interval"), new Values("1000","5000","10000"));
+		testAccess(vm.lookupMustExist(null,"cost_based_planning"),new Values("YES","NO"));
+		testAccess(vm.lookupMustExist(null,"debug_context"), new Values("YES","NO"));
 	}
 	
 	private static final VariableRoundTrip[] globals = new VariableRoundTrip[] {

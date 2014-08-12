@@ -29,13 +29,11 @@ import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.worker.WorkerStatement;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.comms.client.messages.RequestMessage;
-import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSContext;

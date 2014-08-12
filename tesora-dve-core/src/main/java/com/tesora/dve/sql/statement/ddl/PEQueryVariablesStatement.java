@@ -33,8 +33,10 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
@@ -82,6 +84,15 @@ public class PEQueryVariablesStatement extends DDLStatement {
 		super(true);
 		this.scope = scope;
 		this.query = query;
+	}
+
+	@Override
+	public ProjectionInfo getProjectionMetadata(SchemaContext pc) {
+		// we only ever do Variable_Name, Value - so just do those two
+		ProjectionInfo pi = new ProjectionInfo(2);
+		pi.addColumn(1,"Variable_name","Variable_name");
+		pi.addColumn(2,"Value","Value");
+		return pi;
 	}
 
 

@@ -183,7 +183,7 @@ public class RenameTest extends SchemaMirrorTest {
 			final String dbName = sysDDL.getDatabaseName();
 			connection.execute("USE " + dbName);
 
-			final String expectedErrorMessage = "SchemaException: This syntax is not supported as it has been deprecated.";
+			final String expectedErrorMessage = "Internal error: This syntax is not supported as it has been deprecated.";
 
 			new ExpectedExceptionTester() {
 				@Override
@@ -217,49 +217,49 @@ public class RenameTest extends SchemaMirrorTest {
 			public void test() throws Throwable {
 				connection.execute("RENAME TABLE pe741_1 TO pe741_2");
 			}
-		}.assertException(SQLException.class, "SchemaException: Table '" + dbName + ".pe741_2' already exists.");
+		}.assertException(SQLException.class, "Internal error: Table 'sysdb.pe741_2' already exists."); 
 		
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				connection.execute("RENAME TABLE pe741_3 TO pe741_4");
 			}
-		}.assertException(SQLException.class, "SchemaException: No such table '" + dbName + ".pe741_3'.");
+		}.assertException(SQLException.class, "Internal error: No such table '" + dbName + ".pe741_3'.");
 		
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				connection.execute("RENAME TABLE oops.pe741_3 TO pe741_4");
 			}
-		}.assertException(SQLException.class, "SchemaException: Moving tables between databases and persistent groups is not allowed.");
+		}.assertException(SQLException.class, "Internal error: Moving tables between databases and persistent groups is not allowed.");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				connection.execute("RENAME TABLE oops.pe741_3 TO oops.pe741_4");
 			}
-		}.assertException(SQLException.class, "SchemaException: No such database 'oops'.");
+		}.assertException(SQLException.class, "Internal error: No such database 'oops'.");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				connection.execute("RENAME TABLE pe741_1 TO pe741_3, pe741_2 TO pe741_1, pe741_1 TO pe741_3, pe741_3 TO pe741_2");
 			}
-		}.assertException(SQLException.class, "SchemaException: Table '" + dbName + ".pe741_3' already exists.");
+		}.assertException(SQLException.class, "Internal error: Table '" + dbName + ".pe741_3' already exists.");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				connection.execute("RENAME TABLE pe741_1 TO pe741_3, pe741_3 TO pe741_2");
 			}
-		}.assertException(SQLException.class, "SchemaException: Table '" + dbName + ".pe741_2' already exists.");
+		}.assertException(SQLException.class, "Internal error: Table '" + dbName + ".pe741_2' already exists.");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				connection.execute("RENAME TABLE pe741_1 TO pe741_4, pe741_2 TO pe741_1, pe741_4 TO pe741_3, pe741_4 TO pe741_2");
 			}
-		}.assertException(SQLException.class, "SchemaException: No such table '" + dbName + ".pe741_4'.");
+		}.assertException(SQLException.class, "Internal error: No such table '" + dbName + ".pe741_4'.");
 	}
 
 	@Test

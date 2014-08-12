@@ -45,6 +45,7 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ResultRow;
@@ -130,8 +131,9 @@ public class AlterTest extends SchemaTest {
 		try {
 			conn.execute("alter table altest rename to `baltest`");
 			fail("shouldn't be able to rename to existing table name");
-		} catch (PEException e) {
-			assertSchemaException(e, "Table `baltest` already exists");
+		} catch (SchemaException e) {
+			assertErrorInfo(e,MySQLErrors.internalFormatter,
+					"Internal error: Table `baltest` already exists");
 		}
 		conn.execute("alter table altest rename to `ralter`");
 		conn.assertResults("show tables like 'ralter'",br(nr,"ralter"));
@@ -418,14 +420,14 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				executeAlterCharsetCollateTest("pe1276_ex1", utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
+		}.assertException(SchemaException.class, "COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				executeAlterCharsetCollateTest("pe1276_ex2", "big5", null);
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No collations found for character set 'big5'");
+		}.assertException(SchemaException.class, "No collations found for character set 'big5'");
 
 		executeAlterCharsetCollateTest("pe1276_ex3", null, "utf8_unicode_ci");
 
@@ -434,7 +436,7 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				executeAlterCharsetCollateTest("pe1276_ex4", null, null);
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - Can't alter database 'pe1276_ex4'; syntax error");
+		}.assertException(SchemaException.class, "Can't alter database 'pe1276_ex4'; syntax error");
 	}
 
 	private void executeAlterCharsetCollateTest(final String dbName, final String charSetName, final String collationName) throws Throwable {
@@ -490,7 +492,7 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("alter table pe768_ex modify d INT NOT NULL first");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - Unknown column 'd' in 'pe768_ex'");
+		}.assertException(SchemaException.class, "Unknown column 'd' in 'pe768_ex'");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -504,7 +506,7 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("alter table pe768_ex change d e INT NOT NULL");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - Unknown column 'd' in 'pe768_ex'");
+		}.assertException(SchemaException.class, "Unknown column 'd' in 'pe768_ex'");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -531,14 +533,14 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("alter table pe1480_ex change c d INT, add e INT after d, change e f INT first");
 			}
-		}.assertException(PEException.class, "Unable to build plan - Unknown column 'e' in 'pe1480_ex'");
+		}.assertException(SchemaException.class, "Unknown column 'e' in 'pe1480_ex'");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				conn.execute("alter table pe1480_ex change c d INT, change d e INT");
 			}
-		}.assertException(PEException.class, "Unable to build plan - Unknown column 'd' in 'pe1480_ex'");
+		}.assertException(SchemaException.class, "Unknown column 'd' in 'pe1480_ex'");
 	}
 
 	@Test

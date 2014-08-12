@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql.portal;
  * #L%
  */
 
-import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
 import com.tesora.dve.db.mysql.portal.protocol.MSPProtocolDecoder;
 import com.tesora.dve.server.global.HostService;
