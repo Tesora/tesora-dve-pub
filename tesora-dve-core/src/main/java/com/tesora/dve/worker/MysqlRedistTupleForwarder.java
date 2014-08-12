@@ -65,9 +65,6 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	volatile int rowCount = 0;
 
 	private final SynchronousCompletion<RedistTupleBuilder> handlerFuture;
-	private final CatalogDAO catalogDAO;
-	private final DistributionModel distModel;
-	private final WorkerGroup targetWG;
 	private final KeyValue distValue;
 	private final TableHints tableHints;
 	private final boolean useResultSetAliases;
@@ -86,12 +83,12 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	// this class gets setup for columns in the result set that we need to inspect the value
 	// from the incoming result set. Currently this is columns in a distrubtion vector and specfied
 	// auto increment columns
-	class ColumnValueInspector {
+	public static class ColumnValueInspector {
 		DataTypeValueFunc typeReader;
 		String dvCol = null;
 		boolean isIncrCol = false;
 		
-		void inspectValue(MyBinaryResultRow binRow, int columnNumber, KeyValue dv, MaximumAutoIncr maxAutoIncr) throws PEException {
+		public void inspectValue(MyBinaryResultRow binRow, int columnNumber, KeyValue dv, MaximumAutoIncr maxAutoIncr) throws PEException {
             Object value = binRow.getValue(columnNumber);
             boolean columnIsNull = binRow.isNull(columnNumber);
 			if (dvCol != null)
@@ -106,15 +103,15 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	List<ColumnValueInspector> columnInspectorList;
     List<DataTypeValueFunc> typeEncoders;
 	
-	class MaximumAutoIncr {
+	public static class MaximumAutoIncr {
 		long maxAutoInc = -1;
 		
-		void setMaxValue( long candidate ) {
+		public void setMaxValue( long candidate ) {
 			if ( candidate > maxAutoInc )
 				maxAutoInc = candidate;
 		}
 		
-		long getMaxValue() {
+		public long getMaxValue() {
 			return maxAutoInc;
 		}
 
@@ -124,22 +121,15 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	}
 
 	public MysqlRedistTupleForwarder(
-			SSContext ssContext, CatalogDAO c, WorkerGroup targetWG, 
-			DistributionModel distModel, KeyValue distValue, TableHints tableHints, 
+			KeyValue distValue, TableHints tableHints,
 			boolean useResultSetAliases, MyPreparedStatement<MysqlGroupedPreparedStatementId> selectPStatement, 
 			SynchronousCompletion<RedistTupleBuilder> handlerFuture)
 	{
-		this.catalogDAO = c;
-		this.distModel = distModel;
-		this.targetWG = targetWG;
-		this.distValue = distValue;
-		this.tableHints = tableHints;
-		this.useResultSetAliases = useResultSetAliases;
+		this.distValue = distValue;  //TODO: possible transitive dependency, only used during metadata processing
+		this.tableHints = tableHints; //TODO: possible transitive dependency, only used during metadata processing
+		this.useResultSetAliases = useResultSetAliases; //TODO: possible transitive dependency, only used during metadata processing
 		this.pstmt = selectPStatement;
 		this.handlerFuture = handlerFuture;
-		
-		if ( logger.isDebugEnabled() )
-			logger.debug("Redist: Forwarder setup for: " + distModel + "/" + distValue + ";uRSA=" + useResultSetAliases );
 	}
 
 	@Override
@@ -240,8 +230,12 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	public void fieldEOF(MyMessage unknown)
 			throws PEException {
         if (columnInspectorComputed == false) {
+            //this instance is re-used for all source requests (always processed by the same thread), so we only do this for the
+            //first source query to hit field EOF.
+
             columnInspectorComputed = true;
-            getTargetHandler().setRowSetMetadata(tableHints.addAutoIncMetadata(resultColumnMetadata));
+            ColumnSet adjustedMetadata = tableHints.addAutoIncMetadata(resultColumnMetadata);
+            getTargetHandler().setRowSetMetadata(tableHints,adjustedMetadata);
 
             int keyCount = 0;
             if (columnInspectorList == null) {
@@ -280,6 +274,7 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
                     //							+ distValue.size() + " found " + keyCount);
                 }
             }
+
         }
 	}
 	
@@ -293,48 +288,9 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 
     @Override
     public void rowBinary(MyBinaryResultRow binRow) throws PEException {
-        int rowCount1 = 1;
-
-        long[] autoIncrBlocks = null;
-        MaximumAutoIncr maxAutoIncr = null;
-
-        if (tableHints.tableHasAutoIncs())
-            autoIncrBlocks = tableHints.buildBlocks(catalogDAO, rowCount1);
-        if (tableHints.usesExistingAutoIncs())
-            maxAutoIncr = new MaximumAutoIncr();
-
-        MappingSolution mappingSolution;
-        if ( BroadcastDistributionModel.SINGLETON.equals(distModel) && !tableHints.isUsingAutoIncColumn()) {
-            mappingSolution = MappingSolution.AllWorkersSerialized;
-
-            getTargetHandler().processSourcePacket(mappingSolution, binRow, fieldCount, resultColumnMetadata, autoIncrBlocks);
-        } else {
-            long nextAutoIncr = tableHints.tableHasAutoIncs() ? autoIncrBlocks[0] : 0;
-
-            while (rowCount1-- > 0) {
-                KeyValue dv = new KeyValue(distValue);
-//                    int bitmapSize = MyNullBitmap.computeSize(fieldCount, BitmapType.RESULT_ROW);
-//                    byte[] nullBitmap = MysqlAPIUtils.readBytes(resultRowPacket, bitmapSize);
-//                    MyNullBitmap resultBitmap =  new MyNullBitmap(nullBitmap, fieldCount, BitmapType.RESULT_ROW);
-
-                for (int i = 0; i < columnInspectorList.size(); ++i) {
-                    ColumnValueInspector dvm = columnInspectorList.get(i);
-                    dvm.inspectValue(binRow, i, dv, maxAutoIncr);
-                }
-                mappingSolution = distModel.mapKeyForInsert(catalogDAO, targetWG.getGroup(), dv);
-//				if (logger.isDebugEnabled())
-//					logger.debug("Redistribution maps dv " + dv + " to " + mappingSolution);
-
-                long[] rowAutoIncrBlock = tableHints.tableHasAutoIncs() ? new long[] {nextAutoIncr++} : null;
-
-                getTargetHandler().processSourcePacket(mappingSolution, binRow, fieldCount, resultColumnMetadata, rowAutoIncrBlock);
-            }
-
-            if (maxAutoIncr != null && maxAutoIncr.isSet())
-                tableHints.recordMaximalAutoInc(catalogDAO, maxAutoIncr.getMaxValue());
-        }
-    }
-
+        //received a row from a binary result set, pass it on to the RedistTupleBuilder.
+        getTargetHandler().processSourceRow(distValue, columnInspectorList, binRow);
+    } 
     @Override
     public void rowText(MyTextResultRow textRow) throws PEException {
         throw new PECodingException("Didn't expect text results in " + this.getClass().getSimpleName());
@@ -355,7 +311,6 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
             ColumnMetadata columnMeta = FieldMetadataAdapter.buildMetadata(columnDef);
             columnMeta.setOrderInTable(fieldIndex);
 			resultColumnMetadata.setColumn(fieldIndex, columnMeta);
-//			System.out.println("Released permit");
 		}
 	}
 	
@@ -367,6 +322,5 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	public void rollback() {
 		rowCount = 0;
 	}
-
 
 }

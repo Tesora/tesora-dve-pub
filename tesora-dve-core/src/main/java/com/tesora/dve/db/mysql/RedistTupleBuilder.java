@@ -21,16 +21,19 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.concurrent.*;
 import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
+import com.tesora.dve.distribution.BroadcastDistributionModel;
+import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
+import com.tesora.dve.queryplan.TableHints;
+import com.tesora.dve.worker.MysqlRedistTupleForwarder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -74,19 +77,27 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 	final Future<SQLCommand> insertStatementFuture;
 	final PersistentTable targetTable;
 	final WorkerGroup targetWG;
-	final PECountdownPromise<RedistTupleBuilder> readyCountdownPromise;
+    final CatalogDAO catalogDAO;
+    final DistributionModel distModel;
+    final PECountdownPromise<RedistTupleBuilder> readyCountdownPromise;
+
+
 
 	final int maximumRowCount;
 	final int maxDataSize;
 	final SQLCommand insertOptions;
 	boolean insertIgnore = false;
 
+    TableHints tableHints;
+    MysqlRedistTupleForwarder.MaximumAutoIncr maxAutoIncr = null;
 	private ColumnSet rowSetMetadata;
 
-	public RedistTupleBuilder(Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions,
+	public RedistTupleBuilder(CatalogDAO catalogDAO, DistributionModel distModel, Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions,
 			PersistentTable targetTable, int maximumRowCount, int maxDataSize,
 			PECountdownPromise<RedistTupleBuilder> readyCountdownPromise,
 			WorkerGroup targetWG) {
+        this.distModel = distModel;
+        this.catalogDAO = catalogDAO;
 		this.insertOptions = insertOptions;
 		this.insertStatementFuture = insertStatementFuture;
 		this.targetTable = targetTable;
@@ -96,27 +107,113 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 		this.maxDataSize = maxDataSize;
 	}
 
-	public void processSourcePacket(MappingSolution mappingSolution, MyBinaryResultRow binRow, int fieldCount, ColumnSet columnSet, long[] autoIncrBlocks)
-			throws PEException {
+
+    public void processSourceRow(KeyValue distValue, List<MysqlRedistTupleForwarder.ColumnValueInspector> columnInspectorList, MyBinaryResultRow binRow) throws PEException {
+        //this get's called by MysqlRedistTupleForwarder when we receive a new row from a source query.
 
         if (failedRedist)
-            return;//throw out source rows if redist has failed.
+            return;//drop our source rows quickly if redist has already failed.
 
-		if (mappingSolution == MappingSolution.AllWorkers || mappingSolution == MappingSolution.AllWorkersSerialized) {
-			for (RedistTargetSite siteCtx : siteCtxBySite.values())
-				handleSourceRow(binRow, (autoIncrBlocks == null) ? null : new long[]{autoIncrBlocks[0]}, siteCtx);
-		} else if (mappingSolution == MappingSolution.AnyWorker || mappingSolution == MappingSolution.AnyWorkerSerialized) {
-			handleSourceRow(binRow, autoIncrBlocks, PECollectionUtils.selectRandom(siteCtxBySite.values()));
-		} else {
-			StorageSite executionSite = targetWG.resolveSite(mappingSolution.getSite());
-			handleSourceRow(binRow, autoIncrBlocks, siteCtxBySite.get(executionSite));
-		}
+        long[] autoIncrBlocks = null;
+
+        if (tableHints.tableHasAutoIncs()) {
+            //TODO: this call fetches a single autoinc, which might block on hibernate if the background pre-fetch is slow, stalling the netty thread.  sgossard
+            autoIncrBlocks = tableHints.buildBlocks(catalogDAO, 1 /*rowcount*/); //gets an autoinc for one row.
+        }
+
+        if (tableHints.usesExistingAutoIncs() && maxAutoIncr == null)
+            maxAutoIncr = new MysqlRedistTupleForwarder.MaximumAutoIncr();
+
+        MappingSolution mappingSolution;
+        if ( BroadcastDistributionModel.SINGLETON.equals(distModel) && !tableHints.isUsingAutoIncColumn()) {
+            mappingSolution = MappingSolution.AllWorkersSerialized;
+        } else {
+            long nextAutoIncr = tableHints.tableHasAutoIncs() ? autoIncrBlocks[0] : 0;
+
+            KeyValue dv = new KeyValue(distValue);
+
+            //picks apart the row, looking at the distribution keys and autoinc fields.
+            for (int i = 0; i < columnInspectorList.size(); ++i) {
+                MysqlRedistTupleForwarder.ColumnValueInspector dvm = columnInspectorList.get(i);
+                dvm.inspectValue(binRow, i, dv, maxAutoIncr);
+            }
+
+            mappingSolution = distModel.mapKeyForInsert(catalogDAO, targetWG.getGroup(), dv);
+
+            autoIncrBlocks = tableHints.tableHasAutoIncs() ? new long[] {nextAutoIncr++} : null;
+        }
+
+        boolean flushedInserts = false;
+        //********************
+        long[] autoIncrBlocks1 = autoIncrBlocks;
+        Collection<RedistTargetSite> allTargetSites = chooseTargetSites(mappingSolution);
+
+        boolean shouldCopyAutoIncs = (allTargetSites.size() > 1);
+        for (RedistTargetSite siteCtx : allTargetSites){
+            if (shouldCopyAutoIncs)
+                autoIncrBlocks1 = (autoIncrBlocks1 == null) ? null : new long[]{autoIncrBlocks1[0]};
+            try {
+
+                int rowsToFlushCount = 1;
+                int bytesToFlushCount = binRow.sizeInBytes();
+
+
+                boolean needsFlush = (siteCtx.getTotalQueuedRows() + rowsToFlushCount >= maximumRowCount) || siteCtx.getTotalQueuedBytes() + bytesToFlushCount >= maxDataSize;
+
+                long[] autoIncUsed = autoIncrBlocks1;
+                if (needsFlush && autoIncrBlocks1 != null) {
+                    autoIncUsed = new long[] { autoIncrBlocks1[0] };
+                    autoIncrBlocks1[0] += rowsToFlushCount;
+                }
+
+                siteCtx.append(binRow, rowsToFlushCount, bytesToFlushCount, autoIncUsed);
+
+                if (siteCtx.getTotalQueuedRows() >= maximumRowCount || siteCtx.getTotalQueuedBytes() >= maxDataSize){
+                    flushedInserts = true;
+                    siteCtx.flush();
+                    if (! siteCtx.willAcceptMoreRows() ){
+                        blockedTargetSites.put(siteCtx,siteCtx);
+                    }
+                }
+
+            } finally {
+    //			siteCtx.siteCtxLock.unlock();
+            }
+        }
+        //********************
 
         if (!blockedTargetSites.isEmpty()){
             pauseSourceStreams();
         }
 
-	}
+        //TODO: this should really be called BEFORE flushes, to ensure we don't lose a tracked autoinc on a failure. -sgossard
+        if (flushedInserts)
+            updateAutoIncIfNeeded();
+    }
+
+    private void updateAutoIncIfNeeded() {
+        if (maxAutoIncr != null && maxAutoIncr.isSet() && tableHints.isUsingAutoIncColumn()){
+            //TODO: this call saves the maximum autoinc via hibernate, and will stall the netty thread.  sgossard
+            tableHints.recordMaximalAutoInc(catalogDAO, maxAutoIncr.getMaxValue());
+            maxAutoIncr = null;
+        }
+    }
+
+    private Collection<RedistTargetSite> chooseTargetSites(MappingSolution mappingSolution) throws PEException {
+        Collection<RedistTargetSite> allTargetSites;
+        if (mappingSolution == MappingSolution.AllWorkers || mappingSolution == MappingSolution.AllWorkersSerialized) {
+            //this is broadcast, we send to all workers.
+            allTargetSites = siteCtxBySite.values();
+        } else if (mappingSolution == MappingSolution.AnyWorker || mappingSolution == MappingSolution.AnyWorkerSerialized) {
+            //this is random, we send to any of the workers.
+            allTargetSites = Collections.singleton(PECollectionUtils.selectRandom(siteCtxBySite.values()));
+        } else {
+            //this is range, we send to a specific worker based on the previously computed distribution vector of the row
+            allTargetSites = Collections.singleton(siteCtxBySite.get(targetWG.resolveSite(mappingSolution.getSite())));
+        }
+        return allTargetSites;
+    }
+
 
     public void setProcessingComplete() throws PEException {
         //Called when upstream forwarder has seen stream EOFs from all source streams, so all rows have been forwarded.
@@ -203,7 +300,8 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
     }
 
 
-    public void setRowSetMetadata(ColumnSet resultColumnMetadata) {
+    public void setRowSetMetadata(TableHints tableHints, ColumnSet resultColumnMetadata) {
+        this.tableHints = tableHints;
         this.rowSetMetadata = resultColumnMetadata;
     }
 
@@ -250,42 +348,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
         }
     }
 
-	/**
-	 *
-     * @param binRow
-     * @param autoIncrBlocks
-     * @param siteCtx
-     * @throws PEException
-	 */
-	protected void handleSourceRow(MyBinaryResultRow binRow, long[] autoIncrBlocks, RedistTargetSite siteCtx) throws PEException {
-//		siteCtx.siteCtxLock.lock();
-		try {
-
-			int rowsToFlushCount = 1;
-			int bytesToFlushCount = binRow.sizeInBytes();
-
-
-            boolean needsFlush = (siteCtx.getTotalQueuedRows() + rowsToFlushCount >= maximumRowCount) || siteCtx.getTotalQueuedBytes() + bytesToFlushCount >= maxDataSize;
-
-            long[] autoIncUsed = autoIncrBlocks;
-            if (needsFlush && autoIncrBlocks != null) {
-                autoIncUsed = new long[] { autoIncrBlocks[0] };
-                autoIncrBlocks[0] += rowsToFlushCount;
-            }
-
-            siteCtx.append(binRow, rowsToFlushCount, bytesToFlushCount, autoIncUsed);
-
-            if (siteCtx.getTotalQueuedRows() >= maximumRowCount || siteCtx.getTotalQueuedBytes() >= maxDataSize){
-                siteCtx.flush();
-                if (! siteCtx.willAcceptMoreRows() ){
-                    blockedTargetSites.put(siteCtx,siteCtx);
-                }
-            }
-
-        } finally {
-//			siteCtx.siteCtxLock.unlock();
-		}
-	}
 
     private void targetPacketStall(ChannelHandlerContext ctx) {
         //NOOP.  just here
@@ -344,6 +406,9 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
     }
 
     private void flushTargetSites() {
+
+        updateAutoIncIfNeeded();
+
         for (RedistTargetSite siteContext : siteCtxBySite.values()) {
             siteContext.flush();
         }
