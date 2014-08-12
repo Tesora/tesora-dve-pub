@@ -116,7 +116,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void globalVariableTest() throws PEException {
 		assertEquals(Boolean.FALSE, KnownVariables.SLOW_QUERY_LOG.getValue(null));
-		KnownVariables.SLOW_QUERY_LOG.setGlobalValue("yes");
+		KnownVariables.SLOW_QUERY_LOG.setGlobalValue(ssConnection,"yes");
 		assertEquals(Boolean.TRUE, KnownVariables.SLOW_QUERY_LOG.getValue(null));
 	}
 
@@ -139,7 +139,7 @@ public class VariableTest extends PETest {
 
 	@Test(expected = PEException.class)
 	public void setVersionCommentTest() throws PEException {
-		KnownVariables.VERSION_COMMENT.setGlobalValue("hello");
+		KnownVariables.VERSION_COMMENT.setGlobalValue(ssConnection,"hello");
 	}
 
 	@Test
@@ -318,7 +318,7 @@ public class VariableTest extends PETest {
 	@Test
 	public void setLongQueryTime() throws Throwable {
 		assertEquals(new Double(10.0), KnownVariables.LONG_QUERY_TIME.getGlobalValue(ssConnection));
-		KnownVariables.LONG_QUERY_TIME.setGlobalValue("25.5");
+		KnownVariables.LONG_QUERY_TIME.setGlobalValue(ssConnection,"25.5");
 		assertEquals(new Double(25.5), KnownVariables.LONG_QUERY_TIME.getGlobalValue(ssConnection));
 	}
 
@@ -380,7 +380,7 @@ public class VariableTest extends PETest {
 		assertEquals("+05:00", KnownVariables.TIME_ZONE.getSessionValue(ssConnection));
 
 		// change the default PE time zone
-		KnownVariables.TIME_ZONE.setGlobalValue("-09:00");
+		KnownVariables.TIME_ZONE.setGlobalValue(ssConnection,"-09:00");
 		// new connection should have new default
 		SSConnectionProxy conProxy = new SSConnectionProxy();
 		try {
@@ -412,17 +412,17 @@ public class VariableTest extends PETest {
 	@Test
 	public void setGroupServiceVariableTest() throws PEException {
 //        HostService hostService = Singletons.require(HostService.class);
-		KnownVariables.GROUP_SERVICE.setPersistentValue(catalogDAO, "HaZeLCaST");
+		KnownVariables.GROUP_SERVICE.setPersistentValue(ssConnection, "HaZeLCaST");
 		assertEquals("HaZeLCaST",
 				KnownVariables.GROUP_SERVICE.getValue(null));
-		KnownVariables.GROUP_SERVICE.setPersistentValue(catalogDAO, "Localhost");
+		KnownVariables.GROUP_SERVICE.setPersistentValue(ssConnection, "Localhost");
 		assertEquals("Localhost", 
 				KnownVariables.GROUP_SERVICE.getValue(null));
 	}
 
 	@Test(expected = PEException.class)
 	public void setGroupServiceVariableFailTest() throws PEException {
-		KnownVariables.GROUP_SERVICE.setPersistentValue(catalogDAO, "InvalidValue");
+		KnownVariables.GROUP_SERVICE.setPersistentValue(ssConnection, "InvalidValue");
 
 	}
 

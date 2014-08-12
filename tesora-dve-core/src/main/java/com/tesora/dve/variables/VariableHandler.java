@@ -120,7 +120,11 @@ public class VariableHandler<Type> {
 	public boolean isDVEOnly() {
 		return !options.contains(VariableOption.EMULATED);
 	}
-	
+
+	public boolean isEmulatedPassthrough() {
+		return options.contains(VariableOption.EMULATED) && options.contains(VariableOption.PASSTHROUGH);
+	}
+
 	public static final UnaryPredicate<VariableHandler<?>> isGlobalPredicate = new UnaryPredicate<VariableHandler<?>>() {
 
 		@Override
@@ -178,7 +182,7 @@ public class VariableHandler<Type> {
 		if (scope == VariableScopeKind.SESSION)
 			setSessionValue(conn,newValue);
 		else if (scope == VariableScopeKind.GLOBAL)
-			setGlobalValue(newValue);
+			setGlobalValue(conn,newValue);
 		else
 			throw new PEException("Unknown scope for set: " + scope);
 	}
@@ -194,7 +198,7 @@ public class VariableHandler<Type> {
 		onSessionValueChange(conn,t);
 	}
 	
-	public void setGlobalValue(String newValue) throws PEException {
+	public void setGlobalValue(VariableStoreSource conn, String newValue) throws PEException {
 		if (options.contains(VariableOption.READONLY))
 			throw new PEException(String.format("Unable to set readonly variable '%s'",getName()));
 		if (!scopes.contains(VariableScopeKind.GLOBAL))
@@ -202,21 +206,30 @@ public class VariableHandler<Type> {
 		Type t =  toInternal(newValue);
 		// the global variable store propagates the change message
 		ServerGlobalVariableStore.INSTANCE.setValue(this, t);
+		pushdownGlobalValue(conn,t);
 	}
 	
-	public void storeGlobalValue(String newValue) throws PEException {
-		Type t =  toInternal(newValue);
-		// the global variable store propagates the change message
-		ServerGlobalVariableStore.INSTANCE.setValue(this, t);		
+	public void pushdownGlobalValue(VariableStoreSource conn, Type t) throws PEException {
+		// after broadcasting, set the global value
+		if (conn instanceof SSConnection) {
+			SSConnection ssConnection = (SSConnection) conn;
+			String anything = getGlobalAssignmentClause(t);
+			if (anything != null)
+				ssConnection.updateGlobalVariableState(String.format("set %s",anything));
+		}			
 	}
 	
-	public void setPersistentValue(final CatalogDAO c, final String newValue) throws PEException {
+	public void setPersistentValue(VariableStoreSource conn, final String newValue) throws PEException {
 		// validate
-		toInternal(newValue);
-		persistValue(c,newValue);
+		Type t = toInternal(newValue);
+		if (conn instanceof SSConnection) {
+			CatalogDAO c = ((SSConnection)conn).getCatalogDAO();
+			persistValue(c,newValue);
+		}
 		// broadcast; note that we skip access checking here, because persistent set always updates
 		// the global map.  (i.e. setting the pers value for a session variable should effect new sesssions)
-		storeGlobalValue(newValue);
+		ServerGlobalVariableStore.INSTANCE.setValue(this, t);
+		pushdownGlobalValue(conn,t);
 	}
 	
 	public void persistValue(final CatalogDAO c, final String newValue) throws PEException {
@@ -230,12 +243,15 @@ public class VariableHandler<Type> {
 		}		
 	}
 	
+	// this method is used to update dve state on the various servers
+	// any underlying mysql state would have been handled by the originating dve server
 	public void onGlobalValueChange(Type newValue) throws PEException {
-		// does nothing
+		// nothing by default
 	}
 	
+	
 	public void onSessionValueChange(VariableStoreSource conn, Type newValue) throws PEException {
-		if (options.contains(VariableOption.EMULATED) && options.contains(VariableOption.PASSTHROUGH)) {
+		if (isEmulatedPassthrough()) {
 			if (conn instanceof SSConnection) {
 				SSConnection ssCon = (SSConnection) conn;
 				ssCon.updateWorkerState();
@@ -244,12 +260,17 @@ public class VariableHandler<Type> {
 	}
 
 	public String getSessionAssignmentClause(String value) {
-		if (scopes.contains(VariableScopeKind.SESSION) && options.contains(VariableOption.EMULATED) &&
-				options.contains(VariableOption.PASSTHROUGH))
+		if (scopes.contains(VariableScopeKind.SESSION) && isEmulatedPassthrough()) 
 			return String.format("%s=%s",getName(),value);
 		return null;
 	}
 
+	public String getGlobalAssignmentClause(Type value) {
+		if (scopes.contains(VariableScopeKind.GLOBAL) && isEmulatedPassthrough())
+			return String.format("@@global.%s = %s",getName(),toExternal(value));
+		return null;
+	}
+	
 	public VariableConfig lookupPersistentConfig(CatalogDAO c) throws PEException {
 		return c.findVariableConfig(getName(), true);
 	}

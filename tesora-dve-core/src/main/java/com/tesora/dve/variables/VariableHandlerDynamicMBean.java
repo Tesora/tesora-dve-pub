@@ -37,6 +37,9 @@ import javax.management.ReflectionException;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 
 public class VariableHandlerDynamicMBean implements DynamicMBean {
@@ -73,11 +76,20 @@ public class VariableHandlerDynamicMBean implements DynamicMBean {
 			throw new InvalidAttributeValueException("Attribute value not a string: " + value);
 		}
 
+		SSConnectionProxy prox = null;
+		
 		try { 
-			variable.setGlobalValue((String)value);
+			prox = Singletons.require(HostService.class).getRootProxy();
+			variable.setGlobalValue(prox.getConnection(),(String)value);
 		} catch (Throwable t) {
 			throw new InvalidAttributeValueException("Failed to set value on variable: " + attribute.getName() + " (" + t.getMessage() + ")");
-		}		
+		} finally {
+			if (prox != null) try {
+				prox.close();
+			} catch (Throwable t) {
+				// did our best
+			}
+		}
 	}
 
 	@Override
@@ -103,20 +115,30 @@ public class VariableHandlerDynamicMBean implements DynamicMBean {
 
 		AttributeList retlist = new AttributeList();
 
+		SSConnectionProxy prox = null;
+
+		
 		try {
+			prox = Singletons.require(HostService.class).getRootProxy();
 			for (Attribute attr : attrs) {
 				String name = attr.getName();
 				Object value = attr.getValue();
 
 				if (variables.get(name) != null && value instanceof String) {
 					VariableHandler<?> vh = variables.get(name);
-					vh.setGlobalValue((String)value);
+					vh.setGlobalValue(prox.getConnection(),(String)value);
 					retlist.add(new Attribute(name, value));
 				}
 			}
 			return retlist;
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to set attributes  - " + e.getMessage());
+		} finally {
+			if (prox != null) try {
+				prox.close();
+			} catch (Throwable t) {
+				// did our best
+			}
 		}
 	}
 

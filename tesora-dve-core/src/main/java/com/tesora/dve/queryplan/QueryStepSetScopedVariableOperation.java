@@ -56,13 +56,13 @@ public class QueryStepSetScopedVariableOperation extends
 			throws Throwable {
 		String nv = accessor.getValue(ssCon, wg);
 		if (VariableScopeKind.GLOBAL == scope.getKind()) {
-			Singletons.require(HostService.class).getVariableManager().lookupMustExist(ssCon,variableName).setGlobalValue(nv);
+			Singletons.require(HostService.class).getVariableManager().lookupMustExist(ssCon,variableName).setGlobalValue(ssCon,nv);
 		} else if (VariableScopeKind.SESSION == scope.getKind()) {
 			ssCon.setSessionVariable(variableName, nv);
 		} else if (VariableScopeKind.USER == scope.getKind()) {
 			ssCon.setUserVariable(variableName, nv);
 		} else if (VariableScopeKind.PERSISTENT == scope.getKind()) {
-			Singletons.require(HostService.class).getVariableManager().lookupMustExist(ssCon,variableName).setPersistentValue(ssCon.getCatalogDAO(), nv);
+			Singletons.require(HostService.class).getVariableManager().lookupMustExist(ssCon,variableName).setPersistentValue(ssCon, nv);
 		} else {
             Singletons.require(HostService.class).setScopedVariable(scope.getScopeName(), variableName, nv);
 		}
