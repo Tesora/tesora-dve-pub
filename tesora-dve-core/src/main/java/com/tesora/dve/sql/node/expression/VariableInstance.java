@@ -22,6 +22,8 @@ package com.tesora.dve.sql.node.expression;
  */
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PEMappedException;
+import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
@@ -75,8 +77,11 @@ public class VariableInstance extends ExpressionNode {
 			VariableManager vm = Singletons.require(HostService.class).getVariableManager();
 			return new VariableAccessor(vm.lookupMustExist(sc.getConnection().getVariableSource(),variableName.get()),
 					getScope());
-		} catch (PEException pe) {
-			throw new SchemaException(Pass.PLANNER, pe);
+		} catch (PEMappedException pe) {
+			// these are mapped now
+			throw new SchemaException(pe.getErrorInfo());
+		} catch (Throwable t) {
+			throw new SchemaException(Pass.PLANNER, t);
 		}
 	}
 	
