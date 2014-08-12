@@ -1078,6 +1078,25 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
         sendToAllGroups(new WorkerSetSessionVariableRequest(getNonTransactionalContext(), getSessionVariables(), new DefaultSetVariableBuilder()));
 	}
 	
+	/*
+	 * Make sure we send down passthrough global variable updates
+	 */
+	public void updateGlobalVariableState(String sql) throws PEException {
+		// blech, need to build the "all sites" storage group for this
+		PersistentGroup allSites = getCatalogDAO().buildAllSitesGroup();
+		WorkerExecuteRequest setSQL =
+				new WorkerExecuteRequest(getNonTransactionalContext(),new SQLCommand(sql));
+		WorkerGroup wg = null;
+		try {
+			wg = getWorkerGroup(allSites,null);
+			wg.submit(MappingSolution.AnyWorker, setSQL, DBEmptyTextResultConsumer.INSTANCE);
+		} finally {
+			returnWorkerGroup(wg);
+		}
+		
+	}
+	
+	
 	void sendToAllGroups(WorkerRequest req) throws PEException {
 		List<WorkerGroup> allGroups = new ArrayList<WorkerGroup>(availableWG.values());
 		allGroups.addAll(activeWG.values());

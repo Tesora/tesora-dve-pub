@@ -24,6 +24,8 @@ package com.tesora.dve.common.catalog;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -443,6 +445,18 @@ public class CatalogDAO {
 		return findPersistentSite(siteName, true);
 	}
 
+	public PersistentGroup buildAllSitesGroup() throws PEException {
+		List<PersistentSite> sites = findAllPersistentSites();
+		final LinkedHashMap<String,PersistentSite> uniqueURLS = new LinkedHashMap<String,PersistentSite>();
+		for(PersistentSite ps : sites) {
+			String key = ps.getMasterUrl();
+			PersistentSite already = uniqueURLS.get(key);
+			if (already == null) 
+				uniqueURLS.put(key,ps);
+		}
+		return new PersistentGroup(uniqueURLS.values());
+	}
+	
 	@SuppressWarnings("unchecked")
 	public static <T> T onlyOne(List<T> results, String what, String searchedOn, boolean except)
 			throws PENotFoundException {

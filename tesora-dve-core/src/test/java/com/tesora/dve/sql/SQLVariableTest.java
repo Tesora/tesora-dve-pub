@@ -27,6 +27,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +38,8 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
@@ -331,6 +334,51 @@ public class SQLVariableTest extends SchemaTest {
 		if (!missing.isEmpty()) 
 			fail("Empty variable docstrings: " + Functional.join(missing, ","));
 //		System.out.println(conn.printResults("select * from information_schema.variable_definitions"));
+	}
+	
+	private static String getCurrentGlobalValue(DBHelper helper, String varName) throws Throwable {
+		ResultSet rs = null;
+		String out = null;
+		try {
+			if (helper.executeQuery("select @@global." + varName)) {
+				rs = helper.getResultSet();
+				if (!rs.next())
+					fail("Variable " + varName + " apparently does not exist on native");
+				out = rs.getString(1);
+			}
+		} finally {
+			if (rs != null) 
+				rs.close();
+		}
+		return out;
+	}
+	
+	@Test
+	public void testGlobalPushdown() throws Throwable {
+		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		DBHelper helper = null;
+		
+		String execFormat = "set global %s = %s";
+		
+		try {
+			helper = buildHelper();
+			for(VariableHandler vh : vm.getGlobalHandlers()) {
+				if (!vh.isEmulatedPassthrough()) continue;
+				Object defVal = vh.getDefaultOnMissing();
+				if (defVal == null) continue;
+				String currentGlobal = getCurrentGlobalValue(helper,vh.getName());
+				String setTo = vh.toExternal(defVal);
+				conn.execute(String.format(execFormat,vh.getName(),setTo));
+				String newGlobal = getCurrentGlobalValue(helper,vh.getName());
+				assertEquals(PEStringUtils.dequote(setTo),newGlobal);
+				Object oldGlobalConverted = vh.toInternal(currentGlobal);
+				String oldGlobalExternal = vh.toExternal(oldGlobalConverted);
+				helper.executeQuery("set global " + vh.getName() + " = " + oldGlobalExternal);
+			}
+		} finally {
+			helper.disconnect();
+		}
+		
 	}
 	
 	@Test

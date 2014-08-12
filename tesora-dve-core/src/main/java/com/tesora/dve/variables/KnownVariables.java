@@ -23,6 +23,7 @@ package com.tesora.dve.variables;
 
 
 import java.util.EnumSet;
+import java.util.Locale;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -30,6 +31,7 @@ import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
 import com.tesora.dve.clock.TimingServiceConfiguration;
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -227,7 +229,20 @@ public class KnownVariables implements VariableConstants {
 					emulated);
 	public static final VariableHandler<EngineTag> STORAGE_ENGINE =
 			new VariableHandler<EngineTag>(STORAGE_ENGINE_NAME,
-					new EnumValueConverter<EngineTag>(EngineTag.values()),
+					new EnumValueConverter<EngineTag>(EngineTag.values()) {
+				@Override
+				public String convertToExternal(EngineTag in) {
+					return String.format("'%s'", in.getSQL());
+				}
+
+				@Override
+				public EngineTag convertToInternal(String varName, String in) throws PEException {
+					String deq = PEStringUtils.dequote(in);
+					String uc = deq.toUpperCase(Locale.ENGLISH);
+					return super.convertToInternal(varName, uc);
+				}
+				
+			},
 					bothScope,
 					EngineTag.INNODB,
 					emulated);

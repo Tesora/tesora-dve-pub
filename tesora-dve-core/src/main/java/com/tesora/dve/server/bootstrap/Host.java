@@ -41,6 +41,7 @@ import javax.management.ObjectName;
 import com.tesora.dve.clock.*;
 import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -57,7 +58,9 @@ import com.tesora.dve.common.PELogUtils;
 import com.tesora.dve.common.catalog.AutoIncrementTrackerDynamicMBean;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.Project;
+import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.comms.client.messages.ConnectRequest;
 import com.tesora.dve.concurrent.NamedTaskExecutorService;
 import com.tesora.dve.concurrent.PEThreadPoolExecutor;
 import com.tesora.dve.db.DBNative;
@@ -550,5 +553,19 @@ public class Host implements HostService {
 	@Override
 	public VariableManager getVariableManager() {
 		return variables;
+	}
+
+	@Override
+	public SSConnectionProxy getRootProxy() throws PEException {
+		User rootUser = getProject().getRootUser();
+		
+		SSConnectionProxy ssConProxy = new SSConnectionProxy();
+		try {
+			ssConProxy.executeRequest(new ConnectRequest(rootUser.getName(), rootUser.getPlaintextPassword()));
+		} catch (PEException pe) {
+			ssConProxy.close();
+			return null;
+		}
+		return ssConProxy;
 	}
 }
