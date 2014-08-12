@@ -50,7 +50,7 @@ public class MyEncoder extends MessageToByteEncoder<MyMessage> {
 
 		ByteBuf buffer = Unpooled.buffer(2048).order(ByteOrder.LITTLE_ENDIAN);
 
-        message.marshallFullMessage(buffer);
+        message.writeTo(buffer);
 
 		return buffer;
 	}

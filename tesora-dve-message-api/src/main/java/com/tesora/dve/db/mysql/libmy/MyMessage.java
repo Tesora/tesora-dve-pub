@@ -37,6 +37,7 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
 	// ---------
 	// classes extending MyMessage should implement this methods to
 	// return the relevant value.
+    // NOTE: these values are the identifiers used in replication.
 	public abstract MyMessageType getMessageType();
 	// -------
 
@@ -78,7 +79,7 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
         this.marshallMessage(destination);
     }
 
-    public void marshallFullMessage(ByteBuf destination) {
+    public void writeTo(ByteBuf destination) {
         int startIndex = this.marshalZeroHeader(destination);
         try {
             this.marshallPayload(destination);

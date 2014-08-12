@@ -36,7 +36,6 @@ import io.netty.util.ReferenceCountUtil;
 import io.netty.util.internal.PlatformDependent;
 
 import java.nio.ByteOrder;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.Logger;
 
@@ -53,21 +52,13 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
     @Override
     protected void encode(ChannelHandlerContext ctx, MysqlMessage msg, ByteBuf out) throws Exception {
         ByteBuf leBuf = out.order(ByteOrder.LITTLE_ENDIAN);
-
+        logMessageIfNeeded(msg);
         try{
-            if (msg instanceof MyMessage)
-                encodeMyMessage(leBuf, (MyMessage)msg);
-            else
-                encodeMSPMessage((MSPMessage)msg,leBuf);
+            msg.writeTo(leBuf);
         } finally {
             ReferenceCountUtil.release(msg);
         }
     }
-
-    protected void encodeMSPMessage(MSPMessage msg, ByteBuf littleEnd) throws Exception {
-        msg.writeTo(littleEnd);
-    }
-
 
 
     private void allocateSlabIfNeeded(ChannelHandlerContext ctx) {
@@ -144,16 +135,15 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
 		}
 	}
 
-	private void encodeMyMessage(ByteBuf out, MyMessage message) throws PEException {
-
-		if (message instanceof MyResponseMessage) {
+    private void logMessageIfNeeded(MysqlMessage message) {
+        if (message instanceof MyResponseMessage) {
 
             MyResponseMessage response = (MyResponseMessage) message;
-            if (response.isErrorResponse()){
+            if (response.isErrorResponse()) {
                 //we are sending an error response to the client, so we'll log it.
                 Exception baseException = (response.hasException() ? response.getException() : null);
                 boolean rootCauseIsMysqlErrorPacket = false;
-                if (baseException instanceof PEException){
+                if (baseException instanceof PEException) {
                     Exception rootCause = ((PEException) baseException).rootCause();
                     rootCauseIsMysqlErrorPacket = (rootCause instanceof PESQLStateException);
                 }
@@ -165,29 +155,12 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
                     logger.warn("Encoding " + message, baseException);
             }
 
-		} else if (logger.isDebugEnabled()) {
-			logger.debug("Encoding " + message);
-		}
+        } else if (logger.isDebugEnabled()) {
+            logger.debug("Encoding " + message);
+        }
+    }
 
-		int msgSizeIndex = out.writerIndex();
-		out.writeMedium(0);
-		out.writeByte(message.getPacketNumber());
-		int msgStartIndex = out.writerIndex();
-
-		// check if the message type is to be encoded
-		if (message.isMessageTypeEncoded())
-			out.writeByte(message.getMessageType().getByteValue());
-
-		// ask the message object to write the message payload
-		message.marshallMessage(out);
-
-		// Go back and write the payload size into the header
-		int payloadSize = out.writerIndex() - msgStartIndex;
-		out.setMedium(msgSizeIndex, payloadSize);
-		out.setByte(msgSizeIndex + 3, message.getPacketNumber());
-	}
-
-	public static MSPEncoder getInstance() {
+    public static MSPEncoder getInstance() {
 		return new MSPEncoder();
 	}
 

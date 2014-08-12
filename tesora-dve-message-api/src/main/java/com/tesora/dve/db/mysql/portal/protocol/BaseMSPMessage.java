@@ -135,14 +135,6 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
         this.sequenceID = newSeq;
     }
 
-    @Override
-    public ByteBuf unwrap() {
-        if (buffer != null)
-            return buffer;
-        else
-            return Unpooled.EMPTY_BUFFER;
-    }
-
     public String toString(){
         return String.format("%s[buffer.length=%s]",this.getClass().getSimpleName(),buffer.readableBytes());
     }
