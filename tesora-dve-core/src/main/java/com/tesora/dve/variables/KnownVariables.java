@@ -962,7 +962,17 @@ public class KnownVariables implements VariableConstants {
 				booleanConverter,
 				bothScope,
 				Boolean.TRUE,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+		new VariableHandler<Long>("myisam_sort_buffer_size",
+				new BoundedIntegralConverter(4095L,Long.MAX_VALUE),
+				bothScope,
+				8388608L,
+				emulated),
+		new VariableHandler<Long>("sort_buffer_size",
+				new BoundedIntegralConverter(32767L,Long.MAX_VALUE),
+				bothScope,
+				2097144L,
+				emulated)
 	};
 
 }

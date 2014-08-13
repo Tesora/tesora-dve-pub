@@ -1083,6 +1083,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	 */
 	public void updateGlobalVariableState(String sql) throws PEException {
 		// blech, need to build the "all sites" storage group for this
+//		System.out.println("****  " + sql);
 		PersistentGroup allSites = getCatalogDAO().buildAllSitesGroup();
 		WorkerExecuteRequest setSQL =
 				new WorkerExecuteRequest(getNonTransactionalContext(),new SQLCommand(sql));

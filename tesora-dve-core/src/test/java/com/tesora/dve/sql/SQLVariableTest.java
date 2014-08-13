@@ -370,7 +370,7 @@ public class SQLVariableTest extends SchemaTest {
 				String setTo = vh.toExternal(defVal);
 				conn.execute(String.format(execFormat,vh.getName(),setTo));
 				String newGlobal = getCurrentGlobalValue(helper,vh.getName());
-				assertEquals(PEStringUtils.dequote(setTo),newGlobal);
+				assertEquals("should have same value for " + vh.getName(),PEStringUtils.dequote(setTo),newGlobal);
 				Object oldGlobalConverted = vh.toInternal(currentGlobal);
 				String oldGlobalExternal = vh.toExternal(oldGlobalConverted);
 				helper.executeQuery("set global " + vh.getName() + " = " + oldGlobalExternal);
