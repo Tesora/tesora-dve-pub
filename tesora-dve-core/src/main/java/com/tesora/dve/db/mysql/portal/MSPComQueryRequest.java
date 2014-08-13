@@ -42,7 +42,6 @@ import com.tesora.dve.exceptions.PEMappedException;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.messages.ExecuteRequestExecutor;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.worker.MysqlTextResultForwarder;
 
 public class MSPComQueryRequest extends MSPActionBase {

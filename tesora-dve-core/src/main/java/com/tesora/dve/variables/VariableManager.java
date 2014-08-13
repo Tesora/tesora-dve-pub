@@ -21,9 +21,7 @@ package com.tesora.dve.variables;
  * #L%
  */
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -36,8 +34,6 @@ import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedException;
-import com.tesora.dve.exceptions.PEMappedRuntimeException;
-import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.Functional;
 

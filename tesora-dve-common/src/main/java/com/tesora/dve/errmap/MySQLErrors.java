@@ -21,7 +21,7 @@ package com.tesora.dve.errmap;
  * #L%
  */
 
-import java.util.EnumMap;
+
 
 public class MySQLErrors {
 	

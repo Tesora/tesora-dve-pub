@@ -26,7 +26,6 @@ import java.io.Serializable;
 import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
-import com.tesora.dve.exceptions.PERuntimeException;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.variables.KnownVariables;
 

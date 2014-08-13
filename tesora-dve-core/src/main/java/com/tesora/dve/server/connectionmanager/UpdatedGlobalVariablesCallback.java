@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.parser;
+package com.tesora.dve.server.connectionmanager;
 
 /*
  * #%L
@@ -21,24 +21,15 @@ package com.tesora.dve.sql.parser;
  * #L%
  */
 
-public enum LexicalLocation {
+// default does nothing
+public class UpdatedGlobalVariablesCallback {
 
-	// used for select projection, update field list
-	PROJECTION("field-list"),
-	ONCLAUSE("on clause"),
-	WHERECLAUSE("where clause"),
-	GROUPBYCLAUSE("group statement"),
-	HAVINGCLAUSE("having clause"),
-	ORDERBYCLAUSE("order clause");
-
-	private final String external;
-	
-	private LexicalLocation(String ext) {
-		this.external = ext;
+	public UpdatedGlobalVariablesCallback() {
+		// TODO Auto-generated constructor stub
 	}
-	
-	public String getExternal() {
-		return external;
+
+	public void modify(String cmd) {
+		
 	}
 		
 }
