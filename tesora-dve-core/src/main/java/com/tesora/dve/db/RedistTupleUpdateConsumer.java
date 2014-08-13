@@ -21,6 +21,8 @@ package com.tesora.dve.db;
  * #L%
  */
 
+import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.concurrent.*;
 import io.netty.channel.Channel;
 
@@ -46,7 +48,9 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
 	RedistTupleBuilder forwardedResultHandler;
     SynchronousCompletion<RedistTupleBuilder> readySynchronizer;
 
-	final Future<SQLCommand> insertStatementFuture;
+    final CatalogDAO catlogDAO;
+    final DistributionModel distModel;
+    final Future<SQLCommand> insertStatementFuture;
 	final SQLCommand insertOptions;
 	final WorkerGroup targetWG;
 	final PersistentTable targetTable;
@@ -55,9 +59,11 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
 	boolean insertIgnore = false;
 
 	
-	public RedistTupleUpdateConsumer(
-			Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions, 
+	public RedistTupleUpdateConsumer(CatalogDAO catalogDAO, DistributionModel distModel,
+                                     Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions,
 			PersistentTable targetTable, int maxTupleCount, int maxDataSize, WorkerGroup targetWG) {
+        this.catlogDAO = catalogDAO;
+        this.distModel = distModel;
 		this.insertOptions = insertOptions;
 		this.insertStatementFuture = insertStatementFuture;
 		this.targetTable = targetTable;
@@ -92,7 +98,7 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
 
         readySynchronizer = countdownResult;
 
-        forwardedResultHandler = new RedistTupleBuilder(insertStatementFuture, insertOptions, targetTable, maxTupleCount, maxDataSize, countdownResult, targetWG);
+        forwardedResultHandler = new RedistTupleBuilder(catlogDAO,distModel,insertStatementFuture, insertOptions, targetTable, maxTupleCount, maxDataSize, countdownResult, targetWG);
 		forwardedResultHandler.setInsertIgnore(insertIgnore);
 	}
 

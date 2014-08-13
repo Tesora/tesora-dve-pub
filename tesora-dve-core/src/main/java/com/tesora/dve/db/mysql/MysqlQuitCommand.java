@@ -70,7 +70,7 @@ public class MysqlQuitCommand extends MysqlCommand implements
 	@Override
 	void execute(ChannelHandlerContext ctx, Charset charset)
 			throws PEException {
-        MSPComQuitRequestMessage quitRequest = new MSPComQuitRequestMessage();
+        MSPComQuitRequestMessage quitRequest = MSPComQuitRequestMessage.newMessage();
         ctx.write(quitRequest);
     }
 

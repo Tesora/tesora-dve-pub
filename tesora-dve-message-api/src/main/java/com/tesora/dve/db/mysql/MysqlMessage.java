@@ -21,8 +21,11 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import io.netty.buffer.ByteBuf;
+
 /**
  *
  */
 public interface MysqlMessage {
+    void writeTo(ByteBuf destination);
 }

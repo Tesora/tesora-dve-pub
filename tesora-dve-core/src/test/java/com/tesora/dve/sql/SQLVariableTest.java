@@ -305,6 +305,11 @@ public class SQLVariableTest extends SchemaTest {
 		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
 	}
 
+	@Test
+	public void testPE1586() throws Throwable {
+		assertVariableValue("lower_case_file_system", "OFF");
+	}
+
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}

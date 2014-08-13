@@ -40,6 +40,7 @@ import java.nio.charset.CharsetDecoder;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
+import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.PEThreadContext;
@@ -89,12 +90,13 @@ public class MSPCommandHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
+        if (!(msg instanceof MSPMessage)){
+            ctx.fireChannelRead(msg); //not for us, maybe someone further in the stack can handle it.
+            return;
+        }
+
         final SSConnection ssCon = ctx.channel().attr(ConnectionHandlerAdapter.SSCON_KEY).get();
         try {
-            if (!(msg instanceof MSPMessage)){
-                ctx.fireChannelRead(msg); //not for us, maybe someone further in the stack can handle it.
-                return;
-            }
 
             //we start the timer here, outside the submit/callable, so that we include any delay in submission/execution around the thread pool.
             final Timer frontendRequest = timingService.startSubTimer(TimingDesc.FRONTEND_ROUND_TRIP);
@@ -120,6 +122,7 @@ public class MSPCommandHandler extends ChannelInboundHandlerAdapter {
                             } catch (Throwable t) {
                                 ctx.fireExceptionCaught(t);
                             } finally {
+                                ReferenceCountUtil.release(mspMessage);//we processed the message, so we are responsible for cleaning it up.
                                 frontendRequest.end();
                                 timingService.detachTimerOnThread();
                             }

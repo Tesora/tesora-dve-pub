@@ -22,108 +22,113 @@ package com.tesora.dve.db.mysql.portal.protocol;
  */
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
 
 import java.nio.ByteOrder;
 
-import org.apache.log4j.Logger;
-
-import com.tesora.dve.db.mysql.MysqlNativeConstants;
-
+/**
+ *
+ * mysql packets come in two flavors, normal and extended.  Normal packets contain a header, which is the payload length and
+ * sequence number, and then the payload.  A message that is (2^24-1) or larger can be sent by repeatedly sending packets
+ * with increasing sequence numbers, until a final packet is received with a length shorter than (2^24 -1).
+ * <br/>
+ * To send an exact multiple of (2^24-1), the next packet should have a payload length of zero.
+ * <br/>
+ * HEADER, SHORT
+ * HEADER, MAX, HEADER, MAX, HEADER, SHORT
+ *
+ */
 public class Packet {
+    public enum Modifier {HEAPCOPY_ON_READ}
+    static final int HEADER_LENGTH = 4;
+    static final int MAX_PAYLOAD = 0xffffff;
 
-	public static final class ExtendedPacket extends Packet {
+    final ByteBuf header;
+    final CompositeByteBuf payload;
+    Modifier modifier;
+    int totalFullBytes = 0;
+    boolean sealed = false;
 
-		protected ExtendedPacket(final int initialCapacity) {
-			super(initialCapacity);
-		}
+    public Packet(ByteBufAllocator alloc) {
+        this(alloc, null);
+    }
 
-		protected ExtendedPacket(final byte messageType, final int initialCapacity) {
-			super(messageType, initialCapacity);
-		}
+    public Packet(ByteBufAllocator alloc, Modifier mod) {
+        this.modifier = mod;
+        if (modifier == Modifier.HEAPCOPY_ON_READ) {
+            header = Unpooled.buffer(4,4).order(ByteOrder.LITTLE_ENDIAN);
+            payload = Unpooled.compositeBuffer(50);
+        } else {
+            header = alloc.ioBuffer(4,4).order(ByteOrder.LITTLE_ENDIAN);
+            payload = alloc.compositeBuffer(50);
+        }
+    }
 
-		@Override
-		public boolean isExtended() {
-			return true;
-		}
-	}
+    public int getPayloadLength(){
+        return payload.readableBytes();
+    }
 
-	private static final Logger logger = Logger.getLogger(Packet.class);
+    public int getSequenceNumber(){
+        return header.getByte(3);
+    }
 
-	private static final byte DEFAULT_SEQUENCE_ID = 0;
-	private static final byte DEFAULT_MESSAGE_TYPE = -1;
+    public ByteBuf unwrapHeader(){
+        return header;
+    }
 
-	private byte sequenceId;
-	private byte messageType;
-	private ByteBuf payloadBuffer;
+    public ByteBuf unwrapPayload(){
+        if (modifier == Modifier.HEAPCOPY_ON_READ){
+            int maxCapacity = payload.readableBytes();
+            ByteBuf copy = Unpooled.buffer(maxCapacity, maxCapacity);
+            copy.writeBytes(payload);
+            return copy;
+        } else
+            return payload;
+    }
 
-	public static Packet buildPacket(final int payloadLength) {
-		if (payloadLength < MysqlNativeConstants.MAX_PAYLOAD_SIZE) {
-			return new Packet(payloadLength);
-		}
+    public void release(){
+        ReferenceCountUtil.release(header);
+        ReferenceCountUtil.release(payload);
+    }
 
-		return new ExtendedPacket(payloadLength);
-	}
+    public boolean decodeMore(ByteBufAllocator alloc, ByteBuf input){
+        if (! sealed ) {
+            int transferToHeader = Math.min(header.writableBytes(),input.readableBytes());
+            input.readBytes(header,transferToHeader);
 
-	protected Packet(final int initialCapacity) {
-		this(DEFAULT_SEQUENCE_ID, DEFAULT_MESSAGE_TYPE, initialCapacity, ByteOrder.LITTLE_ENDIAN);
-	}
+            if (header.readableBytes() < HEADER_LENGTH){
+                return false;//we don't have enough to read the header.
+            }
 
-	protected Packet(final byte messageType, final int initialCapacity) {
-		this(DEFAULT_SEQUENCE_ID, messageType, initialCapacity, ByteOrder.LITTLE_ENDIAN);
-	}
+            int chunkLength = header.getUnsignedMedium(0);
+            int chunkAlreadyReceived = payload.writerIndex() - totalFullBytes;
+            int chunkExpecting = chunkLength - chunkAlreadyReceived;
+            int payloadTransfer = Math.min(chunkExpecting,input.readableBytes());
 
-	protected Packet(final byte sequenceId, final byte messageType, final int initialCapacity, final ByteOrder order) {
-		this.sequenceId = sequenceId;
-		this.messageType = messageType;
-		this.initializePayloadBuffer(initialCapacity, order);
-	}
+            ByteBuf slice = input.readSlice(payloadTransfer).retain();
 
-	public final void writePacketPayload(final ByteBuf frame, final int payloadLength, final byte sequenceId) {
-		if (logger.isDebugEnabled()) {
-			final int currentWriterIndex = this.payloadBuffer.writerIndex();
-			logger.debug("Writing payload into '" + this.toString() + "': id=" + sequenceId + "; writerIndex=" + currentWriterIndex + "; length="
-					+ payloadLength);
-		}
-		this.sequenceId = sequenceId;
-		this.payloadBuffer.writeBytes(frame, payloadLength);
-	}
+            payload.addComponent(slice);
+            payload.writerIndex( payload.writerIndex() + slice.readableBytes() ); //need to move the writer index, doesn't happen automatically.
 
-	public final byte getSequenceId() {
-		return this.sequenceId;
-	}
+            //recalculate how much we are expecting for this chunk.
+            chunkAlreadyReceived = payload.writerIndex() - totalFullBytes;
+            chunkExpecting = chunkLength - chunkAlreadyReceived;
 
-	public final void setSequenceId(final byte sequenceId) {
-		this.sequenceId = sequenceId;
-	}
+            if (chunkExpecting == 0){
+                //finished this packet, mark how many full packet bytes we've read.
+                totalFullBytes = payload.writerIndex();
+                if (chunkLength < MAX_PAYLOAD){
+                    sealed = true;
+                } else {
+                    //an extended packet was indicated, prepare the read of the next packet.
+                    header.clear();
+                }
+            }
+        }
+        return sealed;
+    }
 
-	public final byte getMessageType() {
-		return this.messageType;
-	}
-
-	public final void setMessageType(final byte messageType) {
-		this.messageType = messageType;
-	}
-
-	/**
-	 * The buffer is not managed by this class past allocation.
-	 * The caller is responsible for further memory management and cleanup.
-	 */
-	public final ByteBuf getPayload() {
-		return this.payloadBuffer;
-	}
-
-	public boolean isExtended() {
-		return false;
-	}
-
-	@Override
-	public String toString() {
-		final Class<?> clazz = this.getClass();
-		return clazz.getSimpleName() + " (" + Integer.toHexString(this.hashCode()) + ")";
-	}
-
-	private void initializePayloadBuffer(final int initialCapacity, final ByteOrder order) {
-		this.payloadBuffer = Unpooled.buffer(initialCapacity + 1).order(order);
-	}
 }

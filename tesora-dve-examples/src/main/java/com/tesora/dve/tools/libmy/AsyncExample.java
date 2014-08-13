@@ -134,7 +134,7 @@ public class AsyncExample {
 		System.out.println("Sleeping 5 sec so all results come back"); //normally you would sync to responses here.
 		TimeUnit.SECONDS.sleep(5);
 		System.out.println("Closing socket.");
-		chan.writeAndFlush(new MSPComQuitRequestMessage());//send friendly hangup message. Probably correct to also wait for server close or an OK packet.
+		chan.writeAndFlush(MSPComQuitRequestMessage.newMessage());//send friendly hangup message. Probably correct to also wait for server close or an OK packet.
 
 		chan.close();
 		chan.closeFuture().sync();

@@ -26,13 +26,15 @@ import io.netty.buffer.ByteBuf;
 import java.nio.charset.Charset;
 
 public class MSPComInitDBRequestMessage extends BaseMSPMessage<String> {
+    public static final MSPComInitDBRequestMessage PROTOTYPE = new MSPComInitDBRequestMessage();
     Charset decodingCharset;
 
-    public MSPComInitDBRequestMessage() {
+
+    protected MSPComInitDBRequestMessage() {
         super();
     }
 
-    public MSPComInitDBRequestMessage(byte sequenceID, ByteBuf backing) {
+    protected MSPComInitDBRequestMessage(byte sequenceID, ByteBuf backing) {
         super(sequenceID, backing);
     }
 
@@ -43,6 +45,7 @@ public class MSPComInitDBRequestMessage extends BaseMSPMessage<String> {
 
     @Override
     public MSPComInitDBRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        source = source.slice();
         return new MSPComInitDBRequestMessage(sequenceID,source);
     }
 
@@ -58,7 +61,7 @@ public class MSPComInitDBRequestMessage extends BaseMSPMessage<String> {
     protected String unmarshall(ByteBuf source) {
         if (decodingCharset == null)
             throw new IllegalStateException("initDB request cannot unmarshall a packet without a decoding charset.");
-
+        source.skipBytes(1);//skip type field.
         return source.toString(decodingCharset);
     }
 

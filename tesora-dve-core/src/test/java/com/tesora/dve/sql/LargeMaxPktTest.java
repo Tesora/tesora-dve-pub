@@ -135,7 +135,7 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 
         ByteBuf dest = Unpooled.buffer(payloadSize);
 
-        MSPComQueryRequestMessage outboundMessage = new MSPComQueryRequestMessage((byte)0, source.slice() );
+        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage((byte)0, source.array() );
         outboundMessage.writeTo(dest);
 
         int lengthOfNonUserdata = 5 + 4 + 4 + 4 + 4;
@@ -162,7 +162,7 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 
         ByteBuf dest = Unpooled.buffer(payloadSize);
 
-        MSPComQueryRequestMessage outboundMessage = new MSPComQueryRequestMessage((byte)0, source.slice() );
+        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage((byte)0, source.array() );
         outboundMessage.writeTo(dest);
 
         int lengthOfNonUserdata = 5 + 4 + 4 + 4 + 4;//last packet has zero length payload

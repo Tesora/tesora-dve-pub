@@ -399,26 +399,27 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			////			System.out.println("insertCollector A " + insertCollector.getPreparedStatement());
 
 
+            // Start the redistribution
+            PersistentTable distributeTableLike = (givenDistributeTempTableLike == null ? givenTargetTable : givenDistributeTempTableLike);
+            KeyValue dv = null;
+            if (givenDistColumns == null)
+                dv = distributeTableLike.getDistValue(ssCon.getCatalogDAO());
+            else
+                dv = new KeyValue(distributeTableLike,distributeTableLike.getRangeID(c),givenDistColumns);
+
             //TODO: the futures handshake between update consumer, forwarder, and tuple builder works, but is pretty messy. -sgossard
 			// Set up the update consumer on the target WG to accept updates
-			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
+			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(c,distributeTableLike.getDistributionModel(), insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
 			updateConsumer.setInsertIgnore(insertIgnore);
 			WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(givenTargetUserDatabase);
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: Setting up the update consumer on target group: " + emptyRequest);
 			targetWG.execute(MappingSolution.AllWorkers, emptyRequest, updateConsumer);
 
-			// Start the redistribution
-			PersistentTable distributeTableLike = (givenDistributeTempTableLike == null ? givenTargetTable : givenDistributeTempTableLike);
-			KeyValue dv = null;
-			if (givenDistColumns == null)
-				dv = distributeTableLike.getDistValue(ssCon.getCatalogDAO());
-			else 
-				dv = new KeyValue(distributeTableLike,distributeTableLike.getRangeID(c),givenDistColumns);
+
 			MysqlRedistTupleForwarder redistForwarder = 
 					new MysqlRedistTupleForwarder(
-							ssCon.getNonTransactionalContext(), c, targetWG,
-							distributeTableLike.getDistributionModel(), dv, givenTableHints,
+							dv, givenTableHints,
 							useResultSetAliases, selectCollector.getPreparedStatement(), updateConsumer.getHandlerFuture());
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: starting redistribution: " + redistForwarder);

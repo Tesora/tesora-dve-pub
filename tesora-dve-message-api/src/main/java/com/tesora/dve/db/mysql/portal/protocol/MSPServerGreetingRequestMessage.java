@@ -27,14 +27,15 @@ import io.netty.channel.ChannelHandlerContext;
 
 import java.nio.ByteOrder;
 
-public class MSPServerGreetingRequestMessage extends BaseMSPMessage implements MSPUntypedMessage {
+public class MSPServerGreetingRequestMessage extends BaseMSPMessage {
+    public static final MSPServerGreetingRequestMessage PROTOTYPE = new MSPServerGreetingRequestMessage();
     public static final byte MYSQL_PROTOCOL_VERSION=10;
 
-    public MSPServerGreetingRequestMessage() {
+    protected MSPServerGreetingRequestMessage() {
         super();
     }
 
-    public MSPServerGreetingRequestMessage(byte sequenceID, ByteBuf backing) {
+    protected MSPServerGreetingRequestMessage(byte sequenceID, ByteBuf backing) {
         super(sequenceID, backing);
     }
 
@@ -87,6 +88,8 @@ public class MSPServerGreetingRequestMessage extends BaseMSPMessage implements M
 
     @Override
     public MSPServerGreetingRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
         return new MSPServerGreetingRequestMessage(sequenceID,source);
     }
 }
