@@ -25,16 +25,55 @@ import java.sql.Types;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.lang.BooleanUtils;
+
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.resultset.collector.ResultCollector.ResultCollectorFactory;
 
 public class BooleanValueConverter extends ValueMetadata<Boolean> {
+	
+	public static enum BooleanToStringConverter {
+		YES_NO_CONVERTER {
+			@Override
+			protected String convert(final boolean in) {
+				return BooleanUtils.toStringYesNo(in);
+			}
+		},
+		ON_OFF_CONVERTER {
+			@Override
+			protected String convert(final boolean in) {
+				return BooleanUtils.toStringOnOff(in);
+			}
+		},
+		BINARY_CONVERTER {
+			@Override
+			protected String convert(boolean in) {
+				return String.valueOf(BooleanUtils.toInteger(in));
+			}
+		};
+		
+		public final String getStringValue(final Boolean in) {
+			return convert(getNullSafeToBoolean(in)).toUpperCase();
+		}
+
+		protected abstract String convert(final boolean in);
+
+		private boolean getNullSafeToBoolean(final Boolean in) {
+			return BooleanUtils.toBoolean(in);
+		}
+	}
 
 	@SuppressWarnings("serial")
 	private final static Set<String> trueMap = new HashSet<String>(){{ add("true"); add("yes"); add("on"); add("1"); }};
 	@SuppressWarnings("serial")
 	private final static Set<String> falseMap = new HashSet<String>(){{ add("false"); add("no"); add("off"); add("0"); }};
+
+	private final BooleanToStringConverter toStringConverter;
+
+	public BooleanValueConverter(final BooleanToStringConverter converter) {
+		this.toStringConverter = converter;
+	}
 
 	@Override
 	public Boolean convertToInternal(String varName, String in) throws PEException {
@@ -48,7 +87,7 @@ public class BooleanValueConverter extends ValueMetadata<Boolean> {
 
 	@Override
 	public String convertToExternal(Boolean in) {
-		return (Boolean.TRUE.equals(in) ? "1" : "0");
+		return BooleanToStringConverter.BINARY_CONVERTER.getStringValue(in);
 	}
 
 	@Override
@@ -63,7 +102,7 @@ public class BooleanValueConverter extends ValueMetadata<Boolean> {
 
 	@Override
 	public String toRow(Boolean in) {
-		return (Boolean.TRUE.equals(in) ? "YES" : "NO");
+		return toStringConverter.getStringValue(in);
 	}
 
 }

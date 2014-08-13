@@ -54,11 +54,12 @@ import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.schema.modifiers.EngineTableModifier.EngineTag;
 import com.tesora.dve.variable.VariableConstants;
+import com.tesora.dve.variables.BooleanValueConverter.BooleanToStringConverter;
 
 public class KnownVariables implements VariableConstants {
 
 	public static final ValueMetadata<Long> integralConverter = new IntegralValueConverter();
-	public static final ValueMetadata<Boolean> booleanConverter = new BooleanValueConverter();
+	public static final ValueMetadata<Boolean> booleanConverter = new BooleanValueConverter(BooleanToStringConverter.YES_NO_CONVERTER);
 	public static final ValueMetadata<Double> floatingPointConverter = new FloatingPointValueConverter();
 	public static final ValueMetadata<String> stringConverter = new StringValueConverter();
 	public static final ValueMetadata<String> literalConverter = new LiteralValueConverter();
@@ -962,6 +963,11 @@ public class KnownVariables implements VariableConstants {
 				booleanConverter,
 				bothScope,
 				Boolean.TRUE,
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+		new VariableHandler<Boolean>("lower_case_file_system",
+				new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
+				bothScope,
+				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
 	};
 
