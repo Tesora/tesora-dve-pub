@@ -111,11 +111,11 @@ public class KnownVariables implements VariableConstants {
 			SlowQueryLogger.enableSlowQueryLogger(newValue);
 		}
 	};
-	public static final VariableHandler<Long> LONG_PLAN_STEP_TIME =
-			new VariableHandler<Long>(LONG_PLAN_STEP_TIME_NAME,
-					integralConverter,
+	public static final VariableHandler<Double> LONG_PLAN_STEP_TIME =
+			new VariableHandler<Double>(LONG_PLAN_STEP_TIME_NAME,
+					floatingPointConverter,
 					globalScope,
-					3L,
+					new Double(3.0),
 					dveOnly,
 					"Minimum per step trigger duration for slow query log");
 	public static final VariableHandler<Double> LONG_QUERY_TIME =
