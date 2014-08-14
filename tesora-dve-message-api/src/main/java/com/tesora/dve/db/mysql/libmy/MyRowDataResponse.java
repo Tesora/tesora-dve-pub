@@ -30,7 +30,6 @@ import java.util.ListIterator;
 
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultColumn;
 
@@ -45,7 +44,7 @@ public class MyRowDataResponse extends MyResponseMessage {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		ListIterator<ResultColumn> cv = columnValues.listIterator();
 		int colIdx = 1;
 		while (cv.hasNext()) {

@@ -66,7 +66,7 @@ public class MyReplEvent extends MyEventMessage {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeInt((int)commonHdr.getTimestamp());
 		cb.writeByte(commonHdr.getType());
 		cb.writeInt((int)commonHdr.getServerId());

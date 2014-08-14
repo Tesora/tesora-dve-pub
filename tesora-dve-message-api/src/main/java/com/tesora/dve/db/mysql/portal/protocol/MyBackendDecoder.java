@@ -21,7 +21,9 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.MysqlMessage;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.ByteToMessageDecoder;
 
@@ -31,7 +33,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicReference;
 
-import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.clock.NoopTimingService;
@@ -60,6 +61,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 	protected static final Logger logger = Logger.getLogger(MyBackendDecoder.class);
     protected static final ParseStrategy UNSOLICITED = new UnsolicitedMessageParser();
 
+    CachedAppendBuffer bufferCache = new CachedAppendBuffer();
     Packet mspPacket;
 
 	String socketDesc;
@@ -95,6 +97,15 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             MyBackendDecoder.this.decodeLast(ctx, in, out);
         }
     };
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        try{
+            super.channelInactive(ctx);
+        } finally {
+            bufferCache.releaseSlab();
+        }
+    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -137,7 +148,27 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 parserStack.add(responseParseStrategy);
             }
         }
-        super.write(ctx, msg, promise);
+
+        try {
+        if (msg instanceof MysqlMessage){
+            MysqlMessage mysql = (MysqlMessage)msg;
+
+            ByteBuf append = bufferCache.startAppend(ctx);
+            ByteBuf payloadHolder = Unpooled.buffer();
+            mysql.marshallPayload(payloadHolder); //copy full payload to heap buffer (might be an extended payload)
+            int sequenceStart = 0; //right now all outbound messages on the backend are full requests, and start a new sequence.
+            int nextSequence = Packet.encodeFullMessage(append, sequenceStart, payloadHolder); //writes out header/payload and deals with extended packets.
+            ByteBuf fullyEncodedSlice = bufferCache.sliceWritableData();
+
+            if (responseParseStrategy != null) //if a response is expected, save the sequence number the response should start with.
+                responseParseStrategy.setNextSequenceNumber(nextSequence);
+
+            super.write(ctx, fullyEncodedSlice,promise);
+        } else
+            super.write(ctx, msg, promise);
+        } catch (Exception e){
+            logger.warn("Problem during encoding of message." , e);
+        }
         backendEncoding.end(
             socketDesc,
             (msg == null ? "null" : msg.getClass().getName())
@@ -167,12 +198,18 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             logger.debug("processing packet, "+in);
 
         try {
+            //get a contextual parser that decodes data based on what was previously transmitted, never null.
+            ParseStrategy responseParser = lookupParser();
+            int expectedSequence = responseParser.nextSequenceNumber();
 
             if (mspPacket == null)
-                mspPacket = new Packet(ctx.alloc(), Packet.Modifier.HEAPCOPY_ON_READ);
+                mspPacket = new Packet(ctx.alloc(), expectedSequence, Packet.Modifier.HEAPCOPY_ON_READ, "backend");
 
             if (!mspPacket.decodeMore(ctx.alloc(),in)) //deals with framing and extended packets.
                 return;
+
+            //we got a packet, maybe extended.  update the next expected sequence (might be > +1, if extended)
+            responseParser.setNextSequenceNumber( mspPacket.getNextSequenceNumber() );
 
             ByteBuf leHeader = mspPacket.unwrapHeader().order(ByteOrder.LITTLE_ENDIAN).retain();
             ByteBuf lePayload = mspPacket.unwrapPayload().order(ByteOrder.LITTLE_ENDIAN).retain();//retain a separate reference to the payload.
@@ -180,8 +217,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             mspPacket = null;
 
 
-            //get a contextual parser that decodes data based on what was previously transmitted, never null.
-            ParseStrategy responseParser = lookupParser();
+
 
             //ok, we aren't waiting for a packet anymore, end the wait timer, start the decode timer.
             responseParser.endAtomicWaitTimer();
@@ -241,12 +277,15 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
         void startAtomicWaitTimer();
         void endAtomicWaitTimer();
+        void setNextSequenceNumber(int seq);
+        int nextSequenceNumber();
     }
 
     static abstract class BaseParseStrategy implements ParseStrategy {
         String socketDesc;
         Timer parent;
         AtomicReference<Timer> waitTimer = new AtomicReference<>(null);
+        int nextSeq;
 
         public void setSocketDesc(String desc){
             this.socketDesc = desc;
@@ -279,6 +318,15 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 existingWait.end(
 
                 );
+        }
+
+        @Override
+        public void setNextSequenceNumber(int seq) {
+            this.nextSeq = seq;
+        }
+
+        public int nextSequenceNumber(){
+            return this.nextSeq;
         }
     }
 

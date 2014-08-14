@@ -26,7 +26,6 @@ import io.netty.buffer.ByteBuf;
 import org.apache.log4j.Logger;
 
 import com.google.common.primitives.UnsignedLong;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
 public class MyRandLogEvent extends MyLogEventPacket {
@@ -47,7 +46,7 @@ public class MyRandLogEvent extends MyLogEventPacket {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeLong(seed1.longValue());
 		cb.writeLong(seed2.longValue());
 	}

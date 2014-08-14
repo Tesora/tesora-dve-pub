@@ -34,5 +34,5 @@ public interface MSPMessage extends MysqlMessage, ReferenceCounted {
     void setSequenceID(byte sequence);
     MSPMessage newPrototype(byte sequenceID, ByteBuf source);
 
-    void writeTo(ByteBuf destination);
+    int writeTo(ByteBuf destination);
 }

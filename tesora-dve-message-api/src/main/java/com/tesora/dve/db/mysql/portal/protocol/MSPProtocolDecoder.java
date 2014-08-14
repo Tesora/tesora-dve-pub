@@ -60,6 +60,7 @@ public class MSPProtocolDecoder extends ByteToMessageDecoder {
     private MyDecoderState currentState;
 
     private Packet mspPacket;
+    public boolean firstPacket = true;
 
 	public MSPProtocolDecoder(MyDecoderState initialState) throws PEException {
 		super();
@@ -84,7 +85,10 @@ public class MSPProtocolDecoder extends ByteToMessageDecoder {
 	protected void decode(final ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
 	    try {
             if (mspPacket == null)
-                mspPacket = new Packet(ctx.alloc(), Packet.Modifier.HEAPCOPY_ON_READ);
+                mspPacket = new Packet(ctx.alloc(), firstPacket ? 1 : 0, Packet.Modifier.HEAPCOPY_ON_READ,"frontend");
+
+            //deals with the handshake packet
+            firstPacket = false;
 
             if (!mspPacket.decodeMore(ctx.alloc(),in))
                 return;

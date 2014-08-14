@@ -81,7 +81,7 @@ public class MyQueryLogEvent extends MyLogEventPacket {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeInt((int)getSlaveProxyId());
 		cb.writeInt((int)getExecTime());
 		cb.writeByte(getDbNameLen());

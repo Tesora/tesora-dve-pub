@@ -26,6 +26,8 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteOrder;
 
@@ -42,6 +44,7 @@ import java.nio.ByteOrder;
  *
  */
 public class Packet {
+    static final Logger logger = LoggerFactory.getLogger(Packet.class);
     public enum Modifier {HEAPCOPY_ON_READ}
     static final int HEADER_LENGTH = 4;
     static final int MAX_PAYLOAD = 0xffffff;
@@ -49,15 +52,15 @@ public class Packet {
     final ByteBuf header;
     final CompositeByteBuf payload;
     Modifier modifier;
+    int expectedSequence;
     int totalFullBytes = 0;
     boolean sealed = false;
+    String context;
 
-    public Packet(ByteBufAllocator alloc) {
-        this(alloc, null);
-    }
-
-    public Packet(ByteBufAllocator alloc, Modifier mod) {
+    public Packet(ByteBufAllocator alloc, int expectedSequence, Modifier mod, String context) {
+        this.expectedSequence = expectedSequence;
         this.modifier = mod;
+        this.context = context;
         if (modifier == Modifier.HEAPCOPY_ON_READ) {
             header = Unpooled.buffer(4,4).order(ByteOrder.LITTLE_ENDIAN);
             payload = Unpooled.compositeBuffer(50);
@@ -73,6 +76,10 @@ public class Packet {
 
     public int getSequenceNumber(){
         return header.getByte(3);
+    }
+
+    public int getNextSequenceNumber(){
+        return (0xFF) & (getSequenceNumber() + 1);
     }
 
     public ByteBuf unwrapHeader(){
@@ -104,6 +111,12 @@ public class Packet {
             }
 
             int chunkLength = header.getUnsignedMedium(0);
+            int codedSequence = header.getUnsignedByte(3);
+            if (codedSequence != expectedSequence){
+                String message = context + " , sequence problem decoding packet, expected=" + expectedSequence + " , decoded=" + codedSequence;
+                logger.warn(message);
+            }
+
             int chunkAlreadyReceived = payload.writerIndex() - totalFullBytes;
             int chunkExpecting = chunkLength - chunkAlreadyReceived;
             int payloadTransfer = Math.min(chunkExpecting,input.readableBytes());
@@ -118,6 +131,7 @@ public class Packet {
             chunkExpecting = chunkLength - chunkAlreadyReceived;
 
             if (chunkExpecting == 0){
+                expectedSequence++;
                 //finished this packet, mark how many full packet bytes we've read.
                 totalFullBytes = payload.writerIndex();
                 if (chunkLength < MAX_PAYLOAD){
@@ -129,6 +143,42 @@ public class Packet {
             }
         }
         return sealed;
+    }
+
+    public static int encodeFullMessage(ByteBuf destination, int startingSequenceNumber, ByteBuf payload){
+        ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
+
+        //TODO: this loop is identical to the one below, except it doesn't consume the source or update the destination.  Consolidate?
+        //calculate the size of the final encoding, so we resize the destination at most once.
+        int payloadRemaining = payload.readableBytes();
+        int outputSize = 0;
+        do {
+            outputSize += 4; //header
+            int chunkLength = Math.min(payloadRemaining,MAX_PAYLOAD);
+            outputSize += chunkLength;
+            payloadRemaining -= chunkLength;
+            if (chunkLength == MAX_PAYLOAD)
+                outputSize += 4; //need one more packet if last fragment is exactly 0xFFFF long.
+        } while (payloadRemaining > 0);
+
+        leBuf.ensureWritable(outputSize);
+
+        int sequenceIter = startingSequenceNumber;
+        boolean lastChunkWasMaximumLength;
+        do {
+            int initialSize = payload.readableBytes();
+            int maxSlice = MAX_PAYLOAD;
+            int sendingPayloadSize = Math.min(maxSlice, initialSize);
+            lastChunkWasMaximumLength = (sendingPayloadSize == maxSlice); //need to send a zero length payload if last fragment was exactly 0xFFFF long.
+
+            ByteBuf nextChunk = payload.readSlice(sendingPayloadSize);
+            leBuf.writeMedium(sendingPayloadSize);
+            leBuf.writeByte(sequenceIter);
+            leBuf.writeBytes(nextChunk);
+
+            sequenceIter++;
+        } while (payload.readableBytes() > 0 || lastChunkWasMaximumLength);
+        return sequenceIter;  //returns the next usable/expected sequence number.
     }
 
 }

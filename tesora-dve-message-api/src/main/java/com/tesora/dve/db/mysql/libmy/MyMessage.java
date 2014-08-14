@@ -23,8 +23,6 @@ package com.tesora.dve.db.mysql.libmy;
 
 
 import com.tesora.dve.db.mysql.MysqlMessage;
-import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.ByteOrder;
@@ -70,7 +68,7 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
         destination.setByte(offset + 3,sequence);
     }
 
-    public void marshallPayload(ByteBuf destination) throws PEException {
+    public void marshallPayload(ByteBuf destination) {
         destination = destination.order(ByteOrder.LITTLE_ENDIAN);
 
         if ( this.isMessageTypeEncoded() )
@@ -79,15 +77,13 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
         this.marshallMessage(destination);
     }
 
-    public void writeTo(ByteBuf destination) {
+    public int writeTo(ByteBuf destination) {
         int startIndex = this.marshalZeroHeader(destination);
-        try {
-            this.marshallPayload(destination);
-        } catch (PEException e) {
-            throw new PECodingException(e);
-        }
+        this.marshallPayload(destination);
+
         int size = destination.writerIndex() - startIndex - MyMessage.MESSAGE_HEADER_LENGTH;
         this.updateHeader(destination, startIndex, size, this.getPacketNumber());
+        return this.getPacketNumber() + 1;
     }
 	
 	@Override

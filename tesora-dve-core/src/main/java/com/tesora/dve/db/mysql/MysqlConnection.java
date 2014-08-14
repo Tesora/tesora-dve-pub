@@ -156,7 +156,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
                 ch.pipeline()
                         .addLast(authHandler)
-                        .addLast(MSPEncoder.class.getSimpleName(), MSPEncoder.getInstance())
                         .addLast(MyBackendDecoder.class.getSimpleName(), new MyBackendDecoder(site.getName(), charsetHelper))
                         .addLast(StreamValve.class.getSimpleName(), new StreamValve())
                         .addLast(MysqlCommandSenderHandler.class.getSimpleName(), new MysqlCommandSenderHandler(site.getName()));

@@ -26,7 +26,6 @@ import io.netty.util.CharsetUtil;
 
 import com.tesora.dve.db.mysql.libmy.MyMessageType;
 import com.tesora.dve.db.mysql.libmy.MyRequestMessage;
-import com.tesora.dve.exceptions.PEException;
 
 public class MyComBinLogDumpRequest extends MyRequestMessage {
 
@@ -55,7 +54,7 @@ public class MyComBinLogDumpRequest extends MyRequestMessage {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeInt((int) binlogPosition);
 		cb.writeZero(2); 	// binlog_flags
 		cb.writeInt(slaveServerID);

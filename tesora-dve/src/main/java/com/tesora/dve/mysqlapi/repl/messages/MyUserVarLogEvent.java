@@ -256,7 +256,7 @@ public class MyUserVarLogEvent extends MyLogEventPacket {
 	}
 	
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeInt(variableNameLen);
 		cb.writeBytes(variableName.getBytes(CharsetUtil.UTF_8));
 		cb.writeByte(nullByte);

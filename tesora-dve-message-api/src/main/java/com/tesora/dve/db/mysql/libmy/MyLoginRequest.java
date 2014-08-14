@@ -25,7 +25,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.util.CharsetUtil;
 
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 
 public class MyLoginRequest extends MyMessage {
@@ -143,7 +142,7 @@ public class MyLoginRequest extends MyMessage {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		boolean hasConnectDatabase = false;
 		if ( database != null ) {
 			clientCapabilities = clientCapabilities + ClientCapabilities.CLIENT_CONNECT_WITH_DB;

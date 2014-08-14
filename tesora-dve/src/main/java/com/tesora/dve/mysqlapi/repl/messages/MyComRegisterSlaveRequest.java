@@ -26,7 +26,6 @@ import io.netty.buffer.ByteBuf;
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import com.tesora.dve.db.mysql.libmy.MyMessageType;
 import com.tesora.dve.db.mysql.libmy.MyRequestMessage;
-import com.tesora.dve.exceptions.PEException;
 
 public class MyComRegisterSlaveRequest extends MyRequestMessage {
 	private int slaveServerId;
@@ -45,7 +44,7 @@ public class MyComRegisterSlaveRequest extends MyRequestMessage {
 	}
 	
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeInt(slaveServerId);
 		MysqlAPIUtils.putLengthCodedString(cb, reportHost, true /* codeNullasZero */);
 		MysqlAPIUtils.putLengthCodedString(cb, reportUser, true /* codeNullasZero */);

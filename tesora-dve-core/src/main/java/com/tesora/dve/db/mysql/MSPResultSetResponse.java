@@ -39,7 +39,7 @@ public class MSPResultSetResponse extends MyResponseMessage {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		MysqlAPIUtils.putLengthCodedLong(cb, fieldCount);
 	}
 

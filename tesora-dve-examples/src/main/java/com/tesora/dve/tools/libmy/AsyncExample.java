@@ -46,7 +46,6 @@ import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQuitRequestMessage;
-import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
 import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 
@@ -78,7 +77,6 @@ public class AsyncExample {
 
 						ch.pipeline()
 								.addLast(authHandler)
-								.addLast(MSPEncoder.class.getSimpleName(), MSPEncoder.getInstance())
 								.addLast(MyBackendDecoder.class.getSimpleName(), new MyBackendDecoder(charsetHelper))
 								.addLast(new ChannelDuplexHandler() {
 

@@ -86,7 +86,7 @@ public class MyExecuteLoadLogEvent extends MyLogEventPacket {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeInt(threadId);
 		cb.writeInt(time);
 		cb.writeByte(dbLen);

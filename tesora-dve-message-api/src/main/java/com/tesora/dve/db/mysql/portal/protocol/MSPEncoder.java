@@ -23,17 +23,14 @@ package com.tesora.dve.db.mysql.portal.protocol;
 
 
 import com.tesora.dve.db.mysql.MysqlMessage;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyResponseMessage;
 import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.EncoderException;
 import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.internal.PlatformDependent;
 
 import java.nio.ByteOrder;
 import org.apache.log4j.Logger;
@@ -42,11 +39,8 @@ import com.tesora.dve.exceptions.PEException;
 
 public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
     private static final Logger logger = Logger.getLogger(MSPEncoder.class);
-    public static final int SLAB_SIZE = 1024 * 8;//start with a 8K slab for transcoding outbound writes.
 
-    static boolean PREFER_DIRECT = PlatformDependent.directBufferPreferred();
-
-    ByteBuf cachedSlab;
+    CachedAppendBuffer appender = new CachedAppendBuffer();
 
     @Override
     protected void encode(ChannelHandlerContext ctx, MysqlMessage msg, ByteBuf out) throws Exception {
@@ -55,35 +49,17 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
         try{
             msg.writeTo(leBuf);
         } finally {
-            ReferenceCountUtil.release(msg);
+            ReferenceCountUtil.release(msg);  //since we are forwarding a bytebuf not the original message, we need to release the message.
         }
     }
 
-
-    private void allocateSlabIfNeeded(ChannelHandlerContext ctx) {
-        if (cachedSlab != null) //we already have a slab.
-            return;
-
-        if (PREFER_DIRECT) {
-            cachedSlab = ctx.alloc().ioBuffer(SLAB_SIZE);
-        } else {
-            cachedSlab = ctx.alloc().heapBuffer(SLAB_SIZE);
-        }
-
-        cachedSlab = cachedSlab.order(ByteOrder.LITTLE_ENDIAN);
-    }
-
-    private void releaseSlab() {
-        ReferenceCountUtil.release(cachedSlab);
-        cachedSlab = null;
-    }
 
     @Override
     public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
         try {
             super.disconnect(ctx, promise);
         } finally {
-            releaseSlab();
+            appender.releaseSlab();
         }
     }
 
@@ -92,7 +68,7 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
         try {
             super.handlerRemoved(ctx);
         } finally {
-            releaseSlab();
+            appender.releaseSlab();
         }
     }
 
@@ -105,25 +81,10 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
 				@SuppressWarnings("unchecked")
                 MysqlMessage cast = (MysqlMessage) msg;
 
-                allocateSlabIfNeeded(ctx);
-
-                //if we don't have any outbound slices holding references, reset to full slab.
-				if (cachedSlab.refCnt() == 1){
-                    cachedSlab.clear();
-                }
-
-                int startingWriterIndex = cachedSlab.writerIndex();
-                encode(ctx,cast,cachedSlab);
-                int writtenLength = cachedSlab.writerIndex() - startingWriterIndex;
-
-				if (writtenLength > 0) {
-                    ByteBuf sliceWritten = cachedSlab.slice(startingWriterIndex, writtenLength);
-                    sliceWritten.retain(); //slices aren't retained by default, increments the ref count on the parent buffer.
-					ctx.write(sliceWritten, promise);
-                    //TODO: we may want to consider recycling large slabs, to avoid holding an unusually big bufferindefinitely. -sgossard
-				} else {
-					ctx.write(Unpooled.EMPTY_BUFFER, promise);
-				}
+                ByteBuf appendableView = appender.startAppend(ctx);
+                encode(ctx,cast,appendableView);
+                ByteBuf writableSlice = appender.sliceWritableData();
+				ctx.write(writableSlice, promise);
 			} else {
 				ctx.write(msg, promise);
 			}
@@ -134,7 +95,7 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
 		}
 	}
 
-    private void logMessageIfNeeded(MysqlMessage message) {
+    public static void logMessageIfNeeded(MysqlMessage message) {
         if (message instanceof MyResponseMessage) {
 
             MyResponseMessage response = (MyResponseMessage) message;

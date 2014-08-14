@@ -50,7 +50,7 @@ public class MyAppendBlockLogEvent extends MyLogEventPacket {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeInt(fileId);
 		cb.writeBytes(dataBlock);
 	}

@@ -37,7 +37,7 @@ public class MyEOFPktResponse extends MyResponseMessage {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeByte(EOFPKK_FIELD_COUNT);
 		cb.writeShort(warningCount);
 		cb.writeShort(statusFlags);

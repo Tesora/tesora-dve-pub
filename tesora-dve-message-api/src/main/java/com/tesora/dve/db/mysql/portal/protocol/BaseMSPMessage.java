@@ -73,29 +73,14 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
         throw new UnsupportedOperationException();
     }
 
-    public void writeTo(ByteBuf destination){
+    public void marshallPayload(ByteBuf destination){
+        ByteBuf sliceContents = readBuffer().slice();
+        destination.writeBytes(sliceContents);
+    }
+
+    public int writeTo(ByteBuf destination){
         ByteBuf sliceContents = readBuffer().slice().order(ByteOrder.LITTLE_ENDIAN);
-
-        ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
-        leBuf.ensureWritable(sliceContents.readableBytes() + 4);
-
-        int sequenceIter = this.getSequenceID();
-        boolean lastChunkWasMaximumLength;
-        do {
-            int initialSize = sliceContents.readableBytes();
-            int maxSlice = MAX_MYSQL_PAYLOAD_SIZE;
-            int sendingPayloadSize = Math.min(maxSlice, initialSize);//will send a zero payload packet if packet is exact multiple of MAX_MYSQL_PAYLOAD_SIZE.
-            lastChunkWasMaximumLength = (sendingPayloadSize == maxSlice);
-
-            ByteBuf nextChunk = sliceContents.readSlice(sendingPayloadSize);
-            int payloadLength = nextChunk.readableBytes();
-
-            leBuf.writeMedium(payloadLength);
-            leBuf.writeByte(sequenceIter);
-            leBuf.writeBytes(nextChunk);
-
-            sequenceIter++;
-        } while (sliceContents.readableBytes() > 0 || lastChunkWasMaximumLength);
+        return Packet.encodeFullMessage(destination, this.sequenceID, sliceContents);
     }
 
     protected S readState() {

@@ -46,7 +46,7 @@ public class MyRotateLogEvent extends MyLogEventPacket {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeLong(position);
 		cb.writeBytes(newLogFileName.getBytes(CharsetUtil.UTF_8));
 	}

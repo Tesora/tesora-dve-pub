@@ -25,7 +25,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.util.CharsetUtil;
 
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
 
 public class MyLoadDataResponse extends MyResponseMessage {
 
@@ -36,7 +35,7 @@ public class MyLoadDataResponse extends MyResponseMessage {
 	}
 	
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeByte(0xFB);
 		cb.writeBytes(fileName.getBytes(CharsetUtil.UTF_8));
 	}

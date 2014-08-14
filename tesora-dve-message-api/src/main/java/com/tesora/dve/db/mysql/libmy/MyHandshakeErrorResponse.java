@@ -48,7 +48,7 @@ public class MyHandshakeErrorResponse extends MyErrorResponse {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeByte(ERRORPKT_FIELD_COUNT);
 		cb.writeShort((short) getErrorNumber());
 		cb.writeBytes(getErrorMsg().getBytes(charset));

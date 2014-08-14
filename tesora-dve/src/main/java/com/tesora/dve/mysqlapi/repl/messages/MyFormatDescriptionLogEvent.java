@@ -88,7 +88,7 @@ public class MyFormatDescriptionLogEvent extends MyLogEventPacket {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeShort(binaryLogVersion);
 		cb.writeBytes(serverVersion.getBytes(CharsetUtil.UTF_8));
 		cb.writeInt((int) createTime);
