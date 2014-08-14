@@ -310,6 +310,22 @@ public class SQLVariableTest extends SchemaTest {
 		assertVariableValue("lower_case_file_system", "OFF");
 	}
 
+	@Test
+	public void testPE1587() throws Throwable {
+		assertVariableValue("have_query_cache", "YES");
+	}
+
+	@Test
+	public void testPE1589() throws Throwable {
+		assertVariableValue("have_ssl", "NO");
+		assertVariableValue("have_openssl", "NO");
+	}
+
+	@Test
+	public void testPE1590() throws Throwable {
+		assertVariableValue("thread_handling", "one-thread-per-connection");
+	}
+
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}

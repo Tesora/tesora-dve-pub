@@ -502,4 +502,10 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		tests.add(new StatementMirrorProc("drop table pe1584"));
 		runTest(tests);
 	}
+
+	@Ignore
+	@Test
+	public void testPE1591() throws Throwable {
+		runTest(new StatementMirrorFun("select convert(@@version_compile_os using latin1) NOT IN (\"Win32\",\"Win64\",\"Windows\")"));
+	}
 }

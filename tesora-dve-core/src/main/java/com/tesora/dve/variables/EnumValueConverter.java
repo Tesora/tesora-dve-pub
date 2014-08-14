@@ -35,7 +35,7 @@ public class EnumValueConverter<E extends Enum<E>> extends ValueMetadata<E> {
 	public EnumValueConverter(E[] values) {
 		universe = new LinkedHashMap<String,E>();
 		for(E e : values) {
-			universe.put(e.name(), e);
+			universe.put(e.toString(), e);
 		}
 	}
 	
@@ -50,7 +50,7 @@ public class EnumValueConverter<E extends Enum<E>> extends ValueMetadata<E> {
 	
 	@Override
 	public String convertToExternal(E in) {
-		return String.format("'%s'", in.name());
+		return String.format("'%s'", in.toString());
 	}
 
 	@Override
