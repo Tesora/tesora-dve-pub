@@ -90,8 +90,8 @@ import com.tesora.dve.sql.infoschema.show.CreateDatabaseInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowColumnInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowOptions;
-import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowVariablesInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.MigrationException;
@@ -322,6 +322,7 @@ import com.tesora.dve.sql.statement.session.XARecoverTransactionStatement;
 import com.tesora.dve.sql.statement.session.XARollbackTransactionStatement;
 import com.tesora.dve.sql.template.TemplateManager;
 import com.tesora.dve.sql.transform.CopyVisitor;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PassThroughCommand.Command;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
@@ -336,7 +337,6 @@ import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.SiteManagerCommand;
 import com.tesora.dve.worker.WorkerGroup;
-import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 
 // holds the bridge methods from antlr tree nodes to our nodes
 public class TranslatorUtils extends Utils implements ValueSource {
@@ -2390,7 +2390,20 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (kind == null) {
 			if (fat != null) {
 				if (sat != null) {
-					kind = VariableScopeKind.SESSION;
+					/*
+					 * MySQL returns the session value if it exists and the
+					 * global value otherwise.
+					 */
+					final String varName = n.getUnqualified().getUnquotedName().get();
+					final VariableHandler<?> exists =
+							Singletons.require(HostService.class).getVariableManager().lookup(varName);
+					if (exists != null) {
+						if (exists.getScopes().contains(VariableScopeKind.SESSION)) {
+							kind = VariableScopeKind.SESSION;
+						} else {
+							kind = VariableScopeKind.GLOBAL;
+						}
+					}
 				} else {
 					kind = VariableScopeKind.USER;
 				}
