@@ -46,7 +46,6 @@ import org.junit.BeforeClass;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEBaseTest;
 import com.tesora.dve.common.PEFileUtils;
-import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.PersistentSite;
@@ -491,7 +490,7 @@ public class PETest extends PEBaseTest {
 				Map<VariableHandler,String> cvals = buildValues(helper);
 				for(VariableHandler vh : initialValues.keySet()) {
 					if (!ObjectUtils.equals(initialValues.get(vh), cvals.get(vh))) {
-						helper.executeQuery("set global " + vh + " = " + PEStringUtils.singleQuote(initialValues.get(vh)));
+						helper.executeQuery("set global " + vh + " = " + vh.toExternal(vh.toInternal(initialValues.get(vh))));
 					}
 				}
 				counter = 0;
