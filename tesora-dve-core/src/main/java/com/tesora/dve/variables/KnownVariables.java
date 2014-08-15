@@ -786,34 +786,7 @@ public class KnownVariables implements VariableConstants {
 				Boolean.FALSE,
 				emulated),
 		new VariableHandler<MySQLTransactionIsolation>("tx_isolation",
-				new ValueMetadata<MySQLTransactionIsolation>() {
-
-					@Override
-					public MySQLTransactionIsolation convertToInternal(String varName, String in) throws PEException {
-						String raw = stringConverter.convertToInternal(varName, in);
-						MySQLTransactionIsolation isol = MySQLTransactionIsolation.find(raw);
-						if (isol == null)
-							throw new PEException("Invalid value for '" + varName + "' (allowed values are " + 
-									StringUtils.join(MySQLTransactionIsolation.getExternalValuesAsList(), ", ") + ")");
-						return isol;
-					}
-
-					@Override
-					public String convertToExternal(MySQLTransactionIsolation in) {
-						if (in == null) return "";
-						return String.format("'%s'", in.getExternalName());
-					}
-
-					@Override
-					public String toRow(MySQLTransactionIsolation in) {
-						return in.getExternalName();
-					}
-
-					@Override
-					public String getTypeName() {
-						return "varchar";
-					}
-				},
+				new EnumValueConverter<MySQLTransactionIsolation>(MySQLTransactionIsolation.values()),
 				bothScope,
 				MySQLTransactionIsolation.READ_COMMITTED,
 				emulated),

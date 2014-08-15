@@ -66,6 +66,11 @@ public enum MySQLTransactionIsolation {
 		return null;
 	}
 	
+	@Override()
+	public String toString() {
+		return externalName;
+	}
+
 	// for error handing
 	public static List<String> getExternalValuesAsList() {
 		ArrayList<String> out = new ArrayList<String>(values().length);
