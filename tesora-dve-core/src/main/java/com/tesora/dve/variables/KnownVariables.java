@@ -971,6 +971,11 @@ public class KnownVariables implements VariableConstants {
 				new EnumValueConverter<ThreadHandlingMode>(ThreadHandlingMode.values()),
 				globalScope,
 				ThreadHandlingMode.ONE_THREAD_PER_CONNECTION,
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+		new VariableHandler<Boolean>("have_partitioning",
+				booleanConverter,
+				globalScope,
+				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
 	};
 
