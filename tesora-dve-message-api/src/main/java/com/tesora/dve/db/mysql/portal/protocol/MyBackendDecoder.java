@@ -23,7 +23,6 @@ package com.tesora.dve.db.mysql.portal.protocol;
 
 import com.tesora.dve.db.mysql.MysqlMessage;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.ByteToMessageDecoder;
 
@@ -152,12 +151,11 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         try {
         if (msg instanceof MysqlMessage){
             MysqlMessage mysql = (MysqlMessage)msg;
-
-            ByteBuf append = bufferCache.startAppend(ctx);
-            ByteBuf payloadHolder = Unpooled.buffer();
-            mysql.marshallPayload(payloadHolder); //copy full payload to heap buffer (might be an extended payload)
             int sequenceStart = 0; //right now all outbound messages on the backend are full requests, and start a new sequence.
-            int nextSequence = Packet.encodeFullMessage(append, sequenceStart, payloadHolder); //writes out header/payload and deals with extended packets.
+            ByteBuf append = bufferCache.startAppend(ctx);
+
+            int nextSequence = Packet.encodeFullMessage(sequenceStart, mysql, append);
+
             ByteBuf fullyEncodedSlice = bufferCache.sliceWritableData();
 
             if (responseParseStrategy != null) //if a response is expected, save the sequence number the response should start with.

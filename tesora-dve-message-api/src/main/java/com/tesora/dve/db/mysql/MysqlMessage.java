@@ -30,5 +30,7 @@ public interface MysqlMessage {
 
     //returns sequence number to use for next inbound or outbound packet..
     void marshallPayload(ByteBuf destination);
+
+    //writes out the header(s) and payload, dealing with extended packets.  returns the next usable sequence number.
     int writeTo(ByteBuf destination);
 }

@@ -79,8 +79,8 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
     }
 
     public int writeTo(ByteBuf destination){
-        ByteBuf sliceContents = readBuffer().slice().order(ByteOrder.LITTLE_ENDIAN);
-        return Packet.encodeFullMessage(destination, this.sequenceID, sliceContents);
+        //will call marshallPayload to get the payload contents.
+        return Packet.encodeFullMessage(this.sequenceID,this,destination);
     }
 
     protected S readState() {

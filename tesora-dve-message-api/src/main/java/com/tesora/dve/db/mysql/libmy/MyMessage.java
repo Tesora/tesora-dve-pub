@@ -23,6 +23,7 @@ package com.tesora.dve.db.mysql.libmy;
 
 
 import com.tesora.dve.db.mysql.MysqlMessage;
+import com.tesora.dve.db.mysql.portal.protocol.Packet;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.ByteOrder;
@@ -78,12 +79,7 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
     }
 
     public int writeTo(ByteBuf destination) {
-        int startIndex = this.marshalZeroHeader(destination);
-        this.marshallPayload(destination);
-
-        int size = destination.writerIndex() - startIndex - MyMessage.MESSAGE_HEADER_LENGTH;
-        this.updateHeader(destination, startIndex, size, this.getPacketNumber());
-        return this.getPacketNumber() + 1;
+        return Packet.encodeFullMessage(this.getPacketNumber(),this,destination);
     }
 	
 	@Override

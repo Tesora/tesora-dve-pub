@@ -39,11 +39,13 @@ public class MyLoginRequest extends MyMessage {
 
 	public MyLoginRequest() {
 		super();
+        setPacketNumber(1);
 	}
 	
 	public MyLoginRequest(String username, String password) {
 		this.username = username;
 		this.password = password;
+        setPacketNumber(1);
 	}
 
 	@Override
@@ -164,7 +166,6 @@ public class MyLoginRequest extends MyMessage {
 			cb.writeBytes(plugInData.getBytes(CharsetUtil.UTF_8));
 			cb.writeZero(1);	// null terminator for plugInData
 		}
-		setPacketNumber(1);
 	}
 
 	@Override

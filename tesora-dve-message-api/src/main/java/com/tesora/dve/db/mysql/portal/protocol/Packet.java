@@ -21,6 +21,7 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.MysqlMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
@@ -145,12 +146,17 @@ public class Packet {
         return sealed;
     }
 
-    public static int encodeFullMessage(ByteBuf destination, int startingSequenceNumber, ByteBuf payload){
+    public static int encodeFullMessage(int sequenceStart, MysqlMessage mysql, ByteBuf destination) {
+
+        //copies the message payload to a heap buffer, so we can size the actual output.
+        ByteBuf payloadHolder = Unpooled.buffer();
+        mysql.marshallPayload(payloadHolder); //copy full payload to heap buffer (might be an extended payload)
+
         ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
 
         //TODO: this loop is identical to the one below, except it doesn't consume the source or update the destination.  Consolidate?
         //calculate the size of the final encoding, so we resize the destination at most once.
-        int payloadRemaining = payload.readableBytes();
+        int payloadRemaining = payloadHolder.readableBytes();
         int outputSize = 0;
         do {
             outputSize += 4; //header
@@ -163,21 +169,21 @@ public class Packet {
 
         leBuf.ensureWritable(outputSize);
 
-        int sequenceIter = startingSequenceNumber;
+        int sequenceIter = sequenceStart;
         boolean lastChunkWasMaximumLength;
         do {
-            int initialSize = payload.readableBytes();
+            int initialSize = payloadHolder.readableBytes();
             int maxSlice = MAX_PAYLOAD;
             int sendingPayloadSize = Math.min(maxSlice, initialSize);
             lastChunkWasMaximumLength = (sendingPayloadSize == maxSlice); //need to send a zero length payload if last fragment was exactly 0xFFFF long.
 
-            ByteBuf nextChunk = payload.readSlice(sendingPayloadSize);
+            ByteBuf nextChunk = payloadHolder.readSlice(sendingPayloadSize);
             leBuf.writeMedium(sendingPayloadSize);
             leBuf.writeByte(sequenceIter);
             leBuf.writeBytes(nextChunk);
 
             sequenceIter++;
-        } while (payload.readableBytes() > 0 || lastChunkWasMaximumLength);
+        } while (payloadHolder.readableBytes() > 0 || lastChunkWasMaximumLength);
         return sequenceIter;  //returns the next usable/expected sequence number.
     }
 
