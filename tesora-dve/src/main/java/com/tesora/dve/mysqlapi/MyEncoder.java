@@ -56,20 +56,8 @@ public class MyEncoder extends MessageToByteEncoder<MyMessage> {
 	}
 
 	@Override
-	protected void encode(ChannelHandlerContext ctx, MyMessage msg, ByteBuf out)
-			throws Exception {
-		if (msg instanceof MyResultSetResponse) {
-			if (((MyResultSetResponse) msg).getMessageType() == MyMessageType.RESULTSET_RESPONSE) {
-				MyResultSetResponse rsresp = (MyResultSetResponse) msg;
-				out.writeBytes(encodeMessage(rsresp));
-				Iterator<MyResponseMessage> iter = rsresp.getListIterator();
-				while (iter.hasNext()) {
-					out.writeBytes(encodeMessage((MyResponseMessage) iter.next()));
-				}
-			}
-		} else {
-			out.writeBytes(encodeMessage((MyMessage)msg));
-		}
+	protected void encode(ChannelHandlerContext ctx, MyMessage msg, ByteBuf out) throws Exception {
+		out.writeBytes( encodeMessage(msg) );
 	}
 
 }
