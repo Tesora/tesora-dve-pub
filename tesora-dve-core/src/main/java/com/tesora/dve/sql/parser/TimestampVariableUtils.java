@@ -23,7 +23,6 @@ package com.tesora.dve.sql.parser;
 
 import java.sql.Types;
 
-import com.tesora.dve.sql.util.ListSet;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -34,6 +33,7 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
+import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.variables.KnownVariables;
 
 /**
@@ -268,16 +268,29 @@ public abstract class TimestampVariableUtils {
 		return StringUtils.equalsIgnoreCase(name, TSFUNC_UTC_TIMESTAMP);
 	}
 	
+	/**
+	 * The value of 'timestamp' session variable. Can be overriden by DVE
+	 * 'dve_repl_slave_timestamp' variable if set to a non-zero value.
+	 * 
+	 * @return The current time in seconds.
+	 */
 	public static long getCurrentUnixTime(SchemaContext sc) {
-		Long ts = 
-				KnownVariables.REPL_TIMESTAMP.getValue(sc.getConnection().getVariableSource());
-		if (ts == null || ts.longValue() == 0L) {
-			// we should be getting the local timezone of the mysql connection
-			// but for now we will assume that the default is the same as the 
-			// Java timezone
-			ts = Long.valueOf((System.currentTimeMillis()/1000));
+		final Long replicationSlaveTimestamp = KnownVariables.REPL_TIMESTAMP.getValue(sc.getConnection().getVariableSource());
+		if ((replicationSlaveTimestamp != null) && (replicationSlaveTimestamp.longValue() != 0L)) {
+			return replicationSlaveTimestamp;
 		}
-		return ts;
+
+		return KnownVariables.TIMESTAMP.getValue(sc.getConnection().getVariableSource());
+	}
+
+	/**
+	 * @return The current time in seconds.
+	 */
+	public static long getCurrentSystemTime() {
+		// we should be getting the local timezone of the mysql connection
+		// but for now we will assume that the default is the same as the 
+		// Java timezone
+		return Long.valueOf((System.currentTimeMillis() / 1000));
 	}
 
 }

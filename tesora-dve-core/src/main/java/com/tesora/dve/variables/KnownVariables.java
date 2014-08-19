@@ -25,8 +25,6 @@ package com.tesora.dve.variables;
 import java.util.EnumSet;
 import java.util.Locale;
 
-import org.apache.commons.lang.StringUtils;
-
 import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
@@ -48,6 +46,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.global.MySqlPortalService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.parser.InvokeParser;
+import com.tesora.dve.sql.parser.TimestampVariableUtils;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
@@ -75,6 +74,8 @@ public class KnownVariables implements VariableConstants {
 	public static final EnumSet<VariableOption> nullable = EnumSet.of(VariableOption.NULLABLE);
 	public static final EnumSet<VariableOption> readonly = EnumSet.of(VariableOption.READONLY);
 	
+	private static final String DEFAULT_KEYWORD = "DEFAULT";
+
 	@SuppressWarnings("rawtypes")
 	static final ValueMetadata[] defaultConverters = new ValueMetadata[] {
 		integralConverter,
@@ -206,13 +207,13 @@ public class KnownVariables implements VariableConstants {
 					new IntegralValueConverter() {
 				@Override
 				public Long convertToInternal(String varName, String in) throws PEException {
-					if ("DEFAULT".equalsIgnoreCase(in))
+					if (DEFAULT_KEYWORD.equalsIgnoreCase(in))
 						return null;
 					return super.convertToInternal(varName, in);
 				}
 				@Override
 				public String convertToExternal(Long in) {
-					if (in == null) return "DEFAULT";
+					if (in == null) return DEFAULT_KEYWORD;
 					return Long.toString(in);
 				}
 
@@ -254,6 +255,28 @@ public class KnownVariables implements VariableConstants {
 					null,
 					EnumSet.of(VariableOption.NULLABLE),
 					"Replication slave last insert id");
+	public static final VariableHandler<Long> TIMESTAMP = new VariableHandler<Long>("timestamp", /* As of MySQL 5.6.4, timestamp is a DOUBLE. */
+			new IntegralValueConverter() {
+				@Override
+				public Long convertToInternal(String varName, String in) throws PEException {
+					if (DEFAULT_KEYWORD.equalsIgnoreCase(in)) {
+						return 0L;
+					}
+					return super.convertToInternal(varName, in);
+				}
+			},
+			sessionScope,
+			0L,
+			EnumSet.of(VariableOption.EMULATED)) {
+			@Override
+			public Long getValue(VariableStoreSource source, VariableScopeKind vs) {
+				final Long currentSessionValue = super.getValue(source, vs);
+				if (currentSessionValue == 0) {
+					return TimestampVariableUtils.getCurrentSystemTime();
+				}
+				return currentSessionValue;
+			}
+	};
 	public static final VariableHandler<Long> REPL_TIMESTAMP =
 			new VariableHandler<Long>(REPL_SLAVE_TIMESTAMP_NAME,
 					integralConverter,
@@ -302,7 +325,7 @@ public class KnownVariables implements VariableConstants {
 			// make sure the global values are included
 			SQLMode globalValues = getGlobalValue(conn);
 			String raw = stringConverter.convertToInternal(getName(), value);
-			if ("default".equalsIgnoreCase(raw)) {
+			if (DEFAULT_KEYWORD.equalsIgnoreCase(raw)) {
 				// set the session values to the global values
 				super.setSessionValue(conn,globalValues.toString());
 			} else {
@@ -654,6 +677,7 @@ public class KnownVariables implements VariableConstants {
 		FOREIGN_KEY_CHECKS,
 		STORAGE_ENGINE,
 		REPL_INSERT_ID,
+		TIMESTAMP,
 		REPL_TIMESTAMP,
 		SQL_MODE,
 		COLLATION_CONNECTION,

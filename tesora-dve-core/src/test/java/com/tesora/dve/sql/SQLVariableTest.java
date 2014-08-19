@@ -41,8 +41,10 @@ import org.junit.Test;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.errmap.MySQLErrors;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
+import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
@@ -326,10 +328,75 @@ public class SQLVariableTest extends SchemaTest {
 		assertVariableValue("thread_handling", "one-thread-per-connection");
 	}
 
+	@Test
+	public void testPE1603() throws Throwable {
+		assertTimestampValue(2, null);
+
+		conn.execute("set session timestamp = 10");
+
+		assertTimestampValue(2, 10l);
+
+		conn.execute("set session timestamp = 0");
+
+		assertTimestampValue(2, null);
+
+		conn.execute("set session timestamp = 300000000");
+
+		assertTimestampValue(2, 300000000l);
+
+		conn.execute("set session timestamp = DEFAULT");
+
+		assertTimestampValue(2, null);
+
+		//		new ExpectedExceptionTester() {
+		//			@Override
+		//			public void test() throws Throwable {
+		//				conn.execute("set session timestamp = '10'");
+		//			}
+		//		}.assertException(PEException.class, "Not an integral value: '10'");
+		//
+		//		new ExpectedExceptionTester() {
+		//			@Override
+		//			public void test() throws Throwable {
+		//				conn.execute("set session timestamp = 'DEFAULT'");
+		//			}
+		//		}.assertException(PEException.class, "Not an integral value: 'DEFAULT'");
+	}
+
+	private void assertTimestampValue(final int waitTimeSec, final Long expected) throws Throwable {
+		final Long value1 = Long.parseLong(getVariableValue("timestamp"));
+		Thread.sleep(Long.valueOf(1000 * waitTimeSec));
+		final Long value2 = Long.parseLong(getVariableValue("timestamp"));
+
+		if (expected != null) {
+			conn.assertResults("SELECT UNIX_TIMESTAMP(NOW())", br(nr, expected));
+			assertEquals(expected, value1);
+			assertEquals(expected, value2);
+		} else {
+			final Long currentSystemTime = Long.valueOf(value1 + waitTimeSec);
+			conn.assertResults("SELECT UNIX_TIMESTAMP(NOW())", br(nr, currentSystemTime));
+			assertEquals(currentSystemTime, value2);
+		}
+	}
+
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}
 	
+	private String getVariableValue(final String variableName) throws Throwable {
+		final List<ResultRow> rows = conn.fetch("show variables like '" + variableName + "'").getResults();
+		assertEquals("Exactly one result row expected for variable '" + variableName + "'.", 1, rows.size());
+
+		final ResultRow row = rows.get(0);
+		final List<ResultColumn> resultColumns = row.getRow();
+		if (resultColumns.size() != 2) {
+			throw new PECodingException("\"SHOW VARIABLES LIKE ...\" should return exactly two columns.");
+		}
+		assertEquals("Wrong variable name returned for '" + variableName + "'.", variableName, resultColumns.get(0).getColumnValue());
+
+		return (String) resultColumns.get(1).getColumnValue();
+	}
+
 	// this is a cheesy test
 	@Test
 	public void testDynamicAdd() throws Throwable {
