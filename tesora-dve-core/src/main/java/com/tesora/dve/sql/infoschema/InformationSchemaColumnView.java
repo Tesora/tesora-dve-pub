@@ -92,7 +92,7 @@ public class InformationSchemaColumnView extends AbstractInformationSchemaColumn
 	
 	@Override
 	public void buildColumnEntity(CatalogSchema schema, CatalogTableEntity cte, int offset, List<PersistedEntity> acc) throws PEException {
-		acc.add(backing.buildColumnEntity(schema, cte, offset, getName()));
+		acc.add(backing.buildColumnEntity(schema, cte, offset, getName().get()));
 	}
 	
 }

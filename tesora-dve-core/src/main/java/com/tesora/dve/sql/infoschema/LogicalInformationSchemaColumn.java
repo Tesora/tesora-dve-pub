@@ -134,9 +134,9 @@ public class LogicalInformationSchemaColumn implements Column<LogicalInformation
 		return uc;
 	}
 
-	public CatalogColumnEntity buildColumnEntity(CatalogSchema schema, CatalogTableEntity parent, int offset, Name nameInView) throws PEException {
+	public CatalogColumnEntity buildColumnEntity(CatalogSchema schema, CatalogTableEntity parent, int offset, String nameInView) throws PEException {
 		CatalogColumnEntity cce = new CatalogColumnEntity(schema, parent);
-		cce.setName(nameInView.get());
+		cce.setName(nameInView);
 		cce.setNullable(isNullable());
 		cce.setType(type);
 		cce.setPosition(offset);

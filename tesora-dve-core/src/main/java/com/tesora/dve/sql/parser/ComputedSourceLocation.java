@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema;
+package com.tesora.dve.sql.parser;
 
 /*
  * #%L
@@ -21,27 +21,45 @@ package com.tesora.dve.sql.infoschema;
  * #L%
  */
 
-import java.util.Locale;
+import org.antlr.runtime.TokenStream;
 
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.util.UnaryFunction;
+public class ComputedSourceLocation extends SourceLocation {
 
-public class InformationSchemaView extends SchemaView {
-
-	protected InformationSchemaView(LogicalInformationSchema lis) {
-		super(lis,InfoView.INFORMATION, new UnaryFunction<Name[], InformationSchemaTableView>() {
-
-			@Override
-			public Name[] evaluate(InformationSchemaTableView object) {
-				return new Name[] { object.getName() };
-			}
-			
-		});
+	private int lhs;
+	private int lineNumber;
+	private String text;
+	private int type;
+	
+	public ComputedSourceLocation(int lhs, int lineNo, String text, int type) {
+		this.lhs = lhs;
+		this.lineNumber = lineNo;
+		this.text = text;
+		this.type = type;
 	}
 
-	public String maybeCapitalize(String in) {
-		return in.toUpperCase(Locale.ENGLISH);
+	@Override
+	public String getText() {
+		return text;
 	}
 	
+	@Override
+	public String getText(TokenStream ts) {
+		return text;
+	}
+
+	@Override
+	public int getType() {
+		return type;
+	}
+
+	@Override
+	public int getLineNumber() {
+		return lineNumber;
+	}
+
+	@Override
+	public int getPositionInLine() {
+		return lhs;
+	}
+
 }

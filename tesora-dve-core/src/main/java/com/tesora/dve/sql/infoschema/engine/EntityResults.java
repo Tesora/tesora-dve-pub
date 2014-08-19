@@ -27,6 +27,7 @@ import java.util.List;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
+import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
@@ -46,8 +47,8 @@ public class EntityResults {
 	
 	public List<CatalogEntity> getEntities() { return entities; }
 	
-	public IntermediateResultSet getResultSet(SchemaContext sc) {
-		ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(logicalQuery.getProjectionColumns());
+	public IntermediateResultSet getResultSet(SchemaContext sc, ProjectionInfo pi) {
+		ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(sc,logicalQuery.getProjectionColumns(),pi);
 		ArrayList<ResultRow> rows = new ArrayList<ResultRow>();
 		for(CatalogEntity ce : entities) {
 			ResultRow rr = new ResultRow();

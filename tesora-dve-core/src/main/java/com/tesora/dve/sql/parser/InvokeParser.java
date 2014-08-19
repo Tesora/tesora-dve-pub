@@ -161,7 +161,7 @@ public class InvokeParser {
 		TranslatorUtils utils = new TranslatorUtils(opts, pc, icmd);
 		PE parser = buildParser(icmd, utils);
 		if (pc != null)
-			pc.setTokenStream(parser.getTokenStream());
+			pc.setTokenStream(parser.getTokenStream(),icmd.getCommand());
 		List<Statement> stmts = null;
 		List<List<ExpressionNode>> continuedInsert = null;
 		try {
@@ -207,7 +207,7 @@ public class InvokeParser {
 		TranslatorUtils utils = new TranslatorUtils(opts, pc, input);
 		PE parser = buildParser(input, utils);
 		if (pc != null)
-			pc.setTokenStream(parser.getTokenStream());
+			pc.setTokenStream(parser.getTokenStream(), input.getCommand());
 		List<Statement> stmts = null;
 		List<List<ExpressionNode>> continuedInsert = null;
 		try {

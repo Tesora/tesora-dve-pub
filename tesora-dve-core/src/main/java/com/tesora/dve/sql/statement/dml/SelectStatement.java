@@ -126,7 +126,7 @@ public class SelectStatement extends ProjectingStatement {
 	}
 	
 	public SelectStatement(List<FromTableReference> tables, 
-			List<ExpressionNode> projExprs, 
+			List<ExpressionNode> projExprs,
 			ExpressionNode where, 
 			List<SortingSpecification> order, 
 			LimitSpecification limit,
@@ -263,6 +263,7 @@ public class SelectStatement extends ProjectingStatement {
 	// for either a projection or an insert column specificaiton
 	private List<ExpressionNode> expandWildcards(SchemaContext sc, List<ExpressionNode> in) {
 		ArrayList<ExpressionNode> np = new ArrayList<ExpressionNode>();
+		
 		for(ExpressionNode e : in) {
 			if (e instanceof WildcardTable) {
 				WildcardTable wct = (WildcardTable)e;
@@ -314,7 +315,7 @@ public class SelectStatement extends ProjectingStatement {
 			} else {
 				np.add(e);
 			}
-		}
+		}		
 		return np;
 	}
 	
@@ -552,6 +553,10 @@ public class SelectStatement extends ProjectingStatement {
 				String aliasName = null;
 				ColumnInstance ci = null;
 				
+				if (e.getSourceLocation() != null && e.getSourceLocation().isComputed()) {
+					aliasName = e.getSourceLocation().getText();
+				}
+				
 				if (e instanceof ExpressionAlias) {
 					ExpressionAlias ea = (ExpressionAlias) e;
 					Alias aname = ea.getAlias();
@@ -574,10 +579,15 @@ public class SelectStatement extends ProjectingStatement {
 					columnName = buf.toString();
 					aliasName = PEStringUtils.dequote(columnName);
 				} else {
-					StringBuilder buf = new StringBuilder(); 
-                    emitter.emitExpression(pc,e, buf); 
-                    columnName = (e instanceof LiteralExpression) ? PEStringUtils.dequote(buf.toString()) : buf.toString(); 
-                    aliasName = columnName; 
+					if (aliasName != null) {
+						// via above
+						columnName = aliasName;
+					} else {
+						StringBuilder buf = new StringBuilder(); 
+						emitter.emitExpression(pc,e, buf); 
+						columnName = (e instanceof LiteralExpression) ? PEStringUtils.dequote(buf.toString()) : buf.toString(); 
+						aliasName = columnName;
+					}
 				}
 				ColumnInfo colInfo = pi.addColumn(i + 1, columnName, (aliasName == null ?  columnName : aliasName));
 				if (ci != null) {

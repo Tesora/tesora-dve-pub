@@ -40,6 +40,7 @@ import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
+import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
@@ -56,6 +57,7 @@ import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.SyntheticInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.GeneralCollectingTraversal;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -154,7 +156,7 @@ public class LogicalSchemaQueryEngine {
 		LogicalQuery lq = convertDown(sc, vq);
 		QueryExecutionKind qek = determineKind(lq);
 		if (qek != QueryExecutionKind.RAW)
-			return buildCatalogEntities(sc, lq, qek).getResultSet(sc);
+			return buildCatalogEntities(sc, lq, qek).getResultSet(sc,pi);
 		return buildRawResultSet(sc, lq, pi);
 	}
 
@@ -201,6 +203,7 @@ public class LogicalSchemaQueryEngine {
 			log(params.toString());
 		}
 		return sc.getCatalog().query(sql, lq.getParams());
+	
 	}
 
 	private static List<CatalogEntity> executeRawEntityQuery(SchemaContext sc, LogicalQuery lq) {
@@ -473,7 +476,7 @@ public class LogicalSchemaQueryEngine {
 			}
 			rows.add(outrow);
 		}
-		ColumnSet cs = buildProjectionMetadata(lq.getProjectionColumns(),pi,Functional.toList(exampleData.values()));
+		ColumnSet cs = buildProjectionMetadata(sc, lq.getProjectionColumns(),pi,Functional.toList(exampleData.values()));
 		return new IntermediateResultSet(cs,rows);
 	}
 
@@ -494,11 +497,12 @@ public class LogicalSchemaQueryEngine {
 		}
 	}
 	
-	public static ColumnSet buildProjectionMetadata(List<List<AbstractInformationSchemaColumnView>> projColumns) {
-		return buildProjectionMetadata(projColumns,null,null);
+	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<AbstractInformationSchemaColumnView>> projColumns,
+			ProjectionInfo pi) {
+		return buildProjectionMetadata(sc, projColumns,pi,null);
 	}
 	
-	public static ColumnSet buildProjectionMetadata(List<List<AbstractInformationSchemaColumnView>> projColumns,ProjectionInfo pi,List<Object> examples) {
+	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<AbstractInformationSchemaColumnView>> projColumns,ProjectionInfo pi,List<Object> examples) {
 		ColumnSet cs = new ColumnSet();
 		try {
 			for(int i = 0; i < projColumns.size(); i++) {
@@ -516,7 +520,18 @@ public class LogicalSchemaQueryEngine {
 					buildNativeType(cs,ci.getName(),ci.getAlias(),help);					
 				} else {
                     NativeType nt = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(type.getDataType(), true);
-					cs.addColumn(nameColumn.getName().getSQL(), type.getSize(), nt.getTypeName(), type.getDataType());
+                	ColumnMetadata cmd = new ColumnMetadata();
+                    if (nameColumn.getTable() != null && nameColumn.getTable().getView() == InfoView.INFORMATION) {
+                    	cmd.setDbName(nameColumn.getTable().getDatabase(sc).getName().getUnquotedName().get());
+                    	cmd.setTableName(nameColumn.getTable().getName().getUnquotedName().get());
+                    }
+                    if (pi != null)
+                    	cmd.setAliasName(pi.getColumnAlias(i+1));
+                    cmd.setName(nameColumn.getName().getSQL());
+                    cmd.setSize(type.getSize());
+                    cmd.setNativeTypeName(nt.getTypeName());
+                    cmd.setDataType(type.getDataType());
+                    cs.addColumn(cmd);
 				}
 			}
 		} catch (PEException pe) {
@@ -527,7 +542,8 @@ public class LogicalSchemaQueryEngine {
 			for(int i = 1; i <= cs.size(); i++) {
 				if (i > 1)
 					buf.append(", ");
-				buf.append(cs.getColumn(i).getName());
+				// buf.append(cs.getColumn(i).getName());
+				buf.append(cs.getColumn(i));
 			}
 			System.out.println("column set: " + buf.toString());
 		}

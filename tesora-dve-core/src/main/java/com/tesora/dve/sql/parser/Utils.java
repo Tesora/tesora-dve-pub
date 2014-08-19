@@ -429,6 +429,22 @@ public class Utils {
     	throw new SchemaException(Pass.FIRST, "Unsupported: " + description);
     }
     
+    public void updateSourcePosition(Object obj, Token lhs, Token rhs) {
+    	if (!(obj instanceof ExpressionNode)) return;
+    	ExpressionNode en = (ExpressionNode) obj;
+    	int type = 0;
+    	if (en.getSourceLocation() != null)
+    		type = en.getSourceLocation().getType();
+    	TranslatorUtils me = (TranslatorUtils) this;
+    	String origStmt = me.getInputSQL();
+    	// doesn't matter what kind of sloc we have, we're switching to computed now
+    	int l = lhs.getCharPositionInLine();
+    	char first = origStmt.charAt(l);
+    	if (first == ',') l++;
+    	String text = origStmt.substring(l, rhs.getCharPositionInLine()).trim();
+    	en.setSourceLocation(new ComputedSourceLocation(l,lhs.getLine(),text,type));
+    }
+    
     private static class ExpressionNodeList extends ExpressionNode {
 
     	List<ExpressionNode> args;

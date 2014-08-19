@@ -352,9 +352,14 @@ outer_join_type options {k=1;}:
 
 
 select_list returns [List l] options {k=1;}
-  @init{ $l = new ArrayList(); }
+  @init{ $l = new ArrayList(); Token lhs = input.LT(1); Token rhs = null; }
   :
-  (li=select_item { $l.add($li.expr); }(Comma ti=select_item { $l.add($ti.expr); })*)
+  (li=select_item { $l.add($li.expr); }
+   (Comma ti=select_item { rhs = $Comma; utils.updateSourcePosition($l.get($l.size() - 1), lhs, rhs); lhs = rhs; $l.add($ti.expr); })*
+  )
+  { rhs = input.LT(1);
+    utils.updateSourcePosition($l.get($l.size() - 1), lhs, rhs);
+  }
   ;
   
 select_item returns [ExpressionNode expr] options {k=1;}:

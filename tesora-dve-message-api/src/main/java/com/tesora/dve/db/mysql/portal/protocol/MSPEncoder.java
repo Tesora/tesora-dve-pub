@@ -23,7 +23,6 @@ package com.tesora.dve.db.mysql.portal.protocol;
 
 
 import com.tesora.dve.db.mysql.MysqlMessage;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyResponseMessage;
 import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.buffer.ByteBuf;

@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicReference;
 
-import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.clock.NoopTimingService;

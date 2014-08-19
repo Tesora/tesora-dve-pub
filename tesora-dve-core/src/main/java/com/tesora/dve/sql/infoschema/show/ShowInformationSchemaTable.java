@@ -265,7 +265,7 @@ public class ShowInformationSchemaTable extends InformationSchemaTableView {
 		for(AbstractInformationSchemaColumnView c : getColumns(sc)) {
 			proj.add(Collections.singletonList(c));
 		}
-		ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(proj);
+		ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(sc,proj,null);
 		return new IntermediateResultSet(cs, Collections.EMPTY_LIST);
 	}
 	

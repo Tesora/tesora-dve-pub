@@ -125,6 +125,7 @@ public class SchemaContext {
 	private final TransientSessionState tss;
 	
 	private TokenStream tokens;
+	private String origStmt;
 	
 	private String description = null;
 	
@@ -312,14 +313,19 @@ public class SchemaContext {
 		opts = po;
 	}
 
-	public void setTokenStream(TokenStream tns) {
+	public void setTokenStream(TokenStream tns, String sql) {
 		if (tns == null)
 			throw new SchemaException(Pass.FIRST, "Parser missing tokens");
 		tokens = tns;
+		origStmt = sql;
 	}
 	
 	public TokenStream getTokens() {
 		return tokens;
+	}
+	
+	public String getOrigStmt() {
+		return origStmt;
 	}
 	
 	public void setParameters(List<Object> params) {

@@ -67,7 +67,7 @@ public abstract class SchemaView implements
 		super();
 		frozen = false;
 		tables = new ArrayList<InformationSchemaTableView>();
-		lookup = new Lookup<InformationSchemaTableView>(tables, getNamesFunc, false, false);
+		lookup = new Lookup<InformationSchemaTableView>(tables, getNamesFunc, false, servicing.isLookupCaseSensitive()); 
 		reverse = new HashMap<LogicalInformationSchemaTable, InformationSchemaTableView>();
 		view = servicing;
 		logical = basedOn;

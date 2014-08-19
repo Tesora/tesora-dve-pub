@@ -198,7 +198,7 @@ public class VariablesLogicalInformationSchemaTable extends LogicalInformationSc
 			return null;
 		}
 		List<UnaryFunction<String,List<String>>> rowSelectors = buildRowSelectors(lq);
-		ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(lq.getProjectionColumns(),pi,null);
+		ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(sc,lq.getProjectionColumns(),pi,null);
 		// ColumnSet md = buildColumnSet(showScopeName);
 		List<ResultRow> rows = new ArrayList<ResultRow>();
 		UnaryPredicate<List<String>> pred = buildPredicate(likeExpr);

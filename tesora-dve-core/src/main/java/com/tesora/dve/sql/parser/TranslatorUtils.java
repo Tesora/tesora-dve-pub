@@ -437,6 +437,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		pc = sc;
 	}
 	
+	public String getInputSQL() {
+		return pc.getOrigStmt();
+	}
+	
 	public void pushScope() {
 		scope.pushScope();
 	}
@@ -570,7 +574,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			else 
 				options.add((MysqlSelectOption) opt);
 		}
-		SelectStatement ss = new SelectStatement(tableRefs, projection,
+		SelectStatement ss = new SelectStatement(tableRefs, projection, 
 				whereClause, orderbys, limit, sq, options, groupbys,
 				havingExpr, locking, new AliasInformation(scope), SourceLocation.make(tree));
 		ss.getDerivedInfo().takeScope(scope);
@@ -3757,6 +3761,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public ExpressionNode maybeBuildExprAlias(ExpressionNode targ, Name alias, String stringAlias,
 			Object tree) {
+		SourceLocation sloc = SourceLocation.make(tree);
+		
 		if (alias == null && stringAlias == null)
 			return targ;
 

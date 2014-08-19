@@ -83,11 +83,12 @@ public class InformationSchemaTableView implements
 		super();
 		backing = basedOn;
 		this.view = view;
-		this.name = viewName;
-		this.pluralName = pluralViewName;
+		this.name = (view.isCapitalizeNames() ? viewName.getCapitalized().getUnqualified() : viewName); 
+		if (pluralViewName == null) this.pluralName = pluralViewName;
+		else this.pluralName = (view.isCapitalizeNames() ? pluralViewName.getCapitalized().getUnqualified() : pluralViewName); 
 		this.injected = new ArrayList<AbstractInformationSchemaColumnView>();
 		this.columns = new ArrayList<AbstractInformationSchemaColumnView>();
-		this.lookup = new Lookup<AbstractInformationSchemaColumnView>(columns, view.getNameFunction(), false, false); 
+		this.lookup = new Lookup<AbstractInformationSchemaColumnView>(columns, view.getNameFunction(), false, view.isLookupCaseSensitive()); 
 		this.orderByColumn = null;
 		this.identColumn = null;
 		this.priviledged = requiresPriviledge;
