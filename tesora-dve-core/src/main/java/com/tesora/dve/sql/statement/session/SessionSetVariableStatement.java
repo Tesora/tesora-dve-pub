@@ -27,15 +27,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.queryplan.QueryStepFilterOperation.OperationFilter;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
@@ -118,9 +120,9 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 				SetVariableExpression sve = (SetVariableExpression) se;
 				VariableInstance vi = sve.getVariable();
 				final String variableName = vi.getVariableName().get();
-				if (variableName.toLowerCase().equals("names")) {
+				if (variableName.equalsIgnoreCase("names")) {
 					handleSetNames(pc,sve,es);
-				} else if (variableName.toLowerCase().equals("sql_safe_updates")) {
+				} else if (variableName.equalsIgnoreCase("sql_safe_updates")) {
 					// don't pass this down just eat the command
 					es.append(new EmptyExecutionStep(0, "set sql_safe_updates"));
 				} else {
@@ -136,7 +138,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 							|| variableName.equalsIgnoreCase(VariableConstants.LONG_QUERY_TIME_NAME)) {
 						handleSetGlobalVariableExpression(pc,sve, es);
 					} else {
-						handleSetVariableExpression(pc,sve, es);
+						handleSetVariableExpression(pc, sve, vm, es);
 					}
 				}
 			}
@@ -175,17 +177,27 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		return null;
 	}
 	
-	private void handleSetVariableExpression(SchemaContext pc, SetVariableExpression sve, ExecutionSequence es) throws PEException {
+	private void handleSetVariableExpression(SchemaContext pc, SetVariableExpression sve, VariableManager vm, ExecutionSequence es) throws PEException {
 		VariableInstance vi = sve.getVariable();
 		List<ExpressionNode> value = sve.getValue();
 		// figure out the scope
 		ExpressionNode rhs = value.get(0);
 		VariableValueSource nva = getRHSSource(pc,rhs);
-		if (nva != null)
-			es.append(new SetVariableExecutionStep(vi.getScope(),vi.getVariableName().get(), nva, pc.getPersistentGroup()));
-		else 
+		if (nva != null) {
+			final String variableName = vi.getVariableName().get();
+			if (nva.isConstant()) {
+				final VariableHandler<?> vh = vm.lookup(variableName);
+				if ((vh != null) && vh.getMetadata().isNumeric()
+						&& PEStringUtils.isQuoted(String.valueOf(sve.getVariableExpr()))) {
+					throw new PESQLStateException(1232, "42000", "Incorrect argument type to variable '"
+							+ variableName + "'");
+				}
+			}
+			es.append(new SetVariableExecutionStep(vi.getScope(), variableName, nva, pc.getPersistentGroup()));
+		} else {
 			// the rhs is complex - we need to execute it on a p.site or a dyn site (most likely a p.site)
 			handleComplexSetVariableExpression(pc,vi, rhs, es);
+		}
 	}
 
 	private void handleSetTransactionIsolation(SchemaContext pc, SetTransactionIsolationExpression stie, ExecutionSequence es) throws PEException {

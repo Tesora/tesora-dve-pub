@@ -25,8 +25,6 @@ package com.tesora.dve.variables;
 import java.util.EnumSet;
 import java.util.Locale;
 
-import org.apache.commons.lang.StringUtils;
-
 import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
@@ -48,6 +46,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.global.MySqlPortalService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.parser.InvokeParser;
+import com.tesora.dve.sql.parser.TimestampVariableUtils;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
@@ -75,6 +74,8 @@ public class KnownVariables implements VariableConstants {
 	public static final EnumSet<VariableOption> nullable = EnumSet.of(VariableOption.NULLABLE);
 	public static final EnumSet<VariableOption> readonly = EnumSet.of(VariableOption.READONLY);
 	
+	private static final String DEFAULT_KEYWORD = "DEFAULT";
+
 	@SuppressWarnings("rawtypes")
 	static final ValueMetadata[] defaultConverters = new ValueMetadata[] {
 		integralConverter,
@@ -111,11 +112,11 @@ public class KnownVariables implements VariableConstants {
 			SlowQueryLogger.enableSlowQueryLogger(newValue);
 		}
 	};
-	public static final VariableHandler<Long> LONG_PLAN_STEP_TIME =
-			new VariableHandler<Long>(LONG_PLAN_STEP_TIME_NAME,
-					integralConverter,
+	public static final VariableHandler<Double> LONG_PLAN_STEP_TIME =
+			new VariableHandler<Double>(LONG_PLAN_STEP_TIME_NAME,
+					floatingPointConverter,
 					globalScope,
-					3L,
+					new Double(3.0),
 					dveOnly,
 					"Minimum per step trigger duration for slow query log");
 	public static final VariableHandler<Double> LONG_QUERY_TIME =
@@ -206,13 +207,13 @@ public class KnownVariables implements VariableConstants {
 					new IntegralValueConverter() {
 				@Override
 				public Long convertToInternal(String varName, String in) throws PEException {
-					if ("DEFAULT".equalsIgnoreCase(in))
+					if (DEFAULT_KEYWORD.equalsIgnoreCase(in))
 						return null;
 					return super.convertToInternal(varName, in);
 				}
 				@Override
 				public String convertToExternal(Long in) {
-					if (in == null) return "DEFAULT";
+					if (in == null) return DEFAULT_KEYWORD;
 					return Long.toString(in);
 				}
 
@@ -254,6 +255,28 @@ public class KnownVariables implements VariableConstants {
 					null,
 					EnumSet.of(VariableOption.NULLABLE),
 					"Replication slave last insert id");
+	public static final VariableHandler<Long> TIMESTAMP = new VariableHandler<Long>("timestamp", /* As of MySQL 5.6.4, timestamp is a DOUBLE. */
+			new IntegralValueConverter() {
+				@Override
+				public Long convertToInternal(String varName, String in) throws PEException {
+					if (DEFAULT_KEYWORD.equalsIgnoreCase(in)) {
+						return 0L;
+					}
+					return super.convertToInternal(varName, in);
+				}
+			},
+			sessionScope,
+			0L,
+			EnumSet.of(VariableOption.EMULATED)) {
+			@Override
+			public Long getValue(VariableStoreSource source, VariableScopeKind vs) {
+				final Long currentSessionValue = super.getValue(source, vs);
+				if (currentSessionValue == 0) {
+					return TimestampVariableUtils.getCurrentSystemTime();
+				}
+				return currentSessionValue;
+			}
+	};
 	public static final VariableHandler<Long> REPL_TIMESTAMP =
 			new VariableHandler<Long>(REPL_SLAVE_TIMESTAMP_NAME,
 					integralConverter,
@@ -275,6 +298,11 @@ public class KnownVariables implements VariableConstants {
 						@Override
 						public String convertToExternal(SQLMode in) {
 							return String.format("'%s'",in.toString());
+						}
+						
+						@Override
+						public boolean isNumeric() {
+							return false;
 						}
 
 						@Override
@@ -302,7 +330,7 @@ public class KnownVariables implements VariableConstants {
 			// make sure the global values are included
 			SQLMode globalValues = getGlobalValue(conn);
 			String raw = stringConverter.convertToInternal(getName(), value);
-			if ("default".equalsIgnoreCase(raw)) {
+			if (DEFAULT_KEYWORD.equalsIgnoreCase(raw)) {
 				// set the session values to the global values
 				super.setSessionValue(conn,globalValues.toString());
 			} else {
@@ -350,6 +378,11 @@ public class KnownVariables implements VariableConstants {
 						@Override
 						public String toRow(NativeCharSet in) {
 							return in.getName();
+						}
+
+						@Override
+						public boolean isNumeric() {
+							return false;
 						}
 
 						@Override
@@ -654,6 +687,7 @@ public class KnownVariables implements VariableConstants {
 		FOREIGN_KEY_CHECKS,
 		STORAGE_ENGINE,
 		REPL_INSERT_ID,
+		TIMESTAMP,
 		REPL_TIMESTAMP,
 		SQL_MODE,
 		COLLATION_CONNECTION,
@@ -786,34 +820,7 @@ public class KnownVariables implements VariableConstants {
 				Boolean.FALSE,
 				emulated),
 		new VariableHandler<MySQLTransactionIsolation>("tx_isolation",
-				new ValueMetadata<MySQLTransactionIsolation>() {
-
-					@Override
-					public MySQLTransactionIsolation convertToInternal(String varName, String in) throws PEException {
-						String raw = stringConverter.convertToInternal(varName, in);
-						MySQLTransactionIsolation isol = MySQLTransactionIsolation.find(raw);
-						if (isol == null)
-							throw new PEException("Invalid value for '" + varName + "' (allowed values are " + 
-									StringUtils.join(MySQLTransactionIsolation.getExternalValuesAsList(), ", ") + ")");
-						return isol;
-					}
-
-					@Override
-					public String convertToExternal(MySQLTransactionIsolation in) {
-						if (in == null) return "";
-						return String.format("'%s'", in.getExternalName());
-					}
-
-					@Override
-					public String toRow(MySQLTransactionIsolation in) {
-						return in.getExternalName();
-					}
-
-					@Override
-					public String getTypeName() {
-						return "varchar";
-					}
-				},
+				new EnumValueConverter<MySQLTransactionIsolation>(MySQLTransactionIsolation.values()),
 				bothScope,
 				MySQLTransactionIsolation.READ_COMMITTED,
 				emulated),
@@ -961,7 +968,7 @@ public class KnownVariables implements VariableConstants {
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Boolean>("have_geometry",
 				booleanConverter,
-				bothScope,
+				globalScope,
 				Boolean.TRUE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Long>("myisam_sort_buffer_size",
@@ -976,28 +983,33 @@ public class KnownVariables implements VariableConstants {
 				emulated),
 		new VariableHandler<Boolean>("lower_case_file_system",
 				new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
-				bothScope,
+				globalScope,
 				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Boolean>("have_query_cache",
 				booleanConverter,
-				bothScope,
+				globalScope,
 				Boolean.TRUE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Boolean>("have_ssl",
 				booleanConverter,
-				bothScope,
+				globalScope,
 				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Boolean>("have_openssl" /* Alias for 'have_ssl'. */,
 				booleanConverter,
-				bothScope,
+				globalScope,
 				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<ThreadHandlingMode>("thread_handling",
 				new EnumValueConverter<ThreadHandlingMode>(ThreadHandlingMode.values()),
-				bothScope,
+				globalScope,
 				ThreadHandlingMode.ONE_THREAD_PER_CONNECTION,
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+		new VariableHandler<Boolean>("have_partitioning",
+				booleanConverter,
+				globalScope,
+				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
 	};
 
