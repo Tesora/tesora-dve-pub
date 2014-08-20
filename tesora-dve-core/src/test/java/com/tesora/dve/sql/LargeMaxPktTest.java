@@ -21,6 +21,7 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.portal.protocol.Packet;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -136,7 +137,7 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
         ByteBuf dest = Unpooled.buffer(payloadSize);
 
         MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage((byte)0, source.array() );
-        outboundMessage.writeTo(dest);
+        Packet.encodeFullMessage(outboundMessage.getSeq(), outboundMessage, dest);
 
         int lengthOfNonUserdata = 5 + 4 + 4 + 4 + 4;
         Assert.assertEquals(dest.readableBytes(),payloadSize + lengthOfNonUserdata,"Number of bytes in destination buffer is wrong");
@@ -163,7 +164,7 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
         ByteBuf dest = Unpooled.buffer(payloadSize);
 
         MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage((byte)0, source.array() );
-        outboundMessage.writeTo(dest);
+        Packet.encodeFullMessage(outboundMessage.getSeq(), outboundMessage, dest);
 
         int lengthOfNonUserdata = 5 + 4 + 4 + 4 + 4;//last packet has zero length payload
         Assert.assertEquals(dest.readableBytes(),payloadSize + lengthOfNonUserdata,"Number of bytes in destination buffer is wrong");

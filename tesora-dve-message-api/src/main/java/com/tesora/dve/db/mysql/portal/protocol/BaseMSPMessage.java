@@ -78,11 +78,6 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
         destination.writeBytes(sliceContents);
     }
 
-    public int writeTo(ByteBuf destination){
-        //will call marshallPayload to get the payload contents.
-        return Packet.encodeFullMessage(this.sequenceID,this,destination);
-    }
-
     protected S readState() {
         if (isStateSet())
             return this.state;
@@ -118,6 +113,11 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
     @Override
     public void setSequenceID(byte newSeq){
         this.sequenceID = newSeq;
+    }
+
+    @Override
+    public byte getSeq(){
+        return getSequenceID();
     }
 
     public String toString(){

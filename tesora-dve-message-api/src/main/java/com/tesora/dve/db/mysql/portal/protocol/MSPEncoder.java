@@ -47,7 +47,7 @@ public class MSPEncoder extends MessageToByteEncoder<MysqlMessage> {
         ByteBuf leBuf = out.order(ByteOrder.LITTLE_ENDIAN);
         logMessageIfNeeded(msg);
         try{
-            msg.writeTo(leBuf);
+            Packet.encodeFullMessage(msg.getSeq(), msg, leBuf);
         } finally {
             ReferenceCountUtil.release(msg);  //since we are forwarding a bytebuf not the original message, we need to release the message.
         }

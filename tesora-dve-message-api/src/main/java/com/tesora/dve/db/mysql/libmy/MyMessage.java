@@ -44,6 +44,11 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
 		return packetNumber;
 	}
 
+    @Override
+    public byte getSeq(){
+        return getPacketNumber();
+    }
+
 	public void setPacketNumber(byte packetNumber) {
 		this.packetNumber = packetNumber;
 	}
@@ -76,10 +81,6 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
             destination.writeByte(this.getMessageType().getByteValue());
 
         this.marshallMessage(destination);
-    }
-
-    public int writeTo(ByteBuf destination) {
-        return Packet.encodeFullMessage(this.getPacketNumber(),this,destination);
     }
 	
 	@Override

@@ -21,19 +21,17 @@ package com.tesora.dve.mysqlapi;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.portal.protocol.Packet;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 
 import java.nio.ByteOrder;
-import java.util.Iterator;
 
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.db.mysql.libmy.MyMessageType;
-import com.tesora.dve.db.mysql.libmy.MyResponseMessage;
 import com.tesora.dve.exceptions.PEException;
 
 
@@ -50,9 +48,9 @@ public class MyEncoder extends MessageToByteEncoder<MyMessage> {
 
 		ByteBuf buffer = Unpooled.buffer(2048).order(ByteOrder.LITTLE_ENDIAN);
 
-        message.writeTo(buffer);
+        Packet.encodeFullMessage(message.getSeq(), message, buffer);
 
-		return buffer;
+        return buffer;
 	}
 
 	@Override
