@@ -39,9 +39,7 @@ public abstract class ValueMetadata<Type> {
 		return ResultCollectorFactory.getInstance(Types.VARCHAR, convertToExternal(in));
 	}
 
-	public String validate(Type in) {
-		return null;
-	}
+	public abstract boolean isNumeric();
 
 	public abstract String getTypeName();
 	

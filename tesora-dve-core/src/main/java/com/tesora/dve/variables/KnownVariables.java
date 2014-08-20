@@ -299,6 +299,11 @@ public class KnownVariables implements VariableConstants {
 						public String convertToExternal(SQLMode in) {
 							return String.format("'%s'",in.toString());
 						}
+						
+						@Override
+						public boolean isNumeric() {
+							return false;
+						}
 
 						@Override
 						public String getTypeName() {
@@ -373,6 +378,11 @@ public class KnownVariables implements VariableConstants {
 						@Override
 						public String toRow(NativeCharSet in) {
 							return in.getName();
+						}
+
+						@Override
+						public boolean isNumeric() {
+							return false;
 						}
 
 						@Override

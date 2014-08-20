@@ -54,6 +54,11 @@ public class EnumValueConverter<E extends Enum<E>> extends ValueMetadata<E> {
 	}
 
 	@Override
+	public boolean isNumeric() {
+		return false;
+	}
+
+	@Override
 	public String getTypeName() {
 		return "varchar";
 	}

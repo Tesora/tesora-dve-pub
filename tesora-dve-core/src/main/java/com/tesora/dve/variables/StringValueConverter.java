@@ -48,6 +48,11 @@ public class StringValueConverter extends ValueMetadata<String> {
 	}
 
 	@Override
+	public boolean isNumeric() {
+		return false;
+	}
+
+	@Override
 	public String getTypeName() {
 		return "varchar";
 	}

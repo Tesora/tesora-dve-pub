@@ -44,6 +44,11 @@ public class FloatingPointValueConverter extends ValueMetadata<Double> {
 	}
 
 	@Override
+	public boolean isNumeric() {
+		return true;
+	}
+
+	@Override
 	public String getTypeName() {
 		return "numeric";
 	}

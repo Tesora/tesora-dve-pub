@@ -43,12 +43,14 @@ import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.parser.TimestampVariableUtils;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.Functional;
@@ -348,19 +350,19 @@ public class SQLVariableTest extends SchemaTest {
 
 		assertTimestampValue(2, null);
 
-		//		new ExpectedExceptionTester() {
-		//			@Override
-		//			public void test() throws Throwable {
-		//				conn.execute("set session timestamp = '10'");
-		//			}
-		//		}.assertException(PEException.class, "Not an integral value: '10'");
-		//
-		//		new ExpectedExceptionTester() {
-		//			@Override
-		//			public void test() throws Throwable {
-		//				conn.execute("set session timestamp = 'DEFAULT'");
-		//			}
-		//		}.assertException(PEException.class, "Not an integral value: 'DEFAULT'");
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session timestamp = '10'");
+			}
+		}.assertException(PESQLStateException.class, "(1232: 42000) Incorrect argument type to variable 'timestamp'");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session timestamp = 'DEFAULT'");
+			}
+		}.assertException(PESQLStateException.class, "(1232: 42000) Incorrect argument type to variable 'timestamp'");
 	}
 
 	private void assertTimestampValue(final int waitTimeSec, final Long expected) throws Throwable {
@@ -373,9 +375,8 @@ public class SQLVariableTest extends SchemaTest {
 			assertEquals(expected, value1);
 			assertEquals(expected, value2);
 		} else {
-			final Long currentSystemTime = Long.valueOf(value1 + waitTimeSec);
-			conn.assertResults("SELECT UNIX_TIMESTAMP(NOW())", br(nr, currentSystemTime));
-			assertEquals(currentSystemTime, value2);
+			conn.assertResults("SELECT UNIX_TIMESTAMP(NOW())", br(nr, TimestampVariableUtils.getCurrentSystemTime()));
+			assertEquals(Long.valueOf(value1 + waitTimeSec), value2);
 		}
 	}
 
@@ -480,7 +481,7 @@ public class SQLVariableTest extends SchemaTest {
 	
 	private static final VariableRoundTrip[] globals = new VariableRoundTrip[] {
 		new VariableRoundTrip(
-				"set global %s = '%s'",
+				"set global %s = %s",
 				"show global variables like '%s'") {
 
 			public Object[] buildExpectedResults(String varName, String varValue) {
@@ -488,13 +489,13 @@ public class SQLVariableTest extends SchemaTest {
 			}
 		},
 		new VariableRoundTrip(
-				"set @@global.%s = '%s'",
+				"set @@global.%s = %s",
 				"select variable_value from information_schema.global_variables where variable_name like '%s'")
 	};
 
 	private static final VariableRoundTrip[] sessions = new VariableRoundTrip[] {
 		new VariableRoundTrip(
-				"set %s = '%s'",
+				"set %s = %s",
 				"show session variables like '%s'") {
 			public Object[] buildExpectedResults(String varName, String varValue) {
 				return br(nr,varName,varValue);
@@ -502,13 +503,13 @@ public class SQLVariableTest extends SchemaTest {
 			
 		},
 		new VariableRoundTrip(
-				"set @@session.%s = '%s'",
+				"set @@session.%s = %s",
 				"select variable_value from information_schema.session_variables where variable_name like '%s'"),
 		new VariableRoundTrip(
-				"set @@%s = '%s'",
+				"set @@%s = %s",
 				"select variable_value from information_schema.session_variables where variable_name like '%s'"),
 		new VariableRoundTrip(
-				"set @@local.%s = '%s'",
+				"set @@local.%s = %s",
 				"select variable_name, variable_value from information_schema.session_variables where variable_name = '%s'") {
 			public Object[] buildExpectedResults(String varName, String varValue) {
 				return br(nr,varName,varValue);
@@ -535,7 +536,7 @@ public class SQLVariableTest extends SchemaTest {
 				// now, for each root version, make sure a nonroot user cannot set it
 				for(VariableRoundTrip vrt : globals) {
 					try {
-						nonRoot.execute(vrt.buildSet(handler.getName(), values.current()));
+						nonRoot.execute(vrt.buildSet(handler.getName(), values.current(), handler.getMetadata().isNumeric()));
 						fail("non root should not be able to set global value of " + handler.getName());
 					} catch (PEException pe) {
 						if (!pe.getMessage().startsWith("Must be root"))
@@ -567,7 +568,7 @@ public class SQLVariableTest extends SchemaTest {
 	
 	private void roundTrip(ProxyConnectionResource proxyConn, VariableHandler handler,
 			VariableRoundTrip vrt, Values values) throws Throwable {
-		conn.execute(vrt.buildSet(handler.getName(), values.next()));
+		conn.execute(vrt.buildSet(handler.getName(), values.next(), handler.getMetadata().isNumeric()));
 		conn.assertResults(vrt.buildQuery(handler.getName()),
 				vrt.buildExpectedResults(handler.getName(), values.current()));
 	}
@@ -603,8 +604,8 @@ public class SQLVariableTest extends SchemaTest {
 			this.queryFormat = queryFormat;
 		}
 		
-		public String buildSet(String varName, String varValue) {
-			return String.format(setFormat,varName,varValue);
+		public String buildSet(String varName, String varValue, boolean isNumeric) {
+			return String.format(setFormat, varName, (isNumeric) ? varValue : PEStringUtils.singleQuote(varValue));
 		}
 		
 		public String buildQuery(String varName) {
