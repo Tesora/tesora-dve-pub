@@ -21,6 +21,7 @@ package com.tesora.dve.mysqlapi.repl;
  * #L%
  */
 
+import com.tesora.dve.mysqlapi.repl.messages.MyReplEvent;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
@@ -32,7 +33,6 @@ import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.mysqlapi.MyClientConnectionContext;
 import com.tesora.dve.mysqlapi.MyClientConnectionHandler;
-import com.tesora.dve.mysqlapi.repl.messages.MyEventMessage;
 
 public class MyReplSlaveAsyncHandler extends MyClientConnectionHandler {
 	static final Logger logger = Logger.getLogger(MyReplSlaveAsyncHandler.class);
@@ -67,8 +67,8 @@ public class MyReplSlaveAsyncHandler extends MyClientConnectionHandler {
 		} else if (msg instanceof MyErrorResponse) {
 			logger.error("Error received from master: "
 					+ ((MyErrorResponse) msg).getErrorMsg());
-		} else if (msg instanceof MyEventMessage) {
-			((MyEventMessage) msg).processEvent(plugin);
+		} else if (msg instanceof MyReplEvent) {
+			((MyReplEvent) msg).processEvent(plugin);
 		}
 		return;
 	}

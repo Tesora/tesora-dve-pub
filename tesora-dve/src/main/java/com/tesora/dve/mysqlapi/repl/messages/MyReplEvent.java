@@ -21,15 +21,17 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.libmy.MyMessage;
 import io.netty.buffer.ByteBuf;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.libmy.MyMessageType;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
-public class MyReplEvent extends MyEventMessage {
+public class MyReplEvent extends MyMessage implements MyProcessEvent {
 	static final Logger logger = Logger.getLogger(MyReplEvent.class);
 
 	MyReplEventCommonHeader commonHdr;
@@ -43,6 +45,21 @@ public class MyReplEvent extends MyEventMessage {
 		this();
 		this.commonHdr = ch;
 	}
+
+    @Override
+    public MyMessageType getMessageType() {
+        return MyMessageType.REPL_EVENT_RESPONSE;
+    }
+
+    @Override
+    public boolean isMessageTypeEncoded() {
+        return true;
+    }
+
+    @Override
+    public String getSkipErrorMessage() {
+        return StringUtils.EMPTY;
+    }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) throws PEException {
@@ -103,11 +120,6 @@ public class MyReplEvent extends MyEventMessage {
 		}
 	}
 
-	@Override
-	public MyMessageType getMessageType() {
-		return MyMessageType.REPL_EVENT_RESPONSE;
-	}
-
 	public MyLogEventPacket getLogEventPacket() {
 		return levp;
 	}
@@ -124,4 +136,6 @@ public class MyReplEvent extends MyEventMessage {
 	public String toString() {
 		return "MyReplEvent: " + commonHdr.getMasterLogPosition();
 	}
+
+
 }
