@@ -72,10 +72,14 @@ public class ExpressionAlias extends ExpressionNode {
 	public Alias getAlias() { return alias; }
 	
 	public boolean isSynthetic() {
-		return synthetic 
-				|| getSourceLocation() == null
-				|| getSourceLocation() instanceof ComputedSourceLocation
-				;
+		return (getSourceLocation() == null || getSourceLocation() instanceof ComputedSourceLocation)
+				&& synthetic;
+
+		// switch to this to repro redist insert prepare hang, and run CreateTableAsSelectTest
+//		return synthetic 
+//				|| getSourceLocation() == null
+//				|| getSourceLocation() instanceof ComputedSourceLocation
+//				;
 	}
 	
 	// sometimes we need to reset the alias
