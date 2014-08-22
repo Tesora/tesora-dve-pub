@@ -321,6 +321,10 @@ public class SchemaContext {
 		origStmt = sql;
 	}
 	
+	public void clearOrigStmt() {
+		origStmt = null;
+	}
+	
 	public TokenStream getTokens() {
 		return tokens;
 	}
