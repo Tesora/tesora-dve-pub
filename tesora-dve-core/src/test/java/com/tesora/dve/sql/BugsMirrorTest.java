@@ -503,13 +503,11 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		runTest(tests);
 	}
 
-	@Ignore
 	@Test
 	public void testPE1591() throws Throwable {
 		runTest(new StatementMirrorFun("select convert(@@version_compile_os using latin1) NOT IN (\"Win32\",\"Win64\",\"Windows\")"));
 	}
 
-	@Ignore
 	@Test
 	public void testPE1593() throws Throwable {
 		runTest(new StatementMirrorFun("select @@thread_handling"));
