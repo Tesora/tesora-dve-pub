@@ -1084,4 +1084,15 @@ public class TestCreates extends SchemaTest {
 								"pe73567_t5",
 								"CREATE TABLE `pe73567_t5` (\n  `a` varchar(14) DEFAULT 'Hello, World!'\n) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci /*#dve  RANDOM DISTRIBUTE */"));
 	}
+	
+	@Test
+	public void testDVE1592() throws Throwable {
+		rootConnection.execute("create table dve1592 (id int primary key, fid int unique, sid int key)");
+//		System.out.println(rootConnection.printResults("show create table dve1592"));
+//		System.out.println(rootConnection.printResults("show keys in dve1592"));
+		rootConnection.assertResults("show keys in dve1592",
+				br(nr,"dve1592",0,"fid",1,"fid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore,
+				   nr,"dve1592",0,"PRIMARY",1,"id",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore,
+				   nr,"dve1592",1,"sid",1,"sid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore));
+	}
 }

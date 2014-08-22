@@ -514,9 +514,10 @@ field_attribute returns [ColumnModifier cm] options {k=1;}:
 field_attribute_no_default returns [ColumnModifier cm] options {k=1;}: 
   ((n=NOT? NULL) { $cm = utils.buildColumnModifier($n != null ? ColumnModifierKind.NOT_NULLABLE : ColumnModifierKind.NULLABLE); }) 
   | (AUTOINCREMENT { $cm = utils.buildColumnModifier(ColumnModifierKind.AUTOINCREMENT); })
-  | (ON UPDATE CURRENT_TIMESTAMP { $cm = utils.buildOnUpdate(); })  
-  | (UNIQUE KEY { $cm = utils.buildInlineKeyModifier(ConstraintType.UNIQUE); })
-  | (pk=PRIMARY? KEY { $cm = utils.buildInlineKeyModifier($pk == null ? null : ConstraintType.PRIMARY); })
+  | (ON UPDATE CURRENT_TIMESTAMP { $cm = utils.buildOnUpdate(); })
+  | (PRIMARY KEY { $cm = utils.buildInlineKeyModifier(ConstraintType.PRIMARY); })  
+  | (UNIQUE { $cm = utils.buildInlineKeyModifier(ConstraintType.UNIQUE); })
+  | (KEY { $cm = utils.buildInlineKeyModifier(null); })
   ;
 
 field_default_value returns [ExpressionNode expr] options {k=1;}:

@@ -211,6 +211,7 @@ public class SchemaContext {
 	// a partial refresh - clear all expensive fields that won't be accessed later
 	public void cleanupPostPlanning() {
 		tokens = null;
+		origStmt = null;
 	}
 	
 	public SchemaSource getSource() {

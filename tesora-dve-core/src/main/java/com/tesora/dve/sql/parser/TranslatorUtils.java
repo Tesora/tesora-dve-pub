@@ -1768,6 +1768,19 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		else
 			nc = scope.registerColumn(new TenantColumn(pc));
 		out.add(nc);
+		// collapse the case where we see UNIQUE, KEY
+		if (inlineKeys.size() > 1) {
+			int uniqued = -1;
+			int keyed = -1;
+			for(int i = 0; i < inlineKeys.size(); i++) {
+				if (inlineKeys.get(i).getConstraint() == ConstraintType.UNIQUE && uniqued == -1)
+					uniqued = i;
+				else if (inlineKeys.get(i).getConstraint() == null && keyed == -1)
+					keyed = i;
+			}
+			if (uniqued > -1 && keyed > uniqued)
+				inlineKeys.remove(keyed);
+		}
 		for(ColumnKeyModifier ckm : inlineKeys) {
 			// first build the key
 			@SuppressWarnings("unchecked")
