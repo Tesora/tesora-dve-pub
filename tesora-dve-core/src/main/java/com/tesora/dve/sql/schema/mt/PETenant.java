@@ -80,7 +80,7 @@ public class PETenant extends Persistable<PETenant, Tenant> implements IPETenant
 		this.ofDB = StructuralUtils.buildEdge(pc,onDatabase,false);
 		if (requestedID != -1 && pc.getCatalog().isPersistent())
 			throw new SchemaException(Pass.SECOND, "Wrong ctor for PETenant");
-        lookup = Singletons.require(HostService.class).getDBNative().getEmitter().getTenantTableLookup();
+        lookup = new CacheAwareLookup<TableScope>(true, true);
 		loaded = true;
 	}
 
@@ -168,7 +168,7 @@ public class PETenant extends Persistable<PETenant, Tenant> implements IPETenant
 		this.suspended = ten.isSuspended();
 		this.tenantID = ten.getId();
 		this.ofDB = StructuralUtils.buildEdge(sc,PEDatabase.load(ten.getDatabase(), sc),true);
-        this.lookup = Singletons.require(HostService.class).getDBNative().getEmitter().getTenantTableLookup();
+        this.lookup = new CacheAwareLookup<TableScope>(true, true);
 		this.loaded = false;
 		sc.finishedLoading(this, ten);
 	}

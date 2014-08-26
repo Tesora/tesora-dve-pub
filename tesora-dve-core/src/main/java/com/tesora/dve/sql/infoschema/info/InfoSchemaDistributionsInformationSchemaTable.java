@@ -23,13 +23,13 @@ package com.tesora.dve.sql.infoschema.info;
 
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.logical.DistributionLogicalTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
-public class InfoSchemaDistributionsInformationSchemaTable extends InformationSchemaTableView {
+public class InfoSchemaDistributionsInformationSchemaTable extends ComputedInformationSchemaTableView {
 
 	public InfoSchemaDistributionsInformationSchemaTable(DistributionLogicalTable dlt) {
 		super(InfoView.INFORMATION, dlt, new UnqualifiedName("distributions"),null,false,true);

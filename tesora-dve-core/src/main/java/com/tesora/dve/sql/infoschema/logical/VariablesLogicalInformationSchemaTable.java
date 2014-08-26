@@ -40,7 +40,7 @@ import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.engine.LogicalQuery;
+import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -103,7 +103,7 @@ public class VariablesLogicalInformationSchemaTable extends LogicalInformationSc
 	
 	public Statement execute(SchemaContext sc, ViewQuery vq, ProjectionInfo pi) {
 		// logical only
-		LogicalQuery lq = LogicalSchemaQueryEngine.convertDown(sc, vq);
+		LogicalCatalogQuery lq = LogicalSchemaQueryEngine.convertDown(sc, vq);
 		List<ExpressionNode> decompAnd = ExpressionUtils.decomposeAndClause(lq.getQuery().getWhereClause());
 		String scopeName = findScope(sc,decompAnd);
 		VariableScope vs = rebuildScope(scopeName);
@@ -189,7 +189,7 @@ public class VariablesLogicalInformationSchemaTable extends LogicalInformationSc
 	}
 
 	public IntermediateResultSet executeLikeSelect(SchemaContext sc,
-			String likeExpr, VariableScope vs, LogicalQuery lq, ProjectionInfo pi) {
+			String likeExpr, VariableScope vs, LogicalCatalogQuery lq, ProjectionInfo pi) {
 		List<List<String>> vars = null;
 		try {
 			vars = sc.getConnection().getVariables(vs);
@@ -198,7 +198,7 @@ public class VariablesLogicalInformationSchemaTable extends LogicalInformationSc
 			return null;
 		}
 		List<UnaryFunction<String,List<String>>> rowSelectors = buildRowSelectors(lq);
-		ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(sc,lq.getProjectionColumns(),pi,null);
+		ColumnSet cs = lq.buildProjectionMetadata(sc, pi, null); 
 		// ColumnSet md = buildColumnSet(showScopeName);
 		List<ResultRow> rows = new ArrayList<ResultRow>();
 		UnaryPredicate<List<String>> pred = buildPredicate(likeExpr);
@@ -249,7 +249,7 @@ public class VariablesLogicalInformationSchemaTable extends LogicalInformationSc
 		}
 	}
 	
-	private List<UnaryFunction<String,List<String>>> buildRowSelectors(LogicalQuery lq) {
+	private List<UnaryFunction<String,List<String>>> buildRowSelectors(LogicalCatalogQuery lq) {
 		// we're going to be applied to <scope>, <variable-name>, <variable-value>.
 		// the logical query projection is correct wrt show the scope
 		List<UnaryFunction<String,List<String>>> out = new ArrayList<UnaryFunction<String,List<String>>>();

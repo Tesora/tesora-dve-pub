@@ -23,7 +23,7 @@ package com.tesora.dve.sql.infoschema.info;
 
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
@@ -31,7 +31,7 @@ import com.tesora.dve.sql.infoschema.logical.catalog.CatalogInformationSchemaTab
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public abstract class InfoSchemaTemporaryTablesInformationSchemaTable extends
-		InformationSchemaTableView {
+		ComputedInformationSchemaTableView {
 
 	private final boolean includeServer;
 

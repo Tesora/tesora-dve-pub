@@ -31,6 +31,7 @@ import com.tesora.dve.persist.InsertEngine;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
@@ -60,7 +61,7 @@ public class InfoSchemaInit extends TransformTest {
 		System.out.println("Show tables:");
 		for(InformationSchemaTableView list : schema.getShowSchema().getTables(null)) {
 			System.out.println(list);
-			for(AbstractInformationSchemaColumnView isc : list.getColumns(null))
+			for(Object isc : list.getColumns(null))
 				System.out.println("   " + isc);
 		}		
 	}
@@ -71,7 +72,7 @@ public class InfoSchemaInit extends TransformTest {
 		System.out.println("Info schema tables:");
 		for(InformationSchemaTableView list : schema.getInfoSchema().getTables(null)) {
 			System.out.println(list);
-			for(AbstractInformationSchemaColumnView isc : list.getColumns(null))
+			for(Object isc : list.getColumns(null))
 				System.out.println("   " + isc);
 		}				
 	}
@@ -82,7 +83,7 @@ public class InfoSchemaInit extends TransformTest {
 		System.out.println("Mysql tables:");
 		for(InformationSchemaTableView list : schema.getMysqlSchema().getTables(null)) {
 			System.out.println(list);
-			for(AbstractInformationSchemaColumnView isc : list.getColumns(null))
+			for(Object isc : list.getColumns(null))
 				System.out.println("   " + isc);
 		}		
 	}

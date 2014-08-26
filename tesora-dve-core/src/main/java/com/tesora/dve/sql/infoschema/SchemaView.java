@@ -96,10 +96,21 @@ public abstract class SchemaView implements
 		tables.add(t);
 		lookup.refreshBacking(tables);
 		if (t.getLogicalTable() != null)
-			reverse.put(t.getLogicalTable(), t);
+			reverse.put(t.getLogicalTable(),t);
 		return t;
 	}
 
+	public void viewReplace(SchemaContext sc, InformationSchemaTableView t) {
+		InformationSchemaTableView already = lookup.lookup(t.getName());
+		if (already != null) {
+			tables.remove(already);
+			if (already.getLogicalTable() != null)
+				reverse.remove(already.getLogicalTable());
+		}
+		tables.add(t);
+		lookup.refreshBacking(tables);
+	}
+	
 	@Override
 	public Collection<InformationSchemaTableView> getTables(SchemaContext sc) {
 		return tables;

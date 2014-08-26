@@ -48,6 +48,7 @@ import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaException;
@@ -64,6 +65,7 @@ import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifierTag;
 import com.tesora.dve.sql.schema.modifiers.TableModifiers;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
+import com.tesora.dve.sql.util.Cast;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryPredicate;
@@ -228,7 +230,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		
 	public void setDeclaration(SchemaContext sc, PETable basedOn) {
 		super.setDeclaration(sc,basedOn);
-        tableDefinition = Singletons.require(HostService.class).getDBNative().getEmitter().emitTableDefinition(sc,basedOn);
+        tableDefinition = new MysqlEmitter().emitTableDefinition(sc,basedOn); 
 	}
 	
 	public String getDefinition() {
@@ -341,6 +343,10 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return keys;
 	}
 
+	protected List<TableComponent<?>> getKeys() {
+		return Functional.apply(keys,new Cast<TableComponent<?>,PEKey>());
+	}
+	
 	
 	public PEKey lookupKey(SchemaContext sc, Name keyName) {
 		if (!loaded) return null;

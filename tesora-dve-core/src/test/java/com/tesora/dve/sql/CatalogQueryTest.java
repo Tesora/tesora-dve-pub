@@ -804,4 +804,10 @@ public class CatalogQueryTest extends SchemaTest {
 				   nr,"def","cqtdb","sid","decimal(10,5)","",""));		
 	}
 	
+	@Test
+	public void testViewExpansion() throws Throwable {
+		conn.execute("use information_schema");
+		System.out.println(conn.printResults("select * from generation_site"));
+	}
+	
 }

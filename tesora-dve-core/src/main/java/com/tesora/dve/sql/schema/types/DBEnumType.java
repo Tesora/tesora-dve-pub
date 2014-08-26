@@ -48,10 +48,10 @@ public final class DBEnumType extends TextType {
 		boolean isSet = "set".equalsIgnoreCase(kstr);
 		String valueStr = ntn.substring(lparen + 1,rparen);
 		List<String> values = Arrays.asList(valueStr.split(","));
-		return makeFromStrings(isSet, values, BasicType.buildModifiers(uc));
+		return makeFromStrings(isSet, values, BasicType.buildModifiers(uc),types);
 	}
 	
-	public static DBEnumType makeFromStrings(boolean isSet, List<String> values, List<TypeModifier> mods) {
+	public static DBEnumType makeFromStrings(boolean isSet, List<String> values, List<TypeModifier> mods, NativeTypeCatalog typeCatalog) {
 		final List<LiteralExpression> valueExpressions = new ArrayList<LiteralExpression>(values.size());
 		for (final String value : values) {
 			final String noQuotesValue = PEStringUtils.dequote(value);
@@ -61,18 +61,18 @@ public final class DBEnumType extends TextType {
 				valueExpressions.add(LiteralExpression.makeStringLiteral(noQuotesValue));
 			}
 		}
-		return make(isSet, valueExpressions, mods);
+		return make(isSet, valueExpressions, mods, typeCatalog);
 	}
 
-	public static DBEnumType make(boolean isSet, List<LiteralExpression> values, List<TypeModifier> mods) {
+	public static DBEnumType make(boolean isSet, List<LiteralExpression> values, List<TypeModifier> mods, NativeTypeCatalog typeCatalog) {
 		NativeType backingType = null;
 		int size = 0;
 		if (values.size() < 256) {
 			size = 1;
-			backingType = BasicType.lookupNativeType(MysqlType.TINYINT.toString());
+			backingType = BasicType.lookupNativeType(MysqlType.TINYINT.toString(), typeCatalog);
 		} else {
 			size = 2;
-			backingType = BasicType.lookupNativeType(MysqlType.SMALLINT.toString());
+			backingType = BasicType.lookupNativeType(MysqlType.SMALLINT.toString(), typeCatalog);
 		}
 		FlagsAndModifiers fam = buildFlagsAndModifiers(mods);
 		return new DBEnumType(isSet, values, backingType, fam.flags, size, fam.charset, fam.collation);

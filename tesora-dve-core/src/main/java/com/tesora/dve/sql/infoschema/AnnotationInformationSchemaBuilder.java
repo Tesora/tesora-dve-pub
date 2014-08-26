@@ -158,7 +158,7 @@ public class AnnotationInformationSchemaBuilder implements
 			throw new PEException("Unable to construct logical table for " + c.getSimpleName(),t);
 		}
 		logicalSchema.addTable(null,cist);
-		HashMap<InfoView, InformationSchemaTableView> views = new HashMap<InfoView, InformationSchemaTableView>();
+		HashMap<InfoView, ComputedInformationSchemaTableView> views = new HashMap<InfoView, ComputedInformationSchemaTableView>();
 		for(TableView tv : ist.views()) {
 			try {
 				if (tv.view() == InfoView.SHOW) {
@@ -169,8 +169,8 @@ public class AnnotationInformationSchemaBuilder implements
 				} else {
 					Class<?> infoClass = itc.getInfo();
 					Constructor<?> cons = infoClass.getConstructor(InfoView.class, LogicalInformationSchemaTable.class, UnqualifiedName.class, UnqualifiedName.class, Boolean.TYPE, Boolean.TYPE);
-					InformationSchemaTableView istv = 
-						(InformationSchemaTableView) cons.newInstance(tv.view(), cist, new UnqualifiedName(tv.name()), 
+					ComputedInformationSchemaTableView istv = 
+						(ComputedInformationSchemaTableView) cons.newInstance(tv.view(), cist, new UnqualifiedName(tv.name()), 
 								("".equals(tv.pluralName()) ? null : new UnqualifiedName(tv.pluralName())),
 								tv.priviledged(), tv.extension());
 					views.put(tv.view(), istv);
@@ -220,7 +220,7 @@ public class AnnotationInformationSchemaBuilder implements
 		}		
 		// go back to the table views and build the final declaration order
 		for(TableView tv : ist.views()) {
-			InformationSchemaTableView table = views.get(tv.view()); 
+			ComputedInformationSchemaTableView table = views.get(tv.view()); 
 			Map<String,InformationSchemaColumnView> found = viewColumns.get(tv.view());
 			for(String n : tv.columnOrder()) {
 				InformationSchemaColumnView iscv = found.remove(n);
@@ -263,7 +263,7 @@ public class AnnotationInformationSchemaBuilder implements
 			matchClass = m;
 			logicalClass = CatalogInformationSchemaTable.class;
 			showClass = ShowInformationSchemaTable.class;
-			infoSchemaClass = InformationSchemaTableView.class;
+			infoSchemaClass = ComputedInformationSchemaTableView.class;
 		}
 		
 		public InfoTableConfig withLogical(Class<?> c) {

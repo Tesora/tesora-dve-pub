@@ -75,7 +75,7 @@ public class MultitenantTransformTest extends TransformTest {
 	private SchemaContext clearTenantID(SchemaContext db) throws Throwable {
 		TransientExecutionEngine tee = (TransientExecutionEngine) db.getCatalog();
 		tee.parse(new String[] { "use " + PEConstants.LANDLORD_TENANT });
-		return SchemaContext.createContext(tee, tee);
+		return SchemaContext.createContext(tee, tee, db.getTypes());
 	}
 	
 	@Test

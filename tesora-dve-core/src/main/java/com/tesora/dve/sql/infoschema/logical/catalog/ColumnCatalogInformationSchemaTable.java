@@ -30,7 +30,7 @@ import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.engine.LogicalQuery;
+import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.engine.NamedParameter;
 import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.node.expression.ActualLiteralExpression;
@@ -91,7 +91,7 @@ public class ColumnCatalogInformationSchemaTable extends
 	}
 	
 	@Override
-	public LogicalQuery explode(SchemaContext sc, LogicalQuery lq) {
+	public LogicalCatalogQuery explode(SchemaContext sc, LogicalCatalogQuery lq) {
 		if (sc.getCurrentDatabase(false) != null && sc.getCurrentDatabase().isInfoSchema()) return lq;
 
 		// true when this is a regular schema tenant (not root)

@@ -34,7 +34,7 @@ import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.engine.LogicalQuery;
+import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.logical.catalog.CatalogInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -109,7 +109,7 @@ public class GenerationSiteInformationSchemaTable extends
 	}
 	
 	@Override
-	public LogicalQuery explode(SchemaContext sc, LogicalQuery lq) {
+	public LogicalCatalogQuery explode(SchemaContext sc, LogicalCatalogQuery lq) {
 		SelectStatement in = lq.getQuery();
 		FromTableReference anchor = null;
 		for(Iterator<FromTableReference> iter = in.getTablesEdge().iterator(); iter.hasNext();) {
@@ -175,7 +175,7 @@ public class GenerationSiteInformationSchemaTable extends
 				iter.remove();
 		}
 		
-		return new LogicalQuery(lq,in);
+		return new LogicalCatalogQuery(lq,in);
 	}
 
 	private static class GenerationSitesTable extends LogicalInformationSchemaTable {

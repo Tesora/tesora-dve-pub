@@ -36,4 +36,5 @@ public interface Column<T extends Table<?>> extends HasName {
 	public boolean isTenantColumn();
 	
 	public int getPosition();
+	public void setPosition(int p);
 }

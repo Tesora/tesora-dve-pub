@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.sql.infoschema.engine.LogicalQuery;
+import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.node.GeneralCollectingTraversal;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -205,7 +205,7 @@ public class LogicalInformationSchemaTable implements Table<LogicalInformationSc
 	 * @param lq
 	 * @return
 	 */
-	public LogicalQuery explode(SchemaContext sc, LogicalQuery lq) {
+	public LogicalCatalogQuery explode(SchemaContext sc, LogicalCatalogQuery lq) {
 		return lq;
 	}
 	

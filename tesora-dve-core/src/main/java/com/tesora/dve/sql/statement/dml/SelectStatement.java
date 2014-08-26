@@ -44,6 +44,7 @@ import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
+import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnAttribute;
 import com.tesora.dve.resultset.ColumnInfo;
@@ -542,7 +543,7 @@ public class SelectStatement extends ProjectingStatement {
 	}
 
 	private ProjectionInfo buildProjectionMetadata(SchemaContext pc, List<ExpressionNode> proj) {
-        Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+        Emitter emitter = new MysqlEmitter(); // called during info schema initialization
 		try {
 			emitter.setOptions(EmitOptions.RESULTSETMETADATA);
 			emitter.pushContext(pc.getTokens());

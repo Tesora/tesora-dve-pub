@@ -38,6 +38,7 @@ import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.server.global.HostService;
@@ -55,6 +56,7 @@ import com.tesora.dve.sql.schema.modifiers.EngineTableModifier;
 import com.tesora.dve.sql.schema.mt.TenantColumn;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.ddl.PECreateStatement;
+import com.tesora.dve.sql.util.Cast;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
@@ -98,7 +100,25 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 		setDistributionVector(pc,dv,true);
 		createTableStatement = null;
 		state = theState;
-        lookup = Singletons.require(HostService.class).getDBNative().getEmitter().getColumnLookup(columns);
+        lookup = new SchemaLookup<PEColumn>(columns, false, false);
+		setPersistent(pc,null,null);
+	}
+	
+	// make a copy of other, consuming it
+	protected PEAbstractTable(SchemaContext pc, PEAbstractTable other) {
+		super(other.getCacheKey());
+		setName(other.getName(pc));
+		this.columns = new ArrayList<PEColumn>();
+		this.storage = StructuralUtils.buildEdge(pc,other.getPersistentStorage(pc),false);
+		ArrayList<TableComponent<?>> fieldsAndKeys = new ArrayList<TableComponent<?>>();
+		fieldsAndKeys.addAll(other.getFields());
+		fieldsAndKeys.addAll(other.getKeys());
+		initializeColumns(pc,fieldsAndKeys);
+		setDatabase(pc,other.getPEDatabase(pc),false);
+		setDistributionVector(pc,other.getDistributionVector(pc),true);
+		createTableStatement = other.createTableStatement;
+		state = other.state;
+		lookup = new SchemaLookup<PEColumn>(columns,false,false);
 		setPersistent(pc,null,null);
 	}
 	
@@ -123,7 +143,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 		setDistributionVector(pc,distVect);
 		storage = StructuralUtils.buildEdge(pc,group, false);
 		setDatabase(pc,pdb,false);
-        lookup = Singletons.require(HostService.class).getDBNative().getEmitter().getColumnLookup(columns);
+        lookup = new SchemaLookup<PEColumn>(columns, false, false);
 		setPersistent(pc,null,null);
 	}
 	
@@ -169,6 +189,14 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 				iter.remove();
 			}
 		}
+	}
+	
+	protected List<TableComponent<?>> getKeys() {
+		return Collections.EMPTY_LIST;
+	}
+	
+	protected List<TableComponent<?>> getFields() {
+		return Functional.apply(columns, new Cast<TableComponent<?>,PEColumn>());	
 	}
 	
 	public TableState getState() {
@@ -305,7 +333,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 			addColumn(pc, c,true);
 		}
 		// set the lookup so that keys & dist vect may be resolved
-        lookup = Singletons.require(HostService.class).getDBNative().getEmitter().getColumnLookup(columns);
+        lookup = new SchemaLookup<PEColumn>(columns, false, false);
 	}		
 
 	protected void checkLoaded(SchemaContext pc) {
@@ -444,7 +472,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 		checkLoaded(sc);
 		if (!getName().equals(basedOn.getName()))
 			throw new SchemaException(Pass.PLANNER, "Invalid create table stmt: trying to set " + basedOn.getName() + " into table " + getName());
-        createTableStatement = Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(sc,basedOn);
+		createTableStatement = new MysqlEmitter().emitCreateTableStatement(sc, basedOn);
 	}
 	
 	public String getDeclaration() {

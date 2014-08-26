@@ -22,13 +22,13 @@ package com.tesora.dve.sql.infoschema.mysql;
  */
 
 import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
-public class MysqlDBInformationSchemaTable extends InformationSchemaTableView {
+public class MysqlDBInformationSchemaTable extends ComputedInformationSchemaTableView {
 
 	public MysqlDBInformationSchemaTable(LogicalInformationSchemaTable basedOn) {
 		super(InfoView.MYSQL, basedOn, new UnqualifiedName("db"), null, false, false);

@@ -23,16 +23,16 @@ package com.tesora.dve.sql.infoschema.annos;
 
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.DatabaseView.DatabaseViewCacheKey;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.util.UnaryFunction;
 
 public enum InfoView {
 
-	INFORMATION(PEConstants.INFORMATION_SCHEMA_DBNAME,InformationSchemaTableView.regularNameFunc,false,true),
-	SHOW(PEConstants.SHOW_SCHEMA_DBNAME,InformationSchemaTableView.regularNameFunc,false,false),
-	MYSQL(PEConstants.MYSQL_SCHEMA_DBNAME,InformationSchemaTableView.regularNameFunc,true,false);
+	INFORMATION(PEConstants.INFORMATION_SCHEMA_DBNAME,ComputedInformationSchemaTableView.regularNameFunc,false,true),
+	SHOW(PEConstants.SHOW_SCHEMA_DBNAME,ComputedInformationSchemaTableView.regularNameFunc,false,false),
+	MYSQL(PEConstants.MYSQL_SCHEMA_DBNAME,ComputedInformationSchemaTableView.regularNameFunc,true,false);
 	
 	private final String persistentDBName;
 	private final UnaryFunction<Name[], AbstractInformationSchemaColumnView> nameFunc;

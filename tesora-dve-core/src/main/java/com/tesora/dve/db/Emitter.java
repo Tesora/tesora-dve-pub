@@ -50,6 +50,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
@@ -221,8 +222,12 @@ public abstract class Emitter {
 	 */
 	public static abstract class EmitterInvoker {
 
-		private final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+		private final Emitter emitter;
 
+		public EmitterInvoker(Emitter emitter) {
+			this.emitter = emitter;
+		}
+		
 		public final String getValueAsString(final SchemaContext sc) {
 			final StringBuilder buf = new StringBuilder();
 			this.emitStatement(sc, buf);
@@ -258,6 +263,8 @@ public abstract class Emitter {
 	public GenericSQLCommand buildGenericCommand(String format) {
 		return builder.build(format);
 	}
+	
+	public abstract Emitter buildNew();
 	
 	public void startGenericCommand() {
 		builder = new GenericSQLCommand.Builder();
@@ -309,10 +316,25 @@ public abstract class Emitter {
 	public abstract String getPersistentName(SchemaContext sc, PEAbstractTable<?> t);
 	public abstract String getPersistentName(PEColumn c);
 
-	public abstract <T extends Column<?>> SchemaLookup<T> getColumnLookup(List<T> in);
-	//public abstract <T extends Table<?>> SchemaLookup<T> getTableLookup(List<T> in);
-	public abstract <T extends HasName> CacheAwareLookup<T> getTableLookup();
-	public abstract <T extends HasName> CacheAwareLookup<T> getTenantTableLookup();
+	/*
+	 * 	@Override
+	public <T extends Column<?>> SchemaLookup<T> getColumnLookup(List<T> in) {
+		return new SchemaLookup<T>(in, false, false);
+	}
+
+	@Override
+	public <T extends HasName> CacheAwareLookup<T> getTableLookup() {
+		return new CacheAwareLookup<T>(true, true);
+	}
+
+	@Override
+	public <T extends HasName> CacheAwareLookup<T> getTenantTableLookup() {
+		return new CacheAwareLookup<T>(true, true);
+	}
+
+
+	 */
+	
 	
 	public abstract <T> Lookup<T> getLookup();
 	
@@ -526,7 +548,7 @@ public abstract class Emitter {
 		// default value
 		if (c.getDefaultValue() != null) {
 			buf.append(" DEFAULT ");
-			String defaultValue = new EmitterInvoker() {
+			String defaultValue = new EmitterInvoker(buildNew()) {
 				@Override
 				protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
 					emitExpression(sc, c.getDefaultValue(), buf, -1);

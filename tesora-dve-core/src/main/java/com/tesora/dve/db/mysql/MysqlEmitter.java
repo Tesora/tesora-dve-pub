@@ -72,6 +72,11 @@ public class MysqlEmitter extends Emitter {
 	}
 	
 	@Override
+	public Emitter buildNew() {
+		return new MysqlEmitter();
+	}
+	
+	@Override
 	public void emitOperatorFunctionCall(SchemaContext sc, FunctionCall fc, StringBuilder buf, int pretty) {
 		if (fc.getFunctionName().getCapitalized().get().equals("LIKE")) {
 			// mysql has that weird escape syntax - do it here if there are three params
@@ -162,22 +167,6 @@ public class MysqlEmitter extends Emitter {
 		}
 		buf.append(" ");
 	}
-	
-	@Override
-	public <T extends Column<?>> SchemaLookup<T> getColumnLookup(List<T> in) {
-		return new SchemaLookup<T>(in, false, false);
-	}
-
-	@Override
-	public <T extends HasName> CacheAwareLookup<T> getTableLookup() {
-		return new CacheAwareLookup<T>(true, true);
-	}
-
-	@Override
-	public <T extends HasName> CacheAwareLookup<T> getTenantTableLookup() {
-		return new CacheAwareLookup<T>(true, true);
-	}
-
 	
 	@Override
 	public <T> Lookup<T> getLookup() {

@@ -34,6 +34,7 @@ import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public abstract class AbstractInformationSchemaColumnView implements Column<InformationSchemaTableView> {

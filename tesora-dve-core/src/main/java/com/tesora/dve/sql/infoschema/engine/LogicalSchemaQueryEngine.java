@@ -53,6 +53,7 @@ import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.ConstantSyntheticInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.DelegatingInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
@@ -92,7 +93,7 @@ import com.tesora.dve.sql.util.ListSet;
 // and logical table queries down to either hql queries or sql queries.
 public class LogicalSchemaQueryEngine {
 
-	private static final boolean emit = Boolean.getBoolean("parser.debug");
+	static final boolean emit = Boolean.getBoolean("parser.debug");
 	private static final Logger logger = Logger.getLogger(LogicalSchemaQueryEngine.class);
 	
 	private static boolean canLog() { return emit || logger.isDebugEnabled(); }
@@ -132,7 +133,7 @@ public class LogicalSchemaQueryEngine {
 
 			}.withCachingFlag(false);
 		} else if (haveVariable && haveOthers) {
-			throw new InformationSchemaException("Illegla information schema query: across variables table and others");
+			throw new InformationSchemaException("Illegal information schema query: across variables table and others");
 		} else {
 			// all variables
 			VariablesLogicalInformationSchemaTable varTab = 
@@ -153,7 +154,7 @@ public class LogicalSchemaQueryEngine {
 	// main entry point.  
 	public static IntermediateResultSet buildResultSet(SchemaContext sc, ViewQuery vq, ProjectionInfo pi) {
 		if (sc == null) return new IntermediateResultSet();
-		LogicalQuery lq = convertDown(sc, vq);
+		LogicalCatalogQuery lq = convertDown(sc, vq);
 		QueryExecutionKind qek = determineKind(lq);
 		if (qek != QueryExecutionKind.RAW)
 			return buildCatalogEntities(sc, lq, qek).getResultSet(sc,pi);
@@ -161,13 +162,13 @@ public class LogicalSchemaQueryEngine {
 	}
 
 	public static EntityResults buildCatalogEntities(SchemaContext sc, ViewQuery vq) {
-		LogicalQuery lq = convertDown(sc, vq);
+		LogicalCatalogQuery lq = convertDown(sc, vq);
 		QueryExecutionKind qek = determineKind(lq);
 		return buildCatalogEntities(sc, lq, qek);
 	}
 
 	
-	private static EntityResults buildCatalogEntities(SchemaContext sc, LogicalQuery lq, QueryExecutionKind qek) {
+	private static EntityResults buildCatalogEntities(SchemaContext sc, LogicalCatalogQuery lq, QueryExecutionKind qek) {
 		if (qek == QueryExecutionKind.RAW)
 			throw new InformationSchemaException("Unable to execute info schema query as entity query");
 		List<ExpressionNode> origProjection = lq.getQuery().getProjection();
@@ -183,7 +184,7 @@ public class LogicalSchemaQueryEngine {
 	}
 	
 	
-	private static List<CatalogEntity> executeEntityQuery(SchemaContext sc, LogicalQuery lq) {
+	private static List<CatalogEntity> executeEntityQuery(SchemaContext sc, LogicalCatalogQuery lq) {
 		SelectStatement ss = lq.getQuery();
 		// we used to build FROM .... but we're switching to SELECT ... FROM ... so that we can have
 		// better control over the return result (mainly for mt)
@@ -206,7 +207,7 @@ public class LogicalSchemaQueryEngine {
 	
 	}
 
-	private static List<CatalogEntity> executeRawEntityQuery(SchemaContext sc, LogicalQuery lq) {
+	private static List<CatalogEntity> executeRawEntityQuery(SchemaContext sc, LogicalCatalogQuery lq) {
 		if (lq.getForwarding().size() != 1)
 			throw new InformationSchemaException("Raw entity query with more than one entity return type");
 		SelectStatement ss = lq.getQuery();
@@ -225,7 +226,7 @@ public class LogicalSchemaQueryEngine {
 		return sc.getCatalog().nativeQuery(sql, lq.getParams(), entClass);
 	}
 	
-	private static QueryExecutionKind determineKind(LogicalQuery lq) {
+	private static QueryExecutionKind determineKind(LogicalCatalogQuery lq) {
 		// if any of the tables is raw this must be a raw query
 		for(ExpressionNode en : lq.getForwarding().values()) {
 			if (en instanceof TableInstance) {
@@ -275,26 +276,41 @@ public class LogicalSchemaQueryEngine {
 		acc.add((AbstractInformationSchemaColumnView) ci.getColumn());
 	}
 	
-	public static LogicalQuery convertDown(SchemaContext sc, ViewQuery vq) {
+	public static LogicalCatalogQuery convertDown(SchemaContext sc, ViewQuery vq) {
 		SelectStatement in = vq.getQuery();
 		if (canLog()) {
 			String sql = in.getSQL(sc);
 			log("info schema query before logical conversion: '" + sql + "'");						
 		}
-		if (sc != null && !sc.getPolicyContext().isRoot()) {
+		boolean haveViews = false;
+		boolean haveNonViews = false;
+		if (sc != null ) {
 			ListSet<TableKey> tabs = EngineConstant.TABLES_INC_NESTED.getValue(in,sc);
 			for(TableKey tk : tabs) {
 				InformationSchemaTableView istv = (InformationSchemaTableView) tk.getTable();
-				if (vq.getoverrideRequiresPrivilegeValue() != null) {
-					if (vq.getoverrideRequiresPrivilegeValue()) {
-						throw new InformationSchemaException("You do not have permissions to query " + istv.getName().get());
+				if (!sc.getPolicyContext().isRoot()) {
+					if (vq.getoverrideRequiresPrivilegeValue() != null) {
+						if (vq.getoverrideRequiresPrivilegeValue()) {
+							throw new InformationSchemaException("You do not have permissions to query " + istv.getName().get());
+						}
+					} else {
+						istv.assertPermissions(sc);
 					}
-				} else {
-					istv.assertPermissions(sc);
 				}
+				if (istv.isView()) haveViews = true;
+				else haveNonViews = true;
 			}
 		}
-		InformationSchemaTableView.derefEntities(in);
+		// having checked perms, let's see if the query consists of only info schema views; if so we can just expand and
+		// skip all the other stuff.
+		if (haveViews && haveNonViews)
+			throw new InformationSchemaException("Unable to handle info schema query involving view impls and non view impls");
+		if (haveViews) {
+			System.out.println(in.getSQL(sc));
+			throw new InformationSchemaException("fill me in");
+		}
+		
+		ComputedInformationSchemaTableView.derefEntities(in);
 		List<ExpressionNode> origProjection = vq.getQuery().getProjection();
 		ArrayList<List<AbstractInformationSchemaColumnView>> columns = new ArrayList<List<AbstractInformationSchemaColumnView>>();
 		for(int i = 0; i < origProjection.size(); i++) {
@@ -327,7 +343,7 @@ public class LogicalSchemaQueryEngine {
 			out.getDerivedInfo().addLocalTable(ti.getTableKey());
 		}
 
-		LogicalQuery lq = new LogicalQuery(vq, out, vq.getParams(), lca.getForwarding(), columns);
+		LogicalCatalogQuery lq = new LogicalCatalogQuery(vq, out, vq.getParams(), lca.getForwarding(), columns);
 		
 		// if any off the logical tables is layered, then we need to further rewrite		
 		ListSet<TableKey> tabs = EngineConstant.TABLES.getValue(out,sc);
@@ -343,7 +359,7 @@ public class LogicalSchemaQueryEngine {
 			log("info schema query before layered rewrites: '" + sql + "'");			
 		}
 		// let the layered tables do their rewrite magic
-		LogicalQuery working = lq;
+		LogicalCatalogQuery working = lq;
 		for(LogicalInformationSchemaTable list : layered)
 			working = list.explode(sc,working);
 		
@@ -393,7 +409,7 @@ public class LogicalSchemaQueryEngine {
 			TableKey itk = ti.getTableKey();
 			TableInstance otk = (TableInstance) forwarding.get(itk);
 			if (otk == null) {
-				InformationSchemaTableView tab = (InformationSchemaTableView) ti.getTable();
+				ComputedInformationSchemaTableView tab = (ComputedInformationSchemaTableView) ti.getTable();
 				LogicalInformationSchemaTable btab = tab.getLogicalTable();
 				otk = new TableInstance(btab,ti.getSpecifiedAs(null),ti.getAlias(),ti.getNode(),false);
 				forwarding.put(itk,otk);
@@ -431,7 +447,7 @@ public class LogicalSchemaQueryEngine {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static IntermediateResultSet buildRawResultSet(SchemaContext sc, LogicalQuery lq, ProjectionInfo pi) {
+	private static IntermediateResultSet buildRawResultSet(SchemaContext sc, LogicalCatalogQuery lq, ProjectionInfo pi) {
 		// raw conversion is harder than view to logical conversion.  if the logical table is itself a delegating table, we
 		// need to first rewrite the query down to all logical tables without delegates, then convert to sql
 		// now with the fully exploded query, we can look at ScopedColumnInstance, etc.
@@ -476,7 +492,7 @@ public class LogicalSchemaQueryEngine {
 			}
 			rows.add(outrow);
 		}
-		ColumnSet cs = buildProjectionMetadata(sc, lq.getProjectionColumns(),pi,Functional.toList(exampleData.values()));
+		ColumnSet cs = lq.buildProjectionMetadata(sc, pi, Functional.toList(exampleData.values())); 
 		return new IntermediateResultSet(cs,rows);
 	}
 
@@ -499,56 +515,9 @@ public class LogicalSchemaQueryEngine {
 	
 	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<AbstractInformationSchemaColumnView>> projColumns,
 			ProjectionInfo pi) {
-		return buildProjectionMetadata(sc, projColumns,pi,null);
+		return LogicalCatalogQuery.buildProjectionMetadata(sc, projColumns, pi, null);
 	}
 	
-	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<AbstractInformationSchemaColumnView>> projColumns,ProjectionInfo pi,List<Object> examples) {
-		ColumnSet cs = new ColumnSet();
-		try {
-			for(int i = 0; i < projColumns.size(); i++) {
-				List<AbstractInformationSchemaColumnView> p = projColumns.get(i);
-				AbstractInformationSchemaColumnView typeColumn = p.get(p.size() - 1);
-				AbstractInformationSchemaColumnView nameColumn = p.get(0);
-				Type type = typeColumn.getType();
-				if (type == null) {
-					Object help = null;
-					if (i < examples.size())
-						help = examples.get(i);
-					if (help == null)
-						help = "help";
-					ColumnInfo ci = pi.getColumnInfo(i+1);
-					buildNativeType(cs,ci.getName(),ci.getAlias(),help);					
-				} else {
-                    NativeType nt = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(type.getDataType(), true);
-                	ColumnMetadata cmd = new ColumnMetadata();
-                    if (nameColumn.getTable() != null && nameColumn.getTable().getView() == InfoView.INFORMATION) {
-                    	cmd.setDbName(nameColumn.getTable().getDatabase(sc).getName().getUnquotedName().get());
-                    	cmd.setTableName(nameColumn.getTable().getName().getUnquotedName().get());
-                    }
-                    if (pi != null)
-                    	cmd.setAliasName(pi.getColumnAlias(i+1));
-                    cmd.setName(nameColumn.getName().getSQL());
-                    cmd.setSize(type.getSize());
-                    cmd.setNativeTypeName(nt.getTypeName());
-                    cmd.setDataType(type.getDataType());
-                    cs.addColumn(cmd);
-				}
-			}
-		} catch (PEException pe) {
-			throw new SchemaException(Pass.PLANNER, "Unable to build metadata for catalog result set",pe);
-		}
-		if (emit) {
-			StringBuffer buf = new StringBuffer();
-			for(int i = 1; i <= cs.size(); i++) {
-				if (i > 1)
-					buf.append(", ");
-				// buf.append(cs.getColumn(i).getName());
-				buf.append(cs.getColumn(i));
-			}
-			System.out.println("column set: " + buf.toString());
-		}
-		return cs;
-	}
 
 	/**
 	 * @param cs
@@ -557,17 +526,6 @@ public class LogicalSchemaQueryEngine {
 	 * @param in
 	 * @throws PEException
 	 */
-	private static void buildNativeType(ColumnSet cs, String colName, String colAlias, Object in) throws PEException {
-		if (in instanceof String) {
-            NativeType nt = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(java.sql.Types.VARCHAR, true);
-			cs.addColumn(colAlias, 255, nt.getTypeName(), java.sql.Types.VARCHAR);
-		} else if (in instanceof BigInteger) {
-            NativeType nt = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(java.sql.Types.BIGINT, true);
-			cs.addColumn(colAlias, 32, nt.getTypeName(), java.sql.Types.BIGINT);
-		} else {
-			throw new PEException("Fill me in: type guess for result column type: " + in);
-		}
-	}
 	
 	private static void annotate(SchemaContext sc, ViewQuery vq, SelectStatement in) {
 		for(TableKey tk : in.getDerivedInfo().getLocalTableKeys()) {

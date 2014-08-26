@@ -336,7 +336,7 @@ public class CatalogHelper {
 			c.persistToCatalog(engines);
 		}
 
-		InformationSchemas schema = InformationSchemas.build(dbNative);
+		InformationSchemas schema = InformationSchemas.build(dbNative,c,catalogProperties);
 		// info schema is now persisted directly to facilitate upgrades
 		List<PersistedEntity> ents = schema.buildEntities(infoSchemaGroup.getId(), rdm.getId(),
 				dbNative.getDefaultServerCharacterSet(), dbNative.getDefaultServerCollation());

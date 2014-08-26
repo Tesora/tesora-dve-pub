@@ -34,7 +34,7 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
@@ -47,6 +47,7 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -59,7 +60,7 @@ import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 
-public class ShowInformationSchemaTable extends InformationSchemaTableView {
+public class ShowInformationSchemaTable extends ComputedInformationSchemaTableView {
 
 	public ShowInformationSchemaTable(
 			LogicalInformationSchemaTable basedOn, UnqualifiedName viewName,
@@ -112,7 +113,7 @@ public class ShowInformationSchemaTable extends InformationSchemaTableView {
 		if (onName.isQualified())
 			throw new SchemaException(Pass.PLANNER, "No support for qualified show");
 
-		AbstractInformationSchemaColumnView identCol = getIdentColumn();
+		Column identCol = getIdentColumn();
 		Object paramValue = null;
 		if (!identCol.getType().isStringType()) {
 			paramValue = Integer.parseInt(onName.get());
@@ -166,7 +167,7 @@ public class ShowInformationSchemaTable extends InformationSchemaTableView {
 		if ((overrideRequiresPrivilegeValue != null) ? overrideRequiresPrivilegeValue : (requiresPriviledge() && !sc.getPolicyContext().isRoot()))
 			throw new SchemaException(Pass.SECOND, "You do not have permission to show " + getPluralName().get());
 
-		AbstractInformationSchemaColumnView ident = getIdentColumn();
+		Column ident = getIdentColumn();
 		TableInstance ti = new TableInstance(this,null,new UnqualifiedName("a"),(sc == null ? 0 : sc.getNextTable()),false);
 		AliasInformation ai = new AliasInformation();
 		ai.addAlias("a");

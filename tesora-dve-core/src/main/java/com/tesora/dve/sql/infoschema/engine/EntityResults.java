@@ -37,10 +37,10 @@ import com.tesora.dve.sql.schema.SchemaContext;
 // an entity based result set; holds the catalog entities prior to converting them into a result set.
 public class EntityResults {
 
-	private LogicalQuery logicalQuery;
+	private LogicalCatalogQuery logicalQuery;
 	private List<CatalogEntity> entities;
 	
-	public EntityResults(LogicalQuery lq, List<CatalogEntity> results) {
+	public EntityResults(LogicalCatalogQuery lq, List<CatalogEntity> results) {
 		logicalQuery = lq;
 		entities = results;
 	}

@@ -269,9 +269,9 @@ public class BasicType implements Type {
 		return true;
 	}
 	
-	public static NativeType lookupNativeType(String name) {
+	public static NativeType lookupNativeType(String name, NativeTypeCatalog typeCatalog) {
 		try {
-            return Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(name, true);
+            return typeCatalog.findType(name, true);
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.SECOND, "No such type: " + name,pe);
 		}
@@ -373,13 +373,14 @@ public class BasicType implements Type {
 		return new FloatingPointType(backing,fam.flags,size,precision,scale);
 	}
 	
-	public static Type buildType(String typeName, int size, List<TypeModifier> modifiers) {
+	public static Type buildType(String typeName, int size, List<TypeModifier> modifiers, NativeTypeCatalog typeCatalog) {
 		ArrayList<TypeModifier> copy = new ArrayList<TypeModifier>(modifiers);
-		NativeType bt = lookupNativeType(typeName.toString());
+		NativeType bt = lookupNativeType(typeName.toString(), typeCatalog);
 		return buildType(bt,size,copy);
 	}
 	
-	public static BasicType buildType(List<Name> typeNames, List<SizeTypeAttribute> sizes, List<TypeModifier> modifiers) {
+	public static BasicType buildType(List<Name> typeNames, List<SizeTypeAttribute> sizes, List<TypeModifier> modifiers,
+			NativeTypeCatalog typeCatalog) {
 		StringBuilder buf = new StringBuilder();
 		for(Iterator<Name> iter = typeNames.iterator(); iter.hasNext();) {
 			buf.append(iter.next().getCapitalized().get());
@@ -387,9 +388,9 @@ public class BasicType implements Type {
 				buf.append(" ");
 		}
 		String str = buf.toString();
-		BasicType any = handleSerialType(str);
+		BasicType any = handleSerialType(str,typeCatalog);
 		if (any != null) return any;
-		NativeType bt = lookupNativeType(str);
+		NativeType bt = lookupNativeType(str,typeCatalog);
 		// there could be multiple sizing hints - collapse them down to one 
 		FloatSizeTypeAttribute floatSizing = null;
 		SizeTypeAttribute sizing = null;
@@ -418,7 +419,7 @@ public class BasicType implements Type {
 	}
 	
 	public static Type buildType(UserColumn uc, NativeTypeCatalog types) {
-		MysqlNativeType mnType = (MysqlNativeType)lookupNativeType(uc.getNativeTypeName());
+		MysqlNativeType mnType = (MysqlNativeType)lookupNativeType(uc.getNativeTypeName(),types);
 		if (MysqlType.ENUM.equals(mnType.getMysqlType()) || MysqlType.SET.equals(mnType.getMysqlType()))
 			return DBEnumType.buildType(uc, types);
 		List<TypeModifier> modifiers = buildModifiers(uc);
@@ -544,22 +545,22 @@ public class BasicType implements Type {
         return BasicType.buildType(java.sql.Types.VARCHAR, value.length(), Singletons.require(HostService.class).getDBNative());
 	}
 	
-	public static Type getLongType() {
-		return buildType("INT");
+	public static Type getLongType(NativeTypeCatalog typeCatalog) {
+		return buildType("INT",typeCatalog);
 	}
-	public static Type getDateTimeType() {
-		return buildType("DATETIME");
+	public static Type getDateTimeType(NativeTypeCatalog typeCatalog) {
+		return buildType("DATETIME",typeCatalog);
 	}
 	
-	private static Type buildType(String nativeName) {
-		NativeType nt = lookupNativeType(nativeName);
+	private static Type buildType(String nativeName, NativeTypeCatalog typeCatalog) {
+		NativeType nt = lookupNativeType(nativeName,typeCatalog);
 		return new BasicType(nt, (short)0);
 	}
 	
 	public static class SerialPlaceholderType extends BasicType {
 		
-		public SerialPlaceholderType() {
-			super(lookupNativeType("BIGINT"),UNSIGNED);
+		public SerialPlaceholderType(NativeTypeCatalog typeCatalog) {
+			super(lookupNativeType("BIGINT",typeCatalog),UNSIGNED);
 		}
 		
 		@Override
@@ -572,9 +573,9 @@ public class BasicType implements Type {
 		}
 	}
 	
-	private static BasicType handleSerialType(String tn) {
+	private static BasicType handleSerialType(String tn, NativeTypeCatalog typeCatalog) {
 		if ("SERIAL".equalsIgnoreCase(tn)) {
-			return new SerialPlaceholderType();
+			return new SerialPlaceholderType(typeCatalog);
 		}
 		return null;
 	}

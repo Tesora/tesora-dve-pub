@@ -29,7 +29,7 @@ import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -57,9 +57,9 @@ import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.A
 public class DelegatingDDLStatement extends DDLStatement {
 
 	protected PEPersistentGroup onGroup;
-	protected InformationSchemaTableView originalView;
+	protected ComputedInformationSchemaTableView originalView;
 	
-	public DelegatingDDLStatement(PEPersistentGroup theGroup, InformationSchemaTableView showTab) {
+	public DelegatingDDLStatement(PEPersistentGroup theGroup, ComputedInformationSchemaTableView showTab) {
 		super(false);
 		onGroup = theGroup;
 		originalView = showTab;

@@ -23,14 +23,14 @@ package com.tesora.dve.sql.infoschema.info;
 
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.logical.ScopesInformationSchemaTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public class InfoSchemaScopesInformationSchemaTable extends
-		InformationSchemaTableView {
+		ComputedInformationSchemaTableView {
 
 	public InfoSchemaScopesInformationSchemaTable(ScopesInformationSchemaTable sist) {
 		super(InfoView.INFORMATION, sist, new UnqualifiedName("scopes"), null, true, true);

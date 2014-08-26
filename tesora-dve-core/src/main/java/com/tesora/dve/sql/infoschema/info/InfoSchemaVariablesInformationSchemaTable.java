@@ -27,7 +27,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
@@ -43,7 +43,7 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 
 public class InfoSchemaVariablesInformationSchemaTable extends
-		InformationSchemaTableView {
+		ComputedInformationSchemaTableView {
 
 	private InformationSchemaColumnView scope;
 	private final String scopeValue;

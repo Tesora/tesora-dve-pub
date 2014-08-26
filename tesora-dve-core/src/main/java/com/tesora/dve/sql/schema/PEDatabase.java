@@ -391,4 +391,9 @@ public class PEDatabase extends Persistable<PEDatabase, UserDatabase> implements
 	public String getDefaultCharacterSetName() {
 		return getCharSet();
 	}
+	
+	public void setID(int pid) {
+		persistentID = pid;
+	}
+
 }

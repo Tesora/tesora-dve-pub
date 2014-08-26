@@ -35,6 +35,7 @@ import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.Emitter.EmitOptions;
+import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
 import com.tesora.dve.resultset.ProjectionInfo;
@@ -115,7 +116,9 @@ public abstract class Statement extends StatementNode {
 			opts = EmitOptions.PEMETADATA;
 		if (prettyIndent != null)
 			opts = (opts == null ? EmitOptions.NONE : opts).addMultilinePretty(prettyIndent);
-        return getSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), opts, preserveParamMarkers);
+        return getSQL(sc,  
+        		(sc.getOptions().isInfoSchemaView() ? new MysqlEmitter() :
+        		Singletons.require(HostService.class).getDBNative().getEmitter()), opts, preserveParamMarkers);
 	}
 		
 	public String getSQL(SchemaContext sc, EmitOptions opts, boolean preserveParamMarkers) {

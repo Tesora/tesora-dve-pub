@@ -53,7 +53,7 @@ public class PESchema extends Persistable<PESchema, Map<String,UserTable>> imple
 		super(null);
 		this.pdb = StructuralUtils.buildEdge(pc,pdb,false);
 		setPersistent(pc,null, null);
-        lookup = Singletons.require(HostService.class).getDBNative().getEmitter().getTableLookup();
+        lookup = new CacheAwareLookup<PEAbstractTable<?>>(true, true); 
 		dirty = true;
 		loaded = true;
 	}
@@ -66,7 +66,7 @@ public class PESchema extends Persistable<PESchema, Map<String,UserTable>> imple
 	public PESchema(UserDatabase db, SchemaContext lc, PEDatabase pedb) {
 		super(null);
 		this.pdb = StructuralUtils.buildEdge(lc,pedb,true);
-        this.lookup = Singletons.require(HostService.class).getDBNative().getEmitter().getTableLookup();
+        this.lookup = new CacheAwareLookup<PEAbstractTable<?>>(true, true);
 		dirty = false;
 		loaded = false;
 	}

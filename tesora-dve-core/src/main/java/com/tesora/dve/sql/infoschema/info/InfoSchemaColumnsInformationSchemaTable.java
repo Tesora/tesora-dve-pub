@@ -24,14 +24,14 @@ package com.tesora.dve.sql.infoschema.info;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.ConstantSyntheticInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public class InfoSchemaColumnsInformationSchemaTable extends
-		InformationSchemaTableView {
+		ComputedInformationSchemaTableView {
 
 	// have to use the regular contructor so the reflection lookup works
 	public InfoSchemaColumnsInformationSchemaTable(InfoView view,
@@ -55,7 +55,7 @@ public class InfoSchemaColumnsInformationSchemaTable extends
 	}
 	
 	@Override
-	protected void freeze() {
+	public void freeze() {
 		// really shouldn't do this, but we also should get rid of entity queries.
 		AbstractInformationSchemaColumnView tableCatalog = lookup("table_catalog");
 		AbstractInformationSchemaColumnView privileges = lookup("privileges");

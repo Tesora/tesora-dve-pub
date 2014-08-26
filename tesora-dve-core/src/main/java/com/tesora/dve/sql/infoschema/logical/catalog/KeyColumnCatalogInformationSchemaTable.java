@@ -35,7 +35,7 @@ import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.SyntheticLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.engine.LogicalQuery;
+import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.expression.CaseExpression;
@@ -288,7 +288,7 @@ public class KeyColumnCatalogInformationSchemaTable extends
 	}
 	
 	@Override
-	public LogicalQuery explode(SchemaContext sc, LogicalQuery lq) {
+	public LogicalCatalogQuery explode(SchemaContext sc, LogicalCatalogQuery lq) {
 		SelectStatement in = lq.getQuery();
 		SyntheticExploder synth = new SyntheticExploder(this);
 		synth.traverse(in);

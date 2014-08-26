@@ -64,6 +64,7 @@ import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.ValueConverter;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
@@ -1728,11 +1729,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public BasicType buildType(List<Name> typeNames, SizeTypeAttribute sizing,
 			List<TypeModifier> modifiers) {
 		return BasicType.buildType(typeNames, Collections.singletonList(sizing),
-				(modifiers == null ? Collections.EMPTY_LIST : modifiers));
+				(modifiers == null ? Collections.EMPTY_LIST : modifiers),
+				pc.getTypes());
 	}
 
 	public BasicType buildEnum(boolean isSet, List<LiteralExpression> values, List<TypeModifier> modifiers) {
-		return DBEnumType.make(isSet, values, modifiers);
+		return DBEnumType.make(isSet, values, modifiers,pc.getTypes());
 	}
 
 	public TypeModifier buildTypeModifier(TypeModifierKind tmk) {
@@ -2005,10 +2007,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 		ExpressionNode ex = null;
 		if (opts.isActualLiterals() || (pc != null && pc.isMutableSource()))
-            ex = new ActualLiteralExpression(Singletons.require(HostService.class).getDBNative().getValueConverter().convertLiteral(t, tok),tok, SourceLocation.make(o),charsetHint);
+            ex = new ActualLiteralExpression(ValueConverter.INSTANCE.convertLiteral(t,tok),
+            		tok, SourceLocation.make(o),charsetHint);
 		else {
 			DelegatingLiteralExpression litex = new DelegatingLiteralExpression(tok, SourceLocation.make(o),this,literals.size(), charsetHint);
-            literals.add(litex, Singletons.require(HostService.class).getDBNative().getValueConverter().convertLiteral(t, tok));
+            literals.add(litex, ValueConverter.INSTANCE.convertLiteral(t,tok)); 
 			ex = litex;
 		}
 		return ex;

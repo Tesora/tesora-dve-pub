@@ -33,8 +33,11 @@ import org.junit.Test;
 
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.db.NativeType;
+import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.server.connectionmanager.TestHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.modifiers.TypeModifier;
 import com.tesora.dve.sql.schema.modifiers.TypeModifierKind;
 import com.tesora.dve.sql.schema.types.BasicType;
@@ -84,7 +87,8 @@ public class DBEnumTypeTest extends PETest {
 						modCount++;
 					}
 				}
-				NativeType expBackType = BasicType.lookupNativeType(expBackTypeStr);
+				NativeTypeCatalog typeCatalog = Singletons.require(HostService.class).getDBNative().getTypeCatalog(); 
+				NativeType expBackType = BasicType.lookupNativeType(expBackTypeStr,typeCatalog);
 				Integer expSta = Integer.valueOf(sizingStr);
 				StringBuilder nativeTypeName = new StringBuilder(MysqlType.ENUM.toString());
 				nativeTypeName.append("(");
@@ -97,7 +101,7 @@ public class DBEnumTypeTest extends PETest {
 				}
 				nativeTypeName.append(")");
 				// test make
-				Type newType = DBEnumType.makeFromStrings(false, Arrays.asList(values), mods);
+				Type newType = DBEnumType.makeFromStrings(false, Arrays.asList(values), mods,typeCatalog);
 				assertEquals("Should get the right type" + msg, nativeTypeName.toString(), newType.getTypeName());
 				assertEquals("Should get the right sizing" + msg, false, newType.declUsesSizing());
 				assertEquals("Should get the right sizing" + msg, expSta.intValue(), newType.getSize());

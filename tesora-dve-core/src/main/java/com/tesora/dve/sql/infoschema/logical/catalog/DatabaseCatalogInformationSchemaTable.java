@@ -30,7 +30,7 @@ import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.engine.LogicalQuery;
+import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
@@ -77,7 +77,7 @@ public class DatabaseCatalogInformationSchemaTable extends
 	}
 
 	@Override
-	public LogicalQuery explode(SchemaContext sc, LogicalQuery lq) {
+	public LogicalCatalogQuery explode(SchemaContext sc, LogicalCatalogQuery lq) {
 		SelectStatement ss = lq.getQuery();
 		List<ExpressionNode> decompAnd = ExpressionUtils.decomposeAndClause(ss.getWhereClause());
 		MultitenantMode matches = null;

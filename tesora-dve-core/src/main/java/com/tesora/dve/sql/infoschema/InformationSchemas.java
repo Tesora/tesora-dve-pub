@@ -22,8 +22,16 @@ package com.tesora.dve.sql.infoschema;
  */
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 
+import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.FKMode;
+import com.tesora.dve.common.catalog.MultitenantMode;
+import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
@@ -32,8 +40,20 @@ import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowView;
+import com.tesora.dve.sql.parser.InvokeParser;
+import com.tesora.dve.sql.parser.ParserOptions;
+import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.PEDatabase;
+import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.ddl.DDLStatement;
+import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
+import com.tesora.dve.sql.transexec.TransientExecutionEngine;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
+import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.upgrade.CatalogSchemaGenerator;
 
 public final class InformationSchemas {
 
@@ -42,12 +62,14 @@ public final class InformationSchemas {
 	protected final InformationSchemaView infoSchema;
 	protected final ShowView show;
 	protected final MysqlView mysql;
+	protected final PEDatabase catalog;
 	
-	private InformationSchemas(LogicalInformationSchema lis, InformationSchemaView isv, ShowView sv, MysqlView msv) {
+	private InformationSchemas(LogicalInformationSchema lis, InformationSchemaView isv, ShowView sv, MysqlView msv, PEDatabase pdb) {
 		this.logical = lis;
 		this.infoSchema = isv;
 		this.show = sv;
 		this.mysql = msv;
+		this.catalog = pdb;
 	}
 	
 	public LogicalInformationSchema getLogical() {
@@ -79,28 +101,32 @@ public final class InformationSchemas {
 		return acc;
 	}
 	
-	public static InformationSchemas build(DBNative dbn) throws PEException {
+	public static InformationSchemas build(DBNative dbn, CatalogDAO c, Properties props) throws PEException {
 		try {
 			LogicalInformationSchema logicalSchema = new LogicalInformationSchema();
 			InformationSchemaView informationSchema = new InformationSchemaView(logicalSchema);
 			ShowView showSchema = new ShowView(logicalSchema);
 			MysqlView mysqlSchema = new MysqlView(logicalSchema);
+			PEDatabase catSchema = buildCatalogSchema(c,dbn,props);
 			
 			// make the builders for each schema & then build them.
 			InformationSchemaBuilder builders[] = new InformationSchemaBuilder[] {
 					// the order these are built in is important
 					new AnnotationInformationSchemaBuilder(),
-					new SyntheticInformationSchemaBuilder()
+					new SyntheticInformationSchemaBuilder(),
+					new ViewSchemaBuilder(catSchema)
 			};
 			for(InformationSchemaBuilder isb : builders)
 				isb.populate(logicalSchema, informationSchema, showSchema, mysqlSchema, dbn);
 			// freeze the schemas.  we freeze the logical schema
 			// first to build the derived information so that it can be used in the views.
 			logicalSchema.freeze(dbn);
+			
 			informationSchema.freeze(dbn);
 			showSchema.freeze(dbn);
 			mysqlSchema.freeze(dbn);
-			return new InformationSchemas(logicalSchema,informationSchema,showSchema,mysqlSchema);
+			return new InformationSchemas(logicalSchema,informationSchema,showSchema,mysqlSchema,
+					catSchema);
 		} catch (PEException pe) {
 			throw pe;
 		} catch (Throwable t) {
@@ -114,5 +140,37 @@ public final class InformationSchemas {
 		else if (InfoView.MYSQL.getUserDatabaseName().equals(udb.getName()))
 			return new DatabaseView(sc, udb, mysql);
 		return null;
+	}
+	
+	private static PEDatabase buildCatalogSchema(CatalogDAO c, DBNative dbn, Properties catalogProps) throws Throwable {
+		if (c == null) return null; // for now
+		String database = catalogProps.getProperty(DBHelper.CONN_DBNAME, PEConstants.CATALOG);
+		TransientExecutionEngine tee = new TransientExecutionEngine(database,dbn.getTypeCatalog());
+		ParserOptions opts = ParserOptions.TEST.setResolve().setIgnoreMissingUser();
+		SchemaContext sc = tee.getPersistenceContext();
+		
+		PEPersistentGroup catalogGroup = new PEPersistentGroup(sc,new UnqualifiedName(database), Collections.EMPTY_LIST);
+		PEDatabase pdb = new PEDatabase(sc,new UnqualifiedName(database),catalogGroup,new Pair<Name,TemplateMode>(null, TemplateMode.OPTIONAL), MultitenantMode.OFF, FKMode.STRICT, "","");
+		pdb.setID(-1);
+		
+		tee.setCurrentDatabase(pdb);
+		
+		String[] decls = CatalogSchemaGenerator.buildCreateCurrentSchema(c,catalogProps);
+		for(String s : decls) {
+			if (s.startsWith("create")) {
+				System.out.println(s);
+				sc.refresh(true);
+				List<Statement> stmts = InvokeParser.parse(InvokeParser.buildInputState(s,sc), opts, sc).getStatements();
+				for(Statement stmt : stmts) {
+					DDLStatement ddl = (DDLStatement) stmt;
+					if (ddl.getAction() == CatalogModificationExecutionStep.Action.CREATE) {
+						PECreateTableStatement pects = (PECreateTableStatement) stmt;
+						pdb.getSchema().addTable(sc, pects.getTable());						
+					}
+				}
+			}
+		}
+				
+		return pdb;
 	}
 }

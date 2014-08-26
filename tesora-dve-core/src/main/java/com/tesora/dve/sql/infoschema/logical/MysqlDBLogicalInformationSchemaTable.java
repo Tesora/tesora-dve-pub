@@ -30,7 +30,7 @@ import com.tesora.dve.sql.infoschema.DelegatingInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.engine.LogicalQuery;
+import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.FunctionCall;
@@ -95,7 +95,7 @@ public class MysqlDBLogicalInformationSchemaTable extends
 	}
 	
 	@Override
-	public LogicalQuery explode(SchemaContext sc, LogicalQuery lq) {
+	public LogicalCatalogQuery explode(SchemaContext sc, LogicalCatalogQuery lq) {
 		SelectStatement in = lq.getQuery();
 		TableInstance myref = null;
 		TableInstance privRef = null;
@@ -127,7 +127,7 @@ public class MysqlDBLogicalInformationSchemaTable extends
 				iter.remove();
 		}
 		
-		return new LogicalQuery(lq,in);
+		return new LogicalCatalogQuery(lq,in);
 	}
 	
 }

@@ -138,20 +138,21 @@ public class SchemaContext {
 		if (conn == null)
 			throw new IllegalArgumentException("Wrong constructor for null connection");
 		ConnectionContext cc = buildConnectionContext(conn);
-		return new SchemaContext(new DAOContext(cc),cc);
+		return new SchemaContext(new DAOContext(cc),cc, 
+				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
 	}
 	
-	public static SchemaContext createContext(CatalogDAO dao) {
+	public static SchemaContext createContext(CatalogDAO dao, NativeTypeCatalog typeCatalog) {
 		ConnectionContext cc = new NullConnectionContext(dao);
-		return new SchemaContext(new DAOContext(cc),cc);
+		return new SchemaContext(new DAOContext(cc),cc, typeCatalog);
 	}
 	
 	public static SchemaContext createContext(SchemaContext other) {
-		return createContext(other.getCatalog(), other.getConnection());
+		return createContext(other.getCatalog(), other.getConnection(),other.getTypes());
 	}
 	
-	public static SchemaContext createContext(CatalogContext cntxt, ConnectionContext conn) {
-		return new SchemaContext(cntxt, conn);
+	public static SchemaContext createContext(CatalogContext cntxt, ConnectionContext conn, NativeTypeCatalog typeCatalog) {
+		return new SchemaContext(cntxt, conn,typeCatalog);
 	}
 
 	public static Database<?> loadDB(SchemaContext pc, UserDatabase db) {
@@ -174,7 +175,7 @@ public class SchemaContext {
 	// used in container tenant support
 	public static SchemaContext makeMutableIndependentContext(SchemaContext basedOn) {
 		ConnectionContext cc = basedOn.getConnection().copy();
-		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), cc);
+		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), cc, basedOn.getTypes());
 		out.forceMutableSource();
 		return out;
 	}
@@ -182,12 +183,12 @@ public class SchemaContext {
 	// used in raw plan support
 	public static SchemaContext makeImmutableIndependentContext(SchemaContext basedOn) {
 		ConnectionContext cc = basedOn.getConnection().copy();
-		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), basedOn.getConnection().copy());
+		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), basedOn.getConnection().copy(), basedOn.getTypes());
 		return out;
 	}
 	
 	@SuppressWarnings("unchecked")
-	private SchemaContext(CatalogContext cat, ConnectionContext conn) {
+	private SchemaContext(CatalogContext cat, ConnectionContext conn, NativeTypeCatalog typeCatalog) {
 		// always start out unmutable
 		mutableSource = false;
 		connection = conn;
@@ -197,7 +198,7 @@ public class SchemaContext {
 		defaultProject = StructuralUtils.buildEdge(this, null, false); 
 		cat.setContext(this);
 		conn.setSchemaContext(this);
-        types = Singletons.require(HostService.class).getDBNative().getTypeCatalog();
+        types = typeCatalog;
 		backing = new IdentityHashMap<Persistable<?,?>, Serializable>();
 		saveContext = null;
 		opts = null;

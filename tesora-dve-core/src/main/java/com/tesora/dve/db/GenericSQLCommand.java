@@ -35,6 +35,7 @@ import org.apache.commons.lang.ArrayUtils;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
@@ -166,7 +167,9 @@ public class GenericSQLCommand {
 		if (entries.length == 0) return this;
 		List<OffsetEntry> downstream = new ArrayList<OffsetEntry>();
 		List<byte[]> sqlFragments = new ArrayList<byte[]>();
-        Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+        Emitter emitter = 
+        		(sc.getOptions().isInfoSchemaView() ? new MysqlEmitter() :
+        		Singletons.require(HostService.class).getDBNative().getEmitter());
 		int offset = 0;
 		for(OffsetEntry oe : entries) {
 			int index = oe.getOffset();

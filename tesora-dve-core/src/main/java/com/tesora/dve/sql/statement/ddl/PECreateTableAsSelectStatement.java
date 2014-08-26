@@ -283,12 +283,12 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 			List<ColumnModifier> modifiers = new ArrayList<ColumnModifier>();
 			LiteralExpression litex = (LiteralExpression) target;
 			if (litex.isNullLiteral()) {
-				ctype = BasicType.buildType("BINARY", 0, Collections.<TypeModifier> emptyList());
+				ctype = BasicType.buildType("BINARY", 0, Collections.<TypeModifier> emptyList(),pc.getTypes());
 				modifiers.add(new DefaultValueModifier(litex));
 			} else if (litex.isStringLiteral()) {
 				String str = litex.asString(pc);
 				ctype = BasicType.buildType("VARCHAR",str.length(),
-						Arrays.asList(new TypeModifier[] { new StringTypeModifier(TypeModifierKind.CHARSET,"utf8")}));
+						Arrays.asList(new TypeModifier[] { new StringTypeModifier(TypeModifierKind.CHARSET,"utf8")}),pc.getTypes());
 				modifiers.add(notNullableModifier);
 				modifiers.add(new DefaultValueModifier(LiteralExpression.makeStringLiteral("")));
 			} else if (litex.isFloatLiteral()) {
@@ -315,9 +315,9 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 					bigint = (bi.compareTo(maxIntValue) > 0);
 				}
 				if (bigint)
-					ctype = BasicType.buildType("BIGINT", displayWidth, Collections.<TypeModifier> emptyList());
+					ctype = BasicType.buildType("BIGINT", displayWidth, Collections.<TypeModifier> emptyList(), pc.getTypes());
 				else
-					ctype = BasicType.buildType("INT", displayWidth, Collections.<TypeModifier> emptyList());
+					ctype = BasicType.buildType("INT", displayWidth, Collections.<TypeModifier> emptyList(), pc.getTypes());
 				modifiers.add(notNullableModifier);
 				modifiers.add(new DefaultValueModifier(LiteralExpression.makeStringLiteral("0")));				
 			} else {

@@ -186,19 +186,23 @@ public class PECreateViewStatement extends
 
 		// we can push the view down if processing it only requires one step - so figure that out now
 		ViewMode vm = null;
-		ParserOptions pm = sc.getOptions();
-		try {
-			ParserOptions npm = pm.setInhibitSingleSiteOptimization();
-			sc.setOptions(npm);
-			ExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
-			if (ep.getSequence().getSteps().size() > 1)
-				vm = ViewMode.EMULATE;
-			else
-				vm = ViewMode.ACTUAL;
-		} catch (PEException pe) {
-			throw new SchemaException(Pass.PLANNER, "Unable to compute view definition plan",pe);
-		} finally {
-			sc.setOptions(pm);
+		if (sc.getOptions().isInfoSchemaView())
+			vm = ViewMode.ACTUAL;
+		else {
+			ParserOptions pm = sc.getOptions();
+			try {
+				ParserOptions npm = pm.setInhibitSingleSiteOptimization();
+				sc.setOptions(npm);
+				ExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
+				if (ep.getSequence().getSteps().size() > 1)
+					vm = ViewMode.EMULATE;
+				else
+					vm = ViewMode.ACTUAL;
+			} catch (PEException pe) {
+				throw new SchemaException(Pass.PLANNER, "Unable to compute view definition plan",pe);
+			} finally {
+				sc.setOptions(pm);
+			}
 		}
 				
 		String checkMode = (checkOption == null ? "NONE" : checkOption);

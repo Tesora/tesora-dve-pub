@@ -39,7 +39,7 @@ import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.engine.LogicalQuery;
+import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.engine.NamedParameter;
 import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.node.Edge;
@@ -106,7 +106,7 @@ public class TableCatalogInformationSchemaTable extends
 	}
 	
 	@Override
-	public LogicalQuery explode(SchemaContext sc, LogicalQuery lq) {
+	public LogicalCatalogQuery explode(SchemaContext sc, LogicalCatalogQuery lq) {
 		if (!sc.hasCurrentDatabase() || sc.getCurrentDatabase().isInfoSchema()) return lq;
 		
 		boolean tenant = sc.getPolicyContext().isSchemaTenant();
@@ -162,7 +162,7 @@ public class TableCatalogInformationSchemaTable extends
 			lq.getForwarding().remove(found);
 			lq.getForwarding().put(found, (ExpressionNode) tabRef.copy(null));
 
-			return new LogicalQuery(lq,in);
+			return new LogicalCatalogQuery(lq,in);
 		}
 		return lq;
 	}

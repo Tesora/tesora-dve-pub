@@ -71,7 +71,8 @@ public class TestRoundTrip extends PETest {
 	}
 	
 	private static SchemaContext buildContext(CatalogDAO c) throws Exception {
-		SchemaContext pc = SchemaContext.createContext(c);
+		SchemaContext pc = SchemaContext.createContext(c,
+				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
 		pc.getConnection().getVariableSource().getGlobalVariableStore().setValue(KnownVariables.TEMPLATE_MODE, TemplateMode.OPTIONAL);
 		return pc;
 	}
