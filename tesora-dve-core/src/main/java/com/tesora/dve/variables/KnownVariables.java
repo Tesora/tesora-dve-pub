@@ -111,11 +111,11 @@ public class KnownVariables implements VariableConstants {
 			SlowQueryLogger.enableSlowQueryLogger(newValue);
 		}
 	};
-	public static final VariableHandler<Long> LONG_PLAN_STEP_TIME =
-			new VariableHandler<Long>(LONG_PLAN_STEP_TIME_NAME,
-					integralConverter,
+	public static final VariableHandler<Double> LONG_PLAN_STEP_TIME =
+			new VariableHandler<Double>(LONG_PLAN_STEP_TIME_NAME,
+					floatingPointConverter,
 					globalScope,
-					3L,
+					new Double(3.0),
 					dveOnly,
 					"Minimum per step trigger duration for slow query log");
 	public static final VariableHandler<Double> LONG_QUERY_TIME =
@@ -786,34 +786,7 @@ public class KnownVariables implements VariableConstants {
 				Boolean.FALSE,
 				emulated),
 		new VariableHandler<MySQLTransactionIsolation>("tx_isolation",
-				new ValueMetadata<MySQLTransactionIsolation>() {
-
-					@Override
-					public MySQLTransactionIsolation convertToInternal(String varName, String in) throws PEException {
-						String raw = stringConverter.convertToInternal(varName, in);
-						MySQLTransactionIsolation isol = MySQLTransactionIsolation.find(raw);
-						if (isol == null)
-							throw new PEException("Invalid value for '" + varName + "' (allowed values are " + 
-									StringUtils.join(MySQLTransactionIsolation.getExternalValuesAsList(), ", ") + ")");
-						return isol;
-					}
-
-					@Override
-					public String convertToExternal(MySQLTransactionIsolation in) {
-						if (in == null) return "";
-						return String.format("'%s'", in.getExternalName());
-					}
-
-					@Override
-					public String toRow(MySQLTransactionIsolation in) {
-						return in.getExternalName();
-					}
-
-					@Override
-					public String getTypeName() {
-						return "varchar";
-					}
-				},
+				new EnumValueConverter<MySQLTransactionIsolation>(MySQLTransactionIsolation.values()),
 				bothScope,
 				MySQLTransactionIsolation.READ_COMMITTED,
 				emulated),
@@ -961,7 +934,7 @@ public class KnownVariables implements VariableConstants {
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Boolean>("have_geometry",
 				booleanConverter,
-				bothScope,
+				globalScope,
 				Boolean.TRUE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Long>("myisam_sort_buffer_size",
@@ -976,28 +949,33 @@ public class KnownVariables implements VariableConstants {
 				emulated),
 		new VariableHandler<Boolean>("lower_case_file_system",
 				new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
-				bothScope,
+				globalScope,
 				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Boolean>("have_query_cache",
 				booleanConverter,
-				bothScope,
+				globalScope,
 				Boolean.TRUE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Boolean>("have_ssl",
 				booleanConverter,
-				bothScope,
+				globalScope,
 				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<Boolean>("have_openssl" /* Alias for 'have_ssl'. */,
 				booleanConverter,
-				bothScope,
+				globalScope,
 				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
 		new VariableHandler<ThreadHandlingMode>("thread_handling",
 				new EnumValueConverter<ThreadHandlingMode>(ThreadHandlingMode.values()),
-				bothScope,
+				globalScope,
 				ThreadHandlingMode.ONE_THREAD_PER_CONNECTION,
+				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+		new VariableHandler<Boolean>("have_partitioning",
+				booleanConverter,
+				globalScope,
+				Boolean.FALSE,
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
 	};
 

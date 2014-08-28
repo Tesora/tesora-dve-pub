@@ -101,12 +101,26 @@ public class ShowTest extends SchemaTest {
 
 	@Test
 	public void testPE970ShowEngines() throws Throwable {
-		Object[] innodbResult = br(nr, "InnoDB", "DEFAULT",
-				"Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES");
-		Object[] myisamResult = br(nr, "MyISAM", "YES", "MyISAM storage engine", "NO", "NO", "NO");
-		List<Object> results = new ArrayList<Object>(Arrays.asList(innodbResult));
+		final Object[] innodbResult = br(nr, "InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES");
+		final Object[] myisamResult = br(nr, "MyISAM", "YES", "MyISAM storage engine", "NO", "NO", "NO");
+		final Object[] memoryResult = br(nr, "MEMORY", "YES", "Hash based, stored in memory, useful for temporary tables", "NO", "NO", "NO");
+		final Object[] archiveResult = br(nr, "ARCHIVE", "YES", "Archive storage engine", "NO", "NO", "NO");
+		final Object[] csvResult = br(nr, "CSV", "YES", "CSV storage engine", "NO", "NO", "NO");
+		final Object[] blackholeResult = br(nr, "BLACKHOLE", "NO", "/dev/null storage engine (anything you write to it disappears)", "NO", "NO", "NO");
+		final Object[] federatedResult = br(nr, "FEDERATED", "NO", "Federated MySQL storage engine", null, null, null);
+		final Object[] perfSchemaResult = br(nr, "PERFORMANCE_SCHEMA", "NO", "Performance Schema", "NO", "NO", "NO");
+
+		final List<Object> results = new ArrayList<Object>();
+		results.addAll(Arrays.asList(archiveResult));
+		results.addAll(Arrays.asList(blackholeResult));
+		results.addAll(Arrays.asList(csvResult));
+		results.addAll(Arrays.asList(federatedResult));
+		results.addAll(Arrays.asList(innodbResult));
+		results.addAll(Arrays.asList(memoryResult));
 		results.addAll(Arrays.asList(myisamResult));
-		Object[] fullResult = results.toArray();
+		results.addAll(Arrays.asList(perfSchemaResult));
+
+		final Object[] fullResult = results.toArray();
 
 		doTest("Engines", "Engine", true, null, null, true, "MyISAM",
 				new Object[][] { fullResult, fullResult, innodbResult, fullResult, myisamResult });

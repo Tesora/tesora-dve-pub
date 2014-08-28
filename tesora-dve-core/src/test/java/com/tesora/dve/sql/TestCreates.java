@@ -46,6 +46,7 @@ import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeTypeCatalog;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
@@ -163,13 +164,45 @@ public class TestCreates extends SchemaTest {
 	}
 
 	@Test
-	public void testSetStorageEngine() throws Throwable {
-		rootConnection.execute("set storage_engine=MEMORY");
-		rootConnection.execute("create table sstest (`id` int, `hescores` varchar(32))");
-		String cts = AlterTest.getCreateTable(rootConnection, "sstest");
-		assertTrue("engine type should be memory",cts.indexOf("MEMORY") > -1);
-		rootConnection.assertResults("select engine from information_schema.tables where table_name = 'sstest' and table_schema = '" + testDDL.getDatabaseName() + "'",
-				br(nr,"MEMORY"));		
+	public void testStorageEngines() throws Throwable {
+		testCreateWithStorageEngine("MyISAM");
+		testCreateWithStorageEngine("InnoDB");
+		testCreateWithStorageEngine("MEMORY");
+		testCreateWithStorageEngine("ARCHIVE");
+		testCreateWithStorageEngine("CSV");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				testCreateWithStorageEngine("BLACKHOLE");
+			}
+		}.assertException(PEException.class, "Invalid value for 'storage_engine' (allowed values are INNODB, MEMORY, MYISAM, ARCHIVE, CSV)");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				testCreateWithStorageEngine("FEDERATED");
+			}
+		}.assertException(PEException.class, "Invalid value for 'storage_engine' (allowed values are INNODB, MEMORY, MYISAM, ARCHIVE, CSV)");
+	}
+
+	private void testCreateWithStorageEngine(final String engine) throws Throwable {
+		final String baseTableName = "storage_engine_test_" + engine;
+
+		rootConnection.execute("create table " + baseTableName + "_A (`id` int not null, `hescores` varchar(32) not null) ENGINE=" + engine);
+		rootConnection.execute("set storage_engine=" + engine);
+		rootConnection.execute("create table " + baseTableName + "_B (`id` int not null, `hescores` varchar(32) not null)");
+
+		assertStorageEngineForTable(engine, baseTableName + "_A");
+		assertStorageEngineForTable(engine, baseTableName + "_B");
+	}
+
+	private void assertStorageEngineForTable(final String engine, final String tableName) throws Throwable {
+		final String cts = AlterTest.getCreateTable(rootConnection, tableName);
+		assertTrue("Table '" + tableName + "' should have '" + engine + "' engine in definition: " + cts, cts.indexOf(engine) > -1);
+		rootConnection.assertResults(
+				"select engine from information_schema.tables where table_name = '" + tableName + "' and table_schema = '" + testDDL.getDatabaseName() + "'",
+				br(nr, engine));
 	}
 
 	@Test

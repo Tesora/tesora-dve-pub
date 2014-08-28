@@ -24,8 +24,6 @@ package com.tesora.dve.standalone;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-
-import com.tesora.dve.singleton.Singletons;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ResourceLeakDetector;
 
@@ -49,10 +47,10 @@ import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEBaseTest;
 import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.comms.client.messages.ConnectRequest;
 import com.tesora.dve.comms.client.messages.ConnectResponse;
 import com.tesora.dve.comms.client.messages.CreateStatementRequest;
@@ -74,6 +72,7 @@ import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.connectionmanager.UpdatedGlobalVariablesCallback;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.util.ProjectDDL;
@@ -491,7 +490,7 @@ public class PETest extends PEBaseTest {
 				Map<VariableHandler,String> cvals = buildValues(helper);
 				for(VariableHandler vh : initialValues.keySet()) {
 					if (!ObjectUtils.equals(initialValues.get(vh), cvals.get(vh))) {
-						helper.executeQuery("set global " + vh + " = " + initialValues.get(vh));
+						helper.executeQuery("set global " + vh + " = " + vh.toExternal(vh.toInternal(initialValues.get(vh))));
 					}
 				}
 				counter = 0;

@@ -184,9 +184,20 @@ public class Engines implements CatalogEntity {
 	
 	
 	public static List<Engines> getDefaultEngines() {
-		List<Engines> list = new ArrayList<Engines>();
+		final List<Engines> list = new ArrayList<Engines>();
+
+		/* Officially supported engines. */
 		list.add(new Engines("InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"));
-		list.add(new Engines("MyISAM", "YES", "MyISAM storage engine",	"NO", "NO", "NO"));
+		list.add(new Engines("MyISAM", "YES", "MyISAM storage engine", "NO", "NO", "NO"));
+		list.add(new Engines("MEMORY", "YES", "Hash based, stored in memory, useful for temporary tables", "NO", "NO", "NO"));
+		list.add(new Engines("ARCHIVE", "YES", "Archive storage engine", "NO", "NO", "NO"));
+		list.add(new Engines("CSV", "YES", "CSV storage engine", "NO", "NO", "NO"));
+
+		/* Unsupported engines. */
+		list.add(new Engines("BLACKHOLE", "NO", "/dev/null storage engine (anything you write to it disappears)", "NO", "NO", "NO"));
+		list.add(new Engines("FEDERATED", "NO", "Federated MySQL storage engine", null, null, null));
+		list.add(new Engines("PERFORMANCE_SCHEMA", "NO", "Performance Schema", "NO", "NO", "NO"));
+
 		return list;
 	}
 
