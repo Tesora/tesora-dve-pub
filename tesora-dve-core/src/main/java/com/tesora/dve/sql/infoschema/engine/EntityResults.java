@@ -31,6 +31,7 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.SyntheticLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 
@@ -52,9 +53,9 @@ public class EntityResults {
 		ArrayList<ResultRow> rows = new ArrayList<ResultRow>();
 		for(CatalogEntity ce : entities) {
 			ResultRow rr = new ResultRow();
-			for(List<AbstractInformationSchemaColumnView> pt : logicalQuery.getProjectionColumns()) {
+			for(List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>> pt : logicalQuery.getProjectionColumns()) {
 				if (pt.size() == 1) {
-					AbstractInformationSchemaColumnView c = pt.get(0);
+					AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> c = pt.get(0);
 					if (!c.isSynthetic()) {
 						CatalogInformationSchemaColumn cisc = (CatalogInformationSchemaColumn) c.getLogicalColumn();
 						rr.addResultColumn(cisc.getValue(sc, ce));
@@ -65,7 +66,7 @@ public class EntityResults {
 				} else {
 					CatalogEntity ent = ce;
 					for(int i = 0; i < pt.size(); i++) {
-						AbstractInformationSchemaColumnView c = pt.get(i);
+						AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> c = pt.get(i);
 						boolean last = (i == (pt.size() - 1));
 						Object res = c.getLogicalColumn().getValue(sc, ent);
 						if (last)

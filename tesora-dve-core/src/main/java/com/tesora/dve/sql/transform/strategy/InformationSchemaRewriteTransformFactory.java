@@ -25,8 +25,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.lang.ArrayUtils;
-
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.IntermediateResultSet;
@@ -35,6 +33,7 @@ import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.infoschema.engine.EntityResults;
+import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.test.EngineConstant;
@@ -104,7 +103,7 @@ public class InformationSchemaRewriteTransformFactory extends TransformFactory {
 	}
 
 	private static IntermediateResultSet buildEmptyResultSet(SchemaContext schemaContext, SelectStatement src) {
-		EntityResults er = new EntityResults(LogicalSchemaQueryEngine.convertDown(schemaContext, new ViewQuery(
+		EntityResults er = new EntityResults((LogicalCatalogQuery) LogicalSchemaQueryEngine.convertDown(schemaContext, new ViewQuery(
 				src, Collections.<String, Object> emptyMap(), null)),
 				Collections.<CatalogEntity> emptyList());
 		return er.getResultSet(schemaContext,src.getProjectionMetadata(schemaContext)); 

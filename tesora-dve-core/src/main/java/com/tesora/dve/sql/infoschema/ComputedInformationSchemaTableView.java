@@ -47,14 +47,13 @@ import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variables.KnownVariables;
 
-public class ComputedInformationSchemaTableView implements InformationSchemaTableView {
+public class ComputedInformationSchemaTableView implements InformationSchemaTableView<InformationSchemaColumnView> {
 
 	protected LogicalInformationSchemaTable backing;
 
@@ -67,14 +66,14 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 	protected boolean priviledged;
 	protected boolean extension;
 	
-	protected List<AbstractInformationSchemaColumnView> columns;
-	protected Lookup<AbstractInformationSchemaColumnView> lookup;
+	protected List<InformationSchemaColumnView> columns;
+	protected Lookup<InformationSchemaColumnView> lookup;
 	
-	protected AbstractInformationSchemaColumnView orderByColumn;
-	protected AbstractInformationSchemaColumnView identColumn;
+	protected InformationSchemaColumnView orderByColumn;
+	protected InformationSchemaColumnView identColumn;
 	
 	// columns injected from elsewhere.
-	protected List<AbstractInformationSchemaColumnView> injected;
+	protected List<InformationSchemaColumnView> injected;
 
 	protected boolean frozen;
 
@@ -88,9 +87,18 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 		this.name = (view.isCapitalizeNames() ? viewName.getCapitalized().getUnqualified() : viewName); 
 		if (pluralViewName == null) this.pluralName = pluralViewName;
 		else this.pluralName = (view.isCapitalizeNames() ? pluralViewName.getCapitalized().getUnqualified() : pluralViewName); 
-		this.injected = new ArrayList<AbstractInformationSchemaColumnView>();
-		this.columns = new ArrayList<AbstractInformationSchemaColumnView>();
-		this.lookup = new Lookup<AbstractInformationSchemaColumnView>(columns, view.getNameFunction(), false, view.isLookupCaseSensitive()); 
+		this.injected = new ArrayList<InformationSchemaColumnView>();
+		this.columns = new ArrayList<InformationSchemaColumnView>();
+		this.lookup = new Lookup<InformationSchemaColumnView>(columns, 
+				new UnaryFunction<Name[], InformationSchemaColumnView>() {
+
+					@Override
+					public Name[] evaluate(InformationSchemaColumnView object) {
+						return new Name[] { object.getName() };
+					}
+			
+				},				
+				false, view.isLookupCaseSensitive()); 
 		this.orderByColumn = null;
 		this.identColumn = null;
 		this.priviledged = requiresPriviledge;
@@ -99,8 +107,8 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 		this.backing = backing;
 	}
 	
-	protected void collectInjected(SchemaView view, ComputedInformationSchemaTableView table, List<AbstractInformationSchemaColumnView> acc) {
-		for(AbstractInformationSchemaColumnView iscv : table.injected) {
+	protected void collectInjected(SchemaView view, ComputedInformationSchemaTableView table, List<InformationSchemaColumnView> acc) {
+		for(InformationSchemaColumnView iscv : table.injected) {
 			if (table != this) {
 				// make a copy, but ensure that we use the local backing column.
 				InformationSchemaColumnView nc = (InformationSchemaColumnView) iscv.copy();
@@ -117,9 +125,9 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 	}
 	
 	public void inject(SchemaView view, DBNative dbn) {
-		ArrayList<AbstractInformationSchemaColumnView> acc = new ArrayList<AbstractInformationSchemaColumnView>();
+		ArrayList<InformationSchemaColumnView> acc = new ArrayList<InformationSchemaColumnView>();
 		collectInjected(view, this, acc);
-		for(AbstractInformationSchemaColumnView iscv : acc) {
+		for(InformationSchemaColumnView iscv : acc) {
 			addColumn(null, iscv);
 		}
 	}
@@ -160,7 +168,7 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 		public boolean is(LanguageNode ln) {
 			if (EngineConstant.COLUMN.has(ln)) {
 				ColumnInstance ci = (ColumnInstance) ln;
-				AbstractInformationSchemaColumnView isc = (AbstractInformationSchemaColumnView) ci.getColumn();
+				InformationSchemaColumnView isc = (InformationSchemaColumnView) ci.getColumn();
 				if (isc.getReturnType() != null)
 					return true;
 			}
@@ -173,16 +181,6 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 		
 	}
 
-	public static final UnaryFunction<Name[], AbstractInformationSchemaColumnView> regularNameFunc = 
-		new UnaryFunction<Name[], AbstractInformationSchemaColumnView>() {
-
-		@Override
-		public Name[] evaluate(AbstractInformationSchemaColumnView object) {
-			return new Name[] { object.getName() };
-		}
-		
-	};
-
 	public InfoView getView() {
 		return this.view;
 	}
@@ -192,12 +190,12 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 			throw new InformationSchemaException("Table " + getName() + " has no ident column");
 		if (this.orderByColumn == null)
 			throw new InformationSchemaException("Table " + getName() + " has no order by column");
-		for(AbstractInformationSchemaColumnView isc : columns)
+		for(InformationSchemaColumnView isc : columns)
 			isc.validate(ofView, this);
 	}
 	
 	public void prepare(SchemaView view, DBNative dbn) {
-		for(AbstractInformationSchemaColumnView isc : columns)
+		for(InformationSchemaColumnView isc : columns)
 			isc.prepare(view, this, dbn);
 		validate(view);
 	}
@@ -207,37 +205,36 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 	}
 
 	@Override
-	public Column addColumn(SchemaContext sc, Column c) {
-		AbstractInformationSchemaColumnView cv = (AbstractInformationSchemaColumnView) c;
-		c.setPosition(columns.size());
+	public InformationSchemaColumnView addColumn(SchemaContext sc, InformationSchemaColumnView cv) {
+		cv.setPosition(columns.size());
 		columns.add(cv);
 		lookup.refreshBacking(columns);
-		c.setTable(this);
+		cv.setTable(this);
 		if (cv.isOrderByColumn())
 			orderByColumn = cv;
 		if (cv.isIdentColumn())
 			identColumn = cv;
 		if (cv.isInjected())
 			injected.add(cv);
-		return c;
+		return cv;
 	}
 
 	@Override
-	public List<AbstractInformationSchemaColumnView> getColumns(SchemaContext sc) {
+	public List<InformationSchemaColumnView> getColumns(SchemaContext sc) {
 		return columns;
 	}
 
 	@Override
-	public AbstractInformationSchemaColumnView lookup(SchemaContext sc, Name n) {
+	public InformationSchemaColumnView lookup(SchemaContext sc, Name n) {
 		return lookup.lookup(n);
 	}
 
-	public List<AbstractInformationSchemaColumnView> getInjected() {
+	public List<InformationSchemaColumnView> getInjected() {
 		return injected;
 	}
 	
-	protected AbstractInformationSchemaColumnView lookup(String n) {
-		AbstractInformationSchemaColumnView iscv = lookup(null,new UnqualifiedName(n));
+	protected InformationSchemaColumnView lookup(String n) {
+		InformationSchemaColumnView iscv = lookup(null,new UnqualifiedName(n));
 		if (iscv == null)
 			throw new InformationSchemaException("Unable to find column " + n + " in " + view + " table " + getName());
 		return iscv;
@@ -262,11 +259,16 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 		return true;
 	}
 
-	public Column getOrderByColumn() {
+	@Override
+	public boolean isTempTable() {
+		return false;
+	}
+	
+	public InformationSchemaColumnView getOrderByColumn() {
 		return orderByColumn;
 	}
 	
-	public Column getIdentColumn() {
+	public InformationSchemaColumnView getIdentColumn() {
 		return identColumn;
 	}
 	
@@ -300,9 +302,9 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 
 	// filter out columns that are not visible.  columns may not be visible if they are extensions & extensions are not on,
 	// or if they are privileged only & the current connection has no privileges.
-	public List<AbstractInformationSchemaColumnView> getProjectionColumns(boolean includeExtensions, boolean includePriviledged) {
-		ArrayList<AbstractInformationSchemaColumnView> out = new ArrayList<AbstractInformationSchemaColumnView>();
-		for(AbstractInformationSchemaColumnView isc : columns) {
+	public List<InformationSchemaColumnView> getProjectionColumns(boolean includeExtensions, boolean includePriviledged) {
+		ArrayList<InformationSchemaColumnView> out = new ArrayList<InformationSchemaColumnView>();
+		for(InformationSchemaColumnView isc : columns) {
 			if (!isc.isVisible())
 				continue;
 			if (isc.isExtension() && !includeExtensions)
@@ -315,7 +317,7 @@ public class ComputedInformationSchemaTableView implements InformationSchemaTabl
 	}
 	
 	public void addSorting(SelectStatement ss, TableInstance ti) {
-		Column obc = getOrderByColumn();
+		InformationSchemaColumnView obc = getOrderByColumn();
 		if (obc != null) {
 			SortingSpecification sort = new SortingSpecification(new ColumnInstance(null,obc,ti),true);
 			sort.setOrdering(Boolean.TRUE);

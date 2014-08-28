@@ -35,7 +35,7 @@ import com.tesora.dve.sql.infoschema.persist.CatalogTableEntity;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.Type;
 
-public class InformationSchemaColumnView extends AbstractInformationSchemaColumnView {
+public class InformationSchemaColumnView extends AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> {
 
 	protected LogicalInformationSchemaColumn backing;
 	
@@ -43,8 +43,6 @@ public class InformationSchemaColumnView extends AbstractInformationSchemaColumn
 			UnqualifiedName nameInView) {
 		super(view,nameInView);
 		backing = basedOn;
-		if (backing == null)
-			throw new InformationSchemaException("No backing logical table column for " + view + " column " + nameInView);
 	}
 
 	public InformationSchemaColumnView(InformationSchemaColumnView copy) {
@@ -53,12 +51,13 @@ public class InformationSchemaColumnView extends AbstractInformationSchemaColumn
 	}
 	
 	@Override
-	public AbstractInformationSchemaColumnView copy() {
+	public AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> copy() {
 		return new InformationSchemaColumnView(this);
 	}
 
 	@Override
 	public void prepare(SchemaView ofView, InformationSchemaTableView ofTable, DBNative dbn) {
+		if (backing == null) return;
 		if (backing.getReturnType() != null) {
 			for(InformationSchemaTableView istv : ofView.getTables(null)) {
 				if (istv.getLogicalTable() == backing.getReturnType()) {

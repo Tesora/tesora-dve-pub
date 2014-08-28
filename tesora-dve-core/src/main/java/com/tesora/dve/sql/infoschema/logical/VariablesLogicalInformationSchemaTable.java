@@ -103,7 +103,7 @@ public class VariablesLogicalInformationSchemaTable extends LogicalInformationSc
 	
 	public Statement execute(SchemaContext sc, ViewQuery vq, ProjectionInfo pi) {
 		// logical only
-		LogicalCatalogQuery lq = LogicalSchemaQueryEngine.convertDown(sc, vq);
+		LogicalCatalogQuery lq = (LogicalCatalogQuery) LogicalSchemaQueryEngine.convertDown(sc, vq);
 		List<ExpressionNode> decompAnd = ExpressionUtils.decomposeAndClause(lq.getQuery().getWhereClause());
 		String scopeName = findScope(sc,decompAnd);
 		VariableScope vs = rebuildScope(scopeName);

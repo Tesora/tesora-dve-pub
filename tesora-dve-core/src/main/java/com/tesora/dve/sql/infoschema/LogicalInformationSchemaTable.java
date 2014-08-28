@@ -213,6 +213,12 @@ public class LogicalInformationSchemaTable implements Table<LogicalInformationSc
 	public boolean isInfoSchema() {
 		return true;
 	}
+	
+	@Override
+	public boolean isTempTable() {
+		return false;
+	}
+	
 		
 	public LogicalInformationSchemaColumn getIDColumn() {
 		if (idcol == null)

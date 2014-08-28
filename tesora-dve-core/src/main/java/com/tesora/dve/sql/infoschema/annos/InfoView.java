@@ -30,21 +30,19 @@ import com.tesora.dve.sql.util.UnaryFunction;
 
 public enum InfoView {
 
-	INFORMATION(PEConstants.INFORMATION_SCHEMA_DBNAME,ComputedInformationSchemaTableView.regularNameFunc,false,true),
-	SHOW(PEConstants.SHOW_SCHEMA_DBNAME,ComputedInformationSchemaTableView.regularNameFunc,false,false),
-	MYSQL(PEConstants.MYSQL_SCHEMA_DBNAME,ComputedInformationSchemaTableView.regularNameFunc,true,false);
+	INFORMATION(PEConstants.INFORMATION_SCHEMA_DBNAME,false,true),
+	SHOW(PEConstants.SHOW_SCHEMA_DBNAME,false,false),
+	MYSQL(PEConstants.MYSQL_SCHEMA_DBNAME,true,false);
 	
 	private final String persistentDBName;
-	private final UnaryFunction<Name[], AbstractInformationSchemaColumnView> nameFunc;
 	private final DatabaseViewCacheKey cacheKey;
 	private final boolean lookupCaseSensitive;
 	private final boolean capitalizeNames;
 	
-	private InfoView(String pdbn, UnaryFunction<Name[], AbstractInformationSchemaColumnView> nf,
+	private InfoView(String pdbn, 
 			boolean caseSensitive,
 			boolean capitalizeNames) {
 		persistentDBName = pdbn;
-		nameFunc = nf;
 		cacheKey = new DatabaseViewCacheKey(pdbn);
 		this.lookupCaseSensitive = caseSensitive;
 		this.capitalizeNames = capitalizeNames;
@@ -52,10 +50,6 @@ public enum InfoView {
 	
 	public String getUserDatabaseName() {
 		return persistentDBName;
-	}
-	
-	public UnaryFunction<Name[], AbstractInformationSchemaColumnView> getNameFunction() {
-		return nameFunc;
 	}
 	
 	public DatabaseViewCacheKey getCacheKey() {

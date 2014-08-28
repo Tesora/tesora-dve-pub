@@ -478,6 +478,8 @@ public class WorkerGroup {
 	public Collection<Future<Worker>> submit(MappingSolution mappingSolution,
 			final WorkerRequest req, final DBResultConsumer resultConsumer, int senderCount)
 			throws PEException {
+		if (senderCount == 0) 
+			throw new PEException("No sites to execute against");
 		resultConsumer.setSenderCount(senderCount);
 		Collection<Worker> workers = getTargetWorkers(mappingSolution);
 		ArrayList<Future<Worker>> workerFutures = new ArrayList<Future<Worker>>();

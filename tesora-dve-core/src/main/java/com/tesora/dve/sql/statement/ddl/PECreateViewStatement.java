@@ -187,7 +187,7 @@ public class PECreateViewStatement extends
 		// we can push the view down if processing it only requires one step - so figure that out now
 		ViewMode vm = null;
 		if (sc.getOptions().isInfoSchemaView())
-			vm = ViewMode.ACTUAL;
+			vm = ViewMode.EMULATE;
 		else {
 			ParserOptions pm = sc.getOptions();
 			try {

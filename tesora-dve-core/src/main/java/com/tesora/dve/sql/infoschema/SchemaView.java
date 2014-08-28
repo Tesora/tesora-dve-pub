@@ -46,11 +46,11 @@ import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variables.KnownVariables;
 
 public abstract class SchemaView implements
-		Schema<InformationSchemaTableView> {
+		Schema<InformationSchemaTableView<AbstractInformationSchemaColumnView>> {
 
 	private boolean frozen;
-	private List<InformationSchemaTableView> tables;
-	protected Lookup<InformationSchemaTableView> lookup;
+	private List<InformationSchemaTableView<AbstractInformationSchemaColumnView>> tables;
+	protected Lookup<InformationSchemaTableView<AbstractInformationSchemaColumnView>> lookup;
 
 	protected final InfoView view;
 	
@@ -66,8 +66,18 @@ public abstract class SchemaView implements
 			UnaryFunction<Name[], InformationSchemaTableView> getNamesFunc) {
 		super();
 		frozen = false;
-		tables = new ArrayList<InformationSchemaTableView>();
-		lookup = new Lookup<InformationSchemaTableView>(tables, getNamesFunc, false, servicing.isLookupCaseSensitive()); 
+		tables = new ArrayList<InformationSchemaTableView<AbstractInformationSchemaColumnView>>();
+		lookup = new Lookup<InformationSchemaTableView<AbstractInformationSchemaColumnView>>(tables, 
+				new UnaryFunction<Name[],InformationSchemaTableView<AbstractInformationSchemaColumnView>>() {
+
+					@Override
+					public Name[] evaluate(
+							InformationSchemaTableView<AbstractInformationSchemaColumnView> object) {
+						return new Name[] { object.getName() };
+					}
+			
+				},
+				false, servicing.isLookupCaseSensitive()); 
 		reverse = new HashMap<LogicalInformationSchemaTable, InformationSchemaTableView>();
 		view = servicing;
 		logical = basedOn;
@@ -112,7 +122,7 @@ public abstract class SchemaView implements
 	}
 	
 	@Override
-	public Collection<InformationSchemaTableView> getTables(SchemaContext sc) {
+	public Collection<InformationSchemaTableView<AbstractInformationSchemaColumnView>> getTables(SchemaContext sc) {
 		return tables;
 	}
 

@@ -25,6 +25,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.ConstantSyntheticInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
@@ -57,9 +58,9 @@ public class InfoSchemaColumnsInformationSchemaTable extends
 	@Override
 	public void freeze() {
 		// really shouldn't do this, but we also should get rid of entity queries.
-		AbstractInformationSchemaColumnView tableCatalog = lookup("table_catalog");
-		AbstractInformationSchemaColumnView privileges = lookup("privileges");
-		AbstractInformationSchemaColumnView tableSchema = lookup("table_schema");
+		InformationSchemaColumnView tableCatalog = lookup("table_catalog");
+		InformationSchemaColumnView privileges = lookup("privileges");
+		InformationSchemaColumnView tableSchema = lookup("table_schema");
 		
 		columns.remove(tableCatalog);
 		columns.remove(privileges);

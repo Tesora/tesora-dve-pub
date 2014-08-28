@@ -34,6 +34,8 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.node.AbstractTraversal.ExecStyle;
+import com.tesora.dve.sql.node.AbstractTraversal.Order;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -43,7 +45,6 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TableJoin;
 import com.tesora.dve.sql.node.structural.FromTableReference;
 import com.tesora.dve.sql.node.structural.JoinedTable;
-import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEViewTable;
@@ -117,6 +118,8 @@ public class ViewRewriteTransformFactory extends TransformFactory {
 			merge = false;
 		if (merge.booleanValue()) {
 			remapped = merge(sc, dmls,ti,petv,remapped);
+		} else {
+			ensureMapped(sc, dmls, ti, petv, remapped); 
 		}
 		if (remapped == null) {
 			// we completely merged the definition into dmls - we're done
@@ -164,7 +167,7 @@ public class ViewRewriteTransformFactory extends TransformFactory {
 		
 		@Override
 		public LanguageNode action(LanguageNode in) {
-			if (EngineConstant.TABLE.has(in)) {
+			if (in instanceof TableInstance) {
 				TableInstance ti = (TableInstance) in;
 				long was = ti.getNode();
 				Long now = forwarding.get(was);
@@ -191,6 +194,28 @@ public class ViewRewriteTransformFactory extends TransformFactory {
 		
 	}
 
+	// this is the non merge case, so we want to ensure that all refs to the view table are replaced with ti - i.e. all column refs
+	private static void ensureMapped(final SchemaContext sc, DMLStatement enclosing, final TableInstance ti, final PEViewTable theView, ProjectingStatement remapped) {
+		new Traversal(Order.POSTORDER, ExecStyle.ONCE) {
+
+			@Override
+			public LanguageNode action(LanguageNode in) {
+				if (in instanceof ColumnInstance) {
+					ColumnInstance ci = (ColumnInstance) in;
+					if (ci.getTableInstance().getTable() == theView) {
+						return new ColumnInstance(ci.getSpecifiedAs(),ci.getColumn(),ti);
+					}
+				}
+				return in;
+			}
+			
+		}.traverse(enclosing);
+		enclosing.getDerivedInfo().removeLocalTable(theView);
+		enclosing.getDerivedInfo().addLocalTables(remapped.getDerivedInfo().getLocalTableKeys());
+		enclosing.getDerivedInfo().addNestedStatements(remapped.getDerivedInfo().getLocalNestedQueries());
+		enclosing.getDerivedInfo().clearCorrelatedColumns();
+	}
+	
 	private static ProjectingStatement merge(SchemaContext sc, DMLStatement enclosing, TableInstance ti, PEViewTable theView, ProjectingStatement remapped) {
 		if (!(enclosing instanceof SelectStatement))
 			return remapped;

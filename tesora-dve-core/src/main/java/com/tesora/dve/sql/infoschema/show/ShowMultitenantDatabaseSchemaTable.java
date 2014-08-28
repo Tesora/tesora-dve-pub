@@ -27,6 +27,7 @@ import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
@@ -50,7 +51,7 @@ public class ShowMultitenantDatabaseSchemaTable extends
 				new UnqualifiedName("multitenant database"), new UnqualifiedName("multitenant databases"), true, true);
 		// add all the columns from databaseView
 		for(AbstractInformationSchemaColumnView iscv: databaseView.getColumns(null))
-			addColumn(null,iscv.copy());
+			addColumn(null,(InformationSchemaColumnView) iscv.copy());
 	}
 
 	@Override

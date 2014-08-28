@@ -35,8 +35,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.ObjectUtils;
 
 import com.tesora.dve.common.PEConstants;

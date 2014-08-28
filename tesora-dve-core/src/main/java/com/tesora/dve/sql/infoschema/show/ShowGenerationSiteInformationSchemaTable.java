@@ -37,7 +37,7 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 public class ShowGenerationSiteInformationSchemaTable extends
 		ShowInformationSchemaTable {
 
-	protected AbstractInformationSchemaColumnView secondaryOrderByColumn;
+	protected InformationSchemaColumnView secondaryOrderByColumn;
 
 	public ShowGenerationSiteInformationSchemaTable(
 			LogicalInformationSchemaTable basedOn) {

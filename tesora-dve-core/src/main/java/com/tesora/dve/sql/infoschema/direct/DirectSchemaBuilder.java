@@ -1,29 +1,47 @@
-package com.tesora.dve.sql.infoschema;
+package com.tesora.dve.sql.infoschema.direct;
 
-import java.util.Collections;
+/*
+ * #%L
+ * Tesora Inc.
+ * Database Virtualization Engine
+ * %%
+ * Copyright (C) 2011 - 2014 Tesora Inc.
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License, version 3,
+ * as published by the Free Software Foundation.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * #L%
+ */
+
 import java.util.EnumMap;
 
-import com.tesora.dve.common.catalog.FKMode;
-import com.tesora.dve.common.catalog.MultitenantMode;
-import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.infoschema.InfoSchemaGenerator;
+import com.tesora.dve.sql.infoschema.InformationSchemaBuilder;
+import com.tesora.dve.sql.infoschema.InformationSchemaView;
+import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
+import com.tesora.dve.sql.infoschema.MysqlView;
+import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.show.ShowView;
-import com.tesora.dve.sql.parser.ParserOptions;
-import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEDatabase;
-import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
-import com.tesora.dve.sql.util.Pair;
 
-public class ViewSchemaBuilder implements InformationSchemaBuilder {
+public class DirectSchemaBuilder implements InformationSchemaBuilder {
 
 	private final PEDatabase catalogSchema;
 	
-	public ViewSchemaBuilder(PEDatabase catSchema) {
+	public DirectSchemaBuilder(PEDatabase catSchema) {
 		this.catalogSchema = catSchema;
 	}
 	
@@ -31,6 +49,8 @@ public class ViewSchemaBuilder implements InformationSchemaBuilder {
 	public void populate(LogicalInformationSchema logicalSchema,
 			InformationSchemaView infoSchema, ShowView showSchema,
 			MysqlView mysqlSchema, DBNative dbn) throws PEException {
+		if (catalogSchema == null) // transient case, but we aren't doing any info schema queries then anyhow
+			return;
 		TransientExecutionEngine tee = new TransientExecutionEngine(catalogSchema.getName().get(),dbn.getTypeCatalog());
 		SchemaContext sc = tee.getPersistenceContext();
 
@@ -42,7 +62,7 @@ public class ViewSchemaBuilder implements InformationSchemaBuilder {
 		tee.setCurrentDatabase(catalogSchema);
 
 		for(InfoSchemaGenerator g : generators) {
-			ViewBasedInformationSchemaTableView view = g.generate(sc);
+			DirectInformationSchemaTableView view = g.generate(sc);
 			schemaByView.get(view.getView()).viewReplace(sc, view);
 		}
 	}

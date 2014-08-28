@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.schema;
+package com.tesora.dve.sql.infoschema.direct;
 
 /*
  * #%L
@@ -21,21 +21,23 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.PersistentDatabase;
-import com.tesora.dve.common.catalog.UserDatabase;
-import com.tesora.dve.sql.schema.cache.Cacheable;
-import com.tesora.dve.sql.schema.cache.SchemaEdge;
+import java.util.Map;
 
-@SuppressWarnings("rawtypes")
-public interface Database<T extends Table<?>> extends HasName, PersistentDatabase, Cacheable {
+import com.tesora.dve.sql.infoschema.engine.LogicalQuery;
+import com.tesora.dve.sql.infoschema.engine.ViewQuery;
+import com.tesora.dve.sql.statement.dml.SelectStatement;
 
-	public Schema<T> getSchema();
-	
-	public UserDatabase getPersistent(SchemaContext sc);
-	
-	public PEPersistentGroup getDefaultStorage(SchemaContext sc);
-	
-	public SchemaEdge<PEPersistentGroup> getDefaultStorageEdge();
-	
-	public boolean isInfoSchema();	
+public class DirectLogicalQuery extends LogicalQuery {
+
+	public DirectLogicalQuery(ViewQuery orig, SelectStatement xlated,
+			Map<String, Object> p) {
+		super(orig, xlated, p);
+		// TODO Auto-generated constructor stub
+	}
+
+	@Override
+	public boolean isDirect() {
+		return true;
+	}
+
 }

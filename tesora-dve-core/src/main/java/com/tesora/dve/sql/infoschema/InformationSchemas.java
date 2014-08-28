@@ -37,6 +37,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.direct.DirectSchemaBuilder;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowView;
@@ -114,7 +115,7 @@ public final class InformationSchemas {
 					// the order these are built in is important
 					new AnnotationInformationSchemaBuilder(),
 					new SyntheticInformationSchemaBuilder(),
-					new ViewSchemaBuilder(catSchema)
+					new DirectSchemaBuilder(catSchema)
 			};
 			for(InformationSchemaBuilder isb : builders)
 				isb.populate(logicalSchema, informationSchema, showSchema, mysqlSchema, dbn);
@@ -149,7 +150,7 @@ public final class InformationSchemas {
 		ParserOptions opts = ParserOptions.TEST.setResolve().setIgnoreMissingUser();
 		SchemaContext sc = tee.getPersistenceContext();
 		
-		PEPersistentGroup catalogGroup = new PEPersistentGroup(sc,new UnqualifiedName(database), Collections.EMPTY_LIST);
+		PEPersistentGroup catalogGroup = new PEPersistentGroup(sc,new UnqualifiedName(PEConstants.SYSTEM_GROUP_NAME), Collections.EMPTY_LIST);
 		PEDatabase pdb = new PEDatabase(sc,new UnqualifiedName(database),catalogGroup,new Pair<Name,TemplateMode>(null, TemplateMode.OPTIONAL), MultitenantMode.OFF, FKMode.STRICT, "","");
 		pdb.setID(-1);
 		
@@ -158,7 +159,6 @@ public final class InformationSchemas {
 		String[] decls = CatalogSchemaGenerator.buildCreateCurrentSchema(c,catalogProps);
 		for(String s : decls) {
 			if (s.startsWith("create")) {
-				System.out.println(s);
 				sc.refresh(true);
 				List<Statement> stmts = InvokeParser.parse(InvokeParser.buildInputState(s,sc), opts, sc).getStatements();
 				for(Statement stmt : stmts) {

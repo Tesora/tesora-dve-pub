@@ -26,7 +26,6 @@ import java.util.List;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.SchemaView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
@@ -43,9 +42,7 @@ public class ShowView extends SchemaView {
 
 			@Override
 			public Name[] evaluate(InformationSchemaTableView object) {
-				return new Name[] { object.getName()
-						/* , object.getPluralName() */ // this might be a problem 
-						};
+				return new Name[] { object.getName(), object.getPluralName() };
 			}
 			
 		});
@@ -58,6 +55,8 @@ public class ShowView extends SchemaView {
 	}
 	
 	public ShowInformationSchemaTable lookupTable(UnqualifiedName unq) {
-		return (ShowInformationSchemaTable)lookup.lookup(unq);
+		// temporary
+		Object obj = lookup.lookup(unq);
+		return (ShowInformationSchemaTable)obj;
 	}
 }

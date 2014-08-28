@@ -21,7 +21,6 @@ package com.tesora.dve.sql.infoschema.engine;
  * #L%
  */
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -37,16 +36,11 @@ import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
-import com.tesora.dve.db.NativeType;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnInfo;
-import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
@@ -58,7 +52,7 @@ import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.SyntheticInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.direct.DirectSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.GeneralCollectingTraversal;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -122,16 +116,21 @@ public class LogicalSchemaQueryEngine {
 		}
 		if (!haveVariable) {
 		
-			final IntermediateResultSet irs = buildResultSet(sc, vq, pi);
-			return new NonDMLFeatureStep(planner, null) {
+			InfoPlanningResults planResults = buildResults(sc, vq, pi, planner);
+			if (planResults.getResults() != null) {
+				final IntermediateResultSet irs = planResults.getResults();
+				return new NonDMLFeatureStep(planner, null) {
 
-				@Override
-				public void scheduleSelf(PlannerContext sc, ExecutionSequence es)
-						throws PEException {
-					es.append(new DDLQueryExecutionStep("select",irs));					
-				}
+					@Override
+					public void scheduleSelf(PlannerContext sc, ExecutionSequence es)
+							throws PEException {
+						es.append(new DDLQueryExecutionStep("select",irs));					
+					}
 
-			}.withCachingFlag(false);
+				}.withCachingFlag(false);
+			} else {
+				return planResults.getStep().withCachingFlag(false);
+			}
 		} else if (haveVariable && haveOthers) {
 			throw new InformationSchemaException("Illegal information schema query: across variables table and others");
 		} else {
@@ -152,19 +151,37 @@ public class LogicalSchemaQueryEngine {
 	
 	
 	// main entry point.  
-	public static IntermediateResultSet buildResultSet(SchemaContext sc, ViewQuery vq, ProjectionInfo pi) {
-		if (sc == null) return new IntermediateResultSet();
-		LogicalCatalogQuery lq = convertDown(sc, vq);
-		QueryExecutionKind qek = determineKind(lq);
-		if (qek != QueryExecutionKind.RAW)
-			return buildCatalogEntities(sc, lq, qek).getResultSet(sc,pi);
-		return buildRawResultSet(sc, lq, pi);
+	public static InfoPlanningResults buildResults(SchemaContext sc, ViewQuery vq, ProjectionInfo pi, FeaturePlanner planner) {
+		if (sc == null) return new InfoPlanningResults(new IntermediateResultSet());
+		LogicalQuery lq = convertDown(sc,vq);
+		if (lq.isDirect()) {
+			if (planner == null)
+				throw new InformationSchemaException("Missing feature planner");
+			return new InfoPlanningResults(DirectSchemaQueryEngine.buildStep(sc, lq, pi, planner));
+		} else {
+			LogicalCatalogQuery lcq = (LogicalCatalogQuery) lq;
+			QueryExecutionKind qek = determineKind(lcq);
+			if (qek != QueryExecutionKind.RAW)
+				return new InfoPlanningResults(buildCatalogEntities(sc, lcq, qek).getResultSet(sc,pi));
+			return new InfoPlanningResults(buildRawResultSet(sc, lcq, pi));
+		}
 	}
-
+	
+	// convenience entry point, transitional
+	public static IntermediateResultSet buildResultSet(SchemaContext sc, ViewQuery vq, ProjectionInfo pi) {
+		InfoPlanningResults ipr = buildResults(sc,vq,pi,null);
+		if (ipr.getResults() != null)
+			return ipr.getResults();
+		throw new InformationSchemaException("No results available (executed via direct)");
+	}
+	
 	public static EntityResults buildCatalogEntities(SchemaContext sc, ViewQuery vq) {
-		LogicalCatalogQuery lq = convertDown(sc, vq);
-		QueryExecutionKind qek = determineKind(lq);
-		return buildCatalogEntities(sc, lq, qek);
+		LogicalQuery lq = convertDown(sc,vq);
+		if (lq.isDirect())
+			throw new InformationSchemaException("Unable to build catalog entities from direct info schema query");
+		LogicalCatalogQuery lcq = (LogicalCatalogQuery) lq;
+		QueryExecutionKind qek = determineKind(lcq);
+		return buildCatalogEntities(sc, lcq, qek);
 	}
 
 	
@@ -268,15 +285,15 @@ public class LogicalSchemaQueryEngine {
 		return QueryExecutionKind.ENTITY;
 	}
 
-	private static void accumulateSelectorPath(List<AbstractInformationSchemaColumnView> acc, ColumnInstance ci) {
+	private static void accumulateSelectorPath(List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>> acc, ColumnInstance ci) {
 		if (ci instanceof ScopedColumnInstance) {
 			ScopedColumnInstance sci = (ScopedColumnInstance) ci;
 			accumulateSelectorPath(acc,sci.getRelativeTo());
 		} 
-		acc.add((AbstractInformationSchemaColumnView) ci.getColumn());
+		acc.add((AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>) ci.getColumn());
 	}
 	
-	public static LogicalCatalogQuery convertDown(SchemaContext sc, ViewQuery vq) {
+	public static LogicalQuery convertDown(SchemaContext sc, ViewQuery vq) {
 		SelectStatement in = vq.getQuery();
 		if (canLog()) {
 			String sql = in.getSQL(sc);
@@ -305,18 +322,16 @@ public class LogicalSchemaQueryEngine {
 		// skip all the other stuff.
 		if (haveViews && haveNonViews)
 			throw new InformationSchemaException("Unable to handle info schema query involving view impls and non view impls");
-		if (haveViews) {
-			System.out.println(in.getSQL(sc));
-			throw new InformationSchemaException("fill me in");
-		}
+		if (haveViews) 
+			return DirectSchemaQueryEngine.convertDown(sc,vq);
 		
 		ComputedInformationSchemaTableView.derefEntities(in);
 		List<ExpressionNode> origProjection = vq.getQuery().getProjection();
-		ArrayList<List<AbstractInformationSchemaColumnView>> columns = new ArrayList<List<AbstractInformationSchemaColumnView>>();
+		ArrayList<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> columns = new ArrayList<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>>();
 		for(int i = 0; i < origProjection.size(); i++) {
 			ExpressionNode en = origProjection.get(i);
 			ExpressionNode targ = ExpressionUtils.getTarget(en);
-			ArrayList<AbstractInformationSchemaColumnView> pathTo = new ArrayList<AbstractInformationSchemaColumnView>();
+			ArrayList<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>> pathTo = new ArrayList<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>();
 			if (targ instanceof ColumnInstance) {
 				ColumnInstance ci = (ColumnInstance) targ;
 				accumulateSelectorPath(pathTo,ci);
@@ -387,7 +402,7 @@ public class LogicalSchemaQueryEngine {
 				return map((TableInstance)in);
 			} else if (in instanceof ScopedColumnInstance) {
 				ScopedColumnInstance sci = (ScopedColumnInstance) in;
-				AbstractInformationSchemaColumnView icol = (AbstractInformationSchemaColumnView) sci.getColumn();
+				AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> icol = (AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>) sci.getColumn();
 				ExpressionNode mapped = map(sci.getRelativeTo());
 				if (mapped instanceof ColumnInstance) {
 					return new ScopedColumnInstance(icol.isSynthetic() ? null : icol.getLogicalColumn(),(ColumnInstance)mapped);
@@ -422,7 +437,7 @@ public class LogicalSchemaQueryEngine {
 			if (in.getColumn() instanceof LogicalInformationSchemaColumn)
 				return in;
 			TableInstance oti = map(ici.getTableInstance());
-			AbstractInformationSchemaColumnView icol = (AbstractInformationSchemaColumnView) ici.getColumn();
+			AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> icol = (AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>) ici.getColumn();
 			if (icol.isBacked()) {
 				LogicalInformationSchemaColumn ocol = icol.getLogicalColumn();
 				if (ocol instanceof DelegatingInformationSchemaColumn) {
@@ -513,7 +528,7 @@ public class LogicalSchemaQueryEngine {
 		}
 	}
 	
-	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<AbstractInformationSchemaColumnView>> projColumns,
+	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> projColumns,
 			ProjectionInfo pi) {
 		return LogicalCatalogQuery.buildProjectionMetadata(sc, projColumns, pi, null);
 	}

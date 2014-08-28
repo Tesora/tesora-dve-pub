@@ -50,7 +50,6 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
@@ -88,12 +87,10 @@ import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.parser.SourceLocation;
-import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Comment;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.ForeignKeyAction;
-import com.tesora.dve.sql.schema.HasName;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
@@ -120,13 +117,11 @@ import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.RangeDistribution;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaLookup;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.VariableScopeKind;
-import com.tesora.dve.sql.schema.cache.CacheAwareLookup;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
 import com.tesora.dve.sql.schema.modifiers.TableModifiers;
@@ -1001,7 +996,7 @@ public abstract class Emitter {
 	public void emitDeleteStatement(SchemaContext sc, DeleteStatement delete, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,"DELETE ");
 		if (delete.getTargetDeleteEdge().has() && delete.getOrderBysEdge().isEmpty() && delete.getLimit() == null)
-			emitTableInstance(sc,delete.getTargetDeleteEdge().get(),buf,false);
+			emitTableInstance(sc,delete.getTargetDeleteEdge().get(),buf,TableInstanceContext.NAKED);
 		emitIndent(buf,indent,"FROM ");
 		emitFromTableReferences(sc,delete.getTables(), buf, indent);
 		if (delete.getWhereClause() != null) {
@@ -1132,7 +1127,7 @@ public abstract class Emitter {
 			emitDMLStatement(sc,q.getStatement(), buf, bumpIndent(pretty));
 			buf.append(" ) ").append(q.getAlias().getSQL());
 		} else if (targ instanceof TableInstance) {
-			emitTableInstance(sc, (TableInstance)targ, buf, true);
+			emitTableInstance(sc, (TableInstance)targ, buf, TableInstanceContext.TABLE_FACTOR);
 		} else if (targ instanceof TableJoin) {
 			emitTableJoin(sc,(TableJoin)targ,buf, pretty);
 		} else {
@@ -1156,7 +1151,7 @@ public abstract class Emitter {
 	public void emitJoinedTable(SchemaContext sc, JoinedTable jt, StringBuilder buf, int pretty) {
 		emitIndent(buf,bumpIndent(pretty),jt.getJoinType().getSQL() + " JOIN ");
 		if (jt.getJoinedToTable() != null)
-			emitTableInstance(sc,jt.getJoinedToTable(), buf, true);
+			emitTableInstance(sc,jt.getJoinedToTable(), buf, TableInstanceContext.TABLE_FACTOR);
 		else if (jt.getJoinedToQuery() != null) {
 			emitSubquery(sc,jt.getJoinedToQuery(),buf, pretty);
 		} else 
@@ -1217,7 +1212,7 @@ public abstract class Emitter {
 		} else if (e instanceof FunctionCall) {
 			emitFunctionCall(sc, (FunctionCall)e, buf, indent);
 		} else if (e instanceof TableInstance) {
-			emitTableInstance(sc,(TableInstance)e, buf, false);
+			emitTableInstance(sc,(TableInstance)e, buf, TableInstanceContext.COLUMN);
 		} else if (e instanceof IdentifierLiteralExpression) {
 			emitIdentifierLiteral(sc,(IdentifierLiteralExpression)e, buf);
 		} else if (e instanceof LiteralExpression) {
@@ -1280,7 +1275,7 @@ public abstract class Emitter {
 			if (cr.getColumn() == null)
 				buf.append(cr.getSpecifiedAs().getSQL());
 			else if (cr.getSpecifiedAs() == null || !cr.getSpecifiedAs().isQualified()) {
-				emitTableInstance(sc,cr.getTableInstance(),buf,false);
+				emitTableInstance(sc,cr.getTableInstance(),buf,TableInstanceContext.COLUMN);
 				buf.append(".").append(cr.getColumn().getName().getUnqualified());
 			} else if (cr.getTableInstance().isMT()) {
 				// if the table is aliased, use that; otherwise use the mangled name
@@ -1297,7 +1292,7 @@ public abstract class Emitter {
 					buf.append(cr.getSpecifiedAs().getSQL());
 			} else {
 				if (this.hasOptions() && getOptions().isGenericSQL()) {
-					emitTableInstance(sc,cr.getTableInstance(),buf,false);
+					emitTableInstance(sc,cr.getTableInstance(),buf,TableInstanceContext.COLUMN);
 					buf.append(".").append(cr.getColumn().getName().getUnqualified());
 				} else {
 					buf.append(cr.getSpecifiedAs());
@@ -1310,7 +1305,7 @@ public abstract class Emitter {
 			else
 				buf.append(cr.getColumn().getName().getSQL());
 		} else if (getOptions().isInfoSchema() || getOptions().isInfoSchemaRaw()) {	
-			emitTableInstance(sc,cr.getTableInstance(), buf, false);
+			emitTableInstance(sc,cr.getTableInstance(), buf, TableInstanceContext.COLUMN);
 			buf.append(".");
 			LogicalInformationSchemaColumn isc = (LogicalInformationSchemaColumn) cr.getColumn();
 			if (getOptions().isInfoSchema())
@@ -1663,53 +1658,85 @@ public abstract class Emitter {
 		buf.append(n.getUnqualified().getSQL());
 	}
 	
-	public void emitTableInstance(SchemaContext sc, TableInstance tr, StringBuilder buf, boolean incAlias) {
-		boolean includeAlias = incAlias;
-		// if running in mt mode, we want to use the actual table name, not the specified name
+	// contexts under which table instances are emitted
+	public enum TableInstanceContext {
+		
+		COLUMN,  // part of a column
+		TABLE_FACTOR, // i.e. join on Table
+		NAKED  // i.e. delete A from ....
+		
+	}
+	
+	public void emitTableInstance(SchemaContext sc, TableInstance tr, StringBuilder buf, TableInstanceContext context) {
 		Table<?> tab = tr.getTable();
 		if (tab == null) {
 			buf.append(tr.getSpecifiedAs(sc).getSQL());			
 		} else if (tab instanceof PEAbstractTable) {
+			// for temp tables: we never include the alias
+			// if the current db is different than the owning db, use a qualified name if not as a colum
+			// for table factors, add the alias.
 			PEAbstractTable<?> pet = (PEAbstractTable<?>) tab;
 			Database<?> curDb = sc.getCurrentDatabase(false);
 			Database<?> tblDb = pet.getDatabase(sc);
-			if ((curDb == null && tblDb != null) || 
-					((curDb != null && tblDb != null) && (curDb.getId() != tblDb.getId()))) {
-				int offset = buf.length();
-				String toAdd = pet.getDatabase(sc).getName().getUnqualified().getSQL();
-				buf.append(toAdd).append(".");
-				builder.withDBName(offset, toAdd);
+			if (context != TableInstanceContext.COLUMN) {
+				if ((curDb == null && tblDb != null) || 
+						((curDb != null && tblDb != null) && (curDb.getId() != tblDb.getId()))) {
+					if (getOptions() == null || !getOptions().isCatalog()) { 
+						int offset = buf.length();
+						String toAdd = pet.getDatabase(sc).getName().getUnqualified().getSQL();
+						buf.append(toAdd).append(".");
+						builder.withDBName(offset, toAdd);
+					} else {
+						// catalog - just emit the database name
+						buf.append(pet.getDatabase(sc).getName().getUnqualified().getSQL()).append(".");
+					}
+				}
 			}
+			boolean prohibitAlias = false;
 			if (pet.isTempTable()) {
 				int offset= buf.length();
 				String toAdd = pet.getName(sc).getSQL();
 				buf.append(toAdd);
 				builder.withTempTable(offset, toAdd, (TempTable)pet);
-				includeAlias = false;
-			} else if (!includeAlias && tr.getAlias() != null) {
-				buf.append(tr.getAlias().getSQL());
-			} else if (pet.getPEDatabase(sc).getMTMode() == MultitenantMode.ADAPTIVE) {
-				// adaptive always uses private table names
-				buf.append(tr.getTable().getName(sc).getSQL());
-			} else 
-				buf.append(tr.getSpecifiedAs(sc).getQuotedName().getSQL());
-//						getSQL());
+				// we never emit aliases with temp tables
+				prohibitAlias = true;
+			} else {
+				if (context == TableInstanceContext.COLUMN && tr.getAlias() != null) {
+					buf.append(tr.getAlias().getSQL());
+				} else {
+					// table name
+					if (pet.getPEDatabase(sc).getMTMode() == MultitenantMode.ADAPTIVE) {
+						buf.append(tr.getTable().getName(sc).getSQL());
+					} else {
+						buf.append(tr.getSpecifiedAs(sc).getQuotedName().getSQL());
+					}
+				}
+			}
+			if (context == TableInstanceContext.COLUMN || prohibitAlias || context == TableInstanceContext.NAKED) {
+				// no as foo clause
+			} else if (tr.getAlias() != null) {
+				buf.append(" AS ").append(tr.getAlias().getSQL());
+			}
 		} else if (tab instanceof InformationSchemaTableView) {
 			// we'd get this from a debug statement
-			if (!includeAlias && tr.getAlias() != null)
+			if (context == TableInstanceContext.COLUMN && tr.getAlias() != null) {
 				buf.append(tr.getAlias().getSQL());
-			else
-				buf.append(tr.getTable().getName().getSQL());				
+			} else {
+				buf.append(tr.getTable().getName().getSQL());
+			}
+			if (context == TableInstanceContext.TABLE_FACTOR && tr.getAlias() != null)
+				buf.append(" AS ").append(tr.getAlias().getSQL());
 		} else {
 			// info schema
 			if (!this.hasOptions()) {
-				if (!includeAlias && tr.getAlias() != null)
+				if (context == TableInstanceContext.COLUMN && tr.getAlias() != null) {
 					buf.append(tr.getAlias().getSQL());
-				else
-					buf.append(tr.getTable().getName().getSQL());				
+				} else {
+					buf.append(tr.getTable().getName().getSQL());
+				}
 			} else {
 				LogicalInformationSchemaTable ist = (LogicalInformationSchemaTable) tab;
-				if (!includeAlias && tr.getAlias() != null) 
+				if (context == TableInstanceContext.COLUMN && tr.getAlias() != null) 
 					buf.append(tr.getAlias().getSQL());
 				else if (getOptions().isInfoSchema())
 					buf.append(ist.getEntityName());
@@ -1718,9 +1745,9 @@ public abstract class Emitter {
 				else
 					throw new SchemaException(Pass.REWRITER,"Inconsistent emitter state for info schema table");				
 			}
+			if (context == TableInstanceContext.TABLE_FACTOR && tr.getAlias() != null)
+				buf.append(" AS ").append(tr.getAlias().getSQL());
 		}
-		if (includeAlias && tr.getAlias() != null)
-			buf.append(" AS ").append(tr.getAlias().getSQL());
 	}
 	
 	public void emitLimitSpecification(SchemaContext sc, LimitSpecification ls, StringBuilder buf, int indent) {
@@ -2316,7 +2343,7 @@ public abstract class Emitter {
 				buf.append(",");
 			}
 			first = false;
-			emitTableInstance(sc, table, buf, false);
+			emitTableInstance(sc, table, buf, TableInstanceContext.NAKED);
 		}
 	}
 	
@@ -2389,7 +2416,7 @@ public abstract class Emitter {
 
 			@Override
 			public void execute(TableInstance aobj, StringBuilder bobj) {
-				emitTableInstance(sc,aobj,bobj,false);
+				emitTableInstance(sc,aobj,bobj,TableInstanceContext.NAKED);
 			}
 			
 		});
@@ -2513,6 +2540,14 @@ public abstract class Emitter {
 		public boolean isAddViewTableDecls() {
 			return hasSetting(EmitOption.VIEW_DECL_EMIT_TABLE_DECL);
 		}
+		
+		public EmitOptions addCatalog() {
+			return this.add(EmitOption.CATALOG, Boolean.TRUE);
+		}
+		
+		public boolean isCatalog() {
+			return hasSetting(EmitOption.CATALOG);
+		}
 	}
 	
 	public enum EmitOption {
@@ -2541,7 +2576,9 @@ public abstract class Emitter {
 		// used in the analyzer - emit all literals as parameters
 		ANALYZER_EMIT_LITERALS_AS_PARAMETERS,
 		// for planner error messages - emit the table declarations for views as well (pe extension)
-		VIEW_DECL_EMIT_TABLE_DECL
+		VIEW_DECL_EMIT_TABLE_DECL,
+		// we are querying the catalog directly, do not emit db entries
+		CATALOG
 	}
 	
 	public static class EmitContext {

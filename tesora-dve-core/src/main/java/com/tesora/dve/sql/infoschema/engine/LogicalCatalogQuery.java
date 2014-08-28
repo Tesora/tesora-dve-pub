@@ -21,7 +21,6 @@ package com.tesora.dve.sql.infoschema.engine;
  * #L%
  */
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +36,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
+import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -46,10 +46,10 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 public class LogicalCatalogQuery extends LogicalQuery {
 	
 	protected Map<TableKey,ExpressionNode> viewToLogicalForwarding;
-	protected List<List<AbstractInformationSchemaColumnView>> projectionColumns;
+	protected List<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> projectionColumns;
 	
 	public LogicalCatalogQuery(ViewQuery basedOn, SelectStatement s, Map<String,Object> p, Map<TableKey, ExpressionNode> forwarding,
-			List<List<AbstractInformationSchemaColumnView>> projCols) {
+			List<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> projCols) {
 		super(basedOn,s,p);
 		this.viewToLogicalForwarding = forwarding;
 		orig = basedOn;
@@ -64,20 +64,20 @@ public class LogicalCatalogQuery extends LogicalQuery {
 	}
 	
 	public Map<TableKey,ExpressionNode> getForwarding() { return viewToLogicalForwarding; }
-	public List<List<AbstractInformationSchemaColumnView>> getProjectionColumns() { return projectionColumns; }
+	public List<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> getProjectionColumns() { return projectionColumns; }
 	
 	public ColumnSet buildProjectionMetadata(SchemaContext sc, ProjectionInfo pi,List<Object> examples) {
 		return buildProjectionMetadata(sc,projectionColumns,pi,examples);
 	}
 
-	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<AbstractInformationSchemaColumnView>> projectionColumns,
+	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> projectionColumns,
 			ProjectionInfo pi, List<Object> examples) {
 		ColumnSet cs = new ColumnSet();
 		try {
 			for(int i = 0; i < projectionColumns.size(); i++) {
-				List<AbstractInformationSchemaColumnView> p = projectionColumns.get(i);
-				AbstractInformationSchemaColumnView typeColumn = p.get(p.size() - 1);
-				AbstractInformationSchemaColumnView nameColumn = p.get(0);
+				List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>> p = projectionColumns.get(i);
+				AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> typeColumn = p.get(p.size() - 1);
+				AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> nameColumn = p.get(0);
 				Type type = typeColumn.getType();
 				if (type == null) {
 					Object help = null;
@@ -118,6 +118,11 @@ public class LogicalCatalogQuery extends LogicalQuery {
 		}
 		return cs;
 		
+	}
+
+	@Override
+	public boolean isDirect() {
+		return false;
 	}
 	
 }

@@ -163,9 +163,9 @@ public class ShowTableInformationSchemaTable extends ShowInformationSchemaTable 
 
 	// take into account additional filtering
 	protected List<ExpressionNode> buildProjection(SchemaContext sc, TableInstance ti, boolean useExtensions, boolean hasPriviledge, AliasInformation aliases, ShowOptions opts) {
-		List<AbstractInformationSchemaColumnView> projCols = getProjectionColumns(useExtensions,hasPriviledge);
+		List<InformationSchemaColumnView> projCols = getProjectionColumns(useExtensions,hasPriviledge);
 		ArrayList<ExpressionNode> proj = new ArrayList<ExpressionNode>();
-		for(AbstractInformationSchemaColumnView c : projCols) {
+		for(InformationSchemaColumnView c : projCols) {
 			if (c.getName().get().equals(ShowSchema.Table.TYPE) && (opts == null || !opts.isFull())) 
 				continue;
 			ColumnInstance ci = new ColumnInstance(c,ti);

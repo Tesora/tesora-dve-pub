@@ -69,9 +69,9 @@ public class ShowInformationSchemaTable extends ComputedInformationSchemaTableVi
 	}
 	
 	protected List<ExpressionNode> buildProjection(SchemaContext sc, TableInstance ti, boolean useExtensions, boolean hasPriviledge, AliasInformation aliases, ShowOptions opts) {
-		List<AbstractInformationSchemaColumnView> projCols = getProjectionColumns(useExtensions,hasPriviledge);
+		List<InformationSchemaColumnView> projCols = getProjectionColumns(useExtensions,hasPriviledge);
 		ArrayList<ExpressionNode> proj = new ArrayList<ExpressionNode>();
-		for(AbstractInformationSchemaColumnView c : projCols) {
+		for(InformationSchemaColumnView c : projCols) {
 			ColumnInstance ci = new ColumnInstance(c,ti);
 			ExpressionAlias ea = new ExpressionAlias(ci, ci.buildAlias(sc), true);
 			aliases.addAlias(ea.getAlias().get());
@@ -262,8 +262,8 @@ public class ShowInformationSchemaTable extends ComputedInformationSchemaTableVi
 	
 	@SuppressWarnings("unchecked")
 	protected IntermediateResultSet buildEmptyResultSet(SchemaContext sc) {
-		ArrayList<List<AbstractInformationSchemaColumnView>> proj = new ArrayList<List<AbstractInformationSchemaColumnView>>();
-		for(AbstractInformationSchemaColumnView c : getColumns(sc)) {
+		ArrayList<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> proj = new ArrayList<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>>();
+		for(AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> c : getColumns(sc)) {
 			proj.add(Collections.singletonList(c));
 		}
 		ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(sc,proj,null);

@@ -35,7 +35,7 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 
-public class DatabaseView implements Database<InformationSchemaTableView> {
+public class DatabaseView implements Database<InformationSchemaTableView<AbstractInformationSchemaColumnView>> {
 
 	private final SchemaView schema;
 	private final UnqualifiedName name;
@@ -67,10 +67,11 @@ public class DatabaseView implements Database<InformationSchemaTableView> {
 	}
 
 	@Override
-	public Schema<InformationSchemaTableView> getSchema() {
+	public Schema<InformationSchemaTableView<AbstractInformationSchemaColumnView>> getSchema() {
 		return schema;
 	}
 
+	
 	@Override
 	public UserDatabase getPersistent(SchemaContext sc) {
 		return sc.getCatalog().getDAO().findByKey(UserDatabase.class, id);
@@ -174,5 +175,6 @@ public class DatabaseView implements Database<InformationSchemaTableView> {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
 	
 }

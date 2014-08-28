@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.schema;
+package com.tesora.dve.sql.infoschema.engine;
 
 /*
  * #%L
@@ -21,21 +21,30 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.PersistentDatabase;
-import com.tesora.dve.common.catalog.UserDatabase;
-import com.tesora.dve.sql.schema.cache.Cacheable;
-import com.tesora.dve.sql.schema.cache.SchemaEdge;
+import com.tesora.dve.resultset.IntermediateResultSet;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 
-@SuppressWarnings("rawtypes")
-public interface Database<T extends Table<?>> extends HasName, PersistentDatabase, Cacheable {
+public class InfoPlanningResults {
 
-	public Schema<T> getSchema();
+	private final IntermediateResultSet viaCatalog;
+	private final FeatureStep viaDirect;
 	
-	public UserDatabase getPersistent(SchemaContext sc);
+	public InfoPlanningResults(IntermediateResultSet catalogResults) {
+		viaCatalog = catalogResults;
+		viaDirect = null;
+	}
 	
-	public PEPersistentGroup getDefaultStorage(SchemaContext sc);
+	public InfoPlanningResults(FeatureStep step) {
+		viaDirect = step;
+		viaCatalog = null;
+	}
 	
-	public SchemaEdge<PEPersistentGroup> getDefaultStorageEdge();
+	public FeatureStep getStep() {
+		return viaDirect;
+	}
 	
-	public boolean isInfoSchema();	
+	public IntermediateResultSet getResults() {
+		return viaCatalog;
+	}
+	
 }

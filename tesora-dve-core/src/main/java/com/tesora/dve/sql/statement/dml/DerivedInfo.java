@@ -36,9 +36,9 @@ import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.schema.Database;
-import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.transform.CopyContext;
 import com.tesora.dve.sql.transform.constraints.PlanningConstraint;
@@ -146,7 +146,7 @@ public class DerivedInfo {
 	}
 	
 	// used in nested queries
-	public void removeLocalTable(PEAbstractTable<?> vt) {
+	public void removeLocalTable(Table<?> vt) {
 		for(Iterator<TableKey> iter = localTableKeys.iterator(); iter.hasNext();) {
 			TableKey tk = iter.next();
 			if (tk.getTable() == vt)

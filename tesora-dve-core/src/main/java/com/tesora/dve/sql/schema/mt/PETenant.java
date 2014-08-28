@@ -32,8 +32,6 @@ import com.tesora.dve.common.catalog.ITenant;
 import com.tesora.dve.common.catalog.TableVisibility;
 import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.expression.MTTableInstance;

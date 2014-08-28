@@ -29,9 +29,7 @@ import org.junit.Test;
 
 import com.tesora.dve.persist.InsertEngine;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;

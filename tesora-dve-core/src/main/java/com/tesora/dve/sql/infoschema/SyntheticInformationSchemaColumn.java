@@ -35,13 +35,12 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.Type;
 
-public class SyntheticInformationSchemaColumn extends
-		AbstractInformationSchemaColumnView {
+public class SyntheticInformationSchemaColumn extends InformationSchemaColumnView {
 
 	private Type type;
 	
 	public SyntheticInformationSchemaColumn(InfoView view, UnqualifiedName nameInView, Type type) {
-		super(view,nameInView);
+		super(view,null,nameInView);
 		this.type = type;
 	}
 	
@@ -76,7 +75,7 @@ public class SyntheticInformationSchemaColumn extends
 	}
 
 	@Override
-	public AbstractInformationSchemaColumnView copy() {
+	public AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> copy() {
 		return new SyntheticInformationSchemaColumn(view,name,type);
 	}
 	
