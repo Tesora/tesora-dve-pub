@@ -60,7 +60,7 @@ public class LogicalInformationSchemaColumn implements Column<LogicalInformation
 	
 	@Override
 	public String toString() {
-		return "InformationSchemaColumn{name=" + getName() + ", type=" + getType() + "}";
+		return this.getClass().getSimpleName() + "{name=" + getName() + ", type=" + getType() + "}";
 	}
 
 	
