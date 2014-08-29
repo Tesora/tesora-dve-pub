@@ -66,14 +66,14 @@ public class KnownVariables implements VariableConstants {
 	public static final EnumSet<VariableScopeKind> globalScope = EnumSet.of(VariableScopeKind.GLOBAL);
 	public static final EnumSet<VariableScopeKind> sessionScope = EnumSet.of(VariableScopeKind.SESSION);
 	public static final EnumSet<VariableScopeKind> bothScope = EnumSet.of(VariableScopeKind.GLOBAL,VariableScopeKind.SESSION);
-	
+
 	// normally emulated variables are just passed through
 	public static final EnumSet<VariableOption> emulated = EnumSet.of(VariableOption.EMULATED,VariableOption.PASSTHROUGH);
 	public static final EnumSet<VariableOption> emulatedOnly = EnumSet.of(VariableOption.EMULATED);
 	public static final EnumSet<VariableOption> dveOnly = EnumSet.noneOf(VariableOption.class);
 	public static final EnumSet<VariableOption> nullable = EnumSet.of(VariableOption.NULLABLE);
 	public static final EnumSet<VariableOption> readonly = EnumSet.of(VariableOption.READONLY);
-	
+
 	private static final String DEFAULT_KEYWORD = "DEFAULT";
 
 	@SuppressWarnings("rawtypes")
@@ -85,7 +85,7 @@ public class KnownVariables implements VariableConstants {
 		literalConverter
 	};
 
-	
+
 	public static final VariableHandler<Long> LARGE_INSERT_CUTOFF =
 			new VariableHandler<Long>(LARGE_INSERT_THRESHOLD_NAME,
 					integralConverter,
@@ -149,24 +149,24 @@ public class KnownVariables implements VariableConstants {
 	public static final VariableHandler<String> DYNAMIC_POLICY =
 			new VariableHandler<String>(DYNAMIC_POLICY_NAME,
 					new StringValueConverter() {
-				
-						@Override
-						public String convertToInternal(String varName, String in) throws PEException {
-							String raw = stringConverter.convertToInternal(varName, in);
-							CatalogDAO c = CatalogDAOFactory.newInstance();
-							try {
-								c.findDynamicPolicy(raw, true);
-							} finally {
-								c.close();
-							}
-							return raw;
-						}
 
-					},
-					bothScope,
-					null,
-					nullable,
-					"Dynamic policy name");
+				@Override
+				public String convertToInternal(String varName, String in) throws PEException {
+					String raw = stringConverter.convertToInternal(varName, in);
+					CatalogDAO c = CatalogDAOFactory.newInstance();
+					try {
+						c.findDynamicPolicy(raw, true);
+					} finally {
+						c.close();
+					}
+					return raw;
+				}
+
+			},
+			bothScope,
+			null,
+			nullable,
+			"Dynamic policy name");
 	public static final VariableHandler<Boolean> STEPWISE_STATISTICS =
 			new VariableHandler<Boolean>(STEPWISE_STATISTICS_NAME,
 					booleanConverter,
@@ -221,7 +221,7 @@ public class KnownVariables implements VariableConstants {
 			sessionScope,
 			null,
 			EnumSet.of(VariableOption.NULLABLE,VariableOption.EMULATED)) {
-		
+
 	};
 	public static final VariableHandler<Boolean> FOREIGN_KEY_CHECKS =
 			new VariableHandler<Boolean>(FOREIGN_KEY_CHECKS_NAME,
@@ -243,11 +243,11 @@ public class KnownVariables implements VariableConstants {
 					String uc = deq.toUpperCase(Locale.ENGLISH);
 					return super.convertToInternal(varName, uc);
 				}
-				
+
 			},
-					bothScope,
-					EngineTag.INNODB,
-					emulated);
+			bothScope,
+			EngineTag.INNODB,
+			emulated);
 	public static final VariableHandler<Long> REPL_INSERT_ID =
 			new VariableHandler<Long>(REPL_SLAVE_INSERT_ID_NAME,
 					integralConverter,
@@ -257,25 +257,25 @@ public class KnownVariables implements VariableConstants {
 					"Replication slave last insert id");
 	public static final VariableHandler<Long> TIMESTAMP = new VariableHandler<Long>("timestamp", /* As of MySQL 5.6.4, timestamp is a DOUBLE. */
 			new IntegralValueConverter() {
-				@Override
-				public Long convertToInternal(String varName, String in) throws PEException {
-					if (DEFAULT_KEYWORD.equalsIgnoreCase(in)) {
-						return 0L;
-					}
-					return super.convertToInternal(varName, in);
-				}
-			},
-			sessionScope,
-			0L,
-			EnumSet.of(VariableOption.EMULATED)) {
-			@Override
-			public Long getValue(VariableStoreSource source, VariableScopeKind vs) {
-				final Long currentSessionValue = super.getValue(source, vs);
-				if (currentSessionValue == 0) {
-					return TimestampVariableUtils.getCurrentSystemTime();
-				}
-				return currentSessionValue;
+		@Override
+		public Long convertToInternal(String varName, String in) throws PEException {
+			if (DEFAULT_KEYWORD.equalsIgnoreCase(in)) {
+				return 0L;
 			}
+			return super.convertToInternal(varName, in);
+		}
+	},
+	sessionScope,
+	0L,
+	EnumSet.of(VariableOption.EMULATED)) {
+		@Override
+		public Long getValue(VariableStoreSource source, VariableScopeKind vs) {
+			final Long currentSessionValue = super.getValue(source, vs);
+			if (currentSessionValue == 0) {
+				return TimestampVariableUtils.getCurrentSystemTime();
+			}
+			return currentSessionValue;
+		}
 	};
 	public static final VariableHandler<Long> REPL_TIMESTAMP =
 			new VariableHandler<Long>(REPL_SLAVE_TIMESTAMP_NAME,
@@ -288,113 +288,134 @@ public class KnownVariables implements VariableConstants {
 			new VariableHandler<SQLMode>("sql_mode",
 					new ValueMetadata<SQLMode>() {
 
-						@Override
-						public SQLMode convertToInternal(String varName, String in)
-								throws PEException {
-							String raw = stringConverter.convertToInternal(varName, in);
-							return new SQLMode(raw);
-						}
+				@Override
+				public SQLMode convertToInternal(String varName, String in)
+						throws PEException {
+					String raw = stringConverter.convertToInternal(varName, in);
+					return new SQLMode(raw);
+				}
 
-						@Override
-						public String convertToExternal(SQLMode in) {
-							return String.format("'%s'",in.toString());
-						}
-						
-						@Override
-						public boolean isNumeric() {
-							return false;
-						}
+				@Override
+				public String convertToExternal(SQLMode in) {
+					return String.format("'%s'",in.toString());
+				}
 
-						@Override
-						public String getTypeName() {
-							return "varchar";
-						}
+				@Override
+				public boolean isNumeric() {
+					return false;
+				}
 
-						@Override
-						public String toRow(SQLMode in) {
-							return in.toString();
-						}
-				
-					},
-					bothScope,
-					new SQLMode("NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"),
-					emulated) {
-		
+				@Override
+				public String getTypeName() {
+					return "varchar";
+				}
+
+				@Override
+				public String toRow(SQLMode in) {
+					return in.toString();
+				}
+
+			},
+			bothScope,
+			new SQLMode("NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"),
+			emulated) {
+
+		@Override
+		public void onGlobalValueChange(SQLMode newValue) throws PEException {
+			super.onGlobalValueChange(newValue);
+		}
+
+		@Override
+		public void setGlobalValue(VariableStoreSource conn, String value) throws PEException {
+			final SQLMode newModes = combineSQLMode(conn, value);
+			super.setGlobalValue(conn, newModes.toString());
+		}
+
 		@Override
 		public void onSessionValueChange(VariableStoreSource conn, SQLMode newValue) throws PEException {
 			super.onSessionValueChange(conn,newValue);
 		}
-		
+
 		@Override
 		public void setSessionValue(VariableStoreSource conn, String value) throws PEException {
-			// make sure the global values are included
-			SQLMode globalValues = getGlobalValue(conn);
-			String raw = stringConverter.convertToInternal(getName(), value);
+			final SQLMode newModes = combineSQLMode(conn, value);
+			super.setSessionValue(conn, newModes.toString());
+		}
+
+		/**
+		 * Combine given SQL MODEs with the ones required by DVE.
+		 * Make sure the global values required by DVE are always
+		 * included.
+		 */
+		private SQLMode combineSQLMode(final VariableStoreSource conn, final String value) throws PEException {
+			final SQLMode globalValues = getGlobalValue(conn);
+			final String raw = stringConverter.convertToInternal(getName(), value);
+
 			if (DEFAULT_KEYWORD.equalsIgnoreCase(raw)) {
-				// set the session values to the global values
-				super.setSessionValue(conn,globalValues.toString());
-			} else {
-				// combine
-				SQLMode myValues = new SQLMode(raw);
-				SQLMode combined = globalValues.add(myValues);
-				super.setSessionValue(conn,combined.toString());
+				// return the required global values
+				return globalValues;
 			}
+
+			// append new modes to the defaults
+			final SQLMode myValues = new SQLMode(raw);
+			final SQLMode combined = globalValues.add(myValues);
+			return combined;
 		}
 	};
 	public static final VariableHandler<String> COLLATION_CONNECTION =
 			new VariableHandler<String>(COLLATION_CONNECTION_NAME,
 					new LiteralValueConverter() {
-				
-						@Override
-						public String convertToInternal(String varName, String in) throws PEException {
-							Singletons.require(HostService.class).getDBNative().assertValidCollation(in);
-							return in;
-						}
-				
-					},
-					bothScope,
-					"utf8_general_ci",
-					emulated);
-	
+
+				@Override
+				public String convertToInternal(String varName, String in) throws PEException {
+					Singletons.require(HostService.class).getDBNative().assertValidCollation(in);
+					return in;
+				}
+
+			},
+			bothScope,
+			"utf8_general_ci",
+			emulated);
+
 	public static final VariableHandler<NativeCharSet> CHARACTER_SET_CLIENT =
 			new VariableHandler<NativeCharSet>(CHARACTER_SET_CLIENT_NAME,
 					new ValueMetadata<NativeCharSet>() {
 
-						@Override
-						public NativeCharSet convertToInternal(String varName,
-								String in) throws PEException {
-							try {
-								return MysqlNativeCharSetCatalog.DEFAULT_CATALOG.findCharSetByName(in, true);
-							} catch (PEException e) {
-								throw new PEException(String.format("Unsupported charset for '%s': %s",varName,in));
-							}
-						}
+				@Override
+				public NativeCharSet convertToInternal(String varName,
+						String in) throws PEException {
+					try {
+						return MysqlNativeCharSetCatalog.DEFAULT_CATALOG.findCharSetByName(in, true);
+					} catch (PEException e) {
+						throw new PEException(String.format("Unsupported charset for '%s': %s",varName,in));
+					}
+				}
 
-						@Override
-						public String convertToExternal(NativeCharSet in) {
-							return in.getName();
-						}
+				@Override
+				public String convertToExternal(NativeCharSet in) {
+					return in.getName();
+				}
 
-						@Override
-						public String toRow(NativeCharSet in) {
-							return in.getName();
-						}
+				@Override
+				public String toRow(NativeCharSet in) {
+					return in.getName();
+				}
 
-						@Override
-						public boolean isNumeric() {
-							return false;
-						}
+				@Override
+				public boolean isNumeric() {
+					return false;
+				}
 
-						@Override
-						public String getTypeName() {
-							return "varchar";
-						}
-				
-					},
-					bothScope,
-					MysqlNativeCharSet.UTF8,
-					emulated) {
-		
+				@Override
+				public String getTypeName() {
+					return "varchar";
+				}
+
+			},
+			bothScope,
+			MysqlNativeCharSet.UTF8,
+			emulated) {
+
 		public void onSessionValueChange(VariableStoreSource conn, NativeCharSet in) throws PEException {
 			if (conn instanceof SSConnection) {
 				SSConnection ssconn = (SSConnection) conn;
@@ -402,7 +423,7 @@ public class KnownVariables implements VariableConstants {
 			}
 			super.onSessionValueChange(conn,in);
 		}
-		
+
 	};
 	public static final VariableHandler<Long> CACHE_LIMIT =
 			new VariableHandler<Long>("cache_limit",
@@ -428,7 +449,7 @@ public class KnownVariables implements VariableConstants {
 		public void onGlobalValueChange(Long newValue) throws PEException {
 			SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()),newValue.intValue());
 		}
-		
+
 	};
 	public static final VariableHandler<Long> TENANT_CACHE_LIMIT =
 			new VariableHandler<Long>("tenant_cache_limit",
@@ -441,7 +462,7 @@ public class KnownVariables implements VariableConstants {
 		public void onGlobalValueChange(Long newValue) throws PEException {
 			SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()),newValue.intValue());
 		}
-		
+
 	};
 	public static final VariableHandler<Long> TABLE_CACHE_LIMIT =
 			new VariableHandler<Long>("table_cache_limit",
@@ -454,7 +475,7 @@ public class KnownVariables implements VariableConstants {
 		public void onGlobalValueChange(Long newValue) throws PEException {
 			SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()),newValue.intValue());
 		}
-		
+
 	};
 	public static final long DEFAULT_PLAN_CACHE_LIMIT = 400L;
 	public static final VariableHandler<Long> PLAN_CACHE_LIMIT =
@@ -468,7 +489,7 @@ public class KnownVariables implements VariableConstants {
 		public void onGlobalValueChange(Long newValue) throws PEException {
 			SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()),newValue.intValue());
 		}
-		
+
 	};
 	public static final VariableHandler<Long> RAW_PLAN_CACHE_LIMIT =
 			new VariableHandler<Long>("raw_plan_cache_limit",
@@ -481,7 +502,7 @@ public class KnownVariables implements VariableConstants {
 		public void onGlobalValueChange(Long newValue) throws PEException {
 			SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()),newValue.intValue());
 		}
-		
+
 	};
 	public static final VariableHandler<Long> TEMPLATE_CACHE_LIMIT =
 			new VariableHandler<Long>("template_cache_limit",
@@ -494,7 +515,7 @@ public class KnownVariables implements VariableConstants {
 		public void onGlobalValueChange(Long newValue) throws PEException {
 			SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()),newValue.intValue());
 		}
-		
+
 	};
 	// we don't push down the max_prepared_stmt_count so as to avoid issues with redist
 	public static final VariableHandler<Long> MAX_PREPARED_STMT_COUNT =
@@ -534,12 +555,12 @@ public class KnownVariables implements VariableConstants {
 					bothScope,
 					Boolean.TRUE,
 					emulated) {
-		
+
 		@Override
 		public void onSessionValueChange(VariableStoreSource store, Boolean newValue) throws PEException {
 			((SSConnection)store).setAutoCommitMode(newValue.booleanValue());
 		}
-		
+
 		@Override
 		public String getSessionAssignmentClause(String value) {
 			// does not seem correct
@@ -559,7 +580,7 @@ public class KnownVariables implements VariableConstants {
 					null,
 					EnumSet.of(VariableOption.NULLABLE),
 					"Default persistent group") {
-		
+
 		@Override
 		public void setSessionValue(VariableStoreSource conn, String newValue) throws PEException {
 			if (conn instanceof SSConnection) {
@@ -568,22 +589,22 @@ public class KnownVariables implements VariableConstants {
 			}
 			super.setSessionValue(conn,newValue);
 		}
-						
+
 	};
 	public static final VariableHandler<String> GROUP_SERVICE =
 			new VariableHandler<String>("group_service",
 					new StringValueConverter() {
-						@Override
-						public String convertToInternal(String varName, String in) throws PEException {
-							String raw = super.convertToInternal(varName,in);
-							if (!GroupManager.isValidServiceType(raw))
-								throw new PEException("Value '" + raw + "' is not valid for variable 'group_service'" );
-							return raw;
-						}
-					},
-					globalScope,
-					"Localhost",
-					dveOnly,
+				@Override
+				public String convertToInternal(String varName, String in) throws PEException {
+					String raw = super.convertToInternal(varName,in);
+					if (!GroupManager.isValidServiceType(raw))
+						throw new PEException("Value '" + raw + "' is not valid for variable 'group_service'" );
+					return raw;
+				}
+			},
+			globalScope,
+			"Localhost",
+			dveOnly,
 					"Enable support for multiple DVE servers");
 	public static final VariableHandler<Long> MAX_CONCURRENT =
 			new VariableHandler<Long>("max_concurrent",
@@ -595,11 +616,11 @@ public class KnownVariables implements VariableConstants {
 
 		@Override
 		public void onGlobalValueChange(Long newValue) throws PEException {
-	        MySqlPortalService portal = Singletons.lookup(MySqlPortalService.class);
-	        if(portal != null)
+			MySqlPortalService portal = Singletons.lookup(MySqlPortalService.class);
+			if(portal != null)
 				portal.setMaxConcurrent(newValue.intValue());
 		}
-		
+
 	};
 	// make this nullable to avoid some issues around initialization
 	public static final VariableHandler<String> VERSION_COMMENT =
@@ -608,17 +629,17 @@ public class KnownVariables implements VariableConstants {
 					bothScope,
 					null,
 					EnumSet.of(VariableOption.EMULATED, VariableOption.READONLY, VariableOption.NULLABLE)) {
-		
+
 		@Override
 		public String getValue(VariableStoreSource source, VariableScopeKind vs) {
 			return Singletons.require(HostService.class).getServerVersionComment();
 		}
-		
+
 		@Override
 		public String getDefaultOnMissing() {
 			return null;
 		}
-		
+
 	};
 	public static final VariableHandler<String> VERSION =
 			new VariableHandler<String>("version",
@@ -665,8 +686,8 @@ public class KnownVariables implements VariableConstants {
 					Boolean.FALSE,
 					dveOnly,
 					"Enable location information in error messages");
-	
-		
+
+
 	@SuppressWarnings("rawtypes")
 	static VariableHandler[] namedHandlers = new VariableHandler[] {
 		LARGE_INSERT_CUTOFF,
@@ -715,7 +736,7 @@ public class KnownVariables implements VariableConstants {
 		COLLATION_DATABASE,
 		ERROR_MIGRATOR
 	};
-	
+
 	@SuppressWarnings("rawtypes")
 	static final VariableHandler[] unnamedHandlers = new VariableHandler[] {
 		new VariableHandler<Long>("group_concat_max_len",
@@ -723,14 +744,14 @@ public class KnownVariables implements VariableConstants {
 				bothScope,
 				1024L,
 				emulated) {
-			
+
 		},
 		new VariableHandler<String>("hostname",
 				stringConverter,
 				globalScope,
 				"",
 				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)) {
-			
+
 			@Override
 			public String getValue(VariableStoreSource source, VariableScopeKind vs) {
 				return Singletons.require(HostService.class).getHostName();
@@ -741,28 +762,28 @@ public class KnownVariables implements VariableConstants {
 				bothScope,
 				1L,
 				emulated),
-		new VariableHandler<String>("character_set_connection",
-				stringConverter,
-				bothScope,
-				"utf8",
-				emulated),
-		new VariableHandler<String>("character_set_results",
-				stringConverter,
-				bothScope,
-				"utf8",
-				EnumSet.of(VariableOption.EMULATED,VariableOption.PASSTHROUGH,VariableOption.NULLABLE)),
-		new VariableHandler<String>("character_set_server",
-				stringConverter,
-				bothScope,
-				"utf8",
-				emulated),
-		new VariableHandler<Long>(ADAPTIVE_CLEANUP_INTERVAL_NAME,
-				new BoundedIntegralConverter(-1L,10000L),
-				globalScope,
-				10000L,
-				dveOnly,
-				"Table garbage collector execution period (multitenant mode)") {
-			
+				new VariableHandler<String>("character_set_connection",
+						stringConverter,
+						bothScope,
+						"utf8",
+						emulated),
+						new VariableHandler<String>("character_set_results",
+								stringConverter,
+								bothScope,
+								"utf8",
+								EnumSet.of(VariableOption.EMULATED,VariableOption.PASSTHROUGH,VariableOption.NULLABLE)),
+								new VariableHandler<String>("character_set_server",
+										stringConverter,
+										bothScope,
+										"utf8",
+										emulated),
+										new VariableHandler<Long>(ADAPTIVE_CLEANUP_INTERVAL_NAME,
+												new BoundedIntegralConverter(-1L,10000L),
+												globalScope,
+												10000L,
+												dveOnly,
+												"Table garbage collector execution period (multitenant mode)") {
+
 			public void onGlobalValueChange(Long newValue) throws PEException {
 				Singletons.require(BootstrapHostService.class).setTableCleanupInterval(newValue.intValue(),true);
 			}
@@ -773,13 +794,13 @@ public class KnownVariables implements VariableConstants {
 				0L,
 				dveOnly,
 				"Statistics rollup interval"),
-		new VariableHandler<Long>("max_connections",
-				new BoundedIntegralConverter(1L,5000L),
-				globalScope,
-				1000L,
-				dveOnly,
-				"Maximum number of concurrent connections") {
-			
+				new VariableHandler<Long>("max_connections",
+						new BoundedIntegralConverter(1L,5000L),
+						globalScope,
+						1000L,
+						dveOnly,
+						"Maximum number of concurrent connections") {
+
 			public void onGlobalValueChange(Long newValue) throws PEException {
 				SSConnection.setMaxConnections(newValue.intValue());
 			}
@@ -809,27 +830,27 @@ public class KnownVariables implements VariableConstants {
 				sessionScope,
 				0L,
 				emulatedOnly),
-		new VariableHandler<String>("charset",
-				literalConverter,
-				sessionScope,
-				"utf8",
-				emulatedOnly),
-		new VariableHandler<Boolean>("sql_auto_is_null",
-				booleanConverter,
-				bothScope,
-				Boolean.FALSE,
-				emulated),
-		new VariableHandler<MySQLTransactionIsolation>("tx_isolation",
-				new EnumValueConverter<MySQLTransactionIsolation>(MySQLTransactionIsolation.values()),
-				bothScope,
-				MySQLTransactionIsolation.READ_COMMITTED,
-				emulated),
-		new VariableHandler<Boolean>("performance_trace",
-				booleanConverter,
-				globalScope,
-				Boolean.FALSE,
-				dveOnly,
-				"Enable performance tracing") {
+				new VariableHandler<String>("charset",
+						literalConverter,
+						sessionScope,
+						"utf8",
+						emulatedOnly),
+						new VariableHandler<Boolean>("sql_auto_is_null",
+								booleanConverter,
+								bothScope,
+								Boolean.FALSE,
+								emulated),
+								new VariableHandler<MySQLTransactionIsolation>("tx_isolation",
+										new EnumValueConverter<MySQLTransactionIsolation>(MySQLTransactionIsolation.values()),
+										bothScope,
+										MySQLTransactionIsolation.READ_COMMITTED,
+										emulated),
+										new VariableHandler<Boolean>("performance_trace",
+												booleanConverter,
+												globalScope,
+												Boolean.FALSE,
+												dveOnly,
+												"Enable performance tracing") {
 
 			@Override
 			public void onGlobalValueChange(Boolean newValue) throws PEException {
@@ -843,43 +864,43 @@ public class KnownVariables implements VariableConstants {
 				sessionScope,
 				0L,
 				emulated),
-		new VariableHandler<Long>("rand_seed2",
-				integralConverter,
-				sessionScope,
-				0L,
-				emulated),
-		new VariableHandler<Long>("insert_id",
-				integralConverter,
-				sessionScope,
-				0L,
-				emulated),
-		new VariableHandler<Long>(INNODB_LOCK_WAIT_TIMEOUT_NAME,
-				integralConverter,
-				bothScope,
-				3L,
-				emulated),
-		new VariableHandler<Boolean>("have_innodb",
-				booleanConverter,
-				bothScope,
-				Boolean.TRUE,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<Boolean>("unique_checks",
-				booleanConverter,
-				bothScope,
-				Boolean.TRUE,
-				emulated),
-		new VariableHandler<Boolean>("big_tables",
-				booleanConverter,
-				sessionScope,
-				Boolean.FALSE,
-				emulated),
-		new VariableHandler<Long>(AUTO_INCREMENT_MIN_BLOCK_SIZE,
-				new BoundedIntegralConverter(1L,null),
-				globalScope,
-				10L,
-				dveOnly,
-				"Minimum autoincrement allocation block size") {
-			
+				new VariableHandler<Long>("rand_seed2",
+						integralConverter,
+						sessionScope,
+						0L,
+						emulated),
+						new VariableHandler<Long>("insert_id",
+								integralConverter,
+								sessionScope,
+								0L,
+								emulated),
+								new VariableHandler<Long>(INNODB_LOCK_WAIT_TIMEOUT_NAME,
+										integralConverter,
+										bothScope,
+										3L,
+										emulated),
+										new VariableHandler<Boolean>("have_innodb",
+												booleanConverter,
+												bothScope,
+												Boolean.TRUE,
+												EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+												new VariableHandler<Boolean>("unique_checks",
+														booleanConverter,
+														bothScope,
+														Boolean.TRUE,
+														emulated),
+														new VariableHandler<Boolean>("big_tables",
+																booleanConverter,
+																sessionScope,
+																Boolean.FALSE,
+																emulated),
+																new VariableHandler<Long>(AUTO_INCREMENT_MIN_BLOCK_SIZE,
+																		new BoundedIntegralConverter(1L,null),
+																		globalScope,
+																		10L,
+																		dveOnly,
+																		"Minimum autoincrement allocation block size") {
+
 			public void onGlobalValueChange(Long newValue) throws PEException {
 				AutoIncrementTracker.setMinBlockSize(newValue.intValue());
 			}
@@ -893,7 +914,7 @@ public class KnownVariables implements VariableConstants {
 			public void onGlobalValueChange(Long newValue) throws PEException {
 				AutoIncrementTracker.setPrefetchThreshold(newValue.intValue());
 			}
-			
+
 		},
 		new VariableHandler<Long>(AUTO_INCREMENT_MAX_BLOCK_SIZE,
 				integralConverter,
@@ -904,113 +925,113 @@ public class KnownVariables implements VariableConstants {
 			public void onGlobalValueChange(Long newValue) throws PEException {
 				AutoIncrementTracker.setMaxBlockSize(newValue.intValue());
 			}
-			
+
 		},
 		new VariableHandler<Long>("sql_quote_show_create",
 				new BoundedIntegralConverter(-1L,2L),
 				bothScope,
 				1L,
 				emulated),
-		new VariableHandler<Long>("sql_notes",
-				new BoundedIntegralConverter(-1L,2L),
-				bothScope,
-				1L,
-				emulated),
-		new VariableHandler<String>("init_connect",
-				stringConverter,
-				globalScope,
-				"",
-				emulated),
-		new VariableHandler<Long>("interactive_timeout",
-				new BoundedIntegralConverter(0L,null),
-				bothScope,
-				28800L,
-				emulated),
-		new VariableHandler<Long>("lower_case_table_names",
-				new BoundedIntegralConverter(-1L,3L),
-				globalScope,
-				1L,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<Long>("net_buffer_length",
-				new BoundedIntegralConverter(1023L,1048577L),
-				bothScope,
-				16384L,
-				emulatedOnly),
-		new VariableHandler<Long>("net_write_timeout",
-				new BoundedIntegralConverter(0L,null),
-				bothScope,
-				60L,
-				emulated),
-		new VariableHandler<String>("system_time_zone",
-				stringConverter,
-				globalScope,
-				"EDT", // todo: change this
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<Long>("query_cache_size",
-				new BoundedIntegralConverter(-1L,4294967296L), // maybe not right?
-				globalScope,
-				41943040L,
-				emulatedOnly),
-		new VariableHandler<Long>("query_cache_type",
-				new BoundedIntegralConverter(-1L,3L),
-				bothScope,
-				1L,
-				emulatedOnly),
-		new VariableHandler<Boolean>("have_dynamic_loading",
-				booleanConverter,
-				bothScope,
-				Boolean.FALSE,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<String>("version_compile_os",
-				stringConverter,
-				bothScope,
-				"debian-linux-gnu",
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<Boolean>("have_geometry",
-				booleanConverter,
-				globalScope,
-				Boolean.TRUE,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<Long>("myisam_sort_buffer_size",
-				new BoundedIntegralConverter(4095L,Long.MAX_VALUE),
-				bothScope,
-				8388608L,
-				emulated),
-		new VariableHandler<Long>("sort_buffer_size",
-				new BoundedIntegralConverter(32767L,Long.MAX_VALUE),
-				bothScope,
-				2097144L,
-				emulated),
-		new VariableHandler<Boolean>("lower_case_file_system",
-				new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
-				globalScope,
-				Boolean.FALSE,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<Boolean>("have_query_cache",
-				booleanConverter,
-				globalScope,
-				Boolean.TRUE,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<Boolean>("have_ssl",
-				booleanConverter,
-				globalScope,
-				Boolean.FALSE,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<Boolean>("have_openssl" /* Alias for 'have_ssl'. */,
-				booleanConverter,
-				globalScope,
-				Boolean.FALSE,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<ThreadHandlingMode>("thread_handling",
-				new EnumValueConverter<ThreadHandlingMode>(ThreadHandlingMode.values()),
-				globalScope,
-				ThreadHandlingMode.ONE_THREAD_PER_CONNECTION,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
-		new VariableHandler<Boolean>("have_partitioning",
-				booleanConverter,
-				globalScope,
-				Boolean.FALSE,
-				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
+				new VariableHandler<Long>("sql_notes",
+						new BoundedIntegralConverter(-1L,2L),
+						bothScope,
+						1L,
+						emulated),
+						new VariableHandler<String>("init_connect",
+								stringConverter,
+								globalScope,
+								"",
+								emulated),
+								new VariableHandler<Long>("interactive_timeout",
+										new BoundedIntegralConverter(0L,null),
+										bothScope,
+										28800L,
+										emulated),
+										new VariableHandler<Long>("lower_case_table_names",
+												new BoundedIntegralConverter(-1L,3L),
+												globalScope,
+												1L,
+												EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+												new VariableHandler<Long>("net_buffer_length",
+														new BoundedIntegralConverter(1023L,1048577L),
+														bothScope,
+														16384L,
+														emulatedOnly),
+														new VariableHandler<Long>("net_write_timeout",
+																new BoundedIntegralConverter(0L,null),
+																bothScope,
+																60L,
+																emulated),
+																new VariableHandler<String>("system_time_zone",
+																		stringConverter,
+																		globalScope,
+																		"EDT", // todo: change this
+																		EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+																		new VariableHandler<Long>("query_cache_size",
+																				new BoundedIntegralConverter(-1L,4294967296L), // maybe not right?
+																				globalScope,
+																				41943040L,
+																				emulatedOnly),
+																				new VariableHandler<Long>("query_cache_type",
+																						new BoundedIntegralConverter(-1L,3L),
+																						bothScope,
+																						1L,
+																						emulatedOnly),
+																						new VariableHandler<Boolean>("have_dynamic_loading",
+																								booleanConverter,
+																								bothScope,
+																								Boolean.FALSE,
+																								EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+																								new VariableHandler<String>("version_compile_os",
+																										stringConverter,
+																										bothScope,
+																										"debian-linux-gnu",
+																										EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+																										new VariableHandler<Boolean>("have_geometry",
+																												booleanConverter,
+																												globalScope,
+																												Boolean.TRUE,
+																												EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+																												new VariableHandler<Long>("myisam_sort_buffer_size",
+																														new BoundedIntegralConverter(4095L,Long.MAX_VALUE),
+																														bothScope,
+																														8388608L,
+																														emulated),
+																														new VariableHandler<Long>("sort_buffer_size",
+																																new BoundedIntegralConverter(32767L,Long.MAX_VALUE),
+																																bothScope,
+																																2097144L,
+																																emulated),
+																																new VariableHandler<Boolean>("lower_case_file_system",
+																																		new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
+																																		globalScope,
+																																		Boolean.FALSE,
+																																		EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+																																		new VariableHandler<Boolean>("have_query_cache",
+																																				booleanConverter,
+																																				globalScope,
+																																				Boolean.TRUE,
+																																				EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+																																				new VariableHandler<Boolean>("have_ssl",
+																																						booleanConverter,
+																																						globalScope,
+																																						Boolean.FALSE,
+																																						EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+																																						new VariableHandler<Boolean>("have_openssl" /* Alias for 'have_ssl'. */,
+																																								booleanConverter,
+																																								globalScope,
+																																								Boolean.FALSE,
+																																								EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+																																								new VariableHandler<ThreadHandlingMode>("thread_handling",
+																																										new EnumValueConverter<ThreadHandlingMode>(ThreadHandlingMode.values()),
+																																										globalScope,
+																																										ThreadHandlingMode.ONE_THREAD_PER_CONNECTION,
+																																										EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY)),
+																																										new VariableHandler<Boolean>("have_partitioning",
+																																												booleanConverter,
+																																												globalScope,
+																																												Boolean.FALSE,
+																																												EnumSet.of(VariableOption.EMULATED,VariableOption.READONLY))
 	};
 
 }

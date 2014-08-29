@@ -181,8 +181,12 @@ public class PETest extends PEBaseTest {
 		}
 
 		ResourceLeakDetector<?> detector = ResourceLeakDetector.getDetector(ByteBuf.class);
-		if (detector != null && detector.getLeakCount() > nettyLeakCount)
-			finalThrows.add(new Exception("Netty ByteBuf leak detected!"));
+		if (detector != null) {
+			final long numOfLeaksDetected = detector.getLeakCount();
+			if (numOfLeaksDetected > nettyLeakCount) {
+				finalThrows.add(new Exception("Total of '" + numOfLeaksDetected + "' Netty ByteBuf leaks detected!"));
+			}
+		}
 
 		if (finalThrows.size() > 0) {
 			if (logger.isDebugEnabled()) {
