@@ -298,7 +298,11 @@ public class SQLVariableTest extends SchemaTest {
 	public void testSqlModeDefault() throws Throwable {
 		final String variableName = "sql_mode";
 
+		// Reset the GLOBAL value first to test for PE-1608.
 		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
+		conn.execute("SET GLOBAL sql_mode=default;");
+		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
+
 		conn.execute("SET sql_mode=ALLOW_INVALID_DATES;");
 		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,ALLOW_INVALID_DATES");
 		conn.execute("SET sql_mode=default;");
