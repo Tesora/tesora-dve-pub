@@ -27,6 +27,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
@@ -105,19 +106,22 @@ public class SQLVariableTest extends SchemaTest {
 				br(nr,"character_set_client", "latin1",
 				   nr,"character_set_connection", "latin1",
 				   nr,"character_set_results","latin1",
-				   nr,"character_set_server","utf8"));
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"));
 		conn.assertResults("show variables like 'character%'",
 				br(nr,"character_set_client", "latin1",
 				   nr,"character_set_connection", "latin1",
 				   nr,"character_set_results","latin1",
-				   nr,"character_set_server","utf8"));
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"));
 		conn.execute("set @prevcharset = @@character_set_connection");
 		conn.execute("set names utf8");
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", "utf8",
 				   nr,"character_set_connection", "utf8",
 				   nr,"character_set_results","utf8",
-				   nr,"character_set_server","utf8"));
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"));
 		conn.assertResults("select @@character_set_client,@@session.character_set_connection,@@character_set_results",br(nr,"utf8","utf8","utf8"));
 		conn.execute("set @@character_set_connection = @prevcharset");
 		conn.assertResults("select @@character_set_connection",br(nr,"latin1"));
@@ -186,7 +190,8 @@ public class SQLVariableTest extends SchemaTest {
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
 				   nr,"character_set_results",charSet,
-				   nr,"character_set_server","utf8"
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"
 				   ));
 		
 		charSet = "utf8";
@@ -195,7 +200,8 @@ public class SQLVariableTest extends SchemaTest {
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
 				   nr,"character_set_results",charSet,
-				   nr,"character_set_server","utf8"
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"
 				   ));
 		
 		charSet = "ascii";
@@ -204,7 +210,8 @@ public class SQLVariableTest extends SchemaTest {
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
 				   nr,"character_set_results",charSet,
-				   nr,"character_set_server","utf8"
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"
 				   ));
 	}
 
@@ -332,6 +339,113 @@ public class SQLVariableTest extends SchemaTest {
 	@Test
 	public void testPE1590() throws Throwable {
 		assertVariableValue("thread_handling", "one-thread-per-connection");
+	}
+
+	@Test
+	public void testPE1609() throws Throwable {
+		assertVariableValue("time_format", "%H:%i:%s");
+	}
+
+	@Test
+	public void testPE1610() throws Throwable {
+		assertVariableValue("thread_concurrency", "10");
+	}
+
+	@Test
+	public void testPE1611() throws Throwable {
+		assertVariableValue("log_bin", "OFF");
+	}
+
+	@Test
+	public void testPE1612() throws Throwable {
+		assertVariableValue("license", "AGPL");
+	}
+
+	@Test
+	public void testPE1613() throws Throwable {
+		final String serverVersion = getVariableValue("version");
+		assertVariableValue("innodb_version", serverVersion);
+	}
+
+	@Test
+	public void testPE1614() throws Throwable {
+		assertVariableValue("ignore_builtin_innodb", "OFF");
+	}
+
+	@Test
+	public void testPE1615() throws Throwable {
+		assertVariableValue("have_profiling", "NO");
+	}
+
+	@Test
+	public void testPE1616() throws Throwable {
+		assertVariableValue("datetime_format", "%Y-%m-%d %H:%i:%s");
+	}
+
+	@Test
+	public void testPE1617() throws Throwable {
+		assertVariableValue("date_format", "%Y-%m-%d");
+	}
+
+	@Test
+	public void testPE1618() throws Throwable {
+		assertVariableValue("character_set_system", "utf8");
+	}
+
+	@Test
+	public void testPE1619() throws Throwable {
+		assertVariableValue("div_precision_increment", "4");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session div_precision_increment = 31");
+			}
+		}.assertException(PEException.class, "Invalid value '31' must be no more than 30 for variable 'div_precision_increment'");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session div_precision_increment = -1");
+			}
+		}.assertException(PEException.class, "Invalid value '-1' must be at least 0 for variable 'div_precision_increment'");
+
+		conn.assertResults("SELECT 1/7", br(nr, BigDecimal.valueOf(0.1429)));
+
+		conn.execute("set session div_precision_increment = 12");
+
+		conn.assertResults("SELECT 1/7", br(nr, BigDecimal.valueOf(0.142857142857)));
+	}
+
+	@Test
+	public void testPE1620() throws Throwable {
+		assertVariableValue("default_week_format", "0");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session default_week_format = 8");
+			}
+		}.assertException(PEException.class, "Invalid value '8' must be no more than 7 for variable 'default_week_format'");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session default_week_format = -1");
+			}
+		}.assertException(PEException.class, "Invalid value '-1' must be at least 0 for variable 'default_week_format'");
+
+		conn.assertResults("SELECT WEEK('2008-02-20')", br(nr, 7L));
+
+		conn.execute("set session default_week_format = 1");
+
+		conn.assertResults("SELECT WEEK('2008-02-20')", br(nr, 8L));
+		conn.assertResults("SELECT WEEK('2008-12-31')", br(nr, 53L));
+	}
+
+	@Test
+	public void testPE1621() throws Throwable {
+		assertVariableValue("version_compile_machine", "64-bit");
 	}
 
 	@Test
