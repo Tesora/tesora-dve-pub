@@ -25,19 +25,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.CharsetUtil;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.sql.SQLException;
-
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
-import com.tesora.dve.dbc.ServerDBConnection;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
-import com.tesora.dve.variable.VariableConstants;
 
 public class MyExecuteLoadLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger

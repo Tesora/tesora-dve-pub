@@ -21,51 +21,55 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
+import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
-import java.io.IOException;
-
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
-
-public class MyAppendBlockLogEvent extends MyLogEventPacket {
+public class MyLoadLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
-			.getLogger(MyAppendBlockLogEvent.class);
+			.getLogger(MyLoadLogEvent.class);
 
-	int fileId;
-	ByteBuf dataBlock;
+	int threadId;
+	int time;
+	int ignoreLines;
+	byte tableLen;
+	byte dbLen;
+	int columns;
+	ByteBuf variableData; 
 	
-	public MyAppendBlockLogEvent(MyReplEventCommonHeader ch) {
+	public MyLoadLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyAppendBlockLogEvent)this);
+        visitorTarget.visit((MyLoadLogEvent)this);
     }
 
-    @Override
+	@Override
 	public void unmarshallMessage(ByteBuf cb) {
-		fileId = cb.readInt();
-		dataBlock = Unpooled.buffer(cb.readableBytes());
-		dataBlock.writeBytes(cb);
+		threadId = cb.readInt();
+		time = cb.readInt();
+		ignoreLines = cb.readInt();
+		tableLen = cb.readByte();
+		dbLen = cb.readByte();
+		columns = cb.readInt();
+		// TODO: need to parse out the variable part of the data
+		variableData = Unpooled.buffer(cb.readableBytes());
+		variableData.writeBytes(cb);
 	}
 
 	@Override
     public void marshallMessage(ByteBuf cb) {
-		cb.writeInt(fileId);
-		cb.writeBytes(dataBlock);
+		cb.writeInt(threadId);
+		cb.writeInt(time);
+		cb.writeInt(ignoreLines);
+		cb.writeByte(tableLen);
+		cb.writeByte(dbLen);
+		cb.writeInt(columns);
+		cb.writeBytes(variableData);
 	}
-
-    public int getFileID(){
-        return fileId;
-    }
-
-    public ByteBuf getDataBlock(){
-        return dataBlock;
-    }
 
 }

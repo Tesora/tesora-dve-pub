@@ -21,45 +21,48 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
-import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
+import com.tesora.dve.exceptions.PEException;
 
-public class MyTableMapLogEvent extends MyLogEventPacket {
+public class MyBeginLoadLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
-			.getLogger(MyTableMapLogEvent.class);
+			.getLogger(MyBeginLoadLogEvent.class);
 
-	int tableId;
-	short reserved;
-	ByteBuf variableData; 
+	int fileId;
+	ByteBuf dataBlock;
 	
-	public MyTableMapLogEvent(MyReplEventCommonHeader ch) {
+	public MyBeginLoadLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyTableMapLogEvent)this);
+        visitorTarget.visit((MyBeginLoadLogEvent)this);
     }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
-		tableId = cb.readInt();
-		reserved = cb.readShort();
-		// TODO: need to parse out the variable part of the data
-		variableData = Unpooled.buffer(cb.readableBytes());
-		variableData.writeBytes(cb);
+		fileId = cb.readInt();
+		dataBlock = Unpooled.buffer(cb.readableBytes());
+		dataBlock.writeBytes(cb);
 	}
 
 	@Override
     public void marshallMessage(ByteBuf cb) {
-		cb.writeInt(tableId);
-		cb.writeShort(reserved);
-		cb.writeBytes(variableData);
+		cb.writeInt(fileId);
+		cb.writeBytes(dataBlock);
 	}
+
+    public int getFileId() {
+        return fileId;
+    }
+
+    public ByteBuf getDataBlock() {
+        return dataBlock;
+    }
 
 }

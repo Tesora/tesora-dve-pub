@@ -26,31 +26,41 @@ import io.netty.buffer.ByteBuf;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
+import com.google.common.primitives.UnsignedLong;
 
-public class MyExecLoadLogEvent extends MyLogEventPacket {
+public class MyRandLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
-			.getLogger(MyExecLoadLogEvent.class);
+			.getLogger(MyRandLogEvent.class);
 
-	int fileId;
+	UnsignedLong seed1;
+	UnsignedLong seed2;
 	
-	public MyExecLoadLogEvent(MyReplEventCommonHeader ch) {
+	public MyRandLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyExecLoadLogEvent)this);
+        visitorTarget.visit((MyRandLogEvent)this);
     }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
-		fileId = cb.readInt();
+		seed1 = UnsignedLong.valueOf(cb.readLong());
+		seed2 = UnsignedLong.valueOf(cb.readLong());
 	}
 
 	@Override
     public void marshallMessage(ByteBuf cb) {
-		cb.writeInt(fileId);
+		cb.writeLong(seed1.longValue());
+		cb.writeLong(seed2.longValue());
 	}
 
+    public UnsignedLong getSeed1() {
+        return seed1;
+    }
+
+    public UnsignedLong getSeed2() {
+        return seed2;
+    }
 }

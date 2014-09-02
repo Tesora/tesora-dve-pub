@@ -23,45 +23,53 @@ package com.tesora.dve.mysqlapi.repl.messages;
 
 import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
 import org.apache.log4j.Logger;
 
-import com.google.common.primitives.UnsignedLong;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
-
-public class MyRandLogEvent extends MyLogEventPacket {
+public class MyNewLoadLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
-			.getLogger(MyRandLogEvent.class);
+			.getLogger(MyNewLoadLogEvent.class);
 
-	UnsignedLong seed1;
-	UnsignedLong seed2;
+	int threadId;
+	int time;
+	int ignoreLines;
+	byte tableLen;
+	byte dbLen;
+	int columns;
+	ByteBuf variableData; 
 	
-	public MyRandLogEvent(MyReplEventCommonHeader ch) {
+	public MyNewLoadLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyRandLogEvent)this);
+        visitorTarget.visit((MyNewLoadLogEvent)this);
     }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
-		seed1 = UnsignedLong.valueOf(cb.readLong());
-		seed2 = UnsignedLong.valueOf(cb.readLong());
+		threadId = cb.readInt();
+		time = cb.readInt();
+		ignoreLines = cb.readInt();
+		tableLen = cb.readByte();
+		dbLen = cb.readByte();
+		columns = cb.readInt();
+		// TODO: need to parse out the variable part of the data
+		variableData = Unpooled.buffer(cb.readableBytes());
+		variableData.writeBytes(cb);
 	}
 
 	@Override
     public void marshallMessage(ByteBuf cb) {
-		cb.writeLong(seed1.longValue());
-		cb.writeLong(seed2.longValue());
+		cb.writeInt(threadId);
+		cb.writeInt(time);
+		cb.writeInt(ignoreLines);
+		cb.writeByte(tableLen);
+		cb.writeByte(dbLen);
+		cb.writeInt(columns);
+		cb.writeBytes(variableData);
 	}
 
-    public UnsignedLong getSeed1() {
-        return seed1;
-    }
-
-    public UnsignedLong getSeed2() {
-        return seed2;
-    }
 }

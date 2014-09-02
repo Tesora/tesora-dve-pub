@@ -27,25 +27,24 @@ import io.netty.buffer.Unpooled;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
-public class MyBeginLoadLogEvent extends MyLogEventPacket {
+public class MyAppendBlockLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
-			.getLogger(MyBeginLoadLogEvent.class);
+			.getLogger(MyAppendBlockLogEvent.class);
 
 	int fileId;
 	ByteBuf dataBlock;
 	
-	public MyBeginLoadLogEvent(MyReplEventCommonHeader ch) {
+	public MyAppendBlockLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyBeginLoadLogEvent)this);
+        visitorTarget.visit((MyAppendBlockLogEvent)this);
     }
 
-	@Override
+    @Override
 	public void unmarshallMessage(ByteBuf cb) {
 		fileId = cb.readInt();
 		dataBlock = Unpooled.buffer(cb.readableBytes());
@@ -58,11 +57,11 @@ public class MyBeginLoadLogEvent extends MyLogEventPacket {
 		cb.writeBytes(dataBlock);
 	}
 
-    public int getFileId() {
+    public int getFileID(){
         return fileId;
     }
 
-    public ByteBuf getDataBlock() {
+    public ByteBuf getDataBlock(){
         return dataBlock;
     }
 

@@ -21,42 +21,52 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
-import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
+import com.tesora.dve.exceptions.PEException;
 
-public class MyCreateFileLogEvent extends MyLogEventPacket {
-	private static final Logger logger = Logger
-			.getLogger(MyCreateFileLogEvent.class);
+public class MyXIdLogEvent extends MyLogEventPacket {
+	private static final Logger logger = Logger.getLogger(MyXIdLogEvent.class);
 
-	int threadId;
-	ByteBuf variableData;
+	long xid;
+	static final String skipErrorMessage = "Replication Slave failed processing COMMIT but slave_skip_errors is active. Replication processing will continue";
 	
-	public MyCreateFileLogEvent(MyReplEventCommonHeader ch) {
+	public MyXIdLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyCreateFileLogEvent)this);
+        visitorTarget.visit((MyXIdLogEvent)this);
     }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
-		threadId = cb.readInt();
-		// TODO: need to parse out the variable part of the data
-		variableData = Unpooled.buffer(cb.readableBytes());
-		variableData.writeBytes(cb);
+		xid = cb.readLong();
 	}
 
 	@Override
     public void marshallMessage(ByteBuf cb) {
-		cb.writeInt(threadId);
-		cb.writeBytes(variableData);
+		cb.writeLong(xid);
 	}
 
+
+	public long getXid() {
+		return xid;
+	}
+
+	public void setXid(long xid) {
+		this.xid = xid;
+	}
+	
+	@Override
+	public String getSkipErrorMessage() {
+		if (!StringUtils.isBlank(skipErrorMessage)) {
+			return skipErrorMessage;
+		}
+		return super.getSkipErrorMessage();
+	}
 }

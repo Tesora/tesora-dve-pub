@@ -27,37 +27,27 @@ import io.netty.buffer.Unpooled;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
-
-public class MyNewLoadLogEvent extends MyLogEventPacket {
+public class MyTableMapLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
-			.getLogger(MyNewLoadLogEvent.class);
+			.getLogger(MyTableMapLogEvent.class);
 
-	int threadId;
-	int time;
-	int ignoreLines;
-	byte tableLen;
-	byte dbLen;
-	int columns;
+	int tableId;
+	short reserved;
 	ByteBuf variableData; 
 	
-	public MyNewLoadLogEvent(MyReplEventCommonHeader ch) {
+	public MyTableMapLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyNewLoadLogEvent)this);
+        visitorTarget.visit((MyTableMapLogEvent)this);
     }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
-		threadId = cb.readInt();
-		time = cb.readInt();
-		ignoreLines = cb.readInt();
-		tableLen = cb.readByte();
-		dbLen = cb.readByte();
-		columns = cb.readInt();
+		tableId = cb.readInt();
+		reserved = cb.readShort();
 		// TODO: need to parse out the variable part of the data
 		variableData = Unpooled.buffer(cb.readableBytes());
 		variableData.writeBytes(cb);
@@ -65,12 +55,8 @@ public class MyNewLoadLogEvent extends MyLogEventPacket {
 
 	@Override
     public void marshallMessage(ByteBuf cb) {
-		cb.writeInt(threadId);
-		cb.writeInt(time);
-		cb.writeInt(ignoreLines);
-		cb.writeByte(tableLen);
-		cb.writeByte(dbLen);
-		cb.writeInt(columns);
+		cb.writeInt(tableId);
+		cb.writeShort(reserved);
 		cb.writeBytes(variableData);
 	}
 

@@ -27,7 +27,6 @@ import io.netty.buffer.ByteBuf;
 import org.apache.log4j.Logger;
 
 import com.google.common.primitives.UnsignedLong;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
 public class MyIntvarLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger

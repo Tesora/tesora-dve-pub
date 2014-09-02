@@ -29,7 +29,6 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.libmy.MyMessageType;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
 public class MyReplEvent extends MyMessage implements ReplicationVisitorEvent {
 	static final Logger logger = Logger.getLogger(MyReplEvent.class);

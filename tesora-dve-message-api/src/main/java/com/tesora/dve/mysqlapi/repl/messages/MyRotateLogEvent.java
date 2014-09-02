@@ -22,31 +22,52 @@ package com.tesora.dve.mysqlapi.repl.messages;
  */
 
 import io.netty.buffer.ByteBuf;
+import io.netty.util.CharsetUtil;
 
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
-public class MyStopLogEvent extends MyLogEventPacket {
-	private static final Logger logger = Logger
-			.getLogger(MyStopLogEvent.class);
+public class MyRotateLogEvent extends MyLogEventPacket {
+	private static final Logger logger = Logger.getLogger(MyRotateLogEvent.class);
 
-	public MyStopLogEvent(MyReplEventCommonHeader ch) {
+	long position;
+	String newLogFileName;
+
+	public MyRotateLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyStopLogEvent)this);
+        visitorTarget.visit((MyRotateLogEvent)this);
     }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
+		position = cb.readLong();
+		newLogFileName = cb.toString(CharsetUtil.UTF_8);
 	}
 
 	@Override
     public void marshallMessage(ByteBuf cb) {
+		cb.writeLong(position);
+		cb.writeBytes(newLogFileName.getBytes(CharsetUtil.UTF_8));
 	}
 
+	public long getPosition() {
+		return position;
+	}
+
+	public void setPosition(long position) {
+		this.position = position;
+	}
+
+	public String getNewLogFileName() {
+		return newLogFileName;
+	}
+
+	public void setNewLogFileName(String logFileName) {
+		this.newLogFileName = logFileName;
+	}
 }

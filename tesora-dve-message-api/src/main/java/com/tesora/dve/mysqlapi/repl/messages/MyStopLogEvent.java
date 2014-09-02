@@ -21,36 +21,31 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
-import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
+import com.tesora.dve.exceptions.PEException;
 
-public class MyDeleteFileLogEvent extends MyLogEventPacket {
+public class MyStopLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
-			.getLogger(MyDeleteFileLogEvent.class);
+			.getLogger(MyStopLogEvent.class);
 
-	int fileId;
-	
-	public MyDeleteFileLogEvent(MyReplEventCommonHeader ch) {
+	public MyStopLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyDeleteFileLogEvent)this);
+        visitorTarget.visit((MyStopLogEvent)this);
     }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
-		fileId = cb.readInt();
 	}
 
 	@Override
     public void marshallMessage(ByteBuf cb) {
-		cb.writeInt(fileId);
 	}
 
 }

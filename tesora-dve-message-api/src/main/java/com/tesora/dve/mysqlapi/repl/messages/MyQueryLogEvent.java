@@ -26,21 +26,15 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.CharsetUtil;
 
-import java.sql.SQLException;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import com.google.common.primitives.UnsignedLong;
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
-import com.tesora.dve.dbc.ServerDBConnection;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
-import com.tesora.dve.mysqlapi.repl.messages.MyIntvarLogEvent.MyIntvarEventVariableType;
 import com.tesora.dve.mysqlapi.repl.messages.MyStatusVariables.BaseQueryEvent;
-import com.tesora.dve.sql.util.Pair;
-import com.tesora.dve.variable.VariableConstants;
+
 
 public class MyQueryLogEvent extends MyLogEventPacket {
 	static final Logger logger = Logger.getLogger(MyQueryLogEvent.class);

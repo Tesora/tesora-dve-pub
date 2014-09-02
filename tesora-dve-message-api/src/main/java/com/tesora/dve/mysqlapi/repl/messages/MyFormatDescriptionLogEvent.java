@@ -27,12 +27,10 @@ import io.netty.util.CharsetUtil;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
 public class MyFormatDescriptionLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger.getLogger(MyFormatDescriptionLogEvent.class);

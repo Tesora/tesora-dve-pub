@@ -21,55 +21,34 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
+import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 
-import java.sql.SQLException;
-
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
+public class MyExecLoadLogEvent extends MyLogEventPacket {
+	private static final Logger logger = Logger
+			.getLogger(MyExecLoadLogEvent.class);
 
-public class MyXIdLogEvent extends MyLogEventPacket {
-	private static final Logger logger = Logger.getLogger(MyXIdLogEvent.class);
-
-	long xid;
-	static final String skipErrorMessage = "Replication Slave failed processing COMMIT but slave_skip_errors is active. Replication processing will continue";
+	int fileId;
 	
-	public MyXIdLogEvent(MyReplEventCommonHeader ch) {
+	public MyExecLoadLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
 
     @Override
     public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
-        visitorTarget.visit((MyXIdLogEvent)this);
+        visitorTarget.visit((MyExecLoadLogEvent)this);
     }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
-		xid = cb.readLong();
+		fileId = cb.readInt();
 	}
 
 	@Override
     public void marshallMessage(ByteBuf cb) {
-		cb.writeLong(xid);
+		cb.writeInt(fileId);
 	}
 
-
-	public long getXid() {
-		return xid;
-	}
-
-	public void setXid(long xid) {
-		this.xid = xid;
-	}
-	
-	@Override
-	public String getSkipErrorMessage() {
-		if (!StringUtils.isBlank(skipErrorMessage)) {
-			return skipErrorMessage;
-		}
-		return super.getSkipErrorMessage();
-	}
 }
