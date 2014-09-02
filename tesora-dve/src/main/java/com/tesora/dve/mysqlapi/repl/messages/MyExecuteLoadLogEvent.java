@@ -43,7 +43,7 @@ public class MyExecuteLoadLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
 			.getLogger(MyExecuteLoadLogEvent.class);
 
-	static final int MAX_BUFFER_LEN = 100000;
+	public static final int MAX_BUFFER_LEN = 100000;
 	int threadId;
 	int time;
 	byte dbLen;
@@ -63,6 +63,11 @@ public class MyExecuteLoadLogEvent extends MyLogEventPacket {
 	public MyExecuteLoadLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
+
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyExecuteLoadLogEvent)this);
+    }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) throws PEException {
@@ -104,80 +109,17 @@ public class MyExecuteLoadLogEvent extends MyLogEventPacket {
 		cb.writeBytes(query);
 	}
 
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) throws PEException {
-		boolean switchToDb = true;
-		ServerDBConnection conn = null;
+    public String getDbName() {
+        return dbName;
+    }
 
-		try {
-			if (!includeDatabase(plugin, dbName)) {
-				// still want to update log position if we filter out message
-				updateBinLogPosition(plugin);
-				return;
-			}
+    public String getOrigQuery() {
+        return origQuery;
+    }
 
-			conn = plugin.getServerDBConnection();
-
-			// If any session variables are to be set do it first
-			plugin.getSessionVariableCache().setAllSessionVariableValues(conn);
-
-			if (logger.isDebugEnabled()) {
-				logger.debug("** START ExecuteLoadLog Event **");
-				if ( switchToDb ) logger.debug("USE " + dbName);
-				logger.debug(origQuery);
-				logger.debug("** END ExecuteLoadLog Event **");
-			}
-
-			if ( switchToDb ) conn.setCatalog(dbName);
-
-			// since we don't want to parse here to determine if a time function is specified 
-			// set the TIMESTAMP variable to the master statement execution time
-			conn.executeUpdate("set " + VariableConstants.REPL_SLAVE_TIMESTAMP_NAME + "=" + getCommonHeader().getTimestamp());
-			
-			conn.executeLoadDataRequest(plugin.getClientConnectionContext().getCtx(), origQuery.getBytes(CharsetUtil.UTF_8));
-
-			// start throwing down the bytes from the load data infile
-			File infile = plugin.getInfileHandler().getInfile(fileId);
-
-			FileInputStream in = null;
-	        byte[] readData = new byte[MAX_BUFFER_LEN];
-	        try {
-	            in = new FileInputStream(infile);
-	            int len = in.read(readData);
-	            do {
-	            	conn.executeLoadDataBlock(plugin.getClientConnectionContext().getCtx(), 
-	            			(len == MAX_BUFFER_LEN) ? readData : ArrayUtils.subarray(readData, 0, len));
-	            	len = in.read(readData);
-	            } while (len > -1);
-	            conn.executeLoadDataBlock(plugin.getClientConnectionContext().getCtx(), ArrayUtils.EMPTY_BYTE_ARRAY);
-	        } finally {
-	            IOUtils.closeQuietly(in);
-				plugin.getInfileHandler().cleanUp();
-	        }
-
-			updateBinLogPosition(plugin);
-			
-		} catch (Exception e) {
-			if (plugin.validateErrorAndStop(getErrorCode(), e)) {
-				logger.error("Error occurred during replication processing: ",e);
-				try {
-					conn.execute("ROLLBACK");
-				} catch (SQLException e1) {
-					throw new PEException("Error attempting to rollback after exception",e); // NOPMD by doug on 18/12/12 8:07 AM
-				}
-			} else {
-				skipErrorMessage = "Replication Slave failed processing: '" + origQuery
-						+ "' but slave_skip_errors is active. Replication processing will continue";
-					
-				setSkipErrors(true);
-			}
-			throw new PEException("Error executing: " + origQuery,e);
-		} finally { // NOPMD by doug on 18/12/12 8:08 AM
-			// Clear all the session variables since they are only good for one
-			// event
-			plugin.getSessionVariableCache().clearAllSessionVariables();
-		}
-	}
+    public int getFileId() {
+        return fileId;
+    }
 
 	public short getErrorCode() {
 		return errorCode;
@@ -186,5 +128,10 @@ public class MyExecuteLoadLogEvent extends MyLogEventPacket {
 	public void setErrorCode(short errorCode) {
 		this.errorCode = errorCode;
 	}
+
+    public void setSkipErrors(boolean shouldSkip, String skipErrorMessage){
+        this.setSkipErrors(shouldSkip);
+        this.skipErrorMessage = skipErrorMessage;
+    }
 
 }

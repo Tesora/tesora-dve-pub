@@ -26,12 +26,9 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.db.mysql.libmy.MyMarshallMessage;
 import com.tesora.dve.db.mysql.libmy.MyUnmarshallMessage;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyBinLogPosition;
-import com.tesora.dve.mysqlapi.repl.MyReplSessionVariableCache;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
 public abstract class MyLogEventPacket implements MyUnmarshallMessage,
-		MyMarshallMessage, MyProcessEvent {
+		MyMarshallMessage, ReplicationVisitorEvent {
 
 	static final Logger logger = Logger.getLogger(MyLogEventPacket.class);
 
@@ -53,36 +50,12 @@ public abstract class MyLogEventPacket implements MyUnmarshallMessage,
 	public MyReplEventCommonHeader getCommonHeader() {
 		return ch;
 	}
-	
-	public void updateBinLogPosition(MyReplicationSlaveService plugin) throws PEException {
-		if (!saveBinaryLogPosition) {
-			return;
-		}
 
-		try {
-			Long position = ch.getMasterLogPosition();
-			MyReplSessionVariableCache svc = plugin.getSessionVariableCache();
+    //sub-classes must implement and dispatch to specific method.
+    @Override
+    public abstract void accept(ReplicationVisitorTarget visitorTarget) throws PEException;
 
-			if (svc.getRotateLogPositionValue() != null) {
-				position = svc.getRotateLogPositionValue();
-				// clear out the value
-				svc.setRotateLogPositionValue(null);
-			}
-
-			if (position >= 4) {
-				// update only if valid position
-				MyBinLogPosition myBLPos = new MyBinLogPosition(plugin.getMasterHost(),
-						svc.getRotateLogValue(), position);
-				plugin.updateBinLogPosition(myBLPos);
-				logger.debug("Updating binary log position: " + myBLPos.getMasterHost() + ", "
-						+ myBLPos.getFileName() + ", " + myBLPos.getPosition());
-			}
-		} catch (Exception e) {
-			throw new PEException ("Error updating bin log position.",e);
-		}
-	}
-
-	public boolean isSaveBinaryLogPosition() {
+    public boolean isSaveBinaryLogPosition() {
 		return saveBinaryLogPosition;
 	}
 
@@ -90,17 +63,6 @@ public abstract class MyLogEventPacket implements MyUnmarshallMessage,
 		this.saveBinaryLogPosition = saveBinaryLogPosition;
 	}
 
-	boolean includeDatabase(MyReplicationSlaveService plugin, String dbName) {
-		boolean ret = plugin.includeDatabase(dbName);
-		
-		if (!ret) {
-			logger.debug("Filtered event for '" + dbName + "'");
-		}
-		
-		return ret;
-	}
-
-	@Override
 	public String getSkipErrorMessage() {
 		return "Replication Slave failed processing event type '" + 
 				(MyLogEventType.fromByte(ch.type) != null ? MyLogEventType.fromByte(ch.type).name() : "type=" + ch.type) + 

@@ -21,6 +21,7 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
+import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 
 import org.apache.log4j.Logger;
@@ -64,6 +65,11 @@ public class MyIntvarLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyIntvarLogEvent)this);
+    }
+
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
 		variableType = cb.readByte();
@@ -74,24 +80,6 @@ public class MyIntvarLogEvent extends MyLogEventPacket {
     public void marshallMessage(ByteBuf cb) {
 		cb.writeByte(variableType);
 		cb.writeLong(variableValue.longValue());
-	}
-
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) {
-		boolean lastInsertIdEvent = (MyIntvarEventVariableType.fromByte(variableType) == MyIntvarEventVariableType.LAST_INSERT_ID_EVENT);
-		if (logger.isDebugEnabled()) {
-			logger.debug("** START Intvar Event **");
-			logger.debug("Var Type: "
-							+ ( lastInsertIdEvent ? "LAST_INSERT_ID_EVENT("
-									+ MyIntvarEventVariableType.LAST_INSERT_ID_EVENT
-									+ ")"
-									: "INSERT_ID_EVENT("
-											+ MyIntvarEventVariableType.INSERT_ID_EVENT
-											+ ")"));
-			logger.debug("Var Value: " + variableValue);
-			logger.debug("** END Intvar Event **");
-		}
-		plugin.getSessionVariableCache().setIntVarValue(variableType, variableValue);
 	}
 
 	public byte getVariableType() {

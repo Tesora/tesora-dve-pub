@@ -61,6 +61,11 @@ public class MyQueryLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyQueryLogEvent)this);
+    }
+
 	@Override
 	public void unmarshallMessage(ByteBuf cb) throws PEException {
 		
@@ -95,80 +100,6 @@ public class MyQueryLogEvent extends MyLogEventPacket {
 		cb.writeBytes(getQuery());
 	}
 
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) throws PEException {
-		boolean switchToDb = true;
-		ServerDBConnection conn = null;
-
-		try {
-			if (!includeDatabase(plugin, dbName)) {
-				// still want to update log position if we filter out message
-				updateBinLogPosition(plugin);
-				return;
-			}
-
-			if (StringUtils.startsWithIgnoreCase(origQuery, "CREATE DATABASE")
-					|| StringUtils.startsWithIgnoreCase(origQuery, "DROP DATABASE")) {
-				switchToDb = false;
-			}
-			
-			conn = plugin.getServerDBConnection();
-
-			// If any session variables are to be set do it first
-			plugin.getSessionVariableCache().setAllSessionVariableValues(conn);
-
-			if (logger.isDebugEnabled()) {
-				logger.debug("** START QueryLog Event **");
-				if ( switchToDb ) logger.debug("USE " + dbName);
-				logger.debug(origQuery);
-				logger.debug("** END QueryLog Event **");
-			}
-
-			if ( switchToDb ) conn.setCatalog(dbName);
-
-			// since we don't want to parse here to determine if a time function is specified 
-			// set the TIMESTAMP variable to the master statement execution time
-			conn.executeUpdate("set " + VariableConstants.REPL_SLAVE_TIMESTAMP_NAME + "=" + getCommonHeader().getTimestamp());
-			
-			boolean unset = handleAutoIncrement(conn,plugin.getSessionVariableCache().getIntVarValue());
-			conn.executeUpdate(query.array());
-			if (unset)
-				conn.executeUpdate("set " + VariableConstants.REPL_SLAVE_INSERT_ID_NAME + "=null");
-
-			updateBinLogPosition(plugin);
-
-		} catch (Exception e) {
-			if (plugin.validateErrorAndStop(getErrorCode(), e)) {
-				logger.error("Error occurred during replication processing: ",e);
-				try {
-					conn.execute("ROLLBACK");
-				} catch (SQLException e1) {
-					throw new PEException("Error attempting to rollback after exception",e); // NOPMD by doug on 18/12/12 8:07 AM
-				}
-			} else {
-				skipErrorMessage = "Replication Slave failed processing: '" + origQuery
-						+ "' but slave_skip_errors is active. Replication processing will continue";
-					
-				setSkipErrors(true);
-			}
-			throw new PEException("Error executing: " + origQuery,e);
-		} finally { // NOPMD by doug on 18/12/12 8:08 AM
-			// Clear all the session variables since they are only good for one
-			// event
-			plugin.getSessionVariableCache().clearAllSessionVariables();
-		}
-	}
-	
-	boolean handleAutoIncrement(ServerDBConnection conn, Pair<Byte, UnsignedLong> intVarValue) throws SQLException {
-		if (intVarValue.getFirst() != null && intVarValue.getSecond() != null && 
-				intVarValue.getFirst() == MyIntvarEventVariableType.INSERT_ID_EVENT.getByteValue()) {
-
-			conn.executeUpdate("set " + VariableConstants.REPL_SLAVE_INSERT_ID_NAME + "=" + intVarValue.getSecond().toString());
-			return true;
-		}
-		return false;
-	}
-	
 	public long getSlaveProxyId() {
 		return slaveProxyId;
 	}
@@ -236,5 +167,13 @@ public class MyQueryLogEvent extends MyLogEventPacket {
 		}
 		return super.getSkipErrorMessage();
 	}
-	
+
+    public void setSkipErrors(boolean skip, String message) {
+        super.setSkipErrors(skip);
+        this.skipErrorMessage = message;
+    }
+
+    public String getOrigQuery() {
+        return origQuery;
+    }
 }

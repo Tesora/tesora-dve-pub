@@ -39,6 +39,11 @@ public class MyRotateLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyRotateLogEvent)this);
+    }
+
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
 		position = cb.readLong();
@@ -49,27 +54,6 @@ public class MyRotateLogEvent extends MyLogEventPacket {
     public void marshallMessage(ByteBuf cb) {
 		cb.writeLong(position);
 		cb.writeBytes(newLogFileName.getBytes(CharsetUtil.UTF_8));
-	}
-
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) throws PEException {
-		if (logger.isDebugEnabled()) {
-			logger.debug("** START Rotate Event **");
-			logger.debug("Position: " + position);
-			logger.debug("New Log File: " + newLogFileName);
-			logger.debug("** END Rotate Event **");
-		}
-
-		plugin.getSessionVariableCache().setRotateLogValue(newLogFileName);
-		plugin.getSessionVariableCache().setRotateLogPositionValue(position);
-
-		try {
-			updateBinLogPosition(plugin);
-		} catch (PEException e) {
-			logger.error("Error updating binlog from Rotate Log Event.", e);
-			// TODO I think we really need to stop the service in this case
-			throw new PEException("Error updating bin log position",e);
-		}
 	}
 
 	public long getPosition() {

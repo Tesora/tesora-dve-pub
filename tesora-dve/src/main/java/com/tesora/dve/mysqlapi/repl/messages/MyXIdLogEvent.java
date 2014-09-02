@@ -41,6 +41,11 @@ public class MyXIdLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyXIdLogEvent)this);
+    }
+
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
 		xid = cb.readLong();
@@ -51,30 +56,6 @@ public class MyXIdLogEvent extends MyLogEventPacket {
 		cb.writeLong(xid);
 	}
 
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) throws PEException {
-		if ( logger.isDebugEnabled() )
-			logger.debug("COMMIT (from XId event)");
-
-		try {
-			updateBinLogPosition(plugin);
-
-			plugin.getServerDBConnection().executeUpdate("COMMIT");
-		} catch (Exception e) {
-			logger.error("Error occurred processing XID log event: ",e);
-			try {
-				plugin.getServerDBConnection().execute("ROLLBACK");
-			} catch (SQLException e1) {
-				throw new PEException("Error attempting to rollback after exception",e); // NOPMD by doug on 18/12/12 8:08 AM
-			}
-			throw new PEException("Error executing executing commit.",e);
-		} finally { // NOPMD by doug on 18/12/12 8:08 AM
-			// Clear all the session variables since they are only good for one
-			// event
-			plugin.getSessionVariableCache().clearAllSessionVariables();
-		}
-
-	}
 
 	public long getXid() {
 		return xid;

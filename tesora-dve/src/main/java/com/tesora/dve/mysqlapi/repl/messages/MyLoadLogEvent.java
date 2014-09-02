@@ -21,6 +21,7 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
+import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -43,6 +44,11 @@ public class MyLoadLogEvent extends MyLogEventPacket {
 	public MyLoadLogEvent(MyReplEventCommonHeader ch) {
 		super(ch);
 	}
+
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyLoadLogEvent)this);
+    }
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
@@ -68,8 +74,4 @@ public class MyLoadLogEvent extends MyLogEventPacket {
 		cb.writeBytes(variableData);
 	}
 
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) {
-		logger.warn("Message is parsed but no handler is implemented for log event type: LOAD_EVENT");
-	}
 }

@@ -31,7 +31,7 @@ import com.tesora.dve.db.mysql.libmy.MyMessageType;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
-public class MyReplEvent extends MyMessage implements MyProcessEvent {
+public class MyReplEvent extends MyMessage implements ReplicationVisitorEvent {
 	static final Logger logger = Logger.getLogger(MyReplEvent.class);
 
 	MyReplEventCommonHeader commonHdr;
@@ -47,6 +47,11 @@ public class MyReplEvent extends MyMessage implements MyProcessEvent {
 	}
 
     @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyReplEvent)this);
+    }
+
+    @Override
     public MyMessageType getMessageType() {
         return MyMessageType.REPL_EVENT_RESPONSE;
     }
@@ -54,11 +59,6 @@ public class MyReplEvent extends MyMessage implements MyProcessEvent {
     @Override
     public boolean isMessageTypeEncoded() {
         return true;
-    }
-
-    @Override
-    public String getSkipErrorMessage() {
-        return StringUtils.EMPTY;
     }
 
 	@Override
@@ -93,30 +93,6 @@ public class MyReplEvent extends MyMessage implements MyProcessEvent {
 		
 		if (levp != null) {
 			levp.marshallMessage(cb);
-		}
-	}
-
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) throws PEException {
-		plugin.setLastEventTimestamp(commonHdr.getTimestamp());
-		try {
-			levp.processEvent(plugin);
-		} catch (PEException e) {
-			if ( levp.skipErrors() ) {
-				logger.error(levp.getSkipErrorMessage(), e);
-			} else {
-				logger.error("Exception encountered processing Replication Events - stopping service "
-						+ plugin.getSlaveInfo(), e);
-				
-				// if we get an exception while processing Replication
-				// Events we need to stop the service
-				// unless stop has already been called...
-				if (!plugin.stopCalled()) {
-					plugin.stop();
-				}
-				// make sure we re-throw the exception
-				throw e;
-			}
 		}
 	}
 

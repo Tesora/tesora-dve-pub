@@ -40,6 +40,11 @@ public class MyBeginLoadLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyBeginLoadLogEvent)this);
+    }
+
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
 		fileId = cb.readInt();
@@ -53,22 +58,12 @@ public class MyBeginLoadLogEvent extends MyLogEventPacket {
 		cb.writeBytes(dataBlock);
 	}
 
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) throws PEException {
-		try {
-			if (logger.isDebugEnabled()) {
-				logger.debug("** START BeginLoadLog Event **");
-				logger.debug("File id = " + fileId);
-				logger.debug("** END BeginLoadLog Event **");
-			}
-			
-			plugin.getInfileHandler().createInfile(fileId);
-			plugin.getInfileHandler().addInitialBlock(fileId, dataBlock.array());
-			
-			updateBinLogPosition(plugin);
+    public int getFileId() {
+        return fileId;
+    }
 
-		} catch (Exception e) {
-			throw new PEException("Receive BEGIN_LOAD_QUERY_EVENT but cannot create new infile.", e);
-		}
-	}
+    public ByteBuf getDataBlock() {
+        return dataBlock;
+    }
+
 }

@@ -36,6 +36,11 @@ public class MyStopLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyStopLogEvent)this);
+    }
+
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
 	}
@@ -44,16 +49,4 @@ public class MyStopLogEvent extends MyLogEventPacket {
     public void marshallMessage(ByteBuf cb) {
 	}
 
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) throws PEException {
-		if ( logger.isDebugEnabled() ) 
-			logger.debug("** Stop Event: NO BODY **");
-		
-		try {
-			updateBinLogPosition(plugin);
-		} catch (PEException e) {
-			logger.error("Error updating binlog from Stop Log Event.", e);
-			throw new PEException("Error updating bin log position",e);
-		}
-	}
 }

@@ -34,8 +34,6 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
-import com.tesora.dve.sql.util.Pair;
 
 public class MyUserVarLogEvent extends MyLogEventPacket {
 	private static final Logger logger = Logger
@@ -85,6 +83,11 @@ public class MyUserVarLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyUserVarLogEvent)this);
+    }
+
 	@Override
 	public void unmarshallMessage(ByteBuf cb) throws PEException {
 		variableNameLen = cb.readInt();
@@ -132,12 +135,20 @@ public class MyUserVarLogEvent extends MyLogEventPacket {
 		
 		byte precision = cb.readByte();
 		byte scale = cb.readByte();
-		
-		Pair<Integer, Integer> intAndFracBinSize = getIntegerAndFractionBinSize(precision, scale);
-		int binSize = intAndFracBinSize.getFirst() + intAndFracBinSize.getSecond();
+
+        int intg = (int) precision - (int) scale;
+        int intg0 = intg / DIG_PER_DEC1;
+        int frac0 = (int) scale / DIG_PER_DEC1;
+        int intg0x = intg - intg0 * DIG_PER_DEC1;
+        int frac0x = (int) scale - frac0 * DIG_PER_DEC1;
+
+        int firstValue = intg0 * 4 + dig2bytes[intg0x];
+        int secondValue = frac0 * 4 + dig2bytes[frac0x];
+
+		int binSize = firstValue + secondValue;
 
 		int readableBytes = cb.readableBytes();
-		if ((intAndFracBinSize.getFirst() < 1 && intAndFracBinSize.getSecond() < 1) || readableBytes < binSize) {
+		if ((firstValue < 1 && secondValue < 1) || readableBytes < binSize) {
 			throw new PEException("Cannot decode binary decimal");
 		}
 		
@@ -157,27 +168,16 @@ public class MyUserVarLogEvent extends MyLogEventPacket {
 			}
 		}
 
-		BigDecimal integerPortion = decodeBinDecimal(chunk, intAndFracBinSize.getFirst(), true);
-		BigDecimal fractionPortion = decodeBinDecimal(chunk, intAndFracBinSize.getSecond(), false);
+		BigDecimal integerPortion = decodeBinDecimal(chunk, firstValue, true);
+		BigDecimal fractionPortion = decodeBinDecimal(chunk, secondValue, false);
 		
 		value = ((sign == -1) ? "-" : StringUtils.EMPTY) + integerPortion.toPlainString() + "." + fractionPortion.toPlainString();
 		
 		return value;
 	}
-	
-	
-	Pair<Integer, Integer> getIntegerAndFractionBinSize(int precision, int scale)
-	{
-		int intg = precision - scale;
-		int intg0 = intg / DIG_PER_DEC1;
-		int frac0 = scale / DIG_PER_DEC1;
-		int intg0x = intg - intg0 * DIG_PER_DEC1;
-		int frac0x = scale - frac0 * DIG_PER_DEC1;
 
-		return new Pair<Integer, Integer>(intg0 * 4 + dig2bytes[intg0x], frac0 * 4 + dig2bytes[frac0x]);
-	}
 
-	BigDecimal decodeBinDecimal(ByteBuf cb, int bufferLen, boolean isIntegerPortion) throws PEException {
+    BigDecimal decodeBinDecimal(ByteBuf cb, int bufferLen, boolean isIntegerPortion) throws PEException {
 		BigDecimal decimalPortion = new BigDecimal(0);
 		if (bufferLen > 0) {
 
@@ -268,14 +268,12 @@ public class MyUserVarLogEvent extends MyLogEventPacket {
 		}
 	}
 
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) {
-		if (logger.isDebugEnabled()) {
-			logger.debug("** START UserVarLog Event **");
-			logger.debug("Var Name: " + variableName);
-			logger.debug("Var Value: " + variableValue);
-			logger.debug("** END UserVarLog Event **");
-		}
-		plugin.getSessionVariableCache().setUserVariable(new Pair<String, String>(variableName, variableValue));
-	}
+    public String getVariableName() {
+        return variableName;
+    }
+
+    public String getVariableValue() {
+        return variableValue;
+    }
+
 }

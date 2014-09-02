@@ -68,7 +68,8 @@ public class MyReplSlaveAsyncHandler extends MyClientConnectionHandler {
 			logger.error("Error received from master: "
 					+ ((MyErrorResponse) msg).getErrorMsg());
 		} else if (msg instanceof MyReplEvent) {
-			((MyReplEvent) msg).processEvent(plugin);
+            MyReplicationVisitorDispatch dispatch = new MyReplicationVisitorDispatch(plugin);
+			((MyReplEvent) msg).accept(dispatch);
 		}
 		return;
 	}

@@ -67,6 +67,9 @@ public class MyFormatDescriptionLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException { visitorTarget.visit((MyFormatDescriptionLogEvent)this);}
+
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
 		binaryLogVersion = cb.readShort();
@@ -102,44 +105,6 @@ public class MyFormatDescriptionLogEvent extends MyLogEventPacket {
 
 		default:
 			break;
-		}
-	}
-
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) throws PEException {
-		String binLogVerTypeString = StringUtils.EMPTY;
-		switch (MyBinLogVerType.fromByte((byte) binaryLogVersion)) {
-		case MySQL_3_23:
-			binLogVerTypeString = "MySQL_3_23(" + MyBinLogVerType.MySQL_3_23 + ")";
-			break;
-
-		case MySQL_4_0_2_to_4_1:
-			binLogVerTypeString = "MySQL_4_0_2_to_4_1(" + MyBinLogVerType.MySQL_4_0_2_to_4_1 + ")";
-			break;
-
-		case MySQL_5_0:
-			binLogVerTypeString = "MySQL_5_0(" + MyBinLogVerType.MySQL_5_0 + ")";
-			break;
-			
-		default:
-			break;
-		}
-
-		if (logger.isDebugEnabled()) {
-			logger.debug("** START Format Description Event **");
-			logger.debug("Bin Log Ver: " + binLogVerTypeString);
-			for (MyLogEventType levt : eventTypeValues.keySet()) {
-				logger.debug("Variable(value): " + levt.name() + "(" + eventTypeValues.get(levt) + ")");
-			}
-			logger.debug("** END Format Description Event **");
-		}
-
-		try {
-			updateBinLogPosition(plugin);
-		} catch (PEException e) {
-			logger.error("Error updating binlog from Format Description Event.", e);
-			// TODO I think we really need to stop the service in this case
-			throw new PEException("Error updating bin log position", e);
 		}
 	}
 

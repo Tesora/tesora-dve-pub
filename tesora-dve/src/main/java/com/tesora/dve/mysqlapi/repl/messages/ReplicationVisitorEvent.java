@@ -22,11 +22,18 @@ package com.tesora.dve.mysqlapi.repl.messages;
  */
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.mysqlapi.repl.MyReplicationSlaveService;
 
-public interface MyProcessEvent {
-
-	public abstract void processEvent(MyReplicationSlaveService plugin) throws PEException;
-
-	public abstract String getSkipErrorMessage();
+/**
+ *
+ */
+public interface ReplicationVisitorEvent {
+    /**
+     *  Utility call that allows an event to redispatch itself to the appropriate type-specific method in ReplicationVisitorTarget.
+     *  Decoded messages should not perform any business logic in this method, since that would couples the message to
+     *  specific application behavior, preventing reuse in alternate applications.
+     *
+     * @param visitorTarget
+     * @throws PEException
+     */
+    void accept(ReplicationVisitorTarget visitorTarget) throws PEException;
 }

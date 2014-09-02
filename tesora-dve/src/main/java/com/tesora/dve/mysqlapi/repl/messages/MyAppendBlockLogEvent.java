@@ -42,7 +42,12 @@ public class MyAppendBlockLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
-	@Override
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyAppendBlockLogEvent)this);
+    }
+
+    @Override
 	public void unmarshallMessage(ByteBuf cb) {
 		fileId = cb.readInt();
 		dataBlock = Unpooled.buffer(cb.readableBytes());
@@ -55,21 +60,12 @@ public class MyAppendBlockLogEvent extends MyLogEventPacket {
 		cb.writeBytes(dataBlock);
 	}
 
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) throws PEException {
-		try {
-			if (logger.isDebugEnabled()) {
-				logger.debug("** START AppendBlock Log Event **");
-				logger.debug("File id = " + fileId + ", size of block = " + dataBlock.readableBytes());
-				logger.debug("** END AppendBlock Log Event **");
-			}
+    public int getFileID(){
+        return fileId;
+    }
 
-			plugin.getInfileHandler().addBlock(fileId, dataBlock.array());
-			
-			updateBinLogPosition(plugin);
+    public ByteBuf getDataBlock(){
+        return dataBlock;
+    }
 
-		} catch (IOException e) {
-			throw new PEException("Received APPEND_BLOCK_EVENT but cannot add to infile.", e);
-		}
-	}
 }

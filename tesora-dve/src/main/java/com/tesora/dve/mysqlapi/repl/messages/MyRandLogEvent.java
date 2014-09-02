@@ -21,6 +21,7 @@ package com.tesora.dve.mysqlapi.repl.messages;
  * #L%
  */
 
+import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 
 import org.apache.log4j.Logger;
@@ -39,6 +40,11 @@ public class MyRandLogEvent extends MyLogEventPacket {
 		super(ch);
 	}
 
+    @Override
+    public void accept(ReplicationVisitorTarget visitorTarget) throws PEException {
+        visitorTarget.visit((MyRandLogEvent)this);
+    }
+
 	@Override
 	public void unmarshallMessage(ByteBuf cb) {
 		seed1 = UnsignedLong.valueOf(cb.readLong());
@@ -51,14 +57,11 @@ public class MyRandLogEvent extends MyLogEventPacket {
 		cb.writeLong(seed2.longValue());
 	}
 
-	@Override
-	public void processEvent(MyReplicationSlaveService plugin) {
-		if (logger.isDebugEnabled()) {
-			logger.debug("** START Rand Event **");
-			logger.debug("seed1="+seed1.toString());
-			logger.debug("seed2="+seed2.toString());
-			logger.debug("** END Rand Event **");
-		}
-		plugin.getSessionVariableCache().setRandValue(seed1, seed2);
-	}
+    public UnsignedLong getSeed1() {
+        return seed1;
+    }
+
+    public UnsignedLong getSeed2() {
+        return seed2;
+    }
 }
