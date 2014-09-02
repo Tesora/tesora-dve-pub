@@ -123,8 +123,8 @@ public class DirectSchemaQueryEngine {
 				return map((TableInstance)in);
 			} else if (in instanceof ColumnInstance) {
 				ColumnInstance ci = (ColumnInstance) in;
-				DirectInformationSchemaColumnView vc = (DirectInformationSchemaColumnView) ci.getColumn();
-				PEColumn backing = vc.getLogicalColumn();
+				DirectInformationSchemaColumn vc = (DirectInformationSchemaColumn) ci.getColumn();
+				PEColumn backing = vc.getColumn();
 				return new ColumnInstance(ci.getSpecifiedAs(),backing,map(ci.getTableInstance()));
 			}
 			return in;
@@ -133,7 +133,7 @@ public class DirectSchemaQueryEngine {
 		private TableInstance map(TableInstance in) {
 			if (in.getTable().isInfoSchema()) {
 				// I already know these will be view based info schema tables
-				DirectInformationSchemaTableView infoTab = (DirectInformationSchemaTableView) in.getTable();
+				DirectInformationSchemaTable infoTab = (DirectInformationSchemaTable) in.getTable();
 				TableInstance out =  new TableInstance(infoTab.getBackingView(),in.getSpecifiedAs(context),in.getAlias(),in.getNode(),false);
 				if (!forwarding.containsKey(in.getTableKey()))
 					forwarding.put(in.getTableKey(),out.getTableKey());

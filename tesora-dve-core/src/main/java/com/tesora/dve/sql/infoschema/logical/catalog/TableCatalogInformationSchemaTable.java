@@ -33,7 +33,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.expression.ExpressionPath;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.CatalogLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
@@ -62,11 +62,11 @@ public class TableCatalogInformationSchemaTable extends
 	protected CatalogInformationSchemaTable visibilityTable;
 	protected CatalogInformationSchemaTable tenantTable;
 	protected TableNameColumn nameColumn;
-	protected CatalogInformationSchemaColumn visibilityLocalName;
-	protected CatalogInformationSchemaColumn visibilityTableRef;
-	protected CatalogInformationSchemaColumn tenantColumn;
-	protected CatalogInformationSchemaColumn tenantIDColumn;
-	protected CatalogInformationSchemaColumn tableStateColumn;
+	protected CatalogLogicalInformationSchemaColumn visibilityLocalName;
+	protected CatalogLogicalInformationSchemaColumn visibilityTableRef;
+	protected CatalogLogicalInformationSchemaColumn tenantColumn;
+	protected CatalogLogicalInformationSchemaColumn tenantIDColumn;
+	protected CatalogLogicalInformationSchemaColumn tableStateColumn;
 	
 	public TableCatalogInformationSchemaTable(Class<?> entKlass,
 			InfoSchemaTable anno, String catTabName) {
@@ -79,11 +79,11 @@ public class TableCatalogInformationSchemaTable extends
 	protected void prepare(LogicalInformationSchema schema, DBNative dbn) {
 		visibilityTable = (CatalogInformationSchemaTable) schema.lookup("table_visibility");
 		tenantTable = (CatalogInformationSchemaTable) schema.lookup("tenant");
-		visibilityLocalName = (CatalogInformationSchemaColumn) visibilityTable.lookup("local_name");
-		visibilityTableRef = (CatalogInformationSchemaColumn) visibilityTable.lookup("user_table");
-		tenantColumn = (CatalogInformationSchemaColumn) visibilityTable.lookup("tenant");
-		tenantIDColumn = (CatalogInformationSchemaColumn) tenantTable.lookup("id");
-		tableStateColumn = (CatalogInformationSchemaColumn) lookup("state");
+		visibilityLocalName = (CatalogLogicalInformationSchemaColumn) visibilityTable.lookup("local_name");
+		visibilityTableRef = (CatalogLogicalInformationSchemaColumn) visibilityTable.lookup("user_table");
+		tenantColumn = (CatalogLogicalInformationSchemaColumn) visibilityTable.lookup("tenant");
+		tenantIDColumn = (CatalogLogicalInformationSchemaColumn) tenantTable.lookup("id");
+		tableStateColumn = (CatalogLogicalInformationSchemaColumn) lookup("state");
 		if (nameColumn == null)
 			throw new InformationSchemaException("Unable to find name column on table");
 		super.prepare(schema, dbn);
@@ -93,7 +93,7 @@ public class TableCatalogInformationSchemaTable extends
 	public LogicalInformationSchemaColumn addColumn(SchemaContext sc, LogicalInformationSchemaColumn c) {
 		LogicalInformationSchemaColumn actual = c;
 		if ("name".equals(c.getName().get())) {
-			nameColumn = new TableNameColumn((CatalogInformationSchemaColumn)c); 
+			nameColumn = new TableNameColumn((CatalogLogicalInformationSchemaColumn)c); 
 			actual = nameColumn; 
 		}
 		super.addColumn(sc, actual);
@@ -168,9 +168,9 @@ public class TableCatalogInformationSchemaTable extends
 	}
 
 	
-	private static class TableNameColumn extends CatalogInformationSchemaColumn {
+	private static class TableNameColumn extends CatalogLogicalInformationSchemaColumn {
 
-		public TableNameColumn(CatalogInformationSchemaColumn given) {
+		public TableNameColumn(CatalogLogicalInformationSchemaColumn given) {
 			super(given);
 		}
 

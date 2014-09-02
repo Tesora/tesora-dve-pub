@@ -27,7 +27,7 @@ import java.util.List;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.direct.DirectInformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.direct.DirectInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.parser.InvokeParser;
@@ -60,7 +60,7 @@ public class InfoSchemaGenerator {
 		this.orderByColumn = orderByColumn;
 	}
 
-	public DirectInformationSchemaTableView generate(SchemaContext sc) {
+	public DirectInformationSchemaTable generate(SchemaContext sc) {
 		String vc = String.format("create view %s as %s TABLE ( %s )",
 				viewName,viewDef,columnDef);
 		// I need a parser option here that defangs the view mode computation - so maybe just
@@ -71,7 +71,7 @@ public class InfoSchemaGenerator {
 			List<Statement> stmts = InvokeParser.parse(vc, sc, Collections.EMPTY_LIST, topts);
 			PECreateViewStatement pecs = (PECreateViewStatement) stmts.get(0);
 			// probably eventually we will lookup the impl class by reflection
-			return new DirectInformationSchemaTableView(sc,view,pecs.getViewTable(),privileged,extension,orderByColumn,identColumn);			
+			return new DirectInformationSchemaTable(sc,view,pecs.getViewTable(),privileged,extension,orderByColumn,identColumn);			
 		} finally {
 			sc.setOptions(opts);
 		}
@@ -84,6 +84,6 @@ public class InfoSchemaGenerator {
 		String ct = String.format("create table %s ( %s )");
 		List<Statement> stmts = InvokeParser.parse(ct,sc);
 		PECreateTableStatement pecs = (PECreateTableStatement) stmts.get(0);
-		DirectInformationSchemaTableView.buildTableEntity(cs, db, dmid, storageid, acc, pecs.getTable());
+		DirectInformationSchemaTable.buildTableEntity(cs, db, dmid, storageid, acc, pecs.getTable());
 	}
 }

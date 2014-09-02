@@ -24,10 +24,10 @@ package com.tesora.dve.sql.infoschema.show;
 import java.util.List;
 
 import com.tesora.dve.resultset.IntermediateResultSet;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -47,7 +47,7 @@ public abstract class ShowEmptyInformationSchemaTable extends ShowInformationSch
 		LogicalInformationSchemaColumn identOrderByColumn = basedOn.getIdentOrderByColumn();
 		for (LogicalInformationSchemaColumn lisc : basedOn.getColumns(null)) {
 			if (lisc == identOrderByColumn) {
-				identColumn = new InformationSchemaColumnView(InfoView.SHOW, lisc, lisc.getName().getUnqualified()) {
+				identColumn = new BackedComputedInformationSchemaColumn(InfoView.SHOW, lisc, lisc.getName().getUnqualified()) {
 					@Override
 					public boolean isIdentColumn() {
 						return true;
@@ -60,7 +60,7 @@ public abstract class ShowEmptyInformationSchemaTable extends ShowInformationSch
 				};
 				addColumn(null, identColumn);
 			} else {
-				addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, lisc, lisc.getName().getUnqualified()));
+				addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, lisc, lisc.getName().getUnqualified()));
 			}
 		}
 	}

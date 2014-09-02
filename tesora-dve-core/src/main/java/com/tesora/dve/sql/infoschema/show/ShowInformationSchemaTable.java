@@ -32,12 +32,13 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.NamedParameter;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
@@ -60,7 +61,7 @@ import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 
-public class ShowInformationSchemaTable extends ComputedInformationSchemaTableView {
+public class ShowInformationSchemaTable extends ComputedInformationSchemaTable {
 
 	public ShowInformationSchemaTable(
 			LogicalInformationSchemaTable basedOn, UnqualifiedName viewName,
@@ -69,9 +70,9 @@ public class ShowInformationSchemaTable extends ComputedInformationSchemaTableVi
 	}
 	
 	protected List<ExpressionNode> buildProjection(SchemaContext sc, TableInstance ti, boolean useExtensions, boolean hasPriviledge, AliasInformation aliases, ShowOptions opts) {
-		List<InformationSchemaColumnView> projCols = getProjectionColumns(useExtensions,hasPriviledge);
+		List<ComputedInformationSchemaColumn> projCols = getProjectionColumns(useExtensions,hasPriviledge);
 		ArrayList<ExpressionNode> proj = new ArrayList<ExpressionNode>();
-		for(InformationSchemaColumnView c : projCols) {
+		for(ComputedInformationSchemaColumn c : projCols) {
 			ColumnInstance ci = new ColumnInstance(c,ti);
 			ExpressionAlias ea = new ExpressionAlias(ci, ci.buildAlias(sc), true);
 			aliases.addAlias(ea.getAlias().get());
@@ -242,11 +243,11 @@ public class ShowInformationSchemaTable extends ComputedInformationSchemaTableVi
 	}
 	
 	// for pass through views
-	protected InformationSchemaColumnView passthroughView(LogicalInformationSchemaTable basis) {
-		InformationSchemaColumnView nameColumn = null;
+	protected ComputedInformationSchemaColumn passthroughView(LogicalInformationSchemaTable basis) {
+		ComputedInformationSchemaColumn nameColumn = null;
 		for(LogicalInformationSchemaColumn lisc : basis.getColumns(null)) {
 			if (lisc == basis.getNameColumn()) {
-				nameColumn = new InformationSchemaColumnView(InfoView.SHOW, lisc, lisc.getName().getUnqualified()) {
+				nameColumn = new BackedComputedInformationSchemaColumn(InfoView.SHOW, lisc, lisc.getName().getUnqualified()) {
 					@Override
 					public boolean isIdentColumn() { return true; }
 					@Override
@@ -254,7 +255,7 @@ public class ShowInformationSchemaTable extends ComputedInformationSchemaTableVi
 				}; 
 				addColumn(null,nameColumn);
 			} else {
-				addColumn(null,new InformationSchemaColumnView(InfoView.SHOW, lisc, lisc.getName().getUnqualified()));
+				addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, lisc, lisc.getName().getUnqualified()));
 			}
 		}
 		return nameColumn;
@@ -262,8 +263,8 @@ public class ShowInformationSchemaTable extends ComputedInformationSchemaTableVi
 	
 	@SuppressWarnings("unchecked")
 	protected IntermediateResultSet buildEmptyResultSet(SchemaContext sc) {
-		ArrayList<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> proj = new ArrayList<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>>();
-		for(AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> c : getColumns(sc)) {
+		ArrayList<List<InformationSchemaColumn>> proj = new ArrayList<List<InformationSchemaColumn>>();
+		for(InformationSchemaColumn c : getColumns(sc)) {
 			proj.add(Collections.singletonList(c));
 		}
 		ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(sc,proj,null);

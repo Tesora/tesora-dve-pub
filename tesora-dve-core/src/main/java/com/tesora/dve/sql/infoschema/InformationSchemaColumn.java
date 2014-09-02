@@ -36,52 +36,63 @@ import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
-public abstract class AbstractInformationSchemaColumnView<BackingType> implements Column<InformationSchemaTableView> {
+public abstract class InformationSchemaColumn implements Column<InformationSchemaTable> {
 
 	protected InfoView view;
 	
 	protected UnqualifiedName name;
-	protected InformationSchemaTableView table;
+	protected InformationSchemaTable table;
 	protected int position = -1;
 	
-	protected InformationSchemaTableView returnType;
-	protected boolean frozen;
-
-	public AbstractInformationSchemaColumnView(InfoView view, UnqualifiedName nameInView) {
+	protected InformationSchemaColumnAdapter adapter;
+	protected InformationSchemaTable returnType;
+	
+	public InformationSchemaColumn(InfoView view, UnqualifiedName nameInView, InformationSchemaColumnAdapter columnAdapter) {
 		super();
 		this.view = view;
 		if (this.view == null)
 			this.name = nameInView; // temporary
 		else
 			this.name =	(view.isCapitalizeNames() ? nameInView.getCapitalized().getUnqualified() : nameInView);
-		this.frozen = false;
+		this.adapter = (columnAdapter == null ? new InformationSchemaColumnAdapter() : columnAdapter);
 	}
 	
-	protected AbstractInformationSchemaColumnView(AbstractInformationSchemaColumnView copy) {
+	protected InformationSchemaColumn(InformationSchemaColumn copy) {
 		super();
 		view = copy.view;
 		name = copy.name;
+		adapter = copy.adapter;
 		returnType = copy.returnType;
-		frozen = copy.frozen;
 	}
 	
-	public abstract AbstractInformationSchemaColumnView copy();
+	public abstract InformationSchemaColumn copy(InformationSchemaColumnAdapter newAdapter);
 	
 	@Override
-	public InformationSchemaTableView getTable() {
+	public InformationSchemaTable getTable() {
 		return table;
 	}
 
 	@Override
-	public void setTable(InformationSchemaTableView t) {
+	public void setTable(InformationSchemaTable t) {
 		table = t;
 	}
 
-	protected void validate(SchemaView ofView, InformationSchemaTableView ofTable) {
+	public void validate(AbstractInformationSchema ofView, InformationSchemaTable ofTable) {
 		
 	}
 	
-	public void prepare(SchemaView ofView, InformationSchemaTableView ofTable, DBNative dbn) {
+	public void prepare(AbstractInformationSchema ofView, InformationSchemaTable ofTable, DBNative dbn) {
+		if (getAdapter().getLogicalColumn() != null &&
+				getAdapter().getLogicalColumn().getReturnType() != null) {
+			for(InformationSchemaTable istv : ofView.getTables(null)) {
+				if (istv.getLogicalTable() == getAdapter().getLogicalColumn().getReturnType()) {
+					returnType = istv;
+					break;
+				}
+			}
+			if (returnType == null)
+				throw new InformationSchemaException("No view table in view " + view + " for return type " + getAdapter().getLogicalColumn().getReturnType().getName() + ", needed for column " + getName() + " in table " + ofTable.getName());
+		}
 	}
 	
 	@Override
@@ -135,12 +146,12 @@ public abstract class AbstractInformationSchemaColumnView<BackingType> implement
 		return buildNameTest(new ColumnInstance(null,this,in));
 	}
 		
-	public InformationSchemaTableView getReturnType() {
+	public InformationSchemaTable getReturnType() {
 		return returnType;
 	}
-
+	
 	public boolean isBacked() {
-		return isSynthetic() ? false : getLogicalColumn() != null;
+		return isSynthetic() ? false : adapter.isBacked(); 
 	}
 	
 	public boolean isSynthetic() {
@@ -149,11 +160,29 @@ public abstract class AbstractInformationSchemaColumnView<BackingType> implement
 	
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName() + "{name=" + getName() + ", type=" + getType() + "}";
+		Object backing = null;
+		if (getAdapter() != null) {
+			backing = getAdapter().getLogicalColumn();
+			if (backing == null)
+				backing = getAdapter().getDirectColumn();
+		}
+		return this.getClass().getSimpleName() + "{name=" + getName() + ", type=" + getType() + ", backing=" + backing + "}";
+	}
+
+	public InformationSchemaColumnAdapter getAdapter() {
+		return adapter;
 	}
 	
-	public abstract BackingType getLogicalColumn();
+	// sucks...well, this will go away with time
+	public void setAdapter(InformationSchemaColumnAdapter adapter) {
+		this.adapter = adapter;
+	}
 	
+	public LogicalInformationSchemaColumn getLogicalColumn() {
+		return getAdapter().getLogicalColumn();
+	}
+	
+	// probably don't need this to be abstract
 	public abstract void buildColumnEntity(CatalogSchema schema, CatalogTableEntity cte, int ordinal_position, List<PersistedEntity> acc) throws PEException;
 	
 }

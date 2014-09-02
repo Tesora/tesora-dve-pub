@@ -21,7 +21,7 @@ package com.tesora.dve.sql.infoschema.show;
  * #L%
  */
 
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.logical.EventsInformationSchemaTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
@@ -32,7 +32,7 @@ public class ShowEventsInformationSchemaTable extends ShowEmptyInformationSchema
 	}
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 		// no name column, so skip validation
 	}
 

@@ -26,11 +26,12 @@ import java.util.List;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -43,9 +44,9 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 
 public class InfoSchemaVariablesInformationSchemaTable extends
-		ComputedInformationSchemaTableView {
+		ComputedInformationSchemaTable {
 
-	private InformationSchemaColumnView scope;
+	private ComputedInformationSchemaColumn scope;
 	private final String scopeValue;
 	
 	public InfoSchemaVariablesInformationSchemaTable(
@@ -57,13 +58,13 @@ public class InfoSchemaVariablesInformationSchemaTable extends
 	}
 
 	@Override
-	public void prepare(SchemaView schemaView, DBNative dbn) {
+	public void prepare(AbstractInformationSchema schemaView, DBNative dbn) {
 		VariablesLogicalInformationSchemaTable backing = (VariablesLogicalInformationSchemaTable) getLogicalTable();
-		addColumn(null, new InformationSchemaColumnView(InfoView.INFORMATION, backing.lookup(VariablesLogicalInformationSchemaTable.NAME_COL_NAME),
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, backing.lookup(VariablesLogicalInformationSchemaTable.NAME_COL_NAME),
 				new UnqualifiedName("variable_name")));
-		addColumn(null, new InformationSchemaColumnView(InfoView.INFORMATION, backing.lookup(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME),
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, backing.lookup(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME),
 				new UnqualifiedName("variable_value")));
-		scope = new InformationSchemaColumnView(InfoView.INFORMATION, backing.lookup(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME),
+		scope = new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, backing.lookup(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME),
 				new UnqualifiedName("variable_scope"));
 	}
 	

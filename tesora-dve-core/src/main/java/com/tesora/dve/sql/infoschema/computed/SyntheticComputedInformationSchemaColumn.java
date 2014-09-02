@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema;
+package com.tesora.dve.sql.infoschema.computed;
 
 /*
  * #%L
@@ -26,6 +26,8 @@ import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumnAdapter;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.persist.CatalogColumnEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
@@ -35,27 +37,26 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.Type;
 
-public class SyntheticInformationSchemaColumn extends InformationSchemaColumnView {
+public class SyntheticComputedInformationSchemaColumn extends ComputedInformationSchemaColumn {
 
 	private Type type;
 	
-	public SyntheticInformationSchemaColumn(InfoView view, UnqualifiedName nameInView, Type type) {
-		super(view,null,nameInView);
+	public SyntheticComputedInformationSchemaColumn(InfoView view, UnqualifiedName nameInView, Type type, InformationSchemaColumnAdapter adapter) {
+		super(view,nameInView,adapter);
 		this.type = type;
 	}
 	
-	public SyntheticInformationSchemaColumn(UnqualifiedName nameInView) {
+	public SyntheticComputedInformationSchemaColumn(InfoView view, UnqualifiedName nameInView, Type type) {
+		this(view,nameInView,type,null);
+	}
+	
+	public SyntheticComputedInformationSchemaColumn(UnqualifiedName nameInView) {
 		this(null,nameInView,null);
 	}
 
 	@Override
 	public Type getType() {
 		return type;
-	}
-
-	@Override
-	public LogicalInformationSchemaColumn getLogicalColumn() {
-		return null;
 	}
 
 	@Override
@@ -75,8 +76,8 @@ public class SyntheticInformationSchemaColumn extends InformationSchemaColumnVie
 	}
 
 	@Override
-	public AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> copy() {
-		return new SyntheticInformationSchemaColumn(view,name,type);
+	public InformationSchemaColumn copy(InformationSchemaColumnAdapter adapter) {
+		return new SyntheticComputedInformationSchemaColumn(view,name,type);
 	}
 	
 	public ExpressionNode buildReplacement(ColumnInstance subject) {

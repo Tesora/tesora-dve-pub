@@ -21,28 +21,28 @@ package com.tesora.dve.sql.infoschema.info;
  * #L%
  */
 
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public class InfoSchemaPartitionsInformationSchemaTable extends
-		ComputedInformationSchemaTableView {
+		ComputedInformationSchemaTable {
 
 	public InfoSchemaPartitionsInformationSchemaTable(
 			LogicalInformationSchemaTable basedOn) {
 		super(InfoView.INFORMATION, basedOn, new UnqualifiedName("partitions"),
 				null, false, false);
 		for (LogicalInformationSchemaColumn lisc : basedOn.getColumns(null)) {
-			addColumn(null, new InformationSchemaColumnView(InfoView.SHOW,
+			addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW,
 					lisc, lisc.getName().getUnqualified()));
 		}
 	}
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 	}
 }

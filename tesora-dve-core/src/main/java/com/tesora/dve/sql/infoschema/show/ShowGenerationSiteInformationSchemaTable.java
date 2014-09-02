@@ -23,11 +23,11 @@ package com.tesora.dve.sql.infoschema.show;
 
 import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.ShowSchema.GenerationSite;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
@@ -37,12 +37,12 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 public class ShowGenerationSiteInformationSchemaTable extends
 		ShowInformationSchemaTable {
 
-	protected InformationSchemaColumnView secondaryOrderByColumn;
+	protected ComputedInformationSchemaColumn secondaryOrderByColumn;
 
 	public ShowGenerationSiteInformationSchemaTable(
 			LogicalInformationSchemaTable basedOn) {
 		super(basedOn, new UnqualifiedName("generation site"), new UnqualifiedName("generation sites"), true, true);
-		orderByColumn = new InformationSchemaColumnView(InfoView.SHOW, basedOn.lookup("group_name"), 
+		orderByColumn = new BackedComputedInformationSchemaColumn(InfoView.SHOW, basedOn.lookup("group_name"), 
 				new UnqualifiedName(ShowSchema.GenerationSite.NAME)) {
 			@Override
 			public boolean isIdentColumn() { return true; }
@@ -51,9 +51,9 @@ public class ShowGenerationSiteInformationSchemaTable extends
 		}; 
 		
 		addColumn(null,orderByColumn);
-		addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, basedOn.lookup("version"), 
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, basedOn.lookup("version"), 
 				new UnqualifiedName(GenerationSite.VERSION)));
-		secondaryOrderByColumn = new InformationSchemaColumnView(InfoView.SHOW, basedOn.lookup("site_name"), 
+		secondaryOrderByColumn = new BackedComputedInformationSchemaColumn(InfoView.SHOW, basedOn.lookup("site_name"), 
 				new UnqualifiedName(GenerationSite.SITE));
 		addColumn(null, secondaryOrderByColumn);
 	}
@@ -69,7 +69,7 @@ public class ShowGenerationSiteInformationSchemaTable extends
 	}
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 		// no validation
 	}
 

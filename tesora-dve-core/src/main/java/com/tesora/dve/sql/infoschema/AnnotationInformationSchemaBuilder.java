@@ -67,6 +67,8 @@ import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.annos.TableView;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaColumnsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.CatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.ColumnCatalogInformationSchemaTable;
@@ -147,7 +149,7 @@ public class AnnotationInformationSchemaBuilder implements
 	}
 
 	private void build(Class<?> c, InfoTableConfig itc, LogicalInformationSchema logicalSchema,
-			Map<InfoView, SchemaView> schemas,
+			Map<InfoView, AbstractInformationSchema> schemas,
 			DBNative dbn, InfoSchemaTable ist, javax.persistence.Table ptable) throws PEException {
 		CatalogInformationSchemaTable cist = null;
 		try {
@@ -158,7 +160,7 @@ public class AnnotationInformationSchemaBuilder implements
 			throw new PEException("Unable to construct logical table for " + c.getSimpleName(),t);
 		}
 		logicalSchema.addTable(null,cist);
-		HashMap<InfoView, ComputedInformationSchemaTableView> views = new HashMap<InfoView, ComputedInformationSchemaTableView>();
+		HashMap<InfoView, ComputedInformationSchemaTable> views = new HashMap<InfoView, ComputedInformationSchemaTable>();
 		for(TableView tv : ist.views()) {
 			try {
 				if (tv.view() == InfoView.SHOW) {
@@ -169,8 +171,8 @@ public class AnnotationInformationSchemaBuilder implements
 				} else {
 					Class<?> infoClass = itc.getInfo();
 					Constructor<?> cons = infoClass.getConstructor(InfoView.class, LogicalInformationSchemaTable.class, UnqualifiedName.class, UnqualifiedName.class, Boolean.TYPE, Boolean.TYPE);
-					ComputedInformationSchemaTableView istv = 
-						(ComputedInformationSchemaTableView) cons.newInstance(tv.view(), cist, new UnqualifiedName(tv.name()), 
+					ComputedInformationSchemaTable istv = 
+						(ComputedInformationSchemaTable) cons.newInstance(tv.view(), cist, new UnqualifiedName(tv.name()), 
 								("".equals(tv.pluralName()) ? null : new UnqualifiedName(tv.pluralName())),
 								tv.priviledged(), tv.extension());
 					views.put(tv.view(), istv);
@@ -180,7 +182,7 @@ public class AnnotationInformationSchemaBuilder implements
 			}
 		}
 		// per-view, also maintain a map of view column name to view column
-		TwoDimensionalMap<InfoView, String, InformationSchemaColumnView> viewColumns = new TwoDimensionalMap<InfoView, String, InformationSchemaColumnView>();
+		TwoDimensionalMap<InfoView, String, ComputedInformationSchemaColumn> viewColumns = new TwoDimensionalMap<InfoView, String, ComputedInformationSchemaColumn>();
 
 		// try to obtain the table name via introspection.
 		Method[] methods = c.getDeclaredMethods();
@@ -208,11 +210,11 @@ public class AnnotationInformationSchemaBuilder implements
 				throw new PEException("Invalid info schema data: no such field " + fieldName + " in " + c.getSimpleName() + " for info schema column on " + m,t);				
 			}
 			Type t = buildType(m.getReturnType(),isc,c,dbn);
-			CatalogInformationSchemaColumn cisc = 
-				new CatalogInformationSchemaColumn(isc,t,m,columnName,columnAnno,joinColumnAnno,id);
-			cisc = (CatalogInformationSchemaColumn) cist.addColumn(null,cisc);
+			CatalogLogicalInformationSchemaColumn cisc = 
+				new CatalogLogicalInformationSchemaColumn(isc,t,m,columnName,columnAnno,joinColumnAnno,id);
+			cisc = (CatalogLogicalInformationSchemaColumn) cist.addColumn(null,cisc);
 			for(ColumnView cv : isc.views()) {
-				InformationSchemaColumnView iscv = new CatalogInformationSchemaColumnView(cv, cisc);
+				ComputedInformationSchemaColumn iscv = new CatalogInformationSchemaColumn(cv, cisc);
 				viewColumns.put(cv.view(), cv.name(), iscv);
 				if (iscv.isInjected() && !cisc.isInjected())
 					throw new PEException("Invalid info schema data: column " + cv.name() + " in view " + cv.view() + " is injected but backing logical column is not");
@@ -220,10 +222,10 @@ public class AnnotationInformationSchemaBuilder implements
 		}		
 		// go back to the table views and build the final declaration order
 		for(TableView tv : ist.views()) {
-			ComputedInformationSchemaTableView table = views.get(tv.view()); 
-			Map<String,InformationSchemaColumnView> found = viewColumns.get(tv.view());
+			ComputedInformationSchemaTable table = views.get(tv.view()); 
+			Map<String,ComputedInformationSchemaColumn> found = viewColumns.get(tv.view());
 			for(String n : tv.columnOrder()) {
-				InformationSchemaColumnView iscv = found.remove(n);
+				ComputedInformationSchemaColumn iscv = found.remove(n);
 				if (iscv == null)
 					throw new PEException("Missing column decl for " + n + " in table " + tv.name() + " in info schema view " + tv.view());
 				table.addColumn(null,iscv);
@@ -237,9 +239,9 @@ public class AnnotationInformationSchemaBuilder implements
 	
 	@Override
 	public void populate(LogicalInformationSchema logicalSchema,
-			InformationSchemaView infoSchema, ShowView showSchema,
-			MysqlView mysqlSchema, DBNative dbn) throws PEException {
-		HashMap<InfoView, SchemaView> schemas = new HashMap<InfoView, SchemaView>();
+			InformationSchema infoSchema, ShowView showSchema,
+			MysqlSchema mysqlSchema, DBNative dbn) throws PEException {
+		HashMap<InfoView, AbstractInformationSchema> schemas = new HashMap<InfoView, AbstractInformationSchema>();
 		schemas.put(infoSchema.getView(), infoSchema);
 		schemas.put(showSchema.getView(), showSchema);
 		schemas.put(mysqlSchema.getView(), mysqlSchema);
@@ -263,7 +265,7 @@ public class AnnotationInformationSchemaBuilder implements
 			matchClass = m;
 			logicalClass = CatalogInformationSchemaTable.class;
 			showClass = ShowInformationSchemaTable.class;
-			infoSchemaClass = ComputedInformationSchemaTableView.class;
+			infoSchemaClass = ComputedInformationSchemaTable.class;
 		}
 		
 		public InfoTableConfig withLogical(Class<?> c) {

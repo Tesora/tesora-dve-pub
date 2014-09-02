@@ -39,8 +39,8 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.ExpressionUtils;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.engine.NamedParameter;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -68,8 +68,8 @@ public class ShowColumnInformationSchemaTable extends
 	protected void handleScope(SchemaContext sc, SelectStatement ss, Map<String,Object> params, List<Name> scoping) {
 		// for columns: table_name, db_name
 		Pair<String,String> scope = inferScope(sc,scoping);
-		AbstractInformationSchemaColumnView tableColumn = lookup("table");
-		AbstractInformationSchemaColumnView dbColumn = lookup("database");
+		ComputedInformationSchemaColumn tableColumn = lookup("table");
+		ComputedInformationSchemaColumn dbColumn = lookup("database");
 		TableInstance ti = ss.getBaseTables().get(0);
 		ExpressionNode wc = ss.getWhereClause();
 		List<ExpressionNode> decomp = ExpressionUtils.decomposeAndClause(wc);

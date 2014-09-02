@@ -25,8 +25,8 @@ import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumnAdapter;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.infoschema.persist.CatalogTableEntity;
@@ -34,33 +34,33 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.Type;
 
-public class DirectInformationSchemaColumnView extends
-		AbstractInformationSchemaColumnView<PEColumn> {
+public class DirectInformationSchemaColumn extends InformationSchemaColumn {
 
-	private final PEColumn backing;
-	
-	public DirectInformationSchemaColumnView(InfoView view,
+	public DirectInformationSchemaColumn(InfoView view,
 			UnqualifiedName nameInView,
 			PEColumn backedBy) {
-		super(view, nameInView);
-		this.backing = backedBy;
+		super(view, nameInView, new DirectInformationSchemaColumnAdapter(backedBy));
 	}
 
 	@Override
 	public Type getType() {
-		return backing.getType();
+		return getAdapter().getDirectColumn().getType();
 	}
 
 	@Override
-	public AbstractInformationSchemaColumnView<PEColumn> copy() {
-		return new DirectInformationSchemaColumnView(view,getName().getUnqualified(),backing);
+	public InformationSchemaColumn copy(InformationSchemaColumnAdapter adapter) {
+		return new DirectInformationSchemaColumn(view,getName().getUnqualified(),
+				(adapter == null ? getAdapter().getDirectColumn() : adapter.getDirectColumn())); 
 	}
 
-	@Override
-	public PEColumn getLogicalColumn() {
-		return backing;
+	DirectInformationSchemaColumnAdapter getMyAdapter() {
+		return (DirectInformationSchemaColumnAdapter) getAdapter();
 	}
-
+	
+	public PEColumn getColumn() {
+		return getMyAdapter().getDirectColumn();
+	}
+	
 	@Override
 	public void buildColumnEntity(CatalogSchema schema, CatalogTableEntity cte,
 			int ordinal_position, List<PersistedEntity> acc) throws PEException {
@@ -68,4 +68,24 @@ public class DirectInformationSchemaColumnView extends
 
 	}
 
+	public static class DirectInformationSchemaColumnAdapter extends InformationSchemaColumnAdapter {
+
+		// eventually we will have more than one here, or else a lookup into the actual 
+		private final PEColumn backing;
+		
+		public DirectInformationSchemaColumnAdapter(PEColumn pec) {
+			this.backing = pec;
+		}
+		
+		@Override
+		public boolean isBacked() {
+			return true;
+		}
+		
+		@Override
+		public PEColumn getDirectColumn() {
+			return backing;
+		}
+	}
+	
 }

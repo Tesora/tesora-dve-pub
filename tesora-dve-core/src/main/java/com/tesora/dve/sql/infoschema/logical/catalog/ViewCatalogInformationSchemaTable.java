@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.CatalogLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.SyntheticLogicalInformationSchemaColumn;
@@ -61,7 +61,7 @@ public class ViewCatalogInformationSchemaTable extends
 		DatabaseCatalogInformationSchemaTable databaseTable = (DatabaseCatalogInformationSchemaTable) schema.lookup("database");
 		CatalogInformationSchemaTable userTable = (CatalogInformationSchemaTable) schema.lookup("user");
 		
-		final CatalogInformationSchemaColumn tableColumn = (CatalogInformationSchemaColumn) lookup("backing");
+		final CatalogLogicalInformationSchemaColumn tableColumn = (CatalogLogicalInformationSchemaColumn) lookup("backing");
 		final LogicalInformationSchemaColumn tableNameColumn = tableTable.lookup("name");
 		final LogicalInformationSchemaColumn tableSchemaColumn = tableTable.lookup("database");
 		final LogicalInformationSchemaColumn userColumn = lookup("definedby");

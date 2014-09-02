@@ -26,7 +26,7 @@ import java.util.List;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.expression.ExpressionUtils;
-import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.CatalogLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
@@ -48,12 +48,12 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 public class DatabaseCatalogInformationSchemaTable extends
 		CatalogInformationSchemaTable {
 
-	protected CatalogInformationSchemaColumn multitenantMode;
+	protected CatalogLogicalInformationSchemaColumn multitenantMode;
 	protected CatalogInformationSchemaTable tenantTable;
-	protected CatalogInformationSchemaColumn tenantTableDatabaseColumn;
-	protected CatalogInformationSchemaColumn tenantTableNameColumn;
-	protected CatalogInformationSchemaColumn databaseIDColumn;
-	protected CatalogInformationSchemaColumn databaseNameColumn;
+	protected CatalogLogicalInformationSchemaColumn tenantTableDatabaseColumn;
+	protected CatalogLogicalInformationSchemaColumn tenantTableNameColumn;
+	protected CatalogLogicalInformationSchemaColumn databaseIDColumn;
+	protected CatalogLogicalInformationSchemaColumn databaseNameColumn;
 	
 	public DatabaseCatalogInformationSchemaTable(Class<?> entKlass,
 			InfoSchemaTable anno, String catTabName) {
@@ -63,12 +63,12 @@ public class DatabaseCatalogInformationSchemaTable extends
 	@Override
 	protected void prepare(LogicalInformationSchema schema, DBNative dbn) {
 		super.prepare(schema, dbn);
-		multitenantMode = (CatalogInformationSchemaColumn) lookup("multitenant");
+		multitenantMode = (CatalogLogicalInformationSchemaColumn) lookup("multitenant");
 		tenantTable = (CatalogInformationSchemaTable) schema.lookup("tenant");
-		tenantTableDatabaseColumn = (CatalogInformationSchemaColumn) tenantTable.lookup("database");
-		tenantTableNameColumn = (CatalogInformationSchemaColumn) tenantTable.lookup("name");
-		databaseIDColumn = (CatalogInformationSchemaColumn) lookup("id");
-		databaseNameColumn = (CatalogInformationSchemaColumn) lookup("name");
+		tenantTableDatabaseColumn = (CatalogLogicalInformationSchemaColumn) tenantTable.lookup("database");
+		tenantTableNameColumn = (CatalogLogicalInformationSchemaColumn) tenantTable.lookup("name");
+		databaseIDColumn = (CatalogLogicalInformationSchemaColumn) lookup("id");
+		databaseNameColumn = (CatalogLogicalInformationSchemaColumn) lookup("name");
 	}
 	
 	@Override

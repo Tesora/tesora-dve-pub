@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema;
 
 /*
  * #%L
@@ -21,19 +21,20 @@ package com.tesora.dve.sql.infoschema.show;
  * #L%
  */
 
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
-import com.tesora.dve.sql.infoschema.logical.FilesInformationSchemaTable;
-import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.PEColumn;
 
-public class ShowFilesInformationSchemaTable extends ShowEmptyInformationSchemaTable {
+public class InformationSchemaColumnAdapter {
 
-	public ShowFilesInformationSchemaTable(FilesInformationSchemaTable backed) {
-		super(backed, new UnqualifiedName("files"), new UnqualifiedName("files"), false, false);
+	public boolean isBacked() {
+		return false;
 	}
-
-	@Override
-	protected void validate(AbstractInformationSchema ofView) {
-		// no name column, so skip validation
+	
+	public LogicalInformationSchemaColumn getLogicalColumn() {
+		return null;
 	}
-
+	
+	public PEColumn getDirectColumn() {
+		return null;
+	}
+	
 }

@@ -26,10 +26,10 @@ import java.util.List;
 import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.sql.expression.ExpressionUtils;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -44,18 +44,18 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 public class ShowMultitenantDatabaseSchemaTable extends
 		ShowInformationSchemaTable {
 
-	protected AbstractInformationSchemaColumnView modeColumn;
+	protected InformationSchemaColumn modeColumn;
 	
 	public ShowMultitenantDatabaseSchemaTable(ShowInformationSchemaTable databaseView) {
 		super(databaseView.getLogicalTable(), 
 				new UnqualifiedName("multitenant database"), new UnqualifiedName("multitenant databases"), true, true);
 		// add all the columns from databaseView
-		for(AbstractInformationSchemaColumnView iscv: databaseView.getColumns(null))
-			addColumn(null,(InformationSchemaColumnView) iscv.copy());
+		for(InformationSchemaColumn iscv: databaseView.getColumns(null))
+			addColumn(null,(ComputedInformationSchemaColumn) iscv.copy(null));
 	}
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 		super.validate(ofView);
 		modeColumn = lookup(ShowSchema.Database.MULTITENANT);
 		if (modeColumn == null)

@@ -39,7 +39,7 @@ import com.tesora.dve.resultset.*;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -61,7 +61,7 @@ public class CreateDatabaseInformationSchemaTable extends
 	}
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 		tableTable = (ShowInformationSchemaTable) ofView.lookup("database");
 		if (tableTable == null)
 			throw new InformationSchemaException(

@@ -626,8 +626,6 @@ public class CatalogHelper {
 	public VariableConfig setVariable(String key, String value, boolean create) throws PEException {
 		CatalogDAO c = CatalogDAOFactory.newInstance(catalogProperties);
 
-		VariableManager vm = VariableManager.getManager();
-		
 		try {
 
 			VariableConfig config = c.findVariableConfig(key, false);

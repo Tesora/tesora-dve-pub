@@ -49,10 +49,10 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.engine.NamedParameter;
 import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -1264,7 +1264,7 @@ public abstract class Emitter {
 				buf.append(isc.getFieldName());
 			else
 				buf.append(isc.getColumnName());
-		} else if (sci.getColumn() instanceof InformationSchemaColumnView) {
+		} else if (sci.getColumn() instanceof ComputedInformationSchemaColumn) {
 			buf.append(sci.getColumn().getName().getSQL());
 		}
 	}
@@ -1701,7 +1701,7 @@ public abstract class Emitter {
 				// we never emit aliases with temp tables
 				prohibitAlias = true;
 			} else {
-				if (context == TableInstanceContext.COLUMN && tr.getAlias() != null) {
+				if ((context == TableInstanceContext.COLUMN || context == TableInstanceContext.NAKED) && tr.getAlias() != null) {
 					buf.append(tr.getAlias().getSQL());
 				} else {
 					// table name
@@ -1717,7 +1717,7 @@ public abstract class Emitter {
 			} else if (tr.getAlias() != null) {
 				buf.append(" AS ").append(tr.getAlias().getSQL());
 			}
-		} else if (tab instanceof InformationSchemaTableView) {
+		} else if (tab instanceof InformationSchemaTable) {
 			// we'd get this from a debug statement
 			if (context == TableInstanceContext.COLUMN && tr.getAlias() != null) {
 				buf.append(tr.getAlias().getSQL());

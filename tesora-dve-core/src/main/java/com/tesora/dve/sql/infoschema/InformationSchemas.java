@@ -60,12 +60,12 @@ public final class InformationSchemas {
 
 	protected final LogicalInformationSchema logical;
 	
-	protected final InformationSchemaView infoSchema;
+	protected final InformationSchema infoSchema;
 	protected final ShowView show;
-	protected final MysqlView mysql;
+	protected final MysqlSchema mysql;
 	protected final PEDatabase catalog;
 	
-	private InformationSchemas(LogicalInformationSchema lis, InformationSchemaView isv, ShowView sv, MysqlView msv, PEDatabase pdb) {
+	private InformationSchemas(LogicalInformationSchema lis, InformationSchema isv, ShowView sv, MysqlSchema msv, PEDatabase pdb) {
 		this.logical = lis;
 		this.infoSchema = isv;
 		this.show = sv;
@@ -77,7 +77,7 @@ public final class InformationSchemas {
 		return logical;
 	}
 	
-	public InformationSchemaView getInfoSchema() {
+	public InformationSchema getInfoSchema() {
 		return infoSchema;
 	}
 	
@@ -89,7 +89,7 @@ public final class InformationSchemas {
 		return getShowSchema().lookupTable(unq);
 	}
 	
-	public MysqlView getMysqlSchema() {
+	public MysqlSchema getMysqlSchema() {
 		return this.mysql;
 	}
 	
@@ -105,9 +105,9 @@ public final class InformationSchemas {
 	public static InformationSchemas build(DBNative dbn, CatalogDAO c, Properties props) throws PEException {
 		try {
 			LogicalInformationSchema logicalSchema = new LogicalInformationSchema();
-			InformationSchemaView informationSchema = new InformationSchemaView(logicalSchema);
+			InformationSchema informationSchema = new InformationSchema(logicalSchema);
 			ShowView showSchema = new ShowView(logicalSchema);
-			MysqlView mysqlSchema = new MysqlView(logicalSchema);
+			MysqlSchema mysqlSchema = new MysqlSchema(logicalSchema);
 			PEDatabase catSchema = buildCatalogSchema(c,dbn,props);
 			
 			// make the builders for each schema & then build them.
@@ -135,11 +135,11 @@ public final class InformationSchemas {
 		}
 	}
 	
-	public DatabaseView buildPEDatabase(SchemaContext sc, UserDatabase udb) {
+	public InformationSchemaDatabase buildPEDatabase(SchemaContext sc, UserDatabase udb) {
 		if (InfoView.INFORMATION.getUserDatabaseName().equals(udb.getName()))
-			return new DatabaseView(sc, udb, infoSchema);
+			return new InformationSchemaDatabase(sc, udb, infoSchema);
 		else if (InfoView.MYSQL.getUserDatabaseName().equals(udb.getName()))
-			return new DatabaseView(sc, udb, mysql);
+			return new InformationSchemaDatabase(sc, udb, mysql);
 		return null;
 	}
 	

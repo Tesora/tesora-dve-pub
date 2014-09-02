@@ -88,8 +88,8 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 
 	@Override
 	public void populate(LogicalInformationSchema logicalSchema,
-			InformationSchemaView infoSchema, ShowView showSchema,
-			MysqlView mysqlSchema, DBNative dbn) throws PEException {
+			InformationSchema infoSchema, ShowView showSchema,
+			MysqlSchema mysqlSchema, DBNative dbn) throws PEException {
 		final ShowInformationSchemaTable databaseInfoSchemaTable = (ShowInformationSchemaTable) showSchema.lookup("database");
 
 		showSchema.addTable(null, new CreateTableInformationSchemaTable());
@@ -124,7 +124,7 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 	 * @param infoSchema
 	 * @param dbn
 	 */
-	private void addGenerationSiteTable(LogicalInformationSchema logical, ShowView show, InformationSchemaView infoSchema, DBNative dbn) {
+	private void addGenerationSiteTable(LogicalInformationSchema logical, ShowView show, InformationSchema infoSchema, DBNative dbn) {
 		GenerationSiteInformationSchemaTable gist = new GenerationSiteInformationSchemaTable(logical);
 		logical.addTable(null,gist);
 		show.addTable(null,new ShowGenerationSiteInformationSchemaTable(gist));
@@ -136,13 +136,13 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 	 * @param infoSchema
 	 * @param dbn
 	 */
-	private void addMysqlDBTable(LogicalInformationSchema logical, MysqlView infoSchema, DBNative dbn) {
+	private void addMysqlDBTable(LogicalInformationSchema logical, MysqlSchema infoSchema, DBNative dbn) {
 		MysqlDBLogicalInformationSchemaTable baseTable = new MysqlDBLogicalInformationSchemaTable(logical);
 		logical.addTable(null,baseTable);
 		infoSchema.addTable(null,new MysqlDBInformationSchemaTable(baseTable));
 	}
 	
-	private void addVariablesTable(LogicalInformationSchema logical, ShowView showSchema, InformationSchemaView infoSchema, DBNative dbn) {
+	private void addVariablesTable(LogicalInformationSchema logical, ShowView showSchema, InformationSchema infoSchema, DBNative dbn) {
 		VariablesLogicalInformationSchemaTable baseTable = new VariablesLogicalInformationSchemaTable(dbn);
 		logical.addTable(null,baseTable);
 		showSchema.addTable(null,new ShowVariablesInformationSchemaTable(baseTable));
@@ -172,7 +172,7 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 	}
 
 	private void addFilesTable(LogicalInformationSchema logicalSchema,
-			ShowView showSchema, InformationSchemaView infoSchema, DBNative dbn) {
+			ShowView showSchema, InformationSchema infoSchema, DBNative dbn) {
 		FilesInformationSchemaTable ist = new FilesInformationSchemaTable(dbn);
 		logicalSchema.addTable(null,ist);
 		showSchema.addTable(null,new ShowFilesInformationSchemaTable(ist));
@@ -180,7 +180,7 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 	}
 
 	private void addPartitionsTable(LogicalInformationSchema logicalSchema,
-			ShowView showSchema, InformationSchemaView infoSchema, DBNative dbn) {
+			ShowView showSchema, InformationSchema infoSchema, DBNative dbn) {
 		PartitionsInformationSchemaTable ist = new PartitionsInformationSchemaTable(dbn);
 		logicalSchema.addTable(null,ist);
 		showSchema.addTable(null,new ShowPartitionsInformationSchemaTable(ist));
@@ -188,14 +188,14 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 	}
 	
 	private void addRoutinesTable(LogicalInformationSchema logicalSchema,
-			InformationSchemaView infoSchema, DBNative dbn) {
+			InformationSchema infoSchema, DBNative dbn) {
 		RoutinesInformationSchemaTable ist = new RoutinesInformationSchemaTable(dbn);
 		logicalSchema.addTable(null,ist);
 		infoSchema.addTable(null,new InfoSchemaRoutinesInformationSchemaTable(ist));
 	}
 
 	private void addEventsTable(LogicalInformationSchema logicalSchema,
-			InformationSchemaView infoSchema, ShowView showSchema, DBNative dbn) {
+			InformationSchema infoSchema, ShowView showSchema, DBNative dbn) {
 		EventsInformationSchemaTable ist = new EventsInformationSchemaTable(dbn);
 		logicalSchema.addTable(null,ist);
 		infoSchema.addTable(null,new InfoSchemaEventsInformationSchemaTable(ist));
@@ -209,7 +209,7 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 	 * @param dbn
 	 */
 	private void addKeyRelatedTables(LogicalInformationSchema logicalSchema,
-			InformationSchemaView infoSchema, ShowView showSchema, DBNative dbn) {
+			InformationSchema infoSchema, ShowView showSchema, DBNative dbn) {
 		KeyCatalogInformationSchemaTable keyTab = (KeyCatalogInformationSchemaTable) logicalSchema.lookup("key");
 		InfoSchemaReferentialConstraintsSchemaTable refcon = new InfoSchemaReferentialConstraintsSchemaTable(keyTab);
 		infoSchema.addTable(null, refcon);
@@ -228,7 +228,7 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 	 * @param dbn
 	 */
 	private void addDistModelRelatedTables(LogicalInformationSchema logicalSchema,
-			InformationSchemaView infoSchema, ShowView showSchema, DBNative dbn) {
+			InformationSchema infoSchema, ShowView showSchema, DBNative dbn) {
 		DistributionLogicalTable distTab = new DistributionLogicalTable(logicalSchema);
 		logicalSchema.addTable(null, distTab);
 		InfoSchemaDistributionsInformationSchemaTable distInfo = new InfoSchemaDistributionsInformationSchemaTable(distTab);
@@ -245,7 +245,7 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		showSchema.addTable(null, new ShowFunctionStatusInformationSchemaTable(functions));
 	}
 
-	private void addSchemataTable(LogicalInformationSchema logicalSchema, InformationSchemaView infoSchema) {
+	private void addSchemataTable(LogicalInformationSchema logicalSchema, InformationSchema infoSchema) {
 		DatabaseCatalogInformationSchemaTable dbTab = (DatabaseCatalogInformationSchemaTable) logicalSchema.lookup("database");
 		InfoSchemaSchemataSchemaTable schemataTab = new InfoSchemaSchemataSchemaTable(dbTab);
 		infoSchema.addTable(null, schemataTab);
@@ -263,26 +263,26 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 	}
 
 	private void addPluginsTable(LogicalInformationSchema logicalSchema,
-			InformationSchemaView infoSchema, DBNative dbn) {
+			InformationSchema infoSchema, DBNative dbn) {
 		PluginsInformationSchemaTable ist = new PluginsInformationSchemaTable(dbn);
 		logicalSchema.addTable(null,ist);
 		infoSchema.addTable(null,new InfoSchemaPluginsInformationSchemaTable(ist));
 	}
 
-	private void addScopesTable(LogicalInformationSchema logicalSchema, InformationSchemaView infoSchema, DBNative dbn) {
+	private void addScopesTable(LogicalInformationSchema logicalSchema, InformationSchema infoSchema, DBNative dbn) {
 		ScopesInformationSchemaTable logical = new ScopesInformationSchemaTable(logicalSchema);
 		logicalSchema.addTable(null, logical);
 		InfoSchemaScopesInformationSchemaTable info = new InfoSchemaScopesInformationSchemaTable(logical);
 		infoSchema.addTable(null, info);
 	}
 	
-	private void addViewsTable(LogicalInformationSchema logicalSchema, InformationSchemaView infoSchema, DBNative dbn) {
+	private void addViewsTable(LogicalInformationSchema logicalSchema, InformationSchema infoSchema, DBNative dbn) {
 		ViewCatalogInformationSchemaTable backing = (ViewCatalogInformationSchemaTable) logicalSchema.lookup("views");
 		InfoSchemaViewInformationSchemaTable views = new InfoSchemaViewInformationSchemaTable(backing);
 		infoSchema.addTable(null,views);
 	}
 
-	private void addTempTablesTables(LogicalInformationSchema logicalSchema, InformationSchemaView infoSchema, DBNative dbn) {
+	private void addTempTablesTables(LogicalInformationSchema logicalSchema, InformationSchema infoSchema, DBNative dbn) {
 		CatalogInformationSchemaTable tempTables = (CatalogInformationSchemaTable) logicalSchema.lookup("temporary_table");
 		InfoSchemaSessionTemporaryTablesInformationSchemaTable sessTabs =
 				new InfoSchemaSessionTemporaryTablesInformationSchemaTable(tempTables);

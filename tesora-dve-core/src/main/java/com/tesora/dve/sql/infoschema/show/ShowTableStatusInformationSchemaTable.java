@@ -36,9 +36,9 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.logical.TableStatusInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
@@ -61,7 +61,7 @@ public class ShowTableStatusInformationSchemaTable extends ShowInformationSchema
 	private TableStatusInformationSchemaTable tableStatusTable;
 	private ShowInformationSchemaTable tableTable = null;
 	@SuppressWarnings("unused")
-	private InformationSchemaColumnView nameColumn = null;
+	private ComputedInformationSchemaColumn nameColumn = null;
 	
 	public ShowTableStatusInformationSchemaTable(TableStatusInformationSchemaTable basedOn) {
 		super(basedOn, new UnqualifiedName("TABLE STATUS"), new UnqualifiedName("TABLE STATUS"), false, false);
@@ -71,7 +71,7 @@ public class ShowTableStatusInformationSchemaTable extends ShowInformationSchema
 
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 		tableTable = (ShowInformationSchemaTable) ofView.lookup("table");
 		if (tableTable == null)
 			throw new InformationSchemaException("Cannot find show table view in show view");

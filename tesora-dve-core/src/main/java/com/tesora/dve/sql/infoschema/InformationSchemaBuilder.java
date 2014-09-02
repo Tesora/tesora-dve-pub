@@ -28,8 +28,8 @@ import com.tesora.dve.sql.infoschema.show.ShowView;
 public interface InformationSchemaBuilder {
 
 	public void populate(LogicalInformationSchema logicalSchema, 
-			InformationSchemaView infoSchema,
+			InformationSchema infoSchema,
 			ShowView showSchema,
-			MysqlView mysqlSchema, DBNative dbn) throws PEException;
+			MysqlSchema mysqlSchema, DBNative dbn) throws PEException;
 		
 }

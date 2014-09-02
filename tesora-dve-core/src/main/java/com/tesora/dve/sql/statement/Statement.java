@@ -116,9 +116,12 @@ public abstract class Statement extends StatementNode {
 			opts = EmitOptions.PEMETADATA;
 		if (prettyIndent != null)
 			opts = (opts == null ? EmitOptions.NONE : opts).addMultilinePretty(prettyIndent);
-        return getSQL(sc,  
-        		(sc.getOptions().isInfoSchemaView() ? new MysqlEmitter() :
-        		Singletons.require(HostService.class).getDBNative().getEmitter()), opts, preserveParamMarkers);
+		Emitter emitter = null;
+		if (sc.getOptions() != null && sc.getOptions().isInfoSchemaView())
+			emitter = new MysqlEmitter();
+		else
+			emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+        return getSQL(sc,  emitter, opts, preserveParamMarkers);
 	}
 		
 	public String getSQL(SchemaContext sc, EmitOptions opts, boolean preserveParamMarkers) {

@@ -31,12 +31,13 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.ExpressionUtils;
-import com.tesora.dve.sql.infoschema.ConstantSyntheticInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
-import com.tesora.dve.sql.infoschema.SyntheticInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ConstantComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.SyntheticComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.engine.NamedParameter;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.logical.catalog.KeyColumnCatalogInformationSchemaTable;
@@ -60,11 +61,11 @@ import com.tesora.dve.sql.util.Pair;
 
 public class ShowKeysInformationSchemaTable extends ShowInformationSchemaTable {
 	
-	private InformationSchemaColumnView tableName;
-	private InformationSchemaColumnView keyName;
-	private InformationSchemaColumnView position;
-	private InformationSchemaColumnView databaseName;
-	private InformationSchemaColumnView constraint;
+	private ComputedInformationSchemaColumn tableName;
+	private ComputedInformationSchemaColumn keyName;
+	private ComputedInformationSchemaColumn position;
+	private ComputedInformationSchemaColumn databaseName;
+	private ComputedInformationSchemaColumn constraint;
 	
 	public ShowKeysInformationSchemaTable(KeyColumnCatalogInformationSchemaTable backing) {
 		super(backing, new UnqualifiedName("KEY"), new UnqualifiedName("KEYS"), false, false);
@@ -72,24 +73,24 @@ public class ShowKeysInformationSchemaTable extends ShowInformationSchemaTable {
 	}
 
 	@Override
-	public void prepare(SchemaView view1, DBNative dbn) {
-		tableName = new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("table_name"), new UnqualifiedName("Table")) {
+	public void prepare(AbstractInformationSchema view1, DBNative dbn) {
+		tableName = new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("table_name"), new UnqualifiedName("Table")) {
 			@Override
 			public boolean isIdentColumn() { return true; }
 			@Override
 			public boolean isOrderByColumn() { return true; }
 		};
 		addColumn(null,tableName); 
-		addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("non_unique"), new UnqualifiedName("Non_unique")));
-		keyName = new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("key_name"), new UnqualifiedName("Key_name"));
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("non_unique"), new UnqualifiedName("Non_unique")));
+		keyName = new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("key_name"), new UnqualifiedName("Key_name"));
 		addColumn(null, keyName);
-		position = new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("position"), new UnqualifiedName("Seq_in_index"));
+		position = new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("position"), new UnqualifiedName("Seq_in_index"));
 		addColumn(null, position);
-		addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("column_name"), new UnqualifiedName("Column_name")));
-		addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("collation"), new UnqualifiedName("Collation")));
-		addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("cardinality"), new UnqualifiedName("Cardinality")));
-		addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("length"), new UnqualifiedName("Sub_part")));
-		addColumn(null, new SyntheticInformationSchemaColumn(InfoView.SHOW, new UnqualifiedName("Packed"),
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("column_name"), new UnqualifiedName("Column_name")));
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("collation"), new UnqualifiedName("Collation")));
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("cardinality"), new UnqualifiedName("Cardinality")));
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("length"), new UnqualifiedName("Sub_part")));
+		addColumn(null, new SyntheticComputedInformationSchemaColumn(InfoView.SHOW, new UnqualifiedName("Packed"),
 				LogicalInformationSchemaTable.buildStringType(dbn, 255)) {
 			@Override
 			public ExpressionNode buildReplacement(ColumnInstance subject) {
@@ -97,21 +98,21 @@ public class ShowKeysInformationSchemaTable extends ShowInformationSchemaTable {
 			}
 
 		});
-		addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("nullable"), new UnqualifiedName("Null")));
-		addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("index_type"), new UnqualifiedName("Index_type")));
-		addColumn(null, new ConstantSyntheticInformationSchemaColumn(InfoView.SHOW, new UnqualifiedName("Comment"),
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("nullable"), new UnqualifiedName("Null")));
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("index_type"), new UnqualifiedName("Index_type")));
+		addColumn(null, new ConstantComputedInformationSchemaColumn(InfoView.SHOW, new UnqualifiedName("Comment"),
 				LogicalInformationSchemaTable.buildStringType(dbn, 255),""));
-		addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("key_comment"), new UnqualifiedName("Index_comment")));
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("key_comment"), new UnqualifiedName("Index_comment")));
 		// not registered - we use it for filtering but not to return 
-		databaseName = new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("table_schema"), new UnqualifiedName("Database_name"));
-		constraint = new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("constraint"), new UnqualifiedName("Constraint"));
+		databaseName = new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("table_schema"), new UnqualifiedName("Database_name"));
+		constraint = new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("constraint"), new UnqualifiedName("Constraint"));
 	}
 	
 	// do our own sorting - we will sort first by table name, then key name, and finally seq_ind_index
 	@Override
 	public void addSorting(SelectStatement ss, TableInstance ti) {
-		InformationSchemaColumnView[] sorts = new InformationSchemaColumnView[] { tableName, keyName, position };
-		for(InformationSchemaColumnView c : sorts) {
+		ComputedInformationSchemaColumn[] sorts = new ComputedInformationSchemaColumn[] { tableName, keyName, position };
+		for(ComputedInformationSchemaColumn c : sorts) {
 			SortingSpecification sort = new SortingSpecification(new ColumnInstance(null,c,ti), true);
 			sort.setOrdering(Boolean.TRUE);
 			ss.getOrderBysEdge().add(sort);

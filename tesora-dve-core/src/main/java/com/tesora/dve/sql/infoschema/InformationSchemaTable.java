@@ -32,22 +32,20 @@ import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
-import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 
 // strip the type info off for now
-@SuppressWarnings("rawtypes")
-public interface InformationSchemaTableView<T extends AbstractInformationSchemaColumnView> extends Table<T> {
+public interface InformationSchemaTable extends Table<InformationSchemaColumn> {
 
 
 	public InfoView getView();
 	
-	public void prepare(SchemaView view, DBNative dbn);
+	public void prepare(AbstractInformationSchema view, DBNative dbn);
 	
-	public void inject(SchemaView view, DBNative dbn);
+	public void inject(AbstractInformationSchema view, DBNative dbn);
 
 	public void freeze();
 
@@ -56,9 +54,9 @@ public interface InformationSchemaTableView<T extends AbstractInformationSchemaC
 
 	public void buildTableEntity(CatalogSchema cs, CatalogDatabaseEntity db, int dmid, int storageid, List<PersistedEntity> acc) throws PEException;
 
-	public T getOrderByColumn();
+	public InformationSchemaColumn getOrderByColumn();
 	
-	public T getIdentColumn();
+	public InformationSchemaColumn getIdentColumn();
 
 	public boolean requiresPriviledge();
 	

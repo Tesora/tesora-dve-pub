@@ -28,7 +28,7 @@ import java.util.Set;
 
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.CatalogLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
@@ -51,12 +51,12 @@ public class KeyCatalogInformationSchemaTable extends
 		CatalogInformationSchemaTable {
 
 	// columns we need to build out the synthetic columns
-	protected CatalogInformationSchemaColumn containingTable;
-	protected CatalogInformationSchemaColumn referencedTable;
-	protected CatalogInformationSchemaColumn forwardReferencedTableName;
-	protected CatalogInformationSchemaColumn forwardReferencedSchemaName;
-	protected CatalogInformationSchemaColumn typeColumn;
-	protected CatalogInformationSchemaColumn constraintColumn;
+	protected CatalogLogicalInformationSchemaColumn containingTable;
+	protected CatalogLogicalInformationSchemaColumn referencedTable;
+	protected CatalogLogicalInformationSchemaColumn forwardReferencedTableName;
+	protected CatalogLogicalInformationSchemaColumn forwardReferencedSchemaName;
+	protected CatalogLogicalInformationSchemaColumn typeColumn;
+	protected CatalogLogicalInformationSchemaColumn constraintColumn;
 	
 	protected SyntheticLogicalInformationSchemaColumn containingTableName;  // containingTable.name
 	protected SyntheticLogicalInformationSchemaColumn containingSchemaName; // containingTable.userDatabase.name
@@ -77,12 +77,12 @@ public class KeyCatalogInformationSchemaTable extends
 
 	@Override
 	protected void prepare(LogicalInformationSchema schema, DBNative dbn) {
-		containingTable = (CatalogInformationSchemaColumn) lookup("containing_table");
-		referencedTable = (CatalogInformationSchemaColumn) lookup("referenced_table");
-		forwardReferencedTableName = (CatalogInformationSchemaColumn) lookup("forward_ref_table_name");
-		forwardReferencedSchemaName = (CatalogInformationSchemaColumn) lookup("forward_ref_schema_name");
-		typeColumn = (CatalogInformationSchemaColumn) lookup("type");
-		constraintColumn = (CatalogInformationSchemaColumn) lookup("constraint");
+		containingTable = (CatalogLogicalInformationSchemaColumn) lookup("containing_table");
+		referencedTable = (CatalogLogicalInformationSchemaColumn) lookup("referenced_table");
+		forwardReferencedTableName = (CatalogLogicalInformationSchemaColumn) lookup("forward_ref_table_name");
+		forwardReferencedSchemaName = (CatalogLogicalInformationSchemaColumn) lookup("forward_ref_schema_name");
+		typeColumn = (CatalogLogicalInformationSchemaColumn) lookup("type");
+		constraintColumn = (CatalogLogicalInformationSchemaColumn) lookup("constraint");
 		
 		LogicalInformationSchemaTable tableTable = schema.lookup("table");
 		databaseForTable = tableTable.lookup("database");

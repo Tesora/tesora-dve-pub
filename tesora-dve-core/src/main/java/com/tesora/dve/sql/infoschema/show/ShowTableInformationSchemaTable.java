@@ -32,11 +32,11 @@ import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.ExpressionUtils;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.engine.NamedParameter;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -57,7 +57,7 @@ import com.tesora.dve.sql.util.UnaryFunction;
 public class ShowTableInformationSchemaTable extends ShowInformationSchemaTable {
 
 	// we use, but don't expose, the database
-	InformationSchemaColumnView database;
+	ComputedInformationSchemaColumn database;
 	
 	public ShowTableInformationSchemaTable(
 			LogicalInformationSchemaTable basedOn, UnqualifiedName viewName,
@@ -67,14 +67,14 @@ public class ShowTableInformationSchemaTable extends ShowInformationSchemaTable 
 	}
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 		super.validate(ofView);
 		database = buildDatabaseColumn(ofView,getLogicalTable(),this);
 	}
 
-	public static InformationSchemaColumnView buildDatabaseColumn(SchemaView ofView, LogicalInformationSchemaTable tableTable, ShowInformationSchemaTable owner) {
-		InformationSchemaColumnView database = 
-			new InformationSchemaColumnView(InfoView.SHOW, tableTable.lookup("database"), new UnqualifiedName("database"));
+	public static ComputedInformationSchemaColumn buildDatabaseColumn(AbstractInformationSchema ofView, LogicalInformationSchemaTable tableTable, ShowInformationSchemaTable owner) {
+		BackedComputedInformationSchemaColumn database = 
+			new BackedComputedInformationSchemaColumn(InfoView.SHOW, tableTable.lookup("database"), new UnqualifiedName("database"));
 		database.setTable(owner);
 		// not correct
 		database.setPosition(100);
@@ -163,9 +163,9 @@ public class ShowTableInformationSchemaTable extends ShowInformationSchemaTable 
 
 	// take into account additional filtering
 	protected List<ExpressionNode> buildProjection(SchemaContext sc, TableInstance ti, boolean useExtensions, boolean hasPriviledge, AliasInformation aliases, ShowOptions opts) {
-		List<InformationSchemaColumnView> projCols = getProjectionColumns(useExtensions,hasPriviledge);
+		List<ComputedInformationSchemaColumn> projCols = getProjectionColumns(useExtensions,hasPriviledge);
 		ArrayList<ExpressionNode> proj = new ArrayList<ExpressionNode>();
-		for(InformationSchemaColumnView c : projCols) {
+		for(ComputedInformationSchemaColumn c : projCols) {
 			if (c.getName().get().equals(ShowSchema.Table.TYPE) && (opts == null || !opts.isFull())) 
 				continue;
 			ColumnInstance ci = new ColumnInstance(c,ti);

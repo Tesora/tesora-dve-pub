@@ -168,7 +168,7 @@ public class GenericSQLCommand {
 		List<OffsetEntry> downstream = new ArrayList<OffsetEntry>();
 		List<byte[]> sqlFragments = new ArrayList<byte[]>();
         Emitter emitter = 
-        		(sc.getOptions().isInfoSchemaView() ? new MysqlEmitter() :
+        		((sc.getOptions() != null && sc.getOptions().isInfoSchemaView()) ? new MysqlEmitter() :        			
         		Singletons.require(HostService.class).getDBNative().getEmitter());
 		int offset = 0;
 		for(OffsetEntry oe : entries) {

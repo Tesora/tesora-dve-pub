@@ -26,12 +26,13 @@ import java.util.List;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.ConstantSyntheticInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.computed.ConstantComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.logical.catalog.KeyCatalogInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -44,28 +45,28 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 
 public class InfoSchemaTableConstraintsInformationSchemaTable extends
-		ComputedInformationSchemaTableView {
+		ComputedInformationSchemaTable {
 
-	protected InformationSchemaColumnView constraintColumn;
+	protected ComputedInformationSchemaColumn constraintColumn;
 	
 	public InfoSchemaTableConstraintsInformationSchemaTable(KeyCatalogInformationSchemaTable keyTable) {
 		super(InfoView.INFORMATION, keyTable, new UnqualifiedName("table_constraints"), null, false, false);
 	}
 
 	@Override
-	public void prepare(SchemaView schemaView, DBNative dbn) {
+	public void prepare(AbstractInformationSchema schemaView, DBNative dbn) {
 		KeyCatalogInformationSchemaTable keyTable = (KeyCatalogInformationSchemaTable) getLogicalTable();
-		addColumn(null,new ConstantSyntheticInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("constraint_catalog"),
+		addColumn(null,new ConstantComputedInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("constraint_catalog"),
 				LogicalInformationSchemaTable.buildStringType(dbn, 255), "def"));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("containing_schema_name"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("containing_schema_name"), 
 				new UnqualifiedName("constraint_schema")));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("symbol"),
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("symbol"),
 				new UnqualifiedName("constraint_name")));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("containing_schema_name"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("containing_schema_name"), 
 				new UnqualifiedName("table_schema")));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("containing_table"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("containing_table"), 
 				new UnqualifiedName("table_name")));
-		constraintColumn = new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("constraint_type"),
+		constraintColumn = new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("constraint_type"),
 				new UnqualifiedName("constraint_type")); 
 		addColumn(null,constraintColumn);
 		
@@ -73,7 +74,7 @@ public class InfoSchemaTableConstraintsInformationSchemaTable extends
 	}
 	
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 	}
 
 	@Override

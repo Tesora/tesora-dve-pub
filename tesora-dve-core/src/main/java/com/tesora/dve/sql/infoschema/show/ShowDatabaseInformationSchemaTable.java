@@ -26,9 +26,9 @@ import java.util.List;
 import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.sql.expression.ExpressionUtils;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -42,7 +42,7 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 public class ShowDatabaseInformationSchemaTable extends
 		ShowInformationSchemaTable {
 
-	protected AbstractInformationSchemaColumnView multitenantMode;
+	protected InformationSchemaColumn multitenantMode;
 	
 	public ShowDatabaseInformationSchemaTable(
 			LogicalInformationSchemaTable basedOn, UnqualifiedName viewName,
@@ -52,7 +52,7 @@ public class ShowDatabaseInformationSchemaTable extends
 	}
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 		super.validate(ofView);
 		multitenantMode = lookup(ShowSchema.Database.MULTITENANT);
 	}

@@ -29,7 +29,7 @@ import java.util.Set;
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.common.catalog.IndexType;
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.CatalogLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
@@ -54,10 +54,10 @@ public class KeyColumnCatalogInformationSchemaTable extends
 		CatalogInformationSchemaTable {
 	
 	// we make a bunch of synthetics available to hide the massaging from the views
-	private CatalogInformationSchemaColumn key;
-	private CatalogInformationSchemaColumn column;
-	private CatalogInformationSchemaColumn referencedColumn;
-	private CatalogInformationSchemaColumn forwardRefColumnName;
+	private CatalogLogicalInformationSchemaColumn key;
+	private CatalogLogicalInformationSchemaColumn column;
+	private CatalogLogicalInformationSchemaColumn referencedColumn;
+	private CatalogLogicalInformationSchemaColumn forwardRefColumnName;
 	
 	private KeyCatalogInformationSchemaTable keyTable; 
 	
@@ -73,10 +73,10 @@ public class KeyColumnCatalogInformationSchemaTable extends
 	@SuppressWarnings("synthetic-access")
 	protected void prepare(LogicalInformationSchema schema, DBNative dbn) {
 		keyTable = (KeyCatalogInformationSchemaTable) schema.lookup("key");
-		key = (CatalogInformationSchemaColumn) lookup("containing_key");
-		column = (CatalogInformationSchemaColumn) lookup("column");
-		referencedColumn = (CatalogInformationSchemaColumn) lookup("referenced_column");
-		forwardRefColumnName = (CatalogInformationSchemaColumn) lookup("forward_ref_column_name");
+		key = (CatalogLogicalInformationSchemaColumn) lookup("containing_key");
+		column = (CatalogLogicalInformationSchemaColumn) lookup("column");
+		referencedColumn = (CatalogLogicalInformationSchemaColumn) lookup("referenced_column");
+		forwardRefColumnName = (CatalogLogicalInformationSchemaColumn) lookup("forward_ref_column_name");
 		
 		LogicalInformationSchemaTable columnTable = schema.lookup("user_column");
 		

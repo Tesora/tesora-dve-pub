@@ -36,10 +36,10 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
@@ -216,7 +216,7 @@ public class VariablesLogicalInformationSchemaTable extends LogicalInformationSc
 	
 	
 	// this is in the show/info schema; not the logical schema, hence the pass in
-	public static void addScoping(SelectStatement in, TableKey onTK, InformationSchemaColumnView scopeColumn, String filterValue) {
+	public static void addScoping(SelectStatement in, TableKey onTK, ComputedInformationSchemaColumn scopeColumn, String filterValue) {
 		// add the filter on the appropriate scope
 		List<ExpressionNode> decompAnd = ExpressionUtils.decomposeAndClause(in.getWhereClause());
 		decompAnd.add(new FunctionCall(FunctionName.makeEquals(),new ColumnInstance(scopeColumn,onTK.toInstance()),LiteralExpression.makeStringLiteral(filterValue)));

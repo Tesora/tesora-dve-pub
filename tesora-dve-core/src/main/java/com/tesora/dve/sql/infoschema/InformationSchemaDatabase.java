@@ -35,13 +35,13 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 
-public class DatabaseView implements Database<InformationSchemaTableView<AbstractInformationSchemaColumnView>> {
+public class InformationSchemaDatabase implements Database<InformationSchemaTable> {
 
-	private final SchemaView schema;
+	private final AbstractInformationSchema schema;
 	private final UnqualifiedName name;
 	private final int id;
 	
-	public DatabaseView(SchemaContext sc, UserDatabase udb, SchemaView schema) {
+	public InformationSchemaDatabase(SchemaContext sc, UserDatabase udb, AbstractInformationSchema schema) {
 		this.schema = schema;
 		this.name = new UnqualifiedName(udb.getName());
 		this.id = udb.getId();
@@ -67,7 +67,7 @@ public class DatabaseView implements Database<InformationSchemaTableView<Abstrac
 	}
 
 	@Override
-	public Schema<InformationSchemaTableView<AbstractInformationSchemaColumnView>> getSchema() {
+	public Schema<InformationSchemaTable> getSchema() {
 		return schema;
 	}
 

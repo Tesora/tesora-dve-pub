@@ -28,19 +28,17 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.persist.CatalogColumnEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.infoschema.persist.CatalogTableEntity;
-import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
@@ -49,12 +47,12 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEViewTable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.util.Cast;
+import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 
-public class DirectInformationSchemaTableView implements InformationSchemaTableView<DirectInformationSchemaColumnView> {
+public class DirectInformationSchemaTable implements InformationSchemaTable {
 
-	// due to type pressures, we have to copy all the columns
-	
 	private final PEViewTable backing;
 	private final boolean privileged;
 	private final boolean extension;
@@ -63,17 +61,17 @@ public class DirectInformationSchemaTableView implements InformationSchemaTableV
 	private final Name name; // might be different than what is declared (i.e. case)
 	private final Name pluralName;
 	
-	protected List<DirectInformationSchemaColumnView> columns;
-	protected Lookup<DirectInformationSchemaColumnView> lookup;
+	protected List<DirectInformationSchemaColumn> columns;
+	protected Lookup<DirectInformationSchemaColumn> lookup;
 
 	
-	private final DirectInformationSchemaColumnView orderByColumn;
-	private final DirectInformationSchemaColumnView identColumn;
+	private final DirectInformationSchemaColumn orderByColumn;
+	private final DirectInformationSchemaColumn identColumn;
 	
 	// we maintain a separate lookup in the view columns - this handles the case sensitivity, etc
 	
 	
-	public DirectInformationSchemaTableView(SchemaContext sc, InfoView view, PEViewTable viewTab,
+	public DirectInformationSchemaTable(SchemaContext sc, InfoView view, PEViewTable viewTab,
 			boolean privileged, boolean extension,
 			String orderByColumn, String identColumn) {
 		this.backing = viewTab;
@@ -81,19 +79,19 @@ public class DirectInformationSchemaTableView implements InformationSchemaTableV
 		this.extension = extension;
 		this.view = view;
 		// load up our columns
-		columns = new ArrayList<DirectInformationSchemaColumnView>();
-		this.lookup = new Lookup<DirectInformationSchemaColumnView>(columns, 
-				new UnaryFunction<Name[], DirectInformationSchemaColumnView>() {
+		columns = new ArrayList<DirectInformationSchemaColumn>();
+		this.lookup = new Lookup<DirectInformationSchemaColumn>(columns, 
+				new UnaryFunction<Name[], DirectInformationSchemaColumn>() {
 
 					@Override
-					public Name[] evaluate(DirectInformationSchemaColumnView object) {
+					public Name[] evaluate(DirectInformationSchemaColumn object) {
 						return new Name[] { object.getName() };
 					}
 			
 				},				
 				false, view.isLookupCaseSensitive()); 
 		for(PEColumn pec : backing.getColumns(sc)) {
-			addColumn(sc,new DirectInformationSchemaColumnView(view,pec.getName().getUnqualified(),pec));
+			addColumn(sc,new DirectInformationSchemaColumn(view,pec.getName().getUnqualified(),pec));
 		}
 		Name viewName = viewTab.getName();
 		this.name = (view.isCapitalizeNames() ? viewName.getCapitalized().getUnqualified() : viewName);
@@ -105,7 +103,8 @@ public class DirectInformationSchemaTableView implements InformationSchemaTableV
 	}
 	
 	@Override
-	public DirectInformationSchemaColumnView addColumn(SchemaContext sc, DirectInformationSchemaColumnView cv) {
+	public InformationSchemaColumn addColumn(SchemaContext sc, InformationSchemaColumn c) {
+		DirectInformationSchemaColumn cv = (DirectInformationSchemaColumn) c;
 		cv.setPosition(columns.size());
 		columns.add(cv);
 		lookup.refreshBacking(columns);
@@ -114,12 +113,12 @@ public class DirectInformationSchemaTableView implements InformationSchemaTableV
 	}
 
 	@Override
-	public List<DirectInformationSchemaColumnView> getColumns(SchemaContext sc) {
-		return columns;
+	public List<InformationSchemaColumn> getColumns(SchemaContext sc) {
+		return Functional.apply(columns, new Cast<InformationSchemaColumn,DirectInformationSchemaColumn>());
 	}
 
 	@Override
-	public DirectInformationSchemaColumnView lookup(SchemaContext sc, Name n) {
+	public DirectInformationSchemaColumn lookup(SchemaContext sc, Name n) {
 		return lookup.lookup(n);
 	}
 
@@ -161,12 +160,12 @@ public class DirectInformationSchemaTableView implements InformationSchemaTableV
 	}
 
 	@Override
-	public void prepare(SchemaView view, DBNative dbn) {
+	public void prepare(AbstractInformationSchema view, DBNative dbn) {
 		// does nothing
 	}
 
 	@Override
-	public void inject(SchemaView view, DBNative dbn) {
+	public void inject(AbstractInformationSchema view, DBNative dbn) {
 		// does nothing
 	}
 
@@ -193,12 +192,12 @@ public class DirectInformationSchemaTableView implements InformationSchemaTableV
 	}
 
 	@Override
-	public DirectInformationSchemaColumnView getOrderByColumn() {
+	public DirectInformationSchemaColumn getOrderByColumn() {
 		return orderByColumn;
 	}
 
 	@Override
-	public DirectInformationSchemaColumnView getIdentColumn() {
+	public DirectInformationSchemaColumn getIdentColumn() {
 		return identColumn;
 	}
 

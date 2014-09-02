@@ -43,15 +43,15 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ConstantSyntheticInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.DelegatingInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SyntheticInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.computed.ConstantComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.SyntheticComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.direct.DirectSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.GeneralCollectingTraversal;
@@ -108,7 +108,7 @@ public class LogicalSchemaQueryEngine {
 		boolean haveVariable = false;
 		boolean haveOthers = false;
 		for(TableKey tk : ss.getAllTableKeys()) {
-			InformationSchemaTableView istv = (InformationSchemaTableView) tk.getTable();
+			InformationSchemaTable istv = (InformationSchemaTable) tk.getTable();
 			if (istv.isVariablesTable())
 				haveVariable = true;
 			else
@@ -285,12 +285,12 @@ public class LogicalSchemaQueryEngine {
 		return QueryExecutionKind.ENTITY;
 	}
 
-	private static void accumulateSelectorPath(List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>> acc, ColumnInstance ci) {
+	private static void accumulateSelectorPath(List<InformationSchemaColumn> acc, ColumnInstance ci) {
 		if (ci instanceof ScopedColumnInstance) {
 			ScopedColumnInstance sci = (ScopedColumnInstance) ci;
 			accumulateSelectorPath(acc,sci.getRelativeTo());
 		} 
-		acc.add((AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>) ci.getColumn());
+		acc.add((InformationSchemaColumn) ci.getColumn());
 	}
 	
 	public static LogicalQuery convertDown(SchemaContext sc, ViewQuery vq) {
@@ -304,7 +304,7 @@ public class LogicalSchemaQueryEngine {
 		if (sc != null ) {
 			ListSet<TableKey> tabs = EngineConstant.TABLES_INC_NESTED.getValue(in,sc);
 			for(TableKey tk : tabs) {
-				InformationSchemaTableView istv = (InformationSchemaTableView) tk.getTable();
+				InformationSchemaTable istv = (InformationSchemaTable) tk.getTable();
 				if (!sc.getPolicyContext().isRoot()) {
 					if (vq.getoverrideRequiresPrivilegeValue() != null) {
 						if (vq.getoverrideRequiresPrivilegeValue()) {
@@ -325,18 +325,18 @@ public class LogicalSchemaQueryEngine {
 		if (haveViews) 
 			return DirectSchemaQueryEngine.convertDown(sc,vq);
 		
-		ComputedInformationSchemaTableView.derefEntities(in);
+		ComputedInformationSchemaTable.derefEntities(in);
 		List<ExpressionNode> origProjection = vq.getQuery().getProjection();
-		ArrayList<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> columns = new ArrayList<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>>();
+		ArrayList<List<InformationSchemaColumn>> columns = new ArrayList<List<InformationSchemaColumn>>();
 		for(int i = 0; i < origProjection.size(); i++) {
 			ExpressionNode en = origProjection.get(i);
 			ExpressionNode targ = ExpressionUtils.getTarget(en);
-			ArrayList<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>> pathTo = new ArrayList<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>();
+			ArrayList<InformationSchemaColumn> pathTo = new ArrayList<InformationSchemaColumn>();
 			if (targ instanceof ColumnInstance) {
 				ColumnInstance ci = (ColumnInstance) targ;
 				accumulateSelectorPath(pathTo,ci);
 			} else if (targ instanceof FunctionCall) {
-				pathTo.add(new SyntheticInformationSchemaColumn(new UnqualifiedName("unknown")));
+				pathTo.add(new SyntheticComputedInformationSchemaColumn(new UnqualifiedName("unknown")));
 			} else if (targ instanceof LiteralExpression) {
 				LiteralExpression le = (LiteralExpression)targ;
 				UnqualifiedName columnName = new UnqualifiedName(PEStringUtils.dequote(vq.getQuery().getProjectionMetadata(sc).getColumnInfo(i+1).getAlias()));
@@ -346,7 +346,7 @@ public class LogicalSchemaQueryEngine {
 				} catch (PEException e) {
 					throw new InformationSchemaException("Cannot create a proper type for literal value '" + le.getValue(sc) + "'");
 				}
-				pathTo.add(new ConstantSyntheticInformationSchemaColumn(null, columnName, type, le.getValue(sc)));
+				pathTo.add(new ConstantComputedInformationSchemaColumn(null, columnName, type, le.getValue(sc)));
 			}
 			columns.add(pathTo);
 		}
@@ -402,7 +402,7 @@ public class LogicalSchemaQueryEngine {
 				return map((TableInstance)in);
 			} else if (in instanceof ScopedColumnInstance) {
 				ScopedColumnInstance sci = (ScopedColumnInstance) in;
-				AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> icol = (AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>) sci.getColumn();
+				InformationSchemaColumn icol = (InformationSchemaColumn) sci.getColumn();
 				ExpressionNode mapped = map(sci.getRelativeTo());
 				if (mapped instanceof ColumnInstance) {
 					return new ScopedColumnInstance(icol.isSynthetic() ? null : icol.getLogicalColumn(),(ColumnInstance)mapped);
@@ -424,7 +424,7 @@ public class LogicalSchemaQueryEngine {
 			TableKey itk = ti.getTableKey();
 			TableInstance otk = (TableInstance) forwarding.get(itk);
 			if (otk == null) {
-				ComputedInformationSchemaTableView tab = (ComputedInformationSchemaTableView) ti.getTable();
+				ComputedInformationSchemaTable tab = (ComputedInformationSchemaTable) ti.getTable();
 				LogicalInformationSchemaTable btab = tab.getLogicalTable();
 				otk = new TableInstance(btab,ti.getSpecifiedAs(null),ti.getAlias(),ti.getNode(),false);
 				forwarding.put(itk,otk);
@@ -437,7 +437,7 @@ public class LogicalSchemaQueryEngine {
 			if (in.getColumn() instanceof LogicalInformationSchemaColumn)
 				return in;
 			TableInstance oti = map(ici.getTableInstance());
-			AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> icol = (AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>) ici.getColumn();
+			InformationSchemaColumn icol = (InformationSchemaColumn) ici.getColumn();
 			if (icol.isBacked()) {
 				LogicalInformationSchemaColumn ocol = icol.getLogicalColumn();
 				if (ocol instanceof DelegatingInformationSchemaColumn) {
@@ -453,7 +453,7 @@ public class LogicalSchemaQueryEngine {
 				}
 				return new ColumnInstance(ocol,oti);
 			} else if (icol.isSynthetic()) {
-				SyntheticInformationSchemaColumn synth = (SyntheticInformationSchemaColumn) icol;
+				SyntheticComputedInformationSchemaColumn synth = (SyntheticComputedInformationSchemaColumn) icol;
 				return synth.buildReplacement(in);
 			} else {
 				throw new InformationSchemaException("Invalid info schema view column type: " + icol);
@@ -528,7 +528,7 @@ public class LogicalSchemaQueryEngine {
 		}
 	}
 	
-	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>>> projColumns,
+	public static ColumnSet buildProjectionMetadata(SchemaContext sc, List<List<InformationSchemaColumn>> projColumns,
 			ProjectionInfo pi) {
 		return LogicalCatalogQuery.buildProjectionMetadata(sc, projColumns, pi, null);
 	}
@@ -544,7 +544,7 @@ public class LogicalSchemaQueryEngine {
 	
 	private static void annotate(SchemaContext sc, ViewQuery vq, SelectStatement in) {
 		for(TableKey tk : in.getDerivedInfo().getLocalTableKeys()) {
-			InformationSchemaTableView istv = (InformationSchemaTableView) tk.getTable();
+			InformationSchemaTable istv = (InformationSchemaTable) tk.getTable();
 			istv.annotate(sc, vq, in, tk);
 		}
 		for(ProjectingStatement ss : in.getDerivedInfo().getAllNestedQueries()) {

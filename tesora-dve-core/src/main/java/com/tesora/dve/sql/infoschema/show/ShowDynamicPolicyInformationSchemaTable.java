@@ -22,16 +22,17 @@ package com.tesora.dve.sql.infoschema.show;
  */
 
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.logical.catalog.DynamicPolicyCatalogInformationSchemaTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public class ShowDynamicPolicyInformationSchemaTable extends
 		ShowInformationSchemaTable {
 
-	private InformationSchemaColumnView nameColumn;
+	private ComputedInformationSchemaColumn nameColumn;
 	
 	public ShowDynamicPolicyInformationSchemaTable(DynamicPolicyCatalogInformationSchemaTable backing) {
 		super(backing, new UnqualifiedName("dynamic site policy"), new UnqualifiedName("dynamic site policies"), 
@@ -39,8 +40,8 @@ public class ShowDynamicPolicyInformationSchemaTable extends
 	}
 
 	@Override
-	public void prepare(SchemaView schemaView, DBNative dbn) {
-		nameColumn = new InformationSchemaColumnView(InfoView.SHOW, backing.lookup("name"), new UnqualifiedName("Name")) {
+	public void prepare(AbstractInformationSchema schemaView, DBNative dbn) {
+		nameColumn = new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup("name"), new UnqualifiedName("Name")) {
 			@Override
 			public boolean isIdentColumn() { return true; }
 			@Override
@@ -54,6 +55,6 @@ public class ShowDynamicPolicyInformationSchemaTable extends
 				"large_class", "l_class", "large_count", "l_count", "large_provider", "l_provider" };
 		int tot = names.length / 2;
 		for(int i = 0; i < tot; i++) 
-			addColumn(null, new InformationSchemaColumnView(InfoView.SHOW, backing.lookup(names[2*i + 1]), new UnqualifiedName(names[2*i])));
+			addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.SHOW, backing.lookup(names[2*i + 1]), new UnqualifiedName(names[2*i])));
 	}
 }

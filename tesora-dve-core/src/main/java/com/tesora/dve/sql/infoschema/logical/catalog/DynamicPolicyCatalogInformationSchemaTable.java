@@ -25,7 +25,7 @@ import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.CatalogLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
@@ -72,7 +72,7 @@ public class DynamicPolicyCatalogInformationSchemaTable extends
 
 	// work around the embedded attributes by using a custom column representation.  needed because
 	// the embedded attributes have a column name but not a field name.
-	private static class DynamicPolicyColumnCatalogInformationSchemaColumn extends CatalogInformationSchemaColumn {
+	private static class DynamicPolicyColumnCatalogInformationSchemaColumn extends CatalogLogicalInformationSchemaColumn {
 	
 		public DynamicPolicyColumnCatalogInformationSchemaColumn(UnqualifiedName logicalName, String columnName, Type type) {
 			super(logicalName, type);

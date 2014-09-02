@@ -38,10 +38,10 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.logical.StatusLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.Name;
@@ -57,8 +57,8 @@ public class StatusInformationSchemaTable extends ShowInformationSchemaTable {
 		super(null, logicalTable.getName().getUnqualified(), logicalTable.getName().getUnqualified(), false, false);
 		
 		this.logicalTable = logicalTable;
-		addColumn(null,new InformationSchemaColumnView(InfoView.SHOW, logicalTable.lookup(StatusLogicalInformationSchemaTable.NAME_COL_NAME), new UnqualifiedName(StatusLogicalInformationSchemaTable.NAME_COL_NAME)));
-		addColumn(null,new InformationSchemaColumnView(InfoView.SHOW, logicalTable.lookup(StatusLogicalInformationSchemaTable.VALUE_COL_NAME), new UnqualifiedName(StatusLogicalInformationSchemaTable.VALUE_COL_NAME)));
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(StatusLogicalInformationSchemaTable.NAME_COL_NAME), new UnqualifiedName(StatusLogicalInformationSchemaTable.NAME_COL_NAME)));
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(StatusLogicalInformationSchemaTable.VALUE_COL_NAME), new UnqualifiedName(StatusLogicalInformationSchemaTable.VALUE_COL_NAME)));
 	}
 	
 	@Override
@@ -104,7 +104,7 @@ public class StatusInformationSchemaTable extends ShowInformationSchemaTable {
 	}
 	
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 	}
 
 	private ColumnSet buildColumnSet() {

@@ -21,27 +21,6 @@ package com.tesora.dve.sql.infoschema;
  * #L%
  */
 
-import java.util.Locale;
+public class InformationSchemaTableAdapter {
 
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.util.UnaryFunction;
-
-public class InformationSchemaView extends SchemaView {
-
-	protected InformationSchemaView(LogicalInformationSchema lis) {
-		super(lis,InfoView.INFORMATION, new UnaryFunction<Name[], InformationSchemaTableView>() {
-
-			@Override
-			public Name[] evaluate(InformationSchemaTableView object) {
-				return new Name[] { object.getName() };
-			}
-			
-		});
-	}
-
-	public String maybeCapitalize(String in) {
-		return in.toUpperCase(Locale.ENGLISH);
-	}
-	
 }

@@ -21,26 +21,26 @@ package com.tesora.dve.sql.infoschema.mysql;
  * #L%
  */
 
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
-public class MysqlDBInformationSchemaTable extends ComputedInformationSchemaTableView {
+public class MysqlDBInformationSchemaTable extends ComputedInformationSchemaTable {
 
 	public MysqlDBInformationSchemaTable(LogicalInformationSchemaTable basedOn) {
 		super(InfoView.MYSQL, basedOn, new UnqualifiedName("db"), null, false, false);
-		orderByColumn = new InformationSchemaColumnView(InfoView.MYSQL, basedOn.lookup("db"), new UnqualifiedName("Db")); 
-		addColumn(null,new InformationSchemaColumnView(InfoView.MYSQL, basedOn.lookup("host"), new UnqualifiedName("Host")));
+		orderByColumn = new BackedComputedInformationSchemaColumn(InfoView.MYSQL, basedOn.lookup("db"), new UnqualifiedName("Db")); 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.MYSQL, basedOn.lookup("host"), new UnqualifiedName("Host")));
 		addColumn(null,orderByColumn);
-		addColumn(null,new InformationSchemaColumnView(InfoView.MYSQL, basedOn.lookup("user"), new UnqualifiedName("User")));
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.MYSQL, basedOn.lookup("user"), new UnqualifiedName("User")));
 	}
 
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 	}
 
 }

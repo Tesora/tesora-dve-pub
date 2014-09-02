@@ -22,17 +22,16 @@ package com.tesora.dve.sql.infoschema.info;
  */
 
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ConstantSyntheticInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.computed.ConstantComputedInformationSchemaColumn;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public class InfoSchemaColumnsInformationSchemaTable extends
-		ComputedInformationSchemaTableView {
+		ComputedInformationSchemaTable {
 
 	// have to use the regular contructor so the reflection lookup works
 	public InfoSchemaColumnsInformationSchemaTable(InfoView view,
@@ -43,13 +42,13 @@ public class InfoSchemaColumnsInformationSchemaTable extends
 	}
 
 	@Override
-	public void prepare(SchemaView view, DBNative dbn) {
+	public void prepare(AbstractInformationSchema view, DBNative dbn) {
 		// add the table_catalog synthetic column
-		addColumn(null,new ConstantSyntheticInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("table_catalog"),
+		addColumn(null,new ConstantComputedInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("table_catalog"),
 				LogicalInformationSchemaTable.buildStringType(dbn, 255), "def"));
 		// we don't support column level privileges at all yet, or for that matter differentiated privileges
 		// so just return a "" for now.
-		addColumn(null,new ConstantSyntheticInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("privileges"),
+		addColumn(null,new ConstantComputedInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("privileges"),
 				LogicalInformationSchemaTable.buildStringType(dbn, 255), ""));
 
 		super.prepare(view, dbn);
@@ -58,9 +57,9 @@ public class InfoSchemaColumnsInformationSchemaTable extends
 	@Override
 	public void freeze() {
 		// really shouldn't do this, but we also should get rid of entity queries.
-		InformationSchemaColumnView tableCatalog = lookup("table_catalog");
-		InformationSchemaColumnView privileges = lookup("privileges");
-		InformationSchemaColumnView tableSchema = lookup("table_schema");
+		ComputedInformationSchemaColumn tableCatalog = lookup("table_catalog");
+		ComputedInformationSchemaColumn privileges = lookup("privileges");
+		ComputedInformationSchemaColumn tableSchema = lookup("table_schema");
 		
 		columns.remove(tableCatalog);
 		columns.remove(privileges);

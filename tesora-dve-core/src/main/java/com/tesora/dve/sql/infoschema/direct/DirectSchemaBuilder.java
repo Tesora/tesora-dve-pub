@@ -27,10 +27,10 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.infoschema.InfoSchemaGenerator;
 import com.tesora.dve.sql.infoschema.InformationSchemaBuilder;
-import com.tesora.dve.sql.infoschema.InformationSchemaView;
+import com.tesora.dve.sql.infoschema.InformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
-import com.tesora.dve.sql.infoschema.MysqlView;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.MysqlSchema;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.show.ShowView;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -47,14 +47,14 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 	
 	@Override
 	public void populate(LogicalInformationSchema logicalSchema,
-			InformationSchemaView infoSchema, ShowView showSchema,
-			MysqlView mysqlSchema, DBNative dbn) throws PEException {
+			InformationSchema infoSchema, ShowView showSchema,
+			MysqlSchema mysqlSchema, DBNative dbn) throws PEException {
 		if (catalogSchema == null) // transient case, but we aren't doing any info schema queries then anyhow
 			return;
 		TransientExecutionEngine tee = new TransientExecutionEngine(catalogSchema.getName().get(),dbn.getTypeCatalog());
 		SchemaContext sc = tee.getPersistenceContext();
 
-		EnumMap<InfoView,SchemaView> schemaByView = new EnumMap<InfoView,SchemaView>(InfoView.class);
+		EnumMap<InfoView,AbstractInformationSchema> schemaByView = new EnumMap<InfoView,AbstractInformationSchema>(InfoView.class);
 		schemaByView.put(infoSchema.getView(), infoSchema);
 		schemaByView.put(showSchema.getView(), showSchema);
 		schemaByView.put(mysqlSchema.getView(), mysqlSchema);
@@ -62,7 +62,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 		tee.setCurrentDatabase(catalogSchema);
 
 		for(InfoSchemaGenerator g : generators) {
-			DirectInformationSchemaTableView view = g.generate(sc);
+			DirectInformationSchemaTable view = g.generate(sc);
 			schemaByView.get(view.getView()).viewReplace(sc, view);
 		}
 	}

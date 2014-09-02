@@ -21,7 +21,7 @@ package com.tesora.dve.sql.infoschema.show;
  * #L%
  */
 
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.logical.PartitionsInformationSchemaTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
@@ -32,7 +32,7 @@ public class ShowPartitionsInformationSchemaTable extends ShowEmptyInformationSc
 	}
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 	}
 
 }

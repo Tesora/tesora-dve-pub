@@ -22,20 +22,21 @@ package com.tesora.dve.sql.infoschema.info;
  */
 
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.CatalogInformationSchemaTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public abstract class InfoSchemaTemporaryTablesInformationSchemaTable extends
-		ComputedInformationSchemaTableView {
+		ComputedInformationSchemaTable {
 
 	private final boolean includeServer;
 
-	protected InformationSchemaColumnView sessionColumn;
+	protected ComputedInformationSchemaColumn sessionColumn;
 	
 	public InfoSchemaTemporaryTablesInformationSchemaTable(LogicalInformationSchemaTable basedOn,
 			UnqualifiedName viewName, boolean includeServer) {
@@ -44,19 +45,19 @@ public abstract class InfoSchemaTemporaryTablesInformationSchemaTable extends
 	}
 
 	@Override
-	public void prepare(SchemaView schemaView, DBNative dbn) {
+	public void prepare(AbstractInformationSchema schemaView, DBNative dbn) {
 		CatalogInformationSchemaTable backing = (CatalogInformationSchemaTable) getLogicalTable();
 		if (includeServer)
-			addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, backing.lookup("server"),
+			addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, backing.lookup("server"),
 					new UnqualifiedName("server_name"))); 
-		sessionColumn = new InformationSchemaColumnView(InfoView.INFORMATION, backing.lookup("session"),
+		sessionColumn = new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, backing.lookup("session"),
 				new UnqualifiedName("session_id"));
 		addColumn(null, sessionColumn);
-		addColumn(null, new InformationSchemaColumnView(InfoView.INFORMATION, backing.lookup("dbname"),
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, backing.lookup("dbname"),
 				new UnqualifiedName("table_schema")));
-		addColumn(null, new InformationSchemaColumnView(InfoView.INFORMATION, backing.lookup("name"),
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, backing.lookup("name"),
 				new UnqualifiedName("table_name")));
-		addColumn(null, new InformationSchemaColumnView(InfoView.INFORMATION, backing.lookup("engine"),
+		addColumn(null, new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, backing.lookup("engine"),
 				new UnqualifiedName("engine")));
 	}
 

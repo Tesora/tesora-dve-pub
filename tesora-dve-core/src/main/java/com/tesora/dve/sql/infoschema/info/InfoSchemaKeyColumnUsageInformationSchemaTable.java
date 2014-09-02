@@ -26,12 +26,13 @@ import java.util.List;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.ConstantSyntheticInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.computed.ConstantComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.logical.catalog.KeyColumnCatalogInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -44,41 +45,41 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 
 public class InfoSchemaKeyColumnUsageInformationSchemaTable extends
-		ComputedInformationSchemaTableView {
+		ComputedInformationSchemaTable {
 
-	private InformationSchemaColumnView synthetic;
+	private ComputedInformationSchemaColumn synthetic;
 	
 	public InfoSchemaKeyColumnUsageInformationSchemaTable(KeyColumnCatalogInformationSchemaTable keyTable) {
 		super(InfoView.INFORMATION, keyTable, new UnqualifiedName("key_column_usage"), null, false, false);
 	}
 
 	@Override
-	public void prepare(SchemaView schemaView, DBNative dbn) {
+	public void prepare(AbstractInformationSchema schemaView, DBNative dbn) {
 		KeyColumnCatalogInformationSchemaTable keyTable = (KeyColumnCatalogInformationSchemaTable) getLogicalTable();
-		addColumn(null,new ConstantSyntheticInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("constraint_catalog"),
+		addColumn(null,new ConstantComputedInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("constraint_catalog"),
 				LogicalInformationSchemaTable.buildStringType(dbn, 255), "def"));
-		addColumn(null,new ConstantSyntheticInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("table_catalog"),
+		addColumn(null,new ConstantComputedInformationSchemaColumn(InfoView.INFORMATION, new UnqualifiedName("table_catalog"),
 				LogicalInformationSchemaTable.buildStringType(dbn, 255), "def"));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("table_schema"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("table_schema"), 
 				new UnqualifiedName("table_schema")));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("table_name"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("table_name"), 
 				new UnqualifiedName("table_name")));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("column_name"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("column_name"), 
 				new UnqualifiedName("column_name")));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("position"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("position"), 
 				new UnqualifiedName("ordinal_position")));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("referenced_schema_name"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("referenced_schema_name"), 
 				new UnqualifiedName("referenced_table_schema")));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("referenced_table_name"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("referenced_table_name"), 
 				new UnqualifiedName("referenced_table_name")));
-		addColumn(null,new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("referenced_column_name"), 
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("referenced_column_name"), 
 				new UnqualifiedName("referenced_column_name")));
-		synthetic = new InformationSchemaColumnView(InfoView.INFORMATION, keyTable.lookup("synthetic"), new UnqualifiedName("synthetic"));
+		synthetic = new BackedComputedInformationSchemaColumn(InfoView.INFORMATION, keyTable.lookup("synthetic"), new UnqualifiedName("synthetic"));
 		super.prepare(schemaView,dbn);
 	}
 	
 	@Override
-	public void validate(SchemaView ofView) {
+	public void validate(AbstractInformationSchema ofView) {
 	}
 	
 	@Override

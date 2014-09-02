@@ -25,11 +25,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import com.tesora.dve.sql.expression.ExpressionUtils;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnView;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -59,9 +59,9 @@ public class ShowVariablesInformationSchemaTable extends ShowInformationSchemaTa
 		super(logicalTable, logicalTable.getName().getUnqualified(), logicalTable.getName().getUnqualified(), false, false);
 		
 		this.logicalTable = logicalTable;
-		addColumn(null,new InformationSchemaColumnView(InfoView.SHOW, logicalTable.lookup(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME), new UnqualifiedName(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME)));
-		addColumn(null,new InformationSchemaColumnView(InfoView.SHOW, logicalTable.lookup(VariablesLogicalInformationSchemaTable.NAME_COL_NAME), new UnqualifiedName(VariablesLogicalInformationSchemaTable.NAME_COL_NAME)));
-		addColumn(null,new InformationSchemaColumnView(InfoView.SHOW, logicalTable.lookup(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME), new UnqualifiedName(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME)));
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME), new UnqualifiedName(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME)));
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(VariablesLogicalInformationSchemaTable.NAME_COL_NAME), new UnqualifiedName(VariablesLogicalInformationSchemaTable.NAME_COL_NAME)));
+		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME), new UnqualifiedName(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME)));
 	}
 
     public ViewQuery buildUniqueSelect(SchemaContext sc, Name onName) {
@@ -93,7 +93,7 @@ public class ShowVariablesInformationSchemaTable extends ShowInformationSchemaTa
 		AliasInformation ai = new AliasInformation();
 		ai.addAlias(ti.getAlias().getUnquotedName().get());
 
-		List<AbstractInformationSchemaColumnView> projCols = new ArrayList<AbstractInformationSchemaColumnView>();
+		List<InformationSchemaColumn> projCols = new ArrayList<InformationSchemaColumn>();
 		if (showScope)
 			projCols.add(lookup(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME));
 		projCols.add(lookup(VariablesLogicalInformationSchemaTable.NAME_COL_NAME));
@@ -101,7 +101,7 @@ public class ShowVariablesInformationSchemaTable extends ShowInformationSchemaTa
 				
 		List<ExpressionNode> projection = new ArrayList<ExpressionNode>();
 
-		for(AbstractInformationSchemaColumnView c : projCols) {
+		for(InformationSchemaColumn c : projCols) {
 			ColumnInstance ci = new ColumnInstance(c,ti);
 			ExpressionAlias ea = new ExpressionAlias(ci, ci.buildAlias(pc), true);
 			ai.addAlias(ea.getAlias().get());
@@ -140,7 +140,7 @@ public class ShowVariablesInformationSchemaTable extends ShowInformationSchemaTa
 	
 	
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 	}
 
 	

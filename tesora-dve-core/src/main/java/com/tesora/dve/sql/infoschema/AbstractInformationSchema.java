@@ -45,12 +45,12 @@ import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variables.KnownVariables;
 
-public abstract class SchemaView implements
-		Schema<InformationSchemaTableView<AbstractInformationSchemaColumnView>> {
+public abstract class AbstractInformationSchema implements
+		Schema<InformationSchemaTable> {
 
 	private boolean frozen;
-	private List<InformationSchemaTableView<AbstractInformationSchemaColumnView>> tables;
-	protected Lookup<InformationSchemaTableView<AbstractInformationSchemaColumnView>> lookup;
+	private List<InformationSchemaTable> tables;
+	protected Lookup<InformationSchemaTable> lookup;
 
 	protected final InfoView view;
 	
@@ -58,27 +58,17 @@ public abstract class SchemaView implements
 	protected LogicalInformationSchema logical;
 	
 	// reverse lookup for injection purposes
-	protected Map<LogicalInformationSchemaTable, InformationSchemaTableView> reverse;
+	protected Map<LogicalInformationSchemaTable, InformationSchemaTable> reverse;
 	
-	protected SchemaEdge<DatabaseView> db;
+	protected SchemaEdge<InformationSchemaDatabase> db;
 	
-	public SchemaView(LogicalInformationSchema basedOn, InfoView servicing,
-			UnaryFunction<Name[], InformationSchemaTableView> getNamesFunc) {
+	public AbstractInformationSchema(LogicalInformationSchema basedOn, InfoView servicing,
+			UnaryFunction<Name[], InformationSchemaTable> getNamesFunc) {
 		super();
 		frozen = false;
-		tables = new ArrayList<InformationSchemaTableView<AbstractInformationSchemaColumnView>>();
-		lookup = new Lookup<InformationSchemaTableView<AbstractInformationSchemaColumnView>>(tables, 
-				new UnaryFunction<Name[],InformationSchemaTableView<AbstractInformationSchemaColumnView>>() {
-
-					@Override
-					public Name[] evaluate(
-							InformationSchemaTableView<AbstractInformationSchemaColumnView> object) {
-						return new Name[] { object.getName() };
-					}
-			
-				},
-				false, servicing.isLookupCaseSensitive()); 
-		reverse = new HashMap<LogicalInformationSchemaTable, InformationSchemaTableView>();
+		tables = new ArrayList<InformationSchemaTable>();
+		lookup = new Lookup<InformationSchemaTable>(tables, getNamesFunc, false, servicing.isLookupCaseSensitive()); 
+		reverse = new HashMap<LogicalInformationSchemaTable, InformationSchemaTable>();
 		view = servicing;
 		logical = basedOn;
 	}
@@ -88,19 +78,19 @@ public abstract class SchemaView implements
 	}
 	
 	public void freeze(DBNative dbn) {
-		for(InformationSchemaTableView istv : tables)
+		for(InformationSchemaTable istv : tables)
 			istv.prepare(this,dbn);
-		for(InformationSchemaTableView istv : tables) 
+		for(InformationSchemaTable istv : tables) 
 			istv.inject(this, dbn);
-		for(InformationSchemaTableView istv : tables)
+		for(InformationSchemaTable istv : tables)
 			istv.freeze();
 	}
 	
 	@Override
-	public InformationSchemaTableView addTable(SchemaContext sc, InformationSchemaTableView t) {
+	public InformationSchemaTable addTable(SchemaContext sc, InformationSchemaTable t) {
 		if (frozen)
 			throw new InformationSchemaException("Information schema for " + getView() + " is frozen, cannot add table");
-		InformationSchemaTableView already = lookup.lookup(t.getName());
+		InformationSchemaTable already = lookup.lookup(t.getName());
 		if (already != null)
 			return already;
 		tables.add(t);
@@ -110,8 +100,8 @@ public abstract class SchemaView implements
 		return t;
 	}
 
-	public void viewReplace(SchemaContext sc, InformationSchemaTableView t) {
-		InformationSchemaTableView already = lookup.lookup(t.getName());
+	public void viewReplace(SchemaContext sc, InformationSchemaTable t) {
+		InformationSchemaTable already = lookup.lookup(t.getName());
 		if (already != null) {
 			tables.remove(already);
 			if (already.getLogicalTable() != null)
@@ -122,20 +112,20 @@ public abstract class SchemaView implements
 	}
 	
 	@Override
-	public Collection<InformationSchemaTableView<AbstractInformationSchemaColumnView>> getTables(SchemaContext sc) {
+	public Collection<InformationSchemaTable> getTables(SchemaContext sc) {
 		return tables;
 	}
 
 	@Override
 	public TableInstance buildInstance(SchemaContext sc, UnqualifiedName n, LockInfo ignored, boolean domtchecks) {
-		InformationSchemaTableView istv = lookup.lookup(n); 
+		InformationSchemaTable istv = lookup.lookup(n); 
 		if (istv == null) return null;
 		return new TableInstance(istv,false);
 	}
 	
 	@Override 
 	public TableInstance buildInstance(SchemaContext sc, UnqualifiedName n, LockInfo ignored) {
-		InformationSchemaTableView istv = lookup.lookup(n);
+		InformationSchemaTable istv = lookup.lookup(n);
 		if (istv == null) return null;
 		return new TableInstance(istv, false);
 	}
@@ -145,18 +135,18 @@ public abstract class SchemaView implements
 		return new UnqualifiedName(view.getUserDatabaseName());
 	}
 	
-	public InformationSchemaTableView lookup(LogicalInformationSchemaTable list) {
+	public InformationSchemaTable lookup(LogicalInformationSchemaTable list) {
 		return reverse.get(list);
 	}
 	
-	public InformationSchemaTableView lookup(String s) {
+	public InformationSchemaTable lookup(String s) {
 		return lookup.lookup(s);
 	}
 	
 	public void buildEntities(CatalogSchema schema, int groupid, int modelid, String charSet, String collation, List<PersistedEntity> acc) throws PEException {		
 		CatalogDatabaseEntity cde = new CatalogDatabaseEntity(schema, view.getUserDatabaseName(), groupid, charSet,collation);
 		acc.add(cde);
-		for(InformationSchemaTableView t : tables) {
+		for(InformationSchemaTable t : tables) {
 			t.buildTableEntity(schema, cde, modelid, groupid, acc);
 		}
 	}

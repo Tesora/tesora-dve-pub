@@ -110,7 +110,7 @@ public class DBEnumTypeTest extends PETest {
 				UserColumn uc = new UserColumn();
 				uc.setNativeTypeName(nativeTypeName.toString());
 				uc.setNativeTypeModifiers(nativeTypeModifiers.toString());
-				newType = DBEnumType.buildType(uc, null);
+				newType = DBEnumType.buildType(uc, typeCatalog);
 				msg = " for build for data row " + dataRow;
 				assertEquals("Should get the right type" + msg, nativeTypeName.toString(), newType.getTypeName());
 				assertEquals("Should get the right sizing" + msg, false, newType.declUsesSizing());

@@ -22,11 +22,7 @@ package com.tesora.dve.sql.infoschema.annos;
  */
 
 import com.tesora.dve.common.PEConstants;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
-import com.tesora.dve.sql.infoschema.DatabaseView.DatabaseViewCacheKey;
-import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.util.UnaryFunction;
+import com.tesora.dve.sql.infoschema.InformationSchemaDatabase.DatabaseViewCacheKey;
 
 public enum InfoView {
 

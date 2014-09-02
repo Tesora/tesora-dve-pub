@@ -29,7 +29,7 @@ import org.junit.Test;
 
 import com.tesora.dve.persist.InsertEngine;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
@@ -57,7 +57,7 @@ public class InfoSchemaInit extends TransformTest {
 	public void testShow() {
         InformationSchemas schema = Singletons.require(HostService.class).getInformationSchema();
 		System.out.println("Show tables:");
-		for(InformationSchemaTableView list : schema.getShowSchema().getTables(null)) {
+		for(InformationSchemaTable list : schema.getShowSchema().getTables(null)) {
 			System.out.println(list);
 			for(Object isc : list.getColumns(null))
 				System.out.println("   " + isc);
@@ -68,7 +68,7 @@ public class InfoSchemaInit extends TransformTest {
 	public void testInfoSchema() {
         InformationSchemas schema = Singletons.require(HostService.class).getInformationSchema();
 		System.out.println("Info schema tables:");
-		for(InformationSchemaTableView list : schema.getInfoSchema().getTables(null)) {
+		for(InformationSchemaTable list : schema.getInfoSchema().getTables(null)) {
 			System.out.println(list);
 			for(Object isc : list.getColumns(null))
 				System.out.println("   " + isc);
@@ -79,7 +79,7 @@ public class InfoSchemaInit extends TransformTest {
 	public void testMysqlSchema() {
         InformationSchemas schema = Singletons.require(HostService.class).getInformationSchema();
 		System.out.println("Mysql tables:");
-		for(InformationSchemaTableView list : schema.getMysqlSchema().getTables(null)) {
+		for(InformationSchemaTable list : schema.getMysqlSchema().getTables(null)) {
 			System.out.println(list);
 			for(Object isc : list.getColumns(null))
 				System.out.println("   " + isc);

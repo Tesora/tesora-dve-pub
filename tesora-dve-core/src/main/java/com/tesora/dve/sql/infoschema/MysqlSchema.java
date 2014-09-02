@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema;
 
 /*
  * #%L
@@ -21,42 +21,22 @@ package com.tesora.dve.sql.infoschema.show;
  * #L%
  */
 
-import java.util.List;
-
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.InformationSchemaTable;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.util.UnaryFunction;
 
-public class ShowView extends AbstractInformationSchema {
+public class MysqlSchema extends AbstractInformationSchema {
 
-	public ShowView(LogicalInformationSchema lis) {
-		super(lis,InfoView.SHOW,
+	protected MysqlSchema(LogicalInformationSchema lis) {
+		super(lis, InfoView.MYSQL,
 				new UnaryFunction<Name[], InformationSchemaTable>() {
 
 			@Override
 			public Name[] evaluate(InformationSchemaTable object) {
-				return new Name[] { object.getName(), object.getPluralName() };
+				return new Name[] { object.getName() };
 			}
 			
 		});
-
 	}
 
-	@Override
-	public void buildEntities(CatalogSchema schema, int groupid, int modelid, 
-			String charSet, String collation, List<PersistedEntity> acc) throws PEException {	
-	}
-	
-	public ShowInformationSchemaTable lookupTable(UnqualifiedName unq) {
-		// temporary
-		Object obj = lookup.lookup(unq);
-		return (ShowInformationSchemaTable)obj;
-	}
 }

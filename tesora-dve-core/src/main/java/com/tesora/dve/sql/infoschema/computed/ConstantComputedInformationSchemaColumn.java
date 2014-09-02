@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema;
+package com.tesora.dve.sql.infoschema.computed;
 
 /*
  * #%L
@@ -21,6 +21,10 @@ package com.tesora.dve.sql.infoschema;
  * #L%
  */
 
+import com.tesora.dve.sql.infoschema.InformationSchemaColumnAdapter;
+import com.tesora.dve.sql.infoschema.InformationSchemaException;
+import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.SyntheticLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -30,16 +34,15 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.Type;
 
 // columns with constant value.
-public class ConstantSyntheticInformationSchemaColumn extends
-		SyntheticInformationSchemaColumn {
+public class ConstantComputedInformationSchemaColumn extends SyntheticComputedInformationSchemaColumn {
 
 	private final Object constantValue;
-	private SyntheticLogicalInformationSchemaColumn logicalColumn = null;
 	
-	public ConstantSyntheticInformationSchemaColumn(InfoView view,
+	public ConstantComputedInformationSchemaColumn(InfoView view,
 			UnqualifiedName nameInView, Type type, Object value) {
-		super(view, nameInView, type);
+		super(view, nameInView, type, null);
 		constantValue = value;
+		setAdapter(new ConstantInformationSchemaColumnAdapter(this));
 	}
 
 	@Override
@@ -56,23 +59,37 @@ public class ConstantSyntheticInformationSchemaColumn extends
 			throw new InformationSchemaException("Invalid constant value: " + constantValue);
 	}
 
-	@Override
-	public LogicalInformationSchemaColumn getLogicalColumn() {
-		if (logicalColumn != null) return logicalColumn;
+	/*
+	*/
+	
+	private static class ConstantInformationSchemaColumnAdapter extends InformationSchemaColumnAdapter {
 		
-		logicalColumn = new SyntheticLogicalInformationSchemaColumn(getName().getUnqualified(), getType()) {
+		private final ConstantComputedInformationSchemaColumn ours;
+		private SyntheticLogicalInformationSchemaColumn logicalColumn = null;
+		
+		public ConstantInformationSchemaColumnAdapter(ConstantComputedInformationSchemaColumn me) {
+			ours = me;
+		}
 
-			@Override
-			public LanguageNode explode(ColumnInstance subject) {
-				return buildReplacement(subject);
-			}
+		@Override
+		public LogicalInformationSchemaColumn getLogicalColumn() {
+			if (logicalColumn != null) return logicalColumn;
 			
-			@Override
-			public Object getValue() {
-				return constantValue;
-			}
-		};
-		
-		return logicalColumn;
+			logicalColumn = new SyntheticLogicalInformationSchemaColumn(ours.getName().getUnqualified(), ours.getType()) {
+
+				@Override
+				public LanguageNode explode(ColumnInstance subject) {
+					return ours.buildReplacement(subject);
+				}
+				
+				@Override
+				public Object getValue() {
+					return ours.constantValue;
+				}
+			};
+			
+			return logicalColumn;
+		}
+
 	}
 }

@@ -29,9 +29,8 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.CatalogLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.SyntheticLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 
@@ -53,11 +52,11 @@ public class EntityResults {
 		ArrayList<ResultRow> rows = new ArrayList<ResultRow>();
 		for(CatalogEntity ce : entities) {
 			ResultRow rr = new ResultRow();
-			for(List<AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn>> pt : logicalQuery.getProjectionColumns()) {
+			for(List<InformationSchemaColumn> pt : logicalQuery.getProjectionColumns()) {
 				if (pt.size() == 1) {
-					AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> c = pt.get(0);
+					InformationSchemaColumn c = pt.get(0);
 					if (!c.isSynthetic()) {
-						CatalogInformationSchemaColumn cisc = (CatalogInformationSchemaColumn) c.getLogicalColumn();
+						CatalogLogicalInformationSchemaColumn cisc = (CatalogLogicalInformationSchemaColumn) c.getLogicalColumn();
 						rr.addResultColumn(cisc.getValue(sc, ce));
 					} else {
 						SyntheticLogicalInformationSchemaColumn cisc = (SyntheticLogicalInformationSchemaColumn) c.getLogicalColumn();
@@ -66,7 +65,7 @@ public class EntityResults {
 				} else {
 					CatalogEntity ent = ce;
 					for(int i = 0; i < pt.size(); i++) {
-						AbstractInformationSchemaColumnView<LogicalInformationSchemaColumn> c = pt.get(i);
+						InformationSchemaColumn c = pt.get(i);
 						boolean last = (i == (pt.size() - 1));
 						Object res = c.getLogicalColumn().getValue(sc, ent);
 						if (last)

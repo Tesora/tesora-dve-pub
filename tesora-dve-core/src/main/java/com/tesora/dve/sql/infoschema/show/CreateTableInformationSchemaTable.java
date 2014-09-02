@@ -46,7 +46,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.MTTableKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.SchemaView;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -72,7 +72,7 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 	}
 
 	@Override
-	protected void validate(SchemaView ofView) {
+	protected void validate(AbstractInformationSchema ofView) {
 		tableTable = (ShowInformationSchemaTable) ofView.lookup("table");
 		if (tableTable == null)
 			throw new InformationSchemaException("Cannot find show table view in show view");

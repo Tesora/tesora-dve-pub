@@ -26,7 +26,7 @@ import java.util.List;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.CatalogInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.CatalogLogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
@@ -51,17 +51,17 @@ import com.tesora.dve.variables.KnownVariables;
 public class ColumnCatalogInformationSchemaTable extends
 		CatalogInformationSchemaTable {
 
-	protected CatalogInformationSchemaColumn columnNameColumn;
-	protected CatalogInformationSchemaColumn columnTableColumn;
-	protected CatalogInformationSchemaColumn tableIDColumn;
-	protected CatalogInformationSchemaColumn databaseIDColumn;
-	protected CatalogInformationSchemaColumn databaseModeColumn;
+	protected CatalogLogicalInformationSchemaColumn columnNameColumn;
+	protected CatalogLogicalInformationSchemaColumn columnTableColumn;
+	protected CatalogLogicalInformationSchemaColumn tableIDColumn;
+	protected CatalogLogicalInformationSchemaColumn databaseIDColumn;
+	protected CatalogLogicalInformationSchemaColumn databaseModeColumn;
 	protected CatalogInformationSchemaTable scopeTable;
-	protected CatalogInformationSchemaColumn scopeTenantColumn;
-	protected CatalogInformationSchemaColumn scopeTableColumn;
-	protected CatalogInformationSchemaColumn tableNameColumn;
-	protected CatalogInformationSchemaColumn tenantID;
-	protected CatalogInformationSchemaColumn localName;
+	protected CatalogLogicalInformationSchemaColumn scopeTenantColumn;
+	protected CatalogLogicalInformationSchemaColumn scopeTableColumn;
+	protected CatalogLogicalInformationSchemaColumn tableNameColumn;
+	protected CatalogLogicalInformationSchemaColumn tenantID;
+	protected CatalogLogicalInformationSchemaColumn localName;
 	
 	public ColumnCatalogInformationSchemaTable(Class<?> entKlass,
 			InfoSchemaTable anno, String catTabName) {
@@ -72,16 +72,16 @@ public class ColumnCatalogInformationSchemaTable extends
 	protected void prepare(LogicalInformationSchema schema, DBNative dbn) {
 		super.prepare(schema, dbn);
 		CatalogInformationSchemaTable tableTable = (CatalogInformationSchemaTable) schema.lookup("table");
-		columnNameColumn = (CatalogInformationSchemaColumn) lookup("name");
-		columnTableColumn = (CatalogInformationSchemaColumn) lookup("user_table");
-		tableIDColumn = (CatalogInformationSchemaColumn) tableTable.lookup("id");
+		columnNameColumn = (CatalogLogicalInformationSchemaColumn) lookup("name");
+		columnTableColumn = (CatalogLogicalInformationSchemaColumn) lookup("user_table");
+		tableIDColumn = (CatalogLogicalInformationSchemaColumn) tableTable.lookup("id");
 		scopeTable = (CatalogInformationSchemaTable) schema.lookup("table_visibility");
-		scopeTenantColumn = (CatalogInformationSchemaColumn) scopeTable.lookup("tenant");
-		scopeTableColumn = (CatalogInformationSchemaColumn) scopeTable.lookup("user_table");
-		tableNameColumn = (CatalogInformationSchemaColumn) tableTable.lookup("name");
+		scopeTenantColumn = (CatalogLogicalInformationSchemaColumn) scopeTable.lookup("tenant");
+		scopeTableColumn = (CatalogLogicalInformationSchemaColumn) scopeTable.lookup("user_table");
+		tableNameColumn = (CatalogLogicalInformationSchemaColumn) tableTable.lookup("name");
 		CatalogInformationSchemaTable tenantTable = (CatalogInformationSchemaTable) schema.lookup("tenant");
-		tenantID = (CatalogInformationSchemaColumn) tenantTable.lookup("id");
-		localName = (CatalogInformationSchemaColumn) scopeTable.lookup("local_name");
+		tenantID = (CatalogLogicalInformationSchemaColumn) tenantTable.lookup("id");
+		localName = (CatalogLogicalInformationSchemaColumn) scopeTable.lookup("local_name");
 	}
 	
 	

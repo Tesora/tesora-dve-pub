@@ -28,8 +28,8 @@ import java.util.List;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ProjectionInfo;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.infoschema.ComputedInformationSchemaTableView;
+import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -57,9 +57,9 @@ import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.A
 public class DelegatingDDLStatement extends DDLStatement {
 
 	protected PEPersistentGroup onGroup;
-	protected ComputedInformationSchemaTableView originalView;
+	protected ComputedInformationSchemaTable originalView;
 	
-	public DelegatingDDLStatement(PEPersistentGroup theGroup, ComputedInformationSchemaTableView showTab) {
+	public DelegatingDDLStatement(PEPersistentGroup theGroup, ComputedInformationSchemaTable showTab) {
 		super(false);
 		onGroup = theGroup;
 		originalView = showTab;
@@ -115,7 +115,7 @@ public class DelegatingDDLStatement extends DDLStatement {
 	protected TempTable buildFirstTempTable(SchemaContext pc, PEStorageGroup targetGroup) throws PEException {
 		// we can actually build this by reading off columns from the show info schema table
 		List<PEColumn> columns = new ArrayList<PEColumn>();
-		for(AbstractInformationSchemaColumnView viewCol : originalView.getColumns(pc)) {
+		for(InformationSchemaColumn viewCol : originalView.getColumns(pc)) {
 			columns.add(new TempColumn(pc,viewCol.getName(),new TempColumnType(viewCol.getType())));
 		}
 		return TempTable.buildAdHoc(pc, getDatabase(pc), columns, DistributionVector.Model.BROADCAST, Collections.<PEColumn> emptyList(), targetGroup, false);
