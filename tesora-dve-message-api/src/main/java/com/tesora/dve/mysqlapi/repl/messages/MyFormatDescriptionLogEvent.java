@@ -73,7 +73,7 @@ public class MyFormatDescriptionLogEvent extends MyLogEventPacket {
 		binaryLogVersion = cb.readShort();
 		serverVersion = MysqlAPIUtils.readBytesAsString(cb, ST_SERVER_VER_LEN, CharsetUtil.UTF_8);
 		createTime = cb.readUnsignedInt();
-		int eventTypeLength = cb.readableBytes();
+		int eventTypeLength = cb.readUnsignedByte();
 		switch (MyBinLogVerType.fromByte((byte) binaryLogVersion)) {
 		
 		case MySQL_5_0:
