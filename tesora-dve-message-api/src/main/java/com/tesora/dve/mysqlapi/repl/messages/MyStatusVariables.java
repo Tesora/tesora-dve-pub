@@ -49,6 +49,7 @@ public class MyStatusVariables {
 		Q_INVOKER((byte) 0x0B),
 		Q_UPDATED_DB_NAMES((byte) 0x0C),
 		Q_MICROSECONDS((byte) 0x0D),
+        Q_HRNOW((byte)0x80)
 		;
 
 		private final byte code;
@@ -197,6 +198,12 @@ public class MyStatusVariables {
 
 					suppliedEventCodes.add(new QueryMicrosecondsEvent(microseconds));
 					break;
+
+                    case Q_HRNOW:
+                        //TODO: this was apparently added for MariaDB, but I can't find a lot of info on it. skip for now.
+                        statsVarsBuf.skipBytes(3);
+//                        suppliedEventCodes.add(new QueryMicrosecondsEvent(microseconds));
+                        break;
 
 				default :
 					throw new PEException("Replication encountered an unknown query event code: '" + code + "' (0x" + Integer.toHexString(code) + ")");
