@@ -47,6 +47,7 @@ public class MyRotateLogEvent extends MyLogEventPacket {
 	public void unmarshallMessage(ByteBuf cb) {
 		position = cb.readLong();
 		newLogFileName = cb.toString(CharsetUtil.UTF_8);
+        cb.skipBytes(cb.readableBytes());//consume the rest of the buffer.
 	}
 
 	@Override

@@ -431,6 +431,26 @@ public class MyReplicationVisitorDispatch implements ReplicationVisitorTarget {
         }
     }
 
+    @Override
+    public void visit(MyUnknownLogPayload packet) throws PEException {
+        logger.warn("Message is parsed but no handler is implemented.");
+    }
+
+    @Override
+    public void visit(MyLogWriteRowsPayload packet) throws PEException {
+        logger.warn("Message is parsed but no handler is implemented.");
+    }
+
+    @Override
+    public void visit(MyLogUpdateRowsPayload packet) throws PEException {
+        logger.warn("Message is parsed but no handler is implemented.");
+    }
+
+    @Override
+    public void visit(MyLogDeleteRowsPayload packet) throws PEException {
+        logger.warn("Message is parsed but no handler is implemented.");
+    }
+
 
     public static void updateBinLogPosition(MyLogEventPacket logEvent, MyReplicationSlaveService plugin) throws PEException {
         if (!logEvent.isSaveBinaryLogPosition()) {

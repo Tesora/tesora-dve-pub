@@ -21,6 +21,8 @@ package com.tesora.dve.mysqlapi;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.libmy.*;
+import com.tesora.dve.db.mysql.portal.protocol.Packet;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
@@ -28,70 +30,43 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import java.nio.ByteOrder;
 import java.util.List;
 
-import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
-import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
-import com.tesora.dve.db.mysql.libmy.MyFieldPktFieldListResponse;
-import com.tesora.dve.db.mysql.libmy.MyFieldPktResponse;
-import com.tesora.dve.db.mysql.libmy.MyHandshakeV10;
-import com.tesora.dve.db.mysql.libmy.MyMasterOKResponse;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.db.mysql.libmy.MyMessageType;
-import com.tesora.dve.db.mysql.libmy.MyUnmarshallMessage;
 import com.tesora.dve.mysqlapi.repl.messages.MyComBinLogDumpRequest;
 import com.tesora.dve.mysqlapi.repl.messages.MyComRegisterSlaveRequest;
 import com.tesora.dve.mysqlapi.repl.messages.MyReplEvent;
 
 public abstract class MyDecoder extends ByteToMessageDecoder {
 	private boolean handshakeDone = false;
+    int expectedSequence = 0;
+    Packet mspPacket;
 
 	@Override
 	protected void decode(ChannelHandlerContext ctx, ByteBuf inBigEndian, List<Object> out) throws Exception {
  		ByteBuf in = inBigEndian.order(ByteOrder.LITTLE_ENDIAN);
 
- 		in.markReaderIndex();
+        if (mspPacket == null)
+            mspPacket = new Packet(ctx.alloc(), expectedSequence, Packet.Modifier.HEAPCOPY_ON_READ, "replication");
 
-		// check to see if we have the length field - a 3 byte integer
-		if (in.readableBytes() < 3) {
-			// The length field was not received yet - return null.
-			// This method will be invoked again when more packets are
-			// received and appended to the buffer.
-			return ;
-		}
-		
-		// The length field is in the buffer.
+        if (!mspPacket.decodeMore(ctx.alloc(),in)) //deals with framing and extended packets.
+            return;
 
-		// Read the length field. Add 1 to account for packetNumber field.
-		int length = in.readUnsignedMedium() + 1;
+        byte lastSeq = mspPacket.getSequenceNumber();
+        this.expectedSequence = mspPacket.getNextSequenceNumber();
 
-		// Make sure there's enough bytes in the buffer.
-		if (in.readableBytes() < length) {
-			// The whole packet hasn't been received yet - return null.
-			// This method will be invoked again when more packets are
-			// received and appended to the buffer.
-
-			// Reset to the marked position to read the length field again
-			// next time.
-			in.resetReaderIndex();
-
-			return ;
-		}
-
-		// There's enough bytes in the buffer. Read it.
-		ByteBuf frame = in.readBytes(length);
+        ByteBuf leHeader = mspPacket.unwrapHeader().order(ByteOrder.LITTLE_ENDIAN).retain();
+        ByteBuf lePayload = mspPacket.unwrapPayload().order(ByteOrder.LITTLE_ENDIAN).retain();//retain a separate reference to the payload.
+        mspPacket.release();
+        mspPacket = null;
 
 		MyMessage nativeMsg;
-		byte packetNum = 0;
-		// The first byte in the frame is the packet number
-		packetNum = frame.readByte();
 
-		nativeMsg = instantiateMessage(frame);
+        nativeMsg = instantiateMessage(lePayload);
 
 		// call the message specific unmarshall method the parse the message
 		// contents
-		((MyUnmarshallMessage) nativeMsg).unmarshallMessage(frame);
+		((MyUnmarshallMessage) nativeMsg).unmarshallMessage(lePayload);
 
 		// put the packet number into the message
-		nativeMsg.setPacketNumber(packetNum);
+		nativeMsg.setPacketNumber(lastSeq);
 		out.add(nativeMsg);
 	}
 
@@ -140,9 +115,10 @@ public abstract class MyDecoder extends ByteToMessageDecoder {
 			mnm = (MyMessage) new MyReplEvent();
 			break;
 		default:
-			throw new RuntimeException(
-					"Attempt to create new instance using invalid message type "
-							+ mnmt);
+            String message = "Attempt to create new instance using invalid message type "
+                    + mnmt +" , returning raw message";
+//            logger.warn(message);
+            mnm= new MyRawMessage();
 		}
 		return mnm;
 	}

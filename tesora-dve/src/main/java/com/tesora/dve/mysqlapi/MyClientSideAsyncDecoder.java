@@ -23,10 +23,13 @@ package com.tesora.dve.mysqlapi;
 
 import io.netty.buffer.ByteBuf;
 
+import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyMessageType;
+
+import java.util.List;
 
 public class MyClientSideAsyncDecoder extends MyDecoder {
 	private static final Logger logger = Logger.getLogger(MyClientSideAsyncDecoder.class);
@@ -34,11 +37,21 @@ public class MyClientSideAsyncDecoder extends MyDecoder {
 	static final byte RESP_TYPE_ERR = (byte) 0xff;
 	static final byte RESP_TYPE_EOF = (byte) 0xfe;
 
-	@Override
+    @Override
+    protected void decode(ChannelHandlerContext ctx, ByteBuf inBigEndian, List<Object> out) throws Exception {
+        try {
+            super.decode(ctx, inBigEndian, out);
+        } catch (Exception e){
+            logger.warn("Problem decoding/dispatching packet",e);
+        }
+    }
+
+    @Override
 	MyMessage instantiateMessage(ByteBuf frame) {
 		MyMessage nativeMsg;
 		MyMessageType mt;
-		switch (frame.readByte()) {
+        byte typeID = frame.readByte();
+        switch (typeID) {
 		case RESP_TYPE_REPL:
 			mt = MyMessageType.REPL_EVENT_RESPONSE;
 			break;

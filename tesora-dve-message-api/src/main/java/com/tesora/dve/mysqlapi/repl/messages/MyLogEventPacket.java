@@ -151,15 +151,28 @@ public abstract class MyLogEventPacket implements MyUnmarshallMessage,
 				mlevp = (MyTableMapLogEvent) new MyTableMapLogEvent(ch);
 				break;
 
+            case WRITE_ROWS_EVENT:
+                mlevp = new MyLogWriteRowsPayload(ch);
+                break;
+
+            case UPDATE_ROWS_EVENT:_ROWS_EVENT:
+                mlevp = new MyLogUpdateRowsPayload(ch);
+                break;
+
+            case DELETE_ROWS_EVENT:
+                mlevp = new MyLogDeleteRowsPayload(ch);
+                break;
+
 			case SLAVE_EVENT:
 				// This event is never written, so it cannot exist in a binary log file. It was meant for failsafe replication, which has never been implemented.
 				throw new PEException(
 						"No handler is implemented for log event type " + mlet);
 				
 			default:
-				throw new PEException(
-						"Attempt to create new instance using invalid log event type "
-								+ mlet);
+                String message = "Attempt to create new instance using invalid log event type "
+                        + mlet +" , returning raw framed payload";
+                logger.warn(message);
+                return new MyUnknownLogPayload(ch, mlet);
 			}
 			return mlevp;
 		}

@@ -199,11 +199,10 @@ public class MyStatusVariables {
 					suppliedEventCodes.add(new QueryMicrosecondsEvent(microseconds));
 					break;
 
-                    case Q_HRNOW:
-                        //TODO: this was apparently added for MariaDB, but I can't find a lot of info on it. skip for now.
-                        statsVarsBuf.skipBytes(3);
-//                        suppliedEventCodes.add(new QueryMicrosecondsEvent(microseconds));
-                        break;
+                case Q_HRNOW:
+                    //TODO: this was apparently added for MariaDB, but I can't find a lot of info on it. skip for now.
+                    suppliedEventCodes.add(new QueryMicrosecondsEvent(statsVarsBuf.readUnsignedMedium()));
+                    break;
 
 				default :
 					throw new PEException("Replication encountered an unknown query event code: '" + code + "' (0x" + Integer.toHexString(code) + ")");
@@ -303,6 +302,10 @@ public class MyStatusVariables {
 				cb.writeByte(code.getByteValue());
 				cb.writeMedium(((QueryMicrosecondsEvent)qe).getMicroseconds());
 				break;
+
+            case Q_HRNOW:
+                cb.writeMedium(((QueryHRNowEvent)qe).threeBytes);
+                break;
 			
 			default :
 				break;
@@ -745,4 +748,18 @@ public class MyStatusVariables {
 			this.microseconds = microseconds;
 		}
 	}
+
+    class QueryHRNowEvent extends BaseQueryEvent {
+        int threeBytes;
+
+        QueryHRNowEvent(int threeBytes) {
+            this.threeBytes = threeBytes;
+        }
+
+        @Override
+        public void outputConsole() {
+            System.out.println("\t\tHRNOW");
+            System.out.println("\t\t\tHRNOW: " + threeBytes);
+        }
+    }
 }

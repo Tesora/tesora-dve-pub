@@ -45,4 +45,10 @@ public interface ReplicationVisitorTarget {
     void visit(MyUserVarLogEvent packet) throws PEException;
     void visit(MyXIdLogEvent packet) throws PEException;
     void visit(MyReplEvent packet) throws PEException;
+
+    void visit(MyUnknownLogPayload packet) throws PEException;
+
+    void visit(MyLogDeleteRowsPayload myLogDeleteRowsPayload) throws PEException;
+    void visit(MyLogUpdateRowsPayload myLogUpdateRowsPayload) throws PEException;
+    void visit(MyLogWriteRowsPayload myLogWriteRowsPayload) throws PEException;
 }

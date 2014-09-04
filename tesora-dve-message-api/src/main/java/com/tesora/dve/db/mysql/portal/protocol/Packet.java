@@ -75,7 +75,7 @@ public class Packet {
         return payload.readableBytes();
     }
 
-    public int getSequenceNumber(){
+    public byte getSequenceNumber(){
         return header.getByte(3);
     }
 
@@ -152,6 +152,10 @@ public class Packet {
         ByteBuf payloadHolder = Unpooled.buffer();
         mysql.marshallPayload(payloadHolder); //copy full payload to heap buffer (might be an extended payload)
 
+        return encodeFullPayload(sequenceStart, payloadHolder, destination);
+    }
+
+    public static int encodeFullPayload(int sequenceStart, ByteBuf payloadHolder, ByteBuf destination) {
         ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
 
         //TODO: this loop is identical to the one below, except it doesn't consume the source or update the destination.  Consolidate?

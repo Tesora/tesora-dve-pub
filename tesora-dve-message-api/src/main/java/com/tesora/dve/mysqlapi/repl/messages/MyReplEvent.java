@@ -24,7 +24,6 @@ package com.tesora.dve.mysqlapi.repl.messages;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import io.netty.buffer.ByteBuf;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.libmy.MyMessageType;
@@ -32,6 +31,8 @@ import com.tesora.dve.exceptions.PEException;
 
 public class MyReplEvent extends MyMessage implements ReplicationVisitorEvent {
 	static final Logger logger = Logger.getLogger(MyReplEvent.class);
+
+    ByteBuf rawPayload;
 
 	MyReplEventCommonHeader commonHdr;
 	MyLogEventPacket levp;
@@ -62,6 +63,11 @@ public class MyReplEvent extends MyMessage implements ReplicationVisitorEvent {
 
 	@Override
 	public void unmarshallMessage(ByteBuf cb) throws PEException {
+        //assumes the provided buffer is already scoped to payload boundary.
+
+        rawPayload = cb.slice().copy();
+
+
 		// 19 bytes for the common header
 		commonHdr = new MyReplEventCommonHeader();
 		commonHdr.setTimestamp( cb.readUnsignedInt() );
@@ -79,7 +85,11 @@ public class MyReplEvent extends MyMessage implements ReplicationVisitorEvent {
 				.newInstance(MyLogEventType.fromByte(commonHdr.getType()), commonHdr);
 
 		levp.unmarshallMessage(cb);
-	}
+    }
+
+    public ByteBuf getRawPayload(){
+        return rawPayload;
+    }
 
 	@Override
     public void marshallMessage(ByteBuf cb) {

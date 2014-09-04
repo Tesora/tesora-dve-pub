@@ -75,8 +75,8 @@ public enum MyLogEventType {
 				return mt;
 			}
 		}
-	
-		logger.error("Unknown log event type requested: " + b );
+
+        logger.error("Unknown log event type requested: " + b );
 		return UNKNOWN_EVENT;
 	}
 	
