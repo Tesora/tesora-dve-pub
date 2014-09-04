@@ -59,6 +59,7 @@ public class MyFormatDescriptionLogEvent extends MyLogEventPacket {
 	short binaryLogVersion;
 	String serverVersion;
 	long createTime;
+    short eventTypeLength;
 	Map<MyLogEventType, Byte> eventTypeValues = new HashMap<MyLogEventType, Byte>();
 
 	public MyFormatDescriptionLogEvent(MyReplEventCommonHeader ch) {
@@ -73,13 +74,16 @@ public class MyFormatDescriptionLogEvent extends MyLogEventPacket {
 		binaryLogVersion = cb.readShort();
 		serverVersion = MysqlAPIUtils.readBytesAsString(cb, ST_SERVER_VER_LEN, CharsetUtil.UTF_8);
 		createTime = cb.readUnsignedInt();
-		int eventTypeLength = cb.readUnsignedByte();
+		eventTypeLength = cb.readUnsignedByte();
+        int numberOfEntries = cb.readableBytes() - 1;//string is null terminated.
+
 		switch (MyBinLogVerType.fromByte((byte) binaryLogVersion)) {
 		
 		case MySQL_5_0:
-			for (int i = 1; i <= eventTypeLength; i++) {
+			for (int i = 1; i <= numberOfEntries; i++) {
 				eventTypeValues.put(MyLogEventType.fromByte((byte) i), cb.readByte());
 			}
+            cb.skipBytes(1);//throw out EOF
 			break;
 
 		default:
@@ -93,12 +97,14 @@ public class MyFormatDescriptionLogEvent extends MyLogEventPacket {
 		cb.writeShort(binaryLogVersion);
 		cb.writeBytes(serverVersion.getBytes(CharsetUtil.UTF_8));
 		cb.writeInt((int) createTime);
+        cb.writeByte(0xFF & eventTypeLength);
 		switch (MyBinLogVerType.fromByte((byte) binaryLogVersion)) {
 
 		case MySQL_5_0:
 			for (int i = 1; i <= eventTypeValues.size(); i++) {
 				cb.writeByte(eventTypeValues.get(MyLogEventType.fromByte((byte) i)));
 			}
+            cb.writeZero(1);
 			break;
 
 		default:
