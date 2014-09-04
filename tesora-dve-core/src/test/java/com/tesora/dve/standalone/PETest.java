@@ -94,7 +94,8 @@ public class PETest extends PEBaseTest {
 	
 	// TODO: This should really be zero, but test clean-up sometimes
 	// does not happen fast enough causing failure of some test jobs.
-	private static long nettyLeakCount = 3;
+	private static final long NETTY_LEAK_COUNT_BASE = 3;
+	private static long initialNettyLeakCount;
 
 	private static GlobalVariableState stateUndoer = null;
 
@@ -118,7 +119,7 @@ public class PETest extends PEBaseTest {
 
 		ResourceLeakDetector<?> detector = ResourceLeakDetector.getDetector(ByteBuf.class);
 		if (detector != null)
-			nettyLeakCount = detector.getLeakCount();
+			initialNettyLeakCount = detector.getLeakCount();
 
 		logger = Logger.getLogger(PETest.class);
 		
@@ -186,7 +187,7 @@ public class PETest extends PEBaseTest {
 		ResourceLeakDetector<?> detector = ResourceLeakDetector.getDetector(ByteBuf.class);
 		if (detector != null) {
 			final long numOfLeaksDetected = detector.getLeakCount();
-			if (numOfLeaksDetected > nettyLeakCount) {
+			if (numOfLeaksDetected > (initialNettyLeakCount + NETTY_LEAK_COUNT_BASE)) {
 				finalThrows.add(new Exception("Total of '" + numOfLeaksDetected + "' Netty ByteBuf leaks detected!"));
 			}
 		}
