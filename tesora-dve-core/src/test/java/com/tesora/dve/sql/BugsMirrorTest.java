@@ -523,5 +523,7 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		tests.add(new StatementMirrorProc("insert into pe1624 values (@non_existing_user_variable__)"));
 		tests.add(new StatementMirrorFun("select * from pe1624"));
 		runTest(tests);
+
+		//		runTest(new StatementMirrorFun("select @utf8_message as \"\" union select repeat(CONVERT('-' using utf8),80);"));
 	}
 }
