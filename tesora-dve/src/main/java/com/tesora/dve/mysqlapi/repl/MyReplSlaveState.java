@@ -35,7 +35,7 @@ public class MyReplSlaveState {
 	}
 
 	public void handShake() throws PEException {
-		if (!myClient.start(new MyServerHandshakeHandler(plugin, myClient))) {
+		if (! myClient.start() ) {
 			throw new PEException("Could not connect to master at " + plugin.getMasterLocator());
 		}
 	}

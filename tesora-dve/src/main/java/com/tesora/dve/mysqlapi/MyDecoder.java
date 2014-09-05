@@ -70,13 +70,13 @@ public abstract class MyDecoder extends ByteToMessageDecoder {
 		out.add(nativeMsg);
 	}
 
-	abstract MyMessage instantiateMessage(ByteBuf frame);
+	abstract protected MyMessage instantiateMessage(ByteBuf frame);
 
-	boolean isHandshakeDone() {
+	protected boolean isHandshakeDone() {
 		return handshakeDone;
 	}
 
-	void setHandshakeDone(boolean handshakeDone) {
+	protected void setHandshakeDone(boolean handshakeDone) {
 		this.handshakeDone = handshakeDone;
 	}
 

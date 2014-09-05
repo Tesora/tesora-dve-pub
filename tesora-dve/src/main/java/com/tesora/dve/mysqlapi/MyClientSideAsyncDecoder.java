@@ -47,7 +47,7 @@ public class MyClientSideAsyncDecoder extends MyDecoder {
     }
 
     @Override
-	MyMessage instantiateMessage(ByteBuf frame) {
+	protected MyMessage instantiateMessage(ByteBuf frame) {
 		MyMessage nativeMsg;
 		MyMessageType mt;
         byte typeID = frame.readByte();
