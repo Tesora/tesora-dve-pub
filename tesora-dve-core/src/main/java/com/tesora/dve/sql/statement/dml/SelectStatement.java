@@ -476,9 +476,13 @@ public class SelectStatement extends ProjectingStatement {
 				} else if (ea.getAlias() instanceof StringLiteralAlias) {
                     //mysql 5.5 docs state it is OK specify as a column alias as either a identifier or string quoted literal in the projection
                     //so here we convert the StringLiteralAlias 'foo' into NameAlias `foo`
-                    StringLiteralAlias stringLit = (StringLiteralAlias)ea.getAlias();
-                    UnqualifiedName unq = new UnqualifiedName(stringLit.get(),true);
-                    ea.setAlias( unq );
+					final StringLiteralAlias stringLit = (StringLiteralAlias) ea.getAlias();
+					if (!stringLit.get().isEmpty()) {
+						final UnqualifiedName unq = new UnqualifiedName(stringLit.get(), true);
+						ea.setAlias(unq);
+					} else {
+						ea.setAlias(ai.buildNewAlias(null));
+                    }
 				}
 				np.add(e);
 			} else {
