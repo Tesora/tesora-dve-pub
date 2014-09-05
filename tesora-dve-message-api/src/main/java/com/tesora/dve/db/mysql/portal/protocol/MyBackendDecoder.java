@@ -22,6 +22,9 @@ package com.tesora.dve.db.mysql.portal.protocol;
  */
 
 import com.tesora.dve.db.mysql.MysqlMessage;
+import com.tesora.dve.mysqlapi.repl.messages.MyComBinLogDumpRequest;
+import com.tesora.dve.mysqlapi.repl.messages.MyComRegisterSlaveRequest;
+import com.tesora.dve.mysqlapi.repl.messages.MyReplEvent;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.handler.codec.ByteToMessageDecoder;
@@ -134,6 +137,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             responseParseStrategy = new SimpleOKParser();
         } else if (msg instanceof MSPComPrepareStmtRequestMessage){
             responseParseStrategy = new PrepareResponseParser();
+        } else if (msg instanceof MyComRegisterSlaveRequest){
+            responseParseStrategy = new SimpleOKParser();
+        } else if (msg instanceof MyComBinLogDumpRequest) {
+            responseParseStrategy = new ReplDumpLogParser();
         } else {
             logger.warn(String.format("Unexpected message transmitted, %s",msg.getClass().getName()));
         }
@@ -350,7 +357,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
             parsedOne = true;
             ByteBuf payload = lePayload;
-            byte statusByte = payload.getByte(4);//5th byte in the full packet
+            byte statusByte = payload.getByte(0); //5th byte in the full packet
             MyMessage message;
             if (statusByte == 0){
                 message = new MyOKResponse();
@@ -365,6 +372,43 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         @Override
         public boolean isDone() {
             return parsedOne;
+        }
+    }
+
+    static class ReplDumpLogParser extends BaseParseStrategy {
+        boolean errorOrEof = false;
+        @Override
+        public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
+
+            ByteBuf payload = lePayload;
+            byte statusByte = payload.getByte(0);//5th byte in the full packet
+            MyMessage message;
+            switch (statusByte){
+                case MyOKResponse.OKPKT_INDICATOR: //replication events use 0 to indicate a replication event, same as an OK packet.
+                    MyReplEvent repl = new MyReplEvent();
+                    lePayload.skipBytes(1);//TODO: MyReplEvent expects first byte of payload to already be consumed. -sgossard
+                    repl.unmarshallMessage(lePayload);
+                    message = repl;
+                    break;
+                case MyErrorResponse.ERRORPKT_FIELD_COUNT:
+                    MyErrorResponse errorResponse = new MyErrorResponse();
+                    errorResponse.unmarshallMessage(lePayload);
+                    message = errorResponse;
+                    break;
+                case MyEOFPktResponse.EOFPKK_FIELD_COUNT:
+                    MyEOFPktResponse eofResponse = new MyEOFPktResponse();
+                    eofResponse.unmarshallMessage(lePayload);
+                    message = eofResponse;
+                    break;
+                default:
+                    throw new PEException("Unexpected response while parsing replication dump log response, type ID was " + statusByte);
+            }
+            return message;
+        }
+
+        @Override
+        public boolean isDone() {
+            return errorOrEof;
         }
     }
 
