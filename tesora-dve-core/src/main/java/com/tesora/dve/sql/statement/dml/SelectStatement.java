@@ -87,6 +87,7 @@ import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.sql.schema.Table;
+import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.statement.StatementType;
@@ -614,11 +615,17 @@ public class SelectStatement extends ProjectingStatement {
 						if (tab.isInfoSchema()) {
 							dbName = PEConstants.INFORMATION_SCHEMA_DBNAME;
 						} else {
-							final Database<?> tabDb = tab.getDatabase(pc);
-							if (!tab.isTempTable() || (tabDb != null)) {
+							Database<?> tabDb = tab.getDatabase(pc);
+							if (tab.isTempTable() && (tabDb == null)) {
+								tabDb = pc.getCurrentDatabase();
+								if (tabDb == null) {
+									tabDb = pc.getAnyNonSchemaDatabase();
+								}
+								((TempTable) tab).setDatabase(pc, (PEDatabase) tabDb, true);
+							}
+
+							if (tabDb != null) {
 								dbName = tabDb.getName().getUnqualified().getUnquotedName().get();
-							} else {
-								dbName = PEConstants.INFORMATION_SCHEMA_DBNAME;
 							}
 						}
 						tblName = tab.getName(pc).getUnqualified().getUnquotedName().get();
