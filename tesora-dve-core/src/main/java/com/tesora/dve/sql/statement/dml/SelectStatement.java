@@ -617,7 +617,7 @@ public class SelectStatement extends ProjectingStatement {
 						} else {
 							Database<?> tabDb = tab.getDatabase(pc);
 							if (tab.isTempTable() && (tabDb == null)) {
-								tabDb = pc.getCurrentDatabase();
+								tabDb = pc.getCurrentDatabase(false);
 								if (tabDb == null) {
 									tabDb = pc.getAnyNonSchemaDatabase();
 								}
