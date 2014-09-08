@@ -21,8 +21,10 @@ package com.tesora.dve.mysqlapi.repl;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.DefaultResultProcessor;
 import com.tesora.dve.db.mysql.MysqlConnection;
 import com.tesora.dve.db.mysql.MysqlNativeConstants;
+import com.tesora.dve.db.mysql.SynchronousResultProcessor;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
@@ -51,8 +53,7 @@ public class MyReplSlaveClientConnection {
     private final MyReplicationSlaveService plugin;
     private final MyClientConnectionContext context;
 
-    //TODO: this event handler is what actually processes the replication events.  If this is converted, we can use the traditional stack. -sgossard
-    private final MyClientConnectionHandler eventHandler;
+    private final DefaultResultProcessor logEventProcessor;
 
     protected boolean connected = false;
     private Channel channel = null;
@@ -60,17 +61,15 @@ public class MyReplSlaveClientConnection {
 
     enum State { WAITING_FOR_GREETING, AUTHENTICATING, REGISTERING_AS_SLAVE, PROCESSING_EVENTS }
 
-    State connectionState = State.WAITING_FOR_GREETING;
-
     public MyReplSlaveClientConnection(MyReplSlaveConnectionContext rsContext, MyReplicationSlaveService plugin) {
         this(rsContext,plugin, new MyReplSlaveAsyncHandler(rsContext, plugin));
     }
 
-    public MyReplSlaveClientConnection(MyReplSlaveConnectionContext rsContext, MyReplicationSlaveService plugin, MyClientConnectionHandler handler) {
+    public MyReplSlaveClientConnection(MyReplSlaveConnectionContext rsContext, MyReplicationSlaveService plugin, DefaultResultProcessor processor) {
         this.context = rsContext;
-		this.plugin = plugin;
-        this.eventHandler = handler;
-	}
+        this.plugin = plugin;
+        this.logEventProcessor = processor;
+    }
 
     private void registerAsSlave() {
         //TODO: this method issues a slave register, then triggers the binlog dump on success.  It's ready to move over to the traditional stack. -sgossard
@@ -80,7 +79,8 @@ public class MyReplSlaveClientConnection {
 
         channel.pipeline().addLast(
                 MyServerSlaveRegisterHandler.class.getSimpleName(),
-                new MyServerSlaveRegisterHandler());
+                adaptDefaultProcessor(new MyServerSlaveRegisterHandler())
+        );
 
         channel.writeAndFlush(rsr);
     }
@@ -107,8 +107,8 @@ public class MyReplSlaveClientConnection {
         channel.pipeline()
                 .remove(MyClientSideSyncDecoder.class.getSimpleName());
 
-        channel.pipeline().addLast(eventHandler.getClass().getSimpleName(),
-                eventHandler);
+        channel.pipeline().addLast(logEventProcessor.getClass().getSimpleName(),
+                adaptDefaultProcessor(logEventProcessor));
         connected = true;
 
         if (logger.isDebugEnabled())
@@ -198,6 +198,39 @@ public class MyReplSlaveClientConnection {
 
     public MyClientConnectionContext getContext() {
         return context;
+    }
+
+    public static MessageToMessageDecoder<MyMessage> adaptDefaultProcessor(final DefaultResultProcessor resultProcessor) {
+        return new MessageToMessageDecoder<MyMessage>() {
+
+            @Override
+            public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+                resultProcessor.packetStall(ctx);
+                super.channelReadComplete(ctx);
+            }
+
+            @Override
+            public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+                resultProcessor.active(ctx);
+                super.handlerAdded(ctx);
+            }
+
+            @Override
+            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                if (cause instanceof Exception)
+                    resultProcessor.failure((Exception) cause);
+                else
+                    resultProcessor.failure(new PEException(cause));
+
+                super.exceptionCaught(ctx, cause);
+            }
+
+            @Override
+            protected void decode(ChannelHandlerContext ctx, MyMessage msg, List<Object> out) throws Exception {
+                resultProcessor.processPacket(ctx, msg);
+            }
+
+        };
     }
 
     public class MyClientSideSyncDecoder extends MyDecoder {
@@ -320,18 +353,26 @@ public class MyReplSlaveClientConnection {
         }
     }
 
-    public class MyServerSlaveRegisterHandler extends MessageToMessageDecoder<MyMessage> {
+    public class MyServerSlaveRegisterHandler extends SynchronousResultProcessor {
 
         public MyServerSlaveRegisterHandler() {
         }
 
         @Override
-        protected void decode(ChannelHandlerContext ctx, MyMessage msg,
-                List<Object> out) throws Exception {
+        public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+            try {
+                decode(ctx, message);
+            } catch (Exception e){
+                super.failure(e);
+            }
+            return false;
+        }
+
+        protected void decode(ChannelHandlerContext ctx, MyMessage msg) throws Exception {
             try {
                 onSlaveRegister(ctx, msg);
             } finally {
-                ctx.pipeline().remove(this);
+                ctx.pipeline().remove(MyServerSlaveRegisterHandler.class.getSimpleName());
             }
 
         }
