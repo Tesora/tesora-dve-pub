@@ -26,8 +26,12 @@ import com.tesora.dve.common.DBType;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.*;
 import com.tesora.dve.exceptions.PESQLStateException;
+import com.tesora.dve.mysqlapi.repl.messages.MyComRegisterSlaveRequest;
+import com.tesora.dve.resultset.ColumnSet;
+import com.tesora.dve.resultset.ResultRow;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
@@ -37,10 +41,8 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.nio.charset.Charset;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.base.Objects;
@@ -212,6 +214,18 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 			PEThreadContext.popFrame();
 		}
 	}
+
+    public void execute(MysqlCommand sqlAction, CompletionHandle<Boolean> promise){
+        this.execute( SQLCommand.EMPTY, buildDefaultConsumer(sqlAction), promise);
+    }
+
+    public void execute(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor, CompletionHandle<Boolean> promise){
+        this.execute( buildDefaultAction(outboundMessage,resultsProcessor), promise );
+    }
+
+    public void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor){
+        this.execute( buildDefaultAction(outboundMessage,resultsProcessor), resultsProcessor );
+    }
 
 	private void syncToServerConnect() {
 		if (pendingConnection != null) {
@@ -439,6 +453,73 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 				.toString();
 	}
 
+    private static DBResultConsumer buildDefaultConsumer(final MysqlCommand command) {
+        return new DBResultConsumer() {
+            @Override
+            public void setSenderCount(int senderCount) {
+            }
+
+            @Override
+            public boolean hasResults() {
+                return false;
+            }
+
+            @Override
+            public long getUpdateCount() throws PEException {
+                return 0;
+            }
+
+            @Override
+            public void setResultsLimit(long resultsLimit) {
+
+            }
+
+            @Override
+            public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException {
+
+            }
+
+            @Override
+            public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
+
+            }
+
+            @Override
+            public void setNumRowsAffected(long rowcount) {
+
+            }
+
+            @Override
+            public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
+                channel.write(command);
+            }
+
+            @Override
+            public boolean isSuccessful() {
+                return true;
+            }
+
+            @Override
+            public void rollback() {
+            }
+
+        };
+    }
+
+    private static MysqlCommand buildDefaultAction(final MyMessage outboundMessage, final MysqlCommandResultsProcessor processor) {
+        return new MysqlCommand() {
+            @Override
+            void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
+                ctx.write(outboundMessage);
+            }
+
+            @Override
+            MysqlCommandResultsProcessor getResultHandler() {
+                return processor;
+            }
+        };
+    }
+
     private class DeferredErrorHandle extends PEDefaultPromise<Boolean> {
         //supply our own handler that will report failures on some call in the future.
         //TODO: since query results generally come back in order, it would be good for these handlers to signal the next provided handler, not some arbitrary execute in the future. -sgossard
@@ -453,4 +534,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
         }
 
     }
+
+
 }

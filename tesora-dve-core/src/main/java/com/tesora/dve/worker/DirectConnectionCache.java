@@ -25,9 +25,11 @@ import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.mysql.DefaultResultProcessor;
 import com.tesora.dve.db.mysql.MysqlConnection;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
@@ -165,6 +167,10 @@ public class DirectConnectionCache {
         @Override
         public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) {
             dbConnection.execute(sql,consumer,promise);
+        }
+
+        public void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor){
+            dbConnection.execute( outboundMessage, resultsProcessor );
         }
 
         @Override
