@@ -234,6 +234,10 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 		}
 	}
 
+    public boolean isActive(){
+        return (channel != null && channel.isActive());
+    }
+
 	@Override
 	public synchronized void close() {
 		if (connectionEventGroup != null) {

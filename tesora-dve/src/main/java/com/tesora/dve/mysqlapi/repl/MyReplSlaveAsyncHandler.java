@@ -27,9 +27,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.mysqlapi.repl.messages.MyReplEvent;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.util.List;
-
-import io.netty.handler.codec.MessageToMessageDecoder;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
@@ -62,10 +59,15 @@ public class MyReplSlaveAsyncHandler extends SynchronousResultProcessor {
     public boolean processPacket(ChannelHandlerContext ctx, MyMessage msg) throws PEException {
 		if (plugin.stopCalled()) {
 			// don't process any more messages
+            this.trySuccess(true);
 			return false;
 		}
-		
-		if (msg instanceof MyEOFPktResponse) {
+
+        if (msg instanceof MyReplEvent) {
+            MyReplicationVisitorDispatch dispatch = new MyReplicationVisitorDispatch(plugin);
+            ((MyReplEvent) msg).accept(dispatch);
+            return true;
+        } else if (msg instanceof MyEOFPktResponse) {
 			// TODO we need to implement retry logic - this means that the master went away
 			if (logger.isDebugEnabled())
 				logger.debug("EOF packet received from master");
@@ -76,14 +78,15 @@ public class MyReplSlaveAsyncHandler extends SynchronousResultProcessor {
 			// For real use - we don't actually understand the real reason
 			// this packet comes down so we are going to ignore it
 			MyEOFPktResponse eofPkt = (MyEOFPktResponse) msg;
-			if ( eofPkt.getStatusFlags() == -1 && eofPkt.getWarningCount() == -1 )
-				plugin.stop();
+			if ( eofPkt.getStatusFlags() == -1 && eofPkt.getWarningCount() == -1 ) {
+                this.success(true);
+                plugin.stop();
+            }
 		} else if (msg instanceof MyErrorResponse) {
-			logger.error("Error received from master: "
-					+ ((MyErrorResponse) msg).getErrorMsg());
-		} else if (msg instanceof MyReplEvent) {
-            MyReplicationVisitorDispatch dispatch = new MyReplicationVisitorDispatch(plugin);
-			((MyReplEvent) msg).accept(dispatch);
+            MyErrorResponse err = (MyErrorResponse) msg;
+            logger.error("Error received from master: "
+                    + err.getErrorMsg());
+            this.failure( err.asException() );
 		}
 		return false;
 	}
