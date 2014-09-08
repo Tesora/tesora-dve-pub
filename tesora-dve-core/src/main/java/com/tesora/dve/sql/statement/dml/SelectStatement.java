@@ -621,7 +621,9 @@ public class SelectStatement extends ProjectingStatement {
 								if (tabDb == null) {
 									tabDb = pc.getAnyNonSchemaDatabase();
 								}
-								((TempTable) tab).setDatabase(pc, (PEDatabase) tabDb, true);
+								final TempTable tabAstempTable = ((TempTable) tab);
+								tabAstempTable.setDatabase(pc, (PEDatabase) tabDb, true);
+								tabAstempTable.refreshColumnLookupTable();
 							}
 
 							if (tabDb != null) {

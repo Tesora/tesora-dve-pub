@@ -524,6 +524,6 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		tests.add(new StatementMirrorFun("select * from pe1624"));
 		runTest(tests);
 
-		//		runTest(new StatementMirrorFun("select @utf8_message as \"\" union select repeat(CONVERT('-' using utf8),80);"));
+		runTest(new StatementMirrorFun("select @utf8_message as \"\" union select repeat(CONVERT('-' using utf8),80);"));
 	}
 }
