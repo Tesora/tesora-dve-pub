@@ -23,16 +23,12 @@ package com.tesora.dve.mysqlapi;
 
 import com.tesora.dve.db.mysql.portal.protocol.Packet;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
-
-import java.nio.ByteOrder;
 
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.exceptions.PEException;
 
 
 public class MyEncoder extends MessageToByteEncoder<MyMessage> {
@@ -41,21 +37,8 @@ public class MyEncoder extends MessageToByteEncoder<MyMessage> {
 	public MyEncoder() {
 	}
 
-	public ByteBuf encodeMessage(MyMessage message) throws PEException {
-
-		if (logger.isDebugEnabled())
-			logger.debug("Encoding message of type " + message.getMessageType().toString());
-
-		ByteBuf buffer = Unpooled.buffer(2048).order(ByteOrder.LITTLE_ENDIAN);
-
-        Packet.encodeFullMessage(message.getSeq(), message, buffer);
-
-        return buffer;
-	}
-
-	@Override
-	protected void encode(ChannelHandlerContext ctx, MyMessage msg, ByteBuf out) throws Exception {
-		out.writeBytes( encodeMessage(msg) );
-	}
-
+    @Override
+    protected void encode(ChannelHandlerContext ctx, MyMessage msg, ByteBuf out) throws Exception {
+        Packet.encodeFullMessage(msg,out);
+    }
 }

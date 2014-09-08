@@ -54,6 +54,7 @@ public class Packet {
     final CompositeByteBuf payload;
     Modifier modifier;
     int expectedSequence;
+    int lastDecodedSeq;
     int totalFullBytes = 0;
     boolean sealed = false;
     String context;
@@ -76,7 +77,7 @@ public class Packet {
     }
 
     public byte getSequenceNumber(){
-        return header.getByte(3);
+        return (byte)(0xFF & lastDecodedSeq);
     }
 
     public int getNextSequenceNumber(){
@@ -102,7 +103,7 @@ public class Packet {
         ReferenceCountUtil.release(payload);
     }
 
-    public boolean decodeMore(ByteBufAllocator alloc, ByteBuf input){
+    public boolean decodeMore(ByteBuf input){
         if (! sealed ) {
             int transferToHeader = Math.min(header.writableBytes(),input.readableBytes());
             input.readBytes(header,transferToHeader);
@@ -112,11 +113,7 @@ public class Packet {
             }
 
             int chunkLength = header.getUnsignedMedium(0);
-            int codedSequence = header.getUnsignedByte(3);
-            if (codedSequence != expectedSequence){
-                String message = context + " , sequence problem decoding packet, expected=" + expectedSequence + " , decoded=" + codedSequence;
-                logger.warn(message);
-            }
+            lastDecodedSeq = header.getUnsignedByte(3);
 
             int chunkAlreadyReceived = payload.writerIndex() - totalFullBytes;
             int chunkExpecting = chunkLength - chunkAlreadyReceived;
@@ -132,6 +129,10 @@ public class Packet {
             chunkExpecting = chunkLength - chunkAlreadyReceived;
 
             if (chunkExpecting == 0){
+                if (lastDecodedSeq != expectedSequence){
+                    String message = context + " , sequence problem decoding packet, expected=" + expectedSequence + " , decoded=" + lastDecodedSeq;
+                    logger.warn(message);
+                }
                 expectedSequence++;
                 //finished this packet, mark how many full packet bytes we've read.
                 totalFullBytes = payload.writerIndex();
@@ -144,6 +145,10 @@ public class Packet {
             }
         }
         return sealed;
+    }
+
+    public static int encodeFullMessage(MysqlMessage mysql, ByteBuf destination) {
+        return encodeFullMessage(mysql.getSeq(),mysql,destination);
     }
 
     public static int encodeFullMessage(int sequenceStart, MysqlMessage mysql, ByteBuf destination) {

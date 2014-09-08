@@ -46,7 +46,7 @@ public abstract class MyDecoder extends ByteToMessageDecoder {
         if (mspPacket == null)
             mspPacket = new Packet(ctx.alloc(), expectedSequence, Packet.Modifier.HEAPCOPY_ON_READ, "replication");
 
-        if (!mspPacket.decodeMore(ctx.alloc(),in)) //deals with framing and extended packets.
+        if (!mspPacket.decodeMore(in)) //deals with framing and extended packets.
             return;
 
         byte lastSeq = mspPacket.getSequenceNumber();

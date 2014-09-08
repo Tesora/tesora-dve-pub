@@ -210,7 +210,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             if (mspPacket == null)
                 mspPacket = new Packet(ctx.alloc(), expectedSequence, Packet.Modifier.HEAPCOPY_ON_READ, "backend");
 
-            if (!mspPacket.decodeMore(ctx.alloc(),in)) //deals with framing and extended packets.
+            if (!mspPacket.decodeMore(in)) //deals with framing and extended packets.
                 return;
 
             //we got a packet, maybe extended.  update the next expected sequence (might be > +1, if extended)

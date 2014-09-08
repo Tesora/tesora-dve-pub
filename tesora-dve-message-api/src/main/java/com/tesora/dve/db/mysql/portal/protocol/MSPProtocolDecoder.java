@@ -90,7 +90,7 @@ public class MSPProtocolDecoder extends ByteToMessageDecoder {
             //deals with the handshake packet
             firstPacket = false;
 
-            if (!mspPacket.decodeMore(ctx.alloc(),in))
+            if (!mspPacket.decodeMore(in))
                 return;
 
             int sequenceId = mspPacket.getSequenceNumber();
