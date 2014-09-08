@@ -606,15 +606,22 @@ boolean_operator options {k=1;}:
   
 
 boolean_expr returns [ExpressionNode expr] options{k=1;}:
-  ln=NOT? predicate (i=IS in=NOT? is_parameters)?
-  { $expr = utils.buildBooleanExpr(this.adaptor, $ln, $predicate.expr, $i, $in, $is_parameters.l); }
+  ln=multi_not_expr? predicate (i=IS in=NOT? is_parameters)?
+  { $expr = utils.buildBooleanExpr(this.adaptor, $ln.t, $predicate.expr, $i, $in, $is_parameters.l); }
+  ;
+  
+multi_not_expr returns [Token t] options {k=1;}
+  @init { List l = new ArrayList(); }
+  :
+  (nl=NOT { l.add($nl); } (nr=NOT { l.add($nr); })*)
+  { $t = ((l.size() \% 2) == 0) ? null : $nl; }
   ;
 
 predicate returns [ExpressionNode expr] options {k=1;}:
   lhs=math_binop_expr
   (
     ((n=NOT)?
-     ((i=IN in_parameters)
+     ((i=IN in_parameters (op=relational_binop orhs=predicate)?)
      |(b=BETWEEN blhs=math_binop_expr AND brhs=predicate)
      |(l=LIKE like_parameters)
      |((bre=REGEXP | rl=RLIKE) string_literal)
