@@ -48,6 +48,10 @@ public abstract class LanguageNode {
 		return location;
 	}
 	
+	public void setSourceLocation(SourceLocation sln) {
+		location = sln;
+	}
+	
 	public <T extends LanguageNode> void setParent(Edge<?,T> p) {
 		this.parent = p;
 	}

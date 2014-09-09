@@ -43,6 +43,10 @@ public abstract class SourceLocation implements Comparable<SourceLocation>, java
 	public abstract int getLineNumber();
 	public abstract int getPositionInLine();
 	
+	public boolean isComputed() {
+		return false;
+	}
+	
 	@Override
 	public int compareTo(SourceLocation other) {
 		int left = getLineNumber();

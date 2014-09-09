@@ -30,18 +30,24 @@ import com.tesora.dve.sql.util.UnaryFunction;
 
 public enum InfoView {
 
-	INFORMATION(PEConstants.INFORMATION_SCHEMA_DBNAME,InformationSchemaTableView.regularNameFunc),
-	SHOW(PEConstants.SHOW_SCHEMA_DBNAME,InformationSchemaTableView.regularNameFunc),
-	MYSQL(PEConstants.MYSQL_SCHEMA_DBNAME,InformationSchemaTableView.regularNameFunc);
+	INFORMATION(PEConstants.INFORMATION_SCHEMA_DBNAME,InformationSchemaTableView.regularNameFunc,false,true),
+	SHOW(PEConstants.SHOW_SCHEMA_DBNAME,InformationSchemaTableView.regularNameFunc,false,false),
+	MYSQL(PEConstants.MYSQL_SCHEMA_DBNAME,InformationSchemaTableView.regularNameFunc,true,false);
 	
 	private final String persistentDBName;
 	private final UnaryFunction<Name[], AbstractInformationSchemaColumnView> nameFunc;
 	private final DatabaseViewCacheKey cacheKey;
+	private final boolean lookupCaseSensitive;
+	private final boolean capitalizeNames;
 	
-	private InfoView(String pdbn, UnaryFunction<Name[], AbstractInformationSchemaColumnView> nf) {
+	private InfoView(String pdbn, UnaryFunction<Name[], AbstractInformationSchemaColumnView> nf,
+			boolean caseSensitive,
+			boolean capitalizeNames) {
 		persistentDBName = pdbn;
 		nameFunc = nf;
 		cacheKey = new DatabaseViewCacheKey(pdbn);
+		this.lookupCaseSensitive = caseSensitive;
+		this.capitalizeNames = capitalizeNames;
 	}
 	
 	public String getUserDatabaseName() {
@@ -56,4 +62,11 @@ public enum InfoView {
 		return cacheKey;
 	}
 	
+	public boolean isLookupCaseSensitive() {
+		return lookupCaseSensitive;
+	}
+	
+	public boolean isCapitalizeNames() {
+		return capitalizeNames;
+	}
 }

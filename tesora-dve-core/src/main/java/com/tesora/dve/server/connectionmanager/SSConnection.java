@@ -142,6 +142,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public static final String USERLAND_TEMPORARY_TABLES_LOCK_NAME = "DVE.Userland.Temporary.Tables";
 	
 	static Logger logger = Logger.getLogger(SSConnection.class);
+	
+	// this is here solely to avoid doing lots of unnecessary work in the tests
+	static UpdatedGlobalVariablesCallback globalVariablesUpdated = new UpdatedGlobalVariablesCallback();
 
 	static final boolean transactionLoggingEnabled = !Boolean.getBoolean("SSConnection.suppressTransactionRecording");
 	
@@ -1077,12 +1080,13 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public void updateWorkerState() throws PEException {
         sendToAllGroups(new WorkerSetSessionVariableRequest(getNonTransactionalContext(), getSessionVariables(), new DefaultSetVariableBuilder()));
 	}
-	
+		
 	/*
 	 * Make sure we send down passthrough global variable updates
 	 */
 	public void updateGlobalVariableState(String sql) throws PEException {
 		// blech, need to build the "all sites" storage group for this
+		globalVariablesUpdated.modify(sql);
 		PersistentGroup allSites = getCatalogDAO().buildAllSitesGroup();
 		WorkerExecuteRequest setSQL =
 				new WorkerExecuteRequest(getNonTransactionalContext(),new SQLCommand(sql));
@@ -1096,6 +1100,11 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		
 	}
 	
+	public static void registerGlobalVariablesUpdater(UpdatedGlobalVariablesCallback x) {
+		globalVariablesUpdated = x;
+		if (globalVariablesUpdated == null)
+			globalVariablesUpdated = new UpdatedGlobalVariablesCallback();
+	}
 	
 	void sendToAllGroups(WorkerRequest req) throws PEException {
 		List<WorkerGroup> allGroups = new ArrayList<WorkerGroup>(availableWG.values());

@@ -50,7 +50,10 @@ public abstract class AbstractInformationSchemaColumnView implements Column<Info
 	public AbstractInformationSchemaColumnView(InfoView view, UnqualifiedName nameInView) {
 		super();
 		this.view = view;
-		this.name = nameInView;
+		if (this.view == null)
+			this.name = nameInView; // temporary
+		else
+			this.name =	(view.isCapitalizeNames() ? nameInView.getCapitalized().getUnqualified() : nameInView);
 		this.frozen = false;
 	}
 	

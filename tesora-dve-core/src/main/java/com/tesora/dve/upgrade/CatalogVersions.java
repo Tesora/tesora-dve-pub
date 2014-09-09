@@ -82,7 +82,8 @@ public class CatalogVersions {
 		EXTERNAL_SERVICE_SHOW_CONFIG(new InfoSchemaUpgradeVersion(40)),
 		TEMPORARY_TABLES(new UserlandTemporaryTables(41)),
 		GLOBAL_VARIABLES(new GlobalVariablesVersion(42)),
-		COLLATION_ID_TYPE(new InfoSchemaUpgradeVersion(43));
+		COLLATION_ID_TYPE(new InfoSchemaUpgradeVersion(43)),
+		INFOSCHEMA_CAPITALIZATION(new InfoSchemaUpgradeVersion(44));
 		
 		private final CatalogVersion upgradeModule; 
 		

@@ -90,8 +90,8 @@ import com.tesora.dve.sql.infoschema.show.CreateDatabaseInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowColumnInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowOptions;
-import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowVariablesInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.MigrationException;
@@ -322,6 +322,7 @@ import com.tesora.dve.sql.statement.session.XARecoverTransactionStatement;
 import com.tesora.dve.sql.statement.session.XARollbackTransactionStatement;
 import com.tesora.dve.sql.template.TemplateManager;
 import com.tesora.dve.sql.transform.CopyVisitor;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PassThroughCommand.Command;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
@@ -336,7 +337,6 @@ import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.SiteManagerCommand;
 import com.tesora.dve.worker.WorkerGroup;
-import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 
 // holds the bridge methods from antlr tree nodes to our nodes
 public class TranslatorUtils extends Utils implements ValueSource {
@@ -435,6 +435,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public void setContext(SchemaContext sc) {
 		pc = sc;
+	}
+	
+	public String getInputSQL() {
+		return pc.getOrigStmt();
 	}
 	
 	public void pushScope() {
@@ -570,7 +574,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			else 
 				options.add((MysqlSelectOption) opt);
 		}
-		SelectStatement ss = new SelectStatement(tableRefs, projection,
+		SelectStatement ss = new SelectStatement(tableRefs, projection, 
 				whereClause, orderbys, limit, sq, options, groupbys,
 				havingExpr, locking, new AliasInformation(scope), SourceLocation.make(tree));
 		ss.getDerivedInfo().takeScope(scope);
@@ -1764,6 +1768,19 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		else
 			nc = scope.registerColumn(new TenantColumn(pc));
 		out.add(nc);
+		// collapse the case where we see UNIQUE, KEY
+		if (inlineKeys.size() > 1) {
+			int uniqued = -1;
+			int keyed = -1;
+			for(int i = 0; i < inlineKeys.size(); i++) {
+				if (inlineKeys.get(i).getConstraint() == ConstraintType.UNIQUE && uniqued == -1)
+					uniqued = i;
+				else if (inlineKeys.get(i).getConstraint() == null && keyed == -1)
+					keyed = i;
+			}
+			if (uniqued > -1 && keyed > uniqued)
+				inlineKeys.remove(keyed);
+		}
 		for(ColumnKeyModifier ckm : inlineKeys) {
 			// first build the key
 			@SuppressWarnings("unchecked")
@@ -2390,7 +2407,20 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (kind == null) {
 			if (fat != null) {
 				if (sat != null) {
-					kind = VariableScopeKind.SESSION;
+					/*
+					 * MySQL returns the session value if it exists and the
+					 * global value otherwise.
+					 */
+					final String varName = n.getUnqualified().getUnquotedName().get();
+					final VariableHandler<?> exists =
+							Singletons.require(HostService.class).getVariableManager().lookup(varName);
+					if (exists != null) {
+						if (exists.getScopes().contains(VariableScopeKind.SESSION)) {
+							kind = VariableScopeKind.SESSION;
+						} else {
+							kind = VariableScopeKind.GLOBAL;
+						}
+					}
 				} else {
 					kind = VariableScopeKind.USER;
 				}
@@ -3757,6 +3787,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public ExpressionNode maybeBuildExprAlias(ExpressionNode targ, Name alias, String stringAlias,
 			Object tree) {
+		SourceLocation sloc = SourceLocation.make(tree);
+		
 		if (alias == null && stringAlias == null)
 			return targ;
 

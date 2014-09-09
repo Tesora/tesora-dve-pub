@@ -29,6 +29,7 @@ import java.util.List;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.InsertIntoSelectStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -285,6 +286,21 @@ public class ResolvingTest extends TransientSchemaTest {
 				assertEquals(esql,osql);
 		}
 		
+	}
+	
+	@Test
+	public void testResultSetAliases() throws Throwable {
+		SchemaContext db = buildSchema(TestName.MULTI,
+				"create table foo(id int, fid varchar(32), sid int, primary key (id))");
+		
+		String sql =
+				"select id as identifier, null as comment\nfrom foo where sid = 15";
+		
+		List<Statement> stmts = parse(db,sql);
+		SelectStatement ss = (SelectStatement) stmts.get(0);
+		ProjectionInfo pi = ss.getProjectionMetadata(db);
+		assertEquals("identifier",pi.getColumnAlias(1));
+		assertEquals("comment",pi.getColumnAlias(2));
 	}
 	
 }

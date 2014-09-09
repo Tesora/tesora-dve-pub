@@ -24,18 +24,20 @@ package com.tesora.dve.standalone;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-
-import com.tesora.dve.singleton.Singletons;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ResourceLeakDetector;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -45,10 +47,10 @@ import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEBaseTest;
 import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.comms.client.messages.ConnectRequest;
 import com.tesora.dve.comms.client.messages.ConnectResponse;
 import com.tesora.dve.comms.client.messages.CreateStatementRequest;
@@ -67,11 +69,16 @@ import com.tesora.dve.resultset.ResultChunk;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.connectionmanager.UpdatedGlobalVariablesCallback;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.StorageGroupDDL;
+import com.tesora.dve.variables.VariableHandler;
+import com.tesora.dve.variables.VariableManager;
 import com.tesora.dve.worker.DBConnectionParameters;
 
 /**
@@ -84,7 +91,13 @@ public class PETest extends PEBaseTest {
 	protected static BootstrapHost bootHost = null;
 	// kindly leave this public - sometimes it is used for not yet committed tests
 	public static Class<?> resourceRoot = PETest.class;
-	private static long nettyLeakCount = 0;
+	
+	// TODO: This should really be zero, but test clean-up sometimes
+	// does not happen fast enough causing failure of some test jobs.
+	private static final long NETTY_LEAK_COUNT_BASE = 3;
+	private static long initialNettyLeakCount;
+
+	private static GlobalVariableState stateUndoer = null;
 
 	// This is so that any TestNG tests will print out the class name
 	// as the test is running (to mimic JUnit behavior)
@@ -106,9 +119,12 @@ public class PETest extends PEBaseTest {
 
 		ResourceLeakDetector<?> detector = ResourceLeakDetector.getDetector(ByteBuf.class);
 		if (detector != null)
-			nettyLeakCount = detector.getLeakCount();
+			initialNettyLeakCount = detector.getLeakCount();
 
 		logger = Logger.getLogger(PETest.class);
+		
+		if (stateUndoer == null)
+			stateUndoer = new GlobalVariableState();
 	}
 
     private static void delay(String activity, String property, long defaultDelayMillis) {
@@ -135,6 +151,9 @@ public class PETest extends PEBaseTest {
 	public static void teardownPETest() throws Throwable {
         delay("tearing down the PE","afterClass.delay", 100L);
 
+        if (stateUndoer != null)
+        	stateUndoer.undo();
+        
 		if (catalogDAO != null) {
 			catalogDAO.close();
 			catalogDAO = null;
@@ -166,8 +185,12 @@ public class PETest extends PEBaseTest {
 		}
 
 		ResourceLeakDetector<?> detector = ResourceLeakDetector.getDetector(ByteBuf.class);
-		if (detector != null && detector.getLeakCount() > nettyLeakCount)
-			finalThrows.add(new Exception("Netty ByteBuf leak detected!"));
+		if (detector != null) {
+			final long numOfLeaksDetected = detector.getLeakCount();
+			if (numOfLeaksDetected > (initialNettyLeakCount + NETTY_LEAK_COUNT_BASE)) {
+				finalThrows.add(new Exception("Total of '" + numOfLeaksDetected + "' Netty ByteBuf leaks detected!"));
+			}
+		}
 
 		if (finalThrows.size() > 0) {
 			if (logger.isDebugEnabled()) {
@@ -426,6 +449,70 @@ public class PETest extends PEBaseTest {
 		assertErrorInfo(ei,formatter,params);
 	}
 	
-
+	private static class GlobalVariableState extends UpdatedGlobalVariablesCallback {
+		
+		private final Map<VariableHandler,String> initialValues;
+		private int counter;
+		
+		public GlobalVariableState() throws Exception {
+			DBHelper helper = buildHelper();
+			counter = 0;
+			try {
+				initialValues = buildValues(helper);
+			} finally {
+				helper.disconnect();
+			}
+			SSConnection.registerGlobalVariablesUpdater(this);
+		}
+		
+		private static Map<VariableHandler,String> buildValues(DBHelper helper) throws Exception {
+			ResultSet rs = null;
+			HashMap<String,String> vals = new HashMap<String,String>();
+			HashMap<VariableHandler,String> out = new HashMap<VariableHandler,String>();
+			try {
+				if (helper.executeQuery("show global variables")) {
+					rs = helper.getResultSet();
+					while(rs.next()) {
+						vals.put(VariableManager.normalize(rs.getString(1)), rs.getString(2));
+					}
+				}
+				for(VariableHandler vh : VariableManager.getManager().getGlobalHandlers()) {
+					if (!vh.isEmulatedPassthrough()) continue;
+					String vn = VariableManager.normalize(vh.getName());
+					if (vh.isEmulatedPassthrough()) {
+						String iv = vals.get(vn);
+						out.put(vh, iv); 
+					}
+				}
+			} finally {
+				if (rs != null)
+					rs.close();
+			}
+			return out;
+		}
+		
+		public void undo() throws Exception {
+			if (counter == 0) return;
+			DBHelper helper = buildHelper();
+			try {
+				Map<VariableHandler,String> cvals = buildValues(helper);
+				for(VariableHandler vh : initialValues.keySet()) {
+					if (!ObjectUtils.equals(initialValues.get(vh), cvals.get(vh))) {
+						helper.executeQuery("set global " + vh + " = " + vh.toExternal(vh.toInternal(initialValues.get(vh))));
+					}
+				}
+				counter = 0;
+			} finally {
+				helper.disconnect();
+			}
+		}
+		
+		@Override
+		public void modify(String sql) {
+			counter++;
+//			System.out.println(sql);
+		}
+		
+	}
 
 }

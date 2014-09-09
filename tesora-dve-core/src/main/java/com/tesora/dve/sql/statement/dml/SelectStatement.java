@@ -35,8 +35,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.ObjectUtils;
 
 import com.tesora.dve.common.PEConstants;
@@ -48,6 +46,8 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnAttribute;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ProjectionInfo;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.MTTableKey;
@@ -78,6 +78,7 @@ import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.Column;
+import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.ExplainOptions.ExplainOption;
 import com.tesora.dve.sql.schema.FunctionName;
@@ -86,6 +87,7 @@ import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.sql.schema.Table;
+import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.statement.StatementType;
@@ -126,7 +128,7 @@ public class SelectStatement extends ProjectingStatement {
 	}
 	
 	public SelectStatement(List<FromTableReference> tables, 
-			List<ExpressionNode> projExprs, 
+			List<ExpressionNode> projExprs,
 			ExpressionNode where, 
 			List<SortingSpecification> order, 
 			LimitSpecification limit,
@@ -263,6 +265,7 @@ public class SelectStatement extends ProjectingStatement {
 	// for either a projection or an insert column specificaiton
 	private List<ExpressionNode> expandWildcards(SchemaContext sc, List<ExpressionNode> in) {
 		ArrayList<ExpressionNode> np = new ArrayList<ExpressionNode>();
+		
 		for(ExpressionNode e : in) {
 			if (e instanceof WildcardTable) {
 				WildcardTable wct = (WildcardTable)e;
@@ -314,7 +317,7 @@ public class SelectStatement extends ProjectingStatement {
 			} else {
 				np.add(e);
 			}
-		}
+		}		
 		return np;
 	}
 	
@@ -474,9 +477,13 @@ public class SelectStatement extends ProjectingStatement {
 				} else if (ea.getAlias() instanceof StringLiteralAlias) {
                     //mysql 5.5 docs state it is OK specify as a column alias as either a identifier or string quoted literal in the projection
                     //so here we convert the StringLiteralAlias 'foo' into NameAlias `foo`
-                    StringLiteralAlias stringLit = (StringLiteralAlias)ea.getAlias();
-                    UnqualifiedName unq = new UnqualifiedName(stringLit.get(),true);
-                    ea.setAlias( unq );
+					final StringLiteralAlias stringLit = (StringLiteralAlias) ea.getAlias();
+					if (!stringLit.get().isEmpty()) {
+						final UnqualifiedName unq = new UnqualifiedName(stringLit.get(), true);
+						ea.setAlias(unq);
+					} else {
+						ea.setAlias(ai.buildNewAlias(null));
+                    }
 				}
 				np.add(e);
 			} else {
@@ -552,6 +559,10 @@ public class SelectStatement extends ProjectingStatement {
 				String aliasName = null;
 				ColumnInstance ci = null;
 				
+				if (e.getSourceLocation() != null && e.getSourceLocation().isComputed()) {
+					aliasName = e.getSourceLocation().getText();
+				}
+				
 				if (e instanceof ExpressionAlias) {
 					ExpressionAlias ea = (ExpressionAlias) e;
 					Alias aname = ea.getAlias();
@@ -574,10 +585,15 @@ public class SelectStatement extends ProjectingStatement {
 					columnName = buf.toString();
 					aliasName = PEStringUtils.dequote(columnName);
 				} else {
-					StringBuilder buf = new StringBuilder(); 
-                    emitter.emitExpression(pc,e, buf); 
-                    columnName = (e instanceof LiteralExpression) ? PEStringUtils.dequote(buf.toString()) : buf.toString(); 
-                    aliasName = columnName; 
+					if (aliasName != null) {
+						// via above
+						columnName = aliasName;
+					} else {
+						StringBuilder buf = new StringBuilder(); 
+						emitter.emitExpression(pc,e, buf); 
+						columnName = (e instanceof LiteralExpression) ? PEStringUtils.dequote(buf.toString()) : buf.toString(); 
+						aliasName = columnName;
+					}
 				}
 				ColumnInfo colInfo = pi.addColumn(i + 1, columnName, (aliasName == null ?  columnName : aliasName));
 				if (ci != null) {
@@ -599,7 +615,20 @@ public class SelectStatement extends ProjectingStatement {
 						if (tab.isInfoSchema()) {
 							dbName = PEConstants.INFORMATION_SCHEMA_DBNAME;
 						} else {
-							dbName = tab.getDatabase(pc).getName().getUnqualified().getUnquotedName().get();
+							Database<?> tabDb = tab.getDatabase(pc);
+							if (tab.isTempTable() && (tabDb == null)) {
+								tabDb = pc.getCurrentDatabase(false);
+								if (tabDb == null) {
+									tabDb = pc.getAnyNonSchemaDatabase();
+								}
+								final TempTable tabAstempTable = ((TempTable) tab);
+								tabAstempTable.setDatabase(pc, (PEDatabase) tabDb, true);
+								tabAstempTable.refreshColumnLookupTable();
+							}
+
+							if (tabDb != null) {
+								dbName = tabDb.getName().getUnqualified().getUnquotedName().get();
+							}
 						}
 						tblName = tab.getName(pc).getUnqualified().getUnquotedName().get();
 					}

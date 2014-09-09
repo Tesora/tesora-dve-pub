@@ -213,6 +213,39 @@ public class CatalogHelper {
 		}
 	}
 
+	public void createBootstrapCatalog() throws PEException {
+
+		createCatalogDB();
+
+		CatalogDAO c = CatalogDAOFactory.newInstance(catalogProperties);
+
+		try {
+			c.begin();
+
+			Pair<Project,Map<VariableHandler,VariableConfig>> minimal = 
+					createMinimalCatalog(c, getRootUser(), getRootPassword());
+			Project p = minimal.getFirst();
+			// Generate a Site Provider configuration with encrypted passwords
+			OnPremiseSiteProviderConfig providerConfig = generateProviderConfig(1, PEConstants.BOOTSTRAP_PROVIDER_NAME,
+					getCatalogUrl(), getCatalogUser(), getCatalogPassword());
+
+			c.createProvider(PEConstants.BOOTSTRAP_PROVIDER_NAME, OnPremiseSiteProvider.class.getCanonicalName(),
+					PEXmlUtils.marshalJAXB(providerConfig));
+
+			// Generate a Dynamic Policy that matches the Site Provider created
+			// above
+			DynamicPolicy policy = generatePolicyConfig(1, PEConstants.BOOTSTRAP_PROVIDER_NAME);
+			c.persistToCatalog(policy);
+
+			// Set this policy as default
+			minimal.getSecond().get(KnownVariables.DYNAMIC_POLICY).setValue(policy.getName());
+
+			c.commit();
+		} finally {
+			c.close();
+		}
+	}
+	
 	public void createStandardCatalog(List<PersistentSite> sites, List<PersistentGroup> groups,
 			PersistentGroup defaultGroup, OnPremiseSiteProviderConfig dynamic, DynamicPolicy policy) throws PEException {
 

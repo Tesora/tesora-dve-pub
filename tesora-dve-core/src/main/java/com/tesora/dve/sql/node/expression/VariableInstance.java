@@ -21,9 +21,7 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedException;
-import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;

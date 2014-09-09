@@ -32,8 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.antlr.runtime.TokenStream;
 
 import com.tesora.dve.common.MultiMap;
@@ -59,8 +57,10 @@ import com.tesora.dve.infomessage.ConnectionMessageManager;
 import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.lockmanager.LockType;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheType;
@@ -79,9 +79,9 @@ import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.GlobalVariableStore;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.VariableStoreSource;
-import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.VariableValueStore;
 import com.tesora.dve.worker.agent.Agent;
 
@@ -125,6 +125,7 @@ public class SchemaContext {
 	private final TransientSessionState tss;
 	
 	private TokenStream tokens;
+	private String origStmt;
 	
 	private String description = null;
 	
@@ -210,6 +211,7 @@ public class SchemaContext {
 	// a partial refresh - clear all expensive fields that won't be accessed later
 	public void cleanupPostPlanning() {
 		tokens = null;
+		origStmt = null;
 	}
 	
 	public SchemaSource getSource() {
@@ -312,14 +314,23 @@ public class SchemaContext {
 		opts = po;
 	}
 
-	public void setTokenStream(TokenStream tns) {
+	public void setTokenStream(TokenStream tns, String sql) {
 		if (tns == null)
 			throw new SchemaException(Pass.FIRST, "Parser missing tokens");
 		tokens = tns;
+		origStmt = sql;
+	}
+	
+	public void clearOrigStmt() {
+		origStmt = null;
 	}
 	
 	public TokenStream getTokens() {
 		return tokens;
+	}
+	
+	public String getOrigStmt() {
+		return origStmt;
 	}
 	
 	public void setParameters(List<Object> params) {
@@ -623,6 +634,17 @@ public class SchemaContext {
 		});
 	}
 	
+	public PEDatabase getAnyNonSchemaDatabase() {
+		final List<UserDatabase> udbs = this.catalog.findAllUserDatabases();
+		for (final UserDatabase udb : udbs) {
+			if (!udb.getName().equalsIgnoreCase(PEConstants.INFORMATION_SCHEMA_DBNAME)) {
+				return PEDatabase.load(udb, this);
+			}
+		}
+
+		return null;
+	}
+
 	public PEPersistentGroup findBalancedPersistentGroup(String prefix) {
 		PersistentGroup uds = catalog.findBalancedPersistentGroup(prefix);
 		

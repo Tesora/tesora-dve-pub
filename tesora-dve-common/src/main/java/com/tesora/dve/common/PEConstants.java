@@ -79,6 +79,8 @@ public interface PEConstants {
 	public static final String INFORMATION_SCHEMA_GROUP_NAME = "InformationSchemaGroup";
 	public static final String LANDLORD_TENANT = "mtlandlord";
 	
+	public static final String BOOTSTRAP_PROVIDER_NAME = "BootstrapProvider";
+	
 	public static final String AGGREGATE = "Aggregate";
 	public static final String AGGREGATION = "Aggregation";
 	public static final String SMALL = "Small";

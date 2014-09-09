@@ -127,7 +127,7 @@ public class AnnotationInformationSchemaBuilder implements
 	};
 	
 	private static Type buildType(Class<?> retVal, InfoSchemaColumn info, Class<?> enc, DBNative dbn) throws PEException {
-		if (info.sqlType() == java.sql.Types.VARCHAR) {
+		if (info.sqlType() == java.sql.Types.VARCHAR || info.sqlType() == java.sql.Types.LONGVARCHAR) {
 			if (String.class.equals(retVal)) {
 				// can trust the width
 				return BasicType.buildType(info.sqlType(), info.sqlWidth(),dbn);

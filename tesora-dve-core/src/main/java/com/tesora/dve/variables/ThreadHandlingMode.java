@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.parser;
+package com.tesora.dve.variables;
 
 /*
  * #%L
@@ -21,24 +21,19 @@ package com.tesora.dve.sql.parser;
  * #L%
  */
 
-public enum LexicalLocation {
+public enum ThreadHandlingMode {
 
-	// used for select projection, update field list
-	PROJECTION("field-list"),
-	ONCLAUSE("on clause"),
-	WHERECLAUSE("where clause"),
-	GROUPBYCLAUSE("group statement"),
-	HAVINGCLAUSE("having clause"),
-	ORDERBYCLAUSE("order clause");
+	ONE_THREAD_PER_CONNECTION("one-thread-per-connection");
 
-	private final String external;
-	
-	private LexicalLocation(String ext) {
-		this.external = ext;
+	private final String name;
+
+	private ThreadHandlingMode(final String name) {
+		this.name = name;
 	}
-	
-	public String getExternal() {
-		return external;
+
+	@Override
+	public String toString() {
+		return name;
 	}
-		
+
 }

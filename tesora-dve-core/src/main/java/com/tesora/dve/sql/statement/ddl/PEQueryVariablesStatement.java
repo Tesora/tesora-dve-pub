@@ -27,8 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.tesora.dve.common.PEConstants;
-import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
@@ -36,7 +34,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.infoschema.InformationSchemaTableView;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
@@ -108,18 +105,11 @@ public class PEQueryVariablesStatement extends DDLStatement {
 		// crap, we need a database, any database, if the current database doesn't exist
 		// well, almost any database - we need one that is not in information_schema.
 		PEDatabase cdb = getDatabase(pc);
-		UserDatabase udb = null;
 		if (cdb == null) {
-			List<UserDatabase> udbs = pc.getCatalog().findAllUserDatabases();
-			for(UserDatabase db : udbs) {
-				if (!db.getName().toUpperCase().equals(PEConstants.INFORMATION_SCHEMA_DBNAME)) {
-					udb = db;
-					break;
-				}
+			cdb = pc.getAnyNonSchemaDatabase();
+			if (cdb == null) {
+				throw new PEException("No user-defined database present");
 			}
-			if (udb == null)
-				throw new PEException("No database present");
-			cdb = PEDatabase.load(udb, pc);
 		}
 		TempTable tt = TempTable.buildAdHoc(pc, cdb, columns, DistributionVector.Model.BROADCAST, Collections.<PEColumn> emptyList(), aggSite, false);
 		es.append(new CreateTempTableExecutionStep(cdb,aggSite,tt));

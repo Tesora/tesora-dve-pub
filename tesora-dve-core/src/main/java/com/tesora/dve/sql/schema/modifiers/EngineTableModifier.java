@@ -30,7 +30,9 @@ public class EngineTableModifier extends TableModifier {
 		
 		INNODB("InnoDB"),
 		MEMORY("MEMORY"),
-		MYISAM("MyISAM");
+		MYISAM("MyISAM"),
+		ARCHIVE("ARCHIVE"),
+		CSV("CSV");
 		
 		
 		private final String sql;

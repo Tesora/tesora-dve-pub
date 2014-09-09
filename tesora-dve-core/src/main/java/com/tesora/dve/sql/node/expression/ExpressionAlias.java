@@ -32,6 +32,7 @@ import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.MigrationException;
 import com.tesora.dve.sql.node.SingleEdge;
+import com.tesora.dve.sql.parser.ComputedSourceLocation;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -71,7 +72,14 @@ public class ExpressionAlias extends ExpressionNode {
 	public Alias getAlias() { return alias; }
 	
 	public boolean isSynthetic() {
-		return !(getSourceLocation() != null || !synthetic);
+		return (getSourceLocation() == null || getSourceLocation() instanceof ComputedSourceLocation)
+				&& synthetic;
+
+		// switch to this to repro redist insert prepare hang, and run CreateTableAsSelectTest
+//		return synthetic 
+//				|| getSourceLocation() == null
+//				|| getSourceLocation() instanceof ComputedSourceLocation
+//				;
 	}
 	
 	// sometimes we need to reset the alias

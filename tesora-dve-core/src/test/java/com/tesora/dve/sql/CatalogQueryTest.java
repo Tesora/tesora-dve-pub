@@ -283,7 +283,7 @@ public class CatalogQueryTest extends SchemaTest {
 		HashSet<String> not = (notTables == null ? new HashSet<String>() : new HashSet<String>(Arrays.asList(notTables)));
 		
 		for(String tn : tabnames) {
-			if (not.contains(tn)) continue;
+			if (not.contains(tn) || not.contains(tn.toLowerCase())) continue;
 			if (SchemaTest.isNoisy()) {
 				SchemaTest.echo(conn.printResults("describe " + tn));
 				SchemaTest.echo(conn.printResults("select * from " + tn));
@@ -327,6 +327,7 @@ public class CatalogQueryTest extends SchemaTest {
 		conn.execute("create table one (`id` int auto_increment, `foo` varchar(32), primary key (`id`)) random distribute");
 		conn.execute("insert into one (foo) values ('a'),('b'),('c'),('d'),('e')");
 		ResourceResponse rr = conn.fetch("show table status like 'one'");
+		
 		List<ResultRow> rows = rr.getResults();
 		assertEquals(1,rows.size());
 		ResultRow fr = rows.get(0);

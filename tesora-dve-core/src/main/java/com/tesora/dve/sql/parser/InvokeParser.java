@@ -161,7 +161,7 @@ public class InvokeParser {
 		TranslatorUtils utils = new TranslatorUtils(opts, pc, icmd);
 		PE parser = buildParser(icmd, utils);
 		if (pc != null)
-			pc.setTokenStream(parser.getTokenStream());
+			pc.setTokenStream(parser.getTokenStream(),icmd.getCommand());
 		List<Statement> stmts = null;
 		List<List<ExpressionNode>> continuedInsert = null;
 		try {
@@ -176,6 +176,9 @@ public class InvokeParser {
 		} catch (Throwable t) {
 			// basically, just return null and try again
 			return null;
+		} finally {
+			if (pc != null)
+				pc.clearOrigStmt();
 		}
 		ParserException any = utils.buildError();
 		if (any != null)
@@ -207,7 +210,7 @@ public class InvokeParser {
 		TranslatorUtils utils = new TranslatorUtils(opts, pc, input);
 		PE parser = buildParser(input, utils);
 		if (pc != null)
-			pc.setTokenStream(parser.getTokenStream());
+			pc.setTokenStream(parser.getTokenStream(), input.getCommand());
 		List<Statement> stmts = null;
 		List<List<ExpressionNode>> continuedInsert = null;
 		try {
@@ -223,6 +226,10 @@ public class InvokeParser {
 			throw pe;
 		} catch (Throwable t) {
 			throw new ParserException(Pass.SECOND, "Unable to parse '" + input.describe() + "'", t);
+		} finally {
+			// clear the input string
+			if (pc != null)
+				pc.clearOrigStmt();
 		}
 		ParserException any = utils.buildError();
 		if (any != null)

@@ -35,6 +35,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
@@ -50,9 +51,9 @@ import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.node.test.EngineToken;
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.DistributionVector;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -108,7 +109,12 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 				continue;
 			final Edge<?, ExpressionNode> parentEdge = vi.getParentEdge();
 			final AbstractVariableAccessor va = vi.buildAccessor(sc);
-			parentEdge.set(LiteralExpression.makeStringLiteral(PEStringUtils.dequote(sc.getConnection().getVariableValue(va))));
+			final String variableValue = sc.getConnection().getVariableValue(va);
+			if (variableValue != null) {
+				parentEdge.set(LiteralExpression.makeStringLiteral(PEStringUtils.dequote(variableValue)));
+			} else {
+				parentEdge.set(ExpressionUtils.buildNullBinaryCast());
+			}
 		}
 	}
 

@@ -186,7 +186,7 @@ public final class PEStringUtils {
 	 * Enclose the input string in single quotes if not already.
 	 */
 	public static String singleQuote(final String value) {
-		if (!value.isEmpty() && !isQuoted(value, SINGLE_QUOTE)) {
+		if ((value != null) && !value.isEmpty() && !isQuoted(value, SINGLE_QUOTE)) {
 			return SINGLE_QUOTE.concat(value).concat(SINGLE_QUOTE);
 		}
 
@@ -202,7 +202,7 @@ public final class PEStringUtils {
 	}
 
 	public static String dequote(final String in) {
-		if (!in.isEmpty() && isQuoted(in)) {
+		if ((in != null) && !in.isEmpty() && isQuoted(in)) {
 			// strip off the quotes
 			return in.substring(1, in.length() - 1);
 		}

@@ -21,24 +21,45 @@ package com.tesora.dve.sql.parser;
  * #L%
  */
 
-public enum LexicalLocation {
+import org.antlr.runtime.TokenStream;
 
-	// used for select projection, update field list
-	PROJECTION("field-list"),
-	ONCLAUSE("on clause"),
-	WHERECLAUSE("where clause"),
-	GROUPBYCLAUSE("group statement"),
-	HAVINGCLAUSE("having clause"),
-	ORDERBYCLAUSE("order clause");
+public class ComputedSourceLocation extends SourceLocation {
 
-	private final String external;
+	private int lhs;
+	private int lineNumber;
+	private String text;
+	private int type;
 	
-	private LexicalLocation(String ext) {
-		this.external = ext;
+	public ComputedSourceLocation(int lhs, int lineNo, String text, int type) {
+		this.lhs = lhs;
+		this.lineNumber = lineNo;
+		this.text = text;
+		this.type = type;
+	}
+
+	@Override
+	public String getText() {
+		return text;
 	}
 	
-	public String getExternal() {
-		return external;
+	@Override
+	public String getText(TokenStream ts) {
+		return text;
 	}
-		
+
+	@Override
+	public int getType() {
+		return type;
+	}
+
+	@Override
+	public int getLineNumber() {
+		return lineNumber;
+	}
+
+	@Override
+	public int getPositionInLine() {
+		return lhs;
+	}
+
 }

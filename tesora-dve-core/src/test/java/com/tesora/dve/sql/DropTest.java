@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
@@ -472,6 +473,44 @@ public class DropTest extends SchemaTest {
 			conn.execute("create table pe206c (id int)");
 			conn.execute("create table pe206e (id int)");
 			conn.assertResults("show tables like 'pe206%'", br(nr,"pe206a", nr, "pe206c", nr, "pe206e", nr, "pe206g"));
+		} finally {
+			sysDDL.destroy(conn);
+			conn.disconnect();
+		}
+	}
+
+	@Test
+	public void testPE1606() throws Throwable {
+		final String[] createStmts = {
+				"CREATE TABLE P (id INT NOT NULL, fid INT NOT NULL, PRIMARY KEY(id))",
+				"CREATE TABLE C (id INT NOT NULL, fid INT NOT NULL, PRIMARY KEY(id))",
+				"ALTER TABLE P ADD FOREIGN KEY (id) REFERENCES C (id)"
+		};
+
+		try {
+			sysDDL.clearCreated();
+			sysDDL.create(conn);
+
+			for (final String stmt : createStmts) {
+				conn.execute(stmt);
+			}
+
+			conn.execute("DROP TABLE P, C");
+			conn.assertResults("SHOW TABLES", br());
+
+			for (final String stmt : createStmts) {
+				conn.execute(stmt);
+			}
+
+			new ExpectedExceptionTester() {
+				@Override
+				public void test() throws Throwable {
+					conn.execute("DROP TABLE C, P");
+				}
+			}.assertException(PESQLStateException.class, "(1217: 23000) Cannot delete or update a parent row: a foreign key constraint fails", true);
+
+			// TODO: @see PE-1606 -  MySQL drops table `P` in spite of throwing the above error.
+			// conn.assertResults("SHOW TABLES", br(nr, "C"));
 		} finally {
 			sysDDL.destroy(conn);
 			conn.disconnect();

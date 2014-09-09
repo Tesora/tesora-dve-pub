@@ -34,8 +34,6 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
@@ -43,7 +41,6 @@ import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
-import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -52,9 +49,7 @@ import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.messaging.SQLCommand;
-import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBResultConsumer {
 	

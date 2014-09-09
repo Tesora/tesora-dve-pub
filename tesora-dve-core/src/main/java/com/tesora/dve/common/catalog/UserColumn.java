@@ -498,7 +498,7 @@ public class UserColumn implements CatalogEntity, PersistentColumn {
 	}
 	
 	@InfoSchemaColumn(logicalName="type",fieldName="",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
+			sqlType=java.sql.Types.LONGVARCHAR,sqlWidth=255,
 			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Column.TYPE),
 			       @ColumnView(view=InfoView.INFORMATION,name="column_type")})
 	public String getShowType() throws PEException {

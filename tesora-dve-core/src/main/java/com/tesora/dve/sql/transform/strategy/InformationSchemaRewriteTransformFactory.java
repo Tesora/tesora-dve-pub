@@ -21,19 +21,25 @@ package com.tesora.dve.sql.transform.strategy;
  * #L%
  */
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import org.apache.commons.lang.ArrayUtils;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.IntermediateResultSet;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.infoschema.engine.EntityResults;
 import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.execution.DDLQueryExecutionStep;
@@ -46,7 +52,7 @@ public class InformationSchemaRewriteTransformFactory extends TransformFactory {
 
 	// We don't support these yet - just return an empty result set
 	static final String[] emptyRSTables = { "plugins", "events", "files", "partitions", "routines" };
-	
+
 	public static boolean applies(SchemaContext sc, DMLStatement stmt, boolean hasParent) throws PEException {
 		ListSet<TableKey> tables = EngineConstant.TABLES_INC_NESTED.getValue(stmt,sc);
 		// so, this transform applies only when any of the tables is an info schema table
@@ -55,16 +61,30 @@ public class InformationSchemaRewriteTransformFactory extends TransformFactory {
 		// stmt is not a select stmt
 		boolean haveInfo = false;
 		boolean haveUser = false;
+		List<Table<?>> emptyTables = null;
 		for(TableKey tk : tables) {
 			if (tk.getTable().isInfoSchema())
 				haveInfo = true;
 			else
 				haveUser = true;
-			
-			if (haveInfo &&
-					ArrayUtils.indexOf(emptyRSTables, tk.getTable().getName().getUnqualified().get()) != -1) {
-				stmt.getBlock().store(InformationSchemaRewriteTransformFactory.class,Boolean.TRUE);
+
+			if (haveInfo) {
+				if (emptyTables == null) {
+					InformationSchemas is = Singletons.require(HostService.class).getInformationSchema();
+					emptyTables = new ArrayList<Table<?>>();
+					for(String s : emptyRSTables) {
+						Table<?> t = is.getInfoSchema().lookup(s);
+						emptyTables.add(t);
+					}
+				}
+				for(Table<?> t : emptyTables) {
+					if (t == tk.getTable()) {
+						stmt.getBlock().store(InformationSchemaRewriteTransformFactory.class,Boolean.TRUE);
+						break;
+					}
+				}
 			}
+						
 		}
 		if (!haveInfo) return false;
 		if (haveInfo && haveUser)
@@ -87,7 +107,7 @@ public class InformationSchemaRewriteTransformFactory extends TransformFactory {
 		EntityResults er = new EntityResults(LogicalSchemaQueryEngine.convertDown(schemaContext, new ViewQuery(
 				src, Collections.<String, Object> emptyMap(), null)),
 				Collections.<CatalogEntity> emptyList());
-		return er.getResultSet(schemaContext);
+		return er.getResultSet(schemaContext,src.getProjectionMetadata(schemaContext)); 
 	} 
 	
 	@Override

@@ -204,9 +204,10 @@ public class VariableHandler<Type> {
 		if (!scopes.contains(VariableScopeKind.GLOBAL))
 			throw new PECodingException("Attempt to set non existent global variable " + variableName);
 		Type t =  toInternal(newValue);
+		// push it down first, in case there's a problem
+		pushdownGlobalValue(conn,t);
 		// the global variable store propagates the change message
 		ServerGlobalVariableStore.INSTANCE.setValue(this, t);
-		pushdownGlobalValue(conn,t);
 	}
 	
 	public void pushdownGlobalValue(VariableStoreSource conn, Type t) throws PEException {

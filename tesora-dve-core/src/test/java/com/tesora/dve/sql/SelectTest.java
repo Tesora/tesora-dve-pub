@@ -343,4 +343,14 @@ public class SelectTest extends SchemaTest {
 			otherDDL.destroy(conn);
 		}
 	}
+
+	@Test
+	public void testPE1625() throws Throwable {
+		conn.assertResults("SELECT CONVERT('debian-linux-gnu' USING latin1)  IN ('debian-linux-gnu')", br(nr, 1L));
+	}
+
+	@Test
+	public void testPE1633() throws Throwable {
+		conn.assertResults("SELECT NOT NOT TRUE, NOT NOT NOT FALSE", br(nr, 1L, 1L));
+	}
 }
