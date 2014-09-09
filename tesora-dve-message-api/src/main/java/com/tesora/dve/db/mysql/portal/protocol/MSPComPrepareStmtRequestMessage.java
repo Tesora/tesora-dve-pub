@@ -35,8 +35,8 @@ public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
         super();
     }
 
-    protected MSPComPrepareStmtRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComPrepareStmtRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -45,9 +45,9 @@ public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
     }
 
     @Override
-    public MSPComPrepareStmtRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComPrepareStmtRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComPrepareStmtRequestMessage(sequenceID,source);
+        return new MSPComPrepareStmtRequestMessage(source);
     }
 
     public Charset getDecodingCharset() {
@@ -88,9 +88,8 @@ public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
         return remainingBuf;
     }
 
-    public static MSPComPrepareStmtRequestMessage newMessage(byte sequenceID, String sql, Charset charset) {
+    public static MSPComPrepareStmtRequestMessage newMessage(String sql, Charset charset) {
         MSPComPrepareStmtRequestMessage prepStmt = new MSPComPrepareStmtRequestMessage();
-        prepStmt.setSequenceID(sequenceID);
         prepStmt.setDecodingCharset(charset);
         prepStmt.setPrepareSQL(sql);
         return prepStmt;

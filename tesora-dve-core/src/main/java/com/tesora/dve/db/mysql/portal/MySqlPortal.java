@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql.portal;
  * #L%
  */
 
-import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
 import com.tesora.dve.db.mysql.portal.protocol.MSPProtocolDecoder;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.global.MySqlPortalService;
@@ -100,7 +99,6 @@ public class MySqlPortal implements MySqlPortalService {
                     if (PACKET_LOGGER)
                         ch.pipeline().addFirst(new LoggingHandler(LogLevel.INFO));
                     ch.pipeline()
-                            .addLast(MSPEncoder.getInstance())
                             .addLast(MSPProtocolDecoder.class.getSimpleName(), new MSPProtocolDecoder(MSPProtocolDecoder.MyDecoderState.READ_CLIENT_AUTH))
                             .addLast(new MSPAuthenticateHandlerV10())
                             .addLast(MSPCommandHandler.class.getSimpleName(), new MSPCommandHandler(clientExecutorService))

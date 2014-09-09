@@ -46,18 +46,18 @@ public class MSPAuthenticateV10MessageMessage extends BaseMSPMessage<MSPAuthenti
         super();
     }
 
-    protected MSPAuthenticateV10MessageMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID,backing);
+    protected MSPAuthenticateV10MessageMessage(ByteBuf backing) {
+        super(backing);
     }
 
-    public static MSPAuthenticateV10MessageMessage newMessage(byte sequenceID, ByteBuf backing){
-        return new MSPAuthenticateV10MessageMessage(sequenceID,backing.slice());
+    public static MSPAuthenticateV10MessageMessage newMessage(ByteBuf backing){
+        return new MSPAuthenticateV10MessageMessage(backing.slice());
     }
 
     @Override
-    public MSPAuthenticateV10MessageMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPAuthenticateV10MessageMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPAuthenticateV10MessageMessage(sequenceID,source);
+        return new MSPAuthenticateV10MessageMessage(source);
     }
 
     @Override

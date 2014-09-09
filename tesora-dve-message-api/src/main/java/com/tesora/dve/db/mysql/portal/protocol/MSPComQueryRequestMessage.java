@@ -31,14 +31,12 @@ public class MSPComQueryRequestMessage extends BaseMSPMessage {
     public static final MSPComQueryRequestMessage PROTOTYPE = new MSPComQueryRequestMessage();
     public static final byte TYPE_IDENTIFIER = (byte) 0x03;
 
-    public boolean alreadySequenced = false;
-
     protected MSPComQueryRequestMessage() {
         super();
     }
 
-    protected MSPComQueryRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComQueryRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -47,9 +45,9 @@ public class MSPComQueryRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPComQueryRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComQueryRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComQueryRequestMessage(sequenceID,source);
+        return new MSPComQueryRequestMessage(source);
     }
 
     public byte[] getQueryBytes() {
@@ -66,15 +64,15 @@ public class MSPComQueryRequestMessage extends BaseMSPMessage {
         return remainingBuf;
     }
 
-    public static MSPComQueryRequestMessage newMessage(byte sequenceID, String query, Charset encoding){
-        return newMessage(sequenceID, query.getBytes(encoding) );
+    public static MSPComQueryRequestMessage newMessage(String query, Charset encoding){
+        return newMessage(query.getBytes(encoding) );
     }
 
-    public static MSPComQueryRequestMessage newMessage(byte sequenceID, byte[] rawQuery){
+    public static MSPComQueryRequestMessage newMessage(byte[] rawQuery){
         ByteBuf buf = Unpooled.buffer().order(ByteOrder.LITTLE_ENDIAN).ensureWritable(rawQuery.length + 1);
         buf.writeByte(TYPE_IDENTIFIER);
         buf.writeBytes(rawQuery);
-        return new MSPComQueryRequestMessage(sequenceID,buf);
+        return new MSPComQueryRequestMessage(buf);
     }
 
 }

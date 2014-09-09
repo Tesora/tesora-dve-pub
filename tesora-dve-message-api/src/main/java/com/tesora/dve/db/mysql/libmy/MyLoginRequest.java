@@ -39,13 +39,11 @@ public class MyLoginRequest extends MyMessage {
 
 	public MyLoginRequest() {
 		super();
-        setPacketNumber(1);
 	}
 	
 	public MyLoginRequest(String username, String password) {
 		this.username = username;
 		this.password = password;
-        setPacketNumber(1);
 	}
 
 	@Override

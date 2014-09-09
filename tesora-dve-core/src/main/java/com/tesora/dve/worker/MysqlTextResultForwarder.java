@@ -50,14 +50,14 @@ import com.tesora.dve.server.messaging.SQLCommand;
 
 public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder {
 
-	public MysqlTextResultForwarder(ChannelHandlerContext outboundCtx, byte sequenceId) {
-		super(outboundCtx, sequenceId);
+	public MysqlTextResultForwarder(ChannelHandlerContext outboundCtx) {
+		super(outboundCtx);
 	}
 
 	@Override
 	public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException {
 
-		outboundCtx.write(new MSPResultSetResponse(metadata.size()).withPacketNumber(++sequenceId));
+		outboundCtx.write(new MSPResultSetResponse(metadata.size()));
 
 		DBNative dbNative = Singletons.require(HostService.class).getDBNative();
 		NativeTypeCatalog nativeTypeCatalog = dbNative.getTypeCatalog();
@@ -65,13 +65,13 @@ public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder
 		for (ColumnMetadata cm : metadata.getColumnList()) {
 			//                MSPFieldResponse mspFieldResponse = new MSPFieldResponse(cm, nativeTypeCatalog, MysqlNativeCharSet.UTF8);
 			MyMessage mspFieldResponse = FieldMetadataAdapter.buildPacket(cm, nativeTypeCatalog, MysqlNativeCharSet.UTF8);
-			outboundCtx.write(mspFieldResponse.withPacketNumber(++sequenceId));
+			outboundCtx.write(mspFieldResponse);
 		}
-		outboundCtx.write(new MyEOFPktResponse().withPacketNumber(++sequenceId));
+		outboundCtx.write(new MyEOFPktResponse());
 
 		for (ResultRow row : rows) {
 			NativeResultHandler resultHandler = Singletons.require(HostService.class).getDBNative().getResultHandler();
-			outboundCtx.write(new MyTextDataResponse(resultHandler,metadata, row).withPacketNumber(++sequenceId));
+			outboundCtx.write(new MyTextDataResponse(resultHandler,metadata, row));
 		}
 		outboundCtx.flush();
 

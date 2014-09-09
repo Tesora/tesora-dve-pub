@@ -51,7 +51,6 @@ public class MSPAuthenticateHandlerV10 extends InboundMysqlAuthenticationHandler
 
     protected MyMessage doAuthenticate(ChannelHandlerContext ctx, MSPAuthenticateV10MessageMessage authMessage) throws Throwable {
         MyMessage mysqlResp;
-        byte sequenceId = authMessage.getSequenceID();
         byte clientCharsetId = authMessage.getCharsetID();
         String username = authMessage.getUsername();
         String password = authMessage.getPassword();
@@ -71,11 +70,9 @@ public class MSPAuthenticateHandlerV10 extends InboundMysqlAuthenticationHandler
         NativeCharSet cliendCharSet = MysqlNativeCharSetCatalog.DEFAULT_CATALOG.findNativeCharsetById(clientCharsetId);
         if (cliendCharSet != null) {
             mysqlResp = new MyOKResponse();
-            mysqlResp.setPacketNumber(sequenceId + 1);
             ssCon.setClientCharSet(cliendCharSet);
         } else {
             mysqlResp = new MyErrorResponse(new PEException("Unsupported character set specified (id=" + clientCharsetId + ")"));
-            mysqlResp.setPacketNumber(sequenceId + 1);
         }
         return mysqlResp;
     }

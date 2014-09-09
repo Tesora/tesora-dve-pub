@@ -107,7 +107,6 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
         }
 
 		MyMessage respMsg = new MyErrorResponse(e);
-		respMsg.setPacketNumber(1);
 		outboundCtx.writeAndFlush(respMsg);
 	}
 

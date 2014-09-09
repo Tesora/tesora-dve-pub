@@ -42,7 +42,6 @@ import com.tesora.dve.exceptions.PEMappedException;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.messages.ExecuteRequestExecutor;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.worker.MysqlTextResultForwarder;
 
 public class MSPComQueryRequest extends MSPActionBase {
@@ -60,14 +59,13 @@ public class MSPComQueryRequest extends MSPActionBase {
 	public void execute(ExecutorService clientExecutorService, ChannelHandlerContext ctx,
                         SSConnection ssCon, MSPMessage protocolMessage) throws PEException {
         MSPComQueryRequestMessage queryMessage = castProtocolMessage(MSPComQueryRequestMessage.class,protocolMessage);
-        byte sequenceId = protocolMessage.getSequenceID();
         byte[] query = queryMessage.getQueryBytes();
-        executeQuery(ctx, ssCon, sequenceId, query);
+        executeQuery(ctx, ssCon, query);
 	}
 
-    public static void executeQuery(ChannelHandlerContext ctx, final SSConnection ssCon, byte sequenceId, final byte[] query) throws PEException {
+    public static void executeQuery(ChannelHandlerContext ctx, final SSConnection ssCon, final byte[] query) throws PEException {
 //		final NativeCharSet clientCharSet = MysqlNativeCharSet.UTF8;
-		final MysqlTextResultForwarder resultConsumer = new MysqlTextResultForwarder(ctx, sequenceId);
+		final MysqlTextResultForwarder resultConsumer = new MysqlTextResultForwarder(ctx);
 		try {
 			ExecuteRequestExecutor.execute(ssCon, resultConsumer, query);
             //TODO: this response should really be generated inside execution.  Doing it here forces synchronous behavior and extra locking + context switching. -sgossard.

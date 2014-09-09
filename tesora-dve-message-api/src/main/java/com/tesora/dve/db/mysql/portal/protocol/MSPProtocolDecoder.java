@@ -21,8 +21,11 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.libmy.MyMessage;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.ByteToMessageDecoder;
 
 import java.util.List;
@@ -32,7 +35,7 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import org.slf4j.LoggerFactory;
 
-public class MSPProtocolDecoder extends ByteToMessageDecoder {
+public class MSPProtocolDecoder extends ChannelDuplexHandler {
 
 	private final static MSPMessage mspMessages[] = {
 			MSPComQueryRequestMessage.PROTOTYPE,
@@ -62,30 +65,66 @@ public class MSPProtocolDecoder extends ByteToMessageDecoder {
     private Packet mspPacket;
     public boolean firstPacket = true;
 
+    //TODO: tracking this as a single entry assumes we won't get pipelined requests from the client. -sgossard
+    byte nextSequence = 1;
+
+    CachedAppendBuffer cachedAppendBuffer = new CachedAppendBuffer();
+    private final ByteToMessageDecoder decoder = new ByteToMessageDecoder() {
+        @Override
+        public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+            MSPProtocolDecoder.this.decode(ctx, in, out);
+        }
+
+        @Override
+        protected void decodeLast(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+            MSPProtocolDecoder.this.decode(ctx, in, out);
+        }
+    };
+
 	public MSPProtocolDecoder(MyDecoderState initialState) throws PEException {
 		super();
 		this.messageExecutor = messageMap;
         this.currentState = initialState;
 	}
 
-
     @Override
-    protected void decodeLast(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-        try{
-            super.decodeLast(ctx, in, out);
-        } finally {
-            if (mspPacket != null){
-                mspPacket.release();
-                mspPacket = null;
-            }
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        decoder.channelInactive(ctx);
+        cachedAppendBuffer.releaseSlab();
+        if (mspPacket != null){
+            mspPacket.release();
+            mspPacket = null;
         }
     }
 
     @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        decoder.channelRead(ctx, msg);
+    }
+
+    @Override
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+        if (msg instanceof MyMessage) {
+            MyMessage message = (MyMessage)msg;
+            ByteBuf appendableView = cachedAppendBuffer.startAppend(ctx);
+            nextSequence = (byte)(0xFF & Packet.encodeFullMessage(nextSequence, message, appendableView));
+            ByteBuf writableSlice = cachedAppendBuffer.sliceWritableData();
+            ctx.write(writableSlice, promise);
+        } else {
+            //forward packet along.
+            ctx.write(msg, promise);
+        }
+    }
+
 	protected void decode(final ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
 	    try {
-            if (mspPacket == null)
-                mspPacket = new Packet(ctx.alloc(), firstPacket ? 1 : 0, Packet.Modifier.HEAPCOPY_ON_READ,"frontend");
+
+            if (mspPacket == null) {
+                //assumes next full inbound request will have a starting sequence (true except for auth handshake)
+                //also assumes we only get one request at a time (synchronous), which is typical of most mysql clients
+                int seq = firstPacket ? 1 : 0;
+                mspPacket = new Packet(ctx.alloc(), seq, Packet.Modifier.HEAPCOPY_ON_READ,"frontend");
+            }
 
             //deals with the handshake packet
             firstPacket = false;
@@ -93,7 +132,10 @@ public class MSPProtocolDecoder extends ByteToMessageDecoder {
             if (!mspPacket.decodeMore(in))
                 return;
 
+
             int sequenceId = mspPacket.getSequenceNumber();
+            this.nextSequence = (byte)(0xFF & mspPacket.getNextSequenceNumber()); //save off the sequence for our outbound response.
+
             ByteBuf payload = mspPacket.unwrapPayload().retain();//retain a separate reference to the payload.
             mspPacket.release();
             mspPacket = null;
@@ -104,9 +146,9 @@ public class MSPProtocolDecoder extends ByteToMessageDecoder {
 			case READ_CLIENT_AUTH: {
 				MSPMessage authMessage;
 				if (state == MyDecoderState.READ_CLIENT_AUTH) {
-					authMessage = MSPAuthenticateV10MessageMessage.newMessage((byte)sequenceId, payload);
+					authMessage = MSPAuthenticateV10MessageMessage.newMessage(payload);
 				} else if (state == MyDecoderState.READ_SERVER_GREETING) {
-					authMessage = new MSPServerGreetingRequestMessage((byte)sequenceId, payload);
+					authMessage = new MSPServerGreetingRequestMessage(payload);
 				} else {
 					throw new PECodingException("Unexpected state in packet decoding, " + state);
 				}
@@ -129,9 +171,9 @@ public class MSPProtocolDecoder extends ByteToMessageDecoder {
 	private MSPMessage buildMessage(final ByteBuf payload, final byte sequenceId) {
         final byte messageType = payload.getByte(0); //peek at the first byte in the payload to determine message type.
 		try {
-			return this.messageExecutor[messageType].newPrototype(sequenceId, payload);
+			return this.messageExecutor[messageType].newPrototype(payload);
 		} catch (final Exception e) {
-			return new MSPUnknown(messageType, sequenceId, payload);
+			return new MSPUnknown(messageType, payload);
 		}
 	}
 

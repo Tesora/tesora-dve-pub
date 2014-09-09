@@ -153,10 +153,9 @@ public class MSPCommandHandler extends ChannelInboundHandlerAdapter {
     }
 
     static void executeLoadDataStatement(ExecutorService clientExecutorService, ChannelHandlerContext ctx, SSConnection ssCon,MSPComQueryRequestMessage queryMessage) throws PEException {
-        byte sequenceId = queryMessage.getSequenceID();
         byte[] query = queryMessage.getQueryBytes();
         NativeCharSet clientCharSet = MysqlNativeCharSet.UTF8;
-        MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(ctx, sequenceId);
+        MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(ctx);
         try {
             LoadDataRequestExecutor.execute(ctx, ssCon, resultConsumer, clientCharSet.getJavaCharset(), query);
             if (resultConsumer.getLoadDataInfileContext().isLocal()) {

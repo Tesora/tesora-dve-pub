@@ -30,8 +30,6 @@ import java.nio.ByteOrder;
 
 public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUnmarshallMessage {
 	public static final short MESSAGE_HEADER_LENGTH = 4;
-	
-	private byte packetNumber;
 
 	// ---------
 	// classes extending MyMessage should implement this methods to
@@ -40,39 +38,6 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
 	public abstract MyMessageType getMessageType();
 	// -------
 
-	public byte getPacketNumber() {
-		return packetNumber;
-	}
-
-    @Override
-    public byte getSeq(){
-        return getPacketNumber();
-    }
-
-	public void setPacketNumber(byte packetNumber) {
-		this.packetNumber = packetNumber;
-	}
-
-	public void setPacketNumber(int packetNumber) {
-		setPacketNumber((byte) packetNumber);
-	}
-	
-	public MyMessage withPacketNumber(int packetNumber) {
-		setPacketNumber((byte) packetNumber);
-		return this;
-	}
-
-    public int marshalZeroHeader(ByteBuf destination){
-        int startIndex = destination.writerIndex();
-        destination.writeZero(MESSAGE_HEADER_LENGTH);
-        return startIndex;
-    }
-
-    public void updateHeader(ByteBuf destination, int offset, int length, byte sequence){
-        destination = destination.order(ByteOrder.LITTLE_ENDIAN);
-        destination.setMedium(offset,length);
-        destination.setByte(offset + 3,sequence);
-    }
 
     public void marshallPayload(ByteBuf destination) {
         destination = destination.order(ByteOrder.LITTLE_ENDIAN);
@@ -85,6 +50,6 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
 	
 	@Override
 	public String toString() {
-		return getClass().getSimpleName() + " packetNumber=" + packetNumber;
+		return getClass().getSimpleName();
 	}
 }

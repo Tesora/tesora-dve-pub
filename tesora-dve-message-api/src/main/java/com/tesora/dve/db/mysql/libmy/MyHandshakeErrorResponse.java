@@ -32,7 +32,6 @@ public class MyHandshakeErrorResponse extends MyErrorResponse {
 
 	public MyHandshakeErrorResponse(Exception e, Charset charset) {
 		super(e);
-		setPacketNumber(0);	// packet number must be 0 for this message
 		this.charset = charset;
 	}
 

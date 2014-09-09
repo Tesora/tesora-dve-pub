@@ -51,7 +51,6 @@ public class MyErrorResponse extends MyResponseMessage {
 
 	public MyErrorResponse() {
 		setOK(false);
-		setPacketNumber(1);
 	}
 
 	public MyErrorResponse(FormattedErrorInfo fei) {

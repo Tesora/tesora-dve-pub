@@ -32,13 +32,13 @@ public class MSPUnknown extends BaseMSPMessage {
         this.messageType = (byte)0xFF;
     }
 
-    protected MSPUnknown(byte messageType, byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPUnknown(byte messageType, ByteBuf backing) {
+        super(backing);
         this.messageType = messageType;
     }
 
-    public MSPUnknown(byte sequenceID, ByteBuf backing) {
-        this((byte) 0xFF, sequenceID, backing);
+    public MSPUnknown(ByteBuf backing) {
+        this((byte) 0xFF, backing);
     }
 
     @Override
@@ -47,8 +47,8 @@ public class MSPUnknown extends BaseMSPMessage {
     }
 
     @Override
-    public MSPUnknown newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPUnknown newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPUnknown(sequenceID,source);
+        return new MSPUnknown(source);
     }
 }

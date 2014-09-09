@@ -147,10 +147,6 @@ public class Packet {
         return sealed;
     }
 
-    public static int encodeFullMessage(MysqlMessage mysql, ByteBuf destination) {
-        return encodeFullMessage(mysql.getSeq(),mysql,destination);
-    }
-
     public static int encodeFullMessage(int sequenceStart, MysqlMessage mysql, ByteBuf destination) {
 
         //copies the message payload to a heap buffer, so we can size the actual output.

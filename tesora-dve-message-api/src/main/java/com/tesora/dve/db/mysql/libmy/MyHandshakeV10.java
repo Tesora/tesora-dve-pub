@@ -51,7 +51,6 @@ public class MyHandshakeV10 extends MyResponseMessage {
 	private String plugInProvidedData;
 
 	public MyHandshakeV10() {
-		setPacketNumber((byte) 0); // ServerGreeting is always packet # 0
 	};
 	
 	public MyHandshakeV10(int connectionId, MysqlHandshake handshake) {

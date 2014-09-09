@@ -56,7 +56,7 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 	public void execute(ChannelHandlerContext ctx, Charset charset) {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
-        MSPComPrepareStmtRequestMessage prepStmt = MSPComPrepareStmtRequestMessage.newMessage((byte) 0, sqlCommand, charset);
+        MSPComPrepareStmtRequestMessage prepStmt = MSPComPrepareStmtRequestMessage.newMessage(sqlCommand, charset);
         ctx.write(prepStmt);
     }
 

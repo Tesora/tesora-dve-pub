@@ -30,8 +30,8 @@ public class MSPComFieldListRequestMessage extends BaseMSPMessage {
         super();
     }
 
-    protected MSPComFieldListRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComFieldListRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -40,8 +40,8 @@ public class MSPComFieldListRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPComFieldListRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComFieldListRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComFieldListRequestMessage(sequenceID,source);
+        return new MSPComFieldListRequestMessage(source);
     }
 }

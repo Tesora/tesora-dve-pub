@@ -35,7 +35,6 @@ public class MyPrepareOKResponse extends MyResponseMessage {
 	}
 
     public MyPrepareOKResponse(MyPrepareOKResponse other) {
-        this.setPacketNumber( other.getPacketNumber() );//copy packet sequence.
         this.stmtId = other.stmtId;
         this.warningCount = other.warningCount;
         this.numColumns = other.numColumns;

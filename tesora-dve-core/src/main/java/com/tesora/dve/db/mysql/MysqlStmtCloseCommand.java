@@ -43,7 +43,7 @@ public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandR
 
 	@Override
 	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
-        MSPComStmtCloseRequestMessage closeReq = MSPComStmtCloseRequestMessage.newMessage((byte) 0, pstmt.getStmtId().getStmtId(ctx.channel()));
+        MSPComStmtCloseRequestMessage closeReq = MSPComStmtCloseRequestMessage.newMessage(pstmt.getStmtId().getStmtId(ctx.channel()));
         ctx.write(closeReq);
     }
 

@@ -565,7 +565,6 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         }
 
 		public MyMessage parseAwaitRow(ByteBuf leHeader, ByteBuf lePayload) throws PEException {
-			final byte packetSequenceId = leHeader.getByte(3); // 4th byte
             final byte messageType = lePayload.getByte(0);
 
 			MyMessage message = null;
@@ -586,7 +585,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 				throw new PECodingException("Unexpected reponse parsing mode, " + mode);
 			}
 
-			return message.withPacketNumber(packetSequenceId);
+			return message;
 		}
     }
 
@@ -598,8 +597,6 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
         @Override
         public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
-
-            byte sequence = leHeader.getByte(3);
             byte pktId = lePayload.getByte(0);
 
             MyMessage message;
@@ -631,11 +628,6 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                     default:
                         logger.debug("Received a packet after we believe we are DONE, packet had fieldCount/ID type " + pktId);
                         throw new PECodingException("received packet, but already in DONE state.");
-                }
-
-
-                if (message != null){
-                    message.setPacketNumber(sequence);
                 }
 
                 return message;

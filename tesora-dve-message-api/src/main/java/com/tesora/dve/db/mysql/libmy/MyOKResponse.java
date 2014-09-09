@@ -39,7 +39,6 @@ public class MyOKResponse extends MyResponseMessage {
 	private String message;
 
     public MyOKResponse() {
-        this.setPacketNumber((byte)1);//OK response is usually second packet in sequence.
     }
 
     @Override

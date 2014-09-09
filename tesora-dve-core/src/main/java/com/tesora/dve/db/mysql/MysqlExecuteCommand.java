@@ -67,7 +67,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
 
-        MSPComQueryRequestMessage queryMsg = MSPComQueryRequestMessage.newMessage((byte)0,sqlCommand.getSQLAsBytes());
+        MSPComQueryRequestMessage queryMsg = MSPComQueryRequestMessage.newMessage(sqlCommand.getSQLAsBytes());
         ctx.write(queryMsg);
     }
 

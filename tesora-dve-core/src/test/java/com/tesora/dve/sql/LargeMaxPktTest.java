@@ -136,8 +136,8 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 
         ByteBuf dest = Unpooled.buffer(payloadSize);
 
-        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage((byte)0, source.array() );
-        Packet.encodeFullMessage(outboundMessage.getSeq(), outboundMessage, dest);
+        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage(source.array() );
+        Packet.encodeFullMessage((byte)0, outboundMessage, dest);
 
         int lengthOfNonUserdata = 5 + 4 + 4 + 4 + 4;
         Assert.assertEquals(dest.readableBytes(),payloadSize + lengthOfNonUserdata,"Number of bytes in destination buffer is wrong");
@@ -163,8 +163,8 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 
         ByteBuf dest = Unpooled.buffer(payloadSize);
 
-        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage((byte)0, source.array() );
-        Packet.encodeFullMessage(outboundMessage.getSeq(), outboundMessage, dest);
+        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage(source.array() );
+        Packet.encodeFullMessage((byte)0, outboundMessage, dest);
 
         int lengthOfNonUserdata = 5 + 4 + 4 + 4 + 4;//last packet has zero length payload
         Assert.assertEquals(dest.readableBytes(),payloadSize + lengthOfNonUserdata,"Number of bytes in destination buffer is wrong");

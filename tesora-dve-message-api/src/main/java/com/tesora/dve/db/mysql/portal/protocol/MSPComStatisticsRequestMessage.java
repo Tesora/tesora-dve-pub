@@ -29,8 +29,8 @@ public class MSPComStatisticsRequestMessage extends BaseMSPMessage {
         super();
     }
 
-    protected MSPComStatisticsRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComStatisticsRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -39,8 +39,8 @@ public class MSPComStatisticsRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPComStatisticsRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComStatisticsRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComStatisticsRequestMessage(sequenceID,source);
+        return new MSPComStatisticsRequestMessage(source);
     }
 }

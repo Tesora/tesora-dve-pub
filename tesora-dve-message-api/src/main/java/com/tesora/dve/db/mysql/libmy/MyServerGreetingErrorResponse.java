@@ -29,7 +29,6 @@ public class MyServerGreetingErrorResponse extends MyErrorResponse {
 
 	public MyServerGreetingErrorResponse(Exception e) {
 		super(e);
-		setPacketNumber(0);	// packet number must be 0 for this message
 	}
 
 	@Override
