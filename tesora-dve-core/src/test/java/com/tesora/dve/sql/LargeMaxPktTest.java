@@ -22,6 +22,7 @@ package com.tesora.dve.sql;
  */
 
 import com.tesora.dve.db.mysql.portal.protocol.Packet;
+import com.tesora.dve.sql.transform.strategy.RuntimeLimitSpecification;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -32,6 +33,7 @@ import java.util.Random;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testng.Assert;
@@ -96,7 +98,11 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 	@Test
 	public void testPE1559() throws Throwable {
 		try {
-			final String payload = FileUtils.readFileToString(getFileFromLargeFileRepository("pe1559_payload.dat"));
+//            final String payload = FileUtils.readFileToString(getFileFromLargeFileRepository("pe1559_payload.dat"));
+            int desiredLength = 34000000;
+            Assume.assumeTrue("Didn't have enough memory to be confident test would run, skipped.", Runtime.getRuntime().maxMemory() >= (desiredLength * 20L));
+
+            final String payload = largeRandomString("testPE1559", desiredLength); //two full extended packets, plus ~500K
 
 			final ExtendedPacketTester tester = new ExtendedPacketTester(67108864);
 			tester.add(new StatementMirrorProc(
@@ -113,9 +119,8 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 			tester.add(new StatementMirrorProc("UPDATE `cache_views` SET serialized='1', created='1403888529', expire='0', data='"
 					+ payload + "' WHERE (cid = 'views_data:en')"));
 			tester.add(new StatementMirrorFun("SELECT length(data) FROM `cache_views`"));
-			// TODO: There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
-			// that it doesn't handle extended packets properly 
-			//tester.add(new StatementMirrorFun("SELECT data FROM `cache_views`"));
+
+			tester.add(new StatementMirrorFun("SELECT data FROM `cache_views`"));
 
 			tester.runTests();
 		} catch (final LargeTestResourceNotAvailableException e) {
@@ -123,6 +128,22 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 			return;
 		}
 	}
+
+    private String largeRandomString(String testName, int desiredLength) throws LargeTestResourceNotAvailableException {
+        Random rand = new Random(938398373L); //fix the seed, so we always generate the same string.
+
+        StringBuilder builder = new StringBuilder(desiredLength);
+        int remainingChars = desiredLength;
+        while (remainingChars > 0){
+            char entry = (char)('a' + rand.nextInt(26));//this generates only ASCII lowercase 'a' through 'z'.
+            builder.append(entry);
+            remainingChars--;
+        }
+
+//            final String payload = FileUtils.readFileToString(getFileFromLargeFileRepository("pe1559_payload.dat"));
+        final String payload = builder.toString();
+        return payload;
+    }
 
     @Test
     public void testComQueryMessageContinuationOverlap() throws Exception {
