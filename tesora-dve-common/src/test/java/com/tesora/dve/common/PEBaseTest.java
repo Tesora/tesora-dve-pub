@@ -192,11 +192,7 @@ public abstract class PEBaseTest {
 		private Event checkException(final Throwable e, final Class<? extends Throwable> expectedExceptionClass, final String expectedExceptionMessage) {
 			if (expectedExceptionClass.isAssignableFrom(e.getClass())) {
 				String msg = e.getMessage();
-				// strip PEContext, if any
-				int ix = (msg != null ? msg.indexOf(PEContext.LOG_PREFIX) : -1);
-				if (ix > 0) {
-					msg = msg.substring(0, ix).trim();
-				}
+
 				if ((expectedExceptionMessage != null) && !msg.equals(expectedExceptionMessage)) {
 					return Event.WRONG_MSG;
 				} else {

@@ -43,7 +43,6 @@ import java.util.concurrent.ExecutorService;
 import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -133,7 +132,6 @@ public class MSPCommandHandler extends ChannelInboundHandlerAdapter {
                 }
             });
         } finally {
-            PEThreadContext.clear();
         }
     }
 

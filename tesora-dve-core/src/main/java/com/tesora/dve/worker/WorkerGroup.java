@@ -43,7 +43,6 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.PECollectionUtils;
 import com.tesora.dve.common.PEStringUtils;
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.StorageGroup;
@@ -973,13 +972,6 @@ public class WorkerGroup {
 	}
 
 	public void pushDebugContext() {
-		PEThreadContext.pushFrame("WorkerGroup" + getDisplayId())
-				.put("name", getName())
-				.put("storageGroup", getGroup());
-		for (Entry<StorageSite, Worker> entry : workerMap.entrySet()) {
-			PEThreadContext.put(entry.getKey().getName(), entry.getValue().getName());
-		}
-		PEThreadContext.logDebug();
 	}
 
 }

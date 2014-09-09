@@ -46,7 +46,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.base.Objects;
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.PEDefaultPromise;
@@ -184,15 +183,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) {
         CompletionHandle<Boolean> resultTracker = wrapHandler(promise);
 
-		PEThreadContext.pushFrame(getClass())
-				.put("site", site.getName())
-				.put("connectionId", getConnectionId())
-				.put("channel", channel.toString())
-				.put("promise", promise)
-				.put("resultConsumer", consumer);
-		if (logger.isDebugEnabled())
-			    PEThreadContext.put("sql", sql.getRawSQL());
-		PEThreadContext.logDebug();
 		try {
 
 			if (logger.isDebugEnabled())
@@ -211,7 +201,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
                 resultTracker.failure(currentError);
 			}
 		} finally {
-			PEThreadContext.popFrame();
 		}
 	}
 

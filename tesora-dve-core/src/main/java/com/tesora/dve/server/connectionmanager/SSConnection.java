@@ -43,7 +43,6 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.RemoteException;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DynamicPolicy;
@@ -354,7 +353,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 				doPostReplyProcessing();
 			} finally {
-				PEThreadContext.popFrame();
 			}
 		}
 		return returnValue;		
@@ -370,14 +368,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 
 	private void pushDebugContext(final String requestId) {
-		PEThreadContext.pushFrame(this.toString())
-				.put("connectionId", Integer.toString(currentConnId))
-				.put("requestId", requestId);
-		if (transactionDepth > 0)
-			PEThreadContext.put("txnDepth", Integer.toString(transactionDepth));
-		if (currentTransId != null)
-			PEThreadContext.put("txn", currentTransId);
-		PEThreadContext.logDebug();
 	}
 
 	private void acquireGenerationLock() {
@@ -945,7 +935,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		try {
 			returnWorkerGroup(wg);
 		} finally {
-			PEThreadContext.popFrame();
 		}
 	}
 

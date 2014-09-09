@@ -29,7 +29,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.AllTests;
 
 import com.tesora.dve.common.CatalogHelperTest;
-import com.tesora.dve.common.PEThreadContextTest;
 import com.tesora.dve.common.UrlBalancerTest;
 import com.tesora.dve.common.catalog.CatalogTest;
 import com.tesora.dve.common.resultset.ResultChunkMgrTest;
@@ -81,7 +80,6 @@ public class DebugTest {
 				CatalogTest.class,
 				ResultChunkMgrTest.class,
 				UrlBalancerTest.class,
-				PEThreadContextTest.class,
 				CatalogHelperTest.class,
 				ShowTest.class,
 				ReplaceIntoTest.class,

@@ -30,8 +30,6 @@ import io.netty.channel.ChannelHandlerContext;
 import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.tesora.dve.common.PEContext;
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.exceptions.PEException;
 
 public abstract class MysqlCommand {
@@ -39,8 +37,6 @@ public abstract class MysqlCommand {
 	boolean executeImmediately = false;
 	
 	AtomicInteger resultsProcessedCount = new AtomicInteger();
-	
-	final PEContext debugContext = PEThreadContext.copy();
 
     //these Timers are used to measure how much time is being spent on the backend for a given frontend request.
     //the frontend timer is picked up from a thread local, since changing all the subclasses of MysqlCommand and their callers would be prohibitive.
@@ -51,13 +47,7 @@ public abstract class MysqlCommand {
     protected Timer commandTimer;
 
     void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
-		PEThreadContext.inherit(debugContext.copy());
-		PEThreadContext.pushFrame(getClass()).put("cmd", this);
-		try {
-			execute(ctx, charset);
-		} finally {
-            PEThreadContext.clear();
-		}
+		execute(ctx, charset);
 	}
 
 	abstract void execute(ChannelHandlerContext ctx, Charset charset) throws PEException;

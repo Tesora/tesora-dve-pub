@@ -30,7 +30,6 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 
 import java.util.List;
 
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import org.slf4j.LoggerFactory;
@@ -163,8 +162,6 @@ public class MSPProtocolDecoder extends ChannelDuplexHandler {
 		} catch (Exception e){
             LoggerFactory.getLogger(MSPProtocolDecoder.class).warn("problem decoding frame",e);
         }finally {
-			//			Thread.currentThread().setName(origThreadName);
-			PEThreadContext.clear();
 		}
 	}
 

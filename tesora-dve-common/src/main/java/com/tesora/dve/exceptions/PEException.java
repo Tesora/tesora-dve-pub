@@ -21,14 +21,9 @@ package com.tesora.dve.exceptions;
  * #L%
  */
 
-import com.tesora.dve.common.PEContext;
-import com.tesora.dve.common.PEThreadContext;
-
-public class PEException extends Exception implements PEContextAwareException {
+public class PEException extends Exception {
 
 	private static final long serialVersionUID = -3763883329162327143L;
-
-	private PEContext context = PEThreadContext.copy();
 
 	protected PEException() {
 		super();
@@ -86,10 +81,5 @@ public class PEException extends Exception implements PEContextAwareException {
 		}
 		return null;
 	}
-	
-	@Override
-	public PEContext getContext() {
-		return context;
-	}
-	
+
 }

@@ -29,7 +29,6 @@ import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
 import com.tesora.dve.clock.TimingServiceConfiguration;
 import com.tesora.dve.common.PEStringUtils;
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
@@ -829,7 +828,8 @@ public class KnownVariables implements VariableConstants {
 					dveOnly,
 					"Enable debug tracing") {
 				public void onGlobalValueChange(Boolean newValue) throws PEException {
-					PEThreadContext.setEnabled(newValue.booleanValue());
+                    //deprecated, but I left the variable for backwards compatibility. -sgossard
+//					PEThreadContext.setEnabled(newValue.booleanValue());
 				}
 			},
 			new VariableHandler<Long>("last_insert_id",

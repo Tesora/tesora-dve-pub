@@ -24,7 +24,6 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.clock.*;
 import com.tesora.dve.common.DBType;
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 import com.tesora.dve.exceptions.PECommunicationsException;
@@ -141,9 +140,6 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
                 ReferenceCountUtil.release(message);
                 return;
             }
-            PEThreadContext.inherit(cmd.debugContext.copy());
-            PEThreadContext.pushFrame(getClass())
-                    .put("command", cmd);
 
             cmd.incrementResultsProcessedCount();
 
@@ -171,7 +167,6 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
                 cmd.failure(e);
         } finally {
             timingService.detachTimerOnThread();
-            PEThreadContext.clear();
             if (responseProcessing != null)
                 responseProcessing.end();
         }
