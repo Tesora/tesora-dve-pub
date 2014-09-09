@@ -106,6 +106,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             super.channelInactive(ctx);
         } finally {
             bufferCache.releaseSlab();
+            if (mspPacket != null){
+                mspPacket.release();
+                mspPacket = null;
+            }
         }
     }
 
@@ -188,14 +192,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
     }
 
     protected void decodeLast(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-        try{
-            this.decode0(ctx,in,out,true);
-        } finally {
-            if (mspPacket != null){
-                mspPacket.release();
-                mspPacket = null;
-            }
-        }
+        this.decode0(ctx,in,out,true);
     }
 
 	protected void decode0(ChannelHandlerContext ctx, ByteBuf in, List<Object> out, boolean lastPacket) throws Exception {
