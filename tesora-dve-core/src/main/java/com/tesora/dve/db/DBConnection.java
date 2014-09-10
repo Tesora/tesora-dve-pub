@@ -47,7 +47,7 @@ public interface DBConnection extends CompletionTarget<Boolean> {
 	void connect(String url, String userid, String password, long clientCapabilities) throws PEException;
 	void close();
 	
-	void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise);
+	void execute(SQLCommand sql, DBCommandExecutor commandExecutor, CompletionHandle<Boolean> promise);
     void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor);
 	
 	void start(DevXid xid, CompletionHandle<Boolean> promise);

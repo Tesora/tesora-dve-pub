@@ -23,8 +23,8 @@ package com.tesora.dve.worker;
 
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.DBCommandExecutor;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.mysql.DefaultResultProcessor;
 import com.tesora.dve.db.mysql.MysqlConnection;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
@@ -165,12 +165,12 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) {
-            dbConnection.execute(sql,consumer,promise);
+        public void execute(SQLCommand sql, DBCommandExecutor commandExecutor, CompletionHandle<Boolean> promise) {
+            dbConnection.execute(sql, commandExecutor, promise);
         }
 
         public void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor){
-            dbConnection.execute( outboundMessage, resultsProcessor );
+            dbConnection.execute(outboundMessage, resultsProcessor);
         }
 
         @Override
@@ -190,7 +190,7 @@ public class DirectConnectionCache {
 
         @Override
         public void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) {
-            dbConnection.commit(xid,onePhase,promise);
+            dbConnection.commit(xid, onePhase, promise);
         }
 
         @Override
@@ -200,7 +200,7 @@ public class DirectConnectionCache {
 
         @Override
         public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise){
-            dbConnection.updateSessionVariables(desiredVariables,setBuilder,promise);
+            dbConnection.updateSessionVariables(desiredVariables, setBuilder, promise);
         }
 
         @Override

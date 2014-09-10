@@ -21,39 +21,14 @@ package com.tesora.dve.db;
  * #L%
  */
 
-
+import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.server.messaging.SQLCommand;
 import io.netty.channel.Channel;
 
-import java.util.List;
-
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.messaging.SQLCommand;
-
-public interface DBResultConsumer extends DBCommandExecutor {
-
-	public interface RowCountAdjuster {
-		long adjust(long numRowsAffected, int siteCount);
-	}
-
-	void setSenderCount(int senderCount);
-
-	boolean hasResults();
-
-	long getUpdateCount() throws PEException;
-
-	void setResultsLimit(long resultsLimit);
-
-	void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException;
-
-	void setRowAdjuster(RowCountAdjuster rowAdjuster);
-
-	void setNumRowsAffected(long rowcount);
-
-	boolean isSuccessful();
-
-	void rollback();
+/**
+ *
+ */
+public interface DBCommandExecutor {
+    void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise);
 }

@@ -25,13 +25,10 @@ import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
-import com.tesora.dve.db.DBNative;
+import com.tesora.dve.db.*;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.*;
 import com.tesora.dve.exceptions.PESQLStateException;
-import com.tesora.dve.mysqlapi.repl.messages.MyComRegisterSlaveRequest;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ResultRow;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
@@ -49,9 +46,6 @@ import com.google.common.base.Objects;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -180,7 +174,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	}
 
     @Override
-	public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) {
+	public void execute(SQLCommand sql, DBCommandExecutor commandExecutor, CompletionHandle<Boolean> promise) {
         CompletionHandle<Boolean> resultTracker = wrapHandler(promise);
 
 		try {
@@ -188,12 +182,12 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 			if (logger.isDebugEnabled())
 				logger.debug(this.getClass().getSimpleName()
 //						+"@"+System.identityHashCode(this)
-						+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+consumer+","+promise+")");
+						+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+ commandExecutor +","+promise+")");
 
 			if (!channel.isOpen()) {
                 resultTracker.failure(new PECommunicationsException("Channel closed: " + channel));
 			} else if (pendingException == null) {
-				consumer.writeCommandExecutor(channel, site, this, sql, resultTracker);
+				commandExecutor.writeCommandExecutor(channel, site, this, sql, resultTracker);
                 channel.flush();
 			} else {
                 Exception currentError = pendingException;
@@ -206,6 +200,14 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
     public void execute(MysqlCommand sqlAction, CompletionHandle<Boolean> promise){
         this.execute( SQLCommand.EMPTY, buildDefaultConsumer(sqlAction), promise);
+    }
+
+    public void execute(String sql, CompletionHandle<Boolean> promise){
+        this.execute( new SQLCommand(sql), promise);
+    }
+
+    public void execute(SQLCommand sql, CompletionHandle<Boolean> promise){
+        this.execute( sql, DBEmptyTextResultConsumer.INSTANCE, promise);
     }
 
     public void execute(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor, CompletionHandle<Boolean> promise){
@@ -245,17 +247,17 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	@Override
 	public void start(DevXid xid, CompletionHandle<Boolean> promise) {
 		hasActiveTransaction = true;
-        execute(new SQLCommand("XA START " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, promise);
+        execute("XA START " + xid.getMysqlXid(),promise);
     }
 
 	@Override
 	public void end(DevXid xid, CompletionHandle<Boolean> promise) {
-        execute(new SQLCommand("XA END " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, promise);
+        execute("XA END " + xid.getMysqlXid(),promise);
     }
 
 	@Override
 	public void prepare(DevXid xid, CompletionHandle<Boolean> promise) {
-        execute(new SQLCommand("XA PREPARE " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, promise);
+        execute("XA PREPARE " + xid.getMysqlXid(),promise);
 	}
 
 	@Override
@@ -263,7 +265,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 		String sql = "XA COMMIT " + xid.getMysqlXid();
 		if (onePhase)
 			sql += " ONE PHASE";
-        execute(new SQLCommand(sql), DBEmptyTextResultConsumer.INSTANCE, new DelegatingCompletionHandle<Boolean>(promise){
+        execute(sql,new DelegatingCompletionHandle<Boolean>(promise){
             @Override
             public void success(Boolean returnValue) {
                 clearActiveState();
@@ -273,7 +275,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	}
 	@Override
 	public void rollback(DevXid xid, CompletionHandle<Boolean> promise) {
-        execute(new SQLCommand("XA ROLLBACK " + xid.getMysqlXid()), DBEmptyTextResultConsumer.INSTANCE, new DelegatingCompletionHandle<Boolean>(promise){
+        execute("XA ROLLBACK " + xid.getMysqlXid(),new DelegatingCompletionHandle<Boolean>(promise){
             @Override
             public void success(Boolean returnValue) {
                 clearActiveState();
@@ -335,7 +337,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
         if (updateCommand == SQLCommand.EMPTY){
             promise.success(true);
         } else {
-            execute(updateCommand, DBEmptyTextResultConsumer.INSTANCE, new DelegatingCompletionHandle<Boolean>( promise ){
+            execute(updateCommand, new DelegatingCompletionHandle<Boolean>( promise ){
                 @Override
                 public void success(Boolean returnValue) {
                     callbackSetVariablesOK(updatesRequired, updateCommand);
@@ -381,12 +383,12 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
     @Override
     public void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) {
         String setTimestampSQL = "SET TIMESTAMP=" + referenceTime + ";";
-        execute(new SQLCommand(setTimestampSQL), DBEmptyTextResultConsumer.INSTANCE, promise);
+        execute(setTimestampSQL, promise);
     }
 
     @Override
 	public void setCatalog(String databaseName, CompletionHandle<Boolean> promise) {
-		execute(new SQLCommand("use " + databaseName), DBEmptyTextResultConsumer.INSTANCE, promise);
+		execute("use " + databaseName, promise);
 	}
 
     @Deprecated
@@ -446,54 +448,12 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 				.toString();
 	}
 
-    private static DBResultConsumer buildDefaultConsumer(final MysqlCommand command) {
-        return new DBResultConsumer() {
-            @Override
-            public void setSenderCount(int senderCount) {
-            }
-
-            @Override
-            public boolean hasResults() {
-                return false;
-            }
-
-            @Override
-            public long getUpdateCount() throws PEException {
-                return 0;
-            }
-
-            @Override
-            public void setResultsLimit(long resultsLimit) {
-
-            }
-
-            @Override
-            public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException {
-
-            }
-
-            @Override
-            public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-
-            }
-
-            @Override
-            public void setNumRowsAffected(long rowcount) {
-
-            }
+    private static DBCommandExecutor buildDefaultConsumer(final MysqlCommand command) {
+        return new DBCommandExecutor() {
 
             @Override
             public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
                 channel.write(command);
-            }
-
-            @Override
-            public boolean isSuccessful() {
-                return true;
-            }
-
-            @Override
-            public void rollback() {
             }
 
         };
