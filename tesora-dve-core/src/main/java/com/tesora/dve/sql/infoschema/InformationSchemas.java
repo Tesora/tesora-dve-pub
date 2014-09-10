@@ -36,10 +36,10 @@ import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.direct.DirectSchemaBuilder;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
-import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowView;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
@@ -85,7 +85,7 @@ public final class InformationSchemas {
 		return this.show;
 	}
 	
-	public ShowInformationSchemaTable lookupShowTable(UnqualifiedName unq) {
+	public ShowSchemaBehavior lookupShowTable(UnqualifiedName unq) {
 		return getShowSchema().lookupTable(unq);
 	}
 	
@@ -130,6 +130,8 @@ public final class InformationSchemas {
 					catSchema);
 		} catch (PEException pe) {
 			throw pe;
+		} catch (SchemaException se) {
+			throw new PEException("Unable to initialize information schema: " + se.getMessage(), se);
 		} catch (Throwable t) {
 			throw new PEException("Unable to initialize information schema",t);
 		}

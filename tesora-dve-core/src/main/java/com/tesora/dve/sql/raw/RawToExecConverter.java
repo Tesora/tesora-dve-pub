@@ -36,7 +36,6 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.node.GeneralCollectingTraversal;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
@@ -88,6 +87,7 @@ import com.tesora.dve.sql.statement.dml.DeleteStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
+import com.tesora.dve.sql.transform.VariableInstanceCollector;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
@@ -470,23 +470,6 @@ public class RawToExecConverter {
 		return dk;
 	}
 
-	
-	private static class VariableInstanceCollector extends GeneralCollectingTraversal {
-
-		public VariableInstanceCollector() {
-			super(Order.POSTORDER, ExecStyle.ONCE);
-		}
-		
-		@Override
-		public boolean is(LanguageNode ln) {
-			return EngineConstant.VARIABLE.has(ln);
-		}
-
-		public static List<VariableInstance> getVariables(LanguageNode ln) {
-			return GeneralCollectingTraversal.collect(ln, new VariableInstanceCollector());
-		}
-		
-	}
 	
 	private static class VariableConversionTraversal extends Traversal {
 

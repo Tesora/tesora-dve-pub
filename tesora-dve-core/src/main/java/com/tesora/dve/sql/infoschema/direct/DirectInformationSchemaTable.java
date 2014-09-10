@@ -46,11 +46,15 @@ import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEViewTable;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.Cast;
 import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.ResizableArray;
 import com.tesora.dve.sql.util.UnaryFunction;
+import com.tesora.dve.variables.KnownVariables;
 
+// we can use this for info and mysql
 public class DirectInformationSchemaTable implements InformationSchemaTable {
 
 	private final PEViewTable backing;
@@ -63,17 +67,18 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	
 	protected List<DirectInformationSchemaColumn> columns;
 	protected Lookup<DirectInformationSchemaColumn> lookup;
-
 	
-	private final DirectInformationSchemaColumn orderByColumn;
 	private final DirectInformationSchemaColumn identColumn;
-	
+	private final ResizableArray<DirectInformationSchemaColumn> orderByColumns;
+
 	// we maintain a separate lookup in the view columns - this handles the case sensitivity, etc
 	
 	
 	public DirectInformationSchemaTable(SchemaContext sc, InfoView view, PEViewTable viewTab,
+			UnqualifiedName tableName,
+			UnqualifiedName pluralTableName,
 			boolean privileged, boolean extension,
-			String orderByColumn, String identColumn) {
+			List<DirectColumnGenerator> columnGenerators) {
 		this.backing = viewTab;
 		this.privileged = privileged;
 		this.extension = extension;
@@ -93,13 +98,19 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 		for(PEColumn pec : backing.getColumns(sc)) {
 			addColumn(sc,new DirectInformationSchemaColumn(view,pec.getName().getUnqualified(),pec));
 		}
-		Name viewName = viewTab.getName();
-		this.name = (view.isCapitalizeNames() ? viewName.getCapitalized().getUnqualified() : viewName);
-		this.pluralName = null;
-//		if (pluralViewName == null) this.pluralName = pluralViewName;
-//		else this.pluralName = (view.isCapitalizeNames() ? pluralViewName.getCapitalized().getUnqualified() : pluralViewName); 
-		this.orderByColumn = (orderByColumn == null ? null : lookup.lookup(orderByColumn));
-		this.identColumn = (identColumn == null ? null : lookup.lookup(identColumn));
+		this.name = (view.isCapitalizeNames() ? tableName.getCapitalized().getUnqualified() : tableName);
+		if (pluralTableName == null) this.pluralName = pluralTableName;
+		else this.pluralName = (view.isCapitalizeNames() ? pluralTableName.getCapitalized().getUnqualified() : pluralTableName);
+		orderByColumns = new ResizableArray<DirectInformationSchemaColumn>();
+		DirectInformationSchemaColumn ic = null;
+		for(DirectColumnGenerator dcg : columnGenerators) {
+			if (dcg.getOrderByOffset() > -1) {
+				orderByColumns.set(dcg.getOrderByOffset(),lookup.lookup(dcg.getName()));
+			}
+			if (ic == null && dcg.isIdent())
+				ic = lookup.lookup(dcg.getName());
+		}
+		this.identColumn = ic;
 	}
 	
 	@Override
@@ -151,7 +162,7 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	
 	@Override
 	public Name getName() {
-		return backing.getName();
+		return name;
 	}
 
 	@Override
@@ -193,9 +204,15 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 
 	@Override
 	public DirectInformationSchemaColumn getOrderByColumn() {
-		return orderByColumn;
+		if (orderByColumns.size() > 0)
+			return orderByColumns.get(0);
+		return null;
 	}
 
+	public ResizableArray<DirectInformationSchemaColumn> getOrderByColumns() {
+		return orderByColumns;
+	}
+	
 	@Override
 	public DirectInformationSchemaColumn getIdentColumn() {
 		return identColumn;
@@ -248,6 +265,25 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	@Override
 	public boolean isView() {
 		return true;
+	}
+
+	
+	public List<DirectInformationSchemaColumn> getProjectionColumns(boolean includeExtensions, boolean includePriviledged) {
+		ArrayList<DirectInformationSchemaColumn> out = new ArrayList<DirectInformationSchemaColumn>();
+		for(DirectInformationSchemaColumn isc : columns) {
+			if (!isc.isVisible())
+				continue;
+			if (isc.isExtension() && !includeExtensions)
+				continue;
+			if (isc.requiresPrivilege() && !includePriviledged)
+				continue;
+			out.add(isc);
+		}
+		return out;
+	}
+
+	protected boolean useExtensions(SchemaContext sc) {
+		return 	KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 	}
 
 	

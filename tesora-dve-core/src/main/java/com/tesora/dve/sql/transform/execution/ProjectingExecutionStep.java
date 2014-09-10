@@ -51,6 +51,7 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 
 
 	protected LiteralExpression inMemLimit = null;
+	protected ProjectionInfo projectionOverride = null;
 	
 	private ProjectingExecutionStep(SchemaContext sc, Database<?> db, PEStorageGroup storageGroup, DistributionVector vect, DistributionKey distKey,
 			DMLStatement command, DMLExplainRecord splain) throws PEException {
@@ -100,7 +101,7 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 		QueryStepDMLOperation qso = null;
 		long inMem = getInMemLimit(sc);
 		IKeyValue ikv = getKeyValue(sc);
-		SQLCommand sqlCommand = getCommand(sc).withProjection(projection).withReferenceTime(getReferenceTimestamp(sc));
+		SQLCommand sqlCommand = getCommand(sc).withProjection((projectionOverride == null ? projection : projectionOverride)).withReferenceTime(getReferenceTimestamp(sc));
 		QueryStepResultsOperation qsro = null;
 		if (ikv != null) {
 			qsro = new QueryStepSelectByKeyOperation(getPersistentDatabase(), ikv, sqlCommand);
@@ -137,6 +138,10 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 			lim = ((Number)value).longValue();
 		}
 		return lim;
+	}
+	
+	public void setProjectionOverride(ProjectionInfo pi) {
+		projectionOverride = pi;
 	}
 	
 	@Override

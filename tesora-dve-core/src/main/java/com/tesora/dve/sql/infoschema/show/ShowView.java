@@ -28,6 +28,7 @@ import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
+import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.schema.Name;
@@ -42,6 +43,8 @@ public class ShowView extends AbstractInformationSchema {
 
 			@Override
 			public Name[] evaluate(InformationSchemaTable object) {
+				if (object.getPluralName() == null)
+					return new Name[] { object.getName() };
 				return new Name[] { object.getName(), object.getPluralName() };
 			}
 			
@@ -54,9 +57,7 @@ public class ShowView extends AbstractInformationSchema {
 			String charSet, String collation, List<PersistedEntity> acc) throws PEException {	
 	}
 	
-	public ShowInformationSchemaTable lookupTable(UnqualifiedName unq) {
-		// temporary
-		Object obj = lookup.lookup(unq);
-		return (ShowInformationSchemaTable)obj;
+	public ShowSchemaBehavior lookupTable(UnqualifiedName unq) {
+		return (ShowSchemaBehavior) lookup.lookup(unq);
 	}
 }

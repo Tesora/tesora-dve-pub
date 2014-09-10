@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema.direct;
 
 /*
  * #%L
@@ -21,17 +21,44 @@ package com.tesora.dve.sql.infoschema.show;
  * #L%
  */
 
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.schema.UnqualifiedName;
+public class DirectColumnGenerator extends DirectSchemaGenerator {
 
-public class ShowEnginesInformationSchemaTable extends
-		ShowInformationSchemaTable {
-
-	public ShowEnginesInformationSchemaTable(
-			LogicalInformationSchemaTable basedOn, UnqualifiedName viewName,
-			UnqualifiedName pluralViewName, boolean isPriviledged,
-			boolean isExtension) {
-		super(basedOn, viewName, pluralViewName, isPriviledged, isExtension);
+	private final String name;
+	private final String type;
+	
+	private int orderby = -1;
+	private boolean ident = false;
+	
+	public DirectColumnGenerator(String name, String type) {
+		super();
+		this.name = name;
+		this.type = type;
+	}
+	
+	public DirectColumnGenerator withOrderBy(int offset) {
+		this.orderby= offset;
+		return this;
+	}
+	
+	public DirectColumnGenerator withIdent() {
+		this.ident = true;
+		return this;
+	}
+	
+	public String getName() {
+		return name;
+	}
+	
+	public String getType() {
+		return type;
+	}
+	
+	public boolean isIdent() {
+		return ident;
+	}
+	
+	public int getOrderByOffset() {
+		return orderby;
 	}
 	
 }

@@ -330,10 +330,15 @@ public class ViewRewriteTransformFactory extends TransformFactory {
 		List<ExpressionNode> encDecomp = ExpressionUtils.decomposeAndClause(enclosing.getWhereClause());
 		encDecomp.addAll(ExpressionUtils.decomposeAndClause(viewDef.getWhereClause()));
 		enclosing.setWhereClause(ExpressionUtils.safeBuildAnd(encDecomp));
+		// if enclosing has no order by clause, we should yank in the one from the view def
+		if (viewDef.getOrderBysEdge().has() && !enclosing.getOrderBysEdge().has()) {
+			enclosing.setOrderBy(viewDef.getOrderBys());
+		}
 		// now we just need to swap in view table columns for their backing defs
 		ListSet<ColumnInstance> cols = ColumnInstanceCollector.getColumnInstances(enclosing);
 		for(ColumnInstance ci : cols) 
 			mapColumnDef(ci,viewColumnDefinitions);
+		
 		// completely consumed
 		enclosing.getDerivedInfo().removeLocalTable(theView);
 		enclosing.getDerivedInfo().addLocalTables(viewDef.getDerivedInfo().getLocalTableKeys());

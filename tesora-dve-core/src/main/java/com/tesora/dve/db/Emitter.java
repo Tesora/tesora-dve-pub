@@ -53,6 +53,7 @@ import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.direct.DirectInfoSchemaStatement;
 import com.tesora.dve.sql.infoschema.engine.NamedParameter;
 import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -402,6 +403,8 @@ public abstract class Emitter {
 			emitRenameStatement(sc, (RenameTableStatement) s, buf);
 		} else if (s instanceof PEGroupProviderDDLStatement) {
 			emitPEGroupProviderDDLStatement(sc, (PEGroupProviderDDLStatement)s,buf);
+		} else if (s instanceof DirectInfoSchemaStatement) {
+			emitDirectInfoSchemaStatement(sc, (DirectInfoSchemaStatement)s, buf);
 		} else if (s instanceof PEQueryVariablesStatement) {
 			// nothing yet
 		} else {
@@ -2022,6 +2025,10 @@ public abstract class Emitter {
 			opts.add(p.getFirst().getSQL() + "=" + p.getSecond().getValue(sc));
 		}
 		buf.append(Functional.join(opts, ", "));
+	}
+	
+	public void emitDirectInfoSchemaStatement(SchemaContext sc, DirectInfoSchemaStatement diss, StringBuilder buf) {
+		emitSelectStatement(sc,diss.getCatalogQuery(), buf, 1);
 	}
 	
 	public void emitAlterTableDistributionStatement(SchemaContext sc, AlterTableDistributionStatement atds, StringBuilder buf) {

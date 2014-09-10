@@ -120,7 +120,7 @@ public class SingleDirectStatement implements WorkerStatement {
             psqlError = new PESQLException(e);
 
         worker.setLastException(psqlError);
-
+        
         if (sql != null)
             return new PESQLException(psqlError.getMessage(), new PESQLException("On statement: " + sql.getDisplayForLog(), psqlError));
         else

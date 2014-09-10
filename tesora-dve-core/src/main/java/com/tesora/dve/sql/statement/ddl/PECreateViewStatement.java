@@ -223,7 +223,7 @@ public class PECreateViewStatement extends
 					if (pec.getName().equals(columnNames.get(i))) {
 						// ok
 					} else {
-						throw new SchemaException(Pass.SECOND, "Invalid tschema table def - mismatched names");
+						throw new SchemaException(Pass.SECOND, "Invalid tschema table def - mismatched names.  Expected " + columnNames.get(i) + " but found " + pec.getName());
 					}
 				} else {
 					throw new SchemaException(Pass.SECOND, "Invalid tschema table def - keys not allowed");

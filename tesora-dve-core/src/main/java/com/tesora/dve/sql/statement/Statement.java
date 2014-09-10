@@ -43,7 +43,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.MigrationException;
@@ -428,7 +428,7 @@ public abstract class Statement extends StatementNode {
 	}
 	
 	public static PEPersistentGroup buildSiteGroup(SchemaContext pc, boolean useOneSiteGroup, Boolean overrideRequiresPrivilegeValue, boolean uniquify) {
-        ShowInformationSchemaTable sitesTable = Singletons.require(HostService.class).getInformationSchema().lookupShowTable(new UnqualifiedName("persistent site"));
+        ShowSchemaBehavior sitesTable = Singletons.require(HostService.class).getInformationSchema().lookupShowTable(new UnqualifiedName("persistent site"));
 		try {
 			pc.getCatalog().startTxn();
 			List<CatalogEntity> sites = sitesTable.getLikeSelectEntities(pc, null, null, null, overrideRequiresPrivilegeValue);

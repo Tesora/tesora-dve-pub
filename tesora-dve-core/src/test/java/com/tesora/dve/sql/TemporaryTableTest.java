@@ -141,11 +141,11 @@ public class TemporaryTableTest extends SchemaTest {
 					br(nr,"fid","int(11)","YES","UNI",null,""));
 			
 			conn1.assertResults("show keys in narrow",
-					br(nr,"narrow",1L,"PRIMARY",1,"id","A",-1,4,"","NO","BTREE","","",
-					   nr,"narrow",1L,"fid",1,"fid","A",-1,4,"","YES","BTREE","","",
-					   nr,"narrow",0L,"sid",1,"sid","A",-1,4,"","YES","BTREE","",""));
+					br(nr,"narrow",1,"PRIMARY",1,"id","A",-1,4,"","NO","BTREE","","",
+					   nr,"narrow",1,"fid",1,"fid","A",-1,4,"","YES","BTREE","","",
+					   nr,"narrow",0,"sid",1,"sid","A",-1,4,"","YES","BTREE","",""));
 			conn2.assertResults("show keys in narrow",
-					br(nr,"narrow",0L,"PRIMARY",1,"id","A",-1,null,null,"","BTREE","",""));
+					br(nr,"narrow",0,"PRIMARY",1,"id","A",-1L,null,null,"","BTREE","",""));
 			conn1.execute("drop table narrow");
 			conn1.execute("drop table narrow");
 		} finally {

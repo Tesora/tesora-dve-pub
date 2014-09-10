@@ -35,6 +35,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
@@ -61,7 +62,7 @@ import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 
-public class ShowInformationSchemaTable extends ComputedInformationSchemaTable {
+public class ShowInformationSchemaTable extends ComputedInformationSchemaTable implements ShowSchemaBehavior {
 
 	public ShowInformationSchemaTable(
 			LogicalInformationSchemaTable basedOn, UnqualifiedName viewName,

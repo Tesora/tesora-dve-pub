@@ -87,9 +87,10 @@ import com.tesora.dve.sql.expression.ScopeParsePhase;
 import com.tesora.dve.sql.expression.ScopeStack;
 import com.tesora.dve.sql.expression.SetQuantifier;
 import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.infoschema.InformationSchemaTable;
+import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
 import com.tesora.dve.sql.infoschema.show.CreateDatabaseInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowColumnInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowOptions;
 import com.tesora.dve.sql.infoschema.show.ShowVariablesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
@@ -1205,7 +1206,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public Statement buildShowCreateDatabaseQuery(String onInfoSchemaTable,
 			Name objectName, Boolean ifNotExists) {
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
@@ -2733,7 +2734,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 		// TODO:
 		// handle !resolve
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
@@ -2742,11 +2743,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public void push_info_schema_scope(Name n) {
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior sst = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable((UnqualifiedName) n);
-		if (ist == null)
-			throw new SchemaException(Pass.SECOND, "No such table: "
+		if (sst == null)
+			throw new SchemaException(Pass.SECOND, "No such table: "					
 					+ n.getSQL());
+		InformationSchemaTable ist = (InformationSchemaTable) sst;
 		pushScope();
 		// we put in an alias anyways
 		scope.buildTableInstance(ist.getName(), new UnqualifiedName("a"),
@@ -2767,7 +2769,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (pc != null && !pc.getCatalog().isPersistent())
 			return new EmptyStatement("no catalog queries with transient execution engine");
 
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "

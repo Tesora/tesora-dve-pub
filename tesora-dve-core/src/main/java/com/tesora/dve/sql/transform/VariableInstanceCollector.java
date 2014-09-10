@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.logical;
+package com.tesora.dve.sql.transform;
 
 /*
  * #%L
@@ -21,18 +21,26 @@ package com.tesora.dve.sql.infoschema.logical;
  * #L%
  */
 
-import com.tesora.dve.db.DBNative;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.schema.types.BasicType;
+import java.util.List;
 
-public class CharacterSetsInformationSchemaTable extends
-		LogicalInformationSchemaTable {
-	
-	public CharacterSetsInformationSchemaTable(DBNative dbn) {
-		super(new UnqualifiedName("character_sets"));
-		addExplicitColumn("CHARACTER_SET_NAME", buildStringType(dbn, 32));
-		addExplicitColumn("DESCRIPTION", buildStringType(dbn,60));
-		addExplicitColumn("MAX_LEN", BasicType.buildType(java.sql.Types.BIGINT, 3, dbn));
+import com.tesora.dve.sql.node.GeneralCollectingTraversal;
+import com.tesora.dve.sql.node.LanguageNode;
+import com.tesora.dve.sql.node.expression.VariableInstance;
+import com.tesora.dve.sql.node.test.EngineConstant;
+
+public class VariableInstanceCollector extends GeneralCollectingTraversal {
+
+	public VariableInstanceCollector() {
+		super(Order.POSTORDER, ExecStyle.ONCE);
 	}
+	
+	@Override
+	public boolean is(LanguageNode ln) {
+		return EngineConstant.VARIABLE.has(ln);
+	}
+
+	public static List<VariableInstance> getVariables(LanguageNode ln) {
+		return GeneralCollectingTraversal.collect(ln, new VariableInstanceCollector());
+	}
+	
 }

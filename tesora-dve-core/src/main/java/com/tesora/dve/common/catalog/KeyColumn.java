@@ -38,10 +38,7 @@ import org.hibernate.annotations.ForeignKey;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 
-@InfoSchemaTable(logicalName="key_column",views={})
 @Entity
 @Table(name = "user_key_column")
 public class KeyColumn implements CatalogEntity {
@@ -129,23 +126,14 @@ public class KeyColumn implements CatalogEntity {
 		}
 	}
 	
-	@InfoSchemaColumn(logicalName="column", fieldName="column",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public UserColumn getSourceColumn() {
 		return column;
 	}
 
-	@InfoSchemaColumn(logicalName="position", fieldName="position",
-			sqlType=java.sql.Types.INTEGER,
-			views={})
 	public int getPosition() {
 		return position;
 	}
 
-	@InfoSchemaColumn(logicalName="referenced_column", fieldName="targetColumn",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public UserColumn getTargetColumn() {
 		return targetColumn;
 	}
@@ -154,24 +142,15 @@ public class KeyColumn implements CatalogEntity {
 		key = k;
 	}
 	
-	@InfoSchemaColumn(logicalName="containing_key", fieldName="key",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public Key getKey() {
 		return key;
 	}
 		
-	@InfoSchemaColumn(logicalName="forward_ref_column_name", fieldName="targetColumnName",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getTargetColumnName() {
 		if (targetColumn != null) return targetColumn.getName();
 		return targetColumnName;
 	}
 	
-	@InfoSchemaColumn(logicalName="length", fieldName="length",
-			sqlType=java.sql.Types.INTEGER,
-			views={})
 	public Integer getLength() {
 		return length;
 	}
@@ -180,9 +159,6 @@ public class KeyColumn implements CatalogEntity {
 		length = l;
 	}
 
-	@InfoSchemaColumn(logicalName="cardinality", fieldName="cardinality",
-			sqlType=java.sql.Types.INTEGER,
-			views={})
 	public Long getCardinality() {
 		return cardinality;
 	}

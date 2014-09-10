@@ -27,11 +27,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.direct.DirectSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.node.expression.TableInstance;
@@ -106,6 +108,8 @@ public abstract class AbstractInformationSchema implements
 			tables.remove(already);
 			if (already.getLogicalTable() != null)
 				reverse.remove(already.getLogicalTable());
+		} else {
+			DirectSchemaQueryEngine.log("not replacing " + t.getName());
 		}
 		tables.add(t);
 		lookup.refreshBacking(tables);
@@ -146,7 +150,12 @@ public abstract class AbstractInformationSchema implements
 	public void buildEntities(CatalogSchema schema, int groupid, int modelid, String charSet, String collation, List<PersistedEntity> acc) throws PEException {		
 		CatalogDatabaseEntity cde = new CatalogDatabaseEntity(schema, view.getUserDatabaseName(), groupid, charSet,collation);
 		acc.add(cde);
+		// switching this to be alphabetical, due to issues around migration
+		TreeMap<String, InformationSchemaTable> alpha = new TreeMap<String,InformationSchemaTable>();
 		for(InformationSchemaTable t : tables) {
+			alpha.put(t.getName().getUnqualified().getUnquotedName().get(), t);
+		}
+		for(InformationSchemaTable t : alpha.values()) {
 			t.buildTableEntity(schema, cde, modelid, groupid, acc);
 		}
 	}

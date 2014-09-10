@@ -21,55 +21,41 @@ package com.tesora.dve.sql.infoschema;
  * #L%
  */
 
+
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.infoschema.info.InfoSchemaDistributionsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaEventsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaFilesInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.info.InfoSchemaGenerationSiteInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaGlobalTemporaryTablesInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.info.InfoSchemaKeyColumnUsageInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaPartitionsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaPluginsInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.info.InfoSchemaReferentialConstraintsSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaRoutinesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaSchemataSchemaTable;
-import com.tesora.dve.sql.infoschema.info.InfoSchemaScopesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaSessionTemporaryTablesInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.info.InfoSchemaTableConstraintsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaVariablesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaViewInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.DistributionLogicalTable;
 import com.tesora.dve.sql.infoschema.logical.EventsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.FilesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.FunctionStatusInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.GenerationSiteInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.MysqlDBLogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.PartitionsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.PluginsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.ProcedureStatusInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.RoutinesInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.ScopesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.StatusLogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.TableStatusInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.TriggerInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.CatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.DatabaseCatalogInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.catalog.DynamicPolicyCatalogInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.catalog.KeyCatalogInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.catalog.KeyColumnCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.ViewCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.mysql.MysqlDBInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.CreateDatabaseInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.CreateTableInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowDynamicPolicyInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowEventsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowFilesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowFunctionStatusInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowGenerationSiteInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowKeysInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowMultitenantDatabaseSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowPartitionsInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowProcedureStatusInformationSchemaTable;
@@ -96,7 +82,6 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		showSchema.addTable(null, new ShowMultitenantDatabaseSchemaTable(databaseInfoSchemaTable));
 		showSchema.addTable(null, new CreateDatabaseInformationSchemaTable());
 		showSchema.addTable(null, new ShowTemplateOnDatabaseSchemaTable(databaseInfoSchemaTable));
-		addGenerationSiteTable(logicalSchema,showSchema,infoSchema,dbn);
 		addMysqlDBTable(logicalSchema,mysqlSchema,dbn);
 		addVariablesTable(logicalSchema, showSchema, infoSchema, dbn);
 		addTableStatusTable(showSchema,dbn);
@@ -106,29 +91,12 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		addPartitionsTable(logicalSchema,showSchema,infoSchema,dbn);
 		addRoutinesTable(logicalSchema, infoSchema, dbn);
 		addEventsTable(logicalSchema, infoSchema, showSchema, dbn);
-		addKeyRelatedTables(logicalSchema, infoSchema, showSchema, dbn);
 		addProcedureStatusTable(showSchema, dbn);
 		addFunctionStatusTable(showSchema, dbn);
 		addSchemataTable(logicalSchema, infoSchema);
-		addDistModelRelatedTables(logicalSchema, infoSchema, showSchema, dbn);
-		addDynamicPolicyTables(logicalSchema, showSchema, dbn);
 		addPluginsTable(logicalSchema, infoSchema, dbn);
-		addScopesTable(logicalSchema, infoSchema, dbn);
 		addViewsTable(logicalSchema, infoSchema, dbn);
 		addTempTablesTables(logicalSchema, infoSchema, dbn);
-	}
-
-	/**
-	 * @param logical
-	 * @param show
-	 * @param infoSchema
-	 * @param dbn
-	 */
-	private void addGenerationSiteTable(LogicalInformationSchema logical, ShowView show, InformationSchema infoSchema, DBNative dbn) {
-		GenerationSiteInformationSchemaTable gist = new GenerationSiteInformationSchemaTable(logical);
-		logical.addTable(null,gist);
-		show.addTable(null,new ShowGenerationSiteInformationSchemaTable(gist));
-		infoSchema.addTable(null,new InfoSchemaGenerationSiteInformationSchemaTable(gist));
 	}
 	
 	/**
@@ -202,39 +170,6 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		showSchema.addTable(null, new ShowEventsInformationSchemaTable(ist));
 	}
 	
-	/**
-	 * @param logicalSchema
-	 * @param infoSchema
-	 * @param showSchema
-	 * @param dbn
-	 */
-	private void addKeyRelatedTables(LogicalInformationSchema logicalSchema,
-			InformationSchema infoSchema, ShowView showSchema, DBNative dbn) {
-		KeyCatalogInformationSchemaTable keyTab = (KeyCatalogInformationSchemaTable) logicalSchema.lookup("key");
-		InfoSchemaReferentialConstraintsSchemaTable refcon = new InfoSchemaReferentialConstraintsSchemaTable(keyTab);
-		infoSchema.addTable(null, refcon);
-		KeyColumnCatalogInformationSchemaTable keyColTab = (KeyColumnCatalogInformationSchemaTable) logicalSchema.lookup("key_column");
-		InfoSchemaKeyColumnUsageInformationSchemaTable keyColUse = new InfoSchemaKeyColumnUsageInformationSchemaTable(keyColTab);
-		infoSchema.addTable(null, keyColUse);
-		InfoSchemaTableConstraintsInformationSchemaTable tabcon = new InfoSchemaTableConstraintsInformationSchemaTable(keyTab);
-		infoSchema.addTable(null, tabcon);
-		showSchema.addTable(null, new ShowKeysInformationSchemaTable(keyColTab));
-	}
-	
-	/**
-	 * @param logicalSchema
-	 * @param infoSchema
-	 * @param showSchema
-	 * @param dbn
-	 */
-	private void addDistModelRelatedTables(LogicalInformationSchema logicalSchema,
-			InformationSchema infoSchema, ShowView showSchema, DBNative dbn) {
-		DistributionLogicalTable distTab = new DistributionLogicalTable(logicalSchema);
-		logicalSchema.addTable(null, distTab);
-		InfoSchemaDistributionsInformationSchemaTable distInfo = new InfoSchemaDistributionsInformationSchemaTable(distTab);
-		infoSchema.addTable(null,distInfo);
-	}
-
 	private void addProcedureStatusTable(ShowView showSchema, DBNative dbn) {
 		ProcedureStatusInformationSchemaTable procedures = new ProcedureStatusInformationSchemaTable(dbn);
 		showSchema.addTable(null, new ShowProcedureStatusInformationSchemaTable(procedures));
@@ -251,17 +186,6 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		infoSchema.addTable(null, schemataTab);
 	}
 	
-	/**
-	 * @param logicalSchema
-	 * @param showSchema
-	 * @param dbn
-	 */
-	private void addDynamicPolicyTables(LogicalInformationSchema logicalSchema, ShowView showSchema, DBNative dbn) {
-		DynamicPolicyCatalogInformationSchemaTable dynPolTab = (DynamicPolicyCatalogInformationSchemaTable) logicalSchema.lookup("dynamic_policy");
-		ShowDynamicPolicyInformationSchemaTable showTab = new ShowDynamicPolicyInformationSchemaTable(dynPolTab);
-		showSchema.addTable(null, showTab);
-	}
-
 	private void addPluginsTable(LogicalInformationSchema logicalSchema,
 			InformationSchema infoSchema, DBNative dbn) {
 		PluginsInformationSchemaTable ist = new PluginsInformationSchemaTable(dbn);
@@ -269,13 +193,6 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		infoSchema.addTable(null,new InfoSchemaPluginsInformationSchemaTable(ist));
 	}
 
-	private void addScopesTable(LogicalInformationSchema logicalSchema, InformationSchema infoSchema, DBNative dbn) {
-		ScopesInformationSchemaTable logical = new ScopesInformationSchemaTable(logicalSchema);
-		logicalSchema.addTable(null, logical);
-		InfoSchemaScopesInformationSchemaTable info = new InfoSchemaScopesInformationSchemaTable(logical);
-		infoSchema.addTable(null, info);
-	}
-	
 	private void addViewsTable(LogicalInformationSchema logicalSchema, InformationSchema infoSchema, DBNative dbn) {
 		ViewCatalogInformationSchemaTable backing = (ViewCatalogInformationSchemaTable) logicalSchema.lookup("views");
 		InfoSchemaViewInformationSchemaTable views = new InfoSchemaViewInformationSchemaTable(backing);

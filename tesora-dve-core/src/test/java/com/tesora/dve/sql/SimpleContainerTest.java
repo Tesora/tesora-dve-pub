@@ -272,7 +272,7 @@ public class SimpleContainerTest extends SchemaTest {
 				   nr,"def","checkdb","PRIMARY","checkdb","B","PRIMARY KEY",
 				   nr,"def","checkdb","B_ibfk_1","checkdb","B","FOREIGN KEY"));
 		String dbn = testDDL.getDatabaseName();
-		conn.assertResults("select * from information_schema.referential_constraints",br(nr,"def", dbn, "def", dbn, "RESTRICT","RESTRICT","B","A"));
+		conn.assertResults("select * from information_schema.referential_constraints",br(nr,"def", dbn, ignore, "def", dbn, "RESTRICT","RESTRICT","B","A"));
 		try {
 			conn.execute("create table C (`id` int, `sid` int, primary key (id), foreign key (sid) references B (id)) random distribute");
 			fail("should not be able to create a table with a noncolocated fk");
@@ -282,8 +282,8 @@ public class SimpleContainerTest extends SchemaTest {
 		}
 		conn.execute("set foreign_key_checks = 0");
 		conn.execute("create table D (`id` int, `sid` int, primary key (id), foreign key tfk (sid) references E (id)) container distribute testcont");
-		Object[] results = br(nr,"def",dbn,"def",dbn,"RESTRICT","RESTRICT","B","A",
-							  nr,"def",dbn,"def",dbn,"RESTRICT","RESTRICT","D","E");
+		Object[] results = br(nr,"def",dbn,ignore,"def",dbn,"RESTRICT","RESTRICT","B","A",
+							  nr,"def",dbn,ignore,"def",dbn,"RESTRICT","RESTRICT","D","E");
 		conn.assertResults("select * from information_schema.referential_constraints",results);
 		Object one = new Integer(1);
 //		System.out.println(conn.printResults("select * from information_schema.key_column_usage"));

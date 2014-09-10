@@ -22,6 +22,8 @@ package com.tesora.dve.sql.infoschema;
  */
 
 
+
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -35,11 +37,7 @@ import com.tesora.dve.common.catalog.Collations;
 import com.tesora.dve.common.catalog.Container;
 import com.tesora.dve.common.catalog.ContainerTenant;
 import com.tesora.dve.common.catalog.DistributionModel;
-import com.tesora.dve.common.catalog.DynamicPolicy;
-import com.tesora.dve.common.catalog.Engines;
 import com.tesora.dve.common.catalog.ExternalService;
-import com.tesora.dve.common.catalog.Key;
-import com.tesora.dve.common.catalog.KeyColumn;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.PersistentTemplate;
@@ -73,16 +71,12 @@ import com.tesora.dve.sql.infoschema.info.InfoSchemaColumnsInformationSchemaTabl
 import com.tesora.dve.sql.infoschema.logical.catalog.CatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.ColumnCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.DatabaseCatalogInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.catalog.DynamicPolicyCatalogInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.catalog.KeyCatalogInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.catalog.KeyColumnCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.TableCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.catalog.ViewCatalogInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ExternalServiceSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowColumnInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowContainerInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowDatabaseInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowEnginesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowTableInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowView;
@@ -99,7 +93,6 @@ public class AnnotationInformationSchemaBuilder implements
 		new InfoTableConfig(UserTable.class).withLogical(TableCatalogInformationSchemaTable.class).withShow(ShowTableInformationSchemaTable.class),
 		new InfoTableConfig(UserDatabase.class).withShow(ShowDatabaseInformationSchemaTable.class).withLogical(DatabaseCatalogInformationSchemaTable.class),
 		new InfoTableConfig(DistributionRange.class),
-		new InfoTableConfig(DynamicPolicy.class).withLogical(DynamicPolicyCatalogInformationSchemaTable.class),
 		new InfoTableConfig(Provider.class),
 		new InfoTableConfig(PersistentGroup.class),
 		new InfoTableConfig(PersistentSite.class),
@@ -114,11 +107,8 @@ public class AnnotationInformationSchemaBuilder implements
 		new InfoTableConfig(ExternalService.class).withShow(ExternalServiceSchemaTable.class),
 		new InfoTableConfig(Container.class).withShow(ShowContainerInformationSchemaTable.class),
 		new InfoTableConfig(ContainerTenant.class),
-		new InfoTableConfig(Key.class).withLogical(KeyCatalogInformationSchemaTable.class),
-		new InfoTableConfig(KeyColumn.class).withLogical(KeyColumnCatalogInformationSchemaTable.class),
 		new InfoTableConfig(CharacterSets.class),
 		new InfoTableConfig(RangeTableRelationship.class),
-		new InfoTableConfig(Engines.class).withShow(ShowEnginesInformationSchemaTable.class),
 		new InfoTableConfig(PersistentTemplate.class),
 		new InfoTableConfig(ServerRegistration.class),
 		new InfoTableConfig(RawPlan.class),

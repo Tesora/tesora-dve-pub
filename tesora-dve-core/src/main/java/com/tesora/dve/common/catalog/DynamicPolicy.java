@@ -40,18 +40,11 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 import com.tesora.dve.common.PEConstants;
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.variables.VariableValueConverter;
 
-@InfoSchemaTable(logicalName="dynamic_policy",
-		views={})
 @Entity
 @Table(name="dynamic_policy")
 public class DynamicPolicy implements CatalogEntity, IDynamicPolicy {
@@ -124,9 +117,6 @@ public class DynamicPolicy implements CatalogEntity, IDynamicPolicy {
 		this.largeClass = new DynamicGroupClass(LARGE, largeProvider, largeClass, largeCount);
 	}
 
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getName() {
 		return name;
 	}
@@ -197,9 +187,6 @@ public class DynamicPolicy implements CatalogEntity, IDynamicPolicy {
 		this.largeClass = largeClass;
 	}
 
-	@InfoSchemaColumn(logicalName="strict",fieldName="strict",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public boolean getStrict() {
 		return strict;
 	}
@@ -306,10 +293,6 @@ public class DynamicPolicy implements CatalogEntity, IDynamicPolicy {
 		return props;
 	}
 
-	@InfoSchemaColumn(logicalName="config",fieldName="",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.GroupPolicy.CONFIG),
-			       @ColumnView(view=InfoView.INFORMATION, name="config")})
 	public String getConfigString() throws PEException {
 		// blech, can't use the store method on properties - always emits the date
 		StringWriter sw = new StringWriter();

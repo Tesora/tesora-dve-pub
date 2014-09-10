@@ -30,27 +30,10 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName = "engines",
-		views = { @TableView(view = InfoView.SHOW, name = "engines", pluralName = "",
-				columnOrder = { ShowSchema.Engines.ENGINE,
-						ShowSchema.Engines.SUPPORT,
-						ShowSchema.Engines.COMMENT,
-						ShowSchema.Engines.TRANSACTIONS,
-						ShowSchema.Engines.XA,
-						ShowSchema.Engines.SAVEPOINTS }),
-				@TableView(view = InfoView.INFORMATION, name = "engines", pluralName = "",
-						columnOrder = { "engine", "support", "comment", "transactions", "xa", "savepoints"
-						}) })
 @Entity
 @Table(name = "engines")
 public class Engines implements CatalogEntity {
@@ -97,50 +80,26 @@ public class Engines implements CatalogEntity {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName = "engine", fieldName = "engine",
-			sqlType = java.sql.Types.VARCHAR, sqlWidth = 64,
-			views = { @ColumnView(view = InfoView.SHOW, name = ShowSchema.Engines.ENGINE, orderBy = true, ident = true),
-					@ColumnView(view = InfoView.INFORMATION, name = "engine", orderBy = true, ident = true) })
 	public String getEngine() {
 		return engine;
 	}
 
-	@InfoSchemaColumn(logicalName = "support", fieldName = "support",
-			sqlType = java.sql.Types.VARCHAR, sqlWidth = 8,
-			views = { @ColumnView(view = InfoView.SHOW, name = ShowSchema.Engines.SUPPORT),
-					@ColumnView(view = InfoView.INFORMATION, name = "support") })
 	public String getSupport() {
 		return support;
 	}
 
-	@InfoSchemaColumn(logicalName = "comment", fieldName = "comment",
-			sqlType = java.sql.Types.VARCHAR, sqlWidth = 80,
-			views = { @ColumnView(view = InfoView.SHOW, name = ShowSchema.Engines.COMMENT),
-					@ColumnView(view = InfoView.INFORMATION, name = "comment") })
 	public String getComment() {
 		return comment;
 	}
 
-	@InfoSchemaColumn(logicalName = "transactions", fieldName = "transactions",
-			sqlType = java.sql.Types.VARCHAR, sqlWidth = 3,
-			views = { @ColumnView(view = InfoView.SHOW, name = ShowSchema.Engines.TRANSACTIONS),
-					@ColumnView(view = InfoView.INFORMATION, name = "transactions") })
 	public String getTransactions() {
 		return transactions;
 	}
 
-	@InfoSchemaColumn(logicalName = "xa", fieldName = "xa",
-			sqlType = java.sql.Types.VARCHAR, sqlWidth = 3,
-			views = { @ColumnView(view = InfoView.SHOW, name = ShowSchema.Engines.XA),
-					@ColumnView(view = InfoView.INFORMATION, name = "xa") })
 	public String getXa() {
 		return xa;
 	}
 
-	@InfoSchemaColumn(logicalName = "savepoints", fieldName = "savepoints",
-			sqlType = java.sql.Types.VARCHAR, sqlWidth = 3,
-			views = { @ColumnView(view = InfoView.SHOW, name = ShowSchema.Engines.SAVEPOINTS),
-					@ColumnView(view = InfoView.INFORMATION, name = "savepoints") })
 	public String getSavepoints() {
 		return savepoints;
 	}
