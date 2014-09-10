@@ -46,7 +46,6 @@ import com.google.common.base.Objects;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.DevXid;
@@ -54,7 +53,7 @@ import com.tesora.dve.worker.UserCredentials;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MysqlConnection implements DBConnection, DBConnection.Monitor {
+public class MysqlConnection implements DBConnection, DBConnection.Monitor, CommandChannel {
 
 	public static final boolean USE_POOLED_BUFFERS = Boolean.getBoolean("com.tesora.dve.netty.usePooledBuffers");
 
@@ -173,49 +172,61 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 //		});
 	}
 
-    @Override
-	public void execute(SQLCommand sql, DBCommandExecutor commandExecutor, CompletionHandle<Boolean> promise) {
-        CompletionHandle<Boolean> resultTracker = wrapHandler(promise);
-
-		try {
-
-			if (logger.isDebugEnabled())
-				logger.debug(this.getClass().getSimpleName()
-//						+"@"+System.identityHashCode(this)
-						+"{"+site.getName()+"}.execute("+sql.getRawSQL()+","+ commandExecutor +","+promise+")");
-
-			if (!channel.isOpen()) {
-                resultTracker.failure(new PECommunicationsException("Channel closed: " + channel));
-			} else if (pendingException == null) {
-				commandExecutor.writeCommandExecutor(channel, sql, resultTracker);
-                channel.flush();
-			} else {
-                Exception currentError = pendingException;
-                pendingException = null; //if no tracker was provided, will just save it for the next call.
-                resultTracker.failure(currentError);
-			}
-		} finally {
-		}
-	}
-
-    public void execute(MysqlCommand sqlAction, CompletionHandle<Boolean> promise){
-        this.execute( SQLCommand.EMPTY, buildDefaultConsumer(sqlAction), promise);
+    public void write(MysqlCommand command){
+        sendCommand(command);
     }
 
+    public void writeAndFlush(MysqlCommand command){
+        sendCommand(command);
+    }
+
+    /**
+     * Currently the main entrypoint for dispatching old-style requests.  The MysqlCommand object holds both the
+     * request and response, and writing the request and reading/dispatching the response is handled in the pipeline.
+     * @param command
+     */
+    protected void sendCommand(MysqlCommand command){
+        channel.writeAndFlush(command);
+    }
+
+    public String getName() {
+        return site.getName();
+    }
+
+    public CompletionHandle<Boolean> getExceptionDeferringPromise() {
+        return deferredErrorHandle;
+    }
+
+    public Exception getAndClearPendingException(){
+        Exception currentError = pendingException;
+        pendingException = null;
+        return currentError;
+    }
+
+    public boolean isOpen() {
+        return channel.isOpen();
+    }
+
+    //syntactic sugar for some of the inner utility calls.
     public void execute(String sql, CompletionHandle<Boolean> promise){
         this.execute( new SQLCommand(sql), promise);
     }
 
+    //syntactic sugar for some of the inner utility calls.
     public void execute(SQLCommand sql, CompletionHandle<Boolean> promise){
-        this.execute( sql, DBEmptyTextResultConsumer.INSTANCE, promise);
+        DBEmptyTextResultConsumer.INSTANCE.dispatch(this, sql, promise);
     }
 
-    public void execute(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor, CompletionHandle<Boolean> promise){
-        this.execute(buildDefaultAction(outboundMessage, resultsProcessor), promise);
-    }
-
+    /**
+     *  The main entrypoint for newer style calls that are just a protocol request and response processor.  Currently this
+     *  wraps the request/response in the appropriate old-style objects.  When all methods operate through this method,
+     *  it will be possible to clean up the pipeline and make it use the new types natively.
+     * @param outboundMessage
+     * @param resultsProcessor
+     */
+    @Override
     public void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor){
-        this.execute(buildDefaultAction(outboundMessage, resultsProcessor), resultsProcessor);
+        buildDefaultConsumer(buildDefaultAction(outboundMessage, resultsProcessor)).dispatch(this, SQLCommand.EMPTY, resultsProcessor);
     }
 
 	private void syncToServerConnect() {
@@ -247,12 +258,12 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 	@Override
 	public void start(DevXid xid, CompletionHandle<Boolean> promise) {
 		hasActiveTransaction = true;
-        execute("XA START " + xid.getMysqlXid(),promise);
+        execute("XA START " + xid.getMysqlXid(), promise);
     }
 
 	@Override
 	public void end(DevXid xid, CompletionHandle<Boolean> promise) {
-        execute("XA END " + xid.getMysqlXid(),promise);
+        execute("XA END " + xid.getMysqlXid(), promise);
     }
 
 	@Override
@@ -403,21 +414,8 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 //		}
 	}
 
-    private CompletionHandle<Boolean> wrapHandler(final CompletionHandle<Boolean> target) {
-        if (target != null)
-            return target;  //caller supplied a handler to track success/failure.
-        else {
-            return deferredErrorHandle;
-        }
-    }
-
-	@Override
-	public void failure(Exception e) {
+	public void handleFailure(Exception e) {
 		pendingException = new PEException("Unhandled exception received on server housekeeping sql statement", e);
-	}
-
-	@Override
-	public void success(Boolean returnValue) {
 	}
 
 	@Override
@@ -448,11 +446,11 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 				.toString();
 	}
 
-    private static DBCommandExecutor buildDefaultConsumer(final MysqlCommand command) {
-        return new DBCommandExecutor() {
+    private static DBResultConsumer buildDefaultConsumer(final MysqlCommand command) {
+        return new DBEmptyTextResultConsumer() {
 
             @Override
-            public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+            public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
                 channel.write(command);
             }
 
@@ -475,15 +473,17 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 
     private class DeferredErrorHandle extends PEDefaultPromise<Boolean> {
         //supply our own handler that will report failures on some call in the future.
+        //NOTE: we only use this when the caller didn't provide a promise, so it is OK that we don't call the parent success/failure, no one should ever be waiting. -sgossard
+
         //TODO: since query results generally come back in order, it would be good for these handlers to signal the next provided handler, not some arbitrary execute in the future. -sgossard
         @Override
         public void success(Boolean returnValue) {
-            MysqlConnection.this.success(returnValue);
+            //ignore, no one is waiting.
         }
 
         @Override
         public void failure(Exception e) {
-            MysqlConnection.this.failure(e);
+            MysqlConnection.this.handleFailure(e);
         }
 
     }

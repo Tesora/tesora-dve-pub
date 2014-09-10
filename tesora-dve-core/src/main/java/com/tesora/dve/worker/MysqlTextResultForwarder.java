@@ -22,6 +22,7 @@ package com.tesora.dve.worker;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.NativeResultHandler;
 import com.tesora.dve.db.NativeTypeCatalog;
@@ -30,7 +31,6 @@ import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
@@ -77,7 +77,7 @@ public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		channel.write(new MysqlExecuteCommand(sql, this, promise));
 	}
 

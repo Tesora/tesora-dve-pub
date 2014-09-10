@@ -23,12 +23,9 @@ package com.tesora.dve.worker;
 
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBCommandExecutor;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.mysql.DefaultResultProcessor;
-import com.tesora.dve.db.mysql.MysqlConnection;
-import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
-import com.tesora.dve.db.mysql.SharedEventLoopHolder;
+import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECommunicationsException;
@@ -164,11 +161,6 @@ public class DirectConnectionCache {
             dbConnection.close();
         }
 
-        @Override
-        public void execute(SQLCommand sql, DBCommandExecutor commandExecutor, CompletionHandle<Boolean> promise) {
-            dbConnection.execute(sql, commandExecutor, promise);
-        }
-
         public void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor){
             dbConnection.execute(outboundMessage, resultsProcessor);
         }
@@ -235,15 +227,22 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void success(Boolean returnValue) {
-            dbConnection.success(returnValue);
-        }
+        public String getName() { return dbConnection.getName(); }
 
         @Override
-        public void failure(Exception e) {
-            dbConnection.failure(e);
-        }
+        public boolean isOpen() { return dbConnection.isOpen(); }
 
+        @Override
+        public void write(MysqlCommand command) { dbConnection.write(command); }
+
+        @Override
+        public void writeAndFlush(MysqlCommand command) { dbConnection.write(command); }
+
+        @Override
+        public CompletionHandle<Boolean> getExceptionDeferringPromise() { return dbConnection.getExceptionDeferringPromise(); }
+
+        @Override
+        public Exception getAndClearPendingException() { return dbConnection.getAndClearPendingException();}
     }
 
     public static class DSCacheKey {

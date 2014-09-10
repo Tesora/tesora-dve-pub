@@ -101,7 +101,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        mysqlConn.execute(sqlc, results, promise);
+        results.dispatch(mysqlConn, sqlc, promise);
         promise.sync();
 		
 		return new ProxyConnectionResourceResponse(results);
@@ -113,7 +113,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlPrepareStatementCollector collector = new MysqlPrepareStatementCollector();
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        mysqlConn.execute(new SQLCommand(stmt), collector, promise);
+        collector.dispatch(mysqlConn, new SQLCommand(stmt), promise);
         promise.sync();
 		return collector.getPreparedStatement();
 	}
@@ -128,7 +128,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		
 		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand("EXEC PREPARED"), parameters);
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        mysqlConn.execute(sqlc, collector, promise);
+        collector.dispatch(mysqlConn, sqlc, promise);
         promise.sync();
 		
 		return new ProxyConnectionResourceResponse(collector);
@@ -139,9 +139,9 @@ public class MysqlConnectionResource extends ConnectionResource {
 		@SuppressWarnings("unchecked")
 		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id; 
 		MysqlStmtCloseDiscarder discarder = new MysqlStmtCloseDiscarder(pstmt);
-		
-		mysqlConn.execute(new SQLCommand(new GenericSQLCommand("CLOSE PREP STMT")), discarder, new PEDefaultPromise<Boolean>() );
-	}
+
+        discarder.dispatch(mysqlConn, new SQLCommand(new GenericSQLCommand("CLOSE PREP STMT")), new PEDefaultPromise<Boolean>());
+    }
 
 	@Override
 	public ResourceResponse fetch(LineInfo info, String stmt) throws Throwable {

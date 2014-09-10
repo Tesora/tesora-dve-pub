@@ -23,6 +23,7 @@ package com.tesora.dve.db;
 
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.exceptions.PECommunicationsException;
 import io.netty.channel.Channel;
 
 import java.util.List;
@@ -32,28 +33,59 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public interface DBResultConsumer extends DBCommandExecutor {
+public abstract class DBResultConsumer {
+    static final Logger logger = LoggerFactory.getLogger(DBResultConsumer.class);
 
 	public interface RowCountAdjuster {
 		long adjust(long numRowsAffected, int siteCount);
 	}
 
-	void setSenderCount(int senderCount);
+	abstract public void setSenderCount(int senderCount);
 
-	boolean hasResults();
+    abstract public boolean hasResults();
 
-	long getUpdateCount() throws PEException;
+    abstract public long getUpdateCount() throws PEException;
 
-	void setResultsLimit(long resultsLimit);
+    abstract public void setResultsLimit(long resultsLimit);
 
-	void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException;
+    abstract public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException;
 
-	void setRowAdjuster(RowCountAdjuster rowAdjuster);
+    abstract public void setRowAdjuster(RowCountAdjuster rowAdjuster);
 
-	void setNumRowsAffected(long rowcount);
+    abstract public void setNumRowsAffected(long rowcount);
 
-	boolean isSuccessful();
+    abstract public boolean isSuccessful();
 
-	void rollback();
+    abstract public void rollback();
+
+    abstract public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
+
+    public final void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
+        /**TODO: In order to decouple the DBResultConsumer hierarchy from the DBConnection classes, this logic was moved
+         * out of MysqlConnection, and unfortunately still has some connection state related dependencies.
+         * after all the DBResultConsumer nastiness is untangled, it would be good to move the exception deferring
+         * stuff 100% out of the connection, and the isOpen/communication failure stuff 100% back in. -sgossard
+          */
+        if (promise == null)
+            promise = connection.getExceptionDeferringPromise();
+
+        if (logger.isDebugEnabled())
+            logger.debug(connection.getClass().getSimpleName()
+//						+"@"+System.identityHashCode(this)
+                    +"{"+ connection.getName() +"}.execute("+ sql.getRawSQL()+","+ this +","+ promise +")");
+
+        if (connection.isOpen()) {//need prefer comm exception to pending exception, some HA behavior depends on that.
+            Exception deferredException = connection.getAndClearPendingException();
+            if (deferredException == null) {
+                this.writeCommandExecutor(connection, sql, promise);
+            } else {
+                promise.failure(deferredException); //if we are using the deferred error handle again, we'll just defer the exception again.
+            }
+        } else {
+            promise.failure(new PECommunicationsException("Channel closed: " + connection));
+        }
+    }
 }

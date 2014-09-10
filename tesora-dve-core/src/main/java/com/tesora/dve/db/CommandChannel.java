@@ -22,12 +22,18 @@ package com.tesora.dve.db;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.server.messaging.SQLCommand;
-import io.netty.channel.Channel;
+import com.tesora.dve.db.mysql.MysqlCommand;
 
 /**
  *
  */
-public interface DBCommandExecutor {
-    void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
+public interface CommandChannel {
+    String getName();
+
+    boolean isOpen();
+    void write(MysqlCommand command);
+    void writeAndFlush(MysqlCommand command);
+
+    CompletionHandle<Boolean> getExceptionDeferringPromise();
+    Exception getAndClearPendingException();
 }

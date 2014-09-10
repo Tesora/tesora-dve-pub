@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.SynchronousCompletion;
-import io.netty.channel.Channel;
+import com.tesora.dve.db.CommandChannel;
 
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
@@ -49,7 +49,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBResultConsumer {
+public class MysqlRedistTupleForwarder extends DBResultConsumer implements MysqlQueryResultConsumer {
 	
 	static Logger logger = Logger.getLogger(MysqlRedistTupleForwarder.class);
 
@@ -132,7 +132,7 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		channel.write(new MysqlStmtExecuteCommand(sql, pstmt, sql.getParameters(), this, promise));
 	}
 

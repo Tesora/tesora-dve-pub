@@ -22,10 +22,10 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.*;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import com.tesora.dve.exceptions.PESQLStateException;
@@ -51,7 +51,7 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 	}
 
     @Override
-    public void writeCommandExecutor(final Channel channel, SQLCommand sql, final CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(final CommandChannel channel, SQLCommand sql, final CompletionHandle<Boolean> promise) {
 		final MysqlPrepareStatementForwarder resultForwarder = this;
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
 		preparePromise.addListener(new CompletionTarget<Boolean>() {

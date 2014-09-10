@@ -24,7 +24,6 @@ package com.tesora.dve.db;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.concurrent.*;
-import io.netty.channel.Channel;
 
 import java.util.List;
 import java.util.concurrent.Future;
@@ -40,7 +39,7 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.WorkerGroup;
 
-public class RedistTupleUpdateConsumer implements DBResultConsumer {
+public class RedistTupleUpdateConsumer extends DBResultConsumer  {
 	
 	static final Logger logger = Logger.getLogger(RedistTupleUpdateConsumer.class);
 
@@ -72,7 +71,7 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		MysqlForwardedExecuteCommand execCommand =
 				new MysqlForwardedExecuteCommand(forwardedResultHandler, promise);
 		channel.write(execCommand);

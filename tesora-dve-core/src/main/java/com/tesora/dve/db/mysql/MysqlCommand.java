@@ -48,7 +48,7 @@ public abstract class MysqlCommand {
     //a place for MysqlCommandSenderHandler to hang backend timing info for this command.  Not great encapsulation / ood, ,but makes life much easier.
     protected Timer commandTimer;
 
-    void executeInContext(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+    final void executeInContext(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
 		execute(site, monitor, ctx, charset);
 	}
 

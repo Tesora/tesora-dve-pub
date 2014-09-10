@@ -22,10 +22,9 @@ package com.tesora.dve.worker;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
 import com.tesora.dve.db.mysql.libmy.*;
-
-import io.netty.channel.Channel;
 
 import java.util.List;
 
@@ -49,7 +48,7 @@ import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlPreparedStmtExecuteCollector implements MysqlQueryResultConsumer, DBResultConsumer, ResultChunkProvider {
+public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implements MysqlQueryResultConsumer, ResultChunkProvider {
 	
 	static Logger logger = Logger.getLogger(MysqlPreparedStmtExecuteCollector.class);
 
@@ -80,7 +79,7 @@ public class MysqlPreparedStmtExecuteCollector implements MysqlQueryResultConsum
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		channel.write(new MysqlStmtExecuteCommand(sql, pstmt, sql.getParameters(), this, promise));
 	}
 

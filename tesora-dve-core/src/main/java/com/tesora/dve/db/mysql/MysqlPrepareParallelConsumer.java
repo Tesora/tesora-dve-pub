@@ -22,10 +22,10 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
@@ -38,7 +38,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public abstract class MysqlPrepareParallelConsumer implements DBResultConsumer {
+public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
 
 	boolean successful = false;
 	
@@ -52,7 +52,7 @@ public abstract class MysqlPrepareParallelConsumer implements DBResultConsumer {
 	private boolean executeImmediately = false;
 
     @Override
-    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		MysqlCommand cmd = new MysqlStmtPrepareCommand(sql.getSQL(), this, promise);
 		cmd.setExecuteImmediately(executeImmediately);
 		channel.write(cmd);

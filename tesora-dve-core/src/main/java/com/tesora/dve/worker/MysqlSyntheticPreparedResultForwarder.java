@@ -22,7 +22,7 @@ package com.tesora.dve.worker;
  */
 
 import com.tesora.dve.concurrent.*;
-import io.netty.channel.Channel;
+import com.tesora.dve.db.CommandChannel;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
@@ -53,7 +53,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 	}
 
     @Override
-    public void writeCommandExecutor(final Channel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(final CommandChannel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
 		final MysqlQueryResultConsumer resultForwarder = this;
 		final MysqlPrepareParallelConsumer prepareCollector = new MysqlPrepareStatementDiscarder();
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
