@@ -489,14 +489,36 @@ public class SQLVariableTest extends SchemaTest {
 		final Long value2 = Long.parseLong(getVariableValue("timestamp"));
 
 		if (expected != null) {
+            //this timestamp checks are simple, because set timestamp whould fix the returned value of NOW()
 			conn.assertResults("SELECT UNIX_TIMESTAMP(NOW())", br(nr, expected));
 			assertEquals(expected, value1);
 			assertEquals(expected, value2);
 		} else {
-			conn.assertResults("SELECT UNIX_TIMESTAMP(NOW())", br(nr, TimestampVariableUtils.getCurrentSystemTime()));
-			assertEquals(Long.valueOf(value1 + waitTimeSec), value2);
+            //these timestamp checks have to account for clock and execution drift, since the timestamp is set to DEFAULT.
+
+            assertTimestampBetween(value1, value1 + waitTimeSec, value2, /*allowed width*/waitTimeSec+2);//allow for 2 seconds of variation, Thread.sleep(2000) could easily measure as 3 seconds.
+
+            long beforeTime = TimestampVariableUtils.getCurrentSystemTime();
+            ResourceResponse queriedTimestamp = conn.fetch("SELECT UNIX_TIMESTAMP(NOW())");
+            long afterTime = TimestampVariableUtils.getCurrentSystemTime();
+            List<ResultRow> rows = queriedTimestamp.getResults();
+            assertEquals(1,rows.size());
+            final ResultRow row = rows.get(0);
+            final List<ResultColumn> resultColumns = row.getRow();
+            assertEquals(1,resultColumns.size());
+            ResultColumn col = resultColumns.get(0);
+            long entry = (Long)col.getColumnValue();
+
+			assertTimestampBetween(beforeTime,entry,afterTime, 1);
+
 		}
 	}
+
+    private void assertTimestampBetween(long before, long middle, long after, long allowedWidth){
+        assertTrue("before = "+before +" , middle= "+middle , before <= middle);
+        assertTrue("middle = " + middle + " , after = " + after, middle <= after);
+        assertTrue("before = "+before +" , after = " + after +" , allowedWidth = "+allowedWidth, after - before <= allowedWidth);
+    }
 
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
