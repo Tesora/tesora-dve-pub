@@ -153,7 +153,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
                         .addLast(authHandler)
                         .addLast(MyBackendDecoder.class.getSimpleName(), new MyBackendDecoder(site.getName(), charsetHelper))
                         .addLast(StreamValve.class.getSimpleName(), new StreamValve())
-                        .addLast(MysqlCommandSenderHandler.class.getSimpleName(), new MysqlCommandSenderHandler(site.getName()));
+                        .addLast(MysqlCommandSenderHandler.class.getSimpleName(), new MysqlCommandSenderHandler(site,MysqlConnection.this));
             }
         });
 
@@ -187,7 +187,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
 			if (!channel.isOpen()) {
                 resultTracker.failure(new PECommunicationsException("Channel closed: " + channel));
 			} else if (pendingException == null) {
-				commandExecutor.writeCommandExecutor(channel, site, this, sql, resultTracker);
+				commandExecutor.writeCommandExecutor(channel, sql, resultTracker);
                 channel.flush();
 			} else {
                 Exception currentError = pendingException;
@@ -211,11 +211,11 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
     }
 
     public void execute(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor, CompletionHandle<Boolean> promise){
-        this.execute( buildDefaultAction(outboundMessage,resultsProcessor), promise );
+        this.execute(buildDefaultAction(outboundMessage, resultsProcessor), promise);
     }
 
     public void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor){
-        this.execute( buildDefaultAction(outboundMessage,resultsProcessor), resultsProcessor );
+        this.execute(buildDefaultAction(outboundMessage, resultsProcessor), resultsProcessor);
     }
 
 	private void syncToServerConnect() {
@@ -452,7 +452,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
         return new DBCommandExecutor() {
 
             @Override
-            public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
+            public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
                 channel.write(command);
             }
 
@@ -462,7 +462,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor {
     private static MysqlCommand buildDefaultAction(final MyMessage outboundMessage, final MysqlCommandResultsProcessor processor) {
         return new MysqlCommand() {
             @Override
-            void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
+            void execute(StorageSite site, Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
                 ctx.write(outboundMessage);
             }
 

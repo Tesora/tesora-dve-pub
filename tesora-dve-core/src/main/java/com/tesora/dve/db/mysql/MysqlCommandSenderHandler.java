@@ -24,6 +24,8 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.clock.*;
 import com.tesora.dve.common.DBType;
+import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 import com.tesora.dve.exceptions.PECommunicationsException;
@@ -43,11 +45,15 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
 
 	private static final Logger logger = Logger.getLogger(MysqlCommandSenderHandler.class);
 
+    StorageSite site;
     final String socketDesc;
+    DBConnection.Monitor monitor;
     TimingService timingService = Singletons.require(TimingService.class, NoopTimingService.SERVICE);
 
-    public MysqlCommandSenderHandler(String socketDesc) {
-        this.socketDesc = socketDesc;
+    public MysqlCommandSenderHandler(StorageSite site, DBConnection.Monitor monitor) {
+        this.site = site;
+        this.socketDesc = site.getName();
+        this.monitor = monitor;
     }
 
     enum TimingDesc {BACKEND_ROUND_TRIP, BACKEND_RESPONSE_PROCESSING}
@@ -92,7 +98,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
                     logger.debug(ctx.channel() + ": cmd registered: " + cast);
             }
             // System.out.println("Executing " + cmd);
-            cast.executeInContext(ctx, getServerCharset(ctx));
+            cast.executeInContext(site,monitor,ctx, getServerCharset(ctx));
             if (noResponse){
                 commandTimer.end(
                     cast.getClass().getName()

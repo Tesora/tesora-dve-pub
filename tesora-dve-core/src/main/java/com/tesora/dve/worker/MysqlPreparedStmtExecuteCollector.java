@@ -32,8 +32,6 @@ import java.util.List;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.ResultChunkProvider;
@@ -82,8 +80,8 @@ public class MysqlPreparedStmtExecuteCollector implements MysqlQueryResultConsum
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), this, promise));
+    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		channel.write(new MysqlStmtExecuteCommand(sql, pstmt, sql.getParameters(), this, promise));
 	}
 
 	@Override

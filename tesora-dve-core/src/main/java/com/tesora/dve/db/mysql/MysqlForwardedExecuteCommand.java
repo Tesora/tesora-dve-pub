@@ -22,6 +22,7 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.DBConnection;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.nio.charset.Charset;
@@ -36,16 +37,14 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
 	static Logger logger = Logger.getLogger( MysqlForwardedExecuteCommand.class );
 
 	final MysqlMultiSiteCommandResultsProcessor resultsHandler;
-	final StorageSite site;
 
-	public MysqlForwardedExecuteCommand(MysqlMultiSiteCommandResultsProcessor resultHandler, CompletionHandle<Boolean> completionPromise, StorageSite site) {
+	public MysqlForwardedExecuteCommand(MysqlMultiSiteCommandResultsProcessor resultHandler, CompletionHandle<Boolean> completionPromise) {
 		super(completionPromise);
 		this.resultsHandler = resultHandler;
-		this.site = site;
 	}
 
 	@Override
-	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
 		resultsHandler.addSite(site, ctx);
@@ -58,7 +57,7 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
 
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName()+"{"+ getCompletionHandle()+", " + site + "}";
+		return this.getClass().getSimpleName()+"{"+ getCompletionHandle()+"}";
 	}
 
 	@Override

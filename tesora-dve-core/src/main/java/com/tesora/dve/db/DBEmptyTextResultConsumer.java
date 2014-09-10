@@ -31,7 +31,6 @@ import java.util.List;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.mysql.MysqlExecuteCommand;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -127,9 +126,9 @@ public class DBEmptyTextResultConsumer implements MysqlQueryResultConsumer, DBRe
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled()) logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		channel.write(new MysqlExecuteCommand(sql, connectionMonitor, this, promise));
+		channel.write(new MysqlExecuteCommand(sql, this, promise));
 	}
 
 	@Override

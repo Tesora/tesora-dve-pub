@@ -32,7 +32,6 @@ import java.util.concurrent.Future;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentTable;
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.mysql.MysqlForwardedExecuteCommand;
 import com.tesora.dve.db.mysql.RedistTupleBuilder;
 import com.tesora.dve.exceptions.PEException;
@@ -73,9 +72,9 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		MysqlForwardedExecuteCommand execCommand =
-				new MysqlForwardedExecuteCommand(forwardedResultHandler, promise, site);
+				new MysqlForwardedExecuteCommand(forwardedResultHandler, promise);
 		channel.write(execCommand);
 		if (logger.isDebugEnabled())
 			logger.debug(channel + " <== " + execCommand);

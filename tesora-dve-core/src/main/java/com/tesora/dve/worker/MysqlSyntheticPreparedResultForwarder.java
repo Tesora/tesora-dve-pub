@@ -27,8 +27,6 @@ import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlPrepareParallelConsumer;
@@ -55,7 +53,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 	}
 
     @Override
-    public void writeCommandExecutor(final Channel channel, final StorageSite site, final DBConnection.Monitor connectionMonitor, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(final Channel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
 		final MysqlQueryResultConsumer resultForwarder = this;
 		final MysqlPrepareParallelConsumer prepareCollector = new MysqlPrepareStatementDiscarder();
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
@@ -63,7 +61,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 			@Override
 			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = prepareCollector.getPreparedStatement();
-				channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), resultForwarder, promise));
+				channel.write(new MysqlStmtExecuteCommand(sql, pstmt, sql.getParameters(), resultForwarder, promise));
 //			System.out.println("selectCollector " + pstmt);
 				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
 			}

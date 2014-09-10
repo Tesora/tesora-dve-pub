@@ -21,7 +21,9 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.exceptions.PECodingException;
@@ -272,7 +274,7 @@ class RedistTargetSite implements AutoCloseable {
         }
 
         @Override
-        void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
+        void execute(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
             ctx.writeAndFlush(executeMessage);
         }
 

@@ -22,14 +22,12 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBConnection;
 import io.netty.channel.Channel;
 
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
@@ -78,10 +76,10 @@ public class MysqlKillResultDiscarder implements DBResultConsumer {
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled())
 			logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		channel.write(new MysqlExecuteCommand(sql, connectionMonitor, null, promise));
+		channel.write(new MysqlExecuteCommand(sql, null, promise));
 	}
 
 	@Override

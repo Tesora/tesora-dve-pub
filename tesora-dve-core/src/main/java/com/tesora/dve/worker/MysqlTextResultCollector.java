@@ -32,8 +32,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.MysqlExecuteCommand;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
@@ -180,8 +178,8 @@ public class MysqlTextResultCollector extends MysqlParallelResultConsumer {
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlExecuteCommand(sql, connectionMonitor, this, promise));
+    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		channel.write(new MysqlExecuteCommand(sql, this, promise));
 	}
 
 	public ColumnSet getColumnSet() {

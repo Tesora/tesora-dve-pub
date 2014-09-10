@@ -21,7 +21,6 @@ package com.tesora.dve.db;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.server.messaging.SQLCommand;
 import io.netty.channel.Channel;
@@ -30,5 +29,5 @@ import io.netty.channel.Channel;
  *
  */
 public interface DBCommandExecutor {
-    void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise);
+    void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
 }

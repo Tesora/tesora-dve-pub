@@ -23,6 +23,8 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
+import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.singleton.Singletons;
 import io.netty.channel.ChannelHandlerContext;
@@ -46,11 +48,11 @@ public abstract class MysqlCommand {
     //a place for MysqlCommandSenderHandler to hang backend timing info for this command.  Not great encapsulation / ood, ,but makes life much easier.
     protected Timer commandTimer;
 
-    void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
-		execute(ctx, charset);
+    void executeInContext(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+		execute(site, monitor, ctx, charset);
 	}
 
-	abstract void execute(ChannelHandlerContext ctx, Charset charset) throws PEException;
+	abstract void execute(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException;
 	
 	abstract MysqlCommandResultsProcessor getResultHandler();
 

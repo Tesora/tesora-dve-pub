@@ -34,8 +34,6 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
@@ -134,8 +132,8 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), this, promise));
+    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		channel.write(new MysqlStmtExecuteCommand(sql, pstmt, sql.getParameters(), this, promise));
 	}
 
 	private RedistTupleBuilder getTargetHandler() throws PEException {

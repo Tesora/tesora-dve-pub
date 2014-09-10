@@ -21,6 +21,7 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtExecuteRequestMessage;
@@ -46,15 +47,15 @@ public class MysqlStmtExecuteCommand extends MysqlExecuteCommand {
 	private MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt;
 	private List<Object> params;
 
-	public MysqlStmtExecuteCommand(SQLCommand sql, Monitor connectionMonitor, MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, List<Object> params,
-			MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-		super(sql, connectionMonitor, resultConsumer, promise);
+	public MysqlStmtExecuteCommand(SQLCommand sql, MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, List<Object> params,
+                                   MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+		super(sql, resultConsumer, promise);
 		this.pstmt = pstmt;
 		this.params = params;
 	}
 	
 	@Override
-	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(StorageSite site, Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
 		// Make sure the parameter types in the param metadata match the types of the objects in
 		// the parameter values
 		if (pstmt.getNumParams() > 0) {

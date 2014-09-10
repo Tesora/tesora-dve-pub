@@ -36,8 +36,6 @@ import io.netty.channel.ChannelHandlerContext;
 import java.util.List;
 
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.MysqlExecuteCommand;
 import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
 import com.tesora.dve.db.mysql.libmy.MyTextDataResponse;
@@ -79,8 +77,8 @@ public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlExecuteCommand(sql, connectionMonitor, this, promise));
+    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		channel.write(new MysqlExecuteCommand(sql, this, promise));
 	}
 
 }

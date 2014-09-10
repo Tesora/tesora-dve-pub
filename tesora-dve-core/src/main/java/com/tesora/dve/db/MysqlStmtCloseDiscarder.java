@@ -26,7 +26,6 @@ import io.netty.channel.Channel;
 
 import java.util.List;
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
@@ -77,7 +76,7 @@ public class MysqlStmtCloseDiscarder implements DBResultConsumer {
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(Channel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		channel.write(new MysqlStmtCloseCommand(pstmt));
 		promise.success(false);
 	}
