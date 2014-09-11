@@ -76,12 +76,6 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 	}
 
 
-
-    @Override
-    public boolean isDone(ChannelHandlerContext ctx) {
-        return messageState == ResponseState.DONE;
-    }
-
     @Override
     public void packetStall(ChannelHandlerContext ctx) throws PEException {
         flushIfNeeded();
@@ -107,7 +101,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
                 default:
                     throw new PECodingException("Unrecognized message state " + messageState + " occurred while processing packets in " + this.getClass().getSimpleName());
             }
-            return isDone(ctx);
+            return true;
         } catch (Exception e){
             getCompletionHandle().failure(e);
             throw e;

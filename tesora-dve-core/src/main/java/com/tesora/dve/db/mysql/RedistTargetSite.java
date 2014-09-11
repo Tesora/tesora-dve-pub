@@ -283,12 +283,6 @@ class RedistTargetSite implements AutoCloseable {
             builder.active(ctx);
         }
 
-        public boolean isDone(ChannelHandlerContext ctx){
-            builder.isDone(ctx); //in case builder had side effects.
-
-            return receivedResponseOrError;
-        }
-
         public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
             receivedResponseOrError = true;
             builder.processPacket(ctx,message);

@@ -76,8 +76,8 @@ public abstract class MysqlCommand {
         getResultHandler().failure(e);
     }
 
-    public boolean isDone(ChannelHandlerContext ctx){
-        return getResultHandler().isDone(ctx);
+    public boolean isExpectingResults(ChannelHandlerContext ctx){
+        return true;
     }
 
     public void active(ChannelHandlerContext ctx) {

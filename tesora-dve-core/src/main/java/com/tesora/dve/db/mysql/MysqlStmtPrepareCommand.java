@@ -150,11 +150,6 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 	}
 
     @Override
-    public boolean isDone(ChannelHandlerContext ctx){
-        return state == ResponseState.DONE;
-    }
-
-    @Override
     public void packetStall(ChannelHandlerContext ctx) {
     }
 

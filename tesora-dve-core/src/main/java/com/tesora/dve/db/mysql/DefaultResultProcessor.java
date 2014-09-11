@@ -40,13 +40,8 @@ public class DefaultResultProcessor implements MysqlCommandResultsProcessor, Com
     public void active(ChannelHandlerContext ctx) { }
 
     @Override
-    public boolean isDone(ChannelHandlerContext ctx) {
-        return promise.isFulfilled();
-    }
-
-    @Override
     public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-        return isDone(ctx);
+        return true;
     }
 
     @Override

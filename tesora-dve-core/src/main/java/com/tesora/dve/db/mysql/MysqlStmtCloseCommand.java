@@ -48,10 +48,9 @@ public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandR
         ctx.write(closeReq);
     }
 
-    @Override
-    public boolean isDone(ChannelHandlerContext ctx){
-        //no response returned from server, returning true immediately is OK.
-        return true;
+    public boolean isExpectingResults(ChannelHandlerContext ctx){
+        //no response returned from server on a statement close.
+        return false;
     }
 
     @Override
@@ -60,7 +59,7 @@ public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandR
 
 	@Override
 	public boolean processPacket(ChannelHandlerContext ctx,MyMessage message) throws PEException {
-		return isDone(ctx);
+		return true;
 	}
 
 	@Override

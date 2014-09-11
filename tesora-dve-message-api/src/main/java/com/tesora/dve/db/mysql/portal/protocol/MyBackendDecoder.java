@@ -363,6 +363,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 message = new MyErrorResponse();
                 message.unmarshallMessage(payload);
             }
+            message.setSequenceEnd(true);
             return message;
         }
 
@@ -388,13 +389,17 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                     message = repl;
                     break;
                 case MyErrorResponse.ERRORPKT_FIELD_COUNT:
+                    errorOrEof = true;
                     MyErrorResponse errorResponse = new MyErrorResponse();
                     errorResponse.unmarshallMessage(lePayload);
+                    errorResponse.setSequenceEnd(true);
                     message = errorResponse;
                     break;
                 case MyEOFPktResponse.EOFPKK_FIELD_COUNT:
+                    errorOrEof = true;
                     MyEOFPktResponse eofResponse = new MyEOFPktResponse();
                     eofResponse.unmarshallMessage(lePayload);
+                    eofResponse.setSequenceEnd(true);
                     message = eofResponse;
                     break;
                 default:
@@ -541,12 +546,14 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                     bufferState = ResponseState.DONE;
                     MyOKResponse ok = new MyOKResponse();
                     ok.unmarshallMessage(lePayload);
+                    ok.setSequenceEnd(true);
                     message = ok;
                     break;
                 case MyErrorResponse.ERRORPKT_FIELD_COUNT:
                     bufferState = ResponseState.DONE;
                     MyErrorResponse errorResponse = new MyErrorResponse();
                     errorResponse.unmarshallMessage(lePayload);
+                    errorResponse.setSequenceEnd(true);
                     message = errorResponse;
                     break;
                 case MyEOFPktResponse.EOFPKK_FIELD_COUNT:
@@ -569,6 +576,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 				bufferState = ResponseState.DONE;
 				MyEOFPktResponse eofPkt = new MyEOFPktResponse();
 				eofPkt.unmarshallMessage(lePayload);
+                eofPkt.setSequenceEnd(true);
 				message = eofPkt;
 			} else if (mode == ExecMode.PROTOCOL_BINARY) {
 				MyBinaryResultRow binRow = new MyBinaryResultRow(typeDecoders);
@@ -646,6 +654,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             MyMessage message;
             message = new MyEOFPktResponse();
             message.unmarshallMessage(wholePacket);
+            message.setSequenceEnd(true);
             bufferState = ResponseState.DONE;
             return message;
         }
@@ -665,6 +674,8 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             message = new MyEOFPktResponse();
             message.unmarshallMessage(wholePacket);
             bufferState = (bufferNumColumns == 0) ? ResponseState.DONE : ResponseState.AWAIT_COL_DEF;
+            if (bufferState == ResponseState.DONE)
+                message.setSequenceEnd(true);
             return message;
         }
 
@@ -682,6 +693,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             MyMessage message;//an error packet
             message = new MyErrorResponse();
             message.unmarshallMessage(wholePacket);
+            message.setSequenceEnd(true);
             bufferState = ResponseState.DONE;
             return message;
         }
@@ -697,8 +709,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 bufferState = ResponseState.AWAIT_PARAM_DEF;
             else if (bufferNumColumns > 0)
                 bufferState = ResponseState.AWAIT_COL_DEF;
-            else
+            else {
+                message.setSequenceEnd(true);
                 bufferState = ResponseState.DONE;
+            }
             return message;
         }
 

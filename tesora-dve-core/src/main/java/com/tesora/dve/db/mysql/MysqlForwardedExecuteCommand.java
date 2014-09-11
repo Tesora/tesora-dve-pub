@@ -56,6 +56,11 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
         registerWithBuilder(ctx);
     }
 
+    @Override
+    public boolean isExpectingResults(ChannelHandlerContext ctx) {
+        return false;
+    }
+
     private void registerWithBuilder(ChannelHandlerContext ctx) {
         this.resultsHandler.addSite(site,ctx);
         siteHasBeenRegistered = true;
@@ -67,11 +72,6 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
             @Override
             public void active(ChannelHandlerContext ctx) {
                 resultsHandler.active(ctx);
-            }
-
-            @Override
-            public boolean isDone(ChannelHandlerContext ctx) {
-                return siteHasBeenRegistered;
             }
 
             @Override
