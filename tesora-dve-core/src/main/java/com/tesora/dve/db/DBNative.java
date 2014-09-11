@@ -330,4 +330,14 @@ public abstract class DBNative implements Serializable {
 	 * Default ON UPDATE FK referential action.
 	 */
 	public abstract ForeignKeyAction getDefaultOnUpdateAction();
+
+	/**
+	 * The maximum allowed length of a table comment.
+	 */
+	public abstract long getMaxTableCommentLength();
+
+	/**
+	 * The maximum allowed length of a table field comment.
+	 */
+	public abstract long getMaxTableFieldCommentLength();
 }

@@ -64,6 +64,7 @@ import com.tesora.dve.errmap.ErrorCodeFormatter;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.lockmanager.LockManager;
 import com.tesora.dve.resultset.ResultChunk;
 import com.tesora.dve.resultset.ResultColumn;
@@ -415,6 +416,28 @@ public class PETest extends PEBaseTest {
 		}
 	}
 	
+	protected static abstract class ExpectedSqlErrorTester extends ExpectedExceptionTester {
+
+		public <T extends PEMappedRuntimeException> void assertError(final Class<T> expectedExceptionClass, final ErrorCodeFormatter formatter,
+				final Object... params) throws Throwable {
+			final T cause = getAssertException(expectedExceptionClass, null, false);
+
+			final ErrorInfo ei = cause.getErrorInfo();
+			assertNotNull("The parent exception '" + cause.toString() + "' does not carry any ErrorInfo.", ei);
+			assertErrorInfo(ei, formatter, params);
+		}
+
+		public <T extends SQLException> void assertError(final Class<T> expectedExceptionClass, final ErrorCodeFormatter formatter,
+				final String message) throws Throwable {
+			final T cause = getAssertException(expectedExceptionClass, null, false);
+
+			assertEquals("Should have same native code", formatter.getNativeCode(), cause.getErrorCode());
+			assertEquals("Should have same sql state", formatter.getSQLState(), cause.getSQLState());
+			assertEquals(message, cause.getMessage());
+		}
+
+	}
+
 	protected static void assertErrorInfo(ErrorInfo info, ErrorCodeFormatter formatter, Object...params) throws Throwable {
 		boolean found = false;
 		for(ErrorCode ec : formatter.getHandledCodes()) {
@@ -438,15 +461,15 @@ public class PETest extends PEBaseTest {
 	
 	protected static void assertSQLException(SQLException sqle, ErrorCodeFormatter formatter,
 			String message) throws Throwable {
-		assertEquals("Should have same native code",formatter.getNativeCode(), sqle.getErrorCode());
+		assertEquals("Should have same native code", formatter.getNativeCode(), sqle.getErrorCode());
 		assertEquals("Should have same sql state", formatter.getSQLState(), sqle.getSQLState());
 		assertEquals(message, sqle.getMessage());
 	}
-	
-	protected static void assertErrorInfo(SchemaException se, ErrorCodeFormatter formatter, Object...params) throws Throwable {
+
+	protected static void assertErrorInfo(SchemaException se, ErrorCodeFormatter formatter, Object... params) throws Throwable {
 		ErrorInfo ei = se.getErrorInfo();
-		assertNotNull("should have error info",ei);
-		assertErrorInfo(ei,formatter,params);
+		assertNotNull("should have error info", ei);
+		assertErrorInfo(ei, formatter, params);
 	}
 	
 	private static class GlobalVariableState extends UpdatedGlobalVariablesCallback {
