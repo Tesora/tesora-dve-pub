@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
@@ -170,10 +169,7 @@ class RedistTargetSite implements AutoCloseable {
                             prepareFailed(error);
                         }
                     };
-                    prepareCollector1.setExecuteImmediately(true);
                     MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
-                    //TODO: this execute immediately stuff is a hack to send/receive a query before some fake "query" has "completed".  We should just get rid of fake queries and move to a 1 request to 1 response model. -sgossard
-                    prepareCmd.setExecuteImmediately(true);
 
                     this.waitingForPrepare = true; //we flip this back when the prepare response comes back in.
 
@@ -274,7 +270,7 @@ class RedistTargetSite implements AutoCloseable {
         }
 
         @Override
-        void execute(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+        void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
             ctx.writeAndFlush(executeMessage);
         }
 
@@ -311,15 +307,6 @@ class RedistTargetSite implements AutoCloseable {
         }
 
 
-        @Override
-        public boolean isExecuteImmediately() {
-            return true;
-        }
-
-        @Override
-        public boolean isPreemptable() {
-            return false;
-        }
     }
 
 }

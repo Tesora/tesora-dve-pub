@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
@@ -44,7 +43,7 @@ public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandR
 	}
 
 	@Override
-	public void execute(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
         MSPComStmtCloseRequestMessage closeReq = MSPComStmtCloseRequestMessage.newMessage(pstmt.getStmtId().getStmtId(ctx.channel()));
         ctx.write(closeReq);
     }

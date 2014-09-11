@@ -21,6 +21,7 @@ package com.tesora.dve.db;
  * #L%
  */
 
+import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.MysqlCommand;
 
@@ -29,6 +30,8 @@ import com.tesora.dve.db.mysql.MysqlCommand;
  */
 public interface CommandChannel {
     String getName();
+    StorageSite getStorageSite();
+    DBConnection.Monitor getMonitor();
 
     boolean isOpen();
     void write(MysqlCommand command);

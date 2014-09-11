@@ -44,14 +44,11 @@ import org.apache.log4j.Logger;
 public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
 
 	private static final Logger logger = Logger.getLogger(MysqlCommandSenderHandler.class);
-
-    StorageSite site;
     final String socketDesc;
     DBConnection.Monitor monitor;
     TimingService timingService = Singletons.require(TimingService.class, NoopTimingService.SERVICE);
 
     public MysqlCommandSenderHandler(StorageSite site, DBConnection.Monitor monitor) {
-        this.site = site;
         this.socketDesc = site.getName();
         this.monitor = monitor;
     }
@@ -82,28 +79,17 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
         boolean noResponse = false;
         try {
             noResponse = cast.isDone(ctx);//finished before we started, no responses will get processed.
-            if (cast.isExecuteImmediately()) {
-                    int insertPos = 0;
-                    for (; insertPos < cmdList.size(); ++insertPos) {
-                        MysqlCommand pendingCmd = cmdList.get(insertPos);
-                        if (pendingCmd.isPreemptable())
-                            break;
-                    }
-                    cmdList.add(insertPos, cast);
-                    if (logger.isDebugEnabled())
-                        logger.debug(ctx.channel() + ": cmd registered for immediate execution: " + cast);
-            } else {
-                cmdList.add(cast);
-                if (logger.isDebugEnabled())
-                    logger.debug(ctx.channel() + ": cmd registered: " + cast);
-            }
-            // System.out.println("Executing " + cmd);
-            cast.executeInContext(site,monitor,ctx, getServerCharset(ctx));
+
+            cmdList.add(cast);
+
+            cast.executeInContext(monitor,ctx, getServerCharset(ctx));
+
             if (noResponse){
                 commandTimer.end(
                     cast.getClass().getName()
                 );
             }
+
             lookupActiveCommand(ctx);//quick check to see if request is already done, (IE stmt close)
         } catch (Exception e) {
             logger.error("Connection " + ctx.channel() + "to " + ctx.channel().remoteAddress()
