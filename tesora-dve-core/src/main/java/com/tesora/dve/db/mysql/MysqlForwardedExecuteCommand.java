@@ -67,28 +67,23 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
     }
 
     @Override
-	public MysqlCommandResultsProcessor getResultHandler() {
-        return new MysqlCommandResultsProcessor() {
-            @Override
-            public void active(ChannelHandlerContext ctx) {
-                resultsHandler.active(ctx);
-            }
+    public void active(ChannelHandlerContext ctx) {
+        resultsHandler.active(ctx);
+    }
 
-            @Override
-            public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-                throw new PECodingException("Should never receive a packet, designed to gather site information only.");
-            }
+    @Override
+    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        throw new PECodingException("Should never receive a packet, designed to gather site information only.");
+    }
 
-            @Override
-            public void packetStall(ChannelHandlerContext ctx) throws PEException {
-            }
+    @Override
+    public void packetStall(ChannelHandlerContext ctx) throws PEException {
+    }
 
-            @Override
-            public void failure(Exception e) {
-                resultsHandler.failure(e);
-            }
-        };
-	}
+    @Override
+    public void failure(Exception e) {
+        resultsHandler.failure(e);
+    }
 
 	@Override
 	public String toString() {

@@ -194,11 +194,6 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
     }
 
     @Override
-	public MysqlCommandResultsProcessor getResultHandler() {
-		return this;
-	}
-
-	@Override
 	public void failure(Exception e) {
 		getCompletionHandle().failure(e);
 	}

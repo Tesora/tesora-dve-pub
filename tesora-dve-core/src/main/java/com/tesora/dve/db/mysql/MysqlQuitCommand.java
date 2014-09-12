@@ -69,11 +69,6 @@ public class MysqlQuitCommand extends MysqlCommand implements
         ctx.write(quitRequest);
     }
 
-	@Override
-	MysqlCommandResultsProcessor getResultHandler() {
-		return this;
-	}
-
     @Override
     public void active(ChannelHandlerContext ctx) {
         //NOOP.

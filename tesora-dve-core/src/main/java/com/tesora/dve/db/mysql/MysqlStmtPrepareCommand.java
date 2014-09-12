@@ -162,12 +162,7 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 		state = ResponseState.DONE;
 	}
 
-	@Override
-	public MysqlCommandResultsProcessor getResultHandler() {
-		return this;
-	}
-
-	@Override
+    @Override
 	public void failure(Exception e) {
 		getCompletionHandle().failure(e);
 	}

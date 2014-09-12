@@ -38,7 +38,6 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -236,7 +235,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
      */
     @Override
     public void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor){
-        buildDefaultConsumer(buildDefaultAction(outboundMessage, resultsProcessor)).dispatch(this, SQLCommand.EMPTY, resultsProcessor);
+        buildDefaultConsumer(new SimpleMysqlCommand(outboundMessage, resultsProcessor)).dispatch(this, SQLCommand.EMPTY, resultsProcessor);
     }
 
 	private void syncToServerConnect() {
@@ -464,20 +463,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
                 channel.write(command);
             }
 
-        };
-    }
-
-    private static MysqlCommand buildDefaultAction(final MyMessage outboundMessage, final MysqlCommandResultsProcessor processor) {
-        return new MysqlCommand() {
-            @Override
-            void execute(Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
-                ctx.write(outboundMessage);
-            }
-
-            @Override
-            MysqlCommandResultsProcessor getResultHandler() {
-                return processor;
-            }
         };
     }
 

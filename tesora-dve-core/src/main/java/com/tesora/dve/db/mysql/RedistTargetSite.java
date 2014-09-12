@@ -205,7 +205,7 @@ class RedistTargetSite implements AutoCloseable {
         int rowsWritten = buffersToFlush.size();
 
 //        this.ctx.writeAndFlush(buffersToFlush);
-        this.ctx.channel().writeAndFlush(new WrappedExecuteCommand(buffersToFlush,builder));
+        this.ctx.channel().writeAndFlush(new SimpleMysqlCommand(buffersToFlush,builder));
         this.pendingFlush = null;
         this.queuedRowSetCount.getAndAdd(-rowsWritten);
 
@@ -257,50 +257,6 @@ class RedistTargetSite implements AutoCloseable {
         this.waitingForPrepare = false;
         //TODO: need a better way to propigate this backwards. -gossard
         logger.error("prepare failed, error=" + error);
-    }
-
-    public class WrappedExecuteCommand extends MysqlCommand implements MysqlCommandResultsProcessor {
-        MyMessage executeMessage;
-        RedistTupleBuilder builder;
-        boolean receivedResponseOrError = false;
-
-        public WrappedExecuteCommand(MyMessage executeMessage, RedistTupleBuilder builder) {
-            this.executeMessage = executeMessage;
-            this.builder = builder;
-        }
-
-        @Override
-        void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
-            ctx.writeAndFlush(executeMessage);
-        }
-
-        @Override
-        MysqlCommandResultsProcessor getResultHandler() {
-            return this;
-        }
-
-        public void active(ChannelHandlerContext ctx){
-            builder.active(ctx);
-        }
-
-        public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-            receivedResponseOrError = true;
-            builder.processPacket(ctx,message);
-            return false;
-        }
-
-
-        public void packetStall(ChannelHandlerContext ctx) throws PEException{
-            builder.packetStall(ctx);
-        }
-
-        public void failure(Exception e){
-            receivedResponseOrError = true;
-
-            builder.failure(e);
-        }
-
-
     }
 
 }

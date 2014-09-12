@@ -67,11 +67,6 @@ public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandR
 		throw new PECodingException(this.getClass().getSimpleName() + " encountered unhandled exception", e);
 	}
 
-	@Override
-	public MysqlCommandResultsProcessor getResultHandler() {
-		return this;
-	}
-
     @Override
     public void active(ChannelHandlerContext ctx) {
         //NOOP.
