@@ -308,18 +308,18 @@ public class SQLVariableTest extends SchemaTest {
 		final String variableName = "sql_mode";
 
 		// Reset the GLOBAL value first to test for PE-1608.
-		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION");
 		conn.execute("SET GLOBAL sql_mode=default;");
-		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION");
 
 		conn.execute("SET sql_mode=ALLOW_INVALID_DATES;");
-		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,ALLOW_INVALID_DATES");
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION,ALLOW_INVALID_DATES");
 		conn.execute("SET sql_mode=default;");
-		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION");
 		conn.execute("SET sql_mode=\" NO_AUTO_CREATE_USER , no_engine_substitution , ALLOW_INVALID_DATES \";");
 		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,ALLOW_INVALID_DATES");
 		conn.execute("SET sql_mode=\"\";");
-		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION");
 	}
 
 	@Test
