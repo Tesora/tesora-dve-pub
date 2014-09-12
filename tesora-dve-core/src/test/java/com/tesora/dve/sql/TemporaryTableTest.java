@@ -61,11 +61,10 @@ public class TemporaryTableTest extends SchemaTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testCreation() throws Throwable {
-		DBHelperConnectionResource conn1 = null;
-		DBHelperConnectionResource conn2 = null;
+		final DBHelperConnectionResource conn1 = new PortalDBHelperConnectionResource();
+		final DBHelperConnectionResource conn2 = new PortalDBHelperConnectionResource();
 		
 		try {
-			conn1 = new PortalDBHelperConnectionResource();
 			conn1.execute("use " + sysDDL.getDatabaseName());
 			conn1.execute("start transaction");
 			conn1.execute("create temporary table foo (id int, fid int) broadcast distribute");
@@ -79,24 +78,26 @@ public class TemporaryTableTest extends SchemaTest {
 					   nr,3,3));
 			conn1.assertResults("select * from information_schema.global_temporary_tables", 
 					br(nr,"LocalhostCoordinationServices:1",3,"sysdb","foo","InnoDB"));
-			conn2 = new PortalDBHelperConnectionResource();
+
 			conn2.assertResults("select * from information_schema.temporary_tables",br());
 			conn2.assertResults("select * from information_schema.global_temporary_tables",
 					br(nr,"LocalhostCoordinationServices:1",3,"sysdb","foo","InnoDB"));
-			try {
-				conn2.execute("use " + sysDDL.getDatabaseName());
-				conn2.assertResults("show tables", br());
-				conn2.execute("select * from foo");
-			} catch (SQLException sqle) {
-				assertSQLException(sqle,
+
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+
+					conn2.execute("use " + sysDDL.getDatabaseName());
+					conn2.assertResults("show tables", br());
+					conn2.execute("select * from foo");
+
+				}
+			}.assertError(SQLException.class,
 						MySQLErrors.missingTableFormatter,
 						"Table 'sysdb.foo' doesn't exist");
-			}
 		} finally {
-			if (conn1 != null)
-				conn1.disconnect();
-			if (conn2 != null)
-				conn2.disconnect();
+			conn1.disconnect();
+			conn2.disconnect();
 		}
 		
 	}
@@ -193,12 +194,15 @@ public class TemporaryTableTest extends SchemaTest {
 					   nr,"sid","int(11)","YES","","'22'",""));
 			conn.execute("drop table targ");
 			conn.assertResults("select * from information_schema.temporary_tables",br());
-			try {
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+
 				conn.execute("select * from targ");
-			} catch (SQLException sqle) {
-				assertSQLException(sqle,MySQLErrors.missingTableFormatter,
+
+				}
+			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
 						"Table 'sysdb.targ' doesn't exist");
-			}
 		}
 	}
 	
@@ -221,13 +225,16 @@ public class TemporaryTableTest extends SchemaTest {
 			conn.execute(pdef);
 			conn.assertResults("describe targ",pdesc);
 			conn.assertResults("show tables",showTabs);
-			try {
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+
 				conn.execute("drop temporary table targ"); // should fail - doesn't exist
 				fail("should fail - no temporary table");
-			} catch (SQLException sqle) {
-				assertSQLException(sqle,MySQLErrors.unknownTableFormatter,
+
+				}
+			}.assertError(SQLException.class, MySQLErrors.unknownTableFormatter,
 						"Unknown table 'targ'");
-			}
 			conn.execute("drop table targ"); // succeeds
 			conn.assertResults("show tables",br());
 			

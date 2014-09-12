@@ -117,12 +117,15 @@ public class TestCreates extends SchemaTest {
 		String cts = AlterTest.getCreateTable(rootConnection, "testB");
 		assertTrue("enum should appear in create table stmt",cts.indexOf("bridge") > -1);
 		rootConnection.assertResults("show columns in testB like 'fund%'",br(nr,"funding","enum('angel','bridge','A','B')","NO","","angel",""));
-		try {
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+
 			rootConnection.execute("create table uncreatable (`id` int, `funding` enum ('bankrupt')) static distribute on (`funding`)");
-		} catch (SchemaException pe) {
-			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Invalid distribution column type: enum('bankrupt')");
-		}
 	}
 	
 	@Test
@@ -245,13 +248,16 @@ public class TestCreates extends SchemaTest {
 	public void testMultiDBCreate() throws Throwable {
 		ProxyConnectionResourceResponse rr = (ProxyConnectionResourceResponse) rootConnection.execute(testDDL.getCreateDatabaseStatement());
 		assertEquals("dup create should have 0 rows affected",rr.getNumRowsAffected(),0);
-		try {
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+
 			rootConnection.execute("create database mtdb default persistent group pg using template " + TemplateMode.OPTIONAL);
 			fail("dup db should throw");
-		} catch (SchemaException pe) {
-			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Database mtdb already exists");
-		}
 	}
 
 	@Test
@@ -1101,11 +1107,14 @@ public class TestCreates extends SchemaTest {
 		rootConnection.execute("DROP TABLE IF EXISTS pe1632;");
 		rootConnection.execute("SET SQL_MODE='TRADITIONAL'");
 		
-		try {
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+
 		rootConnection.execute("CREATE TABLE t1 (c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment', c2 INTEGER,c3 INTEGER COMMENT '012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789', c4 INTEGER, c5 INTEGER, c6 INTEGER, c7 INTEGER, INDEX i1 (c1) COMMENT 'i1 comment',INDEX i2(c2)"
 				+ ") COMMENT='abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde'");
-		} catch (final SchemaException e) {
-			assertErrorInfo(e, MySQLErrors.tooLongTableCommentFormatter, "t1", 2048L);
-		}
+
+			}
+		}.assertError(SchemaException.class, MySQLErrors.tooLongTableCommentFormatter, "t1", 2048L);
 	}
 }
