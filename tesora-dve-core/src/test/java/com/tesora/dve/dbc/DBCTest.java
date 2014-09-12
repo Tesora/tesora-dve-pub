@@ -40,7 +40,6 @@ import org.junit.Test;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
-import com.tesora.dve.dbc.ServerDBConnection;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
@@ -122,11 +121,12 @@ public class DBCTest extends PETest {
 
 	@Test
 	public void executeUpdateFailureTest() throws Throwable {
-		try {
-			conn.executeUpdate("INSERT INTO foo VALUES (1)");
-		} catch (SQLException sqle) {
-			assertSQLException(sqle,MySQLErrors.missingDatabaseFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.executeUpdate("INSERT INTO foo VALUES (1)");
+			}
+		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter,
 					"No database selected");
-		}
 	}
 }

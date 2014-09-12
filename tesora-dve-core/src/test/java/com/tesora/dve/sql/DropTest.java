@@ -193,46 +193,52 @@ public class DropTest extends SchemaTest {
 	private void testPermissions() throws Throwable {
 		try (ProxyConnectionResource userConn = new ProxyConnectionResource(userName, userName)) {
 			// first off, let's make sure the nonroot user can't delete any of these things
-			try {
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
 				userConn.execute("drop range csysdb");
-			} catch (SchemaException e) {
-				assertErrorInfo(e,MySQLErrors.internalFormatter,
+				}
+			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to drop a range");
-			}
-			try {
-				userConn.execute("drop persistent group sysg");
-			} catch (SchemaException e) {
-				assertErrorInfo(e,MySQLErrors.internalFormatter,
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					userConn.execute("drop persistent group sysg");
+				}
+			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to drop a persistent group");
-			}
-			try {
-				userConn.execute("drop persistent site sys1");
-			} catch (SchemaException e) {
-				assertErrorInfo(e,MySQLErrors.internalFormatter,
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					userConn.execute("drop persistent site sys1");
+				}
+			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to drop a persistent site");
-			}
 		}
 	}
 
 	private void testDropsDataExisting() throws Throwable {
-		try {
-			conn.execute("drop range csysdb");
-		} catch (SchemaException e) {
-			assertErrorInfo(e,MySQLErrors.internalFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("drop range csysdb");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop range csysdb because used by table ctab");
-		}
-		try {
-			conn.execute("drop persistent group sysg");
-		} catch (SchemaException e) {
-			assertErrorInfo(e,MySQLErrors.internalFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("drop persistent group sysg");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop persistent group sysg because used by database sysdb");
-		}
-		try {
-			conn.execute("drop persistent site sys1");
-		} catch (SchemaException e) {
-			assertErrorInfo(e,MySQLErrors.internalFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("drop persistent site sys1");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop persistent site sys1 because used by group sysg");
-		}
 	}
 	
 	private void testDrops() throws Throwable {
@@ -240,29 +246,32 @@ public class DropTest extends SchemaTest {
 		conn.assertResults("show tables like 'stab'",br());
 		conn.execute("drop range ssysdb");
 		conn.assertResults("show ranges like 'ssysdb'",br());
-		try {
-			conn.execute("drop range csysdb");
-		} catch (SchemaException e) {
-			assertErrorInfo(e,MySQLErrors.internalFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("drop range csysdb");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop range csysdb because used by table ctab");
-		}
 		conn.execute("drop table ctab");
 		conn.assertResults("show tables like 'ctab'", br());
 		conn.execute("drop range csysdb");
 		conn.assertResults("show ranges",br());
-		try {
-			conn.execute("drop persistent group sysg");
-		} catch (SchemaException e) {
-			assertErrorInfo(e,MySQLErrors.internalFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("drop persistent group sysg");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop persistent group sysg because used by database sysdb");
-		}
 		conn.execute("drop database sysdb");
-		try {
-			conn.execute("drop persistent site sys4");
-		} catch (SchemaException e) {
-			assertErrorInfo(e,MySQLErrors.internalFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("drop persistent site sys4");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop persistent site sys4 because used by group sysg");
-		}
 		conn.execute("drop persistent group sysg");
 		conn.assertResults("show persistent groups like 'sysg'",br());
 		for(int i = 0; i < SITES; i++) {
@@ -455,18 +464,20 @@ public class DropTest extends SchemaTest {
 			conn.assertResults("show tables like 'pe206%'", br(nr, "pe206g"));
 
 			conn.execute("drop table if exists knownNotExists");
-			try {
-				conn.execute("drop table knownNotExists");
-			} catch (SchemaException e) {
-				assertErrorInfo(e,MySQLErrors.internalFormatter,
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					conn.execute("drop table knownNotExists");
+				}
+			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: No such table(s) 'knownNotExists'");
-			}
-			try {
-				conn.execute("drop table knownNotExists1, knownNotExists2");
-			} catch (SchemaException e) {
-				assertErrorInfo(e,MySQLErrors.internalFormatter,
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					conn.execute("drop table knownNotExists1, knownNotExists2");
+				}
+			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: No such table(s) 'knownNotExists1,knownNotExists2'");
-			}
 
 			// make sure the storage sites actually were dropped so recreate same tables
 			conn.execute("create table pe206a (id int)");

@@ -43,12 +43,12 @@ import org.junit.Test;
 
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TableVisibility;
 import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultRow;
@@ -239,20 +239,22 @@ public class SimpleMultitenantTest extends MultitenantTest {
 		}
 		becomeL();
 		ResourceResponse rr = rootConnection.fetch("show tables like '%block%'");
-		String tn = (String) rr.getResults().get(0).getResultColumn(1).getColumnValue();
+		final String tn = (String) rr.getResults().get(0).getResultColumn(1).getColumnValue();
 		rootConnection.assertResults("select * from " + tn + " order by ___mtid",
 				br(nr,new Integer(1),"b","b","b",getIgnore(),
 				   nr,new Integer(1),"a","a","a",getIgnore(),
 				   nr,new Integer(1),"a","a","a",getIgnore()));
-		try {
-			// make sure that if you do an insert as the null tenant, you have to specify everything
-			rootConnection.execute("insert into " + tn + " (`module`, `delta`, `theme`) values ('c','c','c')");
-			fail("should not be able to insert in null tenant mode if mtid not specified");
-		} catch (SQLException e) {
-			assertSQLException(e,
+
+		// should not be able to insert in null tenant mode if mtid not specified
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				// make sure that if you do an insert as the null tenant, you have to specify everything
+				rootConnection.execute("insert into " + tn + " (`module`, `delta`, `theme`) values ('c','c','c')");
+			}
+		}.assertError(SQLException.class,
 					MySQLErrors.missingDatabaseFormatter,
 					"No database selected");
-		}
 	}
 
 	@Test
@@ -273,14 +275,16 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			// verify that the backing table exists and is shared
 			rootConnection.assertResults(String.format(visibilitySQL,tenantNames[i]),
 					br(nr,"SHARED","adblock"));
-			try {
-				tenantConnection.execute("select * from block");
-				fail("tenant connection should not be able to see block");
-			} catch (SQLException e) {
-				assertSQLException(e,
+
+			// tenant connection should not be able to see block
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					tenantConnection.execute("select * from block");
+				}
+			}.assertError(SQLException.class,
 						MySQLErrors.missingTableFormatter,
 						"Table 'mtdb.block' doesn't exist");
-			}
 			tenantConnection.execute(block_table_decl);
 			// verify that the backing table exists and is shared
 			rootConnection.assertResults(String.format(visibilitySQL,tenantNames[i]),

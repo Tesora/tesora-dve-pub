@@ -1746,10 +1746,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public List<TableComponent<?>> buildFieldDefinition(Name fieldName, Type type,
-			List<ColumnModifier> attrs, String commentText) {
+			List<ColumnModifier> attrs, String commentText) throws SchemaException {
 		Comment comment = null;
-		if (commentText != null)
-			comment = new Comment(PEStringUtils.dequote(commentText));
+		if (commentText != null) {
+			comment = buildTableFieldComment(fieldName, commentText);
+		}
 		List<ColumnKeyModifier> inlineKeys = new ArrayList<ColumnKeyModifier>();
 		for(Iterator<ColumnModifier> iter = attrs.iterator(); iter.hasNext();) {
 			ColumnModifier cm = iter.next();
@@ -1792,17 +1793,18 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return out;
 	}
 
-	public PEKey buildKey(IndexType type, Name name, List<PEKeyColumnBase> cols, List<Object> options) {
+	public PEKey buildKey(IndexType type, Name name, List<PEKeyColumnBase> cols, List<Object> options) throws SchemaException {
 		// unpack the options in case we have anything lurking
 		IndexType postSpecifiedType = null;
 		Comment anyComment = null;
 		for(Object o : options) {
-			if (o instanceof String)
-				anyComment = new Comment(PEStringUtils.dequote((String) o));
-			else if (o instanceof IndexType)
+			if (o instanceof String) {
+				anyComment = buildTableFieldComment(name, (String) o);
+			} else if (o instanceof IndexType) {
 				postSpecifiedType = (IndexType) o;
-			else
+			} else {
 				throw new SchemaException(Pass.SECOND, "Unknown key option: " + o);
+			}
 		}
 		IndexType actualType = type;
 		if (actualType == null) actualType = postSpecifiedType;
@@ -2507,7 +2509,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return AddGlobalVariableStatement.decode(pc, varName, options);
 	}
 	
-	public Comment buildComment(String c) {
+	private Comment buildComment(String c) {
 		return new Comment(PEStringUtils.dequote(c));
 	}
 
@@ -2544,10 +2546,24 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new EngineTableModifier(actualTag);
 	}
 	
-	public TableModifier buildCommentTableModifier(String s) {
+	public TableModifier buildCommentTableModifier(final Name tableName, final String s) throws SchemaException {
+		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableCommentLength();
+		if (s.length() > maxAllowedLength) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.TOO_LONG_TABLE_COMMENT, tableName.getUnqualified().getUnquotedName().get(), maxAllowedLength));
+		}
+
 		return new CommentTableModifier(buildComment(s));
 	}
 	
+	public Comment buildTableFieldComment(final Name fieldName, final String s) throws SchemaException {
+		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableFieldCommentLength();
+		if (s.length() > maxAllowedLength) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.TOO_LONG_TABLE_FIELD_COMMENT, fieldName.getUnquotedName().get(), maxAllowedLength));
+		}
+
+		return buildComment(s);
+	}
+
 	public TableModifier buildCollationTableModifier(Name collationName) {
 		return new CollationTableModifier(collationName.getUnqualified());
 	}

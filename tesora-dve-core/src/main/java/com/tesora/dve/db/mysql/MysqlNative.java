@@ -483,4 +483,14 @@ public class MysqlNative extends DBNative {
 	public ForeignKeyAction getDefaultOnUpdateAction() {
 		return ForeignKeyAction.RESTRICT;
 	}
+
+	@Override
+	public long getMaxTableCommentLength() {
+		return 2048;
+	}
+
+	@Override
+	public long getMaxTableFieldCommentLength() {
+		return 1024;
+	}
 }

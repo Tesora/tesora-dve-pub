@@ -273,13 +273,15 @@ public class SQLVariableTest extends SchemaTest {
 	
 	@Test
 	public void testDisabledVariables() throws Throwable {
-		try {
-			conn.execute("set sql_auto_is_null = 1");
-			fail("should not be able to set sql_auto_is_null to 1");
-		} catch (SchemaException e) {
-			assertErrorInfo(e,MySQLErrors.internalFormatter,
+
+		// should not be able to set sql_auto_is_null to 1
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set sql_auto_is_null = 1");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: No support for sql_auto_is_null = 1 (planned)");
-		}
 		conn.execute("set sql_auto_is_null = 0");
 	}
 	
