@@ -36,8 +36,6 @@ import com.tesora.dve.exceptions.PEException;
 
 public abstract class MysqlCommand {
 
-	AtomicInteger resultsProcessedCount = new AtomicInteger();
-
     //these Timers are used to measure how much time is being spent on the backend for a given frontend request.
     //the frontend timer is picked up from a thread local, since changing all the subclasses of MysqlCommand and their callers would be prohibitive.
 
@@ -53,14 +51,6 @@ public abstract class MysqlCommand {
 	abstract void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException;
 	
 	abstract MysqlCommandResultsProcessor getResultHandler();
-
-    public void incrementResultsProcessedCount() {
-		resultsProcessedCount.incrementAndGet();
-	}
-
-	public int resultsProcessedCount() {
-		return resultsProcessedCount.get();
-	}
 
     //Delegate calls on nested results handler, to reduce structural dependency, AKA, law of demeter.
 

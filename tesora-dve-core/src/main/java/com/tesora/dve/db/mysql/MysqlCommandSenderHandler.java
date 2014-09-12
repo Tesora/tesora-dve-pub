@@ -55,6 +55,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
 
     enum TimingDesc {BACKEND_ROUND_TRIP, BACKEND_RESPONSE_PROCESSING}
 
+    long packetsInThisResponse = 0L;
     boolean sentActiveEventToHeadOfQueue = false;
 	LinkedList<MysqlCommand> cmdList = new LinkedList<>();
 
@@ -145,9 +146,9 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
                 return;
             }
 
-            activeCommand.incrementResultsProcessedCount();
+            packetsInThisResponse++;
 
-            if (logger.isDebugEnabled() && activeCommand.resultsProcessedCount() == 1)
+            if (logger.isDebugEnabled() && packetsInThisResponse == 1)
                 logger.debug(ctx.channel() + ": results received for cmd " + activeCommand);
 
             responseProcessing = activeCommand.commandTimer.newSubTimer(TimingDesc.BACKEND_RESPONSE_PROCESSING);
@@ -186,10 +187,13 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
     }
 
     private void popActiveCommand(ChannelHandlerContext ctx) {
-        sentActiveEventToHeadOfQueue = false;
         MysqlCommand cmd = cmdList.pollFirst();
+
         if (cmd != null && logger.isDebugEnabled())
-            logger.debug(ctx.channel() + ": " + cmd.resultsProcessedCount() + " results received for deregistered cmd " + cmd);
+            logger.debug(ctx.channel() + ": " + packetsInThisResponse + " results received for deregistered cmd " + cmd);
+
+        sentActiveEventToHeadOfQueue = false;
+        packetsInThisResponse = 0;
     }
 
     private MysqlCommand activateFirstCommandIfNeeded(ChannelHandlerContext ctx) {
