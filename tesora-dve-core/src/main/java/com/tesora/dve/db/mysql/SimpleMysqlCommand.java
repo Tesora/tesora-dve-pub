@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.exceptions.PEException;
 import io.netty.channel.ChannelHandlerContext;
@@ -47,7 +46,7 @@ public class SimpleMysqlCommand extends MysqlCommand {
     }
 
     @Override
-    void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+    void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
         if (shouldFlush)
             ctx.writeAndFlush(outboundMessage);
         else

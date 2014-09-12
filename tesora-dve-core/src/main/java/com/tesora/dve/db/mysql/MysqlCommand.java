@@ -23,14 +23,12 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.singleton.Singletons;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.nio.charset.Charset;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.tesora.dve.exceptions.PEException;
 
@@ -44,7 +42,7 @@ public abstract class MysqlCommand implements MysqlCommandResultsProcessor {
     //a place for MysqlCommandSenderHandler to hang backend timing info for this command.  Not great encapsulation / ood, ,but makes life much easier.
     protected Timer commandTimer;
 
-    abstract void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException;
+    abstract void execute(ChannelHandlerContext ctx, Charset charset) throws PEException;
 
     @Override
     abstract public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
@@ -59,8 +57,8 @@ public abstract class MysqlCommand implements MysqlCommandResultsProcessor {
     abstract public void active(ChannelHandlerContext ctx);
 
 
-    final void executeInContext(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
-		execute(monitor, ctx, charset);
+    final void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
+		execute(ctx, charset);
 	}
 
     public boolean isExpectingResults(ChannelHandlerContext ctx){

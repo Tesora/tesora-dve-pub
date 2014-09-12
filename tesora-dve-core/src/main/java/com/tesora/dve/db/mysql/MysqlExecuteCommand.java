@@ -22,6 +22,7 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
@@ -54,18 +55,18 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
     private int writtenFrames;
 	private Monitor connectionMonitor;
 
-	public MysqlExecuteCommand(SQLCommand sqlCommand,
+	public MysqlExecuteCommand(SQLCommand sqlCommand, DBConnection.Monitor monitor,
                                MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
 		super(promise);
 		this.sqlCommand = sqlCommand;
 		this.resultConsumer = resultConsumer;
+        this.connectionMonitor = monitor;
 	}
 
 	@Override
-	public void execute(Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
-        this.connectionMonitor = monitor;
         MSPComQueryRequestMessage queryMsg = MSPComQueryRequestMessage.newMessage(sqlCommand.getSQLAsBytes());
         ctx.write(queryMsg);
     }

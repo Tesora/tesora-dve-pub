@@ -133,7 +133,7 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
 
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtExecuteCommand(sql, pstmt, sql.getParameters(), this, promise));
+		channel.write(new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise));
 	}
 
 	private RedistTupleBuilder getTargetHandler() throws PEException {

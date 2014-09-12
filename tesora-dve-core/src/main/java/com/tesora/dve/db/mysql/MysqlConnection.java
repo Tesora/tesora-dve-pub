@@ -151,7 +151,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
                         .addLast(authHandler)
                         .addLast(MyBackendDecoder.class.getSimpleName(), new MyBackendDecoder(site.getName(), charsetHelper))
                         .addLast(StreamValve.class.getSimpleName(), new StreamValve())
-                        .addLast(MysqlCommandSenderHandler.class.getSimpleName(), new MysqlCommandSenderHandler(site,MysqlConnection.this));
+                        .addLast(MysqlCommandSenderHandler.class.getSimpleName(), new MysqlCommandSenderHandler(site));
             }
         });
 

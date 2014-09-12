@@ -45,12 +45,10 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
 
 	private static final Logger logger = Logger.getLogger(MysqlCommandSenderHandler.class);
     final String socketDesc;
-    DBConnection.Monitor monitor;
     TimingService timingService = Singletons.require(TimingService.class, NoopTimingService.SERVICE);
 
-    public MysqlCommandSenderHandler(StorageSite site, DBConnection.Monitor monitor) {
+    public MysqlCommandSenderHandler(StorageSite site) {
         this.socketDesc = site.getName();
-        this.monitor = monitor;
     }
 
     enum TimingDesc {BACKEND_ROUND_TRIP, BACKEND_RESPONSE_PROCESSING}
@@ -95,7 +93,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
     private void dispatchWrite(ChannelHandlerContext ctx, MysqlCommand command, Timer commandTimer) throws PEException {
 
         //ask the command to write the messages on the socket (they'll be sent out when we return).
-        command.executeInContext(monitor, ctx, getServerCharset(ctx));
+        command.executeInContext(ctx, getServerCharset(ctx));
 
         if (command.isExpectingResults(ctx)) { //TODO: this should move onto the protocol message. -sgossard
             //add it to the command deque , so we can route responses back to it.

@@ -80,7 +80,7 @@ public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implemen
 
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtExecuteCommand(sql, pstmt, sql.getParameters(), this, promise));
+		channel.write(new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise));
 	}
 
 	@Override

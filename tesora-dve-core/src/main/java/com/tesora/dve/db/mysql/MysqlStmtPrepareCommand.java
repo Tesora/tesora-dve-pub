@@ -22,7 +22,6 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
@@ -54,7 +53,7 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 	}
 
 	@Override
-	public void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) {
+	public void execute(ChannelHandlerContext ctx, Charset charset) {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
         MSPComPrepareStmtRequestMessage prepStmt = MSPComPrepareStmtRequestMessage.newMessage(sqlCommand, charset);

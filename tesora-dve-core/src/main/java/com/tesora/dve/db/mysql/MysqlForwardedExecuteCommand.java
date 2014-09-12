@@ -22,7 +22,6 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.exceptions.PECodingException;
 import io.netty.channel.ChannelHandlerContext;
@@ -49,7 +48,7 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
 	}
 
 	@Override
-	public void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
         //TODO: this would be cleaner in active(), but it apparently doesn't get called until ready to process a response. -sgossard

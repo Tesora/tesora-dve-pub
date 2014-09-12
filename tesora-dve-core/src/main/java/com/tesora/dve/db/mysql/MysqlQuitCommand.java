@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyOKResponse;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQuitRequestMessage;
@@ -63,7 +62,7 @@ public class MysqlQuitCommand extends MysqlCommand implements
 	}
 
 	@Override
-	void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset)
+	void execute(ChannelHandlerContext ctx, Charset charset)
 			throws PEException {
         MSPComQuitRequestMessage quitRequest = MSPComQuitRequestMessage.newMessage();
         ctx.write(quitRequest);
