@@ -35,8 +35,8 @@ import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.GenericSQLCommand;
-import com.tesora.dve.db.MysqlStmtCloseDiscarder;
 import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
@@ -137,10 +137,9 @@ public class MysqlConnectionResource extends ConnectionResource {
 	@Override
 	public void destroyPrepared(Object id) throws Throwable {
 		@SuppressWarnings("unchecked")
-		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id; 
-		MysqlStmtCloseDiscarder discarder = new MysqlStmtCloseDiscarder(pstmt);
 
-        discarder.dispatch(mysqlConn, new SQLCommand(new GenericSQLCommand("CLOSE PREP STMT")), new PEDefaultPromise<Boolean>());
+		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id;
+        mysqlConn.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
     }
 
 	@Override

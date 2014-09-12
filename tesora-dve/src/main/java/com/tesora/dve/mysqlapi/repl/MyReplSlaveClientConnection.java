@@ -88,7 +88,7 @@ public class MyReplSlaveClientConnection {
             {
                 MyComRegisterSlaveRequest rsr = new MyComRegisterSlaveRequest(plugin.getSlaveServerID(), plugin.getMasterPort());
                 SynchronousResultProcessor registerProcessor = buildRegisterProcessor();
-                mysqlConn.execute(rsr, registerProcessor);
+                mysqlConn.writeAndFlush(rsr, registerProcessor);
                 registerProcessor.sync();
             }
 
@@ -96,7 +96,7 @@ public class MyReplSlaveClientConnection {
             {
                 MyBinLogPosition blp = plugin.getBinLogPosition();
                 MyComBinLogDumpRequest blr = new MyComBinLogDumpRequest( plugin.getSlaveServerID(), blp.getPosition(), blp.getFileName());
-                mysqlConn.execute(blr,logEventProcessor);
+                mysqlConn.writeAndFlush(blr, logEventProcessor);
                 //don't synchronize on a result here, a log dump isn't required to end.
             }
 

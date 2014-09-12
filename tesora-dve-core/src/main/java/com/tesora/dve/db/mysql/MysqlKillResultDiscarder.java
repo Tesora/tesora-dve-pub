@@ -76,10 +76,10 @@ public class MysqlKillResultDiscarder extends DBResultConsumer {
 	}
 
     @Override
-    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled())
 			logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		channel.write(new MysqlExecuteCommand(sql, channel.getMonitor(), null, promise));
+		return new MysqlExecuteCommand(sql, channel.getMonitor(), null, promise);
 	}
 
 	@Override

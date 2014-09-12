@@ -27,6 +27,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.NativeResultHandler;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -77,8 +78,8 @@ public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder
 	}
 
     @Override
-    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise));
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		return new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise);
 	}
 
 }

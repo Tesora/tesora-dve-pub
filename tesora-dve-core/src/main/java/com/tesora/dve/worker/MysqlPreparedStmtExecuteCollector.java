@@ -24,6 +24,7 @@ package com.tesora.dve.worker;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.libmy.*;
 
 import java.util.List;
@@ -79,8 +80,8 @@ public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implemen
 	}
 
     @Override
-    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise));
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise);
 	}
 
 	@Override

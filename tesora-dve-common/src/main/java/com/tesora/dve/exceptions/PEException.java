@@ -82,4 +82,11 @@ public class PEException extends Exception {
 		return null;
 	}
 
+    public static Exception wrapThrowableIfNeeded(Throwable t){
+        if (t instanceof Exception)
+            return (Exception)t;
+        else
+            return new PEException(t);
+    }
+
 }
