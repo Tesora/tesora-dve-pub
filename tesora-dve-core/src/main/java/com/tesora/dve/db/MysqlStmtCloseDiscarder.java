@@ -76,8 +76,7 @@ public class MysqlStmtCloseDiscarder extends DBResultConsumer  {
 
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtCloseCommand(pstmt));
-		promise.success(false);
+		channel.write(new MysqlStmtCloseCommand(pstmt,promise));
 	}
 
 	@Override

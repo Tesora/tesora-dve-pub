@@ -52,14 +52,14 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 
     @Override
     public void writeCommandExecutor(final CommandChannel channel, SQLCommand sql, final CompletionHandle<Boolean> promise) {
+        //TODO: this executor is weird.  It sends a prepare to a backend site, forwards the response to a frontend site (with a tweaked stmtID), and then closes the backend prepared statement. -sgossard
 		final MysqlPrepareStatementForwarder resultForwarder = this;
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
 		preparePromise.addListener(new CompletionTarget<Boolean>() {
 			@Override
 			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = resultForwarder.getPreparedStatement();
-				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
-				promise.success(false);
+				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt,promise));
 			}
 			@Override
 			public void failure(Exception e) {

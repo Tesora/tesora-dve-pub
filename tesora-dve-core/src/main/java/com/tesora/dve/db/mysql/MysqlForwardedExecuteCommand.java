@@ -53,6 +53,7 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
 			logger.debug("Written: " + this);
         //TODO: this would be cleaner in active(), but it apparently doesn't get called until ready to process a response. -sgossard
         registerWithBuilder(ctx);
+        getCompletionHandle().success(true);
     }
 
     @Override
@@ -82,6 +83,7 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
     @Override
     public void failure(Exception e) {
         resultsHandler.failure(e);
+        getCompletionHandle().failure(e);
     }
 
 	@Override

@@ -77,7 +77,6 @@ public class RedistTupleUpdateConsumer extends DBResultConsumer  {
 		channel.write(execCommand);
 		if (logger.isDebugEnabled())
 			logger.debug(channel + " <== " + execCommand);
-		promise.success(false);
 	}
 	
 	public RedistTupleBuilder getExecutionHandler() throws Exception {
