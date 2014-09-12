@@ -127,14 +127,11 @@ public class AlterTest extends SchemaTest {
 	
 	@Test
 	public void testRename() throws Throwable {
-		// this should not work
+		// shouldn't be able to rename to existing table name
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("alter table altest rename to `baltest`");
-			fail("shouldn't be able to rename to existing table name");
-
+				conn.execute("alter table altest rename to `baltest`");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Table `baltest` already exists");

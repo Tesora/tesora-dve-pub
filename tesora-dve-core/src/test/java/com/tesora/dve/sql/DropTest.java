@@ -196,28 +196,22 @@ public class DropTest extends SchemaTest {
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
 				userConn.execute("drop range csysdb");
-
 				}
 			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to drop a range");
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
 					userConn.execute("drop persistent group sysg");
-
-			}
+				}
 			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to drop a persistent group");
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
 					userConn.execute("drop persistent site sys1");
-
-			}
+				}
 			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to drop a persistent site");
 		}
@@ -227,27 +221,21 @@ public class DropTest extends SchemaTest {
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("drop range csysdb");
-
+				conn.execute("drop range csysdb");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop range csysdb because used by table ctab");
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("drop persistent group sysg");
-
+				conn.execute("drop persistent group sysg");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop persistent group sysg because used by database sysdb");
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("drop persistent site sys1");
-
+				conn.execute("drop persistent site sys1");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop persistent site sys1 because used by group sysg");
@@ -261,9 +249,7 @@ public class DropTest extends SchemaTest {
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("drop range csysdb");
-
+				conn.execute("drop range csysdb");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop range csysdb because used by table ctab");
@@ -274,9 +260,7 @@ public class DropTest extends SchemaTest {
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("drop persistent group sysg");
-
+				conn.execute("drop persistent group sysg");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop persistent group sysg because used by database sysdb");
@@ -284,9 +268,7 @@ public class DropTest extends SchemaTest {
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("drop persistent site sys4");
-
+				conn.execute("drop persistent site sys4");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Unable to drop persistent site sys4 because used by group sysg");
@@ -485,19 +467,15 @@ public class DropTest extends SchemaTest {
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
-				conn.execute("drop table knownNotExists");
-
+					conn.execute("drop table knownNotExists");
 				}
 			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: No such table(s) 'knownNotExists'");
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
 					conn.execute("drop table knownNotExists1, knownNotExists2");
-
-			}
+				}
 			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: No such table(s) 'knownNotExists1,knownNotExists2'");
 

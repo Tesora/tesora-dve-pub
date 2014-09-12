@@ -220,9 +220,7 @@ public class ExternalServiceTest extends SchemaTest {
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
-				conn.execute("USE " + datastore);
-
+					conn.execute("USE " + datastore);
 				}
 			}.assertError(SQLException.class, MySQLErrors.unknownDatabaseFormatter,
 						"Unknown database '" + datastore + "'");

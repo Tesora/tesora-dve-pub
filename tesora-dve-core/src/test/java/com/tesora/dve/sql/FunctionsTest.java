@@ -587,9 +587,7 @@ public class FunctionsTest extends SchemaTest {
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("SELECT RAND(1,2,3)");
-
+				conn.execute("SELECT RAND(1,2,3)");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.incorrectParamCountFormatter,
 					"RAND");

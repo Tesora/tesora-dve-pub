@@ -22,7 +22,6 @@ package com.tesora.dve.test.simplequery;
  */
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -130,13 +129,12 @@ public class SimpleQueryTest extends SchemaTest {
 	
 	@Test
 	public void badTableNameQueryBeforeGoodQuery() throws Throwable {
+
+		// exception not thrown for bad table name
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("select * from no_table_exists");
-			fail("Exception not thrown for bad table name");
-
+				conn.execute("select * from no_table_exists");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.missingTableFormatter,
 					"TestDB","no_table_exists");

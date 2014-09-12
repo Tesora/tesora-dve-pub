@@ -86,7 +86,6 @@ public class TemporaryTableTest extends SchemaTest {
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
 					conn2.execute("use " + sysDDL.getDatabaseName());
 					conn2.assertResults("show tables", br());
 					conn2.execute("select * from foo");
@@ -197,9 +196,7 @@ public class TemporaryTableTest extends SchemaTest {
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
-				conn.execute("select * from targ");
-
+					conn.execute("select * from targ");
 				}
 			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
 						"Table 'sysdb.targ' doesn't exist");
@@ -225,13 +222,12 @@ public class TemporaryTableTest extends SchemaTest {
 			conn.execute(pdef);
 			conn.assertResults("describe targ",pdesc);
 			conn.assertResults("show tables",showTabs);
+
+			// should fail - no temporary table
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
-				conn.execute("drop temporary table targ"); // should fail - doesn't exist
-				fail("should fail - no temporary table");
-
+					conn.execute("drop temporary table targ"); // should fail - doesn't exist
 				}
 			}.assertError(SQLException.class, MySQLErrors.unknownTableFormatter,
 						"Unknown table 'targ'");

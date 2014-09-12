@@ -25,7 +25,6 @@ package com.tesora.dve.sql;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -196,13 +195,11 @@ public class CatalogQueryTest extends SchemaTest {
 		testCommand(conn,"range",br(nr,"offlimits","cqtps","int,int"),"offlimits",0,br(nr,"offlimits","cqtps","int,int"),false);
 		testCommand(conn,"range",br(nr,"offlimits","cqtps","int,int"),"offlimits",0,br(nr,"offlimits","cqtps","int,int"),true);
 		
+		// should have no results on show tables with no database set
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			testCommand(conn,"table",br(nr,"A","AB"),"A",0,br(nr,"A"),false);
-			fail("Should have no results on show tables with no database set");
-
+				testCommand(conn, "table", br(nr, "A", "AB"), "A", 0, br(nr, "A"), false);
 			}
 		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter, "No database selected");
 
@@ -230,13 +227,11 @@ public class CatalogQueryTest extends SchemaTest {
 		conn.assertResults("show dynamic site providers", 
 				br( nr,OnPremiseSiteProvider.DEFAULT_NAME, OnPremiseSiteProvider.class.getCanonicalName(), "YES"));
 		
+		// describe foo for missing foo should throw
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("describe foo");
-			fail("describe foo for missing foo should throw");
-
+				conn.execute("describe foo");
 			}
 		}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
 					"Table 'cqtdb.foo' doesn't exist");
@@ -355,9 +350,7 @@ public class CatalogQueryTest extends SchemaTest {
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			conn.execute("show table status");
-
+				conn.execute("show table status");
 			}
 		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter,
 					"No database selected");
@@ -595,9 +588,7 @@ public class CatalogQueryTest extends SchemaTest {
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
-				nonRootConn.execute("show master logs");
-
+					nonRootConn.execute("show master logs");
 				}
 			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
@@ -605,9 +596,7 @@ public class CatalogQueryTest extends SchemaTest {
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
-				nonRootConn.execute("show master status");
-
+					nonRootConn.execute("show master status");
 				}
 			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
@@ -615,9 +604,7 @@ public class CatalogQueryTest extends SchemaTest {
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
-				nonRootConn.execute("show slave status");
-
+					nonRootConn.execute("show slave status");
 				}
 			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");

@@ -244,14 +244,13 @@ public class SimpleMultitenantTest extends MultitenantTest {
 				br(nr,new Integer(1),"b","b","b",getIgnore(),
 				   nr,new Integer(1),"a","a","a",getIgnore(),
 				   nr,new Integer(1),"a","a","a",getIgnore()));
+
+		// should not be able to insert in null tenant mode if mtid not specified
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			// make sure that if you do an insert as the null tenant, you have to specify everything
-			rootConnection.execute("insert into " + tn + " (`module`, `delta`, `theme`) values ('c','c','c')");
-			fail("should not be able to insert in null tenant mode if mtid not specified");
-
+				// make sure that if you do an insert as the null tenant, you have to specify everything
+				rootConnection.execute("insert into " + tn + " (`module`, `delta`, `theme`) values ('c','c','c')");
 			}
 		}.assertError(SQLException.class,
 					MySQLErrors.missingDatabaseFormatter,
@@ -276,13 +275,12 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			// verify that the backing table exists and is shared
 			rootConnection.assertResults(String.format(visibilitySQL,tenantNames[i]),
 					br(nr,"SHARED","adblock"));
+
+			// tenant connection should not be able to see block
 			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-
-				tenantConnection.execute("select * from block");
-				fail("tenant connection should not be able to see block");
-
+					tenantConnection.execute("select * from block");
 				}
 			}.assertError(SQLException.class,
 						MySQLErrors.missingTableFormatter,

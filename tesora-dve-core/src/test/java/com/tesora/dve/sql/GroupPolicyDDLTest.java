@@ -141,27 +141,21 @@ public class GroupPolicyDDLTest extends SchemaTest {
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			userConn.execute("create dynamic site policy mine () strict = off");
-
+				userConn.execute("create dynamic site policy mine () strict = off");
 			}
 		}.assertError(SQLException.class, MySQLErrors.internalFormatter,
 					"Internal error: You do not have permission to create a dynamic site policy");
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			userConn.execute("alter dynamic site policy mine change aggregate count 1");
-
+				userConn.execute("alter dynamic site policy mine change aggregate count 1");
 			}
 		}.assertError(SQLException.class, MySQLErrors.internalFormatter,
 					"Internal error: You do not have permission to alter a dynamic site policy");
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-
-			userConn.execute("drop dynamic site policy empty");
-
+				userConn.execute("drop dynamic site policy empty");
 			}
 		}.assertError(SQLException.class, MySQLErrors.internalFormatter,
 					"Internal error: You do not have permission to drop a dynamic site policy");
