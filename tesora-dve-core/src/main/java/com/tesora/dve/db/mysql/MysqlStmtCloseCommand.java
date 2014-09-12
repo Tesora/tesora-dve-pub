@@ -21,7 +21,8 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.concurrent.CompletionTarget;
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
@@ -37,15 +38,24 @@ public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandR
 	
 
 	MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt;
+    boolean written = false;
+    CompletionTarget<Boolean> promise;
 
 	public MysqlStmtCloseCommand(MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt) {
-		this.pstmt = pstmt;
+		this(pstmt, new PEDefaultPromise<Boolean>());
 	}
 
+    public MysqlStmtCloseCommand(MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, CompletionTarget<Boolean> target) {
+        this.pstmt = pstmt;
+        this.promise = target;
+    }
+
 	@Override
-	public void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
         MSPComStmtCloseRequestMessage closeReq = MSPComStmtCloseRequestMessage.newMessage(pstmt.getStmtId().getStmtId(ctx.channel()));
         ctx.write(closeReq);
+        this.promise.success(true);
+        this.written = true;
     }
 
     public boolean isExpectingResults(ChannelHandlerContext ctx){
@@ -64,12 +74,10 @@ public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandR
 
 	@Override
 	public void failure(Exception e) {
-		throw new PECodingException(this.getClass().getSimpleName() + " encountered unhandled exception", e);
-	}
-
-	@Override
-	public MysqlCommandResultsProcessor getResultHandler() {
-		return this;
+        if (written)
+            return;
+        else
+            promise.failure(e);
 	}
 
     @Override

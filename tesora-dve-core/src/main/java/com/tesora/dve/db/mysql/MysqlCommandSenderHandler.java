@@ -45,16 +45,15 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
 
 	private static final Logger logger = Logger.getLogger(MysqlCommandSenderHandler.class);
     final String socketDesc;
-    DBConnection.Monitor monitor;
     TimingService timingService = Singletons.require(TimingService.class, NoopTimingService.SERVICE);
 
-    public MysqlCommandSenderHandler(StorageSite site, DBConnection.Monitor monitor) {
+    public MysqlCommandSenderHandler(StorageSite site) {
         this.socketDesc = site.getName();
-        this.monitor = monitor;
     }
 
     enum TimingDesc {BACKEND_ROUND_TRIP, BACKEND_RESPONSE_PROCESSING}
 
+    long packetsInThisResponse = 0L;
     boolean sentActiveEventToHeadOfQueue = false;
 	LinkedList<MysqlCommand> cmdList = new LinkedList<>();
 
@@ -94,7 +93,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
     private void dispatchWrite(ChannelHandlerContext ctx, MysqlCommand command, Timer commandTimer) throws PEException {
 
         //ask the command to write the messages on the socket (they'll be sent out when we return).
-        command.executeInContext(monitor, ctx, getServerCharset(ctx));
+        command.executeInContext(ctx, getServerCharset(ctx));
 
         if (command.isExpectingResults(ctx)) { //TODO: this should move onto the protocol message. -sgossard
             //add it to the command deque , so we can route responses back to it.
@@ -145,9 +144,9 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
                 return;
             }
 
-            activeCommand.incrementResultsProcessedCount();
+            packetsInThisResponse++;
 
-            if (logger.isDebugEnabled() && activeCommand.resultsProcessedCount() == 1)
+            if (logger.isDebugEnabled() && packetsInThisResponse == 1)
                 logger.debug(ctx.channel() + ": results received for cmd " + activeCommand);
 
             responseProcessing = activeCommand.commandTimer.newSubTimer(TimingDesc.BACKEND_RESPONSE_PROCESSING);
@@ -186,10 +185,13 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
     }
 
     private void popActiveCommand(ChannelHandlerContext ctx) {
-        sentActiveEventToHeadOfQueue = false;
         MysqlCommand cmd = cmdList.pollFirst();
+
         if (cmd != null && logger.isDebugEnabled())
-            logger.debug(ctx.channel() + ": " + cmd.resultsProcessedCount() + " results received for deregistered cmd " + cmd);
+            logger.debug(ctx.channel() + ": " + packetsInThisResponse + " results received for deregistered cmd " + cmd);
+
+        sentActiveEventToHeadOfQueue = false;
+        packetsInThisResponse = 0;
     }
 
     private MysqlCommand activateFirstCommandIfNeeded(ChannelHandlerContext ctx) {

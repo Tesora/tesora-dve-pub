@@ -22,6 +22,7 @@ package com.tesora.dve.db;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.libmy.*;
 
 import java.util.List;
@@ -124,9 +125,9 @@ public class DBEmptyTextResultConsumer extends DBResultConsumer implements Mysql
 	}
 
     @Override
-    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled()) logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		channel.write(new MysqlExecuteCommand(sql, this, promise));
+		return new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise);
 	}
 
 	@Override

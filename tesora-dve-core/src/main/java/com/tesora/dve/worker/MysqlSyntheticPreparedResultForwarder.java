@@ -23,17 +23,13 @@ package com.tesora.dve.worker;
 
 import com.tesora.dve.concurrent.*;
 import com.tesora.dve.db.CommandChannel;
+import com.tesora.dve.db.mysql.*;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
 
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
-import com.tesora.dve.db.mysql.MysqlPrepareParallelConsumer;
-import com.tesora.dve.db.mysql.MysqlPrepareStatementDiscarder;
-import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
-import com.tesora.dve.db.mysql.MysqlStmtExecuteCommand;
-import com.tesora.dve.db.mysql.MysqlStmtPrepareCommand;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
@@ -53,7 +49,8 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 	}
 
     @Override
-    public void writeCommandExecutor(final CommandChannel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
+    public MysqlCommand writeCommandExecutor(final CommandChannel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
+        //TODO: this executor is weird.  It sends a prepare, collects the statement ID, sends an execute, then closes the prepared statement. -sgossard
 		final MysqlQueryResultConsumer resultForwarder = this;
 		final MysqlPrepareParallelConsumer prepareCollector = new MysqlPrepareStatementDiscarder();
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
@@ -61,7 +58,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 			@Override
 			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = prepareCollector.getPreparedStatement();
-				channel.write(new MysqlStmtExecuteCommand(sql, pstmt, sql.getParameters(), resultForwarder, promise));
+				channel.write(new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), resultForwarder, promise));
 //			System.out.println("selectCollector " + pstmt);
 				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
 			}
@@ -70,7 +67,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 				promise.failure(e);
 			}
 		});
-		channel.write(new MysqlStmtPrepareCommand(sql.getSQL(), prepareCollector, preparePromise));
+		return new MysqlStmtPrepareCommand(sql.getSQL(), prepareCollector, preparePromise);
 	}
 
 }

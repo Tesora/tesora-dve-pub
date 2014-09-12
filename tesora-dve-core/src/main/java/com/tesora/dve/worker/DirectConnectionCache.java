@@ -24,14 +24,12 @@ package com.tesora.dve.worker;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
-import com.tesora.dve.server.messaging.SQLCommand;
 import io.netty.channel.EventLoopGroup;
 
 import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
@@ -153,16 +151,12 @@ public class DirectConnectionCache {
 
         @Override
         public void connect(String url, String userid, String password,  long clientCapabilities) throws PEException {
-            dbConnection.connect(url,userid,password, clientCapabilities);
+            dbConnection.connect(url, userid, password, clientCapabilities);
         }
 
         @Override
         public void close() {
             dbConnection.close();
-        }
-
-        public void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor){
-            dbConnection.execute(outboundMessage, resultsProcessor);
         }
 
         @Override
@@ -246,7 +240,17 @@ public class DirectConnectionCache {
         public void write(MysqlCommand command) { dbConnection.write(command); }
 
         @Override
-        public void writeAndFlush(MysqlCommand command) { dbConnection.write(command); }
+        public void writeAndFlush(MysqlCommand command) { dbConnection.writeAndFlush(command); }
+
+        @Override
+        public void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+            dbConnection.write(outboundMessage, resultsProcessor);
+        }
+
+        @Override
+        public void writeAndFlush(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+            dbConnection.writeAndFlush(outboundMessage, resultsProcessor);
+        }
 
         @Override
         public CompletionHandle<Boolean> getExceptionDeferringPromise() { return dbConnection.getExceptionDeferringPromise(); }

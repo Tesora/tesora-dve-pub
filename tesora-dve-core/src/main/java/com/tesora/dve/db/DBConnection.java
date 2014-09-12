@@ -46,8 +46,6 @@ public interface DBConnection extends CommandChannel {
 	void connect(String url, String userid, String password, long clientCapabilities) throws PEException;
 	void close();
 
-    void execute(MyMessage outboundMessage, DefaultResultProcessor resultsProcessor);
-	
 	void start(DevXid xid, CompletionHandle<Boolean> promise);
 	void end(DevXid xid, CompletionHandle<Boolean> promise);
 	void prepare(DevXid xid, CompletionHandle<Boolean> promise);

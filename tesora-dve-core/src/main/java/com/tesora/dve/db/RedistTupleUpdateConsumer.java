@@ -28,6 +28,7 @@ import com.tesora.dve.concurrent.*;
 import java.util.List;
 import java.util.concurrent.Future;
 
+import com.tesora.dve.db.mysql.MysqlCommand;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentTable;
@@ -71,13 +72,10 @@ public class RedistTupleUpdateConsumer extends DBResultConsumer  {
 	}
 
     @Override
-    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		MysqlForwardedExecuteCommand execCommand =
 				new MysqlForwardedExecuteCommand(channel.getStorageSite(), forwardedResultHandler, promise);
-		channel.write(execCommand);
-		if (logger.isDebugEnabled())
-			logger.debug(channel + " <== " + execCommand);
-		promise.success(false);
+		return execCommand;
 	}
 	
 	public RedistTupleBuilder getExecutionHandler() throws Exception {

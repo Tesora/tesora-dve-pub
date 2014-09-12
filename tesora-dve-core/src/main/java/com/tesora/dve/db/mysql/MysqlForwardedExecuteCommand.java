@@ -22,7 +22,6 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.exceptions.PECodingException;
 import io.netty.channel.ChannelHandlerContext;
@@ -49,11 +48,12 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
 	}
 
 	@Override
-	public void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
         //TODO: this would be cleaner in active(), but it apparently doesn't get called until ready to process a response. -sgossard
         registerWithBuilder(ctx);
+        getCompletionHandle().success(true);
     }
 
     @Override
@@ -67,28 +67,24 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
     }
 
     @Override
-	public MysqlCommandResultsProcessor getResultHandler() {
-        return new MysqlCommandResultsProcessor() {
-            @Override
-            public void active(ChannelHandlerContext ctx) {
-                resultsHandler.active(ctx);
-            }
+    public void active(ChannelHandlerContext ctx) {
+        resultsHandler.active(ctx);
+    }
 
-            @Override
-            public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-                throw new PECodingException("Should never receive a packet, designed to gather site information only.");
-            }
+    @Override
+    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        throw new PECodingException("Should never receive a packet, designed to gather site information only.");
+    }
 
-            @Override
-            public void packetStall(ChannelHandlerContext ctx) throws PEException {
-            }
+    @Override
+    public void packetStall(ChannelHandlerContext ctx) throws PEException {
+    }
 
-            @Override
-            public void failure(Exception e) {
-                resultsHandler.failure(e);
-            }
-        };
-	}
+    @Override
+    public void failure(Exception e) {
+        resultsHandler.failure(e);
+        getCompletionHandle().failure(e);
+    }
 
 	@Override
 	public String toString() {

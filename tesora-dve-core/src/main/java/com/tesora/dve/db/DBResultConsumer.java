@@ -23,6 +23,7 @@ package com.tesora.dve.db;
 
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import io.netty.channel.Channel;
 
@@ -61,7 +62,7 @@ public abstract class DBResultConsumer {
 
     abstract public void rollback();
 
-    abstract public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
+    abstract public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
 
     public final void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
         /**TODO: In order to decouple the DBResultConsumer hierarchy from the DBConnection classes, this logic was moved
@@ -72,20 +73,7 @@ public abstract class DBResultConsumer {
         if (promise == null)
             promise = connection.getExceptionDeferringPromise();
 
-        if (logger.isDebugEnabled())
-            logger.debug(connection.getClass().getSimpleName()
-//						+"@"+System.identityHashCode(this)
-                    +"{"+ connection.getName() +"}.execute("+ sql.getRawSQL()+","+ this +","+ promise +")");
-
-        if (connection.isOpen()) {//need prefer comm exception to pending exception, some HA behavior depends on that.
-            Exception deferredException = connection.getAndClearPendingException();
-            if (deferredException == null) {
-                this.writeCommandExecutor(connection, sql, promise);
-            } else {
-                promise.failure(deferredException); //if we are using the deferred error handle again, we'll just defer the exception again.
-            }
-        } else {
-            promise.failure(new PECommunicationsException("Channel closed: " + connection));
-        }
+        MysqlCommand cmd = this.writeCommandExecutor(connection, sql, promise);
+        connection.writeAndFlush(cmd);
     }
 }

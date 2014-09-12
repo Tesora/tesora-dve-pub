@@ -23,20 +23,16 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.singleton.Singletons;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.nio.charset.Charset;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.tesora.dve.exceptions.PEException;
 
-public abstract class MysqlCommand {
-
-	AtomicInteger resultsProcessedCount = new AtomicInteger();
+public abstract class MysqlCommand implements MysqlCommandResultsProcessor {
 
     //these Timers are used to measure how much time is being spent on the backend for a given frontend request.
     //the frontend timer is picked up from a thread local, since changing all the subclasses of MysqlCommand and their callers would be prohibitive.
@@ -46,42 +42,27 @@ public abstract class MysqlCommand {
     //a place for MysqlCommandSenderHandler to hang backend timing info for this command.  Not great encapsulation / ood, ,but makes life much easier.
     protected Timer commandTimer;
 
-    final void executeInContext(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
-		execute(monitor, ctx, charset);
+    abstract void execute(ChannelHandlerContext ctx, Charset charset) throws PEException;
+
+    @Override
+    abstract public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
+
+    @Override
+    abstract public void packetStall(ChannelHandlerContext ctx) throws PEException;
+
+    @Override
+    abstract public void failure(Exception e);
+
+    @Override
+    abstract public void active(ChannelHandlerContext ctx);
+
+
+    final void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
+		execute(ctx, charset);
 	}
-
-	abstract void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException;
-	
-	abstract MysqlCommandResultsProcessor getResultHandler();
-
-    public void incrementResultsProcessedCount() {
-		resultsProcessedCount.incrementAndGet();
-	}
-
-	public int resultsProcessedCount() {
-		return resultsProcessedCount.get();
-	}
-
-    //Delegate calls on nested results handler, to reduce structural dependency, AKA, law of demeter.
-
-    boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-        return getResultHandler().processPacket(ctx,message);
-    }
-
-    public void packetStall(ChannelHandlerContext ctx) throws PEException {
-        getResultHandler().packetStall(ctx);
-    }
-
-    public void failure(Exception e){
-        getResultHandler().failure(e);
-    }
 
     public boolean isExpectingResults(ChannelHandlerContext ctx){
         return true;
     }
 
-    public void active(ChannelHandlerContext ctx) {
-        getResultHandler().active(ctx);
-    }
-    
 }
