@@ -73,7 +73,7 @@ public class RedistTupleUpdateConsumer extends DBResultConsumer  {
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		MysqlForwardedExecuteCommand execCommand =
-				new MysqlForwardedExecuteCommand(forwardedResultHandler, promise);
+				new MysqlForwardedExecuteCommand(channel.getStorageSite(), forwardedResultHandler, promise);
 		channel.write(execCommand);
 		if (logger.isDebugEnabled())
 			logger.debug(channel + " <== " + execCommand);

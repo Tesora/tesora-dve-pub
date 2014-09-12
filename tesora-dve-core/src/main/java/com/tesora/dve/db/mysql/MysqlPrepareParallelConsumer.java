@@ -49,12 +49,10 @@ public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
 	private short warnings = 0;
 	private int numCols = 0;
 	private ChannelHandlerContext ctxToConsume = null;
-	private boolean executeImmediately = false;
 
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		MysqlCommand cmd = new MysqlStmtPrepareCommand(sql.getSQL(), this, promise);
-		cmd.setExecuteImmediately(executeImmediately);
 		channel.write(cmd);
 	}
 
@@ -171,14 +169,6 @@ public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
 
 	public MyPreparedStatement<MysqlGroupedPreparedStatementId> getPreparedStatement() {
 		return pstmt;
-	}
-
-	public boolean isExecuteImmediately() {
-		return executeImmediately;
-	}
-
-	public void setExecuteImmediately(boolean executeImmediately) {
-		this.executeImmediately = executeImmediately;
 	}
 
 }

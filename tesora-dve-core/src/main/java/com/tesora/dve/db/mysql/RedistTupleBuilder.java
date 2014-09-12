@@ -251,13 +251,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
     }
 
     @Override
-    public boolean isDone(ChannelHandlerContext ctx){
-        RedistTargetSite siteCtx = siteCtxByChannel.get(ctx.channel());
-
-        return isProcessingComplete(siteCtx);
-    }
-
-    @Override
     public void packetStall(ChannelHandlerContext ctx) {
         targetPacketStall(ctx);
     }
@@ -392,7 +385,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
     private boolean isProcessingComplete(RedistTargetSite siteCtx) {
         boolean done = lastPacketSent && !siteCtx.hasPendingRows();
-
         return done;
 	}
 	

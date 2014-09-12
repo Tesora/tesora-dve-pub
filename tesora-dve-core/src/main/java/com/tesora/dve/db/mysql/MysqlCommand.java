@@ -36,8 +36,6 @@ import com.tesora.dve.exceptions.PEException;
 
 public abstract class MysqlCommand {
 
-	boolean executeImmediately = false;
-	
 	AtomicInteger resultsProcessedCount = new AtomicInteger();
 
     //these Timers are used to measure how much time is being spent on the backend for a given frontend request.
@@ -48,27 +46,15 @@ public abstract class MysqlCommand {
     //a place for MysqlCommandSenderHandler to hang backend timing info for this command.  Not great encapsulation / ood, ,but makes life much easier.
     protected Timer commandTimer;
 
-    final void executeInContext(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
-		execute(site, monitor, ctx, charset);
+    final void executeInContext(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+		execute(monitor, ctx, charset);
 	}
 
-	abstract void execute(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException;
+	abstract void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException;
 	
 	abstract MysqlCommandResultsProcessor getResultHandler();
 
-	public boolean isExecuteImmediately() {
-		return executeImmediately;
-	}
-
-	public void setExecuteImmediately(boolean executeImmediately) {
-		this.executeImmediately = executeImmediately;
-	}
-	
-	public boolean isPreemptable() {
-		return false;
-	}
-
-	public void incrementResultsProcessedCount() {
+    public void incrementResultsProcessedCount() {
 		resultsProcessedCount.incrementAndGet();
 	}
 
@@ -90,8 +76,8 @@ public abstract class MysqlCommand {
         getResultHandler().failure(e);
     }
 
-    public boolean isDone(ChannelHandlerContext ctx){
-        return getResultHandler().isDone(ctx);
+    public boolean isExpectingResults(ChannelHandlerContext ctx){
+        return true;
     }
 
     public void active(ChannelHandlerContext ctx) {

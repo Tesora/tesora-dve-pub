@@ -30,7 +30,7 @@ import java.nio.ByteOrder;
 
 public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUnmarshallMessage {
 	public static final short MESSAGE_HEADER_LENGTH = 4;
-
+    boolean endsSequence = false;
 	// ---------
 	// classes extending MyMessage should implement this methods to
 	// return the relevant value.
@@ -47,8 +47,16 @@ public abstract class MyMessage implements MysqlMessage, MyMarshallMessage, MyUn
 
         this.marshallMessage(destination);
     }
-	
-	@Override
+
+    public boolean isSequenceEnd() {
+        return endsSequence;
+    }
+
+    public void setSequenceEnd(boolean endsSequence) {
+        this.endsSequence = endsSequence;
+    }
+
+    @Override
 	public String toString() {
 		return getClass().getSimpleName();
 	}

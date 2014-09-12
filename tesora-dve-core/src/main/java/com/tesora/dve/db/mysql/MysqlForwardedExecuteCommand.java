@@ -23,6 +23,8 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.exceptions.PECodingException;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.nio.charset.Charset;
@@ -37,22 +39,55 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
 	static Logger logger = Logger.getLogger( MysqlForwardedExecuteCommand.class );
 
 	final MysqlMultiSiteCommandResultsProcessor resultsHandler;
+    StorageSite site;
+    boolean siteHasBeenRegistered = false;
 
-	public MysqlForwardedExecuteCommand(MysqlMultiSiteCommandResultsProcessor resultHandler, CompletionHandle<Boolean> completionPromise) {
+	public MysqlForwardedExecuteCommand(StorageSite storageSite, MysqlMultiSiteCommandResultsProcessor resultHandler, CompletionHandle<Boolean> completionPromise) {
 		super(completionPromise);
+        this.site = storageSite;
 		this.resultsHandler = resultHandler;
 	}
 
 	@Override
-	public void execute(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
-		resultsHandler.addSite(site, ctx);
-	}
+        //TODO: this would be cleaner in active(), but it apparently doesn't get called until ready to process a response. -sgossard
+        registerWithBuilder(ctx);
+    }
 
-	@Override
+    @Override
+    public boolean isExpectingResults(ChannelHandlerContext ctx) {
+        return false;
+    }
+
+    private void registerWithBuilder(ChannelHandlerContext ctx) {
+        this.resultsHandler.addSite(site,ctx);
+        siteHasBeenRegistered = true;
+    }
+
+    @Override
 	public MysqlCommandResultsProcessor getResultHandler() {
-		return resultsHandler;
+        return new MysqlCommandResultsProcessor() {
+            @Override
+            public void active(ChannelHandlerContext ctx) {
+                resultsHandler.active(ctx);
+            }
+
+            @Override
+            public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+                throw new PECodingException("Should never receive a packet, designed to gather site information only.");
+            }
+
+            @Override
+            public void packetStall(ChannelHandlerContext ctx) throws PEException {
+            }
+
+            @Override
+            public void failure(Exception e) {
+                resultsHandler.failure(e);
+            }
+        };
 	}
 
 	@Override
@@ -60,8 +95,4 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
 		return this.getClass().getSimpleName()+"{"+ getCompletionHandle()+"}";
 	}
 
-	@Override
-	public boolean isPreemptable() {
-		return true;
-	}
 }

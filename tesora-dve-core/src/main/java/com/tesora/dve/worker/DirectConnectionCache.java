@@ -230,6 +230,16 @@ public class DirectConnectionCache {
         public String getName() { return dbConnection.getName(); }
 
         @Override
+        public StorageSite getStorageSite() {
+            return dbConnection.getStorageSite();
+        }
+
+        @Override
+        public Monitor getMonitor() {
+            return dbConnection.getMonitor();
+        }
+
+        @Override
         public boolean isOpen() { return dbConnection.isOpen(); }
 
         @Override

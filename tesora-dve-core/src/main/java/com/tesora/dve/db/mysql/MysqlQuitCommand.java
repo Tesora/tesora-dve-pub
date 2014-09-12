@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyOKResponse;
@@ -39,12 +38,6 @@ public class MysqlQuitCommand extends MysqlCommand implements
 
     boolean closed = false;
 
-
-    @Override
-    public boolean isDone(ChannelHandlerContext ctx) {
-        return closed;
-    }
-
     @Override
     public void packetStall(ChannelHandlerContext ctx) {
     }
@@ -53,7 +46,7 @@ public class MysqlQuitCommand extends MysqlCommand implements
 	public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
         if (message instanceof MyOKResponse)
             closed = true;
-        return isDone(ctx);
+        return true;
 	}
 
 	@Override
@@ -70,7 +63,7 @@ public class MysqlQuitCommand extends MysqlCommand implements
 	}
 
 	@Override
-	void execute(StorageSite site, DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset)
+	void execute(DBConnection.Monitor monitor, ChannelHandlerContext ctx, Charset charset)
 			throws PEException {
         MSPComQuitRequestMessage quitRequest = MSPComQuitRequestMessage.newMessage();
         ctx.write(quitRequest);

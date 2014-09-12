@@ -193,6 +193,16 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
         return site.getName();
     }
 
+    @Override
+    public StorageSite getStorageSite() {
+        return site;
+    }
+
+    @Override
+    public Monitor getMonitor() {
+        return this;
+    }
+
     public CompletionHandle<Boolean> getExceptionDeferringPromise() {
         return deferredErrorHandle;
     }
@@ -460,7 +470,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
     private static MysqlCommand buildDefaultAction(final MyMessage outboundMessage, final MysqlCommandResultsProcessor processor) {
         return new MysqlCommand() {
             @Override
-            void execute(StorageSite site, Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+            void execute(Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
                 ctx.write(outboundMessage);
             }
 

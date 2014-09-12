@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtExecuteRequestMessage;
@@ -55,7 +54,7 @@ public class MysqlStmtExecuteCommand extends MysqlExecuteCommand {
 	}
 	
 	@Override
-	public void execute(StorageSite site, Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
 		// Make sure the parameter types in the param metadata match the types of the objects in
 		// the parameter values
 		if (pstmt.getNumParams() > 0) {

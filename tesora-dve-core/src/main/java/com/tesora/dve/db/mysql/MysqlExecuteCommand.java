@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
@@ -63,7 +62,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 	}
 
 	@Override
-	public void execute(StorageSite site, Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
+	public void execute(Monitor monitor, ChannelHandlerContext ctx, Charset charset) throws PEException {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
         this.connectionMonitor = monitor;
@@ -76,12 +75,6 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 		return this.getClass().getSimpleName() + "{" + getCompletionHandle() + ", " + sqlCommand.getDisplayForLog() + "}";
 	}
 
-
-
-    @Override
-    public boolean isDone(ChannelHandlerContext ctx) {
-        return messageState == ResponseState.DONE;
-    }
 
     @Override
     public void packetStall(ChannelHandlerContext ctx) throws PEException {
@@ -108,7 +101,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
                 default:
                     throw new PECodingException("Unrecognized message state " + messageState + " occurred while processing packets in " + this.getClass().getSimpleName());
             }
-            return isDone(ctx);
+            return true;
         } catch (Exception e){
             getCompletionHandle().failure(e);
             throw e;
