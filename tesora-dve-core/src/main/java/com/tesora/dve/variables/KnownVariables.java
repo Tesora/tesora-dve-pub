@@ -316,7 +316,7 @@ public class KnownVariables implements VariableConstants {
 
 					},
 					bothScope,
-					new SQLMode("NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"),
+					new SQLMode("NO_ENGINE_SUBSTITUTION"),
 					emulated) {
 
 				@Override
