@@ -522,6 +522,52 @@ public class SQLVariableTest extends SchemaTest {
         assertTrue("before = "+before +" , after = " + after +" , allowedWidth = "+allowedWidth, after - before <= allowedWidth);
     }
 
+	@Test
+	public void testPE1639() throws Throwable {
+		assertVariableValue("innodb_adaptive_flushing", "ON");
+	}
+
+	@Test
+	public void testPE1640() throws Throwable {
+		assertVariableValue("innodb_fast_shutdown", "1");
+	}
+
+	@Test
+	public void testPE1641() throws Throwable {
+		assertVariableValue("innodb_mirrored_log_groups", "1");
+	}
+
+	@Test
+	public void testPE1642() throws Throwable {
+		assertVariableValue("innodb_stats_method", "nulls_equal");
+	}
+
+	@Test
+	public void testPE1643() throws Throwable {
+		final String tspValue = getVariableValue("innodb_stats_transient_sample_pages");
+		assertVariableValue("innodb_stats_sample_pages", tspValue);
+	}
+
+	@Test
+	public void testPE1644() throws Throwable {
+		assertVariableValue("innodb_stats_transient_sample_pages", "8");
+	}
+
+	@Test
+	public void testPE1645() throws Throwable {
+		assertVariableValue("innodb_table_locks", "ON");
+	}
+
+	@Test
+	public void testPE1646() throws Throwable {
+		assertVariableValue("myisam_use_mmap", "OFF");
+	}
+
+	@Test
+	public void testPE1647() throws Throwable {
+		assertVariableValue("tmp_table_size", "16777216");
+	}
+
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}

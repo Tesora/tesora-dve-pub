@@ -692,6 +692,12 @@ public class KnownVariables implements VariableConstants {
 					Boolean.FALSE,
 					dveOnly,
 					"Enable location information in error messages");
+	public static final VariableHandler<Long> INNODB_STATS_TRANSIENT_SAMPLE_PAGES =
+			new VariableHandler<Long>("innodb_stats_transient_sample_pages",
+			new BoundedIntegralConverter(1L, Long.MAX_VALUE),
+			globalScope,
+			8L,
+			emulatedOnly);
 
 	@SuppressWarnings("rawtypes")
 	static VariableHandler[] namedHandlers = new VariableHandler[] {
@@ -740,7 +746,8 @@ public class KnownVariables implements VariableConstants {
 			SQL_LOGGING,
 			MAX_ALLOWED_PACKET,
 			COLLATION_DATABASE,
-			ERROR_MIGRATOR
+			ERROR_MIGRATOR,
+			INNODB_STATS_TRANSIENT_SAMPLE_PAGES
 	};
 
 	@SuppressWarnings("rawtypes")
@@ -1099,6 +1106,46 @@ public class KnownVariables implements VariableConstants {
 					globalScope,
 					"64-bit",
 					EnumSet.of(VariableOption.EMULATED, VariableOption.READONLY)),
+			new VariableHandler<Boolean>("innodb_adaptive_flushing",
+					new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
+					globalScope,
+					Boolean.TRUE,
+					emulatedOnly),
+			new VariableHandler<Long>("innodb_fast_shutdown",
+					new BoundedIntegralConverter(0L, 2L),
+					globalScope,
+					1L,
+					emulatedOnly),
+			new VariableHandler<Long>("innodb_mirrored_log_groups",
+					integralConverter,
+					globalScope,
+					1L,
+					EnumSet.of(VariableOption.EMULATED, VariableOption.READONLY)),
+			new VariableHandler<InnoDbStatsMethod>("innodb_stats_method",
+					new EnumValueConverter<InnoDbStatsMethod>(InnoDbStatsMethod.values()),
+					globalScope,
+					InnoDbStatsMethod.NULLS_EQUAL,
+					emulatedOnly),
+			new VariableHandler<Long>("innodb_stats_sample_pages" /* Replaced by 'innodb_stats_transient_sample_pages' in  5.6. */,
+					INNODB_STATS_TRANSIENT_SAMPLE_PAGES.getMetadata(),
+					INNODB_STATS_TRANSIENT_SAMPLE_PAGES.getScopes(),
+					INNODB_STATS_TRANSIENT_SAMPLE_PAGES.getDefaultOnMissing(),
+					INNODB_STATS_TRANSIENT_SAMPLE_PAGES.getOptions()),
+			new VariableHandler<Boolean>("innodb_table_locks",
+					new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
+					bothScope,
+					Boolean.TRUE,
+					emulated),
+			new VariableHandler<Boolean>("myisam_use_mmap",
+					new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
+					globalScope,
+					Boolean.FALSE,
+					emulatedOnly),
+			new VariableHandler<Long>("tmp_table_size",
+					new BoundedIntegralConverter(1024L, Long.MAX_VALUE),
+					bothScope,
+					16777216L,
+					emulated),
 	};
 
 }
