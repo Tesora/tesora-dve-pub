@@ -821,13 +821,13 @@ public class JoinTest extends SchemaMirrorTest {
 
 		/*
 		 * Previously, this query would produce an error ERROR 1052 (23000):
-		 * Column 'b' in where clause is ambiguous. Now the query produces the
+		 * Column 'j' in where clause is ambiguous. Now the query produces the
 		 * correct result.
 		 * 
 		 * @see http://dev.mysql.com/doc/refman/5.6/en/join.html
 		 */
 		tests.add(new StatementMirrorFun("SELECT * FROM pe1648_t1 t1 NATURAL JOIN pe1648_t2 t2 WHERE j > 3"));
-		tests.add(new StatementMirrorFun("SELECT j FROM pe1648_t1 t1 NATURAL LEFT JOIN pe1648_t2 t2 ORDER BY j"));
+		tests.add(new StatementMirrorFun("SELECT j, i FROM pe1648_t1 t1 NATURAL LEFT JOIN pe1648_t2 t2 ORDER BY j"));
 
 		runTest(tests);
 	}
