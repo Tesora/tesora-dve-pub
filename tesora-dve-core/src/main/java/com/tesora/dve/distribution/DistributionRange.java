@@ -122,7 +122,7 @@ public class DistributionRange implements CatalogEntity {
 		setComparatorClass(key);
 		ListIterator<GenerationKeyRange> i = rangeGenerations.listIterator(rangeGenerations.size());
 		while (i.hasPrevious()) {
-
+            //TODO: this traverses from youngest to oldest, but returns oldest match or lastGen(), which can be confusing.  -sgossard
 			GenerationKeyRange genKeyRange = i.previous();
 			if (genKeyRange.isInRange(key))
 				groupGen = genKeyRange.getStorageGroupGeneration();
