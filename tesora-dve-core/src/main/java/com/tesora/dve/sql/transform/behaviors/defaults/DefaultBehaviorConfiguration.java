@@ -107,8 +107,8 @@ public final class DefaultBehaviorConfiguration implements BehaviorConfiguration
 				new GenericAggRewriteTransformFactory(),
 				new GroupByRewriteTransformFactory(),
 				new WhereClauseCorrelatedSubqueryTransformFactory(),
-				new JoinSimplificationTransformFactory(),
 				new NaturalJoinRewriteTransformFactory(),
+				new JoinSimplificationTransformFactory(),
 				new JoinRewriteTransformFactory(),
 				new DistributionKeyExecuteTransformFactory(),
 				new DegenerateExecuteTransformFactory()

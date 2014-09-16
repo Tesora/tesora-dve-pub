@@ -21,29 +21,26 @@ package com.tesora.dve.sql.transform.strategy;
  * #L%
  */
 
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.node.Edge;
-import com.tesora.dve.sql.node.expression.ExpressionNode;
-import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.structural.FromTableReference;
 import com.tesora.dve.sql.node.structural.JoinSpecification;
 import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.node.test.EngineConstant;
-import com.tesora.dve.sql.schema.FunctionName;
+import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.MultiTableDMLStatement;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
+import com.tesora.dve.sql.util.ListSet;
 
 public class NaturalJoinRewriteTransformFactory extends TransformFactory {
 
@@ -94,13 +91,7 @@ public class NaturalJoinRewriteTransformFactory extends TransformFactory {
 		final TableInstance base = join.getEnclosingFromTableReference().getBaseTable();
 		final TableInstance target = join.getJoinedToTable();
 
-		final Edge<?, ExpressionNode> joinOnEdge = join.getJoinOnEdge();
-		final Map<ExpressionNode, ExpressionNode> naturalPairs = collectNaturalJoinColumnProjections(sc, base, target);
-		for (final Map.Entry<ExpressionNode, ExpressionNode> equiPair : naturalPairs.entrySet()) {
-			final ExpressionNode lhs = equiPair.getKey();
-			final ExpressionNode rhs = equiPair.getValue();
-			joinOnEdge.add(new FunctionCall(FunctionName.makeEquals(), lhs, rhs));
-		}
+		join.setUsingColSpec(collectNaturalJoinColumnNames(sc, base, target));
 
 		final JoinSpecification originalJoinKind = join.getJoinType();
 		if (originalJoinKind.isInnerJoin()) {
@@ -112,31 +103,24 @@ public class NaturalJoinRewriteTransformFactory extends TransformFactory {
 		}
 	}
 
-	private Map<ExpressionNode, ExpressionNode> collectNaturalJoinColumnProjections(final SchemaContext sc, final TableInstance base,
+	private ListSet<Name> collectNaturalJoinColumnNames(final SchemaContext sc, final TableInstance base,
 			final TableInstance target) {
-		final Map<String, ExpressionNode> lhsTabCols = getColumnsProjectionsByName(sc, base);
-		final Map<String, ExpressionNode> rhsTabCols = getColumnsProjectionsByName(sc, target);
+		final ListSet<Name> lhsTabCols = getColumnNames(sc, base);
+		final ListSet<Name> rhsTabCols = getColumnNames(sc, target);
 
-		final Map<ExpressionNode, ExpressionNode> naturalColumns = new LinkedHashMap<ExpressionNode, ExpressionNode>();
-		for (final String lhsColName : lhsTabCols.keySet()) {
-			final ExpressionNode rhsColumn = rhsTabCols.get(lhsColName);
-			if (rhsColumn != null) {
-				final ExpressionNode lhsColumn = lhsTabCols.get(lhsColName);
-				naturalColumns.put(lhsColumn, rhsColumn);
-			}
-		}
+		lhsTabCols.retainAll(rhsTabCols);
 
-		return naturalColumns;
+		return lhsTabCols;
 	}
 
-	private Map<String, ExpressionNode> getColumnsProjectionsByName(final SchemaContext sc, final TableInstance table) {
-		final Map<String, ExpressionNode> columnsByName = new LinkedHashMap<String, ExpressionNode>();
+	private ListSet<Name> getColumnNames(final SchemaContext sc, final TableInstance table) {
+		final ListSet<Name> columnNames = new ListSet<Name>();
 		for (final PEColumn column : table.getAbstractTable().getColumns(sc)) {
-			final String columnName = column.getName().getUnqualified().getUnquotedName().get();
-			columnsByName.put(columnName, column.buildProjection(table));
+			final UnqualifiedName columnName = column.getName().getUnqualified();
+			columnNames.add(columnName);
 		}
 
-		return columnsByName;
+		return columnNames;
 	}
 
 }
