@@ -43,6 +43,7 @@ import com.tesora.dve.sql.transform.strategy.GroupByRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.HavingRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.InsertIntoTransformFactory;
+import com.tesora.dve.sql.transform.strategy.NaturalJoinRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.NestedQueryBroadcastTransformFactory;
 import com.tesora.dve.sql.transform.strategy.NullLiteralColumnTransformFactory;
 import com.tesora.dve.sql.transform.strategy.OrderByLimitRewriteTransformFactory;
@@ -107,6 +108,7 @@ public final class DefaultBehaviorConfiguration implements BehaviorConfiguration
 				new GroupByRewriteTransformFactory(),
 				new WhereClauseCorrelatedSubqueryTransformFactory(),
 				new JoinSimplificationTransformFactory(),
+				new NaturalJoinRewriteTransformFactory(),
 				new JoinRewriteTransformFactory(),
 				new DistributionKeyExecuteTransformFactory(),
 				new DegenerateExecuteTransformFactory()

@@ -24,8 +24,8 @@ package com.tesora.dve.sql.node.structural;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 
 public final class JoinSpecification {
 
@@ -48,25 +48,41 @@ public final class JoinSpecification {
 	private OuterJoin outerJoinKind; 
 	// true if this is a cartesian join
 	private boolean cross;
+	// true if this is a natural join
+	private boolean natural;
 	
 	// default is inner
 	private JoinSpecification() {
 		outerJoinKind = null;
 		cross = false;
+		natural = false;
 	}
 	
-	private JoinSpecification(boolean cross) {
+	private JoinSpecification(boolean isCross, boolean isNatural) {
+		if (isCross && isNatural) {
+			throw new IllegalArgumentException("A join cannot be both cross and natural at the same time.");
+		}
+
 		outerJoinKind = null;
-		this.cross = cross;
+		this.cross = isCross;
+		this.natural = isNatural;
 	}
 	
 	private JoinSpecification(OuterJoin variety) {
 		outerJoinKind = variety;
 		this.cross = false;
+		this.natural = false;
 	}
 	
+	private JoinSpecification(OuterJoin variety, boolean isNatural) {
+		outerJoinKind = variety;
+		this.cross = false;
+		this.natural = isNatural;
+	}
+
 	public boolean isInnerJoin() { return outerJoinKind == null; }
 	public boolean isCrossJoin() { return isInnerJoin() && this.cross; }
+	public boolean isNaturalJoin() { return this.natural; }
 	
 	public OuterJoin getOuterJoinKind() { return outerJoinKind; }
 	
@@ -78,6 +94,8 @@ public final class JoinSpecification {
 	// note: this is mysql specific!
 	public static final JoinSpecification CROSS_JOIN = INNER_JOIN;
 	public static final JoinSpecification LEFT_OUTER_JOIN = new JoinSpecification(OuterJoin.LEFT);
+	public static final JoinSpecification NATURAL_JOIN = new JoinSpecification(false, true);
+	public static final JoinSpecification NATURAL_LEFT_OUTER_JOIN = new JoinSpecification(OuterJoin.LEFT, true);
 	private static Map<String, JoinSpecification> supported = buildSupportedJoins();
 	
 	private static Map<String, JoinSpecification> buildSupportedJoins() {
@@ -90,21 +108,30 @@ public final class JoinSpecification {
 		ret.put("RIGHT", new JoinSpecification(OuterJoin.RIGHT));
 		ret.put("FULL", new JoinSpecification(OuterJoin.FULL));
 		ret.put("CROSS",INNER_JOIN);
+		ret.put("NATURAL", NATURAL_JOIN);
+		ret.put("NATURAL LEFT", NATURAL_LEFT_OUTER_JOIN);
+		ret.put("NATURAL LEFT OUTER", NATURAL_LEFT_OUTER_JOIN);
 
 		return ret;
 	}
 	
 	public static JoinSpecification makeJoinSpecification(String joinWords) {
-		JoinSpecification js = supported.get(joinWords);
+		JoinSpecification js = supported.get(joinWords.trim());
 		if (js == null) 
 			throw new SchemaException(Pass.SECOND, "No support for join type : " + joinWords);
 		return js;
 	}
 
 	public String getSQL() {
-		if (outerJoinKind == null)
+		if (outerJoinKind == null) {
+			if (natural) {
+				return "NATURAL";
+			}
 			return "INNER";
-		return outerJoinKind.getSQL();
+		}
+
+		final String outerJoinSql = outerJoinKind.getSQL();
+		return (this.natural) ? "NATURAL " + outerJoinSql : outerJoinSql;
 	}
 
 	@Override
@@ -112,6 +139,7 @@ public final class JoinSpecification {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + (cross ? 1231 : 1237);
+		result = prime * result + (natural ? 1231 : 1237);
 		result = prime * result
 				+ ((outerJoinKind == null) ? 0 : outerJoinKind.hashCode());
 		return result;
@@ -127,6 +155,8 @@ public final class JoinSpecification {
 			return false;
 		JoinSpecification other = (JoinSpecification) obj;
 		if (cross != other.cross)
+			return false;
+		if (natural != other.natural)
 			return false;
 		if (outerJoinKind != other.outerJoinKind)
 			return false;

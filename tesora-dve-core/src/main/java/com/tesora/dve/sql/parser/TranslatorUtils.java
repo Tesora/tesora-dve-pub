@@ -2189,12 +2189,18 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				SourceLocation.make(tok));
 	}
 
-	public JoinSpecification buildJoinType(String primary, String outer) {
+	public JoinSpecification buildJoinType(String primary) {
+		return buildJoinType(primary, null, null);
+	}
+
+	public JoinSpecification buildJoinType(String primary, String natural, String outer) {
 		StringBuilder buf = new StringBuilder();
+		if (natural != null)
+			buf.append(natural).append(" ");
 		if (primary != null)
-			buf.append(primary);
+			buf.append(primary).append(" ");
 		if (outer != null)
-			buf.append(" ").append(outer);
+			buf.append(outer);
 		return JoinSpecification.makeJoinSpecification(buf.toString()
 				.toUpperCase());
 	}
@@ -2206,7 +2212,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public JoinedTable buildJoinedTable(ExpressionNode target,
 			JoinClauseType joinOn, JoinSpecification injoinType) {
 		// JOIN is INNER JOIN
-		JoinSpecification joinType = (injoinType == null ? buildJoinType("INNER",null) : injoinType);
+		JoinSpecification joinType = (injoinType == null ? buildJoinType("INNER") : injoinType);
 		return new JoinedTable(target, (joinOn == null ? null : joinOn.getNode()), joinType, (joinOn == null ? null : joinOn.getColumnIdentifiers()));
 	}
 
@@ -2228,7 +2234,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (!opts.isResolve()) return;
 		List<UnqualifiedName> visibleAliases = new LinkedList<UnqualifiedName>();
 		if (factor instanceof TableInstance)
-			visibleAliases.add(0, ((TableInstance)factor).getReferenceName(pc).getUnqualified());
+			visibleAliases.add(0, ((TableInstance) factor).getReferenceName(pc).getUnqualified());
 		for (JoinedTable jt : joins) {
 			List<Name> usingColSpec = jt.getUsingColSpec();
 			if (usingColSpec != null && usingColSpec.size() > 0 ) {

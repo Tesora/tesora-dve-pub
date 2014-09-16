@@ -333,8 +333,10 @@ joined_table returns [ExpressionNode expr] options {k=1;}:
   ;
 
 join_rhs returns [JoinedTable jt] options {k=1;}:
-  join_type? JOIN table_factor join_specification?
-  { $jt = utils.buildJoinedTable($table_factor.expr, $join_specification.expr, $join_type.js); }
+  (join_type? JOIN table_factor join_specification?
+  { $jt = utils.buildJoinedTable($table_factor.expr, $join_specification.expr, $join_type.js); })
+  | (NATURAL (outer_join_type OUTER?)? JOIN table_factor
+  { $jt = utils.buildJoinedTable($table_factor.expr, null, utils.buildJoinType($outer_join_type.text, $NATURAL.text, $OUTER.text)); })
   ;
 
 join_specification returns [JoinClauseType expr] options {k=1;}: 
@@ -343,8 +345,8 @@ join_specification returns [JoinClauseType expr] options {k=1;}:
   ;
   
 join_type returns [JoinSpecification js] options {k=1;}:
-  (ijt=(CROSS | INNER) { $js = utils.buildJoinType($ijt.text, null); })
-  | outer_join_type OUTER? { $js = utils.buildJoinType($outer_join_type.text, $OUTER.text); }
+  (ijt=(CROSS | INNER) { $js = utils.buildJoinType($ijt.text); })
+  | (outer_join_type OUTER? { $js = utils.buildJoinType($outer_join_type.text, null, $OUTER.text); })
   ;
 outer_join_type options {k=1;}: 
   LEFT | RIGHT | FULL

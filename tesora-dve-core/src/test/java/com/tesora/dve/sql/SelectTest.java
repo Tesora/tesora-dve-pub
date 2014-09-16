@@ -353,4 +353,26 @@ public class SelectTest extends SchemaTest {
 	public void testPE1633() throws Throwable {
 		conn.assertResults("SELECT NOT NOT TRUE, NOT NOT NOT FALSE", br(nr, 1L, 1L));
 	}
+
+	@Test
+	public void testPE1648() throws Throwable {
+		conn.execute("DROP TABLE IF EXISTS pe1648");
+		conn.execute("CREATE TABLE pe1648 (i INT, j TEXT)");
+
+		//ERROR 1066 (42000): Not unique table/alias: 't2'
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("SELECT * FROM pe1648 NATRAL JOIN pe1648");
+			}
+		}.assertError(SchemaException.class, null, null);
+
+		//ERROR 1066 (42000): Not unique table/alias: 't2'
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("SELECT * FROM pe1648 NATRAL LEFT JOIN pe1648");
+			}
+		}.assertError(SchemaException.class, null, null);
+	}
 }
