@@ -568,6 +568,16 @@ public class SQLVariableTest extends SchemaTest {
 		assertVariableValue("tmp_table_size", "16777216");
 	}
 
+	@Test
+	public void testPE1649() throws Throwable {
+		assertVariableValue("skip_networking", "OFF");
+	}
+
+	@Test
+	public void testPE1650() throws Throwable {
+		assertVariableValue("protocol_version", "10");
+	}
+
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}

@@ -1146,6 +1146,16 @@ public class KnownVariables implements VariableConstants {
 					bothScope,
 					16777216L,
 					emulated),
+			new VariableHandler<Long>("protocol_version",
+					integralConverter,
+					globalScope,
+					10L,
+					EnumSet.of(VariableOption.EMULATED, VariableOption.READONLY)),
+			new VariableHandler<Boolean>("skip_networking",
+					new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
+					globalScope,
+					Boolean.FALSE,
+					EnumSet.of(VariableOption.EMULATED, VariableOption.READONLY)),
 	};
 
 }
