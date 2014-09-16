@@ -63,6 +63,9 @@ public class DVEErrors {
 	public static final TwoParamErrorCode<String, Long> TOO_LONG_TABLE_FIELD_COMMENT =
 			new TwoParamErrorCode<String, Long>("TOO_LONG_TABLE_FIELD_COMMENT", false);
 
+	public static final OneParamErrorCode<String> NON_UNIQUE_TABLE =
+			new OneParamErrorCode<String>("NON_UNIQUE_TABLE", false);
+
 	public static final ErrorCode[] universe = new ErrorCode[] {
 		TABLE_DNE,
 		COLUMN_DNE,
@@ -74,6 +77,7 @@ public class DVEErrors {
 		UNKNOWN_SYS_VAR,
 		TOO_LONG_TABLE_COMMENT,
 		TOO_LONG_TABLE_FIELD_COMMENT,
+		NON_UNIQUE_TABLE,
 		
 		INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
 		INVALID_CONTAINER_DELETE,

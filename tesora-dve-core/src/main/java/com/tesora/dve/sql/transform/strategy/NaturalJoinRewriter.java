@@ -21,76 +21,46 @@ package com.tesora.dve.sql.transform.strategy;
  * #L%
  */
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 
-import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.expression.TableInstance;
-import com.tesora.dve.sql.node.structural.FromTableReference;
 import com.tesora.dve.sql.node.structural.JoinSpecification;
 import com.tesora.dve.sql.node.structural.JoinedTable;
-import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.MultiTableDMLStatement;
-import com.tesora.dve.sql.transform.CopyVisitor;
-import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
-import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 
-public class NaturalJoinRewriteTransformFactory extends TransformFactory {
+/**
+ * The NATURAL [LEFT] JOIN of two tables is defined to be semantically
+ * equivalent to an INNER JOIN or a LEFT JOIN with a USING clause that names all
+ * columns that exist in both tables.
+ * 
+ * @see http://dev.mysql.com/doc/refman/5.6/en/join.html
+ */
+public class NaturalJoinRewriter {
 
-	private static boolean applies(final DMLStatement stmt) {
-		return EngineConstant.FROMCLAUSE.has(stmt) && (stmt instanceof MultiTableDMLStatement);
-	}
-
-	@Override
-	public FeatureStep plan(final DMLStatement stmt, final PlannerContext context) throws PEException {
-		if (!applies(stmt)) {
-			return null;
-		}
-		
-		final MultiTableDMLStatement transformed = (MultiTableDMLStatement) CopyVisitor.copy(stmt);
-		final Set<JoinedTable> joins = collectNaturalJoins(transformed);
-		if (joins.isEmpty()) {
-			return null;
-		}
-
-		final SchemaContext sc = context.getContext();
-		for (final JoinedTable join : joins) {
-			rewriteToInnerJoin(sc, join);
-		}
-
-		return buildPlan(transformed, context, DefaultFeaturePlannerFilter.INSTANCE);
-	}
-
-	@Override
-	public FeaturePlannerIdentifier getFeaturePlannerID() {
-		return FeaturePlannerIdentifier.NATURAL_JOIN_REWRITE;
-	}
-
-	private Set<JoinedTable> collectNaturalJoins(final MultiTableDMLStatement dmls) {
-		final List<FromTableReference> joinedTables = dmls.getTables();
+	public static Set<JoinedTable> collectNaturalJoins(final Collection<JoinedTable> joins) {
 		final Set<JoinedTable> naturalJoins = new LinkedHashSet<JoinedTable>();
-		for (final FromTableReference ftr : joinedTables) {
-			for (final JoinedTable tableJoin : ftr.getTableJoins()) {
-				if (tableJoin.getJoinType().isNaturalJoin()) {
-					naturalJoins.add(tableJoin);
-				}
+		for (final JoinedTable join : joins) {
+			if (join.getJoinType().isNaturalJoin()) {
+				naturalJoins.add(join);
 			}
 		}
 
 		return naturalJoins;
 	}
 
-	private void rewriteToInnerJoin(final SchemaContext sc, final JoinedTable join) throws PEException {
-		final TableInstance base = join.getEnclosingFromTableReference().getBaseTable();
+	public static void rewriteToInnerJoin(final SchemaContext sc, final TableInstance base, final JoinedTable join) {
 		final TableInstance target = join.getJoinedToTable();
 
+		join.getEnclosing(MultiTableDMLStatement.class, null);
 		join.setUsingColSpec(collectNaturalJoinColumnNames(sc, base, target));
 
 		final JoinSpecification originalJoinKind = join.getJoinType();
@@ -99,11 +69,11 @@ public class NaturalJoinRewriteTransformFactory extends TransformFactory {
 		} else if (originalJoinKind.isLeftOuterJoin()) {
 			join.setJoinType(JoinSpecification.LEFT_OUTER_JOIN);
 		} else {
-			throw new PEException("No natural join rewrite available for '" + originalJoinKind + "' join kind.");
+			throw new SchemaException(Pass.FIRST, "No natural join rewrite available for '" + originalJoinKind + "' join kind.");
 		}
 	}
 
-	private ListSet<Name> collectNaturalJoinColumnNames(final SchemaContext sc, final TableInstance base,
+	private static ListSet<Name> collectNaturalJoinColumnNames(final SchemaContext sc, final TableInstance base,
 			final TableInstance target) {
 		final ListSet<Name> lhsTabCols = getColumnNames(sc, base);
 		final ListSet<Name> rhsTabCols = getColumnNames(sc, target);
@@ -113,7 +83,7 @@ public class NaturalJoinRewriteTransformFactory extends TransformFactory {
 		return lhsTabCols;
 	}
 
-	private ListSet<Name> getColumnNames(final SchemaContext sc, final TableInstance table) {
+	private static ListSet<Name> getColumnNames(final SchemaContext sc, final TableInstance table) {
 		final ListSet<Name> columnNames = new ListSet<Name>();
 		for (final PEColumn column : table.getAbstractTable().getColumns(sc)) {
 			final UnqualifiedName columnName = column.getName().getUnqualified();

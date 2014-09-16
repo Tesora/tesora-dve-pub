@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -326,6 +327,7 @@ import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PassThroughCommand.Command;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
+import com.tesora.dve.sql.transform.strategy.NaturalJoinRewriter;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
@@ -2223,10 +2225,26 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public FromTableReference buildFromTableReference(ExpressionNode factor,
 			List<JoinedTable> joins) {
 		
+		if (joins.isEmpty()) {
+			return new FromTableReference(factor);
+		}
+
+		/*
+		 * The NATURAL [LEFT] JOIN are rewritten to an INNER JOIN or a LEFT JOIN
+		 * with a USING clause.
+		 * The rewrite must take place before USING-to-ON clause conversion and
+		 * wildcard expansion which affect the projection coalescing and
+		 * ordering.
+		 */
+		if (factor instanceof TableInstance) {
+			final Set<JoinedTable> naturalJoins = NaturalJoinRewriter.collectNaturalJoins(joins);
+			for (final JoinedTable join : naturalJoins) {
+				NaturalJoinRewriter.rewriteToInnerJoin(this.pc, (TableInstance) factor, join);
+			}
+		}
+
 		convertUsingColSpecToOnSpec(factor, joins);
 		
-		if (joins.isEmpty())
-			return new FromTableReference(factor);
 		return new FromTableReference(new TableJoin(factor,joins));		
 	}
 

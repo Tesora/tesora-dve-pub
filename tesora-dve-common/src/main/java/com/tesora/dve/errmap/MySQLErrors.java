@@ -83,6 +83,11 @@ public class MySQLErrors {
 					"Comment for field '%s' is too long (max = %d).",
 					1629,
 					"HY000");
+	public static final ErrorCodeFormatter nonUniqueTableFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.NON_UNIQUE_TABLE,
+					"Not unique table/alias: '%s'",
+					1066,
+					"42000");
 			
 	
 	public static final ErrorCodeFormatter[] myFormatters = new ErrorCodeFormatter[] {
@@ -98,7 +103,8 @@ public class MySQLErrors {
 		unknownSysVarFormatter,
 		internalFormatter,
 		tooLongTableCommentFormatter,
-		tooLongTableFieldCommentFormatter
+		tooLongTableFieldCommentFormatter,
+		nonUniqueTableFormatter
 	};
 
 			

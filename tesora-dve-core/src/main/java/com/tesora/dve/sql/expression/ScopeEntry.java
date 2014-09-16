@@ -36,8 +36,8 @@ import org.apache.commons.lang.StringUtils;
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.expression.Alias;
 import com.tesora.dve.sql.node.expression.AliasInstance;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -158,6 +158,10 @@ public class ScopeEntry implements Scope {
 		throw new SchemaException(Pass.SECOND, "Ambiguous " + what + " reference: " + origName.getSQL());
 	}
 	
+	private void throwNonUniqueTableException(final Name ambiguousTableName) {
+		throw new SchemaException(new ErrorInfo(DVEErrors.NON_UNIQUE_TABLE, ambiguousTableName.getUnquotedName().get()));
+	}
+	
 	private static void tableNotFound(SchemaContext sc, Schema<?> schema, Name givenName) throws SchemaException {
 		ErrorInfo ei = null;
 		if (givenName.isQualified()) {
@@ -221,11 +225,11 @@ public class ScopeEntry implements Scope {
 	private void insertTable(TableInstance ti, Name alias, Name tableName) {
 		if (alias != null) {
 			if (tableNamespace.containsKey(alias)) 
-				objectAmbiguous("Table", alias);
+				throwNonUniqueTableException(alias);
 			tableNamespace.put(alias, ti);
 		} else {
 			if (tableNamespace.containsKey(tableName)) 
-				objectAmbiguous("Table", tableName);
+				throwNonUniqueTableException(tableName);
 			tableNamespace.put(tableName, ti);
 		}		
 	}
@@ -234,11 +238,11 @@ public class ScopeEntry implements Scope {
 	public void insertTable(TableInstance ti) {
 		if (ti.getAlias() != null) {
 			if (tableNamespace.containsKey(ti.getAlias())) 
-				objectAmbiguous("Table", ti.getAlias());
+				throwNonUniqueTableException(ti.getAlias());
 			tableNamespace.put(ti.getAlias(), ti);
 		} else {
 			if (tableNamespace.containsKey(ti.getTable().getName())) 
-				objectAmbiguous("Table", ti.getTable().getName());
+				throwNonUniqueTableException(ti.getTable().getName());
 			tableNamespace.put(ti.getTable().getName(), ti);
 		}
 	}
@@ -254,7 +258,7 @@ public class ScopeEntry implements Scope {
 					return null;
 				}
 			} else if (sub.size() > 1) {
-				objectAmbiguous("Table", given);
+				throwNonUniqueTableException(given);
 			} else {
 				return sub.iterator().next();
 			}
@@ -411,7 +415,6 @@ public class ScopeEntry implements Scope {
 			Column<?> c = ti.getTable().lookup(sc,given);
 			if (c != null) {
 				if (candidate != null) {
-					// ambiguous
 					objectAmbiguous("Column", given);
 				} else {
 					candidate = new Pair<TableInstance, Column<?>>(ti, c);

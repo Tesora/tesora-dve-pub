@@ -28,6 +28,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
@@ -359,20 +360,18 @@ public class SelectTest extends SchemaTest {
 		conn.execute("DROP TABLE IF EXISTS pe1648");
 		conn.execute("CREATE TABLE pe1648 (i INT, j TEXT)");
 
-		//ERROR 1066 (42000): Not unique table/alias: 't2'
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-				conn.execute("SELECT * FROM pe1648 NATRAL JOIN pe1648");
+				conn.execute("SELECT * FROM pe1648 NATURAL JOIN pe1648");
 			}
-		}.assertError(SchemaException.class, null, null);
+		}.assertError(SchemaException.class, MySQLErrors.nonUniqueTableFormatter, "pe1648");
 
-		//ERROR 1066 (42000): Not unique table/alias: 't2'
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-				conn.execute("SELECT * FROM pe1648 NATRAL LEFT JOIN pe1648");
+				conn.execute("SELECT * FROM pe1648 NATURAL LEFT JOIN pe1648");
 			}
-		}.assertError(SchemaException.class, null, null);
+		}.assertError(SchemaException.class, MySQLErrors.nonUniqueTableFormatter, "pe1648");
 	}
 }
