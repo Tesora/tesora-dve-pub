@@ -38,6 +38,7 @@ import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.expression.Alias;
 import com.tesora.dve.sql.node.expression.AliasInstance;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -48,6 +49,7 @@ import com.tesora.dve.sql.node.expression.NameInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WildcardTable;
+import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.parser.LexicalLocation;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.Column;
@@ -415,6 +417,16 @@ public class ScopeEntry implements Scope {
 			Column<?> c = ti.getTable().lookup(sc,given);
 			if (c != null) {
 				if (candidate != null) {
+					final LanguageNode parent = ti.getParent();
+					/*
+					 * MySQL now treats the common columns of NATURAL or USING
+					 * joins as a single column, so when a query refers to such
+					 * columns, the query compiler does not consider them as
+					 * ambiguous.
+					 */
+					if ((parent instanceof JoinedTable) && ((JoinedTable) parent).getJoinType().isNaturalJoin()) {
+						continue;
+					}
 					objectAmbiguous("Column", given);
 				} else {
 					candidate = new Pair<TableInstance, Column<?>>(ti, c);

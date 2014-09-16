@@ -22,8 +22,6 @@ package com.tesora.dve.sql.transform.strategy;
  */
 
 import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
@@ -34,7 +32,6 @@ import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.statement.dml.MultiTableDMLStatement;
 import com.tesora.dve.sql.util.ListSet;
 
 /**
@@ -46,8 +43,8 @@ import com.tesora.dve.sql.util.ListSet;
  */
 public class NaturalJoinRewriter {
 
-	public static Set<JoinedTable> collectNaturalJoins(final Collection<JoinedTable> joins) {
-		final Set<JoinedTable> naturalJoins = new LinkedHashSet<JoinedTable>();
+	public static ListSet<JoinedTable> collectNaturalJoins(final Collection<JoinedTable> joins) {
+		final ListSet<JoinedTable> naturalJoins = new ListSet<JoinedTable>();
 		for (final JoinedTable join : joins) {
 			if (join.getJoinType().isNaturalJoin()) {
 				naturalJoins.add(join);
@@ -60,7 +57,6 @@ public class NaturalJoinRewriter {
 	public static void rewriteToInnerJoin(final SchemaContext sc, final TableInstance base, final JoinedTable join) {
 		final TableInstance target = join.getJoinedToTable();
 
-		join.getEnclosing(MultiTableDMLStatement.class, null);
 		join.setUsingColSpec(collectNaturalJoinColumnNames(sc, base, target));
 
 		final JoinSpecification originalJoinKind = join.getJoinType();

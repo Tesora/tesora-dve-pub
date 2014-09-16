@@ -29,7 +29,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -579,6 +578,27 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		SelectStatement ss = new SelectStatement(tableRefs, projection, 
 				whereClause, orderbys, limit, sq, options, groupbys,
 				havingExpr, locking, new AliasInformation(scope), SourceLocation.make(tree));
+
+		/*
+		 * The NATURAL [LEFT] JOIN are rewritten to an INNER JOIN or a LEFT JOIN
+		 * with a USING clause.
+		 * The rewrite must take place after ColumnInstance resolution (to
+		 * prevent premature failure on ambiguous column names), but before
+		 * USING-to-ON clause conversion and wildcard expansion which affect the
+		 * projection coalescing and ordering.
+		 */
+		if (tableRefs != null) {
+			for (final FromTableReference ftr : tableRefs) {
+				final TableInstance base = ftr.getBaseTable();
+				final ListSet<JoinedTable> naturalJoins = NaturalJoinRewriter.collectNaturalJoins(ftr.getTableJoins());
+				for (final JoinedTable join : naturalJoins) {
+					NaturalJoinRewriter.rewriteToInnerJoin(this.pc, base, join);
+				}
+
+				convertUsingColSpecToOnSpec(base, naturalJoins);
+			}
+		}
+
 		ss.getDerivedInfo().takeScope(scope);
 		Scope ps = scope.getParentScope();
 		if (ps != null)
@@ -2227,20 +2247,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		
 		if (joins.isEmpty()) {
 			return new FromTableReference(factor);
-		}
-
-		/*
-		 * The NATURAL [LEFT] JOIN are rewritten to an INNER JOIN or a LEFT JOIN
-		 * with a USING clause.
-		 * The rewrite must take place before USING-to-ON clause conversion and
-		 * wildcard expansion which affect the projection coalescing and
-		 * ordering.
-		 */
-		if (factor instanceof TableInstance) {
-			final Set<JoinedTable> naturalJoins = NaturalJoinRewriter.collectNaturalJoins(joins);
-			for (final JoinedTable join : naturalJoins) {
-				NaturalJoinRewriter.rewriteToInnerJoin(this.pc, (TableInstance) factor, join);
-			}
 		}
 
 		convertUsingColSpecToOnSpec(factor, joins);
