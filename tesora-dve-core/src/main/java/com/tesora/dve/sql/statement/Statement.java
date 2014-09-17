@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import com.tesora.dve.common.PECharsetUtils;
+import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
@@ -42,6 +43,8 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
 import com.tesora.dve.sql.node.Edge;
@@ -428,14 +431,25 @@ public abstract class Statement extends StatementNode {
 	}
 	
 	public static PEPersistentGroup buildSiteGroup(SchemaContext pc, boolean useOneSiteGroup, Boolean overrideRequiresPrivilegeValue, boolean uniquify) {
-        ShowSchemaBehavior sitesTable = Singletons.require(HostService.class).getInformationSchema().lookupShowTable(new UnqualifiedName("persistent site"));
+		if (!pc.getPolicyContext().isRoot()) {
+			if (!Boolean.FALSE.equals(overrideRequiresPrivilegeValue)) {
+				throw new SchemaException(Pass.SECOND, "You do not have permission to show persistent sites");
+			}
+		}
+		
 		try {
 			pc.getCatalog().startTxn();
-			List<CatalogEntity> sites = sitesTable.getLikeSelectEntities(pc, null, null, null, overrideRequiresPrivilegeValue);
+			List<PersistentSite> allSites = Functional.select(pc.getCatalog().findAllSites(), new UnaryPredicate<PersistentSite>() {
+
+				@Override
+				public boolean test(PersistentSite object) {
+					return !PEConstants.SYSTEM_SITENAME.equals(object.getName());
+				}
+				
+			});
 			// create a temp group
 			final HashSet<String> uniqueURLS = new HashSet<String>();
-			List<PersistentSite> persSites = Functional.apply(
-					(useOneSiteGroup ? Collections.singletonList(sites.get(0)) : sites), new Cast<PersistentSite, CatalogEntity>());
+			List<PersistentSite> persSites = (useOneSiteGroup ? Collections.singletonList(allSites.get(0)) : allSites);
 
 			List<PersistentSite> returnSites = persSites;
 			if (uniquify) {

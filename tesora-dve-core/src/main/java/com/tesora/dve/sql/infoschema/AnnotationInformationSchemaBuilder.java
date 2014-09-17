@@ -95,25 +95,21 @@ public class AnnotationInformationSchemaBuilder implements
 		new InfoTableConfig(DistributionRange.class),
 		new InfoTableConfig(Provider.class),
 		new InfoTableConfig(PersistentGroup.class),
-		new InfoTableConfig(PersistentSite.class),
 		new InfoTableConfig(Tenant.class),
 		new InfoTableConfig(UserColumn.class).withLogical(ColumnCatalogInformationSchemaTable.class).withShow(ShowColumnInformationSchemaTable.class).withInfo(InfoSchemaColumnsInformationSchemaTable.class),
 		new InfoTableConfig(StorageGroupGeneration.class),
 		new InfoTableConfig(DistributionModel.class),
 		new InfoTableConfig(User.class),
 		new InfoTableConfig(TableVisibility.class),
-		new InfoTableConfig(SiteInstance.class),
 		new InfoTableConfig(Priviledge.class),
 		new InfoTableConfig(ExternalService.class).withShow(ExternalServiceSchemaTable.class),
 		new InfoTableConfig(Container.class).withShow(ShowContainerInformationSchemaTable.class),
 		new InfoTableConfig(ContainerTenant.class),
-		new InfoTableConfig(CharacterSets.class),
 		new InfoTableConfig(RangeTableRelationship.class),
 		new InfoTableConfig(PersistentTemplate.class),
 		new InfoTableConfig(ServerRegistration.class),
 		new InfoTableConfig(RawPlan.class),
 		new InfoTableConfig(UserView.class).withLogical(ViewCatalogInformationSchemaTable.class),
-		new InfoTableConfig(Collations.class),
 		new InfoTableConfig(TemporaryTable.class),
 		new InfoTableConfig(VariableConfig.class)
 	};
@@ -239,6 +235,7 @@ public class AnnotationInformationSchemaBuilder implements
 			Class<?> c = itc.getTarget();
 			InfoSchemaTable ist = c.getAnnotation(InfoSchemaTable.class);
 			javax.persistence.Table ptable = c.getAnnotation(javax.persistence.Table.class);
+			if (ist == null) throw new PEException("Registered catalog class with missing anno:" + c.getSimpleName());
 			if (ist == null || ptable == null) continue;
 			build(c, itc, logicalSchema, schemas, dbn, ist, ptable);
 		}

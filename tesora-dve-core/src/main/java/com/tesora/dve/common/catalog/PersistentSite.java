@@ -66,11 +66,6 @@ import com.tesora.dve.worker.SingleDirectWorker;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 
-@InfoSchemaTable(logicalName = "storage_site", views = {
-		@TableView(view = InfoView.SHOW, name = "persistent site", pluralName = "persistent sites", columnOrder = {
-				ShowSchema.PersistentSite.NAME, ShowSchema.PersistentSite.HA_TYPE, ShowSchema.PersistentSite.URL }, extension = true, priviledged = true),
-		@TableView(view = InfoView.INFORMATION, name = "storage_site", pluralName = "", columnOrder = { "name",
-				"haType", "masterUrl" }, extension = true, priviledged = true) })
 @Entity
 @Table(name = "storage_site", uniqueConstraints = @UniqueConstraint(columnNames = "name"))
 public class PersistentSite implements CatalogEntity, StorageSite {
@@ -122,10 +117,6 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 		this.siteInstances = new ArrayList<SiteInstance>();
 	}
 
-	@InfoSchemaColumn(logicalName = "masterUrl", fieldName = "", // "masterSite",
-	sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = ShowSchema.PersistentSite.URL),
-			@ColumnView(view = InfoView.INFORMATION, name = "masterUrl") })
 	@Override
 	public String getMasterUrl() {
 		if (getMasterInstance() == null) {
@@ -134,23 +125,16 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 		return getMasterInstance().getInstanceURL();
 	}
 
-	@InfoSchemaColumn(logicalName = "name", fieldName = "name", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = ShowSchema.PersistentSite.NAME, orderBy = true, ident = true),
-			@ColumnView(view = InfoView.INFORMATION, name = "name", orderBy = true, ident = true) })
 	@Override
 	public String getName() {
 		return name;
 	}
 
-	@InfoSchemaColumn(logicalName = "haType", fieldName = "haType", sqlType = java.sql.Types.VARCHAR, sqlWidth = 25, views = {
-			@ColumnView(view = InfoView.SHOW, name = ShowSchema.PersistentSite.HA_TYPE),
-			@ColumnView(view = InfoView.INFORMATION, name = "haType") })
 	public String getHAType() {
 		return haType;
 	}
 
 	@Override
-	@InfoSchemaColumn(logicalName = "id", fieldName = "id", sqlType = java.sql.Types.INTEGER, views = {})
 	public int getId() {
 		return id;
 	}

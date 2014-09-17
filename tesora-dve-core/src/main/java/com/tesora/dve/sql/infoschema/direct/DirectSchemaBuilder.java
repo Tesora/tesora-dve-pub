@@ -309,7 +309,56 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					new DirectColumnGenerator("Index_type","varchar(64)"),
 					new DirectColumnGenerator("Comment","varchar(255)"),
 					new DirectColumnGenerator("Index_comment","varchar(255)")).withShowImpl(DirectShowKeysSchemaTable.class),
-					
+			new DirectTableGenerator(InfoView.SHOW,
+					"persistent instance","persistent instances",
+					"show_persistent_instance",
+					"select pi.name as `Name`, ss.name as `Persistent_Site`, pi.instance_url as `URL`, "
+					+"pi.user as `User`, pi.password as `Password`, "
+					+"case pi.is_master when 1 then 'YES' else 'NO' end as `Master`, "
+					+"pi.status as `Status` "
+					+"from site_instance pi left outer join storage_site ss on pi.storage_site_id = ss.id ",
+					new DirectColumnGenerator("Name","varchar(255)").withIdent().withOrderBy(0),
+					new DirectColumnGenerator("Persistent_Site","varchar(255)"),
+					new DirectColumnGenerator("URL","varchar(255)"),
+					new DirectColumnGenerator("User","varchar(255)"),
+					new DirectColumnGenerator("Password","varchar(255)"),
+					new DirectColumnGenerator("Master","varchar(3)"),
+					new DirectColumnGenerator("Status","varchar(255)")
+					).withExtension().withPrivilege(),
+			new DirectTableGenerator(InfoView.INFORMATION,
+					"site_instance", null,
+					"Site_instance",
+					"select pi.name as `NAME`, ss.name as `STORAGE_SITE`, pi.instance_url as `INSTANCE_URL`, "
+					+"pi.user as `USER`, pi.password as `PASSWORD`, "
+					+"case pi.is_master when 1 then 'YES' else 'NO' end as `IS_MASTER`, "
+					+"pi.status as `STATUS` "
+					+"from site_instance pi left outer join storage_site ss on pi.storage_site_id = ss.id ",
+					new DirectColumnGenerator("NAME","varchar(255)"),
+					new DirectColumnGenerator("STORAGE_SITE","varchar(255)"),
+					new DirectColumnGenerator("INSTANCE_URL","varchar(255)"),
+					new DirectColumnGenerator("USER","varchar(255)"),
+					new DirectColumnGenerator("PASSWORD","varchar(255)"),
+					new DirectColumnGenerator("IS_MASTER","varchar(3)"),
+					new DirectColumnGenerator("STATUS","varchar(255)")
+					).withExtension().withPrivilege(),
+			new DirectTableGenerator(InfoView.INFORMATION,
+					"storage_site",null,
+					"storage_site",
+					"select ss.name as `NAME`, ss.haType as `HATYPE`, si.instance_url as `MASTERURL` "
+					+"from storage_site ss left outer join site_instance si on si.storage_site_id = ss.id and si.is_master = 1 ",
+					new DirectColumnGenerator("NAME","varchar(255)"),
+					new DirectColumnGenerator("HATYPE","varchar(255)"),
+					new DirectColumnGenerator("MASTERURL","varchar(255)")),
+			new DirectTableGenerator(InfoView.SHOW,
+					"persistent site","persistent sites",
+					"show_persistent_site",
+					"select ss.name as `Persistent_Site`, ss.haType as `HA_Type`, si.instance_url as `Master_Url` "
+					+"from storage_site ss left outer join site_instance si on si.storage_site_id = ss.id and si.is_master = 1 ",
+					new DirectColumnGenerator("Persistent_Site","varchar(255)").withIdent().withOrderBy(0),
+					new DirectColumnGenerator("HA_Type","varchar(255)"),
+					new DirectColumnGenerator("Master_Url","varchar(255)")
+					).withExtension().withPrivilege(),
+				
 					
 					
 	};
