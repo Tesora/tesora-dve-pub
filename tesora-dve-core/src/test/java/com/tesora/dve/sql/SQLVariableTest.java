@@ -112,6 +112,7 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show variables like 'character%'",
 				br(nr,"character_set_client", "latin1",
 				   nr,"character_set_connection", "latin1",
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results","latin1",
 				   nr,"character_set_server","utf8",
 				   nr,"character_set_system","utf8"));
@@ -120,6 +121,7 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", "utf8",
 				   nr,"character_set_connection", "utf8",
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results","utf8",
 				   nr,"character_set_server","utf8",
 				   nr,"character_set_system","utf8"));
@@ -201,6 +203,7 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results",charSet,
 				   nr,"character_set_server","utf8",
 				   nr,"character_set_system","utf8"
@@ -211,6 +214,7 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results",charSet,
 				   nr,"character_set_server","utf8",
 				   nr,"character_set_system","utf8"
