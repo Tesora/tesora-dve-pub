@@ -41,6 +41,8 @@ import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnAttribute;
 import com.tesora.dve.resultset.ColumnInfo;
@@ -50,6 +52,7 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.types.Type;
 
@@ -392,10 +395,18 @@ public class MysqlNative extends DBNative {
 		return "SET autocommit = " + value;
 	}
 
+	@Override
+	public void assertValidCharacterSet(String value) throws PEException {
+		if (!getSupportedCharSets().isCompatibleCharacterSet(value)) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_CHARACTER_SET, value));
+		}
+	}
+
     @Override
     public void assertValidCollation(String value) throws PEException {
-        if (!getSupportedCollations().validateUTF8Collation(value))
-            throw new PEException("'" + value + "' is not a supported collation");
+		if (!getSupportedCollations().isCompatibleCollation(value)) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_COLLATION, value));
+		}
     }
 
 	@Override

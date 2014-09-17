@@ -283,6 +283,8 @@ public abstract class DBNative implements Serializable {
 
 	public abstract String getSetAutocommitStatement(String value);
 
+	public abstract void assertValidCharacterSet(String value) throws PEException;
+
 	public abstract void assertValidCollation(String value) throws PEException;
 
 	public abstract int convertTransactionIsolationLevel(String in) throws PEException;

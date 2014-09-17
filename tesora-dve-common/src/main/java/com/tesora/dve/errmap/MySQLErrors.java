@@ -88,6 +88,16 @@ public class MySQLErrors {
 					"Not unique table/alias: '%s'",
 					1066,
 					"42000");
+	public static final ErrorCodeFormatter unknownCharacterSetFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_CHARACTER_SET,
+					"Unknown character set: '%s'",
+					1115,
+					"42000");
+	public static final ErrorCodeFormatter unknownCollationFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_COLLATION,
+					"Unknown collation: '%s'",
+					1273,
+					"HY000");
 			
 	
 	public static final ErrorCodeFormatter[] myFormatters = new ErrorCodeFormatter[] {
@@ -104,7 +114,9 @@ public class MySQLErrors {
 		internalFormatter,
 		tooLongTableCommentFormatter,
 		tooLongTableFieldCommentFormatter,
-		nonUniqueTableFormatter
+		nonUniqueTableFormatter,
+		unknownCharacterSetFormatter,
+		unknownCollationFormatter
 	};
 
 			

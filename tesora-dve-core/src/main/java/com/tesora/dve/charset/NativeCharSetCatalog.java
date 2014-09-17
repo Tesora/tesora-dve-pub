@@ -137,4 +137,8 @@ public abstract class NativeCharSetCatalog implements Serializable, JavaCharsetC
 	public NativeCharSet findNativeCharsetById(int clientCharsetId) {
 		return charSetsById.get(clientCharsetId);
 	}
+
+	public boolean isCompatibleCharacterSet(String charSet) throws PEException {
+		return (findCharSetByName(charSet, false) != null);
+	}
 }

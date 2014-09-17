@@ -672,6 +672,19 @@ public class KnownVariables implements VariableConstants {
 					globalScope,
 					16777216L,
 					emulated);
+	public static final VariableHandler<String> CHARACTER_SET_DATABASE =
+			new VariableHandler<String>("character_set_database",
+					new LiteralValueConverter() {
+
+						@Override
+						public String convertToInternal(String varName, String in) throws PEException {
+							Singletons.require(HostService.class).getDBNative().assertValidCharacterSet(in);
+							return in;
+						}
+					},
+					bothScope,
+					"utf8",
+					emulated);
 	public static final VariableHandler<String> COLLATION_DATABASE =
 			new VariableHandler<String>("collation_database",
 					new LiteralValueConverter() {
@@ -745,6 +758,7 @@ public class KnownVariables implements VariableConstants {
 			VERSION_COMMENT,
 			SQL_LOGGING,
 			MAX_ALLOWED_PACKET,
+			CHARACTER_SET_DATABASE,
 			COLLATION_DATABASE,
 			ERROR_MIGRATOR,
 			INNODB_STATS_TRANSIENT_SAMPLE_PAGES
@@ -789,6 +803,11 @@ public class KnownVariables implements VariableConstants {
 					stringConverter,
 					bothScope,
 					"utf8",
+					emulated),
+			new VariableHandler<String>("collation_server",
+					stringConverter,
+					bothScope,
+					"utf8_general_ci",
 					emulated),
 			new VariableHandler<Long>(ADAPTIVE_CLEANUP_INTERVAL_NAME,
 					new BoundedIntegralConverter(-1L, 10000L),
