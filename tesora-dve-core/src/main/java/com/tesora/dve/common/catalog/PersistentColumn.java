@@ -29,7 +29,7 @@ public interface PersistentColumn {
 	
 	public int getId();
 	
-	public String getNativeTypeName();
+	public String getTypeName();
 	
 	public int getHashPosition();
 	

@@ -49,15 +49,10 @@ public class ComparisonType extends TextType {
 	@Override
 	public void addColumnTypeModifiers(UserColumn uc) {
 		super.addColumnTypeModifiers(uc);
-		String ntmod = uc.getNativeTypeModifiers();
-		List<String> entries = new ArrayList<String>();
-		if (ntmod != null)
-			entries.add(ntmod);
-		entries.add(COMPARISON_TAG + " " + comparisonClass);
-		if (!entries.isEmpty())
-			uc.setNativeTypeModifiers(Functional.join(entries, " "));
-		else if (uc.getId() != 0)
-			uc.setNativeTypeModifiers(null);
+		// we put the comparison tag in the es_universe (not the right place, but whatevs)
+		String existing = uc.getESUniverse();
+		String comp = COMPARISON_TAG + " " + comparisonClass; 
+		uc.setESUniverse((existing == null ? comp : existing + " " + comp));
 	}
 	
 	@Override

@@ -263,7 +263,7 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 		ColumnMetadata cmc = new ColumnMetadata();
 		cmc.setName(name);
 		cmc.setSize(size);
-		cmc.setNativeTypeName(typeName);
+		cmc.setTypeName(typeName);
 		cmc.setDataType(typeCode);
 		cmc.setAliasName(name);
 		return cmc;

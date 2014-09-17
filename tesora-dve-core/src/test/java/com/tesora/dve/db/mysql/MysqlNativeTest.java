@@ -92,6 +92,7 @@ public class MysqlNativeTest {
         Singletons.require(HostService.class).getDBNative().findType("UNKNOWN TYPE");
 	}
 
+	/*
 	@Test
 	public void testCreateTable() throws PEException, SQLException {
 		DistributionModel dm = new BroadcastDistributionModel();
@@ -187,6 +188,7 @@ public class MysqlNativeTest {
 		stmt.close();
 		dbh.disconnect();
 	}
+	*/
 
 	@Test
 	public void testTypeLookup() throws PEException {

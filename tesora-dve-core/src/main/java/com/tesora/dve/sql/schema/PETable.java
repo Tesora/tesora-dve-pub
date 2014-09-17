@@ -25,9 +25,11 @@ package com.tesora.dve.sql.schema;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -35,6 +37,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.codec.binary.Hex;
 
+import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.PECharsetUtils;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -528,7 +531,37 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	public void removeKey(SchemaContext sc, PEKey pek) {
 		checkLoaded(sc);
+		// also, at this point, clear the key flags on the columns
+		// but only if the column is now truly not a key
+		MultiMap<PEColumn,PEKey> colByKey = new MultiMap<PEColumn,PEKey>();
+		for(PEKey k : keys) {
+			if (k.isForeign()) continue; // doesn't matter
+			for(PEKeyColumnBase pekc : k.getKeyColumns()) {
+				colByKey.put(pekc.getColumn(), k);
+			}
+		}
+		for(PEColumn pec : colByKey.keySet()) {
+			Collection<PEKey> vals = colByKey.get(pec);
+			vals.remove(pek);
+			// now look at the remaining keys, and figure out the key parts
+			boolean isPrimary = false;
+			boolean isUnique = false;
+			boolean isKey = !vals.isEmpty();
+			for(PEKey ipek : vals) {
+				if (ipek.getConstraint() == ConstraintType.PRIMARY)
+					isPrimary = true;
+				if (ipek.getConstraint() == ConstraintType.UNIQUE)
+					isUnique = true;
+			}
+			if (!isPrimary)
+				pec.clearPrimaryKeyPart();
+			if (!isUnique)
+				pec.clearUniqueKeyPart();
+			if (!isKey)
+				pec.clearKeyPart();
+		}
 		keys.remove(pek);
+		
 	}
 	
 	public int getOffsetOf(SchemaContext sc, PEKey pek) {

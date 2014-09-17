@@ -837,7 +837,7 @@ keyword_function_name returns [FunctionName fn] options {k=1;}:
   ;
   
 case_expression returns [ExpressionNode expr] options {k=1;}:
-  CASE^ (t=basic_expr)? simple_when_clause_list (ELSE e=value_expression)? END 
+  CASE^ (t=value_expression)? simple_when_clause_list (ELSE e=value_expression)? END 
   { $expr = utils.buildCaseExpression($t.expr, $e.expr, $simple_when_clause_list.l, $CASE.tree); }
   ;
   

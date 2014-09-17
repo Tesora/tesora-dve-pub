@@ -28,6 +28,7 @@ import java.util.List;
 
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.direct.DirectShowSchemaTable.TemporaryTableHandler;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.PEViewTable;
@@ -44,7 +45,7 @@ public class DirectTableGenerator extends DirectSchemaGenerator {
 	private final String viewName; 
 	private final String viewDef;
 	private final List<DirectColumnGenerator> columns;
-	private Class<?> showTableImpl;
+	private TemporaryTableHandler tempTableHandler = null;
 	
 	public DirectTableGenerator(InfoView view, String tableName, String pluralTableName, String viewName, String viewDef,
 			DirectColumnGenerator...colDefs) {
@@ -64,8 +65,8 @@ public class DirectTableGenerator extends DirectSchemaGenerator {
 		return super.withPrivilege();
 	}
 	
-	public DirectTableGenerator withShowImpl(Class<?> c) {
-		showTableImpl = c;
+	public DirectTableGenerator withTempHandler(TemporaryTableHandler tth) {
+		this.tempTableHandler = tth;
 		return this;
 	}
 	
@@ -88,25 +89,11 @@ public class DirectTableGenerator extends DirectSchemaGenerator {
 			List<Statement> stmts = InvokeParser.parse(vc, sc, Collections.EMPTY_LIST, topts);
 			PECreateViewStatement pecs = (PECreateViewStatement) stmts.get(0);
 			if (view == InfoView.SHOW) {
-				if (showTableImpl != null) {
-					try {
-						Constructor<?> cons = showTableImpl.getConstructor(
-								SchemaContext.class,InfoView.class,PEViewTable.class,
-								UnqualifiedName.class, UnqualifiedName.class,
-								Boolean.TYPE, Boolean.TYPE, List.class);
-						return (DirectInformationSchemaTable) cons.newInstance(sc, view, pecs.getViewTable(),
-								new UnqualifiedName(tableName),
-								(pluralTableName == null ? null : new UnqualifiedName(pluralTableName)),
-								isPrivilege(),isExtension(), columns);
-					} catch (Throwable t) {
-						throw new InformationSchemaException("Unable to construct custom show impl for " + tableName, t);
-					}
-				}
-					
 				return new DirectShowSchemaTable(sc,view,pecs.getViewTable(),
 						new UnqualifiedName(tableName),
 						(pluralTableName == null ? null : new UnqualifiedName(pluralTableName)),
-						isPrivilege(),isExtension(), columns);
+						isPrivilege(),isExtension(), columns,
+						tempTableHandler);
 			} else {
 				return new DirectInformationSchemaTable(sc,view,pecs.getViewTable(),
 					new UnqualifiedName(tableName),

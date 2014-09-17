@@ -48,7 +48,6 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
-import com.tesora.dve.resultset.collector.ResultChunkManager;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 
@@ -93,7 +92,6 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 	WorkerConnection wConnection = null;
 	boolean connectionAllocated = false;
 
-	ResultChunkManager chunkMgr;
 	String currentDatabaseName = null;
 	String userVisibleDatabaseName;
 	Integer currentDatabaseID = null;
@@ -171,15 +169,6 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
         CompletionHandle<Boolean> resultTracker = new DelegatingCompletionHandle<Boolean>(promise){
             @Override
             public void success(Boolean returnValue) {
-                if (chunkMgr != null) {
-                    try {
-                        chunkMgr.close();
-                        chunkMgr = null;
-                    } catch (SQLException e) {
-                        this.failure(e);
-                        return;
-                    }
-                }
                 super.success(returnValue);
             }
 
@@ -259,14 +248,6 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 			connectionAllocated = true;
 		}
 		return wConnection;
-	}
-
-	public void setChunkManager(ResultChunkManager mgr) {
-		chunkMgr = mgr;
-	}
-
-	public ResultChunkManager getChunkManager() {
-		return chunkMgr;
 	}
 
 	String getWorkerId() throws PEException {

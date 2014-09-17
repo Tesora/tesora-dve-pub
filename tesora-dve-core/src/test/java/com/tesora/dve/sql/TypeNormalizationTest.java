@@ -208,8 +208,16 @@ public class TypeNormalizationTest extends ProxySchemaMirrorTest {
 	@Test
 	public void testLOBNormalization() throws Throwable {
 		List<MirrorTest> tests = new ArrayList<MirrorTest>();
-		String[] types = new String[] { "tinyblob", "blob", "mediumblob", "longblob",
-				"tinytext", "text", "mediumtext", "longtext" };
+		String[] types = new String[] { 
+				"tinyblob", 
+				"blob", 
+				"mediumblob", 
+				"longblob",
+				"tinytext", 
+				"text", 
+				"mediumtext", 
+				"longtext" 
+				};
 		String[] bins = new String[] { "", "binary"};
 		String[] nullable = new String[] { "", "not null", "null" };
 		StringBuilder cts = new StringBuilder();

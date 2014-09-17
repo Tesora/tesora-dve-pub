@@ -129,7 +129,7 @@ public class ColumnDatum implements Serializable, IColumnDatum {
 	
 	@Override
 	public String getNativeType() {
-		return this.userColumn.getNativeTypeName();
+		return this.userColumn.getTypeName();
 	}
 
 	@Override

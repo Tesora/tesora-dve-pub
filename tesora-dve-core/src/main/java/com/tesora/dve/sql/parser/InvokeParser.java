@@ -41,6 +41,7 @@ import com.tesora.dve.sql.ParserException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.PlannerStatisticType;
 import com.tesora.dve.sql.PlannerStatistics;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CandidateCachedPlan;
@@ -202,6 +203,18 @@ public class InvokeParser {
 		}
 	}
 
+	public static ExpressionNode parseExpression(SchemaContext pc, String input) {
+		InputState icmd = buildInputState(input,pc);
+		ParserOptions opts = ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly().setActualLiterals();
+		TranslatorUtils utils = new TranslatorUtils(opts,pc,icmd);
+		PE parser = buildParser(icmd,utils);
+		try {
+			return parser.value_expression().expr;
+		} catch (Throwable t) {
+			throw new SchemaException(Pass.PLANNER, "Unable to parser expression '" + input + "'",t);
+		}
+	}
+	
 	@SuppressWarnings("unchecked")
 	private static Pair<TranslatorUtils, List<Statement>> parse(SchemaContext pc, ParserOptions opts, InputState input) {
 		TranslatorUtils utils = new TranslatorUtils(opts, pc, input);

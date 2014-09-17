@@ -128,7 +128,7 @@ public class MysqlNative extends DBNative {
 	}
 	
 	private String getDataTypeForQuery(UserColumn uc, boolean extras) throws PEException {
-		MysqlNativeType typeInfo = (MysqlNativeType) findType(uc.getNativeTypeName());
+		MysqlNativeType typeInfo = (MysqlNativeType) findType(uc.getTypeName());
 
 		String typeName = typeInfo.getTypeName();
 		// DAS - HACK - we need to remove the "ALT" from the 3 BLOB types
@@ -140,7 +140,7 @@ public class MysqlNative extends DBNative {
 		
 		if (MysqlType.ENUM.equals(typeInfo.getMysqlType())) {
 			// with enum, use the full type, including values
-			sb = new StringBuilder(uc.getNativeTypeName());
+			sb = new StringBuilder(uc.getTypeName());
 		} else if (!typeInfo.getSupportsPrecision()) {
 			// type requires neither precision nor scale, so we're done
 		} else if (typeInfo.getSupportsPrecision() && !typeInfo.getSupportsScale()) {
@@ -182,6 +182,9 @@ public class MysqlNative extends DBNative {
 			}
 		}
 
+		if (uc.getESUniverse() != null)
+			sb.append("(").append(uc.getESUniverse()).append(")");
+		
 		if (extras && typeInfo.isStringType()) {
 			if (uc.getCharset() != null && !StringUtils.equalsIgnoreCase(MysqlNativeConstants.DB_CHAR_SET, uc.getCharset())) {
 				sb.append(" CHARACTER SET ").append(uc.getCharset());
@@ -192,8 +195,10 @@ public class MysqlNative extends DBNative {
 		}
 		
 		// add any type modifiers to the end
-		if (uc.getNativeTypeModifiers() != null)
-			sb.append(' ').append(uc.getNativeTypeModifiers());
+		if (uc.isUnsigned())
+			sb.append(" unsigned");
+		if (uc.isZerofill())
+			sb.append(" zerofill");
 
 		return sb.toString();
 		
@@ -204,6 +209,7 @@ public class MysqlNative extends DBNative {
 		return getDataTypeForQuery(uc,false);
 	}
 
+	/*
 	@Override
 	public ColumnMetadata getResultSetColumnInfo(ResultSetMetaData rsmd, ProjectionInfo projection, int colIdx)
 			throws SQLException {
@@ -272,6 +278,7 @@ public class MysqlNative extends DBNative {
 
 		return cm;
 	}
+	*/
 
 	@Override
 	public ColumnMetadata getParameterColumnInfo(ParameterMetaData pmd, int colIdx) throws SQLException {
@@ -281,14 +288,14 @@ public class MysqlNative extends DBNative {
 		out.setScale(pmd.getScale(colIdx));
 		if (ParameterMetaData.parameterNullable == pmd.isNullable(colIdx))
 			out.setNullable(Boolean.TRUE);
-		out.setNativeTypeName(NativeType.fixName(pmd.getParameterTypeName(colIdx)));
+		out.setTypeName(NativeType.fixName(pmd.getParameterTypeName(colIdx)));
 		return out;
 	}
 	
 	@Override
 	public UserColumn updateUserColumn(UserColumn iuc, Type schemaType) {
 		UserColumn uc = (iuc == null ? new UserColumn() : iuc);
-		uc.setNativeTypeName(schemaType.getTypeName());
+		schemaType.persistTypeName(uc);
 		uc.setDataType(schemaType.getDataType());
 		if (schemaType.hasSize()) {
 			uc.setSize(schemaType.getSize());
@@ -462,7 +469,7 @@ public class MysqlNative extends DBNative {
 	public void convertColumnMetadataToUserColumn(ColumnMetadata cm, UserColumn uc)
 			throws PEException {
 		super.convertColumnMetadataToUserColumn(cm, uc);
-		NativeType nt = this.findType(uc.getNativeTypeName());
+		NativeType nt = this.findType(uc.getTypeName());
 		if ( uc.getPrecision() > nt.getMaxPrecision() )
 			uc.setPrecision((int) nt.getMaxPrecision());
 		if ( uc.getSize() > nt.getMaxPrecision() )

@@ -148,6 +148,11 @@ public class TempColumnType implements Type {
 	}
 
 	@Override
+	public void persistTypeName(UserColumn uc) {
+		uc.setTypeName(getTypeName());
+	}
+	
+	@Override
 	public Integer getDataType() {
 		return actual.getDataType();
 	}

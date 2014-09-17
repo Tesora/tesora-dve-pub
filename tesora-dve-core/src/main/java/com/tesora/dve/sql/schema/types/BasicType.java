@@ -34,6 +34,7 @@ import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
+import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
@@ -190,35 +191,28 @@ public class BasicType implements Type {
 	
 	@Override
 	public void addColumnTypeModifiers(UserColumn uc) {
-		ArrayList<String> entries = new ArrayList<String>();
-		if (isUnsigned())
-			entries.add(MysqlNativeType.MODIFIER_UNSIGNED);
-		if (isZeroFill())
-			entries.add(MysqlNativeType.MODIFIER_ZEROFILL);
-		if (isBinaryText())
-			entries.add("BINARY");
-		if (!entries.isEmpty()) 
-			uc.setNativeTypeModifiers(Functional.join(entries, " "));
-		else if (uc.getId() != 0)
-			uc.setNativeTypeModifiers(null);
+		uc.setUnsigned(isUnsigned());
+		uc.setZerofill(isZeroFill());
+		uc.setBinaryText(isBinaryText());
 	}
 	
 	@Override
 	public void addColumnTypeModifiers(CatalogColumnEntity cce) throws PEException {
-		ArrayList<String> entries = new ArrayList<String>();
-		if (isUnsigned())
-			entries.add(MysqlNativeType.MODIFIER_UNSIGNED);
-		if (isZeroFill())
-			entries.add(MysqlNativeType.MODIFIER_ZEROFILL);
-		if (isBinaryText())
-			entries.add("BINARY");
-		if (!entries.isEmpty())
-			cce.setNativeTypeModifiers(Functional.join(entries, " "));
+		int flags = cce.getFlags();
+		flags = ColumnAttributes.set(flags, ColumnAttributes.UNSIGNED, isUnsigned());
+		flags = ColumnAttributes.set(flags, ColumnAttributes.ZEROFILL, isZeroFill());
+		flags = ColumnAttributes.set(flags, ColumnAttributes.BINARY, isBinaryText());
+		cce.setFlags(flags);
 	}
 	
 	@Override
 	public String getTypeName() {
 		return getBaseType().getTypeName();
+	}
+	
+	@Override
+	public void persistTypeName(UserColumn uc) {
+		uc.setTypeName(getTypeName());
 	}
 	
 	@Override
@@ -419,7 +413,7 @@ public class BasicType implements Type {
 	}
 	
 	public static Type buildType(UserColumn uc, NativeTypeCatalog types) {
-		MysqlNativeType mnType = (MysqlNativeType)lookupNativeType(uc.getNativeTypeName(),types);
+		MysqlNativeType mnType = (MysqlNativeType)lookupNativeType(uc.getTypeName(),types);
 		if (MysqlType.ENUM.equals(mnType.getMysqlType()) || MysqlType.SET.equals(mnType.getMysqlType()))
 			return DBEnumType.buildType(uc, types);
 		List<TypeModifier> modifiers = buildModifiers(uc);
@@ -431,12 +425,14 @@ public class BasicType implements Type {
 	
 	public static List<TypeModifier> buildModifiers(UserColumn uc) {
 		List<TypeModifier> modifiers = new ArrayList<TypeModifier>();
-		String mods = uc.getNativeTypeModifiers();
+		if (uc.isUnsigned())
+			modifiers.add(new TypeModifier(TypeModifierKind.UNSIGNED));
+		if (uc.isZerofill())
+			modifiers.add(new TypeModifier(TypeModifierKind.ZEROFILL));
+		if (uc.isBinaryText())
+			modifiers.add(new TypeModifier(TypeModifierKind.BINARY));
+		String mods = uc.getESUniverse();
 		if (mods != null) {
-			if (mods.contains(MysqlNativeType.MODIFIER_UNSIGNED))
-				modifiers.add(new TypeModifier(TypeModifierKind.UNSIGNED));
-			if (mods.contains(MysqlNativeType.MODIFIER_ZEROFILL))
-				modifiers.add(new TypeModifier(TypeModifierKind.ZEROFILL));
 			int offset = mods.indexOf(COMPARISON_TAG);
 			if (offset > -1) {
 				int boundary = offset + COMPARISON_TAG.length();
@@ -444,8 +440,6 @@ public class BasicType implements Type {
 				String value = mods.substring(boundary,nextSpace);
 				modifiers.add(new StringTypeModifier(TypeModifierKind.COMPARISON, value));
 			}
-			if (mods.contains("BINARY") || mods.contains("binary"))
-				modifiers.add(new TypeModifier(TypeModifierKind.BINARY));
 		}
 		
 		

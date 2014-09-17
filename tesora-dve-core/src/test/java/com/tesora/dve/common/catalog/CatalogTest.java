@@ -44,6 +44,7 @@ import org.junit.Test;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.distribution.StaticDistributionModel;
@@ -85,9 +86,9 @@ public class CatalogTest extends PETest {
 
 		ColumnSet cs1 = new ColumnSet();
 
-		cs1.addColumn(new ColumnMetadata("col1", 1, "CHAR"));
-		cs1.addColumn(new ColumnMetadata("col2", 4, "INTEGER"));
-		cs1.addColumn(new ColumnMetadata("col3", 12, "VARCHAR"));
+		cs1.addColumn(new ColumnMetadata("col1", ColumnAttributes.SIZED_TYPE, 1, "CHAR"));
+		cs1.addColumn(new ColumnMetadata("col2", ColumnAttributes.SIZED_TYPE, 4, "INTEGER"));
+		cs1.addColumn(new ColumnMetadata("col3", ColumnAttributes.SIZED_TYPE, 12, "VARCHAR"));
 
 		ut1.addColumnMetadataList(cs1.getColumnList());
 
@@ -96,22 +97,22 @@ public class CatalogTest extends PETest {
 				.equals(ut1.getUserColumn("col1").getName()));
 		assertTrue(cs1.getColumn(1).getDataType() == ut1.getUserColumn("col1")
 				.getDataType());
-		assertTrue(cs1.getColumn(1).getNativeTypeName()
-				.equals(ut1.getUserColumn("col1").getNativeTypeName()));
+		assertTrue(cs1.getColumn(1).getTypeName()
+				.equals(ut1.getUserColumn("col1").getTypeName()));
 
 		assertTrue(cs1.getColumn(2).getName()
 				.equals(ut1.getUserColumn("col2").getName()));
 		assertTrue(cs1.getColumn(2).getDataType() == ut1.getUserColumn("col2")
 				.getDataType());
-		assertTrue(cs1.getColumn(2).getNativeTypeName()
-				.equals(ut1.getUserColumn("col2").getNativeTypeName()));
+		assertTrue(cs1.getColumn(2).getTypeName()
+				.equals(ut1.getUserColumn("col2").getTypeName()));
 
 		assertTrue(cs1.getColumn(3).getName()
 				.equals(ut1.getUserColumn("col3").getName()));
 		assertTrue(cs1.getColumn(3).getDataType() == ut1.getUserColumn("col3")
 				.getDataType());
-		assertTrue(cs1.getColumn(3).getNativeTypeName()
-				.equals(ut1.getUserColumn("col3").getNativeTypeName()));
+		assertTrue(cs1.getColumn(3).getTypeName()
+				.equals(ut1.getUserColumn("col3").getTypeName()));
 
 	}
 

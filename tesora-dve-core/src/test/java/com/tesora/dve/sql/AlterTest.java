@@ -27,7 +27,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -197,7 +196,7 @@ public class AlterTest extends SchemaTest {
 	public void testMultiAlter() throws Throwable {
 		conn.execute("alter table altest add `book` int not null default 15 comment 'this is a comment', add index `book_index` (`book`)");
 		conn.assertResults("show columns in altest like 'book'", 
-				br(nr,"book","int(11)","NO","","15",""));
+				br(nr,"book","int(11)","NO","MUL","15",""));
 		conn.assertResults("show keys in altest where Key_name like 'book_index'",
 				br(nr,"altest",I_ONE,"book_index",I_ONE,"book","A",getIgnore(),null,null,"","BTREE","",""));
 		String cts = getCreateTable("altest");
@@ -240,9 +239,9 @@ public class AlterTest extends SchemaTest {
 				+"add index ktsp (ktsp), " 
 				+"add index ktsf (ktsf)");
 		conn.assertResults("show columns in pe617 like 'kt%'",
-				br(nr,"kts","char(1)","YES","",null,"",
-				   nr,"ktsp","char(1)","YES","",null,"",
-				   nr,"ktsf","char(1)","YES","",null,""));
+				br(nr,"kts","char(1)","YES","MUL",null,"",
+				   nr,"ktsp","char(1)","YES","MUL",null,"",
+				   nr,"ktsf","char(1)","YES","MUL",null,""));
 		conn.assertResults("show keys in pe617 where Key_name like 'kt%'",
 				br(nr,"pe617",I_ONE,"ktsf",I_ONE,"ktsf","A",getIgnore(),null,null,"YES","BTREE","","",
 				   nr,"pe617",I_ONE,"kts",I_ONE,"kts","A",getIgnore(),null,null,"YES","BTREE","","",
@@ -898,7 +897,7 @@ public class AlterTest extends SchemaTest {
 				br(nr,"firstcolumn","int(11)","YES","",null,"",
 				   nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"data","int(11)","YES","","99","",
-				   nr,"afterdata","varchar(10)","NO","",null,"",
+				   nr,"afterdata","varchar(10)","NO","MUL",null,"",
 				   nr,"newcolumn","varchar(255)","NO","",null,""));
 		conn.assertResults("SHOW INDEX FROM `pe1404`",
 				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
@@ -913,8 +912,8 @@ public class AlterTest extends SchemaTest {
 				br(nr,"firstcolumn","int(11)","YES","",null,"",
 				   nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"data","int(11)","YES","","99","",
-				   nr,"afterdata","varchar(10)","NO","",null,"",
-				   nr,"newcolumn","varchar(255)","NO","",null,""));
+				   nr,"afterdata","varchar(10)","NO","MUL",null,"",
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
 		conn.assertResults("SHOW INDEX FROM `pe1404`",
 				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
 						nr,"pe1404",1,"index2",1,"afterdata","A",ignore,null,null,"","BTREE","","",
@@ -930,8 +929,8 @@ public class AlterTest extends SchemaTest {
 				br(nr,"firstcolumn","int(11)","YES","",null,"",
 				   nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"data","int(11)","YES","",null,"",
-				   nr,"afterdata","varchar(10)","NO","",null,"",
-				   nr,"newcolumn","varchar(255)","NO","",null,""));
+				   nr,"afterdata","varchar(10)","NO","MUL",null,"",
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
 		conn.assertResults("SHOW INDEX FROM `pe1404`",
 				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
 				   nr,"pe1404",1,"index2",1,"afterdata","A",ignore,null,null,"","BTREE","","",
@@ -952,8 +951,8 @@ public class AlterTest extends SchemaTest {
 				br(nr,"oldfirstcolumn","int(11)","NO","","5","",
 				   nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"data","int(11)","YES","",null,"",
-				   nr,"afterdata","varchar(10)","NO","",null,"",
-				   nr,"newcolumn","varchar(255)","NO","",null,""));
+				   nr,"afterdata","varchar(10)","NO","MUL",null,"",
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
 		conn.assertResults("SHOW INDEX FROM `pe1404`",
 				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
 						nr,"pe1404",1,"index2",1,"afterdata","A",ignore,null,null,"","BTREE","","",
@@ -965,11 +964,11 @@ public class AlterTest extends SchemaTest {
 		conn.assertResults("SHOW CREATE TABLE `pe1404`",
 				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newfirstcolumn` int(11) NOT NULL,\n  `oldfirstcolumn` int(11) NOT NULL DEFAULT '5',\n  `id` int(11) NOT NULL,\n  `data` int(11),\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`newfirstcolumn`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
 		conn.assertResults("DESCRIBE `pe1404`",
-				br(nr,"newfirstcolumn","int(11)","NO","",null,"",
+				br(nr,"newfirstcolumn","int(11)","NO","MUL",null,"",
 				   nr,"oldfirstcolumn","int(11)","NO","","5","",
 				   nr,"id","int(11)","NO","PRI",null,"",
 				   nr,"data","int(11)","YES","",null,"",
-				   nr,"newcolumn","varchar(255)","NO","",null,""));
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
 		conn.assertResults("SHOW INDEX FROM `pe1404`",
 				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
 				   nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"","BTREE","","",

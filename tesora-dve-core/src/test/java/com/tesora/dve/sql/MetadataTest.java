@@ -23,8 +23,6 @@ package com.tesora.dve.sql;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -40,20 +38,15 @@ import org.junit.Test;
 import com.google.common.collect.Sets;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.MultitenantMode;
-import com.tesora.dve.resultset.ColumnAttribute;
 import com.tesora.dve.sql.util.Functional;
-import com.tesora.dve.sql.util.ListOfPairs;
-import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
 import com.tesora.dve.sql.util.PEDDL;
-import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ResizableArray;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.sql.util.UnaryPredicate;
 
-@Ignore
 public class MetadataTest extends SchemaMirrorTest {
 
 	// normalization errors about charsets
@@ -124,10 +117,15 @@ public class MetadataTest extends SchemaMirrorTest {
 		ArrayList<DataType> out = new ArrayList<DataType>();
 		// date/times
 		out.add(new DataType("date",null));
+		out.add(new DataType("date","'2014-09-11'"));
 		out.add(new DataType("time",null));
-		if (useTimestamps)
+		out.add(new DataType("time","'16:22:17'"));
+		if (useTimestamps) {
 			out.add(new DataType("timestamp",null));
+			out.add(new DataType("timestamp","'2014-09-11 16:22:17'"));
+		}
 		out.add(new DataType("datetime",null));
+		out.add(new DataType("datetime","'2014-09-11 09:22:17'"));
 		out.add(new DataType("year",null));
 		out.add(new DataType("year","'2014'"));
 		// integral types
@@ -327,10 +325,12 @@ public class MetadataTest extends SchemaMirrorTest {
 		// regular decls involve every combo of non pk/autoinc attributes.  if there are multiple variants
 		// then we do one of each variant.
 		ColumnAttribute pk = null;
+		ColumnAttribute ai = null;
 		List<ColumnAttribute> variables = new ArrayList<ColumnAttribute>();
 		for(Iterator<ColumnAttribute> iter = attrTypes.iterator(); iter.hasNext();) {
 			ColumnAttribute ca = iter.next();
 			if (ca.getType() == AttributeType.AUTOINCREMENT) {
+				ai = ca;
 				iter.remove();
 			} else if (ca.getType() == AttributeType.PRIMARY) {
 				pk = ca;
@@ -357,7 +357,7 @@ public class MetadataTest extends SchemaMirrorTest {
 				pkPrefix.addAll(combo);
 				pkUniverse.add(pkPrefix);
 				List<AttributeValue> aiPrefix = new ArrayList<AttributeValue>();
-				aiPrefix.add(new AttributeValue(pk,0));
+				aiPrefix.add(new AttributeValue(ai,0));
 				aiPrefix.addAll(combo);
 				aiUniverse.add(aiPrefix);
 			}

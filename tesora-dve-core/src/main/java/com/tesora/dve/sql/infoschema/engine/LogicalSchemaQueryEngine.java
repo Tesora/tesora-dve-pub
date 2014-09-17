@@ -157,8 +157,7 @@ public class LogicalSchemaQueryEngine {
 		if (lq.isDirect()) {
 			if (planner == null)
 				throw new InformationSchemaException("Missing feature planner");
-			// do not set the proj override here since this is planned in a dml context
-			return new InfoPlanningResults(DirectSchemaQueryEngine.buildStep(sc, lq, planner, null));
+			return new InfoPlanningResults(DirectSchemaQueryEngine.buildStep(sc, lq, planner, pi));
 		} else {
 			LogicalCatalogQuery lcq = (LogicalCatalogQuery) lq;
 			QueryExecutionKind qek = determineKind(lcq);

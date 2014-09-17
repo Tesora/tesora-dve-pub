@@ -395,7 +395,11 @@ public class PECreateViewStatement extends
 				for(int i = 0; i < columnNames.size(); i++) {
 					UserColumn uc = new UserColumn(cmd.get(i));
 					uc.setName(columnNames.get(i).getUnquotedName().get());
-					columns.add(PEColumn.build(context, uc));
+					PEColumn pec = PEColumn.build(context,uc);
+					pec.clearPrimaryKeyPart();
+					pec.clearUniqueKeyPart();
+					pec.clearKeyPart();
+					columns.add(pec);
 				}
 				
 				backingTable = new PEViewTable(context, nascentDefinition.getName(),columns,

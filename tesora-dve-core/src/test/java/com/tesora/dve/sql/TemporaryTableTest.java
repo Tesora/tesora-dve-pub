@@ -212,7 +212,7 @@ public class TemporaryTableTest extends SchemaTest {
 			
 			Object[] pdesc = 
 					br(nr,"id","int(11)","NO","PRI",null,"auto_increment",
-					   nr,"booyeah","int(11)","YES","",null,"");
+					   nr,"booyeah","int(11)","YES","UNI",null,"");
 			Object[] tdesc =
 					br(nr,"id","int(11)","NO","PRI",null,"auto_increment",
 					   nr,"fid","int(11)","YES","",null,"");

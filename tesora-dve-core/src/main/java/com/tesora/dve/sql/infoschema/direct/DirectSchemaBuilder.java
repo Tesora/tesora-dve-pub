@@ -22,17 +22,24 @@ package com.tesora.dve.sql.infoschema.direct;
  */
 
 import java.util.EnumMap;
+import java.util.List;
 
 import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.infoschema.InformationSchemaBuilder;
 import com.tesora.dve.sql.infoschema.InformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.MysqlSchema;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.direct.DirectShowSchemaTable.TemporaryTableHandler;
+import com.tesora.dve.sql.infoschema.show.ShowOptions;
 import com.tesora.dve.sql.infoschema.show.ShowView;
+import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
@@ -286,7 +293,8 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					+"uk.name as `Key_name`, ukc.position as `Seq_in_index`, "
 					+"sc.name as `Column_name`, case uk.index_type when 'FULLTEXT' then null else 'A' end as `Collation`,"
 					+"ukc.cardinality as `Cardinality`, ukc.length as `Sub_part`, null as `Packed`, "
-					+"case sc.nullable when 1 then 'YES' else '' end as `Null`, uk.index_type as `Index_type`, "
+					+ ColumnAttributes.buildSQLTest("sc.flags", ColumnAttributes.NOT_NULLABLE, "''", "'YES'") + " as `Null`,"
+					+"uk.index_type as `Index_type`, "
 					+"'' as `Comment`, coalesce(uk.key_comment,'') as `Index_comment` "
 					+"from user_key_column ukc "
 					+"inner join user_key uk on uk.key_id = ukc.key_id "
@@ -308,10 +316,122 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					new DirectColumnGenerator("Null","varchar(64)"),
 					new DirectColumnGenerator("Index_type","varchar(64)"),
 					new DirectColumnGenerator("Comment","varchar(255)"),
-					new DirectColumnGenerator("Index_comment","varchar(255)")).withShowImpl(DirectShowKeysSchemaTable.class),
+					new DirectColumnGenerator("Index_comment","varchar(255)")).withTempHandler(new TemporaryTableHandler() {
+
+						@Override
+						public List<ResultRow> buildResults(SchemaContext sc,
+								TableInstance matching, ShowOptions opts, String likeExpr) {
+							ComplexPETable ctab = (ComplexPETable) matching.getAbstractTable();
+							List<ResultRow> tempTab = ctab.getShowKeys(sc);
+							return tempTab;
+						}
+						
+					}),
+								
 					
 					
 					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					// avoid some merge errors
+			new DirectTableGenerator(InfoView.INFORMATION,
+					"columns",null,
+					"columns",
+					"select 'def' as `TABLE_CATALOG`, ud.name as `TABLE_SCHEMA`, ut.name as `TABLE_NAME`, "
+					+"uc.name as `COLUMN_NAME`, uc.order_in_table as `ORDINAL_POSITION`, "
+					+"uc.default_value as `COLUMN_DEFAULT`, 'NO' as `IS_NULLABLE`, uc.native_type_name as `DATA_TYPE`, "
+					+"uc.size as `CHARACTER_MAXIMUM_LENGTH`, uc.prec as `NUMERIC_PRECISION`, uc.scale as `NUMERIC_SCALE`, "
+					+"uc.charset as `CHARACTER_SET_NAME`, uc.collation as `COLLATION_NAME`, 'KEY' as `COLUMN_KEY`, "
+					+"'extras' as `EXTRA`, uc.comment as `COLUMN_COMMENT` "
+					+"from user_column uc inner join user_table ut on uc.user_table_id = ut.table_id "
+					+"inner join user_database ud on ut.user_database_id = ud.user_database_id "
+					+"order by uc.order_in_table",
+					new DirectColumnGenerator("TABLE_CATALOG","varchar(512)"),
+					new DirectColumnGenerator("TABLE_SCHEMA","varchar(64)"),
+					new DirectColumnGenerator("TABLE_NAME","varchar(64)"),
+					new DirectColumnGenerator("COLUMN_NAME","varchar(64)"),
+					new DirectColumnGenerator("ORDINAL_POSITION","bigint(21) unsigned"),
+					new DirectColumnGenerator("COLUMN_DEFAULT","longtext"),
+					new DirectColumnGenerator("IS_NULLABLE","varchar(3)"),
+					new DirectColumnGenerator("DATA_TYPE","varchar(64)"),
+					new DirectColumnGenerator("CHARACTER_MAXIMUM_LENGTH","bigint(21) unsigned"),
+					new DirectColumnGenerator("NUMERIC_PRECISION","bigint(21) unsigned"),
+					new DirectColumnGenerator("NUMERIC_SCALE","bigint(21) unsigned"),
+					new DirectColumnGenerator("CHARACTER_SET_NAME","varchar(32)"),
+					new DirectColumnGenerator("COLLATION_NAME","varchar(32)"),
+					new DirectColumnGenerator("COLUMN_KEY","varchar(3)"),
+					new DirectColumnGenerator("EXTRA","varchar(27)"),
+					new DirectColumnGenerator("COLUMN_COMMENT","varchar(1024)")),
+
+			new DirectTableGenerator(InfoView.SHOW,
+					"column","columns",
+					"show_columns",
+					"select uc.name as `Field`, "
+					/*
+					+ String.format("case when uc.es_universe is not null then concat(uc.native_type_name,'(',uc.es_universe,')') else concat(%s,%s,%s,%s) end as `Type`,",
+							ColumnAttributes.buildSQLTest("uc.flags", ColumnAttributes.SIZED_TYPE, "concat(uc.native_type_name,'(',uc.size,')')",
+									ColumnAttributes.buildSQLTest("uc.flags",ColumnAttributes.PS_TYPE, 
+											"concat(uc.native_type_name,'(',uc.prec,',',uc.scale,')')",
+											"uc.native_type_name")),
+							ColumnAttributes.buildSQLTest("uc.flags", ColumnAttributes.UNSIGNED, "' unsigned'","''"),
+							ColumnAttributes.buildSQLTest("uc.flags", ColumnAttributes.ZEROFILL, "' zerofill'","''"),
+							String.format("case when uc.es_universe is null then '' else concat('(',uc.es_universe,')') end"))
+							*/
+					+ buildFullTypeName("uc") + " as `Type`, "
+					+ ColumnAttributes.buildSQLTest("uc.flags", ColumnAttributes.NOT_NULLABLE, "'NO'", "'YES'") + " as `Null`, "
+					+ ColumnAttributes.buildSQLTest("uc.flags", ColumnAttributes.PRIMARY_KEY_PART, "'PRI'",
+							ColumnAttributes.buildSQLTest("uc.flags", ColumnAttributes.UNIQUE_KEY_PART, "'UNI'",
+									ColumnAttributes.buildSQLTest("uc.flags", ColumnAttributes.KEY_PART, "'MUL'", "''"))) + " as `Key`, "
+					+"uc.default_value as `Default`, "
+					+ ColumnAttributes.buildSQLTest("uc.flags", ColumnAttributes.AUTO_INCREMENT, "'auto_increment'", 
+							ColumnAttributes.buildSQLTest("uc.flags", ColumnAttributes.ONUPDATE, "'on update CURRENT_TIMESTAMP'", "''")) 
+					+ " as `Extra` "
+					+"from user_column uc inner join user_table ut on uc.user_table_id = ut.table_id "
+					+"inner join user_database ud on ut.user_database_id = ud.user_database_id "
+					+"where ud.name = @scope1 and ut.name = @scope2 order by uc.order_in_table",
+					new DirectColumnGenerator("Field","varchar(64)").withIdent(),
+					new DirectColumnGenerator("Type","varchar(64)"),
+					new DirectColumnGenerator("Null","varchar(3)"),
+					new DirectColumnGenerator("Key","varchar(3)"),
+					new DirectColumnGenerator("Default","longtext"),
+					new DirectColumnGenerator("Extra","varchar(27)")).withTempHandler(new TemporaryTableHandler() {
+
+						@Override
+						public List<ResultRow> buildResults(SchemaContext sc,
+								TableInstance matching, ShowOptions opts, String likeExpr) {
+							ComplexPETable ctab = (ComplexPETable) matching.getAbstractTable();
+							List<ResultRow> tempTab = ctab.getShowColumns(sc,likeExpr);
+							return tempTab;
+						}
+						
+					})
 	};
+	
+	// helper functions
+	private static String buildFullTypeName(String uc) {
+		String flags = uc + ".flags";
+		StringBuilder buf = new StringBuilder();
+		buf.append(String.format("case when %s.es_universe is not null then concat(%s.native_type_name,'(',%s.es_universe,')') else concat(",
+				uc,uc,uc));
+		buf.append(ColumnAttributes.buildSQLTest(flags, ColumnAttributes.SIZED_TYPE,
+				String.format("concat(%s.native_type_name,'(',%s.size,')')",uc,uc),
+				ColumnAttributes.buildSQLTest(flags, ColumnAttributes.PS_TYPE,
+						String.format("concat(%s.native_type_name,'(',%s.prec,',',%s.scale,')')",uc,uc,uc),
+						String.format("%s.native_type_name",uc)))).append(",");
+		buf.append(ColumnAttributes.buildSQLTest(flags, ColumnAttributes.UNSIGNED, "' unsigned'", "''")).append(",");
+		buf.append(ColumnAttributes.buildSQLTest(flags, ColumnAttributes.ZEROFILL, "'  zerofill'", "''")).append(") end");
+		return buf.toString();
+		
+	}
 	
 }

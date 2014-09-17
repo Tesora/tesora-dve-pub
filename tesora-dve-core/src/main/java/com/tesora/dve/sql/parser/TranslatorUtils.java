@@ -3886,7 +3886,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			List<Name> scoping, Pair<ExpressionNode, ExpressionNode> likeOrWhere, Token full) {
 		if (pc != null && !pc.getCatalog().isPersistent())
 			return new EmptyStatement("no catalog queries with transient execution engine");
-        ShowColumnInformationSchemaTable ist = (ShowColumnInformationSchemaTable) Singletons.require(HostService.class).getInformationSchema()
+		ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "

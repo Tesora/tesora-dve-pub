@@ -39,7 +39,6 @@ public final class MysqlNativeTypeUtils {
 	}
 
 	public static boolean isUnsigned(ColumnMetadata columnMetadata) {
-		return columnMetadata != null && columnMetadata.getNativeTypeModifiers() != null &&
-				columnMetadata.getNativeTypeModifiers().contains(MysqlNativeType.MODIFIER_UNSIGNED);
+		return columnMetadata != null && columnMetadata.isUnsigned();
 	}
 }

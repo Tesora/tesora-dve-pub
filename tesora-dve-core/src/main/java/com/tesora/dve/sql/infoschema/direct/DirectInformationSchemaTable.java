@@ -94,7 +94,7 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 					}
 			
 				},				
-				false, view.isLookupCaseSensitive()); 
+				false, view.isLookupCaseSensitive());
 		for(PEColumn pec : backing.getColumns(sc)) {
 			addColumn(sc,new DirectInformationSchemaColumn(view,pec.getName().getUnqualified(),pec));
 		}

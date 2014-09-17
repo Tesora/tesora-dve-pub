@@ -451,7 +451,7 @@ public class DBTypeBasedUtils {
 		
 		@Override
 		public Object convertStringToObject(String value, ColumnMetadata colMd) throws PEException {
-			if ( colMd.getNativeTypeModifiers() == MysqlNativeType.MODIFIER_UNSIGNED )
+			if ( colMd.isUnsigned() )
 				return Long.valueOf(value);
 			
 			return Integer.valueOf(value);

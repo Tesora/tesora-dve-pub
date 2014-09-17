@@ -84,11 +84,6 @@ public class DirectSchemaQueryEngine {
 	
 	
 	public static FeatureStep buildStep(SchemaContext sc, LogicalQuery lq, FeaturePlanner planner, final ProjectionInfo pi) {
-		/*
-		 * 	public ProjectingFeatureStep(PlannerContext pc, FeaturePlanner planner, ProjectingStatement statement, ExecutionCost cost, 
-		 * 	PEStorageGroup group, DistributionKey dk, Database<?> db, DistributionVector vector) {
-
-		 */
 		SelectStatement toExecute = lq.getQuery();
 		
 		GenericSQLCommand gsql = toExecute.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), EmitOptions.NONE.addCatalog());
@@ -99,11 +94,17 @@ public class DirectSchemaQueryEngine {
 		
 		if (canLog()) {
 			log("execute on " + sg.getName().getSQL());
-			// 	public void display(SchemaContext sc, boolean preserveParamMarkers, String indent, List<String> lines) {
 			List<String> lines = new ArrayList<String>();
 			gsql.display(sc, false, "  ", lines);
 			for(String s : lines)
 				log(s);
+			if (pi != null) {
+				for(int i = 1; i <= pi.getWidth(); i++) {
+					log("[" + i + "]: " + pi.getColumnInfo(i));
+				}
+			} else {
+				log("no projection info");
+			}
 		}
 		
 		return new ProjectingFeatureStep(null, planner, toExecute, new ExecutionCost(true,true,null,-1),

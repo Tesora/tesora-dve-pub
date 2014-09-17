@@ -97,7 +97,7 @@ public class LogicalCatalogQuery extends LogicalQuery {
                     	cmd.setAliasName(pi.getColumnAlias(i+1));
                     cmd.setName(nameColumn.getName().getSQL());
                     cmd.setSize(type.getSize());
-                    cmd.setNativeTypeName(nt.getTypeName());
+                    cmd.setTypeName(nt.getTypeName());
                     cmd.setDataType(type.getDataType());
                     cs.addColumn(cmd);
 				}

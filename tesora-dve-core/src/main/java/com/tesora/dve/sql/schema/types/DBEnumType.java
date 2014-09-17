@@ -23,6 +23,7 @@ package com.tesora.dve.sql.schema.types;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import com.tesora.dve.common.PEStringUtils;
@@ -41,13 +42,12 @@ public final class DBEnumType extends TextType {
 	private final boolean set;
 	
 	public static Type buildType(UserColumn uc, NativeTypeCatalog types) {
-		String ntn = uc.getNativeTypeName();
-		int lparen = ntn.indexOf('(');
-		int rparen = ntn.lastIndexOf(')');
-		String kstr = ntn.substring(0, lparen);
-		boolean isSet = "set".equalsIgnoreCase(kstr);
-		String valueStr = ntn.substring(lparen + 1,rparen);
-		List<String> values = Arrays.asList(valueStr.split(","));
+		boolean isSet = "set".equalsIgnoreCase(uc.getTypeName());
+		List<String> values = null;
+		if (uc.getESUniverse() == null)
+			values = Collections.EMPTY_LIST;
+		else
+			values = Arrays.asList(uc.getESUniverse().split(","));
 		return makeFromStrings(isSet, values, BasicType.buildModifiers(uc),types);
 	}
 	
@@ -90,6 +90,13 @@ public final class DBEnumType extends TextType {
 		return getEnumerationTypeName() + "(" + Functional.joinToString(values, ",") + ")";
 	}
 
+	@Override
+	public void persistTypeName(UserColumn uc) {
+		uc.setTypeName(set ? "set" : "enum");
+		uc.setESUniverse(Functional.joinToString(values,","));
+	}
+
+	
 	public String getEnumerationTypeName() {
 		final MysqlType type = (set) ? MysqlType.SET : MysqlType.ENUM;
 		return type.toString();

@@ -97,7 +97,6 @@ public class AnnotationInformationSchemaBuilder implements
 		new InfoTableConfig(PersistentGroup.class),
 		new InfoTableConfig(PersistentSite.class),
 		new InfoTableConfig(Tenant.class),
-		new InfoTableConfig(UserColumn.class).withLogical(ColumnCatalogInformationSchemaTable.class).withShow(ShowColumnInformationSchemaTable.class).withInfo(InfoSchemaColumnsInformationSchemaTable.class),
 		new InfoTableConfig(StorageGroupGeneration.class),
 		new InfoTableConfig(DistributionModel.class),
 		new InfoTableConfig(User.class),

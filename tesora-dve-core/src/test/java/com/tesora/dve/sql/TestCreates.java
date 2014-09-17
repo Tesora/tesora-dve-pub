@@ -558,8 +558,6 @@ public class TestCreates extends SchemaTest {
 	@Test
 	public void testPE214() throws Throwable {
 		rootConnection.execute("create table pe214a (a int primary key, b int unique key, c int key)");
-		// TODO: figure out how to get the right ordering here
-		System.out.println(rootConnection.printResults("show keys in pe214a"));
 		rootConnection.assertResults("show keys in pe214a",
 				br(nr,"pe214a",0,"PRIMARY",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","","",
 				   nr,"pe214a",0,"b",I_ONE,"b","A",getIgnore(),null,null,"YES","BTREE","","",
