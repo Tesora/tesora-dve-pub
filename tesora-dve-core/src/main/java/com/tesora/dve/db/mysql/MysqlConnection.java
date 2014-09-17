@@ -21,37 +21,50 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.charset.NativeCharSetCatalog;
-import com.tesora.dve.common.DBType;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.DelegatingCompletionHandle;
-import com.tesora.dve.db.*;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.db.mysql.portal.protocol.*;
-import com.tesora.dve.exceptions.PECommunicationsException;
-import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.base.Objects;
+import com.tesora.dve.charset.NativeCharSetCatalog;
+import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.CommandChannel;
+import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.db.DBEmptyTextResultConsumer;
+import com.tesora.dve.db.DBNative;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
+import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
+import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
+import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.DevXid;
 import com.tesora.dve.worker.UserCredentials;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MysqlConnection implements DBConnection, DBConnection.Monitor, CommandChannel {
 
@@ -227,7 +240,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
                     else
                         channel.write(command);
                 } else {
-                    deferredException.printStackTrace(System.out);
+					//                    deferredException.printStackTrace(System.out);
                     command.failure(deferredException); //if we are using the deferred error handle again, we'll just defer the exception again.
                 }
             } else {
