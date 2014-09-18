@@ -45,31 +45,11 @@ public class RedistTupleUpdateConsumer extends DBResultConsumer  {
 	static final Logger logger = Logger.getLogger(RedistTupleUpdateConsumer.class);
 
 	RedistTupleBuilder forwardedResultHandler;
-    SynchronousCompletion<RedistTupleBuilder> readySynchronizer;
 
-    final CatalogDAO catlogDAO;
-    final DistributionModel distModel;
-    final Future<SQLCommand> insertStatementFuture;
-	final SQLCommand insertOptions;
-	final WorkerGroup targetWG;
-	final PersistentTable targetTable;
-	final int maxTupleCount;
-	final int maxDataSize;
-	boolean insertIgnore = false;
 
-	
-	public RedistTupleUpdateConsumer(CatalogDAO catalogDAO, DistributionModel distModel,
-                                     Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions,
-			PersistentTable targetTable, int maxTupleCount, int maxDataSize, WorkerGroup targetWG) {
-        this.catlogDAO = catalogDAO;
-        this.distModel = distModel;
-		this.insertOptions = insertOptions;
-		this.insertStatementFuture = insertStatementFuture;
-		this.targetTable = targetTable;
-		this.maxTupleCount = maxTupleCount;
-		this.targetWG = targetWG;
-		this.maxDataSize = maxDataSize;
-	}
+	public RedistTupleUpdateConsumer(RedistTupleBuilder builder) {
+        this.forwardedResultHandler = builder;
+    }
 
     @Override
     public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
@@ -77,25 +57,9 @@ public class RedistTupleUpdateConsumer extends DBResultConsumer  {
 				new MysqlForwardedExecuteCommand(channel.getStorageSite(), forwardedResultHandler, promise);
 		return execCommand;
 	}
-	
-	public RedistTupleBuilder getExecutionHandler() throws Exception {
-		if (logger.isDebugEnabled())
-			logger.debug("About to call readyPromise.sync(): " + readySynchronizer);
-		return readySynchronizer.sync();
-	}
-	
-	public SynchronousCompletion<RedistTupleBuilder> getHandlerFuture() {
-		return readySynchronizer;
-	}
 
 	@Override
 	public void setSenderCount(int senderCount) {
-        PECountdownPromise<RedistTupleBuilder> countdownResult = new PECountdownPromise<RedistTupleBuilder>(senderCount);
-
-        readySynchronizer = countdownResult;
-
-        forwardedResultHandler = new RedistTupleBuilder(catlogDAO,distModel,insertStatementFuture, insertOptions, targetTable, maxTupleCount, maxDataSize, countdownResult, targetWG);
-		forwardedResultHandler.setInsertIgnore(insertIgnore);
 	}
 
 	@Override
@@ -103,13 +67,6 @@ public class RedistTupleUpdateConsumer extends DBResultConsumer  {
 		return false;
 	}
 
-	public long getRowsUpdatedCount() throws PEException {
-		try {
-			return getExecutionHandler().getUpdateCount();
-		} catch (Exception e) {
-			throw new PEException(e);
-		}
-	}
 
 	@Override
 	public void setResultsLimit(long resultsLimit) {
@@ -140,10 +97,6 @@ public class RedistTupleUpdateConsumer extends DBResultConsumer  {
 
 	@Override
 	public void rollback() {
-	}
-
-	public void setInsertIgnore(boolean insertIgnore) {
-		this.insertIgnore = insertIgnore;
 	}
 
 }

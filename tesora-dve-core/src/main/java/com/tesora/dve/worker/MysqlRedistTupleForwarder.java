@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.SynchronousCompletion;
 import com.tesora.dve.db.CommandChannel;
 
 import io.netty.channel.ChannelHandlerContext;
@@ -57,12 +56,11 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
 	volatile int senderCount = 0;
 	volatile int rowCount = 0;
 
-	private final SynchronousCompletion<RedistTupleBuilder> handlerFuture;
 	private final KeyValue distValue;
 	private final TableHints tableHints;
 	private final boolean useResultSetAliases;
-	
-	AtomicReference<RedistTupleBuilder> targetHandler = new AtomicReference<RedistTupleBuilder>();
+
+    RedistTupleBuilder builder;
 
 	private int fieldCount = -1;
 
@@ -115,14 +113,14 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
 
 	public MysqlRedistTupleForwarder(
 			KeyValue distValue, TableHints tableHints,
-			boolean useResultSetAliases, MyPreparedStatement<MysqlGroupedPreparedStatementId> selectPStatement, 
-			SynchronousCompletion<RedistTupleBuilder> handlerFuture)
+			boolean useResultSetAliases, MyPreparedStatement<MysqlGroupedPreparedStatementId> selectPStatement,
+            RedistTupleBuilder builder)
 	{
 		this.distValue = distValue;  //TODO: possible transitive dependency, only used during metadata processing
 		this.tableHints = tableHints; //TODO: possible transitive dependency, only used during metadata processing
 		this.useResultSetAliases = useResultSetAliases; //TODO: possible transitive dependency, only used during metadata processing
 		this.pstmt = selectPStatement;
-		this.handlerFuture = handlerFuture;
+        this.builder = builder;
 	}
 
 	@Override
@@ -136,20 +134,7 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
 		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise);
 	}
 
-	private RedistTupleBuilder getTargetHandler() throws PEException {
-		try {
-			if (targetHandler.get() == null) {
-				if (logger.isDebugEnabled())
-					logger.debug("About to call handlerFuture.sync(): " + handlerFuture);
-				targetHandler.set(handlerFuture.sync());
-			}
-			return targetHandler.get();
-		} catch (Exception e) {
-			throw new PEException("Processing redist results", e);
-		}
-	}
-
-	@Override
+    @Override
 	public void setSenderCount(int senderCount) {
 		this.senderCount = senderCount;
 	}
@@ -184,25 +169,21 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
     @Override
     public void active(ChannelHandlerContext ctx) {
         //called when redist source is ready to start receiving packets.
-        try {
-            getTargetHandler().sourceActive(ctx);
-        } catch (PEException e) {
-            throw new RuntimeException(e);
-        }
+        builder.sourceActive(ctx);
     }
 
     @Override
     public boolean emptyResultSet(MyOKResponse ok) throws PEException {
         senderCount--;
         if (senderCount == 0)
-            getTargetHandler().setProcessingComplete();
+            builder.setProcessingComplete();
         return ok.getAffectedRows() > 0;
     }
 
     public void error(MyErrorResponse errorResponse) throws PEException {
         Exception generatedError = new PEException(errorResponse.toString(), errorResponse.asException());
 		try {
-			getTargetHandler().failure(generatedError);
+            builder.failure(generatedError);
 		} catch (Exception e) {
 			throw new PEException("Processing redist results", e);
 		}
@@ -228,7 +209,7 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
 
             columnInspectorComputed = true;
             ColumnSet adjustedMetadata = tableHints.addAutoIncMetadata(resultColumnMetadata);
-            getTargetHandler().setRowSetMetadata(tableHints,adjustedMetadata);
+            builder.setRowSetMetadata(tableHints, adjustedMetadata);
 
             int keyCount = 0;
             if (columnInspectorList == null) {
@@ -276,13 +257,13 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
 			throws PEException {
         senderCount --;
 		if (senderCount == 0)
-			getTargetHandler().setProcessingComplete();
+            builder.setProcessingComplete();
 	}
 
     @Override
     public void rowBinary(MyBinaryResultRow binRow) throws PEException {
         //received a row from a binary result set, pass it on to the RedistTupleBuilder.
-        getTargetHandler().processSourceRow(distValue, columnInspectorList, binRow);
+        builder.processSourceRow(distValue, columnInspectorList, binRow);
     } 
     @Override
     public void rowText(MyTextResultRow textRow) throws PEException {

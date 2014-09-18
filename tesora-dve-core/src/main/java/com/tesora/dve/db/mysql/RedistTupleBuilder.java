@@ -79,9 +79,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 	final WorkerGroup targetWG;
     final CatalogDAO catalogDAO;
     final DistributionModel distModel;
-    final PECountdownPromise<RedistTupleBuilder> readyCountdownPromise;
-
-
 
 	final int maximumRowCount;
 	final int maxDataSize;
@@ -93,15 +90,13 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 	private ColumnSet rowSetMetadata;
 
 	public RedistTupleBuilder(CatalogDAO catalogDAO, DistributionModel distModel, Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions,
-			PersistentTable targetTable, int maximumRowCount, int maxDataSize,
-			PECountdownPromise<RedistTupleBuilder> readyCountdownPromise,
-			WorkerGroup targetWG) {
+                              PersistentTable targetTable, int maximumRowCount, int maxDataSize,
+                              WorkerGroup targetWG) {
         this.distModel = distModel;
         this.catalogDAO = catalogDAO;
 		this.insertOptions = insertOptions;
 		this.insertStatementFuture = insertStatementFuture;
 		this.targetTable = targetTable;
-		this.readyCountdownPromise = readyCountdownPromise;
 		this.targetWG = targetWG;
 		this.maximumRowCount = maximumRowCount;
 		this.maxDataSize = maxDataSize;
@@ -432,9 +427,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
         RedistTargetSite siteCtx = new RedistTargetSite(this,ctx,this);
         siteCtxBySite.put(site, siteCtx);
         siteCtxByChannel.put(ctx.channel(), siteCtx);
-
-        //not super obvious, but this is a countdown promise, and requires one success for each site before triggering the OK.
-        readyCountdownPromise.success(this);
     }
 
 

@@ -24,7 +24,9 @@ package com.tesora.dve.queryplan;
 import java.util.List;
 import java.util.concurrent.Future;
 
+import com.tesora.dve.concurrent.PECountdownPromise;
 import com.tesora.dve.db.*;
+import com.tesora.dve.db.mysql.RedistTupleBuilder;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
@@ -407,20 +409,22 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
             else
                 dv = new KeyValue(distributeTableLike,distributeTableLike.getRangeID(c),givenDistColumns);
 
-            //TODO: the futures handshake between update consumer, forwarder, and tuple builder works, but is pretty messy. -sgossard
-			// Set up the update consumer on the target WG to accept updates
-			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(c,distributeTableLike.getDistributionModel(), insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
-			updateConsumer.setInsertIgnore(insertIgnore);
+            RedistTupleBuilder newBuilder = new RedistTupleBuilder(c, distributeTableLike.getDistributionModel(), insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
+            newBuilder.setInsertIgnore(insertIgnore);
+
+            //TODO: this exec really just hands the builder the target sites/connections (and sets the database on each).  -sgossard
+            RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(newBuilder);
 			WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(givenTargetUserDatabase);
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: Setting up the update consumer on target group: " + emptyRequest);
-			targetWG.execute(MappingSolution.AllWorkers, emptyRequest, updateConsumer);
 
+            targetWG.execute(MappingSolution.AllWorkers, emptyRequest, updateConsumer);
+            //TODO: we depend on the previous execute being synchronous so that the builder now has all the sites/connections and is ready to write before we start the selects. -sgossard
 
 			MysqlRedistTupleForwarder redistForwarder = 
 					new MysqlRedistTupleForwarder(
 							dv, givenTableHints,
-							useResultSetAliases, selectCollector.getPreparedStatement(), updateConsumer.getHandlerFuture());
+							useResultSetAliases, selectCollector.getPreparedStatement(), newBuilder);
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: starting redistribution: " + redistForwarder);
 			sourceWG.execute(sourceWorkerMapping, redistQueryRequest, redistForwarder);
@@ -429,7 +433,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			// Everything is sent now, so sync up with the results handler
 			@SuppressWarnings("unused")
 			int recordsSent = redistForwarder.getNumRowsForwarded();
-			int recordsInserted = updateConsumer.getExecutionHandler().getUpdateCount();
+			int recordsInserted = newBuilder.getUpdateCount();
 			rowcount = recordsInserted;
 			
 			// Close the prepared statements
