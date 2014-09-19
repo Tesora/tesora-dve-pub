@@ -804,4 +804,29 @@ public class InsertTest extends SchemaMirrorTest {
 		runTest(tests);
 	}
 
+	@Test
+	public void testPE1652() throws Throwable {
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1652"));
+		tests.add(new StatementMirrorProc(
+				"CREATE TABLE pe1652 ("
+						+ "c01 TINYINT,"
+						+ "c02 TINYINT UNSIGNED,"
+						+ "c03 SMALLINT,"
+						+ "c04 SMALLINT UNSIGNED,"
+						+ "c05 MEDIUMINT,"
+						+ "c06 MEDIUMINT UNSIGNED,"
+						+ "c07 INT,"
+						+ "c08 INT UNSIGNED,"
+						+ "c09 BIGINT,"
+						+ "c10 BIGINT UNSIGNED,"
+						+ "PRIMARY KEY(c01, c02, c03, c04, c05, c06, c07, c08, c09, c10))"));
+
+		tests.add(new StatementMirrorProc(
+				"INSERT INTO pe1652 VALUES (127, 255, 32767, 65535, 8388607, 16777215, 2147483647, 4294967295, 9223372036854775807, 18446744073709551615)"));
+		tests.add(new StatementMirrorFun("SELECT * FROM pe1652"));
+
+		runTest(tests);
+	}
+
 }
