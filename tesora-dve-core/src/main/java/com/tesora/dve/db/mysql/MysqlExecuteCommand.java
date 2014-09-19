@@ -38,10 +38,9 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlExecuteCommand extends MysqlConcurrentCommand implements MysqlCommandResultsProcessor {
-
-	static Logger logger = Logger.getLogger( MysqlExecuteCommand.class );
-
+public class MysqlExecuteCommand extends MysqlCommand implements MysqlCommandResultsProcessor {
+	static final Logger logger = Logger.getLogger( MysqlExecuteCommand.class );
+    private CompletionHandle<Boolean> promise;
 
     enum ResponseState { AWAIT_FIELD_COUNT, AWAIT_FIELD, AWAIT_FIELD_EOF, AWAIT_ROW, DONE }
 
@@ -57,8 +56,8 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 
 	public MysqlExecuteCommand(SQLCommand sqlCommand, DBConnection.Monitor monitor,
                                MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-		super(promise);
-		this.sqlCommand = sqlCommand;
+        this.promise = promise;
+        this.sqlCommand = sqlCommand;
 		this.resultConsumer = resultConsumer;
         this.connectionMonitor = monitor;
 	}
@@ -73,7 +72,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName() + "{" + getCompletionHandle() + ", " + sqlCommand.getDisplayForLog() + "}";
+        return this.getClass().getSimpleName() + "{" + promise + ", " + sqlCommand.getDisplayForLog() + "}";
 	}
 
 
@@ -104,7 +103,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
             }
             return true;
         } catch (Exception e){
-            getCompletionHandle().failure(e);
+            promise.failure(e);
             throw e;
         }
 	}
@@ -115,7 +114,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
         messageState = ResponseState.AWAIT_ROW;
         MyMessage raw = message;
 
-		if (!getCompletionHandle().isFulfilled()) {
+        if (!promise.isFulfilled()) {
 			resultConsumer.fieldEOF(raw);
 		}
 	}
@@ -127,7 +126,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 
         MyFieldPktResponse columnDef = (MyFieldPktResponse)message;
 
-		if (!getCompletionHandle().isFulfilled()) {
+        if (!promise.isFulfilled()) {
 			ColumnInfo columnProjection = null;
 			if (sqlCommand.getProjection() != null)
 				columnProjection = sqlCommand.getProjection().getColumnInfo(field+1);
@@ -148,13 +147,13 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
                 MyOKResponse ok = (MyOKResponse)message;
                 if (resultConsumer.emptyResultSet(ok) && connectionMonitor != null)
                     connectionMonitor.onUpdate();
-                getCompletionHandle().success(true);
+                promise.success(true);
                 break;
             case ERROR_RESPONSE:
                 messageState = ResponseState.DONE;
                 MyErrorResponse errorResponse = (MyErrorResponse)message;
                 resultConsumer.error(errorResponse);
-                getCompletionHandle().failure(new PEMysqlErrorException(errorResponse.asException()));
+                promise.failure(new PEMysqlErrorException(errorResponse.asException()));
                 break;
             case RESULTSET_RESPONSE:
                 messageState = ResponseState.AWAIT_FIELD;
@@ -173,8 +172,8 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
         if (message instanceof MyEOFPktResponse){
             messageState = ResponseState.DONE;
             resultConsumer.rowEOF((MyEOFPktResponse) message);
-            if (!getCompletionHandle().isFulfilled()) {
-                getCompletionHandle().success(true);
+            if (!promise.isFulfilled()) {
+                promise.success(true);
             }
         } else if (message instanceof MyBinaryResultRow){
             writtenFrames++;
@@ -196,7 +195,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 
     @Override
 	public void failure(Exception e) {
-		getCompletionHandle().failure(e);
+        promise.failure(e);
 	}
 
     @Override

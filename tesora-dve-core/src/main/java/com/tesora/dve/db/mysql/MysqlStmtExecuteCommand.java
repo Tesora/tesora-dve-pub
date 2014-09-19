@@ -51,24 +51,24 @@ public class MysqlStmtExecuteCommand extends MysqlExecuteCommand {
 		super(sql, monitor, resultConsumer, promise);
 		this.pstmt = pstmt;
 		this.params = params;
+        // Make sure the parameter types in the param metadata match the types of the objects in
+        // the parameter values
+        if (pstmt.getNumParams() > 0) {
+            MyFieldType mft;
+            for (int i = 0; i < params.size(); ++i) {
+                if (params.get(i) != null) {
+                    mft = DBTypeBasedUtils.getJavaTypeFunc(params.get(i).getClass()).getMyFieldType();
+                    if (pstmt.getParameter(i + 1).getType() != mft)
+                        pstmt.setParameter(i + 1, new MyParameter(mft));
+                } else {
+                    pstmt.setParameter(i + 1, new MyParameter(MyFieldType.FIELD_TYPE_NULL));
+                }
+            }
+        }
 	}
 	
 	@Override
 	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
-		// Make sure the parameter types in the param metadata match the types of the objects in
-		// the parameter values
-		if (pstmt.getNumParams() > 0) {
-			MyFieldType mft;
-			for (int i = 0; i < params.size(); ++i) {
-				if (params.get(i) != null) {
-					mft = DBTypeBasedUtils.getJavaTypeFunc(params.get(i).getClass()).getMyFieldType();
-					if (pstmt.getParameter(i + 1).getType() != mft)
-						pstmt.setParameter(i + 1, new MyParameter(mft));
-				} else {
-					pstmt.setParameter(i + 1, new MyParameter(MyFieldType.FIELD_TYPE_NULL));
-				}
-			}
-		}
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
 

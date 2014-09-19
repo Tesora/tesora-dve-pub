@@ -33,16 +33,17 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PEException;
 
-public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
+public class MysqlForwardedExecuteCommand extends MysqlCommand {
 	
 	static Logger logger = Logger.getLogger( MysqlForwardedExecuteCommand.class );
 
 	final MysqlMultiSiteCommandResultsProcessor resultsHandler;
     StorageSite site;
     boolean siteHasBeenRegistered = false;
+    private CompletionHandle<Boolean> promise;
 
-	public MysqlForwardedExecuteCommand(StorageSite storageSite, MysqlMultiSiteCommandResultsProcessor resultHandler, CompletionHandle<Boolean> completionPromise) {
-		super(completionPromise);
+    public MysqlForwardedExecuteCommand(StorageSite storageSite, MysqlMultiSiteCommandResultsProcessor resultHandler, CompletionHandle<Boolean> completionPromise) {
+        this.promise = completionPromise;
         this.site = storageSite;
 		this.resultsHandler = resultHandler;
 	}
@@ -53,7 +54,7 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
 			logger.debug("Written: " + this);
         //TODO: this would be cleaner in active(), but it apparently doesn't get called until ready to process a response. -sgossard
         registerWithBuilder(ctx);
-        getCompletionHandle().success(true);
+        promise.success(true);
     }
 
     @Override
@@ -83,12 +84,12 @@ public class MysqlForwardedExecuteCommand extends MysqlConcurrentCommand {
     @Override
     public void failure(Exception e) {
         resultsHandler.failure(e);
-        getCompletionHandle().failure(e);
+        promise.failure(e);
     }
 
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName()+"{"+ getCompletionHandle()+"}";
+        return this.getClass().getSimpleName()+"{"+ promise +"}";
 	}
 
 }

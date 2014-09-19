@@ -32,11 +32,12 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.exceptions.PEException;
 
-public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements MysqlCommandResultsProcessor {
+public class MysqlStmtPrepareCommand extends MysqlCommand implements MysqlCommandResultsProcessor {
 
 	static Logger logger = Logger.getLogger(MysqlStmtPrepareCommand.class);
+    private CompletionHandle<Boolean> promise;
 
-	enum ResponseState { AWAIT_HEADER, AWAIT_COL_DEF, AWAIT_COL_DEF_EOF, AWAIT_PARAM_DEF, AWAIT_PARAM_DEF_EOF, DONE };
+    enum ResponseState { AWAIT_HEADER, AWAIT_COL_DEF, AWAIT_COL_DEF_EOF, AWAIT_PARAM_DEF, AWAIT_PARAM_DEF_EOF, DONE };
 	ResponseState state = ResponseState.AWAIT_HEADER;
 
 	String sqlCommand;
@@ -47,8 +48,8 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 
 	public MysqlStmtPrepareCommand(String sql,
 			MysqlPrepareParallelConsumer mysqlStatementPrepareConsumer, CompletionHandle<Boolean> promise) {
-		super(promise);
-		this.sqlCommand = sql;
+        this.promise = promise;
+        this.sqlCommand = sql;
 		this.consumer = mysqlStatementPrepareConsumer;
 	}
 
@@ -93,9 +94,9 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
                     MyErrorResponse error = (MyErrorResponse)message;
 					try {
 						consumer.errorResponse(ctx, error);
-						getCompletionHandle().failure( error.asException() );
+                        promise.failure(error.asException());
 					} catch (Exception e) {
-						getCompletionHandle().failure(e);
+                        promise.failure(e);
 					} finally {
                         state = ResponseState.DONE;
                     }
@@ -108,14 +109,14 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
                     state = ResponseState.AWAIT_PARAM_DEF_EOF;
                 MyFieldPktResponse paramDef = (MyFieldPktResponse)message;
 
-				if (!getCompletionHandle().isFulfilled()){
+                if (!promise.isFulfilled()){
 					consumer.paramDef(ctx, paramDef);
                 }
 				break;
 			case AWAIT_PARAM_DEF_EOF:
                 MyEOFPktResponse paramEof  = (MyEOFPktResponse)message;
                 state = (numCols == 0) ? ResponseState.DONE : ResponseState.AWAIT_COL_DEF;
-				if (!getCompletionHandle().isFulfilled()) {
+                if (!promise.isFulfilled()) {
 					consumer.paramDefEOF(ctx, paramEof);
 					if (state == ResponseState.DONE)
 						onCompletion();
@@ -125,14 +126,14 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
                 if (--numCols == 0)
                     state = ResponseState.AWAIT_COL_DEF_EOF;
                 MyFieldPktResponse columnDef = (MyFieldPktResponse)message;
-                if (!getCompletionHandle().isFulfilled()){
+                if (!promise.isFulfilled()){
 					consumer.colDef(ctx, columnDef);
                 }
 				break;
 			case AWAIT_COL_DEF_EOF:
                 MyEOFPktResponse colEof = (MyEOFPktResponse)message;
 				state = ResponseState.DONE;
-				if (!getCompletionHandle().isFulfilled()) {
+                if (!promise.isFulfilled()) {
 					consumer.colDefEOF(ctx, colEof);
 					onCompletion();
 				}
@@ -143,7 +144,7 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
                 break;
 			}
 		} catch (Exception e) {
-			getCompletionHandle().failure(e);
+            promise.failure(e);
 		}
 		return state == ResponseState.DONE;
 	}
@@ -156,19 +157,19 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 		if (logger.isDebugEnabled())
 			logger.debug("Promise fulfilled on " + this);
 
-		super.getCompletionHandle().success(false);
+        promise.success(false);
 
 		state = ResponseState.DONE;
 	}
 
     @Override
 	public void failure(Exception e) {
-		getCompletionHandle().failure(e);
+        promise.failure(e);
 	}
 
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName() + "{" + getCompletionHandle() + ", " + state + ", " + sqlCommand + "}";
+        return this.getClass().getSimpleName() + "{" + promise + ", " + state + ", " + sqlCommand + "}";
 	}
 
 }
