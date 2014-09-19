@@ -205,7 +205,7 @@ class RedistTargetSite implements AutoCloseable {
         int rowsWritten = buffersToFlush.size();
 
 //        this.ctx.writeAndFlush(buffersToFlush);
-        this.ctx.channel().writeAndFlush(new SimpleMysqlCommand(buffersToFlush,builder));
+        this.ctx.channel().writeAndFlush(SimpleMysqlCommandBundle.bundle(buffersToFlush,builder));
         this.pendingFlush = null;
         this.queuedRowSetCount.getAndAdd(-rowsWritten);
 

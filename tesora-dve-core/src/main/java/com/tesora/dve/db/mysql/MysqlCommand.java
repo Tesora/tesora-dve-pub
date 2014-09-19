@@ -32,15 +32,7 @@ import java.nio.charset.Charset;
 
 import com.tesora.dve.exceptions.PEException;
 
-public abstract class MysqlCommand implements MysqlCommandResultsProcessor {
-
-    //these Timers are used to measure how much time is being spent on the backend for a given frontend request.
-    //the frontend timer is picked up from a thread local, since changing all the subclasses of MysqlCommand and their callers would be prohibitive.
-
-    Timer frontendTimer = Singletons.require(TimingService.class).getTimerOnThread();
-
-    //a place for MysqlCommandSenderHandler to hang backend timing info for this command.  Not great encapsulation / ood, ,but makes life much easier.
-    protected Timer commandTimer;
+public abstract class MysqlCommand implements MysqlCommandBundle, MysqlCommandResultsProcessor, MysqlCommandRequestProcessor {
 
     abstract void execute(ChannelHandlerContext ctx, Charset charset) throws PEException;
 
@@ -57,12 +49,23 @@ public abstract class MysqlCommand implements MysqlCommandResultsProcessor {
     abstract public void active(ChannelHandlerContext ctx);
 
 
-    final void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
+    @Override
+    public final void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
 		execute(ctx, charset);
 	}
 
+    @Override
     public boolean isExpectingResults(ChannelHandlerContext ctx){
         return true;
     }
 
+    @Override
+    public final MysqlCommandRequestProcessor getRequestProcessor() {
+        return this;
+    }
+
+    @Override
+    public final MysqlCommandResultsProcessor getResponseProcessor() {
+        return this;
+    }
 }

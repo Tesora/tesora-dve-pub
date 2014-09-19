@@ -30,23 +30,23 @@ import java.nio.charset.Charset;
 /**
  *
  */
-public class SimpleMysqlCommand extends MysqlCommand {
+public class SimpleRequestProcessor implements MysqlCommandRequestProcessor {
     final MyMessage outboundMessage;
-    final MysqlCommandResultsProcessor processor;
     final boolean shouldFlush;
+    final boolean expectingResults;
 
-    public SimpleMysqlCommand(MyMessage outboundMessage, MysqlCommandResultsProcessor processor) {
-        this(outboundMessage,processor,false);
+    public SimpleRequestProcessor(MyMessage outboundMessage) {
+        this(outboundMessage,false, true);
     }
 
-    public SimpleMysqlCommand(MyMessage outboundMessage, MysqlCommandResultsProcessor processor, boolean shouldFlush) {
+    public SimpleRequestProcessor(MyMessage outboundMessage, boolean shouldFlush, boolean expectingResults) {
         this.outboundMessage = outboundMessage;
-        this.processor = processor;
         this.shouldFlush = shouldFlush;
+        this.expectingResults = expectingResults;
     }
 
     @Override
-    void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
+    public void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
         if (shouldFlush)
             ctx.writeAndFlush(outboundMessage);
         else
@@ -54,22 +54,7 @@ public class SimpleMysqlCommand extends MysqlCommand {
     }
 
     @Override
-    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-        return processor.processPacket(ctx,message);
-    }
-
-    @Override
-    public void packetStall(ChannelHandlerContext ctx) throws PEException {
-        processor.packetStall(ctx);
-    }
-
-    @Override
-    public void failure(Exception e) {
-        processor.failure(e);
-    }
-
-    @Override
-    public void active(ChannelHandlerContext ctx) {
-        processor.active(ctx);
+    public boolean isExpectingResults(ChannelHandlerContext ctx) {
+        return expectingResults;
     }
 }

@@ -25,6 +25,7 @@ import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.DefaultResultProcessor;
 import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.MysqlCommandBundle;
 import com.tesora.dve.db.mysql.MysqlCommandResultsProcessor;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 
@@ -37,8 +38,8 @@ public interface CommandChannel {
     DBConnection.Monitor getMonitor();
 
     boolean isOpen();
-    void write(MysqlCommand command);
-    void writeAndFlush(MysqlCommand command);
+    void write(MysqlCommandBundle command);
+    void writeAndFlush(MysqlCommandBundle command);
     void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
     void writeAndFlush(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
 

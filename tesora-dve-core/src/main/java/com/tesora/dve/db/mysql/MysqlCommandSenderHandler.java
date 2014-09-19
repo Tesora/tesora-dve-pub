@@ -25,7 +25,6 @@ import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.clock.*;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 import com.tesora.dve.exceptions.PECommunicationsException;
@@ -55,42 +54,42 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
 
     long packetsInThisResponse = 0L;
     boolean sentActiveEventToHeadOfQueue = false;
-	LinkedList<MysqlCommand> cmdList = new LinkedList<>();
+	LinkedList<SimpleMysqlCommandBundle> cmdList = new LinkedList<>();
 
 	Charset serverCharset = null;
 
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-        if (!(msg instanceof MysqlCommand)){
+        if (!(msg instanceof MysqlCommandBundle)){
             logger.warn("Don't know how to handle message, passing downstream :" + (msg) );
             ctx.write(msg);
             return;
         }
-		MysqlCommand cast = (MysqlCommand) msg;
+        SimpleMysqlCommandBundle simpleBundle = new SimpleMysqlCommandBundle((MysqlCommandBundle)msg);
 
         if (logger.isDebugEnabled())
-            logger.debug(ctx.channel() + " flush rec'd cmd " + cast);
+            logger.debug(ctx.channel() + " flush rec'd cmd " + simpleBundle);
 
 
-        Timer commandTimer = cast.frontendTimer.newSubTimer(TimingDesc.BACKEND_ROUND_TRIP);
-        cast.commandTimer = commandTimer;
-        Timer previouslyAttached = timingService.attachTimerOnThread(cast.frontendTimer);
+        Timer commandTimer = simpleBundle.frontendTimer.newSubTimer(TimingDesc.BACKEND_ROUND_TRIP);
+        simpleBundle.commandTimer = commandTimer;
+        Timer previouslyAttached = timingService.attachTimerOnThread(simpleBundle.frontendTimer);
 
         try {
 
-            dispatchWrite(ctx, cast, commandTimer);
+            dispatchWrite(ctx, simpleBundle, commandTimer);
 
         } catch (Exception e) {
             logger.error("Connection " + ctx.channel() + "to " + ctx.channel().remoteAddress()
                     + " closed due to exception", e);
             ctx.close();
-            cast.failure(e);
+            simpleBundle.failure(e);
         } finally {
             timingService.attachTimerOnThread(previouslyAttached);
         }
     }
 
-    private void dispatchWrite(ChannelHandlerContext ctx, MysqlCommand command, Timer commandTimer) throws PEException {
+    private void dispatchWrite(ChannelHandlerContext ctx, SimpleMysqlCommandBundle command, Timer commandTimer) throws PEException {
 
         //ask the command to write the messages on the socket (they'll be sent out when we return).
         command.executeInContext(ctx, getServerCharset(ctx));
@@ -132,7 +131,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
     protected void dispatchRead(ChannelHandlerContext ctx, MyMessage message) throws Exception {
         boolean messageSignalsEndOfRequest = message.isSequenceEnd();
 
-        MysqlCommand activeCommand = null;
+        SimpleMysqlCommandBundle activeCommand = null;
         Timer responseProcessing = null;
         try {
 
@@ -180,12 +179,12 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
         }
     }
 
-    private void enqueueCommand(MysqlCommand command) {
+    private void enqueueCommand(SimpleMysqlCommandBundle command) {
         cmdList.addLast(command);
     }
 
     private void popActiveCommand(ChannelHandlerContext ctx) {
-        MysqlCommand cmd = cmdList.pollFirst();
+        SimpleMysqlCommandBundle cmd = cmdList.pollFirst();
 
         if (cmd != null && logger.isDebugEnabled())
             logger.debug(ctx.channel() + ": " + packetsInThisResponse + " results received for deregistered cmd " + cmd);
@@ -194,8 +193,8 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
         packetsInThisResponse = 0;
     }
 
-    private MysqlCommand activateFirstCommandIfNeeded(ChannelHandlerContext ctx) {
-        MysqlCommand cmd = cmdList.peekFirst();
+    private SimpleMysqlCommandBundle activateFirstCommandIfNeeded(ChannelHandlerContext ctx) {
+        SimpleMysqlCommandBundle cmd = cmdList.peekFirst();
         if (cmd != null && !sentActiveEventToHeadOfQueue){
             sentActiveEventToHeadOfQueue = true;
             cmd.active(ctx); //command is getting it's first response packet.
@@ -224,7 +223,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
 
     private void failAllCommands(ChannelHandlerContext ctx, Exception cause) {
         if (!cmdList.isEmpty()) {
-            for (MysqlCommand cmd : cmdList) {
+            for (SimpleMysqlCommandBundle cmd : cmdList) {
                 PEException communicationsFailureException =
                         new PECommunicationsException("Connection closed before completing command: " + cmd);
                 if (cause != null)

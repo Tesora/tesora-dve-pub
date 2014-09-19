@@ -180,7 +180,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
     //syntactic sugar for some of the inner utility calls.
     protected void execute(SQLCommand sql, CompletionHandle<Boolean> promise){
         //TODO: it would be good to replace this with a simple command, especially since we don't care about the result set (but watch out for deferred exceptions). -sgossard
-        DBEmptyTextResultConsumer.INSTANCE.dispatch(this,sql, promise);
+        DBEmptyTextResultConsumer.INSTANCE.dispatch(this, sql, promise);
     }
 
     /**
@@ -192,21 +192,22 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
      */
     @Override
     public void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
-        this.sendCommand( new SimpleMysqlCommand(outboundMessage,resultsProcessor), false);
+        this.sendCommand( SimpleMysqlCommandBundle.bundle(outboundMessage,resultsProcessor), false);
     }
 
     @Override
     public void writeAndFlush(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
-        this.sendCommand( new SimpleMysqlCommand(outboundMessage,resultsProcessor), true);
+        this.sendCommand( SimpleMysqlCommandBundle.bundle(outboundMessage,resultsProcessor), true );
     }
 
     @Override
-    public void write(MysqlCommand command){
-        sendCommand(command,false);
+    public void write(MysqlCommandBundle command){
+        sendCommand(command,false );
+
     }
 
     @Override
-    public void writeAndFlush(MysqlCommand command){
+    public void writeAndFlush(MysqlCommandBundle command){
         sendCommand(command,true);
     }
 
@@ -215,7 +216,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
      * request and response, and writing the request and reading/dispatching the response is handled in the pipeline.
      * @param command
      */
-    protected void sendCommand(MysqlCommand command, boolean shouldFlush){
+    protected void sendCommand(MysqlCommandBundle command, boolean shouldFlush){
         try {
             CommandChannel connection = this;
 
@@ -228,13 +229,13 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
                         channel.write(command);
                 } else {
                     deferredException.printStackTrace(System.out);
-                    command.failure(deferredException); //if we are using the deferred error handle again, we'll just defer the exception again.
+                    command.getResponseProcessor().failure(deferredException); //if we are using the deferred error handle again, we'll just defer the exception again.
                 }
             } else {
-                command.failure(new PECommunicationsException("Channel closed: " + connection));
+                command.getResponseProcessor().failure(new PECommunicationsException("Channel closed: " + connection));
             }
         } catch (Throwable t){
-            command.failure(PEException.wrapThrowableIfNeeded(t));
+            command.getResponseProcessor().failure(PEException.wrapThrowableIfNeeded(t));
         }
     }
 

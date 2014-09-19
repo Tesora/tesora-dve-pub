@@ -237,10 +237,10 @@ public class DirectConnectionCache {
         public boolean isOpen() { return dbConnection.isOpen(); }
 
         @Override
-        public void write(MysqlCommand command) { dbConnection.write(command); }
+        public void write(MysqlCommandBundle command) { dbConnection.write(command); }
 
         @Override
-        public void writeAndFlush(MysqlCommand command) { dbConnection.writeAndFlush(command); }
+        public void writeAndFlush(MysqlCommandBundle command) { dbConnection.writeAndFlush(command); }
 
         @Override
         public void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
