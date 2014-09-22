@@ -207,6 +207,7 @@ public class TableGarbageCollector implements Runnable {
         Thread existingThread = execThread.getAndSet(null);
         if (existingThread != null)
             try {
+                existingThread.interrupt();
                 existingThread.join();
             } catch (InterruptedException e) {
                 e.printStackTrace();
