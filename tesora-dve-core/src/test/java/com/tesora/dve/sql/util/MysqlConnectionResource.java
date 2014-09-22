@@ -143,7 +143,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id;
         int preparedID = (int)pstmt.getStmtId().getStmtId(mysqlConn.getPhysicalID());
         MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
-        mysqlConn.writeAndFlush(new MysqlStmtCloseCommand(preparedID,message,new PEDefaultPromise<Boolean>()));
+        mysqlConn.writeAndFlush(message, new MysqlStmtCloseCommand(preparedID, new PEDefaultPromise<Boolean>()));
     }
 
 	@Override

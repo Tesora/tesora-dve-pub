@@ -63,10 +63,10 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = prepareCollector.getPreparedStatement();
                 int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
                 MysqlMessage message = MSPComStmtExecuteRequestMessage.newMessage(preparedID, pstmt, sql.getParameters());
-				channel.write(new MysqlStmtExecuteCommand(sql, message, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), resultForwarder, promise));
+				channel.write( message, new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), resultForwarder, promise));
 //			System.out.println("selectCollector " + pstmt);
                 MysqlMessage closeMessage = MSPComStmtCloseRequestMessage.newMessage(preparedID);
-				channel.writeAndFlush(new MysqlStmtCloseCommand(preparedID,closeMessage,new PEDefaultPromise<Boolean>()));
+				channel.writeAndFlush(closeMessage,new MysqlStmtCloseCommand(preparedID, new PEDefaultPromise<Boolean>()));
 			}
 			@Override
 			public void failure(Exception e) {
@@ -75,7 +75,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 		});
 
         MysqlMessage prepareMessage = MSPComPrepareStmtRequestMessage.newMessage(sql.getSQL(), channel.getTargetCharset());
-        channel.writeAndFlush( new MysqlStmtPrepareCommand(channel,sql.getSQL(), prepareMessage, prepareCollector, preparePromise));
+        channel.writeAndFlush( prepareMessage, new MysqlStmtPrepareCommand(channel,sql.getSQL(), prepareCollector, preparePromise));
 	}
 
 }

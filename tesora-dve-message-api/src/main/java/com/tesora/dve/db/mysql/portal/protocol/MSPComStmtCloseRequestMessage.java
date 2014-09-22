@@ -21,9 +21,10 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.NoResponseExpected;
 import io.netty.buffer.ByteBuf;
 
-public class MSPComStmtCloseRequestMessage extends BaseMSPMessage<Long> {
+public class MSPComStmtCloseRequestMessage extends BaseMSPMessage<Long> implements NoResponseExpected {
     public static final MSPComStmtCloseRequestMessage PROTOTYPE = new MSPComStmtCloseRequestMessage();
     static final int INDEX_OF_STATEMENTID = 0;
     public static final byte TYPE_IDENTIFIER = (byte) 0x19;

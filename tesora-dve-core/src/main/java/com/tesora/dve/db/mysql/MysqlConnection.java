@@ -205,17 +205,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
         this.sendCommand(SimpleMysqlCommandBundle.bundle(outboundMessage, resultsProcessor), true);
     }
 
-    @Override
-    public void write(MysqlCommandBundle command){
-        sendCommand(command,false );
-
-    }
-
-    @Override
-    public void writeAndFlush(MysqlCommandBundle command){
-        sendCommand(command,true);
-    }
-
     /**
      * Currently the main entrypoint for dispatching old-style requests.  The MysqlCommand object holds both the
      * request and response, and writing the request and reading/dispatching the response is handled in the pipeline.
@@ -302,7 +291,8 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 		if (connectionEventGroup != null) {
 			if (channel.isOpen()) {
                 try {
-                    channel.writeAndFlush(new MysqlQuitCommand(MSPComQuitRequestMessage.newMessage()));
+                    MysqlMessage message = MSPComQuitRequestMessage.newMessage();
+                    this.writeAndFlush(message, new MysqlQuitCommand());
                 } finally {
 				    channel.close().syncUninterruptibly();
                 }

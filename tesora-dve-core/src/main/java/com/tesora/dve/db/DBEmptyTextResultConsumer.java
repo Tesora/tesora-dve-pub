@@ -129,7 +129,7 @@ public class DBEmptyTextResultConsumer extends DBResultConsumer implements Mysql
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled()) logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
         MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
-        channel.writeAndFlush(new MysqlExecuteCommand(sql, message, channel.getMonitor(), this, promise));
+        channel.writeAndFlush(message, new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise));
 	}
 
 	@Override

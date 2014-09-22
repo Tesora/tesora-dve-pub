@@ -23,11 +23,8 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyOKResponse;
-import com.tesora.dve.db.mysql.portal.protocol.MSPComQuitRequestMessage;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import io.netty.channel.ChannelHandlerContext;
-
-import java.nio.charset.Charset;
 
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -36,8 +33,8 @@ public class MysqlQuitCommand extends MysqlCommand {
 
     boolean closed = false;
 
-    public MysqlQuitCommand(MysqlMessage message) {
-        super(message);
+    public MysqlQuitCommand() {
+        super();
     }
 
     @Override

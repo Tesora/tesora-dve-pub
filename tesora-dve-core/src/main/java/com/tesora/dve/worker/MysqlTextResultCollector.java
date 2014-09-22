@@ -181,7 +181,7 @@ public class MysqlTextResultCollector extends MysqlParallelResultConsumer {
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
-        channel.writeAndFlush( new MysqlExecuteCommand(sql, message, channel.getMonitor(), this, promise) );
+        channel.writeAndFlush( message, new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise) );
 	}
 
 	public ColumnSet getColumnSet() {

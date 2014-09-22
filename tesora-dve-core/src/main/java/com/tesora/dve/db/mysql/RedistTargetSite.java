@@ -23,7 +23,6 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.CommandChannel;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
@@ -36,7 +35,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
 
-import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -172,13 +170,13 @@ class RedistTargetSite implements AutoCloseable {
                         }
                     };
                     MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(insertCommand.getSQL(), this.channel.getTargetCharset());
-                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), message, prepareCollector1, new PEDefaultPromise<Boolean>());
+                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
 
                     this.waitingForPrepare = true; //we flip this back when the prepare response comes back in.
 
                     //sends the prepare with the callback that will issue the execute.
 //                    this.ctx.channel().writeAndFlush(prepareCmd);
-                    this.channel.writeAndFlush(prepareCmd);
+                    this.channel.writeAndFlush(message,prepareCmd);
                 } else {
                     //we have a valid statementID, so do the work now.
                     executePendingInsert();
@@ -266,7 +264,7 @@ class RedistTargetSite implements AutoCloseable {
             // Close statement commands have no results from mysql, so we can just send the command directly on the channel context
 
             MSPComStmtCloseRequestMessage closeRequestMessage = MSPComStmtCloseRequestMessage.newMessage(this.pstmtId);
-            this.channel.write(new SimpleMysqlCommandBundle(new SimpleRequestProcessor(closeRequestMessage,false,false), NoopResponseProcessor.NOOP));
+            this.channel.write( closeRequestMessage,NoopResponseProcessor.NOOP );
             this.pstmtId = -1;
             this.pstmtTupleCount = -1;
         }

@@ -24,11 +24,8 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
-import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtExecuteRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
-import io.netty.channel.ChannelHandlerContext;
 
-import java.nio.charset.Charset;
 import java.util.List;
 
 import org.apache.log4j.Logger;
@@ -36,7 +33,6 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.mysql.libmy.MyParameter;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public class MysqlStmtExecuteCommand extends MysqlExecuteCommand {
@@ -47,9 +43,9 @@ public class MysqlStmtExecuteCommand extends MysqlExecuteCommand {
 	private List<Object> params;
     private int preparedID;
 
-    public MysqlStmtExecuteCommand(SQLCommand sql, MysqlMessage message, DBConnection.Monitor monitor, MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, int preparedID,List<Object> params,
+    public MysqlStmtExecuteCommand(SQLCommand sql, DBConnection.Monitor monitor, MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, int preparedID, List<Object> params,
                                    MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-		super(sql, message, monitor, resultConsumer, promise);
+		super(sql, monitor, resultConsumer, promise);
 		this.pstmt = pstmt;
         this.preparedID = preparedID;
 		this.params = params;

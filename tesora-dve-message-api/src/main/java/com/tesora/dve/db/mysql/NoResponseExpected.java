@@ -21,26 +21,9 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.db.mysql.libmy.MyMessage;
-import io.netty.channel.ChannelHandlerContext;
-
-import com.tesora.dve.exceptions.PEException;
-
-public abstract class MysqlCommand implements MysqlCommandResultsProcessor {
-
-    protected MysqlCommand() {
-    }
-
-    @Override
-    abstract public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
-
-    @Override
-    abstract public void packetStall(ChannelHandlerContext ctx) throws PEException;
-
-    @Override
-    abstract public void failure(Exception e);
-
-    @Override
-    abstract public void active(ChannelHandlerContext ctx);
-
+/**
+ * A tagging interface, used on MysqlMessage instances to indicate requests that don't get any type of response
+ * from the server.
+ */
+public interface NoResponseExpected {
 }

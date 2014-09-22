@@ -253,12 +253,6 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void write(MysqlCommandBundle command) { dbConnection.write(command); }
-
-        @Override
-        public void writeAndFlush(MysqlCommandBundle command) { dbConnection.writeAndFlush(command); }
-
-        @Override
         public void write(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
             dbConnection.write(outboundMessage, resultsProcessor);
         }

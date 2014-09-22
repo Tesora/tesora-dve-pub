@@ -24,10 +24,7 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
-
-import java.nio.charset.Charset;
 
 import org.apache.log4j.Logger;
 
@@ -54,9 +51,9 @@ public class MysqlExecuteCommand extends MysqlCommand {
     private int writtenFrames;
 	private Monitor connectionMonitor;
 
-    public MysqlExecuteCommand(SQLCommand sqlCommand, MysqlMessage message, DBConnection.Monitor monitor,
+    public MysqlExecuteCommand(SQLCommand sqlCommand, Monitor monitor,
                                MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-        super(message);
+        super();
         this.promise = promise;
         this.sqlCommand = sqlCommand;
 		this.resultConsumer = resultConsumer;

@@ -24,10 +24,7 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
-
-import java.nio.charset.Charset;
 
 import org.apache.log4j.Logger;
 
@@ -48,9 +45,9 @@ public class MysqlStmtPrepareCommand extends MysqlCommand {
 	private int numCols;
 	private int numParams;
 
-    public MysqlStmtPrepareCommand(CommandChannel executingOnChannel, String sql, MysqlMessage message,
-			MysqlPrepareParallelConsumer mysqlStatementPrepareConsumer, CompletionHandle<Boolean> promise) {
-        super(message);
+    public MysqlStmtPrepareCommand(CommandChannel executingOnChannel, String sql,
+                                   MysqlPrepareParallelConsumer mysqlStatementPrepareConsumer, CompletionHandle<Boolean> promise) {
+        super();
         this.executingOnChannel = executingOnChannel;
         this.promise = promise;
         this.sqlCommand = sql;

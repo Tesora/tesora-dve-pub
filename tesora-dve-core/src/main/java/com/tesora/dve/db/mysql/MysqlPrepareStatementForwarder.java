@@ -62,7 +62,7 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = resultForwarder.getPreparedStatement();
                 int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
                 MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
-				channel.writeAndFlush(new MysqlStmtCloseCommand(preparedID,message,promise));
+				channel.writeAndFlush(message, new MysqlStmtCloseCommand(preparedID, promise));
 			}
 			@Override
 			public void failure(Exception e) {

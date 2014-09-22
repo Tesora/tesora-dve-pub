@@ -41,8 +41,6 @@ public interface CommandChannel {
 
     boolean isOpen();
     boolean isWritable();
-    void write(MysqlCommandBundle command);
-    void writeAndFlush(MysqlCommandBundle command);
     void write(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
     void writeAndFlush(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
 

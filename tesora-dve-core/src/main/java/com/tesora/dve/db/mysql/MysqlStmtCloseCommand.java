@@ -22,16 +22,9 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionTarget;
-import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
-import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.nio.charset.Charset;
-
-import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
-import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
 public class MysqlStmtCloseCommand extends MysqlCommand {
@@ -40,15 +33,10 @@ public class MysqlStmtCloseCommand extends MysqlCommand {
     boolean written = false;
     CompletionTarget<Boolean> promise;
 
-    public MysqlStmtCloseCommand(int preparedID, MysqlMessage message, CompletionTarget<Boolean> target) {
-        super(message);
+    public MysqlStmtCloseCommand(int preparedID, CompletionTarget<Boolean> target) {
+        super();
         this.preparedID = preparedID;
         this.promise = target;
-    }
-
-    public boolean isExpectingResults(ChannelHandlerContext ctx){
-        //no response returned from server on a statement close.
-        return false;
     }
 
     @Override

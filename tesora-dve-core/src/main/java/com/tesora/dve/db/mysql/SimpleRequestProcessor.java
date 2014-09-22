@@ -24,6 +24,8 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.exceptions.PEException;
 import io.netty.channel.ChannelHandlerContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
 
@@ -31,6 +33,7 @@ import java.nio.charset.Charset;
  *
  */
 public class SimpleRequestProcessor implements MysqlCommandRequestProcessor {
+    static final Logger logger = LoggerFactory.getLogger(SimpleRequestProcessor.class);
     final MysqlMessage outboundMessage;
     final boolean shouldFlush;
     final boolean expectingResults;
@@ -46,15 +49,13 @@ public class SimpleRequestProcessor implements MysqlCommandRequestProcessor {
     }
 
     @Override
-    public void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
-        if (shouldFlush)
-            ctx.writeAndFlush(outboundMessage);
-        else
-            ctx.write(outboundMessage);
+    public final void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
+        logger.debug("Written: {}" , this);
+        ctx.write(outboundMessage);
     }
 
     @Override
-    public boolean isExpectingResults(ChannelHandlerContext ctx) {
-        return expectingResults;
+    public final boolean isExpectingResults(ChannelHandlerContext ctx){
+        return !(outboundMessage instanceof NoResponseExpected);
     }
 }
