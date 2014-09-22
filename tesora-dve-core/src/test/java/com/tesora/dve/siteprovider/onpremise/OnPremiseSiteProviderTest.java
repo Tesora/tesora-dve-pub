@@ -36,6 +36,7 @@ import org.junit.Test;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEFileUtils;
+import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.PEXmlUtils;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.exceptions.PEException;
@@ -59,7 +60,7 @@ public class OnPremiseSiteProviderTest extends PETest {
 		TestCatalogHelper.getTestCatalogProps(PETest.class);
 		TestCatalogHelper.createTestCatalog(PETest.class,2);
 
-		catalogUrl = TestCatalogHelper.getInstance().getCatalogUrl();
+		catalogUrl = PEUrl.stripUrlParameters(TestCatalogHelper.getInstance().getCatalogUrl());
 		catalogUser = TestCatalogHelper.getInstance().getCatalogUser();
 		catalogPassword = TestCatalogHelper.getInstance().getCatalogPassword();
 		
