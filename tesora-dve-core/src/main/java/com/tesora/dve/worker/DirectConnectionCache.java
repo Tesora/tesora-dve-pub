@@ -25,7 +25,6 @@ import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.*;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
@@ -237,18 +236,23 @@ public class DirectConnectionCache {
         public boolean isOpen() { return dbConnection.isOpen(); }
 
         @Override
+        public boolean isWritable() {
+            return dbConnection.isWritable();
+        }
+
+        @Override
         public void write(MysqlCommandBundle command) { dbConnection.write(command); }
 
         @Override
         public void writeAndFlush(MysqlCommandBundle command) { dbConnection.writeAndFlush(command); }
 
         @Override
-        public void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+        public void write(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
             dbConnection.write(outboundMessage, resultsProcessor);
         }
 
         @Override
-        public void writeAndFlush(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+        public void writeAndFlush(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
             dbConnection.writeAndFlush(outboundMessage, resultsProcessor);
         }
 

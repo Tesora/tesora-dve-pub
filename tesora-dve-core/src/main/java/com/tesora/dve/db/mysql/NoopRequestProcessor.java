@@ -21,19 +21,23 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.db.CommandChannel;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.exceptions.PEException;
 import io.netty.channel.ChannelHandlerContext;
 
-import com.tesora.dve.common.catalog.StorageSite;
+import java.nio.charset.Charset;
 
-public interface MysqlMultiSiteCommandResultsProcessor extends
-		MysqlCommandResultsProcessor {
+/**
+ *
+ */
+public class NoopRequestProcessor implements MysqlCommandRequestProcessor {
+    public static final NoopRequestProcessor NOOP = new NoopRequestProcessor();
 
-    //subclasses both assume packet is OK or ERR
     @Override
-    boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
+    public void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
+    }
 
-    public void addSite(CommandChannel site);
+    @Override
+    public boolean isExpectingResults(ChannelHandlerContext ctx) {
+        return false;
+    }
 }

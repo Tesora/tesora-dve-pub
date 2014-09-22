@@ -1,4 +1,4 @@
-package com.tesora.dve.db;
+package com.tesora.dve.db.mysql;
 
 /*
  * #%L
@@ -21,28 +21,32 @@ package com.tesora.dve.db;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.exceptions.PEException;
+import io.netty.channel.ChannelHandlerContext;
 
 /**
  *
  */
-public interface CommandChannel {
-    String getName();
-    StorageSite getStorageSite();
-    DBConnection.Monitor getMonitor();
+public class NoopResponseProcessor implements MysqlCommandResultsProcessor {
+    public static final NoopResponseProcessor NOOP = new NoopResponseProcessor();
+    @Override
+    public void active(ChannelHandlerContext ctx) {
 
-    boolean isOpen();
-    boolean isWritable();
-    void write(MysqlCommandBundle command);
-    void writeAndFlush(MysqlCommandBundle command);
-    void write(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
-    void writeAndFlush(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
+    }
 
-    CompletionHandle<Boolean> getExceptionDeferringPromise();
-    Exception getAndClearPendingException();
+    @Override
+    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        return false;
+    }
 
+    @Override
+    public void packetStall(ChannelHandlerContext ctx) throws PEException {
 
+    }
+
+    @Override
+    public void failure(Exception e) {
+
+    }
 }

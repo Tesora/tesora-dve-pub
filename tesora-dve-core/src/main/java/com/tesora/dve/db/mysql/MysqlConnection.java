@@ -26,7 +26,6 @@ import com.tesora.dve.common.DBType;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.db.*;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.*;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PESQLStateException;
@@ -191,12 +190,12 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
      * @param resultsProcessor
      */
     @Override
-    public void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+    public void write(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
         this.sendCommand( SimpleMysqlCommandBundle.bundle(outboundMessage,resultsProcessor), false);
     }
 
     @Override
-    public void writeAndFlush(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+    public void writeAndFlush(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
         this.sendCommand( SimpleMysqlCommandBundle.bundle(outboundMessage,resultsProcessor), true );
     }
 
@@ -267,7 +266,12 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
         return channel.isOpen();
     }
 
-	private void syncToServerConnect() {
+    @Override
+    public boolean isWritable() {
+        return channel.isWritable();
+    }
+
+    private void syncToServerConnect() {
 		if (pendingConnection != null) {
 			pendingConnection.syncUninterruptibly();
 			pendingConnection = null;

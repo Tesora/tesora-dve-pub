@@ -31,15 +31,15 @@ import java.nio.charset.Charset;
  *
  */
 public class SimpleRequestProcessor implements MysqlCommandRequestProcessor {
-    final MyMessage outboundMessage;
+    final MysqlMessage outboundMessage;
     final boolean shouldFlush;
     final boolean expectingResults;
 
-    public SimpleRequestProcessor(MyMessage outboundMessage) {
+    public SimpleRequestProcessor(MysqlMessage outboundMessage) {
         this(outboundMessage,false, true);
     }
 
-    public SimpleRequestProcessor(MyMessage outboundMessage, boolean shouldFlush, boolean expectingResults) {
+    public SimpleRequestProcessor(MysqlMessage outboundMessage, boolean shouldFlush, boolean expectingResults) {
         this.outboundMessage = outboundMessage;
         this.shouldFlush = shouldFlush;
         this.expectingResults = expectingResults;

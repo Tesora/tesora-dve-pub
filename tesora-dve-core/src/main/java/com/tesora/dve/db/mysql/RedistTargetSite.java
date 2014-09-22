@@ -22,6 +22,7 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
@@ -45,7 +46,7 @@ class RedistTargetSite implements AutoCloseable {
 
     private RedistTupleBuilder builder;
 
-    private ChannelHandlerContext ctx;
+    private CommandChannel channel;
     private int pstmtId = -1;
     private boolean waitingForPrepare = false;
     private BufferedExecute bufferedExecute = new BufferedExecute();
@@ -68,9 +69,9 @@ class RedistTargetSite implements AutoCloseable {
         SQLCommand buildInsertStatement(int tupleCount) throws PEException;
     }
 
-    public RedistTargetSite(RedistTupleBuilder builder, ChannelHandlerContext ctx, InsertPolicy policy) {
+    public RedistTargetSite(RedistTupleBuilder builder, CommandChannel channel, InsertPolicy policy) {
         this.builder = builder;
-        this.ctx = ctx;
+        this.channel = channel;
         this.policy = policy;
 
         this.maximumRowsToBuffer = policy.getMaximumRowsToBuffer();
@@ -174,7 +175,8 @@ class RedistTargetSite implements AutoCloseable {
                     this.waitingForPrepare = true; //we flip this back when the prepare response comes back in.
 
                     //sends the prepare with the callback that will issue the execute.
-                    this.ctx.channel().writeAndFlush(prepareCmd);
+//                    this.ctx.channel().writeAndFlush(prepareCmd);
+                    this.channel.writeAndFlush(prepareCmd);
                 } else {
                     //we have a valid statementID, so do the work now.
                     executePendingInsert();
@@ -188,7 +190,7 @@ class RedistTargetSite implements AutoCloseable {
     }
 
     public boolean willAcceptMoreRows(){
-        boolean channelBackedUp = (ctx.channel().isOpen() && !ctx.channel().isWritable());
+        boolean channelBackedUp = (channel.isOpen() && !channel.isWritable());
         return !waitingForPrepare && !channelBackedUp;
     }
 
@@ -204,13 +206,34 @@ class RedistTargetSite implements AutoCloseable {
 
         int rowsWritten = buffersToFlush.size();
 
-//        this.ctx.writeAndFlush(buffersToFlush);
-        this.ctx.channel().writeAndFlush(SimpleMysqlCommandBundle.bundle(buffersToFlush,builder));
+        this.channel.writeAndFlush(buffersToFlush, constructInsertHandler());
         this.pendingFlush = null;
         this.queuedRowSetCount.getAndAdd(-rowsWritten);
 
         // ********************
 
+    }
+
+    private MysqlCommandResultsProcessor constructInsertHandler() {
+        return new MysqlCommandResultsProcessor() {
+            @Override
+            public void active(ChannelHandlerContext ctx) {
+            }
+
+            @Override
+            public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+                return builder.processTargetPacket(RedistTargetSite.this,message);
+            }
+
+            @Override
+            public void packetStall(ChannelHandlerContext ctx) throws PEException {
+            }
+
+            @Override
+            public void failure(Exception e) {
+                builder.failure(e);
+            }
+        };
     }
 
     public int getTotalQueuedRows(){
@@ -241,7 +264,7 @@ class RedistTargetSite implements AutoCloseable {
             // Close statement commands have no results from mysql, so we can just send the command directly on the channel context
 
             MSPComStmtCloseRequestMessage closeRequestMessage = MSPComStmtCloseRequestMessage.newMessage(this.pstmtId);
-            this.ctx.write(closeRequestMessage);//don't flush, let it piggyback on the next outbound message.
+            this.channel.write(new SimpleMysqlCommandBundle(new SimpleRequestProcessor(closeRequestMessage,false,false), new NoopResultProcessor()));
             this.pstmtId = -1;
             this.pstmtTupleCount = -1;
         }
@@ -259,4 +282,23 @@ class RedistTargetSite implements AutoCloseable {
         logger.error("prepare failed, error=" + error);
     }
 
+    private class NoopResultProcessor implements MysqlCommandResultsProcessor {
+        @Override
+        public void active(ChannelHandlerContext ctx) {
+        }
+
+        @Override
+        public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+            return false;
+        }
+
+        @Override
+        public void packetStall(ChannelHandlerContext ctx) throws PEException {
+        }
+
+        @Override
+        public void failure(Exception e) {
+        }
+
+    }
 }

@@ -413,12 +413,15 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
             newBuilder.setInsertIgnore(insertIgnore);
 
             //TODO: this exec really just hands the builder the target sites/connections (and sets the database on each).  -sgossard
-            RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(newBuilder);
+            CommandChannelCollector channelCollector = new CommandChannelCollector(newBuilder);
+
+//            RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(newBuilder);
+
 			WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(givenTargetUserDatabase);
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: Setting up the update consumer on target group: " + emptyRequest);
 
-            targetWG.execute(MappingSolution.AllWorkers, emptyRequest, updateConsumer);
+            targetWG.execute(MappingSolution.AllWorkers, emptyRequest, channelCollector);
             //TODO: we depend on the previous execute being synchronous so that the builder now has all the sites/connections and is ready to write before we start the selects. -sgossard
 
 			MysqlRedistTupleForwarder redistForwarder = 

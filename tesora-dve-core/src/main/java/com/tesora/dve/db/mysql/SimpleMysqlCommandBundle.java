@@ -94,11 +94,18 @@ public class SimpleMysqlCommandBundle implements MysqlCommandBundle, MysqlComman
         return requestProcessor.isExpectingResults(ctx);
     }
 
-    public static SimpleMysqlCommandBundle bundle(MysqlCommand command){
-        return new SimpleMysqlCommandBundle(command,command);
+    public static SimpleMysqlCommandBundle bundle(MysqlCommandBundle command){
+        if (command instanceof SimpleMysqlCommandBundle)
+            return (SimpleMysqlCommandBundle)command;
+        else
+            return new SimpleMysqlCommandBundle(command.getRequestProcessor(),command.getResponseProcessor());
     }
 
-    public static SimpleMysqlCommandBundle bundle(MyMessage message, MysqlCommandResultsProcessor results){
+    public static SimpleMysqlCommandBundle bundle(MysqlCommandRequestProcessor requestProcessor, MysqlCommandResultsProcessor responseProcessor){
+        return new SimpleMysqlCommandBundle(requestProcessor,responseProcessor);
+    }
+
+    public static SimpleMysqlCommandBundle bundle(MysqlMessage message, MysqlCommandResultsProcessor results){
         return new SimpleMysqlCommandBundle(new SimpleRequestProcessor(message, false,true),results);
     }
 

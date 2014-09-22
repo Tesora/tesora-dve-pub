@@ -24,13 +24,13 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.concurrent.*;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import com.tesora.dve.queryplan.TableHints;
 import com.tesora.dve.worker.MysqlRedistTupleForwarder;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.*;
@@ -50,7 +50,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
-public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor, RedistTargetSite.InsertPolicy {
+public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
     static final Logger logger = Logger.getLogger(RedistTupleBuilder.class);
     static final String SIMPLE_CLASSNAME = RedistTupleBuilder.class.getSimpleName();
 
@@ -60,7 +60,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
 
     Map<StorageSite, RedistTargetSite> siteCtxBySite = new HashMap<>();
-	Map<Channel, RedistTargetSite> siteCtxByChannel = new HashMap<>();
 
     IdentityHashMap<RedistTargetSite,RedistTargetSite> blockedTargetSites = new IdentityHashMap<>();
     IdentityHashMap<ChannelHandlerContext,ChannelHandlerContext> sourceSites = new IdentityHashMap<>();
@@ -222,37 +221,21 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
         testRedistributionComplete();
     }
 
-    @Override
-    public void active(ChannelHandlerContext ctx) {
-        //called when the RedistTupleBuilder is ready to receive responses on the target sockets.
-        this.targetActive(ctx);
-    }
-
-    @Override
     public void failure(Exception e) {
         failedRedist = true;
         completionPromise.failure(e);
     }
 
-    @Override
-    public void addSite(StorageSite site, ChannelHandlerContext ctx) {
-        addTargetSite(site, ctx);
+    public void addSite(CommandChannel channel) {
+        StorageSite site = channel.getStorageSite();
+        RedistTargetSite siteCtx = new RedistTargetSite(this, channel, this);
+        siteCtxBySite.put(site, siteCtx);
     }
 
     public int getUpdateCount() throws Exception {
         if (logger.isDebugEnabled())
             logger.debug("redist # "+thisId+" , about to call completionPromise.sync(): " + completionPromise);
         return completionPromise.sync();
-    }
-
-    @Override
-    public void packetStall(ChannelHandlerContext ctx) {
-        targetPacketStall(ctx);
-    }
-
-    @Override
-    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-        return processTargetPacket(ctx, message);
     }
 
     @Override
@@ -303,11 +286,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
     }
 
 
-
-    protected void targetActive(ChannelHandlerContext ctx){
-        //NOOP.   No harm in having this here, the JIT will eliminate it.
-    }
-
     public void sourceActive(ChannelHandlerContext ctx){
         //this is called by MysqlRedistTupleForwarder instances that are processing the source queries when they are in position to receive response packets.
         if (sourceSites.get(ctx) == null){
@@ -337,12 +315,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
     }
 
 
-    private void targetPacketStall(ChannelHandlerContext ctx) {
-        //NOOP.  just here
-    }
-
-    private boolean processTargetPacket(ChannelHandlerContext ctx, MyMessage message) {
-        RedistTargetSite siteCtx = siteCtxByChannel.get(ctx.channel());
+    public boolean processTargetPacket(RedistTargetSite siteCtx, MyMessage message) {
 
         if (!isProcessingComplete(siteCtx)) {
             try {
@@ -422,12 +395,6 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
 
 		}
 	}
-
-    private void addTargetSite(StorageSite site, ChannelHandlerContext ctx) {
-        RedistTargetSite siteCtx = new RedistTargetSite(this,ctx,this);
-        siteCtxBySite.put(site, siteCtx);
-        siteCtxByChannel.put(ctx.channel(), siteCtx);
-    }
 
 
 }

@@ -24,6 +24,7 @@ package com.tesora.dve.db;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.MysqlCommandBundle;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import io.netty.channel.Channel;
 
@@ -62,7 +63,7 @@ public abstract class DBResultConsumer {
 
     abstract public void rollback();
 
-    abstract public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
+    abstract public MysqlCommandBundle writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
 
     public final void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
         /**TODO: In order to decouple the DBResultConsumer hierarchy from the DBConnection classes, this logic was moved
@@ -73,7 +74,7 @@ public abstract class DBResultConsumer {
         if (promise == null)
             promise = connection.getExceptionDeferringPromise();
 
-        MysqlCommand cmd = this.writeCommandExecutor(connection, sql, promise);
+        MysqlCommandBundle cmd = this.writeCommandExecutor(connection, sql, promise);
         connection.writeAndFlush(cmd);
     }
 }
