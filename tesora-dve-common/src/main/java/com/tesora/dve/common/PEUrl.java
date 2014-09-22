@@ -29,6 +29,12 @@ import com.tesora.dve.exceptions.PEException;
 
 public class PEUrl {
 
+	private static String URL_PARAMETER_SEPARATOR = "?";
+
+	public static String stripUrlParameters(final String url) {
+		return StringUtils.substringBeforeLast(url.trim(), URL_PARAMETER_SEPARATOR);
+	}
+
 	private String protocol;
 	private String subProtocol;
 	private String host;

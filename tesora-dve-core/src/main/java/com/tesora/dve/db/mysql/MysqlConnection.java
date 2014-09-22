@@ -34,6 +34,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -44,8 +45,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Objects;
+import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBType;
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
@@ -59,10 +62,15 @@ import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLStateException;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.ServerGlobalVariableStore;
 import com.tesora.dve.worker.DevXid;
 import com.tesora.dve.worker.UserCredentials;
 
@@ -187,7 +195,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
     //syntactic sugar for some of the inner utility calls.
     protected void execute(String sql, CompletionHandle<Boolean> promise){
-        this.execute( new SQLCommand(sql), promise);
+		this.execute(new SQLCommand(lookupCurrentConnectionCharset(), sql), promise);
     }
 
     //syntactic sugar for some of the inner utility calls.
@@ -387,7 +395,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
                     setBuilder.same(variableName,desiredValue);
             }
 
-            updateCommand = setBuilder.generateSql();
+			updateCommand = setBuilder.generateSql(lookupCurrentConnectionCharset());
 //            System.out.println(updates.getAndIncrement() + ": " + updateCommand);
         } catch (Exception e) {
             callbackSetVariablesFailed(updatesRequired, null, e);
@@ -513,5 +521,20 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
     }
 
+	private Charset lookupCurrentConnectionCharset() {
+		final NativeCharSetCatalog charSetcatalog = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
+		String currentConnectionCharsetName = PEStringUtils.dequote(currentSessionVariables.get(KnownVariables.CHARACTER_SET_CONNECTION.getName()));
+		if (currentConnectionCharsetName == null) {
+			currentConnectionCharsetName = ServerGlobalVariableStore.INSTANCE.getValue(KnownVariables.CHARACTER_SET_CONNECTION);
+		}
+
+		try {
+			final NativeCharSet currentConnectionCharset = charSetcatalog.findCharSetByName(currentConnectionCharsetName, true);
+			return currentConnectionCharset.getJavaCharset();
+		} catch (final PEException e) {
+			// This should never happen as we validate the variable values when set.
+			throw new PECodingException("Session variable '" + KnownVariables.CHARACTER_SET_CONNECTION.getName() + "' is set to an unsupported value.", e);
+		}
+	}
 
 }

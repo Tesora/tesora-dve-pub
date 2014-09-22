@@ -27,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import com.tesora.dve.sql.transexec.CatalogHelper;
-import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEConstants;
@@ -39,6 +37,8 @@ import com.tesora.dve.db.DBNative.DBNativeFactory;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
 import com.tesora.dve.siteprovider.onpremise.jaxb.OnPremiseSiteProviderConfig;
+import com.tesora.dve.sql.transexec.CatalogHelper;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.VariableHandler;
 
@@ -139,12 +139,13 @@ public class TestCatalogHelper extends CatalogHelper {
 			dbHelper.connect();
 
 			// DROP/CREATE the database
-			dbHelper.executeQuery(dbNative.getDropDatabaseStmt(getCatalogDBName()).getSQL());
+			dbHelper.executeQuery(dbNative.getDropDatabaseStmt(DBHelper.getConnectionCharset(dbHelper), getCatalogDBName()).getSQL());
 
 			final String catalogName = getCatalogDBName();
 			final String defaultScharSet = dbNative.getDefaultServerCharacterSet();
 			final String defaultCollation = dbNative.getDefaultServerCollation();
-			dbHelper.executeQuery(dbNative.getCreateDatabaseStmt(catalogName, false, defaultScharSet, defaultCollation).getSQL());
+			dbHelper.executeQuery(dbNative
+					.getCreateDatabaseStmt(DBHelper.getConnectionCharset(dbHelper), catalogName, false, defaultScharSet, defaultCollation).getSQL());
 		} catch (SQLException e) {
 			throw new PEException("Error recreating catalog - " + e.getMessage(), e);
 		} finally {

@@ -108,7 +108,7 @@ public class BroadcastDistributionModel extends DistributionModel {
 	
 			QueryStepMultiTupleRedistOperation qso =
 					new QueryStepMultiTupleRedistOperation(userTable.getDatabase(),
-							new SQLCommand("select * from " + userTable.getNameAsIdentifier()),
+							new SQLCommand(ssCon, "select * from " + userTable.getNameAsIdentifier()),
 							BroadcastDistributionModel.SINGLETON
 							).toUserTable(netNewSG, redistTable);
 			qso.execute(ssCon, wg, DBEmptyTextResultConsumer.INSTANCE);

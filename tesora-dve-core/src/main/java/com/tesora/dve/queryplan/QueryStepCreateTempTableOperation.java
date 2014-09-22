@@ -55,18 +55,18 @@ public class QueryStepCreateTempTableOperation extends QueryStepOperation {
 			DBResultConsumer results) throws Throwable {
 		String sqlCommand = theTable.getCreateTableStmt(true);
 		WorkerRequest req = new WorkerExecuteRequest(
-				ssCon.getNonTransactionalContext(), new SQLCommand(sqlCommand))
+				ssCon.getNonTransactionalContext(), new SQLCommand(ssCon, sqlCommand))
 				.onDatabase(theTable.getDatabase()).forDDL();
 		ExecutionLogger logger = ssCon.getExecutionLogger().getNewLogger(
 				"CreateTempTable");
 		try {
 			WorkerRequest preCleanupReq = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(),
-					UserTable.getDropTableStmt(theTable.getName(), true))
+					UserTable.getDropTableStmt(ssCon, theTable.getName(), true))
 					.onDatabase(theTable.getDatabase()).forDDL();
 			wg.execute(MappingSolution.AllWorkers, preCleanupReq,DBEmptyTextResultConsumer.INSTANCE);
 			Collection<Future<Worker>> f = wg.submit(MappingSolution.AllWorkers, req,
 					DBEmptyTextResultConsumer.INSTANCE);
-			wg.addCleanupStep(new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(
+			wg.addCleanupStep(new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon,
 					theTable.getName(), false)).onDatabase(theTable.getDatabase()));
 			WorkerGroup.syncWorkers(f);
 		} finally {

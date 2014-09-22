@@ -23,21 +23,23 @@ package com.tesora.dve.server.messaging;
 
 
 import java.sql.ResultSet;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
+
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSContext;
-import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
+import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerStatement;
 
@@ -72,7 +74,8 @@ public class WorkerExecuteRequest extends WorkerRequest {
 		executeStatement(w, getCommand(), resultConsumer, promise);
 	}
 	
-	protected void executeStatement(final Worker w, final SQLCommand stmtCommand, final DBResultConsumer resultConsumer, final CompletionHandle<Boolean> callersResult) {
+	protected void executeStatement(final Worker w, final SQLCommand stmtCommand, final DBResultConsumer resultConsumer,
+			final CompletionHandle<Boolean> callersResult) {
 
         try {
             w.setCurrentDatabase(defaultDatabase);
@@ -149,7 +152,9 @@ public class WorkerExecuteRequest extends WorkerRequest {
     private void rollbackToSavepoint(Worker w, String savepointId) throws PEException {
         try {
             PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-            w.getStatement().execute(getConnectionId(), new SQLCommand("rollback to " + savepointId), DBEmptyTextResultConsumer.INSTANCE,promise);
+			w.getStatement().execute(getConnectionId(),
+					new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), "rollback to " + savepointId),
+					DBEmptyTextResultConsumer.INSTANCE, promise);
             promise.sync();
         } catch (Exception e) {
             throw new PEException(e);
@@ -162,7 +167,9 @@ public class WorkerExecuteRequest extends WorkerRequest {
 
         try {
             PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-            w.getStatement().execute(getConnectionId(), new SQLCommand("savepoint " + savepointId), DBEmptyTextResultConsumer.INSTANCE, promise);
+			w.getStatement().execute(getConnectionId(),
+					new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), "savepoint " + savepointId),
+					DBEmptyTextResultConsumer.INSTANCE, promise);
             promise.sync();
         } catch (Exception e) {
             throw new PEException(e);

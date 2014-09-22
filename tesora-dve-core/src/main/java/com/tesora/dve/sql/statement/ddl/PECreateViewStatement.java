@@ -36,15 +36,15 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
+import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
@@ -77,9 +77,9 @@ import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
-import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
@@ -402,7 +402,7 @@ public class PECreateViewStatement extends
 						nascentDefinition);
 				backingTable.setDeclaration(context, backingTable);
 				if (nascentDefinition.getMode() == ViewMode.EMULATE) {
-					emulatedDefinition = new SQLCommand(backingTable.getDeclaration());
+					emulatedDefinition = new SQLCommand(conn, backingTable.getDeclaration());
 				}
 			}			
 		}

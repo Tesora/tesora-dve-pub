@@ -31,11 +31,11 @@ import java.util.concurrent.Callable;
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.TwoDimensionalMap;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.Key;
 import com.tesora.dve.common.catalog.KeyColumn;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.dbc.ServerDBConnection;
@@ -117,7 +117,7 @@ public class AnalyzeKeysStatement extends SessionStatement {
 				}
 				buf.append(")");
 				builder.withDBName(offset, toAdd);
-				GenericSQLCommand gsql = builder.build(buf.toString());
+				GenericSQLCommand gsql = builder.build(pc, buf.toString());
 				ProjectingExecutionStep pes = ProjectingExecutionStep.build(db, curgroup, gsql);
 				FilterExecutionStep fes = new FilterExecutionStep(pes, new StoreStatisticsFilter(db.getId(),new CacheInvalidationRecord(toInvalidate)));
 				es.append(fes);
