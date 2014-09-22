@@ -23,7 +23,6 @@ package com.tesora.dve.worker;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
@@ -131,10 +130,10 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
 	}
 
     @Override
-    public MysqlCommand  writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
         MysqlMessage message = MSPComStmtExecuteRequestMessage.newMessage(preparedID, pstmt, sql.getParameters());
-		return new MysqlStmtExecuteCommand(sql, message, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), this, promise);
+        channel.writeAndFlush( new MysqlStmtExecuteCommand(sql, message, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), this, promise) );
 	}
 
     @Override

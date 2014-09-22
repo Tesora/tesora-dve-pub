@@ -24,7 +24,6 @@ package com.tesora.dve.worker;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
-import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
@@ -180,9 +179,9 @@ public class MysqlTextResultCollector extends MysqlParallelResultConsumer {
 	}
 
     @Override
-    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
-		return new MysqlExecuteCommand(sql, message, channel.getMonitor(), this, promise);
+        channel.writeAndFlush( new MysqlExecuteCommand(sql, message, channel.getMonitor(), this, promise) );
 	}
 
 	public ColumnSet getColumnSet() {

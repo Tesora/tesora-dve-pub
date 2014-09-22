@@ -25,7 +25,6 @@ import com.tesora.dve.concurrent.CompletionHandle;
 
 import java.util.List;
 
-import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
@@ -78,10 +77,10 @@ public class MysqlStmtCloseDiscarder extends DBResultConsumer  {
 	}
 
     @Override
-    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
         MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
-		return new MysqlStmtCloseCommand(preparedID,message, promise);
+        channel.writeAndFlush( new MysqlStmtCloseCommand(preparedID,message, promise) );
 	}
 
 	@Override

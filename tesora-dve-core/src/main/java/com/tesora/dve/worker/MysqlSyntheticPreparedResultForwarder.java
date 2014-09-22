@@ -52,7 +52,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 	}
 
     @Override
-    public MysqlCommand writeCommandExecutor(final CommandChannel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(final CommandChannel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
         //TODO: this executor is weird.  It sends a prepare, collects the statement ID, sends an execute, then closes the prepared statement. -sgossard
 		final MysqlQueryResultConsumer resultForwarder = this;
 		final MysqlPrepareParallelConsumer prepareCollector = new MysqlPrepareStatementDiscarder();
@@ -75,7 +75,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 		});
 
         MysqlMessage prepareMessage = MSPComPrepareStmtRequestMessage.newMessage(sql.getSQL(), channel.getTargetCharset());
-		return new MysqlStmtPrepareCommand(channel,sql.getSQL(), prepareMessage, prepareCollector, preparePromise);
+        channel.writeAndFlush( new MysqlStmtPrepareCommand(channel,sql.getSQL(), prepareMessage, prepareCollector, preparePromise));
 	}
 
 }

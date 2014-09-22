@@ -63,7 +63,7 @@ public abstract class DBResultConsumer {
 
     abstract public void rollback();
 
-    abstract public MysqlCommandBundle writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
+    abstract public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
 
     public final void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
         /**TODO: In order to decouple the DBResultConsumer hierarchy from the DBConnection classes, this logic was moved
@@ -74,7 +74,6 @@ public abstract class DBResultConsumer {
         if (promise == null)
             promise = connection.getExceptionDeferringPromise();
 
-        MysqlCommandBundle cmd = this.writeCommandExecutor(connection, sql, promise);
-        connection.writeAndFlush(cmd);
+        this.writeCommandExecutor(connection, sql, promise);
     }
 }

@@ -76,9 +76,9 @@ public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder
 	}
 
     @Override
-    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
-		return new MysqlExecuteCommand(sql, message, channel.getMonitor(), this, promise);
+        channel.writeAndFlush( new MysqlExecuteCommand(sql, message, channel.getMonitor(), this, promise));
 	}
 
 }
