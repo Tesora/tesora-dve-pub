@@ -39,6 +39,7 @@ import org.apache.log4j.Logger;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 /**
  *
@@ -221,6 +222,11 @@ public class DirectConnectionCache {
 
         @Override
         public String getName() { return dbConnection.getName(); }
+
+        @Override
+        public UUID getPhysicalID() {
+            return dbConnection.getPhysicalID();
+        }
 
         @Override
         public StorageSite getStorageSite() {

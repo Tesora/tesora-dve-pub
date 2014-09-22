@@ -26,11 +26,14 @@ import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 
+import java.util.UUID;
+
 /**
  *
  */
 public interface CommandChannel {
     String getName();
+    UUID getPhysicalID();
     StorageSite getStorageSite();
     DBConnection.Monitor getMonitor();
 

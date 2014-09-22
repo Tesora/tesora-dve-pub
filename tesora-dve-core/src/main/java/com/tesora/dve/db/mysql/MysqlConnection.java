@@ -77,6 +77,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
 	Bootstrap mysqlBootstrap;
 	EventLoopGroup connectionEventGroup;
+    private UUID physicalID;
 	private Channel channel;
 	private ChannelFuture pendingConnection;
 	private MysqlClientAuthenticationHandler authHandler;
@@ -159,6 +160,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
 //		System.out.println("Create connection: Allocated " + totalConnections.incrementAndGet() + ", active " + activeConnections.incrementAndGet());
 		channel = pendingConnection.channel();
+        physicalID = UUID.randomUUID();
 
         //TODO: this was moved from execute to connect, which avoids blocking on the execute to be netty friendly, but causes lag on checkout.  Should make this event driven like everything else. -sgossard
         syncToServerConnect();
@@ -173,7 +175,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
     //syntactic sugar for some of the inner utility calls.
     protected void execute(String sql, CompletionHandle<Boolean> promise){
-        this.execute( new SQLCommand(sql), promise);
+        this.execute(new SQLCommand(sql), promise);
     }
 
     //syntactic sugar for some of the inner utility calls.
@@ -196,7 +198,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
     @Override
     public void writeAndFlush(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
-        this.sendCommand( SimpleMysqlCommandBundle.bundle(outboundMessage,resultsProcessor), true );
+        this.sendCommand(SimpleMysqlCommandBundle.bundle(outboundMessage, resultsProcessor), true);
     }
 
     @Override
@@ -240,6 +242,11 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
     public String getName() {
         return site.getName();
+    }
+
+    @Override
+    public UUID getPhysicalID() {
+        return physicalID;
     }
 
     @Override

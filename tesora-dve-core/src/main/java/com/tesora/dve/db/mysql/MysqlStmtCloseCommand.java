@@ -35,27 +35,21 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
 public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandResultsProcessor {
-	
 
-	MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt;
+    int preparedID;
     boolean written = false;
     CompletionTarget<Boolean> promise;
 
-	public MysqlStmtCloseCommand(MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt) {
-		this(pstmt, new PEDefaultPromise<Boolean>());
-	}
-
-    public MysqlStmtCloseCommand(MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, CompletionTarget<Boolean> target) {
-        this.pstmt = pstmt;
+    public MysqlStmtCloseCommand(int preparedID, CompletionTarget<Boolean> target) {
+        this.preparedID = preparedID;
         this.promise = target;
     }
 
 	@Override
 	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
-        MSPComStmtCloseRequestMessage closeReq = MSPComStmtCloseRequestMessage.newMessage(pstmt.getStmtId().getStmtId(ctx.channel()));
+        MSPComStmtCloseRequestMessage closeReq = MSPComStmtCloseRequestMessage.newMessage(preparedID);
         ctx.write(closeReq);
-        this.promise.success(true);
-        this.written = true;
+
     }
 
     public boolean isExpectingResults(ChannelHandlerContext ctx){
@@ -82,6 +76,7 @@ public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandR
 
     @Override
     public void active(ChannelHandlerContext ctx) {
-        //NOOP.
+        this.promise.success(true);
+        this.written = true;
     }
 }

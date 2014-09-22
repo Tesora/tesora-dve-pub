@@ -24,6 +24,7 @@ package com.tesora.dve.db.mysql.portal.protocol;
 import io.netty.channel.Channel;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.log4j.Logger;
@@ -35,15 +36,15 @@ public class MysqlGroupedPreparedStatementId implements
 	
 	private static final Logger logger = Logger.getLogger(MysqlGroupedPreparedStatementId.class);
 
-	Map<Channel, Integer> stmtIdMap = new ConcurrentHashMap<Channel, Integer>();
+	Map<UUID, Integer> stmtIdMap = new ConcurrentHashMap<UUID, Integer>();
 
-	public void addStmtId(Channel channel, int stmtId) {
+	public void addStmtId(UUID channel, int stmtId) {
 		if (logger.isDebugEnabled())
 			logger.debug("Statement id " + stmtId + " registered for channel " + channel);
 		stmtIdMap.put(channel, stmtId);
 	}
 
-	public int getStmtId(Channel channel) {
+	public int getStmtId(UUID channel) {
 		if (!stmtIdMap.containsKey(channel))
 			throw new PECodingException("No prepared statement id registered for channel " + channel + "idMap: " + this);
 		return stmtIdMap.get(channel);

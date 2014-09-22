@@ -45,11 +45,13 @@ public class MysqlStmtExecuteCommand extends MysqlExecuteCommand {
 
 	private MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt;
 	private List<Object> params;
+    private int preparedID;
 
-	public MysqlStmtExecuteCommand(SQLCommand sql, DBConnection.Monitor monitor, MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, List<Object> params,
+	public MysqlStmtExecuteCommand(SQLCommand sql, DBConnection.Monitor monitor, MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, int preparedID,List<Object> params,
                                    MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
 		super(sql, monitor, resultConsumer, promise);
 		this.pstmt = pstmt;
+        this.preparedID = preparedID;
 		this.params = params;
         // Make sure the parameter types in the param metadata match the types of the objects in
         // the parameter values
@@ -72,7 +74,7 @@ public class MysqlStmtExecuteCommand extends MysqlExecuteCommand {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
 
-        MSPComStmtExecuteRequestMessage exec = MSPComStmtExecuteRequestMessage.newMessage(pstmt.getStmtId().getStmtId(ctx.channel()), pstmt, params);
+        MSPComStmtExecuteRequestMessage exec = MSPComStmtExecuteRequestMessage.newMessage(preparedID, pstmt, params);
         ctx.write(exec);
     }
 }

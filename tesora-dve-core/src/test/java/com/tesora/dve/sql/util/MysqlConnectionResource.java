@@ -139,7 +139,8 @@ public class MysqlConnectionResource extends ConnectionResource {
 		@SuppressWarnings("unchecked")
 
 		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id;
-        mysqlConn.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
+        int preparedID = (int)pstmt.getStmtId().getStmtId(mysqlConn.getPhysicalID());
+        mysqlConn.writeAndFlush(new MysqlStmtCloseCommand(preparedID,new PEDefaultPromise<Boolean>()));
     }
 
 	@Override

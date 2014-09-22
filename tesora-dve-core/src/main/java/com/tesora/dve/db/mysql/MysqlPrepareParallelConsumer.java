@@ -52,12 +52,12 @@ public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
 
     @Override
     public MysqlCommand  writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		MysqlCommand cmd = new MysqlStmtPrepareCommand(sql.getSQL(), this, promise);
+		MysqlCommand cmd = new MysqlStmtPrepareCommand(channel, sql.getSQL(), this, promise);
 		return cmd;
 	}
 
-	public void header(ChannelHandlerContext ctx, MyPrepareOKResponse prepareOK) {
-		pstmt.getStmtId().addStmtId(ctx.channel(), (int)prepareOK.getStmtId());
+	public void header(CommandChannel executingOnChannel, ChannelHandlerContext ctx, MyPrepareOKResponse prepareOK) {
+		pstmt.getStmtId().addStmtId(executingOnChannel.getPhysicalID(), (int)prepareOK.getStmtId());
 		synchronized (this) {
 			if (ctxToConsume == null) {
 				ctxToConsume  = ctx;

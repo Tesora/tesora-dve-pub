@@ -170,7 +170,7 @@ class RedistTargetSite implements AutoCloseable {
                             prepareFailed(error);
                         }
                     };
-                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
+                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
 
                     this.waitingForPrepare = true; //we flip this back when the prepare response comes back in.
 

@@ -58,16 +58,17 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 			@Override
 			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = prepareCollector.getPreparedStatement();
-				channel.write(new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), resultForwarder, promise));
+                int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
+				channel.write(new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), resultForwarder, promise));
 //			System.out.println("selectCollector " + pstmt);
-				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
+				channel.writeAndFlush(new MysqlStmtCloseCommand(preparedID,new PEDefaultPromise<Boolean>()));
 			}
 			@Override
 			public void failure(Exception e) {
 				promise.failure(e);
 			}
 		});
-		return new MysqlStmtPrepareCommand(sql.getSQL(), prepareCollector, preparePromise);
+		return new MysqlStmtPrepareCommand(channel,sql.getSQL(), prepareCollector, preparePromise);
 	}
 
 }

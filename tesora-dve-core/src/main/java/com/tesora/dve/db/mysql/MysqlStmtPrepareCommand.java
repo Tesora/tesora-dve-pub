@@ -22,6 +22,7 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
@@ -41,13 +42,15 @@ public class MysqlStmtPrepareCommand extends MysqlCommand implements MysqlComman
 	ResponseState state = ResponseState.AWAIT_HEADER;
 
 	String sqlCommand;
+    private CommandChannel executingOnChannel;
 	private MysqlPrepareParallelConsumer consumer;
 
 	private int numCols;
 	private int numParams;
 
-	public MysqlStmtPrepareCommand(String sql,
+	public MysqlStmtPrepareCommand(CommandChannel executingOnChannel, String sql,
 			MysqlPrepareParallelConsumer mysqlStatementPrepareConsumer, CompletionHandle<Boolean> promise) {
+        this.executingOnChannel = executingOnChannel;
         this.promise = promise;
         this.sqlCommand = sql;
 		this.consumer = mysqlStatementPrepareConsumer;
@@ -86,7 +89,7 @@ public class MysqlStmtPrepareCommand extends MysqlCommand implements MysqlComman
 					else
 						state = ResponseState.DONE;
 
-					consumer.header(ctx, prepareOK);
+					consumer.header(executingOnChannel,ctx, prepareOK);
 
 					if (state == ResponseState.DONE)
 						onCompletion();

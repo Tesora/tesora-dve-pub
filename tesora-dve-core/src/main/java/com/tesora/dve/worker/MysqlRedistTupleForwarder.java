@@ -131,7 +131,8 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
 
     @Override
     public MysqlCommand  writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise);
+        int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
+		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), this, promise);
 	}
 
     @Override
