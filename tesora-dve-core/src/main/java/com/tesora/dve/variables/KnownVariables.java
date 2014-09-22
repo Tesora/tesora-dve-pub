@@ -375,6 +375,12 @@ public class KnownVariables implements VariableConstants {
 					bothScope,
 					"utf8_general_ci",
 					emulated);
+	public static final VariableHandler<String> CHARACTER_SET_CONNECTION =
+			new VariableHandler<String>("character_set_connection",
+			stringConverter,
+			bothScope,
+			"utf8",
+			emulated);
 
 	public static final VariableHandler<NativeCharSet> CHARACTER_SET_CLIENT =
 			new VariableHandler<NativeCharSet>(CHARACTER_SET_CLIENT_NAME,
@@ -735,6 +741,7 @@ public class KnownVariables implements VariableConstants {
 			TIMESTAMP,
 			REPL_TIMESTAMP,
 			SQL_MODE,
+			CHARACTER_SET_CONNECTION,
 			COLLATION_CONNECTION,
 			CHARACTER_SET_CLIENT,
 			CACHE_LIMIT,
@@ -788,11 +795,6 @@ public class KnownVariables implements VariableConstants {
 					integralConverter,
 					bothScope,
 					1L,
-					emulated),
-			new VariableHandler<String>("character_set_connection",
-					stringConverter,
-					bothScope,
-					"utf8",
 					emulated),
 			new VariableHandler<String>("character_set_results",
 					stringConverter,

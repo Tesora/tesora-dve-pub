@@ -23,6 +23,7 @@ package com.tesora.dve.common.resultset;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import io.netty.util.CharsetUtil;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -66,6 +67,7 @@ public class ResultChunkMgrTest {
 		dbHelper.executeQuery("CREATE DATABASE " + db);
 		dbHelper.executeQuery("USE " + db);
 
+
 		dbHelper.executeQuery("DROP TABLE IF EXISTS testtbl");
 		dbHelper.executeQuery("CREATE TABLE IF NOT EXISTS testtbl( intcol int, charcol char(10))");
 
@@ -92,8 +94,9 @@ public class ResultChunkMgrTest {
 		dbprops.setProperty("worker.ResultChunkMaxSize", "106");
 
 		Statement stmt = dbHelper.getConnection().createStatement();
+		dbHelper.getConnection().getMetaData();
 		assertTrue(stmt.execute("SELECT * FROM testtbl"));
-		ResultChunkManager rsmgr = new ResultChunkManager(stmt.getResultSet(), dbprops, "worker", new SQLCommand(""));
+		ResultChunkManager rsmgr = new ResultChunkManager(stmt.getResultSet(), dbprops, "worker", new SQLCommand(CharsetUtil.UTF_8, ""));
 
 		// check that the metadata contains 2 columns
 		assertTrue(rsmgr.getMetaData().size() == 2);
@@ -119,7 +122,7 @@ public class ResultChunkMgrTest {
 
 		Statement stmt = dbHelper.getConnection().createStatement();
 		assertTrue(stmt.execute("SELECT * FROM testtbl"));
-		ResultChunkManager rsmgr = new ResultChunkManager(stmt.getResultSet(), dbprops, "worker", new SQLCommand(""));
+		ResultChunkManager rsmgr = new ResultChunkManager(stmt.getResultSet(), dbprops, "worker", new SQLCommand(CharsetUtil.UTF_8, ""));
 
 		int chunkCnt = 0;
 		ResultChunk chunk;
@@ -143,7 +146,7 @@ public class ResultChunkMgrTest {
 
 		Statement stmt = dbHelper.getConnection().createStatement();
 		assertTrue(stmt.execute("SELECT * FROM testtbl"));
-		ResultChunkManager rsmgr = new ResultChunkManager(stmt.getResultSet(), dbprops, "worker", new SQLCommand(""));
+		ResultChunkManager rsmgr = new ResultChunkManager(stmt.getResultSet(), dbprops, "worker", new SQLCommand(CharsetUtil.UTF_8, ""));
 
 		int chunkCnt = 0;
 		ResultChunk chunk;

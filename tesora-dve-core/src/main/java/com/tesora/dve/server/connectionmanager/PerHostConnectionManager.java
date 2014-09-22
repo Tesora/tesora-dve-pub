@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.comms.client.messages.ClientMessage;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.worker.agent.Agent;
 import com.tesora.dve.worker.StatementManager;
+import com.tesora.dve.worker.agent.Agent;
 
 public enum PerHostConnectionManager {
 	
@@ -160,6 +160,10 @@ public enum PerHostConnectionManager {
 	
 	public int getConnectionCount() {
 		return connectionIdMap.size();
+	}
+
+	public SSConnection lookupConnection(final Integer connectionId) {
+		return connectionIdMap.get(connectionId);
 	}
 
 	public long getTotalConnections() {

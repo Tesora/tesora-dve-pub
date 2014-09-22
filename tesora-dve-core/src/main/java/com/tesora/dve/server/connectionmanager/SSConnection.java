@@ -21,6 +21,8 @@ package com.tesora.dve.server.connectionmanager;
  * #L%
  */
 
+import io.netty.channel.Channel;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -33,18 +35,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
-import com.tesora.dve.db.mysql.common.MysqlHandshake;
-import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
-import io.netty.channel.Channel;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
 import com.tesora.dve.common.RemoteException;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.DynamicPolicy;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.PersistentGroup;
@@ -52,7 +49,6 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.logutil.DisabledExecutionLogger;
 import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.comms.client.messages.BeginTransactionRequest;
@@ -69,7 +65,10 @@ import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.comms.client.messages.RollbackTransactionRequest;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
+import com.tesora.dve.db.mysql.common.MysqlHandshake;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.dbc.AddConnectParametersRequest;
 import com.tesora.dve.distribution.RangeDistributionModel;
 import com.tesora.dve.exceptions.PECodingException;
@@ -100,7 +99,7 @@ import com.tesora.dve.server.connectionmanager.messages.PreConnectRequestExecuto
 import com.tesora.dve.server.connectionmanager.messages.PurgeWorkerGoupCacheExecutor;
 import com.tesora.dve.server.connectionmanager.messages.RollbackTransactionRequestExecutor;
 import com.tesora.dve.server.connectionmanager.messages.SiteFailureExecutor;
-import com.tesora.dve.worker.agent.Envelope;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerCommitRequest;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
@@ -108,6 +107,7 @@ import com.tesora.dve.server.messaging.WorkerPrepareRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.server.messaging.WorkerRollbackRequest;
 import com.tesora.dve.server.transactionmanager.Transaction2PCTracker;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.ConnectionContext;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEUser;
@@ -116,14 +116,13 @@ import com.tesora.dve.sql.schema.StructuralUtils;
 import com.tesora.dve.sql.schema.cache.NonMTCachedPlan;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.mt.IPETenant;
-import com.tesora.dve.variables.ServerGlobalVariableStore;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.LocalVariableStore;
+import com.tesora.dve.variables.ServerGlobalVariableStore;
 import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.variables.VariableManager;
 import com.tesora.dve.variables.VariableStoreSource;
-import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.VariableValueStore;
-import com.tesora.dve.worker.agent.Agent;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.StatementManager;
 import com.tesora.dve.worker.UserAuthentication;
@@ -132,6 +131,8 @@ import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
+import com.tesora.dve.worker.agent.Agent;
+import com.tesora.dve.worker.agent.Envelope;
 
 public class SSConnection extends Agent implements WorkerGroup.Manager, LockClient, VariableStoreSource {
 
@@ -737,7 +738,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 				}
 				for (Map.Entry<PersistentGroup, UserTable> entry : tablesByGroupMap.entrySet()) {
 					final UserTable ut = entry.getValue();
-					SQLCommand sqlCommand = new SQLCommand("select * from " + dbNative.getNameForQuery(ut)  + " where 0=1");
+					SQLCommand sqlCommand = new SQLCommand(this, "select * from " + dbNative.getNameForQuery(ut) + " where 0=1");
 					WorkerGroup wg = getWorkerGroupAndPushContext(entry.getKey(),null);
 					try {
 						WorkerExecuteRequest req = 
@@ -1078,7 +1079,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		globalVariablesUpdated.modify(sql);
 		PersistentGroup allSites = getCatalogDAO().buildAllSitesGroup();
 		WorkerExecuteRequest setSQL =
-				new WorkerExecuteRequest(getNonTransactionalContext(),new SQLCommand(sql));
+				new WorkerExecuteRequest(getNonTransactionalContext(), new SQLCommand(this, sql));
 		WorkerGroup wg = null;
 		try {
 			wg = getWorkerGroup(allSites,null);

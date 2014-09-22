@@ -29,8 +29,8 @@ import org.apache.commons.lang.StringUtils;
 import com.tesora.dve.common.catalog.HasAutoIncrementTracker;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.Emitter.EmitOptions;
+import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
@@ -47,13 +47,13 @@ import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.DistributionKeyTemplate;
 import com.tesora.dve.sql.schema.DistributionVector;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.TempTable;
-import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.util.Functional;
@@ -148,7 +148,7 @@ public final class RedistributionExecutionStep extends
 		if (onDupKey != null && !onDupKey.isEmpty()) {
 			StringBuilder buf = new StringBuilder();
             Singletons.require(HostService.class).getDBNative().getEmitter().emitInsertSuffix(sc, onDupKey, buf);
-			redistOnDupKey = new SQLCommand(buf.toString());
+			redistOnDupKey = new SQLCommand(sc, buf.toString());
 		}
 		this.enforceScalarValue = mustEnforceScalarValue;
 		this.insertIgnore = insertIgnore;
@@ -160,7 +160,7 @@ public final class RedistributionExecutionStep extends
 			PEStorageGroup targetGroup,
 			DistributionKeyTemplate distKeyTemplate,
 			DMLExplainRecord splain) throws PEException {
-		super(db, storageGroup, sourceVect, null, new GenericSQLCommand(sql), splain); 
+		super(db, storageGroup, sourceVect, null, new GenericSQLCommand(sc, sql), splain);
 		targetTable = redistToTable;
 		this.targetGroup = targetGroup;
 		distKey = distKeyTemplate;

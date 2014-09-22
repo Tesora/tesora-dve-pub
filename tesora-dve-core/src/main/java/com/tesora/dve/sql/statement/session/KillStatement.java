@@ -52,7 +52,7 @@ public class KillStatement extends SessionStatement {
 	}
 
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
+	public void plan(final SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 
 		if (null == PerHostConnectionManager.INSTANCE.getConnectionInfo(connectionId))
 			throw new PESQLException("Unknown thread id: " + connectionId);
@@ -65,7 +65,7 @@ public class KillStatement extends SessionStatement {
 							throws Throwable {
 
 						WorkerExecuteRequest req = new WorkerExecuteKillRequest(ssCon.getNonTransactionalContext(),
-								new SQLCommand("KILL QUERY"), connectionId);
+								new SQLCommand(sc, "KILL QUERY"), connectionId);
 						wg.execute(WorkerGroup.MappingSolution.AllWorkers, req, resultConsumer);
 
 						if (isKillConnection)

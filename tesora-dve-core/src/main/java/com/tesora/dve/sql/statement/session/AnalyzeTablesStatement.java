@@ -24,11 +24,13 @@ package com.tesora.dve.sql.statement.session;
 
 import java.util.List;
 
+import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.StaticDistributionModel;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.singleton.Singletons;
@@ -36,13 +38,11 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.statement.session.AnalyzeKeysStatement.LoadKeyInfo;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
 import com.tesora.dve.worker.WorkerGroup;
-import com.tesora.dve.sql.statement.session.AnalyzeKeysStatement.LoadKeyInfo;
-import com.tesora.dve.common.MultiMap;
-import com.tesora.dve.exceptions.PEException;
 
 public class AnalyzeTablesStatement extends TableMaintenanceStatement {
 
@@ -58,7 +58,7 @@ public class AnalyzeTablesStatement extends TableMaintenanceStatement {
 	// have to use an adhoc operation - after this runs we need to fire off an event to do the info schema query
 	
 	@Override
-	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
+	public void plan(final SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		// so we have to do adhoc operations - each one is for a particular storage group & database
 		// and fires off the event;
 		MultiMap<Database<?>,TableInstance> byDB = new MultiMap<Database<?>,TableInstance>();
@@ -84,7 +84,7 @@ public class AnalyzeTablesStatement extends TableMaintenanceStatement {
 				public void execute(SSConnection ssCon, WorkerGroup wg,
 						DBResultConsumer resultConsumer) throws Throwable {
 					resultConsumer.setResultsLimit(Long.MAX_VALUE);
-					SQLCommand command = new SQLCommand(sql);
+					SQLCommand command = new SQLCommand(pc, sql);
 					WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).onDatabase(db);
 					wg.execute(StaticDistributionModel.SINGLETON.mapForQuery(wg, command), req, resultConsumer);
                     Singletons.require(HostService.class).submit(new LoadKeyInfo("use " + db.getName().getSQL(), aksStmt));

@@ -33,8 +33,8 @@ import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.db.Emitter;
-import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.Emitter.EmitOptions;
+import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
 import com.tesora.dve.resultset.ProjectionInfo;
@@ -152,7 +152,7 @@ public abstract class Statement extends StatementNode {
 			if (sc != null)
 				emitter.popContext();
 		}
-		return emitter.buildGenericCommand(buf.toString());
+		return emitter.buildGenericCommand(sc, buf.toString());
 	}
 	
 	public GenericSQLCommand getGenericSQL(SchemaContext sc, boolean withExtensions, boolean withPretty) {
@@ -194,7 +194,7 @@ public abstract class Statement extends StatementNode {
             logFormat =	dmls.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), null);
 			projection = dmls.getProjectionMetadata(sc);
 		} else {
-			logFormat = new GenericSQLCommand(s.getSQL(sc));
+			logFormat = new GenericSQLCommand(sc, s.getSQL(sc));
 		}
 		ExecutionPlan currentPlan = new ExecutionPlan(projection,sc.getValueManager(),StatementType.PREPARE);
 		if (s.filterStatement(sc))
@@ -211,7 +211,7 @@ public abstract class Statement extends StatementNode {
 					dmls.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), null)));
 			tableKeys = dmls.getDerivedInfo().getAllTableKeys();
 		} else {
-			currentPlan.getSequence().append(new PrepareExecutionStep(s.getDatabase(sc),pesg,new GenericSQLCommand(s.getSQL(sc))));
+			currentPlan.getSequence().append(new PrepareExecutionStep(s.getDatabase(sc), pesg, new GenericSQLCommand(sc, s.getSQL(sc))));
 			tableKeys = Collections.EMPTY_LIST;
 		}
 		Database<?> cdb = sc.getCurrentDatabase(false);

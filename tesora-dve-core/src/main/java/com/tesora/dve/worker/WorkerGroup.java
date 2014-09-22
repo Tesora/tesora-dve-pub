@@ -21,24 +21,34 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import java.util.*;
+import io.netty.channel.Channel;
+import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.Queue;
+import java.util.SortedMap;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.TreeMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
-import com.tesora.dve.db.mysql.SharedEventLoopHolder;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.worker.agent.Agent;
-import io.netty.channel.Channel;
-import io.netty.channel.EventLoop;
-import io.netty.channel.EventLoopGroup;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.PECollectionUtils;
@@ -47,24 +57,35 @@ import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
+import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSContext;
+import com.tesora.dve.server.connectionmanager.WorkerSetSessionVariableRequest;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.CloneWorkerRequest;
-import com.tesora.dve.worker.agent.Envelope;
 import com.tesora.dve.server.messaging.GetWorkerRequest;
 import com.tesora.dve.server.messaging.GetWorkerResponse;
 import com.tesora.dve.server.messaging.ResetWorkerRequest;
 import com.tesora.dve.server.messaging.ReturnWorkerRequest;
 import com.tesora.dve.server.messaging.WorkerCreateDatabaseRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
+import com.tesora.dve.worker.agent.Agent;
+import com.tesora.dve.worker.agent.Envelope;
 
 public class WorkerGroup {
 	
@@ -368,6 +389,10 @@ public class WorkerGroup {
 
 	public String getName() {
 		return name;
+	}
+
+	public int getCommectionId() {
+		return this.connectionId;
 	}
 
 	public boolean isProvisioned() {

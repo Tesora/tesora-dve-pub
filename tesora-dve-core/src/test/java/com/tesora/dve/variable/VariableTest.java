@@ -280,7 +280,7 @@ public class VariableTest extends PETest {
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSelectAllOperation(db, BroadcastDistributionModel.SINGLETON,
+		executeQuery(new QueryStepSelectAllOperation(ssConnection, db, BroadcastDistributionModel.SINGLETON,
 				"select @@session.collation_connection"), results);
 		assertTrue(results.hasResults());
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
@@ -295,7 +295,7 @@ public class VariableTest extends PETest {
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSelectAllOperation(db, BroadcastDistributionModel.SINGLETON,
+		executeQuery(new QueryStepSelectAllOperation(ssConnection, db, BroadcastDistributionModel.SINGLETON,
 				"select @@session.collation_connection"), results);
 		assertTrue(results.hasResults());
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));

@@ -21,6 +21,8 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import java.nio.charset.Charset;
+
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.server.messaging.SQLCommand;
 
@@ -34,5 +36,5 @@ public interface SetVariableSQLBuilder {
     void update(String key, String previousValue, String newValue);
     void same(String key, String sameValue);
 
-    SQLCommand generateSql() throws PENotFoundException;
+	SQLCommand generateSql(Charset connectionCharset) throws PENotFoundException;
 }

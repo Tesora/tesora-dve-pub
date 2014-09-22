@@ -34,8 +34,8 @@ import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.show.ShowTableStatusInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -107,7 +107,7 @@ public class ShowTableStatusStatement extends DelegatingDDLStatement {
 		}
 		String origCommand = buildInitialShowStatusCommand();
 		if (onGroup.isSingleSiteGroup()) {
-			es.append(ProjectingExecutionStep.build(ondb,onGroup,origCommand));
+			es.append(ProjectingExecutionStep.build(pc, ondb, onGroup, origCommand));
 		} else {
 			//		System.out.println(origCommand);
 			TempGroupManager tgm = new TempGroupManager(); 

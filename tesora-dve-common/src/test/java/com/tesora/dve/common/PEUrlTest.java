@@ -29,10 +29,14 @@ import java.util.Properties;
 
 import org.junit.Test;
 
-import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.exceptions.PEException;
 
 public class PEUrlTest {
+
+	@Test
+	public void stripUrlParametersTest() {
+		assertEquals("jdbc:mysql://localhost:3306/path1?/path2", PEUrl.stripUrlParameters("jdbc:mysql://localhost:3306/path1?/path2?opt1=optvalue"));
+	}
 
 	@Test
 	public void parseURLPositiveTest() throws PEException {

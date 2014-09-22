@@ -25,8 +25,8 @@ import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.singleton.Singletons;
@@ -71,7 +71,8 @@ public class QueryStepCreateUserOperation extends QueryStepOperation {
 
 			// build two different stmts: the create user statement and the grant statement
 
-            WorkerRequest req = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), Singletons.require(HostService.class).getDBNative().getCreateUserCommand(user));
+			WorkerRequest req = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), Singletons.require(HostService.class).getDBNative()
+					.getCreateUserCommand(ssCon, user));
 			wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 
 			c.commit();

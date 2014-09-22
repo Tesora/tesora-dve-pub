@@ -27,10 +27,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.SQLException;
 
-import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
@@ -51,7 +47,13 @@ import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.UserCredentials;
@@ -110,12 +112,12 @@ public class TuplesTest extends PETest {
 		String temp2Name = UserTable.getNewTempTableName();
 		
 		QueryStepOperation step1aOp1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select a,b,c from t1"), t1.getDistributionModel())
+				new SQLCommand(ssConnection, "select a,b,c from t1"), t1.getDistributionModel())
 			.toTempTable(sg, db, temp1Name);
 		QueryStepOperation step1bOp1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select a,b,p from t2"), t2.getDistributionModel())
+				new SQLCommand(ssConnection, "select a,b,p from t2"), t2.getDistributionModel())
 			.toTempTable(sg, db, temp2Name);
-		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(db, BroadcastDistributionModel.SINGLETON,
+		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(ssConnection, db, BroadcastDistributionModel.SINGLETON,
 				"select t1.a, t1.b, t1.c, t2.p from "+temp1Name+" t1, " + temp2Name + " t2 "
 				+ "where t1.a = t2.a and t1.b = t2.b");
 		QueryStep step1a = new QueryStep(sg, step1aOp1);
@@ -169,14 +171,14 @@ public class TuplesTest extends PETest {
 		String temp2Name = UserTable.getNewTempTableName();
 		
 		QueryStepOperation step1aOp1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select a,b,c from t1"), t1.getDistributionModel())
+				new SQLCommand(ssConnection, "select a,b,c from t1"), t1.getDistributionModel())
 			.toTempTable(sg, db, temp1Name)
 			.distributeOn(t1.getDistKey().asColumnList());
 		QueryStepOperation step1bOp1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select a,b,p from t2"), t2.getDistributionModel())
+				new SQLCommand(ssConnection, "select a,b,p from t2"), t2.getDistributionModel())
 			.toTempTable(sg, db, temp2Name)
 			.distributeOn(t2.getDistKey().asColumnList());
-		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(db, StaticDistributionModel.SINGLETON,
+		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(ssConnection, db, StaticDistributionModel.SINGLETON,
 //				"select * from t2");
 				"select t1.a, t1.b, t1.c, t2.p from "+temp1Name+" t1, " + temp2Name + " t2 "
 				+ "where t1.a = t2.a and t1.b = t2.b");
@@ -218,9 +220,9 @@ public class TuplesTest extends PETest {
 		distKey.add(t1.getUserColumn("a"));
 		
 		QueryStepOperation step1aOp1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select a, count(*) ct from t1 group by t1.a"), t1.getDistributionModel())
+				new SQLCommand(ssConnection, "select a, count(*) ct from t1 group by t1.a"), t1.getDistributionModel())
 			.toTempTable(tempGroup, db, tempName);
-		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(db, StaticDistributionModel.SINGLETON,
+		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(ssConnection, db, StaticDistributionModel.SINGLETON,
 				"select "+tempName+".a as a, sum(ct) as \"count(*)\" from "+tempName+" group by a");
 		QueryStep step1a = new QueryStep(sg, step1aOp1);
 		QueryStep step2 = new QueryStep(tempGroup, step2op1);
@@ -289,7 +291,7 @@ public class TuplesTest extends PETest {
 	
 	private void updateMultiRow(UserTable t, int expected, String qry) throws Throwable {
 		QueryPlan plan = new QueryPlan();
-		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(db, t.getDistributionModel(), qry);
+		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(ssConnection, db, t.getDistributionModel(), qry);
 		QueryStep step1 = new QueryStep(sg, step1op1);
 		plan.addStep(step1);
 		
