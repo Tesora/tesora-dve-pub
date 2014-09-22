@@ -36,6 +36,7 @@ import org.apache.commons.pool.impl.GenericKeyedObjectPool;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.log4j.Logger;
 
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -226,6 +227,11 @@ public class DirectConnectionCache {
         @Override
         public UUID getPhysicalID() {
             return dbConnection.getPhysicalID();
+        }
+
+        @Override
+        public Charset getTargetCharset() {
+            return dbConnection.getTargetCharset();
         }
 
         @Override

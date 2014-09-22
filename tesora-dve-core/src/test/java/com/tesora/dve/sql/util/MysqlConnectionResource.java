@@ -36,8 +36,10 @@ import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
@@ -140,7 +142,8 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id;
         int preparedID = (int)pstmt.getStmtId().getStmtId(mysqlConn.getPhysicalID());
-        mysqlConn.writeAndFlush(new MysqlStmtCloseCommand(preparedID,new PEDefaultPromise<Boolean>()));
+        MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
+        mysqlConn.writeAndFlush(new MysqlStmtCloseCommand(preparedID,message,new PEDefaultPromise<Boolean>()));
     }
 
 	@Override

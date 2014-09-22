@@ -24,6 +24,7 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.*;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
 import io.netty.channel.ChannelHandlerContext;
@@ -60,7 +61,8 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = resultForwarder.getPreparedStatement();
                 int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
-				channel.writeAndFlush(new MysqlStmtCloseCommand(preparedID,promise));
+                MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
+				channel.writeAndFlush(new MysqlStmtCloseCommand(preparedID,message,promise));
 			}
 			@Override
 			public void failure(Exception e) {

@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtExecuteRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
@@ -132,7 +133,8 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
     @Override
     public MysqlCommand  writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
-		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), this, promise);
+        MysqlMessage message = MSPComStmtExecuteRequestMessage.newMessage(preparedID, pstmt, sql.getParameters());
+		return new MysqlStmtExecuteCommand(sql, message, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), this, promise);
 	}
 
     @Override

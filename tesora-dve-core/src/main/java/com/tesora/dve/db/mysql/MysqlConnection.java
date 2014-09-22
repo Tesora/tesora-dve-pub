@@ -38,8 +38,10 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.tesora.dve.common.PEUrl;
@@ -87,6 +89,8 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
 	private boolean pendingUpdate = false;
 	private boolean hasActiveTransaction = false;
+
+    private AtomicReference<Charset> targetCharset = new AtomicReference<>();
 
     Map<String,String> currentSessionVariables = new HashMap<>();
     Map<String,String> sessionDefaults = new HashMap<>();
@@ -143,7 +147,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 		.handler(new ChannelInitializer<Channel>() {
 			@Override
 			protected void initChannel(Channel ch) throws Exception {
-				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));           
+				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL), targetCharset);
 
                 if (PACKET_LOGGER)
                     ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
@@ -249,6 +253,10 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
         return physicalID;
     }
 
+    public Charset getTargetCharset(){
+        return targetCharset.get();
+    }
+
     @Override
     public StorageSite getStorageSite() {
         return site;
@@ -294,7 +302,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 		if (connectionEventGroup != null) {
 			if (channel.isOpen()) {
                 try {
-                    channel.writeAndFlush(new MysqlQuitCommand());
+                    channel.writeAndFlush(new MysqlQuitCommand(MSPComQuitRequestMessage.newMessage()));
                 } finally {
 				    channel.close().syncUninterruptibly();
                 }

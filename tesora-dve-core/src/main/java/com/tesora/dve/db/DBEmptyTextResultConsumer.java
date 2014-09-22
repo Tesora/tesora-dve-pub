@@ -23,10 +23,12 @@ package com.tesora.dve.db;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.libmy.*;
 
 import java.util.List;
 
+import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
@@ -127,7 +129,8 @@ public class DBEmptyTextResultConsumer extends DBResultConsumer implements Mysql
     @Override
     public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled()) logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		return new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise);
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
+		return new MysqlExecuteCommand(sql, message, channel.getMonitor(), this, promise);
 	}
 
 	@Override

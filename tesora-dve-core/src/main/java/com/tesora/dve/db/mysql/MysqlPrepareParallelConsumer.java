@@ -24,6 +24,7 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
 import io.netty.channel.ChannelHandlerContext;
@@ -52,7 +53,8 @@ public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
 
     @Override
     public MysqlCommand  writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		MysqlCommand cmd = new MysqlStmtPrepareCommand(channel, sql.getSQL(), this, promise);
+        MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(sql.getSQL(), channel.getTargetCharset());
+		MysqlCommand cmd = new MysqlStmtPrepareCommand(channel, sql.getSQL(), message, this, promise);
 		return cmd;
 	}
 

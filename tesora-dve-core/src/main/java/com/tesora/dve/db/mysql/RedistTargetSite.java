@@ -25,6 +25,7 @@ import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -170,7 +171,8 @@ class RedistTargetSite implements AutoCloseable {
                             prepareFailed(error);
                         }
                     };
-                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
+                    MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(insertCommand.getSQL(), this.channel.getTargetCharset());
+                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), message, prepareCollector1, new PEDefaultPromise<Boolean>());
 
                     this.waitingForPrepare = true; //we flip this back when the prepare response comes back in.
 
@@ -264,7 +266,7 @@ class RedistTargetSite implements AutoCloseable {
             // Close statement commands have no results from mysql, so we can just send the command directly on the channel context
 
             MSPComStmtCloseRequestMessage closeRequestMessage = MSPComStmtCloseRequestMessage.newMessage(this.pstmtId);
-            this.channel.write(new SimpleMysqlCommandBundle(new SimpleRequestProcessor(closeRequestMessage,false,false), new NoopResultProcessor()));
+            this.channel.write(new SimpleMysqlCommandBundle(new SimpleRequestProcessor(closeRequestMessage,false,false), NoopResponseProcessor.NOOP));
             this.pstmtId = -1;
             this.pstmtTupleCount = -1;
         }
@@ -282,23 +284,4 @@ class RedistTargetSite implements AutoCloseable {
         logger.error("prepare failed, error=" + error);
     }
 
-    private class NoopResultProcessor implements MysqlCommandResultsProcessor {
-        @Override
-        public void active(ChannelHandlerContext ctx) {
-        }
-
-        @Override
-        public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-            return false;
-        }
-
-        @Override
-        public void packetStall(ChannelHandlerContext ctx) throws PEException {
-        }
-
-        @Override
-        public void failure(Exception e) {
-        }
-
-    }
 }

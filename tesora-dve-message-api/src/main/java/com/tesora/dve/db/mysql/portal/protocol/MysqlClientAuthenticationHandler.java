@@ -40,6 +40,7 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PESQLException;
@@ -63,13 +64,15 @@ public class MysqlClientAuthenticationHandler extends ByteToMessageDecoder {
 
     JavaCharsetCatalog javaCharsetCatalog;
 	Charset serverCharset = CharsetUtil.UTF_8;
+    AtomicReference<Charset> targetCharset;
 
 	long clientCapabilities;
 
-	public MysqlClientAuthenticationHandler(SimpleCredentials userCredentials, long clientCapabilities, JavaCharsetCatalog javaCharsetCatalog) {
+	public MysqlClientAuthenticationHandler(SimpleCredentials userCredentials, long clientCapabilities, JavaCharsetCatalog javaCharsetCatalog, AtomicReference<Charset> targetCharset) {
 		this.userCredentials = userCredentials;
         this.javaCharsetCatalog = javaCharsetCatalog;
         this.clientCapabilities = clientCapabilities;
+        this.targetCharset = targetCharset;
 	}
 
 
@@ -129,6 +132,7 @@ public class MysqlClientAuthenticationHandler extends ByteToMessageDecoder {
 			handshake.unmarshallMessage(payload);
 			ctx.channel().attr(HANDSHAKE_KEY).set(handshake);
 			serverCharset = handshake.getServerCharset( javaCharsetCatalog );
+            targetCharset.set(serverCharset);
 			serverThreadID = handshake.getThreadID();
 			ByteBuf out = Unpooled.buffer().order(ByteOrder.LITTLE_ENDIAN);
 			try {

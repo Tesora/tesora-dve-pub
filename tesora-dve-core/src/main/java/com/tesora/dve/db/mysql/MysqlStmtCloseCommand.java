@@ -34,22 +34,16 @@ import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
-public class MysqlStmtCloseCommand extends MysqlCommand implements MysqlCommandResultsProcessor {
+public class MysqlStmtCloseCommand extends MysqlCommand {
 
     int preparedID;
     boolean written = false;
     CompletionTarget<Boolean> promise;
 
-    public MysqlStmtCloseCommand(int preparedID, CompletionTarget<Boolean> target) {
+    public MysqlStmtCloseCommand(int preparedID, MysqlMessage message, CompletionTarget<Boolean> target) {
+        super(message);
         this.preparedID = preparedID;
         this.promise = target;
-    }
-
-	@Override
-	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
-        MSPComStmtCloseRequestMessage closeReq = MSPComStmtCloseRequestMessage.newMessage(preparedID);
-        ctx.write(closeReq);
-
     }
 
     public boolean isExpectingResults(ChannelHandlerContext ctx){

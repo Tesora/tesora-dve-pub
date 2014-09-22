@@ -21,20 +21,27 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.clock.Timer;
-import com.tesora.dve.clock.TimingService;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.singleton.Singletons;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.nio.charset.Charset;
 
 import com.tesora.dve.exceptions.PEException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class MysqlCommand implements MysqlCommandBundle, MysqlCommandResultsProcessor, MysqlCommandRequestProcessor {
+    static final Logger logger = LoggerFactory.getLogger(MysqlCommand.class);
 
-    abstract void execute(ChannelHandlerContext ctx, Charset charset) throws PEException;
+    MysqlMessage message;
+
+    protected MysqlCommand(MysqlMessage message) {
+        this.message = message;
+    }
+
+    protected final MysqlMessage getOutboundMessage(){
+        return message;
+    }
 
     @Override
     abstract public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
@@ -48,10 +55,11 @@ public abstract class MysqlCommand implements MysqlCommandBundle, MysqlCommandRe
     @Override
     abstract public void active(ChannelHandlerContext ctx);
 
-
     @Override
     public final void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
-		execute(ctx, charset);
+        logger.debug("Written: {}" , this);
+        MysqlMessage message = this.getOutboundMessage();
+        ctx.write(message);
 	}
 
     @Override

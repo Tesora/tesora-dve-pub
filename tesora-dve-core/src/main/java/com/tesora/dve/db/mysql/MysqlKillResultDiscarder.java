@@ -26,6 +26,7 @@ import com.tesora.dve.db.CommandChannel;
 
 import java.util.List;
 
+import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.DBResultConsumer;
@@ -79,7 +80,8 @@ public class MysqlKillResultDiscarder extends DBResultConsumer {
     public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled())
 			logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		return new MysqlExecuteCommand(sql, channel.getMonitor(), null, promise);
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
+		return new MysqlExecuteCommand(sql, message, channel.getMonitor(), null, promise);
 	}
 
 	@Override

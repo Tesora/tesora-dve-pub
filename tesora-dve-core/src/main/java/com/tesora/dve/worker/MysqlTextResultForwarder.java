@@ -26,9 +26,9 @@ import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.NativeResultHandler;
 import com.tesora.dve.db.NativeTypeCatalog;
-import com.tesora.dve.db.mysql.FieldMetadataAdapter;
-import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
@@ -37,10 +37,8 @@ import io.netty.channel.ChannelHandlerContext;
 import java.util.List;
 
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
-import com.tesora.dve.db.mysql.MysqlExecuteCommand;
 import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
 import com.tesora.dve.db.mysql.libmy.MyTextDataResponse;
-import com.tesora.dve.db.mysql.MSPResultSetResponse;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
@@ -79,7 +77,8 @@ public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder
 
     @Override
     public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		return new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise);
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
+		return new MysqlExecuteCommand(sql, message, channel.getMonitor(), this, promise);
 	}
 
 }

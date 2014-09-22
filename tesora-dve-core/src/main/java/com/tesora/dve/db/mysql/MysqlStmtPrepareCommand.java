@@ -33,7 +33,7 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.exceptions.PEException;
 
-public class MysqlStmtPrepareCommand extends MysqlCommand implements MysqlCommandResultsProcessor {
+public class MysqlStmtPrepareCommand extends MysqlCommand {
 
 	static Logger logger = Logger.getLogger(MysqlStmtPrepareCommand.class);
     private CompletionHandle<Boolean> promise;
@@ -48,21 +48,14 @@ public class MysqlStmtPrepareCommand extends MysqlCommand implements MysqlComman
 	private int numCols;
 	private int numParams;
 
-	public MysqlStmtPrepareCommand(CommandChannel executingOnChannel, String sql,
+    public MysqlStmtPrepareCommand(CommandChannel executingOnChannel, String sql, MysqlMessage message,
 			MysqlPrepareParallelConsumer mysqlStatementPrepareConsumer, CompletionHandle<Boolean> promise) {
+        super(message);
         this.executingOnChannel = executingOnChannel;
         this.promise = promise;
         this.sqlCommand = sql;
 		this.consumer = mysqlStatementPrepareConsumer;
 	}
-
-	@Override
-	public void execute(ChannelHandlerContext ctx, Charset charset) {
-		if (logger.isDebugEnabled())
-			logger.debug("Written: " + this);
-        MSPComPrepareStmtRequestMessage prepStmt = MSPComPrepareStmtRequestMessage.newMessage(sqlCommand, charset);
-        ctx.write(prepStmt);
-    }
 
     @Override
     public void active(ChannelHandlerContext ctx) {

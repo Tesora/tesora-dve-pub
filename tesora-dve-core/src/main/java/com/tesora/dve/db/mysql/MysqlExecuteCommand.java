@@ -38,7 +38,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlExecuteCommand extends MysqlCommand implements MysqlCommandResultsProcessor {
+public class MysqlExecuteCommand extends MysqlCommand {
 	static final Logger logger = Logger.getLogger( MysqlExecuteCommand.class );
     private CompletionHandle<Boolean> promise;
 
@@ -54,21 +54,14 @@ public class MysqlExecuteCommand extends MysqlCommand implements MysqlCommandRes
     private int writtenFrames;
 	private Monitor connectionMonitor;
 
-	public MysqlExecuteCommand(SQLCommand sqlCommand, DBConnection.Monitor monitor,
+    public MysqlExecuteCommand(SQLCommand sqlCommand, MysqlMessage message, DBConnection.Monitor monitor,
                                MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+        super(message);
         this.promise = promise;
         this.sqlCommand = sqlCommand;
 		this.resultConsumer = resultConsumer;
         this.connectionMonitor = monitor;
 	}
-
-	@Override
-	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
-		if (logger.isDebugEnabled())
-			logger.debug("Written: " + this);
-        MSPComQueryRequestMessage queryMsg = MSPComQueryRequestMessage.newMessage(sqlCommand.getSQLAsBytes());
-        ctx.write(queryMsg);
-    }
 
 	@Override
 	public String toString() {

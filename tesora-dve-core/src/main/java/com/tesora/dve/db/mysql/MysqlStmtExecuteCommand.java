@@ -47,9 +47,9 @@ public class MysqlStmtExecuteCommand extends MysqlExecuteCommand {
 	private List<Object> params;
     private int preparedID;
 
-	public MysqlStmtExecuteCommand(SQLCommand sql, DBConnection.Monitor monitor, MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, int preparedID,List<Object> params,
+    public MysqlStmtExecuteCommand(SQLCommand sql, MysqlMessage message, DBConnection.Monitor monitor, MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt, int preparedID,List<Object> params,
                                    MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-		super(sql, monitor, resultConsumer, promise);
+		super(sql, message, monitor, resultConsumer, promise);
 		this.pstmt = pstmt;
         this.preparedID = preparedID;
 		this.params = params;
@@ -68,13 +68,5 @@ public class MysqlStmtExecuteCommand extends MysqlExecuteCommand {
             }
         }
 	}
-	
-	@Override
-	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
-		if (logger.isDebugEnabled())
-			logger.debug("Written: " + this);
 
-        MSPComStmtExecuteRequestMessage exec = MSPComStmtExecuteRequestMessage.newMessage(preparedID, pstmt, params);
-        ctx.write(exec);
-    }
 }

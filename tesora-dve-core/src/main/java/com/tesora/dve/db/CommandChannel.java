@@ -26,6 +26,7 @@ import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 
+import java.nio.charset.Charset;
 import java.util.UUID;
 
 /**
@@ -34,6 +35,7 @@ import java.util.UUID;
 public interface CommandChannel {
     String getName();
     UUID getPhysicalID();
+    Charset getTargetCharset();
     StorageSite getStorageSite();
     DBConnection.Monitor getMonitor();
 
