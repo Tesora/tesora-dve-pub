@@ -21,6 +21,8 @@ package com.tesora.dve.common;
  * #L%
  */
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
@@ -219,8 +221,12 @@ public class PEUrl {
 
 		sb.append(protocol).append(':').append(subProtocol).append("://").append(getAuthority());
 
-		if (path != null)
-			sb.append('/').append(path);
+		if (path != null) {
+			if (!path.isEmpty() && !path.startsWith("/")) {
+				sb.append('/');
+			}
+		sb.append(path);
+		}
 
 		if (query != null)
 			sb.append('?').append(query);
@@ -416,47 +422,54 @@ public class PEUrl {
 		}
 	}
 
+	public String getStringWithoutQueryPart() {
+		return PEUrl.stripUrlParameters(this.toString());
+	}
+
+	// [protocol:subprotocol:][//authority][path][?query][#fragment]
 	private PEUrl parseURL(String urlString) throws PEException {
 
-		if (StringUtils.isEmpty(urlString))
-			throw new PEException("Can't parse an empty URL");
+		try {
+			URI parser = new URI(urlString.trim());
+			final String protocol = parser.getScheme();
 
-		hasPort = false;
-		// parse protocol from beginning (e.g. jdbc:mysql
-		String[] protocolA = urlString.split(":", 3);
-		if (protocolA.length != 3)
-			throw new PEException("Malformed URL '" + urlString + "' - incomplete protocol");
+			parser = URI.create(parser.getSchemeSpecificPart());
+			final String subProtocol = parser.getScheme();
+			final String authority = parser.getAuthority();
 
-		setProtocol(protocolA[0]);
-		setSubProtocol(protocolA[1]);
+			if ((protocol == null) || (subProtocol == null)) {
+				throw new PEException("Malformed URL '" + urlString + "' - incomplete protocol");
+			} else if (authority == null) {
+				throw new PEException("Malformed URL '" + urlString + "' - invalid authority");
+			}
 
-		// next, parse authority (i.e. host:port - localhost:6800)
-		String[] authorityA = protocolA[2].split("//", 2);
-		if (authorityA.length != 2 || !authorityA[0].isEmpty())
-			throw new PEException("Malformed URL '" + urlString + "' - invalid authority");
+			this.setProtocol(protocol);
+			this.setSubProtocol(subProtocol);
 
-		// next, determine is query exists ("?")
-		String[] queryA = authorityA[1].split("\\?", 2);
-		if (queryA.length == 2) {
-			setQuery(queryA[1]);
+			final String host = parser.getHost();
+			if (host != null) {
+				this.setHost(host);
+			}
+
+			final int port = parser.getPort();
+			if (port != -1) {
+				this.setPort(port);
+			}
+
+			final String query = parser.getQuery();
+			if (query != null) {
+				this.setQuery(query);
+			}
+
+			final String path = parser.getPath();
+			if ((path != null) && !path.isEmpty()) {
+				this.setPath(path);
+			}
+
+			return this;
+		} catch (final URISyntaxException | IllegalArgumentException e) {
+			throw new PEException("Malformed URL '" + urlString + "'", e);
 		}
-
-		// next, parse path, if it exists (i.e. dbname)
-		String[] pathA = queryA[0].split("/", 2);
-
-		String[] hostA = pathA[0].split(":");
-		// split authority into host and port
-		if (hostA.length == 2) {
-			setPort(hostA[1]);
-		}
-
-		setHost(hostA[0]);
-
-		// if a path exists, store it
-		if (pathA.length == 2)
-			setPath(pathA[1]);
-
-		return this;
 	}
 
 	private Properties parseURLQuery(String urlQuery) throws PEException {

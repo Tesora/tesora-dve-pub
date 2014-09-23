@@ -81,7 +81,6 @@ public class PEUrlTest {
 
 	@Test(expected = PEException.class)
 	public void parseURLNegativeTest2() throws PEException {
-
 		PEUrl.fromUrlString("jdbc://localhost:6800?opt1=optvalue");
 	}
 
@@ -106,7 +105,7 @@ public class PEUrlTest {
 	public void parseURLNegativeTest6() throws PEException {
 		PEUrl.fromUrlString("jdbc:mysql://");
 	}
-	
+
 	@Test
 	public void fromConnectStringTest() throws PEException {
 		String connectString = "host=localhost;port=3306;dbname=parelastic";

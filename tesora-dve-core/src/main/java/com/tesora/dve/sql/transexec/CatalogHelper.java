@@ -108,7 +108,11 @@ public class CatalogHelper {
 	}
 
 	public String getCatalogDBUrl() throws PEException {
-		return getCatalogUrl() + "/" + getCatalogDBName();
+		final PEUrl baseUrl = PEUrl.fromUrlString(this.getCatalogUrl());
+		final PEUrl catalogDbUrl = PEUrl.fromUrlString(baseUrl.getStringWithoutQueryPart().concat("/").concat(this.getCatalogDBName()));
+		catalogDbUrl.setQuery(baseUrl.getQuery());
+
+		return catalogDbUrl.toString();
 	}
 
 	public String getCatalogUrl() throws PEException {
