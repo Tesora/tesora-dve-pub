@@ -22,19 +22,16 @@ package com.tesora.dve.server.messaging;
  */
 
 
-import java.sql.ResultSet;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
-import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
@@ -50,8 +47,6 @@ public class WorkerExecuteRequest extends WorkerRequest {
 	PersistentDatabase defaultDatabase;
 	final SQLCommand command;
 
-	boolean recoverLocks;
-
 	public WorkerExecuteRequest(SSContext ssContext, SQLCommand command) {
 		super(ssContext);
 		this.command = command;
@@ -59,11 +54,6 @@ public class WorkerExecuteRequest extends WorkerRequest {
 	
 	public WorkerExecuteRequest onDatabase(PersistentDatabase database) {
 		defaultDatabase = database;
-		return this;
-	}
-
-	public WorkerExecuteRequest withLockRecovery(boolean recoverLocks) {
-		this.recoverLocks = recoverLocks;
 		return this;
 	}
 	
@@ -81,15 +71,6 @@ public class WorkerExecuteRequest extends WorkerRequest {
 
             if (isAutoTransact())
                 w.startTrans(getTransId());
-		
-
-			String savepointId = null;
-			
-			if (recoverLocks) {
-                savepointId = executeSavepoint(w);
-			}
-
-            final String finalSavepoint = savepointId;
 
 			final WorkerStatement stmt = w.getStatement();
 
@@ -108,34 +89,11 @@ public class WorkerExecuteRequest extends WorkerRequest {
 
                 @Override
                 public void success(Boolean returnValue) {
-                    try {
-                        long rowCount = -1;
-                        final boolean hasResults = false;
-                        ColumnSet rsmd = null;
-
-                        if (recoverLocks) {
-                            ResultSet resultSet = stmt.getResultSet();
-                            boolean rowsFound = (hasResults && resultSet != null && resultSet.isBeforeFirst())
-                                    || (!hasResults && resultConsumer.getUpdateCount() > 0);
-                            if (!rowsFound) {
-                                rollbackToSavepoint(w, finalSavepoint);
-                            }
-                        }
-
-                        rowCount = resultConsumer.getUpdateCount();
-                        new ExecuteResponse(hasResults, rowCount, rsmd ).from(w.getAddress()).success();
-                        callersResult.success(true);
-
-                        if (logger.isDebugEnabled())
-                            logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
-                                    .append(stmtCommand).append("\" updating ").append(rowCount).append(" rows (hasResults=")
-                                    .append(hasResults ? "true" : "false")
-                                    .append(")")
-                                    .toString());
-
-                    } catch (Exception e){
-                        callersResult.failure(e);
-                    }
+                    callersResult.success(true);
+                    if (logger.isDebugEnabled())
+                        logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
+                            .append(stmtCommand).append("\")")
+                            .toString());
                 }
 
             };

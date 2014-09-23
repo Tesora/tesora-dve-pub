@@ -107,12 +107,7 @@ public abstract class WorkerRequest extends RequestMessage {
         CompletionHandle<Boolean> resultTracker = new DelegatingCompletionHandle<Boolean>(promise) {
             @Override
             public void success(Boolean returnValue) {
-                try {
-                    new ExecuteResponse(false, resultConsumer.getUpdateCount(), null).from(w.getAddress()).success();
-                    super.success(returnValue);
-                } catch (PEException e) {
-                    this.failure(e);
-                }
+                super.success(returnValue);
             }
 
             @Override

@@ -70,12 +70,7 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
 
     private void executeNextInsert(final Worker w, final DBResultConsumer resultConsumer, final CompletionHandle<Boolean> callersResults, final Iterator<SQLCommand> commandIterator) {
         if (!commandIterator.hasNext()){
-            try {
-                new ExecuteResponse(resultConsumer.hasResults(), resultConsumer.getUpdateCount(), null ).from(w.getAddress()).success();
-                callersResults.success(true);
-            } catch (PEException e) {
-                callersResults.failure(e);
-            }
+            callersResults.success(true);
             return;
         }
 

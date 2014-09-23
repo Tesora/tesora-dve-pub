@@ -64,13 +64,10 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 	@Override
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		resultConsumer.setResultsLimit(getResultsLimit());
-
-        final boolean savepointRequired = ssCon.getTransId() != null && command.isForUpdateStatement()
-				&& "5.6".equals(Singletons.require(HostService.class).getDveVersion(ssCon));
 		
 		WorkerExecuteRequest req =
 				new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).
-				onDatabase(database).withLockRecovery(savepointRequired);
+				onDatabase(database);
 		
 		WorkerGroup.MappingSolution mappingSolution = 
 				distValue.getDistributionModel().mapKeyForQuery(
