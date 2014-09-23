@@ -50,7 +50,6 @@ public class QueryStepInsertMultipleOperation extends QueryStepDMLOperation {
 
 	@Override
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-		resultConsumer.setSenderCount(insertList.size());
 		beginExecution();
 		for (Entry<SQLCommand, KeyValue> entry : insertList) {
 			QueryStepInsertByKeyOperation

@@ -80,7 +80,6 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 			logger.debug(this.getClass().getSimpleName() + " maps dv " + distValue + " to " + mappingSolution);
 		
 		resultConsumer.setResultsLimit(getResultsLimit());
-		resultConsumer.setSenderCount(mappingSolution.computeSize(wg));
 		beginExecution();
 		wg.execute(mappingSolution, req, resultConsumer);
 		if (resultConsumer instanceof MysqlParallelResultConsumer) 

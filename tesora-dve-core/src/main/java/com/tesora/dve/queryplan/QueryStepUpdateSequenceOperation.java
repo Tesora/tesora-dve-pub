@@ -44,7 +44,6 @@ public class QueryStepUpdateSequenceOperation extends QueryStepOperation {
 	
 	@Override
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-		resultConsumer.setSenderCount(ops.size());
 		for (QueryStepOperation qso : ops)
 			qso.execute(ssCon, wg, resultConsumer);
 	}
