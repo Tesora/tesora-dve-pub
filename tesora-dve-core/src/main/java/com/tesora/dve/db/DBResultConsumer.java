@@ -23,14 +23,10 @@ package com.tesora.dve.db;
 
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.mysql.MysqlCommand;
-import com.tesora.dve.db.mysql.MysqlCommandBundle;
-import com.tesora.dve.exceptions.PECommunicationsException;
-import io.netty.channel.Channel;
 
 import java.util.List;
 
-import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
@@ -45,23 +41,38 @@ public abstract class DBResultConsumer implements GroupDispatch {
 		long adjust(long numRowsAffected, int siteCount);
 	}
 
-	abstract public void setSenderCount(int senderCount);
+    //****************************************
+    //Oriented around inspecting results after request dispatch..
+    //****************************************
+    public boolean hasResults() {
+        return false;
+    }
 
-    abstract public boolean hasResults();
+    public boolean isSuccessful() {return false;}
 
-    abstract public long getUpdateCount() throws PEException;
+    public long getUpdateCount() throws PEException {return 0L;}
 
-    abstract public void setResultsLimit(long resultsLimit);
+    //****************************************
+    //Oriented around changing processing behavior before request dispatch.
+    //****************************************
+    public void setRowAdjuster(RowCountAdjuster rowAdjuster){}
+    public void setResultsLimit(long resultsLimit){}
 
-    abstract public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException;
+    //****************************************
+    //Oriented around changing behavior after request dispatch.
+    //****************************************
+    public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException {
+        throw new PECodingException(this.getClass().getSimpleName()+".inject not supported");
+    }
 
-    abstract public void setRowAdjuster(RowCountAdjuster rowAdjuster);
+    public void setNumRowsAffected(long rowcount){}
 
-    abstract public void setNumRowsAffected(long rowcount);
+    public void rollback(){}
 
-    abstract public boolean isSuccessful();
-
-    abstract public void rollback();
+    //****************************************
+    //Oriented around actual dispatch of requests to databases.
+    //****************************************
+    public void setSenderCount(int senderCount){}
 
     abstract public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
 

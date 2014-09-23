@@ -123,12 +123,6 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
         this.builder = builder;
 	}
 
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows)
-			throws PEException {
-		throw new PECodingException(this.getClass().getSimpleName()+".inject not supported");
-	}
-
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
@@ -137,36 +131,9 @@ public class MysqlRedistTupleForwarder extends DBResultConsumer implements Mysql
 	}
 
     @Override
-	public void setSenderCount(int senderCount) {
-		this.senderCount = senderCount;
-	}
-
-	@Override
-	public boolean hasResults() {
-		return false;
-	}
-	
-	@Override
-	public long getUpdateCount() throws PEException {
-		return 0;
-	}
-	
-	@Override
-	public void setResultsLimit(long resultsLimit) {
-	}
-	
-	@Override
-	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-	}
-	
-	@Override
-	public void setNumRowsAffected(long rowcount) {
-	}
-	
-	@Override
-	public boolean isSuccessful() {
-		return false;
-	}
+    public void setSenderCount(int senderCount) {
+        this.senderCount = senderCount;
+    }
 
     @Override
     public void active(ChannelHandlerContext ctx) {

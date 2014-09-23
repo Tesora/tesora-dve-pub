@@ -45,12 +45,6 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 		super(outboundCtx);
 	}
 
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows)
-			throws PEException {
-		throw new PEException("Cannot inject into " + this.getClass().getSimpleName());
-	}
-
     @Override
     public void writeCommandExecutor(final CommandChannel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
         //TODO: this executor is weird.  It sends a prepare, collects the statement ID, sends an execute, then closes the prepared statement. -sgossard

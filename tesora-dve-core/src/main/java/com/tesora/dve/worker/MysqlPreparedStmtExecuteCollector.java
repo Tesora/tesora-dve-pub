@@ -74,12 +74,6 @@ public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implemen
 			logger.debug("Prepared Stmt Execute for: " + pstmt );
 	}
 
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows)
-			throws PEException {
-		throw new PECodingException(this.getClass().getSimpleName()+".inject not supported");
-	}
-
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
@@ -91,28 +85,7 @@ public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implemen
 	public boolean hasResults() {
 		return hasResults;
 	}
-	
-	@Override
-	public long getUpdateCount() throws PEException {
-		return 0;
-	}
-	
-	@Override
-	public void setResultsLimit(long resultsLimit) {
-	}
-	
-	@Override
-	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-	}
-	
-	@Override
-	public void setNumRowsAffected(long rowcount) {
-	}
-	
-	@Override
-	public boolean isSuccessful() {
-		return false;
-	}
+
 
     public boolean emptyResultSet(MyOKResponse ok) {
         numRowsAffected = ok.getAffectedRows();
@@ -188,14 +161,6 @@ public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implemen
 	
 	public ResultChunk getResultChunk() {
 		return chunk;
-	}
-
-	@Override
-	public void rollback() {
-	}
-
-	@Override
-	public void setSenderCount(int senderCount) {
 	}
 
 	@Override

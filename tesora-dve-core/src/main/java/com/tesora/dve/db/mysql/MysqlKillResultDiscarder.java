@@ -41,56 +41,12 @@ public class MysqlKillResultDiscarder extends DBResultConsumer {
 
 	public static final MysqlKillResultDiscarder INSTANCE = new MysqlKillResultDiscarder();
 
-	@Override
-	public void setSenderCount(int senderCount) {
-		// no op
-	}
-
-	@Override
-	public boolean hasResults() {
-		return false;
-	}
-
-	@Override
-	public long getUpdateCount() throws PEException {
-		return 0;
-	}
-
-	@Override
-	public void setResultsLimit(long resultsLimit) {
-		// no op
-	}
-
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException {
-		// no op
-	}
-
-	@Override
-	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-		// no op
-	}
-
-	@Override
-	public void setNumRowsAffected(long rowcount) {
-		// no op
-	}
-
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled())
 			logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
         MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
         channel.writeAndFlush(message, new MysqlExecuteCommand(sql, channel.getMonitor(), null, promise));
-	}
-
-	@Override
-	public boolean isSuccessful() {
-		return false;
-	}
-
-	@Override
-	public void rollback() {
 	}
 
 }

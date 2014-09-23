@@ -40,51 +40,6 @@ public class CommandChannelCollector extends DBResultConsumer {
     }
 
     @Override
-    public void setSenderCount(int senderCount) {
-
-    }
-
-    @Override
-    public boolean hasResults() {
-        return false;
-    }
-
-    @Override
-    public long getUpdateCount() throws PEException {
-        return 0;
-    }
-
-    @Override
-    public void setResultsLimit(long resultsLimit) {
-
-    }
-
-    @Override
-    public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException {
-
-    }
-
-    @Override
-    public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-
-    }
-
-    @Override
-    public void setNumRowsAffected(long rowcount) {
-
-    }
-
-    @Override
-    public boolean isSuccessful() {
-        return false;
-    }
-
-    @Override
-    public void rollback() {
-
-    }
-
-    @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         builder.addSite(channel);
         promise.success(true);

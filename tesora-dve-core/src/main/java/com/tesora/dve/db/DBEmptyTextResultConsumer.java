@@ -94,51 +94,11 @@ public class DBEmptyTextResultConsumer extends DBResultConsumer implements Mysql
         //ignored.
     }
 
-	@Override
-	public void setSenderCount(int senderCount) {
-	}
-
-	@Override
-	public boolean hasResults() {
-		return false;
-	}
-
-	@Override
-	public long getUpdateCount() {
-		return 0;
-	}
-
-	@Override
-	public void setResultsLimit(long resultsLimit) {
-	}
-
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows) {
-		throw new PECodingException("Results received in " + DBEmptyTextResultConsumer.class.getSimpleName());
-	}
-
-	@Override
-	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-	}
-
-	@Override
-	public void setNumRowsAffected(long rowcount) {
-	}
-
     @Override
     public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled()) logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
         MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
         channel.writeAndFlush(message, new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise));
-	}
-
-	@Override
-	public boolean isSuccessful() {
-		return false;
-	}
-
-	@Override
-	public void rollback() {
 	}
 
 }

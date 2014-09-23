@@ -121,38 +121,6 @@ public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
     abstract void consumeError(MyErrorResponse error) throws PESQLStateException;
 
 	@Override
-	public void setSenderCount(int senderCount) {
-	}
-
-	@Override
-	public boolean hasResults() {
-		return false;
-	}
-
-	@Override
-	public long getUpdateCount() {
-		return 0;
-	}
-
-	@Override
-	public void setResultsLimit(long resultsLimit) {
-	}
-
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows)
-			throws PEException {
-		throw new PECodingException(this.getClass().getSimpleName()+".inject not implemented");
-	}
-
-	@Override
-	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-	}
-
-	@Override
-	public void setNumRowsAffected(long rowcount) {
-	}
-
-	@Override
 	public boolean isSuccessful() {
 		return successful;
 	}
