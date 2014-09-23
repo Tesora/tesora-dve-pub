@@ -30,6 +30,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.server.connectionmanager.*;
@@ -48,7 +49,6 @@ import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
@@ -445,11 +445,11 @@ public class WorkerGroup {
 	}
 	
 	
-	public void execute(MappingSolution mappingSolution, final WorkerRequest req, final DBResultConsumer resultConsumer) throws PEException {
+	public void execute(MappingSolution mappingSolution, final WorkerRequest req, final GroupDispatch resultConsumer) throws PEException {
 		syncWorkers(submit(mappingSolution, req, resultConsumer));
 	}
 	
-	public static void executeOnAllGroups(Collection<WorkerGroup> allGroups, MappingSolution mappingSolution, WorkerRequest req, DBResultConsumer resultConsumer) throws PEException {
+	public static void executeOnAllGroups(Collection<WorkerGroup> allGroups, MappingSolution mappingSolution, WorkerRequest req, GroupDispatch resultConsumer) throws PEException {
 		List<Future<Worker>> workerFutures = new ArrayList<Future<Worker>>();
 		for (WorkerGroup wg : allGroups)
 			workerFutures.addAll(
@@ -468,14 +468,14 @@ public class WorkerGroup {
 			}
 	}
 	public Collection<Future<Worker>> submit(MappingSolution mappingSolution,
-			final WorkerRequest req, final DBResultConsumer resultConsumer)
+			final WorkerRequest req, final GroupDispatch resultConsumer)
 			throws PEException {
 		return submit(mappingSolution, req, resultConsumer, mappingSolution.computeSize(this));
 	}
 	
 	
 	public Collection<Future<Worker>> submit(MappingSolution mappingSolution,
-			final WorkerRequest req, final DBResultConsumer resultConsumer, int senderCount)
+			final WorkerRequest req, final GroupDispatch resultConsumer, int senderCount)
 			throws PEException {
 		resultConsumer.setSenderCount(senderCount);
 		Collection<Worker> workers = getTargetWorkers(mappingSolution);
@@ -544,7 +544,7 @@ public class WorkerGroup {
 		return workerFutures;
 	}
 
-    private void submitWork(final Worker w, final WorkerRequest req, final DBResultConsumer resultConsumer, final CompletionHandle<Worker> workerComplete) {
+    private void submitWork(final Worker w, final WorkerRequest req, final GroupDispatch resultConsumer, final CompletionHandle<Worker> workerComplete) {
         final long reqStartTime = System.currentTimeMillis();
         final CompletionHandle<Boolean> promise = new PEDefaultPromise<Boolean>(){
             @Override

@@ -28,12 +28,12 @@ import java.util.Map;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.GroupDispatch;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
@@ -57,7 +57,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
 	}
 
 	@Override
-	public void executeRequest(final Worker w, final DBResultConsumer resultConsumer, final CompletionHandle<Boolean> callersResults) {
+	public void executeRequest(final Worker w, final GroupDispatch resultConsumer, final CompletionHandle<Boolean> callersResults) {
         try {
             final MysqlTextResultCollector results = new MysqlTextResultCollector();
             final WorkerStatement stmt = w.getStatement();

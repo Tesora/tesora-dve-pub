@@ -28,5 +28,6 @@ import com.tesora.dve.server.messaging.SQLCommand;
  *
  */
 public interface GroupDispatch {
+    void setSenderCount(int senderCount);
     void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise);
 }

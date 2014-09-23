@@ -22,6 +22,7 @@ package com.tesora.dve.server.messaging;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
@@ -29,7 +30,6 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
@@ -49,7 +49,7 @@ public class WorkerDropDatabaseRequest extends WorkerRequest {
 	}
 
 	@Override
-	public void executeRequest(final Worker w, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+	public void executeRequest(final Worker w, final GroupDispatch resultConsumer, CompletionHandle<Boolean> promise) {
 
 		String localizedDBName = UserDatabase.getNameOnSite(databaseName, w.getWorkerSite());
         SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getDropDatabaseStmt(localizedDBName);

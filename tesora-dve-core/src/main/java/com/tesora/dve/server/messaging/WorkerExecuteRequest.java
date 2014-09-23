@@ -24,13 +24,13 @@ package com.tesora.dve.server.messaging;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.GroupDispatch;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
@@ -58,11 +58,11 @@ public class WorkerExecuteRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+	public void executeRequest(Worker w, GroupDispatch resultConsumer, CompletionHandle<Boolean> promise) {
 		executeStatement(w, getCommand(), resultConsumer, promise);
 	}
 	
-	protected void executeStatement(final Worker w, final SQLCommand stmtCommand, final DBResultConsumer resultConsumer, final CompletionHandle<Boolean> callersResult) {
+	protected void executeStatement(final Worker w, final SQLCommand stmtCommand, final GroupDispatch resultConsumer, final CompletionHandle<Boolean> callersResult) {
 
         try {
             w.setCurrentDatabase(defaultDatabase);

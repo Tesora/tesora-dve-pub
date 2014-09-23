@@ -26,10 +26,10 @@ import java.util.concurrent.Callable;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.db.GroupDispatch;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
@@ -52,7 +52,7 @@ public class SingleDirectStatement implements WorkerStatement {
 		this.dbConnection = dbConnection;
 	}
 
-	protected void doExecute(SQLCommand sqlCommand, DBResultConsumer resultConsumer, final CompletionHandle<Boolean> promise) {
+	protected void doExecute(SQLCommand sqlCommand, GroupDispatch resultConsumer, final CompletionHandle<Boolean> promise) {
 		if (sqlCommand.hasReferenceTime()) {
             dbConnection.setTimestamp( sqlCommand.getReferenceTime(), null);
 		}
@@ -75,7 +75,7 @@ public class SingleDirectStatement implements WorkerStatement {
 	}
 
     @Override
-	public void execute(final int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+	public void execute(final int connectionId, final SQLCommand sql, final GroupDispatch resultConsumer, CompletionHandle<Boolean> promise) {
 
 		StatementManager.INSTANCE.registerStatement(connectionId, this);
 		PerHostConnectionManager.INSTANCE.changeConnectionState(

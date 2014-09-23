@@ -72,6 +72,7 @@ public abstract class DBResultConsumer implements GroupDispatch {
     //****************************************
     //Oriented around actual dispatch of requests to databases.
     //****************************************
+    @Override
     public void setSenderCount(int senderCount){}
 
     abstract public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);

@@ -37,6 +37,7 @@ import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStep;
@@ -633,7 +634,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		private CreateTableViaRedistCallback cb;
 
 		@Override
-		public boolean proceed(Worker w, DBResultConsumer consumer) {
+		public boolean proceed(Worker w, GroupDispatch consumer) {
 			return !cb.isRedistComplete();
 		}
 		

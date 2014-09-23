@@ -26,13 +26,12 @@ import java.util.Iterator;
 
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
@@ -52,7 +51,7 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
 	}
 
 	@Override
-	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> callersResults) {
+	public void executeRequest(Worker w, GroupDispatch resultConsumer, CompletionHandle<Boolean> callersResults) {
         try {
             Collection<SQLCommand> cmds = mappedInserts.get(w.getWorkerSite());
 
@@ -68,7 +67,7 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
         }
 	}
 
-    private void executeNextInsert(final Worker w, final DBResultConsumer resultConsumer, final CompletionHandle<Boolean> callersResults, final Iterator<SQLCommand> commandIterator) {
+    private void executeNextInsert(final Worker w, final GroupDispatch resultConsumer, final CompletionHandle<Boolean> callersResults, final Iterator<SQLCommand> commandIterator) {
         if (!commandIterator.hasNext()){
             callersResults.success(true);
             return;
