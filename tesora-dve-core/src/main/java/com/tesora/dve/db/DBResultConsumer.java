@@ -38,7 +38,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class DBResultConsumer {
+public abstract class DBResultConsumer implements GroupDispatch {
     static final Logger logger = LoggerFactory.getLogger(DBResultConsumer.class);
 
 	public interface RowCountAdjuster {
@@ -65,6 +65,7 @@ public abstract class DBResultConsumer {
 
     abstract public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
 
+    @Override
     public final void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
         /**TODO: In order to decouple the DBResultConsumer hierarchy from the DBConnection classes, this logic was moved
          * out of MysqlConnection, and unfortunately still has some connection state related dependencies.

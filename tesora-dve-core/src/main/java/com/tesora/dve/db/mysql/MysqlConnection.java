@@ -185,7 +185,11 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
     //syntactic sugar for some of the inner utility calls.
     protected void execute(SQLCommand sql, CompletionHandle<Boolean> promise){
         //TODO: it would be good to replace this with a simple command, especially since we don't care about the result set (but watch out for deferred exceptions). -sgossard
-        DBEmptyTextResultConsumer.INSTANCE.dispatch(this, sql, promise);
+        if (promise == null)
+            promise = getExceptionDeferringPromise();
+
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
+        this.writeAndFlush(message, new PassFailProcessor(promise));
     }
 
     /**
