@@ -463,7 +463,7 @@ public class PEUrl {
 
 			final String path = parser.getPath();
 			if ((path != null) && !path.isEmpty()) {
-				this.setPath(path);
+				this.setPath(path.startsWith("/") ? path.substring(1) : path);
 			}
 
 			return this;
