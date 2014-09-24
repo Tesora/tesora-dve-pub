@@ -829,4 +829,31 @@ public class InsertTest extends SchemaMirrorTest {
 		runTest(tests);
 	}
 
+	@Ignore
+	@Test
+	public void testPE1655() throws Throwable {
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
+
+		tests.add(new StatementMirrorProc("SET NAMES utf8"));
+		tests.add(new StatementMirrorProc("SET character_set_database = utf8"));
+
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS `ｱｱｱ`"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS `あああ`"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS `龖龖龖`"));
+
+		tests.add(new StatementMirrorProc("CREATE TABLE `ｱｱｱ`(`ｷｷｷ` char(5)) DEFAULT CHARSET = utf8 engine=INNODB"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `あああ`(`ききき` char(5)) DEFAULT CHARSET = utf8 engine=INNODB"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `龖龖龖`(`丂丂丂` char(5)) DEFAULT CHARSET = utf8 engine=INNODB"));
+
+		tests.add(new StatementMirrorProc("INSERT INTO `ｱｱｱ` VALUES ('ｱｱｱｱｱ'),('ｲｲｲｲｲ'),('ｳｳｳｳｳ')"));
+		tests.add(new StatementMirrorProc("INSERT INTO `あああ` VALUES ('あああああ'),('いいいいい'),('ううううう')"));
+		tests.add(new StatementMirrorProc("INSERT INTO `龖龖龖` VALUES ('丂丂丂丂丂'),('丄丄丄丄丄'),('丅丅丅丅丅')"));
+
+		tests.add(new StatementMirrorFun("SELECT * FROM `ｱｱｱ`"));
+		tests.add(new StatementMirrorFun("SELECT * FROM `あああ`"));
+		tests.add(new StatementMirrorFun("SELECT * FROM `龖龖龖`"));
+
+		runTest(tests);
+	}
+
 }

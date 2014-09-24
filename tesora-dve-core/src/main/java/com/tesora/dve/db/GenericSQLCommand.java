@@ -53,6 +53,7 @@ import com.tesora.dve.sql.schema.cache.IParameter;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.VariableStoreSource;
+import com.tesora.dve.worker.Worker;
 
 // a generic sql command is what would be emitted by the emitter upto any literals
 // instead it uses a 'format' string (non literal parts of the final result)
@@ -75,6 +76,10 @@ public class GenericSQLCommand {
 	private Boolean isUpdate = null;
 	private Boolean hasLimit = null;
 
+	private static Charset getCurrentSessionConnectionCharSet(final SchemaContext sc) {
+		return getCurrentSessionConnectionCharSet(sc.getConnection().getVariableSource());
+	}
+
 	private static Charset getCurrentSessionConnectionCharSet(final VariableStoreSource vs) {
 		final NativeCharSetCatalog charSetcatalog = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
 		final String connectionCharSetName = KnownVariables.CHARACTER_SET_CONNECTION.getSessionValue(vs);
@@ -89,7 +94,7 @@ public class GenericSQLCommand {
 	}
 
 	private GenericSQLCommand(final SchemaContext sc, String format, OffsetEntry[] offsets, StatementType stmtType, Boolean isUpdate, Boolean hasLimit) {
-		this(sc.getConnection().getVariableSource(), format, offsets, stmtType, isUpdate, hasLimit);
+		this(getCurrentSessionConnectionCharSet(sc), format, offsets, stmtType, isUpdate, hasLimit);
 	}
 
 	private GenericSQLCommand(final VariableStoreSource vs, String format, OffsetEntry[] offsets, StatementType stmtType, Boolean isUpdate, Boolean hasLimit) {
@@ -145,8 +150,8 @@ public class GenericSQLCommand {
 		return new GenericSQLCommand(vs, format + toAppend, entries, type, isUpdate, hasLimit);
 	}
 
-	public GenericSQLCommand append(final String formatToAppend) {
-		return this.append(formatToAppend.getBytes());
+	public GenericSQLCommand append(final Charset connectionCharset, final String formatToAppend) {
+		return this.append(formatToAppend.getBytes(connectionCharset));
 	}
 
 	public GenericSQLCommand append(final GenericSQLCommand other) {
@@ -192,10 +197,36 @@ public class GenericSQLCommand {
 		return resolve(sc, false, prettyIndent);
 	}
 
-	private static final byte[] spaceAsBytes = " ".getBytes();
-	private static final byte[] singleQuoteAsBytes = "'".getBytes();
-	private static final byte[] nullAsBytes = "null".getBytes();
-	private static final byte[] questionMarkAsBytes = "?".getBytes();
+	private static enum Tokens {
+
+		SPACE(" "),
+		SINGLE_QUOTE("'"),
+		QUESTION_MARK("?"),
+		NULL("null");
+
+		private final String token;
+
+		private Tokens(final String token) {
+			this.token = token;
+		}
+
+		public final byte[] getBytes(final SchemaContext sc) {
+			return this.getBytes(sc.getConnection().getVariableSource());
+		}
+
+		public final byte[] getBytes(final VariableStoreSource vs) {
+			return this.getBytes(getCurrentSessionConnectionCharSet(vs));
+		}
+
+		public final byte[] getBytes(final Charset encoding) {
+			return this.token.getBytes(encoding);
+		}
+
+		@Override
+		public String toString() {
+			return this.token;
+		}
+	}
 
 	// TODO we really need a function specific class to handle resolve/display
 
@@ -207,6 +238,7 @@ public class GenericSQLCommand {
 		final List<byte[]> sqlFragments = new ArrayList<byte[]>();
 		final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
 		int offset = 0;
+		final Charset connectionCharset = getCurrentSessionConnectionCharSet(sc);
 		for (final OffsetEntry oe : entries) {
 			final int index = oe.getOffset();
 			final String tok = oe.getToken();
@@ -214,12 +246,12 @@ public class GenericSQLCommand {
 			if (oe.getKind().isLate()) {
 				// still need to get the next part of the format
 				downstream.add(oe.makeAdjusted(getTotalBytes(sqlFragments)));
-				sqlFragments.add(oe.getToken().getBytes());
+				sqlFragments.add(oe.getToken().getBytes(connectionCharset));
 			} else if (oe.getKind() == EntryKind.LITERAL) {
 				final LiteralOffsetEntry loe = (LiteralOffsetEntry) oe;
 				final StringBuilder buf = new StringBuilder();
 				emitter.emitLiteral(sc, loe.getLiteral(), buf);
-				sqlFragments.add(buf.toString().getBytes());
+				sqlFragments.add(buf.toString().getBytes(connectionCharset));
 			} else if (oe.getKind() == EntryKind.PRETTY) {
 				final int totalBytes = getTotalBytes(sqlFragments);
 				if (indent != null) {
@@ -229,15 +261,15 @@ public class GenericSQLCommand {
 						buf.append(PEConstants.LINE_SEPARATOR);
 					}
 					poe.addIndent(buf, indent);
-					sqlFragments.add(buf.toString().getBytes());
+					sqlFragments.add(buf.toString().getBytes(connectionCharset));
 				} else {
 					if (totalBytes > 0) {
-						sqlFragments.add(spaceAsBytes);
+						sqlFragments.add(Tokens.SPACE.getBytes(connectionCharset));
 					}
 				}
 			} else if (oe.getKind() == EntryKind.TEMPTABLE) {
 				final TempTableOffsetEntry ttoe = (TempTableOffsetEntry) oe;
-				sqlFragments.add(ttoe.getTempTable().getName(sc).get().getBytes());
+				sqlFragments.add(ttoe.getTempTable().getName(sc).get().getBytes(connectionCharset));
 			} else if (oe.getKind() == EntryKind.PARAMETER) {
 				final ParameterOffsetEntry poe = (ParameterOffsetEntry) oe;
 				if (!preserveParamMarkers) {
@@ -245,23 +277,23 @@ public class GenericSQLCommand {
 					final Object o = sc.getValueManager().getValue(sc, poe.getParameter());
 					if (o != null) {
 						if (o.getClass().isArray()) {
-							sqlFragments.add(singleQuoteAsBytes);
+							sqlFragments.add(Tokens.SINGLE_QUOTE.getBytes(connectionCharset));
 							sqlFragments.add((byte[]) o);
-							sqlFragments.add(singleQuoteAsBytes);
+							sqlFragments.add(Tokens.SINGLE_QUOTE.getBytes(connectionCharset));
 						} else {
-							sqlFragments.add(String.valueOf(o).getBytes());
+							sqlFragments.add(String.valueOf(o).getBytes(connectionCharset));
 						}
 					} else {
-						sqlFragments.add(nullAsBytes);
+						sqlFragments.add(Tokens.NULL.getBytes(connectionCharset));
 					}
 				} else {
-					sqlFragments.add(questionMarkAsBytes);
+					sqlFragments.add(Tokens.QUESTION_MARK.getBytes(connectionCharset));
 				}
 			} else if (oe.getKind() == EntryKind.LATEVAR) {
 				final LateResolvingVariableOffsetEntry lrvoe = (LateResolvingVariableOffsetEntry) oe;
 				final Object value = lrvoe.expr.getValue(sc);
 				final String s = (value == null ? "null" : "'" + value.toString() + "'");
-				sqlFragments.add(s.getBytes());
+				sqlFragments.add(s.getBytes(connectionCharset));
 			}
 			offset = index + tok.length();
 		}
@@ -278,6 +310,7 @@ public class GenericSQLCommand {
 		final List<byte[]> sqlFragments = new ArrayList<byte[]>();
 		final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
 		int offset = 0;
+		final Charset connectionCharset = getCurrentSessionConnectionCharSet(sc);
 		for (final OffsetEntry oe : entries) {
 			final int index = oe.getOffset();
 			final String tok = oe.getToken();
@@ -287,12 +320,12 @@ public class GenericSQLCommand {
 			}
 			if (oe.getKind().isLate()) {
 				// still need to get the next part of the format
-				sqlFragments.add(oe.getToken().getBytes());
+				sqlFragments.add(oe.getToken().getBytes(connectionCharset));
 			} else if (oe.getKind() == EntryKind.LITERAL) {
 				final LiteralOffsetEntry loe = (LiteralOffsetEntry) oe;
 				final StringBuilder buf = new StringBuilder();
 				emitter.emitLiteral(sc, loe.getLiteral(), buf);
-				sqlFragments.add(buf.toString().getBytes());
+				sqlFragments.add(buf.toString().getBytes(connectionCharset));
 			} else if (oe.getKind() == EntryKind.PRETTY) {
 				// tie off the old one
 				if (getTotalBytes(sqlFragments) > 0) {
@@ -302,10 +335,10 @@ public class GenericSQLCommand {
 				final PrettyOffsetEntry poe = (PrettyOffsetEntry) oe;
 				final StringBuilder buf = new StringBuilder();
 				poe.addIndent(buf, indent);
-				sqlFragments.add(buf.toString().getBytes());
+				sqlFragments.add(buf.toString().getBytes(connectionCharset));
 			} else if (oe.getKind() == EntryKind.TEMPTABLE) {
 				final TempTableOffsetEntry ttoe = (TempTableOffsetEntry) oe;
-				sqlFragments.add(ttoe.getTempTable().getName(sc).get().getBytes());
+				sqlFragments.add(ttoe.getTempTable().getName(sc).get().getBytes(connectionCharset));
 			} else if (oe.getKind() == EntryKind.PARAMETER) {
 				final ParameterOffsetEntry poe = (ParameterOffsetEntry) oe;
 				if (!preserveParamMarkers) {
@@ -313,23 +346,23 @@ public class GenericSQLCommand {
 					final Object o = sc.getValueManager().getValue(sc, poe.getParameter());
 					if (o != null) {
 						if (o.getClass().isArray()) {
-							sqlFragments.add(singleQuoteAsBytes);
+							sqlFragments.add(Tokens.SINGLE_QUOTE.getBytes(connectionCharset));
 							sqlFragments.add((byte[]) o);
-							sqlFragments.add(singleQuoteAsBytes);
+							sqlFragments.add(Tokens.SINGLE_QUOTE.getBytes(connectionCharset));
 						} else {
-							sqlFragments.add(String.valueOf(o).getBytes());
+							sqlFragments.add(String.valueOf(o).getBytes(connectionCharset));
 						}
 					} else {
-						sqlFragments.add(nullAsBytes);
+						sqlFragments.add(Tokens.NULL.getBytes(connectionCharset));
 					}
 				} else {
-					sqlFragments.add(questionMarkAsBytes);
+					sqlFragments.add(Tokens.QUESTION_MARK.getBytes(connectionCharset));
 				}
 			} else if (oe.getKind() == EntryKind.LATEVAR) {
 				final LateResolvingVariableOffsetEntry lrvoe = (LateResolvingVariableOffsetEntry) oe;
 				final Object value = lrvoe.expr.getValue(sc);
 				final String s = (value == null ? "null" : "'" + value.toString() + "'");
-				sqlFragments.add(s.getBytes());
+				sqlFragments.add(s.getBytes(connectionCharset));
 			}
 			offset = index + tok.length();
 		}
@@ -404,11 +437,11 @@ public class GenericSQLCommand {
 		return null;
 	}
 
-	public String resolve(DBNameResolver w) {
-		return new String(resolveAsBytes(w));
+	public String resolve(final Charset connectionCharset, final Worker w) {
+		return new String(resolveAsBytes(connectionCharset, w));
 	}
 
-	public byte[] resolveAsBytes(DBNameResolver w) {
+	public byte[] resolveAsBytes(final Charset connectionCharset, final Worker w) {
 		if (entries.length == 0) {
 			return format;
 		}
@@ -436,7 +469,8 @@ public class GenericSQLCommand {
 			} else {
 				actualValue = w.getNameOnSite(tok);
 			}
-			sqlFragments.add(actualValue.getBytes());
+
+			sqlFragments.add(actualValue.getBytes(connectionCharset));
 		}
 		sqlFragments.add(ArrayUtils.subarray(format, offset, format.length));
 		return concatSQLFragments(sqlFragments);

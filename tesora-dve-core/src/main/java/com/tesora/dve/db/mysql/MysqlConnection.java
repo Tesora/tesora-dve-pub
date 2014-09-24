@@ -521,7 +521,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
     }
 
-	private Charset lookupCurrentConnectionCharset() {
+	public Charset lookupCurrentConnectionCharset() {
 		final NativeCharSetCatalog charSetcatalog = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
 		String currentConnectionCharsetName = PEStringUtils.dequote(currentSessionVariables.get(KnownVariables.CHARACTER_SET_CONNECTION.getName()));
 		if (currentConnectionCharsetName == null) {
