@@ -23,7 +23,6 @@ package com.tesora.dve.server.connectionmanager;
 
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
@@ -46,7 +45,7 @@ public class WorkerSetSessionVariableRequest extends WorkerExecuteRequest {
     }
 
     @Override
-    public void executeRequest(Worker w, GroupDispatch resultConsumer, CompletionHandle<Boolean> promise) {
+    public void executeRequest(Worker w, CompletionHandle<Boolean> promise) {
         w.updateSessionVariables(currentSessionVariables,sqlBuilder,promise);
     }
 

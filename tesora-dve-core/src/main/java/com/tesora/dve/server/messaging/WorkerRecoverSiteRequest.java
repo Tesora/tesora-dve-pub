@@ -28,7 +28,6 @@ import java.util.Map;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.GroupDispatch;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.comms.client.messages.MessageType;
@@ -57,7 +56,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
 	}
 
 	@Override
-	public void executeRequest(final Worker w, final GroupDispatch resultConsumer, final CompletionHandle<Boolean> callersResults) {
+	public void executeRequest(final Worker w, final CompletionHandle<Boolean> callersResults) {
         try {
             final MysqlTextResultCollector results = new MysqlTextResultCollector();
             final WorkerStatement stmt = w.getStatement();
@@ -118,7 +117,9 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
         else
             recoverStatement = "XA ROLLBACK " + xid;
 
-        stmt.execute(getConnectionId(), new SQLCommand(recoverStatement), DBEmptyTextResultConsumer.INSTANCE, resultForCurrentItem);
+        this.withGroupDispatch(DBEmptyTextResultConsumer.INSTANCE);
+
+        stmt.execute(getConnectionId(), new SQLCommand(recoverStatement), this, resultForCurrentItem);
     }
 
     private List<Pair<String, Boolean>> buildRecoverList(Worker w, MysqlTextResultCollector results) {

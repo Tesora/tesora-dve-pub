@@ -584,7 +584,8 @@ public class WorkerGroup {
 //        Singletons.require(HostService.class).submit(w.getName(), new Callable<Worker>() {
             @Override
             public Worker call() throws Exception {
-                req.executeRequest(w, resultConsumer, promise);
+                req.withGroupDispatch(resultConsumer);
+                req.executeRequest(w, promise);
                 return w;
             }
         });

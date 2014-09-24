@@ -23,6 +23,7 @@ package com.tesora.dve.server.messaging;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.worker.WorkerStatement;
@@ -42,13 +43,29 @@ import com.tesora.dve.worker.Worker;
  *  
  */
 @SuppressWarnings("serial")
-public abstract class WorkerRequest extends RequestMessage {
-	
+public abstract class WorkerRequest extends RequestMessage implements GroupDispatch {
+
+    GroupDispatch groupDispatch;
 	final SSContext connectionContext;
 	
 	boolean autoTransact = true;
-	
-	public WorkerRequest(SSContext ctx) {
+
+    public WorkerRequest withGroupDispatch(GroupDispatch groupDispatch) {
+        this.groupDispatch = groupDispatch;
+        return this;
+    }
+
+    @Override
+    public void setSenderCount(int senderCount) {
+        this.groupDispatch.setSenderCount(senderCount);
+    }
+
+    @Override
+    public void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
+        this.groupDispatch.dispatch(connection,sql,promise);
+    }
+
+    public WorkerRequest(SSContext ctx) {
 		connectionContext = ctx;
 	}
 	
@@ -73,9 +90,9 @@ public abstract class WorkerRequest extends RequestMessage {
 		return connectionContext.getTransId();
 	}
 
-	public abstract void executeRequest(Worker w, GroupDispatch resultConsumer, CompletionHandle<Boolean> promise);
+	public abstract void executeRequest(Worker w, CompletionHandle<Boolean> promise);
 
-    protected void simpleExecute(final Worker w, final GroupDispatch resultConsumer, SQLCommand ddl, final CompletionHandle<Boolean> promise) {
+    protected void simpleExecute(final Worker w, SQLCommand ddl, final CompletionHandle<Boolean> promise) {
         if (WorkerDropDatabaseRequest.logger.isDebugEnabled()) {
             WorkerDropDatabaseRequest.logger.debug(w.getName()+": Current database is "+ w.getCurrentDatabaseName());
             WorkerDropDatabaseRequest.logger.debug(w.getName()+":executing statement " + ddl);
@@ -102,7 +119,7 @@ public abstract class WorkerRequest extends RequestMessage {
         WorkerStatement stmt = null;
         try {
             stmt = w.getStatement();
-            stmt.execute(getConnectionId(), ddl, resultConsumer,resultTracker);
+            stmt.execute(getConnectionId(), ddl, this,resultTracker);
         } catch (PESQLException e) {
             resultTracker.failure(e);
         }

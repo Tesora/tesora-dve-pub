@@ -42,11 +42,17 @@ public class ConditionalWorkerRequest extends WorkerRequest {
 		this.target = targ;
 		this.guard = guard;
 	}
-	
-	@Override
-	public void executeRequest(Worker w, GroupDispatch resultConsumer, CompletionHandle<Boolean> promise) {
-		if (guard.proceed(w,resultConsumer))
-			target.executeRequest(w, resultConsumer, promise);
+
+    @Override
+    public WorkerRequest withGroupDispatch(GroupDispatch groupDispatch) {
+        target.withGroupDispatch(groupDispatch);
+        return super.withGroupDispatch(groupDispatch);
+    }
+
+    @Override
+	public void executeRequest(Worker w, CompletionHandle<Boolean> promise) {
+		if (guard.proceed(w,this))
+			target.executeRequest(w, promise);
         else
             promise.success(true);
 	}

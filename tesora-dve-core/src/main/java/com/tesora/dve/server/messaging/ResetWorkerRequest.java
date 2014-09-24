@@ -26,7 +26,6 @@ import java.sql.SQLException;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.worker.Worker;
@@ -40,7 +39,7 @@ public class ResetWorkerRequest extends WorkerRequest {
 	private static final long serialVersionUID = 1L;
 	
 	@Override
-	public void executeRequest(Worker w, GroupDispatch resultConsumer, CompletionHandle<Boolean> promise) {
+	public void executeRequest(Worker w, CompletionHandle<Boolean> promise) {
         try {
             w.resetStatement(promise);
         } catch (SQLException e) {

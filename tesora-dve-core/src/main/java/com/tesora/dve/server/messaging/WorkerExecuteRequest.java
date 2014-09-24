@@ -24,14 +24,11 @@ package com.tesora.dve.server.messaging;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.GroupDispatch;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
@@ -58,11 +55,11 @@ public class WorkerExecuteRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public void executeRequest(Worker w, GroupDispatch resultConsumer, CompletionHandle<Boolean> promise) {
-		executeStatement(w, getCommand(), resultConsumer, promise);
+	public void executeRequest(Worker w, CompletionHandle<Boolean> promise) {
+		executeStatement(w, getCommand(), promise);
 	}
 	
-	protected void executeStatement(final Worker w, final SQLCommand stmtCommand, final GroupDispatch resultConsumer, final CompletionHandle<Boolean> callersResult) {
+	protected void executeStatement(final Worker w, final SQLCommand stmtCommand, final CompletionHandle<Boolean> callersResult) {
 
         try {
             w.setCurrentDatabase(defaultDatabase);
@@ -98,35 +95,11 @@ public class WorkerExecuteRequest extends WorkerRequest {
 
             };
 
-            stmt.execute(getConnectionId(), stmtCommand, resultConsumer,executeTracker);
+            stmt.execute(getConnectionId(), stmtCommand, this,executeTracker);
 		} catch (Exception pe) {
 			callersResult.failure(pe);
 		}
 	}
-
-    private void rollbackToSavepoint(Worker w, String savepointId) throws PEException {
-        try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-            w.getStatement().execute(getConnectionId(), new SQLCommand("rollback to " + savepointId), DBEmptyTextResultConsumer.INSTANCE,promise);
-            promise.sync();
-        } catch (Exception e) {
-            throw new PEException(e);
-        }
-    }
-
-    private String executeSavepoint(Worker w) throws PEException {
-        String savepointId;
-        savepointId = "barrier" + w.getUniqueValue();
-
-        try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-            w.getStatement().execute(getConnectionId(), new SQLCommand("savepoint " + savepointId), DBEmptyTextResultConsumer.INSTANCE, promise);
-            promise.sync();
-        } catch (Exception e) {
-            throw new PEException(e);
-        }
-        return savepointId;
-    }
 
     @Override
 	public String toString() {

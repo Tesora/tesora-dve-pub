@@ -22,7 +22,6 @@ package com.tesora.dve.server.messaging;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
@@ -50,10 +49,10 @@ public class WorkerGrantPrivilegesRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public void executeRequest(final Worker w, final GroupDispatch resultConsumer, CompletionHandle<Boolean> promise)  {
+	public void executeRequest(final Worker w, CompletionHandle<Boolean> promise)  {
 
         SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getGrantPriviledgesCommand(userDeclaration, "*");
-		simpleExecute(w,resultConsumer,ddl,promise);
+		simpleExecute(w, ddl,promise);
 	}
 
 	@Override
