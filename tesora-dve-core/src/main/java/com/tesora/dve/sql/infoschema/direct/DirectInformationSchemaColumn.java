@@ -35,11 +35,31 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.Type;
 
 public class DirectInformationSchemaColumn extends InformationSchemaColumn {
-
+	
+	private static final byte IDENT = 1;
+	private static final byte ORDERBY = 2;
+	private static final byte EXTENSION = 4;
+	private static final byte PRIVILEGE = 8;
+	private static final byte FULL = 16;
+	
+	private final byte flags;
+	
 	public DirectInformationSchemaColumn(InfoView view,
 			UnqualifiedName nameInView,
-			PEColumn backedBy) {
+			PEColumn backedBy,
+			boolean isIdent,
+			boolean isOrderBy,
+			boolean isExtension,
+			boolean isPrivilege,
+			boolean isFull) {
 		super(view, nameInView, new DirectInformationSchemaColumnAdapter(backedBy));
+		byte f = 0;
+		if (isIdent) f |= IDENT;
+		if (isOrderBy) f |= ORDERBY;
+		if (isExtension) f |= EXTENSION;
+		if (isPrivilege) f |= PRIVILEGE;
+		if (isFull) f |= FULL;
+		flags = f;
 	}
 
 	@Override
@@ -50,7 +70,8 @@ public class DirectInformationSchemaColumn extends InformationSchemaColumn {
 	@Override
 	public InformationSchemaColumn copy(InformationSchemaColumnAdapter adapter) {
 		return new DirectInformationSchemaColumn(view,getName().getUnqualified(),
-				(adapter == null ? getAdapter().getDirectColumn() : adapter.getDirectColumn())); 
+				(adapter == null ? getAdapter().getDirectColumn() : adapter.getDirectColumn()),
+				isIdentColumn(),isOrderByColumn(),isExtension(),requiresPrivilege(), isFull()); 
 	}
 
 	DirectInformationSchemaColumnAdapter getMyAdapter() {
@@ -68,6 +89,30 @@ public class DirectInformationSchemaColumn extends InformationSchemaColumn {
 
 	}
 
+	private boolean isSet(byte flag) {
+		return (flags & flag) == flag;
+	}
+	
+	public boolean isOrderByColumn() {
+		return isSet(ORDERBY);
+	}
+	
+	public boolean isIdentColumn() {
+		return isSet(IDENT);
+	}
+	
+	public boolean requiresPrivilege() {
+		return isSet(PRIVILEGE);
+	}
+
+	public boolean isExtension() {
+		return isSet(EXTENSION);
+	}
+
+	public boolean isFull() {
+		return isSet(FULL);
+	}
+	
 	public static class DirectInformationSchemaColumnAdapter extends InformationSchemaColumnAdapter {
 
 		// eventually we will have more than one here, or else a lookup into the actual 

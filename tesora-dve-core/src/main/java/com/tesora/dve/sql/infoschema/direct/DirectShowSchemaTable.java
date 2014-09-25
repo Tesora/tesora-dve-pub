@@ -26,16 +26,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
-
 import com.tesora.dve.common.catalog.CatalogEntity;
-import com.tesora.dve.errmap.DVEErrors;
-import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
@@ -58,6 +53,7 @@ import com.tesora.dve.sql.schema.PEViewTable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.ddl.SchemaQueryStatement;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
@@ -72,13 +68,11 @@ import com.tesora.dve.sql.util.UnaryFunction;
 
 public class DirectShowSchemaTable extends DirectInformationSchemaTable implements ShowSchemaBehavior {
 
-	// the ordering is database, table
-	// thus, if we only care about database, there is only one scoped column
-	private List<VariableInstance> scopedColumns;
 	private final TemporaryTableHandler tempTableHandler;
-	
-	
-	private static final String scope = "scope";
+
+	protected boolean[] scopes = null;
+	private static final String[] scopeNames = new String[] { "dbn", "tn" };
+
 	
 	public DirectShowSchemaTable(SchemaContext sc, InfoView view,
 			PEViewTable viewTab, UnqualifiedName viewName, UnqualifiedName pluralViewName,
@@ -86,21 +80,21 @@ public class DirectShowSchemaTable extends DirectInformationSchemaTable implemen
 			List<DirectColumnGenerator> columnGenerators,
 			TemporaryTableHandler tempTableHandler) {
 		super(sc, view, viewTab, viewName, pluralViewName, privileged, extension, columnGenerators);
+		this.tempTableHandler = tempTableHandler;
 		List<VariableInstance> vars = VariableInstanceCollector.getVariables(viewTab.getView(sc).getViewDefinition(sc, viewTab, false));
 		if (!vars.isEmpty()) {
-			// vars are in an expression of the form column = @var<n>, so we yank of the <n> and store the 
-			TreeMap<Integer,VariableInstance> byOffset = new TreeMap<Integer,VariableInstance>();
 			for(VariableInstance vi : vars) {
 				String name = vi.getVariableName().getUnquotedName().get();
-				String suffix = name.substring(scope.length());
-				Integer offset = Integer.parseInt(suffix);
-				byOffset.put(offset, vi);
+				for(int i = 0; i < scopeNames.length; i++) {
+					if (name.startsWith(scopeNames[i])) {
+						if (scopes == null)
+							scopes = new boolean[] { false, false };
+						scopes[i] = true;
+					}
+				}
 			}
-			scopedColumns = Functional.toList(byOffset.values());
-		} else {
-			scopedColumns = Collections.EMPTY_LIST;
 		}
-		this.tempTableHandler = tempTableHandler;
+
 	}
 
 	@Override
@@ -120,7 +114,8 @@ public class DirectShowSchemaTable extends DirectInformationSchemaTable implemen
 		} else {
 			ti = new TableInstance(this,new UnqualifiedName("a"),new UnqualifiedName("a"),sc.getNextTable(),false);
 		}
-		SelectStatement ss = buildSkeleton(sc,ti,options);
+		HashMap<String,Object> params = new HashMap<String,Object>();
+		SelectStatement ss = buildSkeleton(sc,ti,options,params);
 		if (whereExpr != null)
 			ss.setWhereClause(whereExpr);
 		else if (likeExpr != null) {
@@ -142,22 +137,24 @@ public class DirectShowSchemaTable extends DirectInformationSchemaTable implemen
 			ss.setOrderBy(sorts);
 		}
 			
-		Map<String,Object> params = normalizeScoping(sc,scoping);
+		normalizeScoping(sc,scoping,params);
 		ProjectionInfo pi = ss.getProjectionMetadata(sc);
 		ViewQuery vq = new ViewQuery(ss,params,ss.getBaseTables().get(0));
 		return new DirectInfoSchemaStatement(DirectSchemaQueryEngine.buildStep(sc, vq, pi));
 	}
 
 	@Override
-	public Statement buildUniqueStatement(SchemaContext sc, Name objectName) {
+	public Statement buildUniqueStatement(SchemaContext sc, Name objectName, ShowOptions opts) {
 		assertPrivilege(sc);
 		TableInstance ti = new TableInstance(this,new UnqualifiedName("a"),new UnqualifiedName("a"),sc.getNextTable(),false);
-		SelectStatement ss = buildSkeleton(sc,ti,null);
+		Map<String,Object> params = new HashMap<String,Object>();
+		SelectStatement ss = buildSkeleton(sc,ti,null,params);
 		FunctionCall fc = new FunctionCall(FunctionName.makeEquals(),new ColumnInstance(getIdentColumn().getName(),getIdentColumn(),ti),
 				LiteralExpression.makeStringLiteral(objectName.getUnquotedName().get()));
 		ss.setWhereClause(fc);
+		normalizeScoping(sc,null,params);
 		ProjectionInfo pi = ss.getProjectionMetadata(sc);
-		ViewQuery vq = new ViewQuery(ss,Collections.EMPTY_MAP,ss.getBaseTables().get(0));
+		ViewQuery vq = new ViewQuery(ss,params,ss.getBaseTables().get(0));
 		return new DirectInfoSchemaStatement(DirectSchemaQueryEngine.buildStep(sc, vq, pi));
 	}
 
@@ -174,7 +171,7 @@ public class DirectShowSchemaTable extends DirectInformationSchemaTable implemen
 			throw new InformationSchemaException("You do not have permission to show " + getPluralName().get());
 	}
 
-	protected SelectStatement buildSkeleton(SchemaContext sc, TableInstance ti, ShowOptions options) {
+	protected SelectStatement buildSkeleton(SchemaContext sc, TableInstance ti, ShowOptions options, Map<String,Object> params) {
 		AliasInformation ai = new AliasInformation();
 		ai.addAlias("a");
 		List<ExpressionNode> proj = buildProjection(sc, ti, useExtensions(sc), sc.getPolicyContext().isRoot(), ai, options);
@@ -182,11 +179,18 @@ public class DirectShowSchemaTable extends DirectInformationSchemaTable implemen
 		SelectStatement ss = new SelectStatement(ai)
 			.setTables(ti).setProjection(proj);
 		ss.getDerivedInfo().addLocalTable(ti.getTableKey());
+		
+		if (useExtensions(sc)) {
+			params.put(DirectInformationSchemaTable.metadataExtensions, 1L);
+		}
+		if (options != null && options.isIfNotExists())
+			params.put("ine",1L);
+
 		return ss;
 	}
 	
 	protected List<ExpressionNode> buildProjection(SchemaContext sc, TableInstance ti, boolean useExtensions, boolean hasPriviledge, AliasInformation aliases, ShowOptions opts) {
-		List<DirectInformationSchemaColumn> projCols = getProjectionColumns(useExtensions,hasPriviledge);
+		List<DirectInformationSchemaColumn> projCols = getProjectionColumns(useExtensions,hasPriviledge, (opts != null && opts.isFull()));
 		ArrayList<ExpressionNode> proj = new ArrayList<ExpressionNode>();
 		for(DirectInformationSchemaColumn c : projCols) {
 			ColumnInstance ci = new ColumnInstance(c,ti);
@@ -198,27 +202,6 @@ public class DirectShowSchemaTable extends DirectInformationSchemaTable implemen
 		return proj;
 	}
 
-	public Map<String,Object> normalizeScoping(SchemaContext sc, List<Name> given) {
-		if (scopedColumns.isEmpty()) return Collections.EMPTY_MAP;
-		List<Name> actualScoping = given;
-		if (given == null || given.isEmpty()) {
-			// always
-			if (sc.getCurrentDatabase(false) == null)
-				throw new SchemaException(new ErrorInfo(DVEErrors.NO_DATABASE_SELECTED));
-			// always add db
-			actualScoping.add(sc.getCurrentDatabase(false).getName());
-		} else if (scopedColumns.size() > given.size()) {
-			// prefix the db
-			if (sc.getCurrentDatabase(false) == null)
-				throw new SchemaException(new ErrorInfo(DVEErrors.NO_DATABASE_SELECTED));
-			actualScoping.add(0,sc.getCurrentDatabase(false).getName());
-		}
-		HashMap<String,Object> out = new HashMap<String,Object>();
-		for(int i = 0; i < scopedColumns.size(); i++)
-			out.put(scopedColumns.get(i).getVariableName().getUnquotedName().get(),
-					actualScoping.get(i).getUnquotedName().get());
-		return out;
-	}
 	
 	public interface TemporaryTableHandler {
 	
@@ -269,6 +252,47 @@ public class DirectShowSchemaTable extends DirectInformationSchemaTable implemen
 		String tableName = (tablen == null ? null : tablen.get());
 		String dbName = (dbn == null ? null : dbn.get());
 		return new Pair<String,String>(dbName,tableName);		
+	}
+
+	private Name getDatabaseName(SchemaContext sc) {
+		IPETenant ten = sc.getCurrentTenant().get(sc);
+		if (ten == null)
+			return sc.getCurrentDatabase().getName();
+		if (ten.getTenantID() == null || ten.getUniqueIdentifier() == null)
+			return sc.getCurrentDatabase().getName();
+		return new UnqualifiedName(ten.getUniqueIdentifier());
+	}
+	
+	public void normalizeScoping(SchemaContext sc, List<Name> given, Map<String,Object> params) {
+		if (scopes == null) return;
+		Name[] actualScoping = new Name[] { null, null };
+		if (scopes[0]) {
+			// we require a database
+			if (given == null || given.isEmpty()) {
+				actualScoping[0] = getDatabaseName(sc); 
+			} else if (given.size() < 2) {
+				if (!scopes[1])
+					actualScoping[0] = given.get(0);
+				else
+					actualScoping[0] = getDatabaseName(sc);
+			} else {
+				actualScoping[0] = given.get(0);
+			}				
+		}
+		if (scopes[1]) {
+			if (given == null || given.isEmpty())
+				throw new InformationSchemaException("Underly qualified " + getName() + " statement");
+			else if (given.size() == 2) {
+				actualScoping[1] = given.get(1);
+			} else {
+				actualScoping[1] = given.get(0);
+			}
+		}
+		for(int i = 0; i < scopes.length; i++) {
+			if (scopes[i]) {
+				params.put(scopeNames[i],actualScoping[i].getUnquotedName().get());
+			}
+		}
 	}
 
 }

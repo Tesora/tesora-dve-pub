@@ -76,7 +76,7 @@ public class SingleDirectStatement implements WorkerStatement {
 
     @Override
 	public void execute(final int connectionId, final SQLCommand sql, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-
+    	
 		StatementManager.INSTANCE.registerStatement(connectionId, this);
 		PerHostConnectionManager.INSTANCE.changeConnectionState(
 				connectionId, "Query", "", (sql == null) ? "Null Query" : sql.getRawSQL());

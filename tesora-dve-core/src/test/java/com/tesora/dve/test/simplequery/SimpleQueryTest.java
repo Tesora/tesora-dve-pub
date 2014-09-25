@@ -43,15 +43,19 @@ import org.junit.Test;
 
 import com.mchange.v2.c3p0.C3P0Registry;
 import com.mchange.v2.c3p0.PooledDataSource;
+import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.SchemaTest;
+import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.variable.VariableConstants;
 import com.tesora.dve.worker.DBConnectionParameters;
 
 public class SimpleQueryTest extends SchemaTest {
@@ -65,14 +69,68 @@ public class SimpleQueryTest extends SchemaTest {
 
 	static final String COUNT_ROWS_SELECT = "select * from foo";
 
+	public static void declareSchema(ConnectionResource conn) throws Throwable {
+		declareSchema(conn,null, null);
+	}
+
+	public static void cleanupSites(int nSites, String...dbNames) throws Throwable {
+		DBHelper helper = null;
+		try {
+			helper = PETest.buildHelper();
+			for(int i = 1; i <= nSites; i++) {
+				for(String s : dbNames) {
+					helper.executeQuery(String.format("drop database if exists site%d_%s",i,s));
+				}
+			}
+		} finally {
+			helper.disconnect();
+		}
+	}
+	
+	public static void createSites(int nSites, ConnectionResource cr) throws Throwable {
+		for(int i = 1; i <= nSites; i++) {
+			cr.execute(String.format("create persistent site site%d url='%s' user='%s' password='%s'",
+					i,
+					TestCatalogHelper.getInstance().getCatalogUrl(),
+					TestCatalogHelper.getInstance().getCatalogUser(),
+					TestCatalogHelper.getInstance().getCatalogPassword()));
+		}
+	}
+	
+	public static void createGroupAndTestDB(int nSites, ConnectionResource cr) throws Throwable {
+		StringBuilder buf = new StringBuilder();
+		for(int i = 1; i <= nSites; i++) {
+			if (i > 1) buf.append(",");
+			buf.append("site"+i);
+		}
+		cr.execute("create persistent group DefaultGroup add " + buf.toString());
+		cr.execute(String.format("alter dve set %s = '%s'",VariableConstants.TEMPLATE_MODE_NAME, TemplateMode.OPTIONAL));
+		cr.execute("create database TestDB default character set utf8 default persistent group DefaultGroup");
+		cr.execute("use TestDB");		
+	}
+	
+	public static void declareSchema(ConnectionResource conn, String distOn,
+			String rangeDecl) throws Throwable {
+		// do the cleanup that formerly occurred in the per site loads
+		if (distOn == null)
+			distOn = "random distribute";
+		cleanupSites(2,"TestDB2","TestDB","MyTestDB");
+		// create site1, site2, build DefaultGroup
+		createSites(2,conn);
+		createGroupAndTestDB(2,conn);
+		if (rangeDecl != null)
+			conn.execute(rangeDecl);
+		conn.execute("create table foo (id int, value varchar(20)) " + distOn);
+		conn.execute("create table bar (id int, value varchar(20)) " + distOn);
+	}
+	
 	@BeforeClass
 	public static void setup() throws Throwable {
-		TestCatalogHelper.createTestCatalog(PETest.class,2);
+		TestCatalogHelper.createTestCatalog(PETest.class);
 		bootHost = BootstrapHost.startServices(PETest.class);
-        populateMetadata(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
         dbParams = new DBConnectionParameters(Singletons.require(HostService.class).getProperties());
 		conn = new ProxyConnectionResource(dbParams.getUserid(), dbParams.getPassword());
-		conn.execute("use TestDB");
+		declareSchema(conn);
         populateSites(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
 	}
 

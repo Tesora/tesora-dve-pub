@@ -36,7 +36,6 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.logical.TableStatusInformationSchemaTable;
@@ -59,7 +58,6 @@ import com.tesora.dve.sql.util.ListSet;
 public class ShowTableStatusInformationSchemaTable extends ShowInformationSchemaTable {
 
 	private TableStatusInformationSchemaTable tableStatusTable;
-	private ShowInformationSchemaTable tableTable = null;
 	@SuppressWarnings("unused")
 	private ComputedInformationSchemaColumn nameColumn = null;
 	
@@ -72,13 +70,10 @@ public class ShowTableStatusInformationSchemaTable extends ShowInformationSchema
 
 	@Override
 	protected void validate(AbstractInformationSchema ofView) {
-		tableTable = (ShowInformationSchemaTable) ofView.lookup("table");
-		if (tableTable == null)
-			throw new InformationSchemaException("Cannot find show table view in show view");
 	}
 	
 	@Override
-	public Statement buildUniqueStatement(SchemaContext sc, Name objectName) {
+	public Statement buildUniqueStatement(SchemaContext sc, Name objectName, ShowOptions opts) {
 		throw new SchemaException(Pass.SECOND, "Invalid show table status command");
 	}
 	

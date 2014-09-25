@@ -535,6 +535,7 @@ public class MysqlNativeType extends NativeType {
 		case BLOB:
 		case CHAR:
 		case INT:
+		case MEDIUMINT:
 		case LONGBLOB:
 		case LONGTEXT:
 		case MEDIUMBLOB:
@@ -546,10 +547,12 @@ public class MysqlNativeType extends NativeType {
 		case TINYTEXT:
 		case VARBINARY:
 		case VARCHAR:
+		case YEAR:
 			return ColumnAttributes.SIZED_TYPE;
 			
 		case DECIMAL:
 		case DOUBLE_PRECISION:
+		case DOUBLE:
 		case FLOAT:
 			return ColumnAttributes.PS_TYPE;
 		default:

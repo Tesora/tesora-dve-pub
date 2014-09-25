@@ -29,7 +29,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -870,6 +869,12 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 				// we don't store this in the declaration, but it is in the catalog
 				PEColumn ntc = c.getIn(sc, tschemaVersion);
 				ntc.makeBinaryText();
+			}
+			if (!c.hasDefault()) {
+				// make sure the rebuilt column has no default as well
+				PEColumn ntc = (PEColumn) c.getIn(sc, tschemaVersion);
+				if (ntc == null) continue;
+				ntc.setDefaultValue(null);
 			}
 		}
 		if (mtmode) {

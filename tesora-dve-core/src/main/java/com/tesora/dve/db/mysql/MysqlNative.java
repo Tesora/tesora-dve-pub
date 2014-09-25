@@ -22,10 +22,7 @@ package com.tesora.dve.db.mysql;
  */
 
 import java.sql.ParameterMetaData;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Types;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -42,10 +39,7 @@ import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnAttribute;
-import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
-import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;

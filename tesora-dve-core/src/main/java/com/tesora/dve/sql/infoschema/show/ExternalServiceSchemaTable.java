@@ -29,23 +29,24 @@ import com.tesora.dve.externalservice.ExternalServicePlugin;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public class ExternalServiceSchemaTable extends ShowInformationSchemaTable {
 
-	public ExternalServiceSchemaTable(LogicalInformationSchemaTable basedOn,
-			UnqualifiedName viewName, UnqualifiedName pluralViewName,
-			boolean isPriviledged, boolean isExtension) {
-		super(basedOn, viewName, pluralViewName, isPriviledged, isExtension);
+	public ExternalServiceSchemaTable() {
+		super(null, new UnqualifiedName("external service"),new UnqualifiedName("external service"),true,true);
 	}
 
+	protected void validate(AbstractInformationSchema ofView) {
+	}
+	
 	@Override
 	public IntermediateResultSet executeUniqueSelect(SchemaContext sc,
-			Name onName) {
+			Name onName, ShowOptions opts) {
 		String serviceName = onName.getUnqualified().get();
 
 		ColumnSet md = new ColumnSet();

@@ -164,7 +164,7 @@ public class ExternalServiceTest extends SchemaTest {
 		
 		// get datastore name first
 		String datastore = null;
-		ExternalService es = catalogDAO.findExternalService(testExternalServiceName);
+		ExternalService es = getGlobalDAO().findExternalService(testExternalServiceName);
 		if (es.usesDataStore()) {
 			datastore = es.getDataStoreName();
 		}
@@ -196,7 +196,7 @@ public class ExternalServiceTest extends SchemaTest {
 				br(nr,testESConfig,testESUser,Boolean.TRUE));
 		
 		// make sure datastore has been created
-		ExternalService es = catalogDAO.findExternalService(testExternalServiceName);
+		ExternalService es = getGlobalDAO().findExternalService(testExternalServiceName);
 		if (es.usesDataStore()) {
 			// if database does not exist we will throw
 			conn.execute("USE " + es.getDataStoreName());
@@ -227,7 +227,7 @@ public class ExternalServiceTest extends SchemaTest {
 		}
 		
 		// make sure service is gone
-		ExternalService es = catalogDAO.findExternalService(testExternalServiceName, false);
+		ExternalService es = getGlobalDAO().findExternalService(testExternalServiceName, false);
 		assertNull("External service must not be found.", es);
 		
 		// make sure service is deregistered

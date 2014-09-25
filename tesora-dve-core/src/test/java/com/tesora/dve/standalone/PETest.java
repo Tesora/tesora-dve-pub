@@ -211,7 +211,6 @@ public class PETest extends PEBaseTest {
 	}
 
 	public static void populateMetadata(Class<?> testClass, Properties props, String sqlRes) throws Exception {
-		catalogDAO = CatalogDAOFactory.newInstance();
 		InputStream is = testClass.getResourceAsStream(sqlRes);
 		if (is != null) {
 			logger.info("Reading SQL statements from " + sqlRes);
@@ -225,6 +224,12 @@ public class PETest extends PEBaseTest {
 		}
 	}
 
+	public static CatalogDAO getGlobalDAO() {
+		if (catalogDAO == null)
+			catalogDAO = CatalogDAOFactory.newInstance();
+		return catalogDAO;
+	}
+	
 	public static void populateTemplate(DBHelper dbh, String name) throws Exception {
 		dbh.executeQuery(TemplateBuilder.getClassPathCreate(name));
 	}
@@ -244,7 +249,7 @@ public class PETest extends PEBaseTest {
 
 	public static void populateSites(Class<?> testClass, Properties props, String prefix) throws PEException,
 			SQLException {
-		List<PersistentSite> allSites = catalogDAO.findAllPersistentSites();
+		List<PersistentSite> allSites = getGlobalDAO().findAllPersistentSites();
 
 		for (StorageSite site : allSites) {
 			String sqlRes = prefix + site.getName() + "-load.sql";

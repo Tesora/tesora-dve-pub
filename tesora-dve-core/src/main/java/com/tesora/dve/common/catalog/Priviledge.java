@@ -37,12 +37,9 @@ import org.hibernate.annotations.ForeignKey;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 
 // the purpose of a priviledge is to tie a user to one or more non-info-schema databases or tenants
 
-@InfoSchemaTable(logicalName="priviledge",views={})
 @Entity
 @Table(name="priviledge")
 public class Priviledge implements CatalogEntity {
@@ -102,23 +99,14 @@ public class Priviledge implements CatalogEntity {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName="tenant", fieldName="tenant",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public Tenant getTenant() {
 		return tenant;
 	}
 	
-	@InfoSchemaColumn(logicalName="database", fieldName="database",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public UserDatabase getDatabase() {
 		return database;
 	}
 	
-	@InfoSchemaColumn(logicalName="user", fieldName="user",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public User getUser() {
 		return user;
 	}

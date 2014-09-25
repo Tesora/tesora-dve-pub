@@ -50,7 +50,6 @@ import javax.persistence.Table;
 import org.hibernate.annotations.ForeignKey;
 
 import com.tesora.dve.common.PEConstants;
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.distribution.ContainerDistributionModel;
 import com.tesora.dve.distribution.DistributionRange;
@@ -69,11 +68,6 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.Manager;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
@@ -82,17 +76,6 @@ import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
  * Entity implementation class for Entity: UserTable
  * 
  */
-@InfoSchemaTable(logicalName="table",
-		views={@TableView(view=InfoView.SHOW, name="table", pluralName="tables",
-				columnOrder={ShowSchema.Table.NAME,
-							 ShowSchema.Table.TYPE,
-							 ShowSchema.Table.MODEL,
-							 ShowSchema.Table.PERSISTENT_GROUP,
-							 "database"}),
-			   @TableView(view=InfoView.INFORMATION, name="tables", pluralName="",
-				columnOrder={"table_schema","table_name","table_type","engine",
-					   		 "storage_group",
-					   		 "row_format","table_collation","create_options","table_comment"})})
 @Entity
 @Table(name = "user_table"
 // would have been really nice to put this in, but then would have to worry about
@@ -246,18 +229,11 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	}
 
 	@Override
-	@InfoSchemaColumn(logicalName="id",fieldName="id",
-			sqlType=java.sql.Types.INTEGER,
-			views={})
 	public int getId() {
 		return this.id;
 	}
 
 	@Override
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Table.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="table_name", orderBy=true, ident=true)})
 	public String getName() {
 		return this.name;
 	}
@@ -380,9 +356,6 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		return userColumnMap.get(name);
 	}
 
-	@InfoSchemaColumn(logicalName="model",fieldName="distributionModel",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Table.MODEL,extension=true)})
 	public DistributionModel getDistributionModel() {
 		return this.distributionModel;
 	}
@@ -391,10 +364,6 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		this.distributionModel = distributionModel;
 	}
 
-	@InfoSchemaColumn(logicalName="storage_group",fieldName="persistentGroup",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Table.PERSISTENT_GROUP,extension=true),
-				   @ColumnView(view=InfoView.INFORMATION,name="storage_group",extension=true)})
 	public PersistentGroup getPersistentGroup() {
 		if (persistentGroup == null)
 			throw new PECodingException("Detected attempt to use non-persistent persistent group in persistent context");
@@ -449,11 +418,6 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		return referencing;
 	}
 	
-	@InfoSchemaColumn(logicalName="database",fieldName="userDatabase",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="table_schema",injected=true),
-				   @ColumnView(view=InfoView.SHOW,name="database",visible=false,injected=true)},
-			injected=true)
 	public UserDatabase getDatabase() {
 		return userDatabase;
 	}
@@ -634,9 +598,6 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		return rr;
 	}
 
-	@InfoSchemaColumn(logicalName="container",fieldName="container",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public Container getContainer() {
 		return container;
 	}
@@ -652,11 +613,6 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		return false;
 	}
 	
-	@InfoSchemaColumn(logicalName="engine",fieldName="engine",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={
-			       //@ColumnView(view=InfoView.SHOW, name=ShowSchema.Table.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="engine")})
 	public String getEngine() {
 		return engine;
 	}
@@ -665,17 +621,10 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		engine = e;
 	}
 
-	@InfoSchemaColumn(logicalName="tabletype",fieldName="table_type",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Table.TYPE),
-			       @ColumnView(view=InfoView.INFORMATION, name="table_type")})
 	public String getTableType() {
 		return table_type;
 	}
 	
-	@InfoSchemaColumn(logicalName="collation",fieldName="collation",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION, name="table_collation")})
 	public String getCollation() {
 		return collation;
 	}
@@ -684,9 +633,6 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		this.collation = collation;
 	}
 
-	@InfoSchemaColumn(logicalName="row_format",fieldName="rowFormat",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=10,
-			views={@ColumnView(view=InfoView.INFORMATION, name="row_format")})
 	public String getRowFormat() {
 		return rowFormat;
 	}
@@ -695,9 +641,6 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		rowFormat = v;
 	}
 	
-	@InfoSchemaColumn(logicalName="comment",fieldName="comment",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION, name="table_comment")})	
 	public String getComment() {
 		return comment;
 	}
@@ -706,9 +649,6 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		comment = s;
 	}
 
-	@InfoSchemaColumn(logicalName="createoptions",fieldName="createOptions",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION, name="create_options")})	
 	public String getCreateOptions() {
 		return createOptions;
 	}
@@ -754,9 +694,6 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		state = ts;
 	}
 
-	@InfoSchemaColumn(logicalName="state",fieldName="state",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public TableState getState() {
 		return state;
 	}

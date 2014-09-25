@@ -23,7 +23,6 @@ package com.tesora.dve.db;
 
 import java.io.Serializable;
 import java.sql.ParameterMetaData;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import com.tesora.dve.charset.NativeCharSetCatalog;
@@ -36,7 +35,6 @@ import com.tesora.dve.db.mysql.MariaDBNative;
 import com.tesora.dve.db.mysql.MysqlNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
-import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.ForeignKeyAction;

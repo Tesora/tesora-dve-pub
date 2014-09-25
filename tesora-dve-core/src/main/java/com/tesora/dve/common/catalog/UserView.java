@@ -41,10 +41,7 @@ import org.hibernate.annotations.ForeignKey;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 
-@InfoSchemaTable(logicalName="views",views={})
 @Entity
 @Table(name = "user_view")
 public class UserView implements CatalogEntity {
@@ -148,15 +145,10 @@ public class UserView implements CatalogEntity {
 	public void onDrop() {
 	}
 
-	@InfoSchemaColumn(logicalName="definition",fieldName="definition",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255, views={})
 	public String getDefinition() {
 		return definition;
 	}
 
-	@InfoSchemaColumn(logicalName="definedby", fieldName="definer",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})			
 	public User getDefiner() {
 		return definer;
 	}
@@ -165,23 +157,14 @@ public class UserView implements CatalogEntity {
 		table = ut;
 	}
 	
-	@InfoSchemaColumn(logicalName="backing",fieldName="table",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public UserTable getTable() {
 		return table;
 	}
 
-	@InfoSchemaColumn(logicalName="client_charset",fieldName="charset",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=32,
-			views={})
 	public String getCharset() {
 		return charset;
 	}
 	
-	@InfoSchemaColumn(logicalName="connection_collation",fieldName="collation",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=32,
-			views={})
 	public String getCollation() {
 		return collation;
 	}
@@ -190,30 +173,18 @@ public class UserView implements CatalogEntity {
 		return ViewMode.toMode(mode);
 	}
 	
-	@InfoSchemaColumn(logicalName="viewmode",fieldName="mode",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getMode() {
 		return mode;
 	}
 	
-	@InfoSchemaColumn(logicalName="security",fieldName="security",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getSecurity() {
 		return security;
 	}
 
-	@InfoSchemaColumn(logicalName="algorithm",fieldName="algorithm",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getAlgorithm() {
 		return algorithm;
 	}
 
-	@InfoSchemaColumn(logicalName="check",fieldName="check",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getCheckOption() {
 		return check;
 	}

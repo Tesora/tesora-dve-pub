@@ -39,22 +39,14 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
 import org.hibernate.annotations.ForeignKey;
-import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 
-import com.tesora.dve.common.ShowSchema;
-import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
 
 /**
@@ -507,9 +499,6 @@ public class UserColumn implements CatalogEntity, PersistentColumn {
 		cdv_position = offset;
 	}
 
-	@InfoSchemaColumn(logicalName="column_comment", fieldName="comment", 
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="column_comment")})
 	public String getComment() {
 		return comment;
 	}

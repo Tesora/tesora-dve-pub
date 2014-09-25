@@ -42,7 +42,6 @@ import javax.persistence.UniqueConstraint;
 import io.netty.channel.EventLoopGroup;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.UserVisibleDatabase;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.exceptions.PECodingException;
@@ -54,11 +53,6 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.statistics.SiteStatKey.SiteType;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 import com.tesora.dve.sql.schema.PEStorageSite.TCacheSite;
 import com.tesora.dve.worker.AdditionalConnectionInfo;
 import com.tesora.dve.worker.MasterMasterWorker;
@@ -66,11 +60,6 @@ import com.tesora.dve.worker.SingleDirectWorker;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 
-@InfoSchemaTable(logicalName = "storage_site", views = {
-		@TableView(view = InfoView.SHOW, name = "persistent site", pluralName = "persistent sites", columnOrder = {
-				ShowSchema.PersistentSite.NAME, ShowSchema.PersistentSite.HA_TYPE, ShowSchema.PersistentSite.URL }, extension = true, priviledged = true),
-		@TableView(view = InfoView.INFORMATION, name = "storage_site", pluralName = "", columnOrder = { "name",
-				"haType", "masterUrl" }, extension = true, priviledged = true) })
 @Entity
 @Table(name = "storage_site", uniqueConstraints = @UniqueConstraint(columnNames = "name"))
 public class PersistentSite implements CatalogEntity, StorageSite {
@@ -122,10 +111,6 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 		this.siteInstances = new ArrayList<SiteInstance>();
 	}
 
-	@InfoSchemaColumn(logicalName = "masterUrl", fieldName = "", // "masterSite",
-	sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = ShowSchema.PersistentSite.URL),
-			@ColumnView(view = InfoView.INFORMATION, name = "masterUrl") })
 	@Override
 	public String getMasterUrl() {
 		if (getMasterInstance() == null) {
@@ -134,23 +119,16 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 		return getMasterInstance().getInstanceURL();
 	}
 
-	@InfoSchemaColumn(logicalName = "name", fieldName = "name", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = ShowSchema.PersistentSite.NAME, orderBy = true, ident = true),
-			@ColumnView(view = InfoView.INFORMATION, name = "name", orderBy = true, ident = true) })
 	@Override
 	public String getName() {
 		return name;
 	}
 
-	@InfoSchemaColumn(logicalName = "haType", fieldName = "haType", sqlType = java.sql.Types.VARCHAR, sqlWidth = 25, views = {
-			@ColumnView(view = InfoView.SHOW, name = ShowSchema.PersistentSite.HA_TYPE),
-			@ColumnView(view = InfoView.INFORMATION, name = "haType") })
 	public String getHAType() {
 		return haType;
 	}
 
 	@Override
-	@InfoSchemaColumn(logicalName = "id", fieldName = "id", sqlType = java.sql.Types.INTEGER, views = {})
 	public int getId() {
 		return id;
 	}

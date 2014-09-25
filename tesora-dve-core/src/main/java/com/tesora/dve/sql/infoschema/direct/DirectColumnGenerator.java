@@ -28,6 +28,7 @@ public class DirectColumnGenerator extends DirectSchemaGenerator {
 	
 	private int orderby = -1;
 	private boolean ident = false;
+	private boolean full = false;
 	
 	public DirectColumnGenerator(String name, String type) {
 		super();
@@ -43,6 +44,15 @@ public class DirectColumnGenerator extends DirectSchemaGenerator {
 	public DirectColumnGenerator withIdent() {
 		this.ident = true;
 		return this;
+	}
+	
+	public DirectColumnGenerator withFull() {
+		this.full = true;
+		return this;
+	}
+	
+	public DirectColumnGenerator withExtension() {
+		return super.withExtension();
 	}
 	
 	public String getName() {
@@ -61,4 +71,7 @@ public class DirectColumnGenerator extends DirectSchemaGenerator {
 		return orderby;
 	}
 	
+	public boolean isFull() {
+		return full;
+	}
 }

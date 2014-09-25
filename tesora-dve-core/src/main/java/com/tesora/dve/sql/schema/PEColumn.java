@@ -25,13 +25,11 @@ package com.tesora.dve.sql.schema;
 
 
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -39,7 +37,6 @@ import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.common.catalog.PersistentColumn;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.db.ValueConverter;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.exceptions.PEException;
@@ -55,7 +52,6 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.IdentifierLiteralExpression;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.TableInstance;
-import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.schema.modifiers.CharsetTableModifier;
 import com.tesora.dve.sql.schema.modifiers.CollationTableModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnKeyModifier;
@@ -90,7 +86,7 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 
 	public static PEColumn buildColumn(SchemaContext sc, Name name, Type type, List<ColumnModifier> modifiers, Comment comment, List<ColumnKeyModifier> inlineKeys) {
 		ExpressionNode defaultValue = null;		
-		short f = (short)type.getBaseType().getDefaultColumnAttrFlags();
+		short f = (short)type.getColumnAttributesFlags();
 		boolean explicitNullability = false;
 		for(Iterator<ColumnModifier> iter = modifiers.iterator(); iter.hasNext();) {
 			ColumnModifier cm = iter.next();
@@ -194,16 +190,15 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 				 * integral types: could have a default of 1 or '1'
 				 * etc.
 				 */
-				if (type.isTimestampType() && CURRENT_TIMESTAMP.equalsIgnoreCase(defVal.trim())) {
-					defLiteral = new IdentifierLiteralExpression(new UnqualifiedName(CURRENT_TIMESTAMP));					
-				} else {
-					// special case of current_timestamp or 0 is the only allowed non constant default value
-					if (StringUtils.equals("0", defVal)) {
+				if (type.isTimestampType()) {
+					if (CURRENT_TIMESTAMP.equalsIgnoreCase(defVal.trim())) {
+						defLiteral = new IdentifierLiteralExpression(new UnqualifiedName(CURRENT_TIMESTAMP));
+					} else if (StringUtils.equals("0", defVal)) {
 						defLiteral = new IdentifierLiteralExpression(new UnqualifiedName("0"));
-					} else {
-						defLiteral = new ActualLiteralExpression(defVal,null);
-					}						
+					} 
 				}
+				if (defLiteral == null)
+					defLiteral = new ActualLiteralExpression(defVal,null);
 				
 			}
 			defaultValue = defLiteral;
@@ -267,6 +262,10 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 	
 	public boolean isOnUpdated() {
 		return isSet(ColumnAttributes.ONUPDATE);
+	}
+	
+	public boolean hasDefault() {
+		return isSet(ColumnAttributes.HAS_DEFAULT_VALUE);
 	}
 	
 	public void makeAutoincrement() {
@@ -459,41 +458,42 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 	 * @param uc
 	 * @throws PEException
 	 */
+	// this function just seems messed up
 	private void setPersistentDefaultValue(SchemaContext sc, UserColumn uc) throws PEException {
 		if (defaultValue == null) {
 			MysqlType mt = MysqlType.toMysqlType(uc.getTypeName());
 			if (mt == MysqlType.TIMESTAMP) {
-				uc.setHasDefault(Boolean.TRUE);
-				if (uc.isNullable()) {
+				setFlag(ColumnAttributes.HAS_DEFAULT_VALUE);
+				if (isNullable()) {
 					uc.setDefaultValue(null);
-					uc.setDefaultValueIsConstant(true);
+					setFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 				} else {
 					if (isSet(ColumnAttributes.ONUPDATE)) {
 						uc.setDefaultValue("0");						
 					} else {
 						uc.setDefaultValue(CURRENT_TIMESTAMP);
 					}
-					uc.setDefaultValueIsConstant(false);
+					clearFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 				}
 			} else {
-				uc.setHasDefault(Boolean.FALSE);
+				clearFlag(ColumnAttributes.HAS_DEFAULT_VALUE);
 				uc.setDefaultValue(null);
-				uc.setDefaultValueIsConstant(true);
+				setFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 			}
 		} else {
-			uc.setHasDefault(Boolean.TRUE);
+			setFlag(ColumnAttributes.HAS_DEFAULT_VALUE);
 			LiteralExpression le = (LiteralExpression)defaultValue;
 			if (le.isNullLiteral()) {
 				uc.setDefaultValue(null);
-				uc.setDefaultValueIsConstant(true);
+				setFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 			} else {
-				uc.setDefaultValueIsConstant(true);
+				setFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 				if (le instanceof IdentifierLiteralExpression) {
-					uc.setDefaultValueIsConstant(false);
+					clearFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 				}
 				if ((uc.getDataType() == Types.TIMESTAMP) && 
 						StringUtils.equals("0", le.getValue(sc).toString())) {
-					uc.setDefaultValueIsConstant(false);
+					clearFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 				}
 				uc.setDefaultValue(le.getValue(sc).toString());
 			}
@@ -607,7 +607,12 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 	}
 	
 	public void setType(final Type type) {
+		if (this.type != null) {
+			int oldFlags = this.type.getColumnAttributesFlags();
+			flags &= ~oldFlags;
+		}
 		this.type = type;
+		flags |= type.getColumnAttributesFlags();
 	}
 
 	@Override
@@ -685,9 +690,9 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 		type = type.normalize();
 		if (defaultValue == null) {
 			if (type.isTimestampType() && isNotNullable()) {
-				if (isOnUpdated()) {
+				if (isOnUpdated()) 
 					defaultValue = new IdentifierLiteralExpression(new UnqualifiedName(CURRENT_TIMESTAMP));
-				} else
+				else
 					defaultValue = LiteralExpression.makeStringLiteral("0000-00-00 00:00:00");
 				flags = ColumnAttributes.set(flags, ColumnAttributes.HAS_DEFAULT_VALUE);
 			} else if (!type.supportsDefaultValue()) {

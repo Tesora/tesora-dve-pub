@@ -42,7 +42,7 @@ public abstract class LogicalQuery {
 	public LogicalQuery(ViewQuery orig, SelectStatement xlated, Map<String,Object> p) {
 		this.orig = orig;
 		this.stmt = xlated;
-		params = p;
+		params = (p == null ? new HashMap<String,Object>() : p);
 		if (params.isEmpty())
 			params = new HashMap<String,Object>();
 	}

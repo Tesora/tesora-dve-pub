@@ -105,7 +105,7 @@ public class ShowTableInformationSchemaTable extends ShowInformationSchemaTable 
 	}
 
 	@Override
-	public ViewQuery buildUniqueSelect(SchemaContext sc, Name onName) {
+	public ViewQuery buildUniqueSelect(SchemaContext sc, Name onName, ShowOptions opts) {
 		QualifiedName actual = null;
 		if (onName.isQualified())
 			actual = (QualifiedName)onName;

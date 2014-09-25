@@ -42,9 +42,11 @@ import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageGroupAccessor;
 import com.tesora.dve.common.catalog.StorageGroupGeneration;
+import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.distribution.GenerationKeyRange;
 import com.tesora.dve.distribution.KeyValue;
@@ -59,8 +61,11 @@ import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateByKeyOperation;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.test.simplequery.SimpleQueryTest;
+import com.tesora.dve.variable.VariableConstants;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.UserCredentials;
 
@@ -90,20 +95,69 @@ public class DistributionTest extends PETest{
 
 	static Map<String, PersistentSite> siteMap = new HashMap<String, PersistentSite>();
 
-	@BeforeClass
-	public static void setup() throws Exception {
-		Class<?> bootClass = PETest.class;
-		TestCatalogHelper.createTestCatalog(bootClass,2);
-		bootHost = BootstrapHost.startServices(bootClass);
-        populateMetadata(DistributionTest.class, Singletons.require(HostService.class).getProperties());
+	private static final String body = "create table `%s` (id int, value varchar(20)) persistent group %s %s ";
+	
+	private static final String[] tabDecls = new String[] {
+		
+		String.format(body,"Random","DefaultGroup","random distribute"),
+		String.format(body,"RandomGen2","sg2Ref","random distribute"),
+		String.format(body,"RandomGen3","sg3Ref","random distribute"),
+		String.format(body,"RandomOneSite","sgOneSite","random distribute"),
+		String.format(body,"Broadcast","DefaultGroup","broadcast distribute"),
+		String.format(body,"BroadcastGen2","sg2Ref","broadcast distribute"),
+		String.format(body,"BroadcastGen3","sg3Ref","broadcast distribute"),
+		String.format(body,"BroadcastOneSite","sgOneSite","broadcast distribute"),
+		String.format(body,"Static","DefaultGroup","static distribute on (id)"),
+		String.format(body,"StaticGen2","sg2Ref","static distribute on (id)"),
+		String.format(body,"StaticGen3","sg3Ref","static distribute on (id)"),
+		String.format(body,"StaticOneSite","sgOneSite","static distribute on (id)"),
+		String.format(body,"Range","DefaultGroup","range distribute on (id) using Range"),
+		String.format(body,"RangeGen2","sg2Ref","range distribute on (id) using RangeGen2"),
+		String.format(body,"RangeGen3","sg3Ref","range distribute on (id) using RangeGen3"),
+		String.format(body,"RangeOneSite","sgOneSite","range distribute on (id) using RangeOneSite"),
+		
+	};
+	
+	private static void populateMetadata() throws Throwable {
+		SimpleQueryTest.cleanupSites(3, "TestDB");
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.createSites(10, pcr);
+		pcr.execute("create persistent group DefaultGroup add site1, site2");
+		pcr.execute("create persistent group sg2Ref add site1,site2");
+		pcr.execute("alter persistent group sg2Ref add generation site3");
+		pcr.execute("create persistent group sg3Ref add site1,site2");
+		pcr.execute("alter persistent group sg3Ref add generation site1,site2,site3");
+		pcr.execute("create persistent group sgOneSite add site1");
+		pcr.execute("create range Range (int) persistent group DefaultGroup");
+		pcr.execute("create range RangeGen2 (int) persistent group sg2Ref");
+		pcr.execute("create range RangeGen3 (int) persistent group sg3Ref");
+		pcr.execute("create range RangeOneSite (int) persistent group sgOneSite");
+		
+		pcr.execute(String.format("alter dve set %s = '%s'",VariableConstants.TEMPLATE_MODE_NAME, TemplateMode.OPTIONAL));
+		pcr.execute("create database TestDB default character set utf8 default persistent group DefaultGroup");
+		pcr.execute("use TestDB");
 
+		for(String s : tabDecls) {
+			pcr.execute(s);
+		}
+	}
+	
+	
+	
+	@BeforeClass
+	public static void setup() throws Throwable {
+		Class<?> bootClass = PETest.class;
+		TestCatalogHelper.createTestCatalog(bootClass);
+		bootHost = BootstrapHost.startServices(bootClass);
+		populateMetadata();
+		
         populateSites(DistributionTest.class, Singletons.require(HostService.class).getProperties());
 
 		ssConnProxy = new SSConnectionProxy();
 		ssConnection = SSConnectionAccessor.getSSConnection(ssConnProxy);
-		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
+		SSConnectionAccessor.setCatalogDAO(ssConnection, getGlobalDAO());
 		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
-		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
+		ssConnection.setPersistentDatabase(getGlobalDAO().findDatabase("TestDB"));
 		UserDatabase db = ssConnection.getPersistentDatabase();
 
 		tRand = db.getTableByName("Random");
@@ -136,6 +190,13 @@ public class DistributionTest extends PETest{
 		ssConnProxy.close();
 	}
 
+	private KeyValue setId(UserTable t, int recId) throws PEException {
+		KeyValue dv = t.getDistValue(catalogDAO);
+		ColumnDatum cd = dv.get("id");
+		if (cd != null) cd.setValue(recId);
+		return dv;
+	}
+	
 	@Test public void randSelectAll() throws Throwable { selectAll(tRand, 5); }
 	@Test public void randSelectOne() throws Throwable { selectOne(tRand, 1, 1); }
 	@Test public void randSelectOneByKey() throws Throwable { selectByKey(tRand, 1); }
@@ -404,8 +465,7 @@ public class DistributionTest extends PETest{
 	}
 
 	public void selectByKey(UserTable t, int recId) throws Throwable {
-		KeyValue dv = t.getDistValue(catalogDAO);
-		dv.get("id").setValue(recId);
+		KeyValue dv = setId(t,recId);
 		selectByKey(t, dv, recId);
 	}
 
@@ -432,8 +492,7 @@ public class DistributionTest extends PETest{
 
 	public void selectItemIdMismatch(UserTable t, int recId, int expectedCount)
 			throws Throwable {
-		KeyValue dv = t.getDistValue(catalogDAO);
-		dv.get("id").setValue(recId);
+		KeyValue dv = setId(t,recId);
 		selectByKey(t, dv, recId+1, expectedCount);
 	}
 
@@ -464,8 +523,7 @@ public class DistributionTest extends PETest{
 	}
 
 	public void insertOneRecord(UserTable t, int recId) throws Throwable {
-		KeyValue dv = t.getDistValue(catalogDAO);
-		dv.get("id").setValue(recId);
+		KeyValue dv = setId(t,recId);
 
 		insertRecord(t, dv, recId, "Hello");
 		selectByKey(t, dv, recId);
@@ -486,8 +544,7 @@ public class DistributionTest extends PETest{
 
 	public void updateOne(UserTable t, int recId, String value)
 			throws Throwable {
-		KeyValue dv = t.getDistValue(catalogDAO);
-		dv.get("id").setValue(recId);
+		KeyValue dv = setId(t,recId);
 
 		updateRecord(t, dv, recId, value);
 		selectByKey(t, dv, recId);
@@ -540,8 +597,7 @@ public class DistributionTest extends PETest{
 
 	protected void insertAndDelete(UserTable t, int recId, String value)
 			throws Throwable {
-		KeyValue distValue = t.getDistValue(catalogDAO);
-		distValue.get("id").setValue(recId);
+		KeyValue distValue = setId(t,recId);
 
 		insertRecord(t, distValue, recId, value);
 		selectByKey(t, distValue, recId);

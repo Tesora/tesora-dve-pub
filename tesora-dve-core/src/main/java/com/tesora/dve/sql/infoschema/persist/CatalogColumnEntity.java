@@ -31,7 +31,7 @@ public class CatalogColumnEntity extends SimplePersistedEntity {
 	public CatalogColumnEntity(CatalogSchema cs, CatalogTableEntity cte) throws PEException {
 		super(cs.getColumn());
 		addRequires(cte);
-		preValue("flags",ColumnAttributes.set(0, ColumnAttributes.CONSTANT_DEFAULT_VALUE));
+		preValue("flags",0);
 		preValue("cdv",0);
 		preValue("hash_position",0);
 	}

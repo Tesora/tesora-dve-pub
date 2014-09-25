@@ -178,6 +178,7 @@ public class ViewDDLTest extends SchemaTest {
     		conn.execute("create table A (id int, primary key (id)) broadcast distribute");
     		conn.execute("create table B (id int, stuff varchar(32), primary key (id)) random distribute");
     		conn.execute("create view C as select a.id as lid, b.id as rid, b.stuff as stuffed from A a inner join B b on a.id = b.id");
+    		System.out.println(conn.printResults("show full tables"));
     		conn.assertResults("show full tables", br(nr,"A","BASE TABLE",nr,"B","BASE TABLE",nr,"C","VIEW"));
     		conn.assertResults("show tables", br(nr,"A",nr,"B",nr,"C"));
     		conn.assertResults("show full tables where Table_type != 'VIEW'",br(nr,"A","BASE TABLE",nr,"B","BASE TABLE"));

@@ -312,26 +312,6 @@ public abstract class Emitter {
 	public abstract String getPersistentName(SchemaContext sc, PEAbstractTable<?> t);
 	public abstract String getPersistentName(PEColumn c);
 
-	/*
-	 * 	@Override
-	public <T extends Column<?>> SchemaLookup<T> getColumnLookup(List<T> in) {
-		return new SchemaLookup<T>(in, false, false);
-	}
-
-	@Override
-	public <T extends HasName> CacheAwareLookup<T> getTableLookup() {
-		return new CacheAwareLookup<T>(true, true);
-	}
-
-	@Override
-	public <T extends HasName> CacheAwareLookup<T> getTenantTableLookup() {
-		return new CacheAwareLookup<T>(true, true);
-	}
-
-
-	 */
-	
-	
 	public abstract <T> Lookup<T> getLookup();
 	
 	protected void error(String message) {

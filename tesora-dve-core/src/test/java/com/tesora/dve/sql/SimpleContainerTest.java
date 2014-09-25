@@ -84,6 +84,7 @@ public class SimpleContainerTest extends SchemaTest {
 				br(nr,"testcont","id:1,junk:'one'",getIgnore(),
 				   nr,"testcont","id:2,junk:'two'",getIgnore()));
 		conn.execute("create table A (`id` int, `junk` varchar(32), primary key (`id`)) container distribute testcont");
+		System.out.println(conn.printResults("describe A"));
 		conn.assertResults("describe A",br(nr,"id","int(11)","NO","PRI",null,"",
 				nr,"junk","varchar(32)","YES","",null,""));
 		conn.execute("set @@dve_metadata_extensions = 1");

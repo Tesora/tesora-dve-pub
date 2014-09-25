@@ -40,28 +40,13 @@ import org.apache.log4j.Logger;
 import org.hibernate.annotations.ForeignKey;
 
 import com.tesora.dve.common.PECryptoUtils;
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.SiteInstanceStatus;
 import com.tesora.dve.exceptions.PEAlreadyExistsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 import com.tesora.dve.worker.UserAuthentication;
 
-@InfoSchemaTable(logicalName="site_instance",
-views={
-		@TableView(view=InfoView.SHOW, name="persistent instance", pluralName="persistent instances", 
-				columnOrder={ShowSchema.SiteInstance.NAME, ShowSchema.SiteInstance.PERSISTENT_SITE, 
-				ShowSchema.SiteInstance.URL, ShowSchema.SiteInstance.USER, ShowSchema.SiteInstance.PASSWORD, ShowSchema.SiteInstance.IS_MASTER, ShowSchema.SiteInstance.STATUS},
-				extension=true, priviledged=true),
-		@TableView(view=InfoView.INFORMATION, name="site_instance", pluralName="",
-				columnOrder={"name", "storage_site", "instance_url", "user", "password", "is_master", "status"},
-				extension=true, priviledged=true)})
 @Entity
 @Table(name="site_instance")
 public class SiteInstance implements ISiteInstance {
@@ -129,18 +114,10 @@ public class SiteInstance implements ISiteInstance {
 		this.storageSite = null;
 	}
 	
-	@InfoSchemaColumn(logicalName="storage_site", fieldName="storageSite",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.PERSISTENT_SITE),
-				   @ColumnView(view=InfoView.INFORMATION,name="storage_site")})
 	public PersistentSite getStorageSite() {
 		return storageSite;
 	}
 
-	@InfoSchemaColumn(logicalName="instance_url", fieldName="instanceURL",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.URL),
-				   @ColumnView(view=InfoView.INFORMATION,name="instance_url")})
 	public String getInstanceURL() {
 		return instanceURL;
 	}
@@ -149,10 +126,6 @@ public class SiteInstance implements ISiteInstance {
 		this.instanceURL = instanceURL;
 	}
 	
-	@InfoSchemaColumn(logicalName="user", fieldName="user",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.USER),
-				   @ColumnView(view=InfoView.INFORMATION,name="user")})
 	public String getUser() {
 		return user;
 	}
@@ -161,10 +134,6 @@ public class SiteInstance implements ISiteInstance {
 		this.user = user;
 	}
 	
-	@InfoSchemaColumn(logicalName="password", fieldName="password",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.PASSWORD),
-				   @ColumnView(view=InfoView.INFORMATION,name="password")})
 	public String getEncryptedPassword() {
 		return password;
 	}
@@ -206,10 +175,6 @@ public class SiteInstance implements ISiteInstance {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.SiteInstance.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
 	public String getName() {
 		return name;
 	}
@@ -218,9 +183,6 @@ public class SiteInstance implements ISiteInstance {
 		this.name = name;
 	}
 
-	@InfoSchemaColumn(logicalName="is_master", fieldName="isMaster", sqlType=java.sql.Types.VARCHAR,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.IS_MASTER),
-				   @ColumnView(view=InfoView.INFORMATION,name="is_master")})
 	public Boolean schemaIsMaster() {
 		return BooleanUtils.toBooleanObject(isMaster);
 	}
@@ -232,10 +194,6 @@ public class SiteInstance implements ISiteInstance {
 		this.isMaster = isMaster ? 1 : 0;
 	}
 
-	@InfoSchemaColumn(logicalName="status", fieldName="status",
-			sqlType=java.sql.Types.VARCHAR,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.SiteInstance.STATUS),
-				   @ColumnView(view=InfoView.INFORMATION,name="status")})
 	public String getStatus() {
 		return status.name();
 	}

@@ -22,14 +22,12 @@ package com.tesora.dve.sql.infoschema.show;
  */
 
 
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.CatalogEntity;
-import com.tesora.dve.common.catalog.Key;
-import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBNative;
@@ -44,10 +42,10 @@ import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.MTTableKey;
+import com.tesora.dve.sql.expression.ScopeEntry;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
-import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
@@ -60,12 +58,9 @@ import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.modifiers.AutoincTableModifier;
-import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.variables.KnownVariables;
 
 public class CreateTableInformationSchemaTable extends ShowInformationSchemaTable {
-
-	private ShowInformationSchemaTable tableTable = null;
 
 	public CreateTableInformationSchemaTable() {
 		super(null, new UnqualifiedName("create table"), new UnqualifiedName("create table"), false, false);
@@ -73,9 +68,6 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 
 	@Override
 	protected void validate(AbstractInformationSchema ofView) {
-		tableTable = (ShowInformationSchemaTable) ofView.lookup("table");
-		if (tableTable == null)
-			throw new InformationSchemaException("Cannot find show table view in show view");
 	}
 
 	/**
@@ -99,58 +91,36 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 	}
 	
 	@Override
-	public IntermediateResultSet executeUniqueSelect(SchemaContext sc, Name onName) {
-		TableInstance tempTab = sc.getTemporaryTableSchema().buildInstance(sc, onName);
+	public IntermediateResultSet executeUniqueSelect(SchemaContext sc, Name onName, ShowOptions opts) {
+		TableInstance tab = sc.getTemporaryTableSchema().buildInstance(sc, onName);
 		// delegate to the table table to get the basic information
-		ViewQuery basicQuery = tableTable.buildUniqueSelect(sc, onName);
 		try {
 			sc.getCatalog().startTxn();
 			// build a tschema version so we can massage the definition to add back in the stuff we stripped out
 			// and remove the stuff we added
 			PEAbstractTable<?> tschema = null;
-			PEAbstractTable<?> tempBacking = null;
-			UserTable ut = null;
 			LockInfo lock = new LockInfo(com.tesora.dve.lockmanager.LockType.RSHARED, "show create table");
-			if (tempTab == null) {
-				List<CatalogEntity> raw = LogicalSchemaQueryEngine.buildCatalogEntities(sc, basicQuery).getEntities();
-				if (raw.size() > 1)
-					throw new SchemaException(Pass.SECOND, "Too many tables named " + onName.getSQL());
-				if (raw.size() == 0)
+			if (tab == null) {
+				tab = ScopeEntry.resolver.lookupTable(sc, onName, lock);
+				if (tab == null)
 					throw new SchemaException(Pass.SECOND, "No such table: " + onName);
-				ut = (UserTable)raw.get(0);
-				tempBacking = PEAbstractTable.load(ut, sc);
-				try {
-					tschema = tempBacking.recreate(sc, ut.getCreateTableStmt(), lock);
-				} catch (PEException pe) {
-					throw new SchemaException(Pass.PLANNER,"Unable to recreate table def from create table stmt");
-				}
-			} else { 
-				tschema = tempTab.getAbstractTable().recreate(sc, tempTab.getAbstractTable().getDeclaration(), lock);
 			}
+			tschema = tab.getAbstractTable().recreate(sc, tab.getAbstractTable().getDeclaration(), lock);
 
 			StringBuilder buf = new StringBuilder();
 
-			TableKey tk = null;
-			if (tempTab != null) {
-				tk = tempTab.getTableKey();
-			} else if (sc.getPolicyContext().isSchemaTenant() || sc.getPolicyContext().isDataTenant()) {
-				TableScope ts = sc.getPolicyContext().getOfTenant(ut);
-				tk = new MTTableKey(tempBacking,ts,0);
-			} else {
-				tk = TableKey.make(sc, tempBacking, 0);
-			}
+			TableKey tk = tab.getTableKey();
 			
 			if (sc.getPolicyContext().isSchemaTenant() || sc.getPolicyContext().isDataTenant()) {
 				Name localName = null;
-				if (ut != null)
-					localName = sc.getPolicyContext().getLocalName(ut);
-				else if (tempTab.getTableKey() instanceof MTTableKey) {
-					MTTableKey mttk = (MTTableKey) tempTab.getTableKey();
+				if (tab.getTableKey() instanceof MTTableKey) {
+					MTTableKey mttk = (MTTableKey) tab.getTableKey();
 					localName = mttk.getScope().getName();
 				}
 				if (localName != null)
 					tschema.setName(localName);
 				HashMap<UnqualifiedName,UnqualifiedName> fkmap = new HashMap<UnqualifiedName,UnqualifiedName>();
+				/*
 				if (ut != null) {
 					for(Key k : ut.getKeys()) {
 						// either not a foreign key, or a forward foreign key
@@ -160,6 +130,7 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 						fkmap.put(new UnqualifiedName(k.getReferencedTable().getName()),visibleName.getUnqualified());
 					}
 				}
+				*/
 
 				// in mt mode the stored declaration has the mtid; remove it.
 				PEColumn c = tschema.getTenantColumn(sc);
@@ -192,6 +163,7 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 			}
 
 			/* Make sure we do not emit implicit default values. */
+			/*
 			if (ut != null) {
 				for (final UserColumn uc : ut.getUserColumns()) {
 					if (!uc.hasDefault()) {
@@ -202,7 +174,7 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 					}
 				}
 			}
-
+*/
 			if (tk.getAbstractTable().isTable()) {
 				long nextVal = -1;
 				if (tk.getAbstractTable().asTable().hasAutoInc())

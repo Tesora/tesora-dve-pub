@@ -89,8 +89,6 @@ import com.tesora.dve.sql.expression.SetQuantifier;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
-import com.tesora.dve.sql.infoschema.show.CreateDatabaseInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowColumnInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowOptions;
 import com.tesora.dve.sql.infoschema.show.ShowVariablesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
@@ -1211,7 +1209,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);
-		return ((CreateDatabaseInformationSchemaTable)ist).buildUniqueStatement(pc, objectName, ifNotExists);
+		ShowOptions opts = new ShowOptions();
+		if (Boolean.TRUE.equals(ifNotExists))
+			opts = opts.withIfNotExists();
+		return ist.buildUniqueStatement(pc, objectName, opts);
 	}
 
 	public Statement buildUseDatabaseStatement(Name firstName) {
@@ -2739,7 +2740,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);
-		return ist.buildUniqueStatement(pc, objectName);
+		return ist.buildUniqueStatement(pc, objectName, new ShowOptions());
 	}
 
 	public void push_info_schema_scope(Name n) {
@@ -2780,7 +2781,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				.getSecond());
 		
 		ShowOptions so = new ShowOptions();
-		if (full != null) so.setFull();
+		if (full != null) so.withFull();
 		
 		// break up the scoping value into parts if qualified
 		List<Name> scopingParts = new ArrayList<Name>();
@@ -3896,7 +3897,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		ExpressionNode whereExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getSecond());
 		ShowOptions so = new ShowOptions();
-		if (full != null) so.setFull();
+		if (full != null) so.withFull();
 		// break up the scoping value into parts if qualified
 		List<Name> scopingParts = new ArrayList<Name>();
 		for (Name name : scoping) {

@@ -210,7 +210,7 @@ public class RangeDistributionModel extends DistributionModel {
 				cd.setValue(value);
 				if (nativeTypeComparatorMap.size() > 0) {
 					// avoid a lookup if we can
-					String nativeType = columnMetadata.getFullTypeName().toLowerCase();
+					String nativeType = columnMetadata.getTypeName().toLowerCase();
 					if (nativeTypeComparatorMap.containsKey(nativeType)) {
 						cd.setComparatorClassName(nativeTypeComparatorMap.get(nativeType));
 					}

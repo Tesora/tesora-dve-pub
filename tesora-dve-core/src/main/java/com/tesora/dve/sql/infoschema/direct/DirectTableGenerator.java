@@ -21,17 +21,14 @@ package com.tesora.dve.sql.infoschema.direct;
  * #L%
  */
 
-import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.direct.DirectShowSchemaTable.TemporaryTableHandler;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
-import com.tesora.dve.sql.schema.PEViewTable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;
@@ -72,7 +69,12 @@ public class DirectTableGenerator extends DirectSchemaGenerator {
 	
 	public DirectInformationSchemaTable generate(SchemaContext sc) {
 		StringBuilder buf = new StringBuilder();
-		buf.append("create view ").append(viewName).append(" as ").append(viewDef).append(" TABLE ( ");
+		String actualDef = viewDef;
+		if (actualDef == null) {
+			// empty - so we build a dumb query
+			actualDef = buildEmptyQuery();
+		}
+		buf.append("create view ").append(viewName).append(" as ").append(actualDef).append(" TABLE ( ");
 		boolean first = true;
 		for(DirectColumnGenerator dcg : columns) {
 			if (first) first = false;
@@ -104,17 +106,18 @@ public class DirectTableGenerator extends DirectSchemaGenerator {
 			sc.setOptions(opts);
 		}
 	}
-	
-	/*
-	// eventually we will be able to generate the user table stuff directly
-	public void buildEntities(SchemaContext sc, CatalogSchema cs, CatalogDatabaseEntity db, int dmid, int storageid, 
-			List<PersistedEntity> acc) throws PEException {
-		if (view == InfoView.SHOW) return;
-		String ct = String.format("create table %s ( %s )");
-		List<Statement> stmts = InvokeParser.parse(ct,sc);
-		PECreateTableStatement pecs = (PECreateTableStatement) stmts.get(0);
-		DirectInformationSchemaTable.buildTableEntity(cs, db, dmid, storageid, acc, pecs.getTable());
+		
+	private String buildEmptyQuery() {
+		StringBuilder buf = new StringBuilder();
+		buf.append("select ");
+		boolean first = true;
+		for(DirectColumnGenerator dcg : columns) {
+			if (first) first = false;
+			else buf.append(", ");
+			buf.append("null as `").append(dcg.getName()).append("`");
+		}
+		buf.append(" from pe_version where 1 = 0");
+		return buf.toString();
 	}
-	*/
 	
 }

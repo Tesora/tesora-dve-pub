@@ -34,15 +34,7 @@ import javax.persistence.UniqueConstraint;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.TableView;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
 
-@InfoSchemaTable(logicalName="variable_defs",
-	views={@TableView(view=InfoView.INFORMATION, name="variable_definitions", pluralName="",
-		        columnOrder={"name","value","type","scopes","options","description"})})
 @Entity
 @Table(name="varconfig", uniqueConstraints=@UniqueConstraint(columnNames = { "name" }))
 public class VariableConfig implements CatalogEntity {
@@ -92,23 +84,14 @@ public class VariableConfig implements CatalogEntity {
 		this.help = helpText;
 	}
 	
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="name",orderBy=true,ident=true)})
 	public String getName() {
 		return name;
 	}
 	
-	@InfoSchemaColumn(logicalName="type",fieldName="valueType",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="type",orderBy=false,ident=false)})	
 	public String getValueType() {
 		return valueType;
 	}
 
-	@InfoSchemaColumn(logicalName="value",fieldName="value",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="value",orderBy=false,ident=false)})	
 	public String getValue() {
 		return value;
 	}
@@ -117,23 +100,14 @@ public class VariableConfig implements CatalogEntity {
 		value = v;
 	}
 
-	@InfoSchemaColumn(logicalName="scopes",fieldName="scopes",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="scopes",orderBy=false,ident=false)})	
 	public String getScopes() {
 		return scopes;
 	}
 	
-	@InfoSchemaColumn(logicalName="options", fieldName="options",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="options",orderBy=false,ident=false)})
 	public String getOptions() {
 		return options;
 	}
 
-	@InfoSchemaColumn(logicalName="description",fieldName="help",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="description",orderBy=false,ident=false)})	
 	public String getHelp() {
 		return help;
 	}

@@ -103,7 +103,7 @@ public class LogicalSchemaQueryEngine {
 	@SuppressWarnings("unchecked")
 	public static FeatureStep execute(SchemaContext sc, SelectStatement ss, FeaturePlanner planner) {
 		ProjectionInfo pi = ss.getProjectionMetadata(sc);
-		ViewQuery vq = new ViewQuery(ss, Collections.EMPTY_MAP, null);
+		ViewQuery vq = new ViewQuery(ss, null, null);
 		annotate(sc,vq,ss);
 		boolean haveVariable = false;
 		boolean haveOthers = false;

@@ -38,15 +38,7 @@ import org.hibernate.annotations.ForeignKey;
 
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName = "project", views = {
-		@TableView(view = InfoView.SHOW, name = "project", pluralName = "projects", columnOrder = { "name" }, extension = true, priviledged = true),
-		@TableView(view = InfoView.INFORMATION, name = "project", pluralName = "", columnOrder = { "name" }, extension = true, priviledged = true) })
 @XmlRootElement
 @Entity
 @Table(name = "project")
@@ -82,9 +74,6 @@ public class Project implements CatalogEntity {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName = "name", fieldName = "name", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = "name", orderBy = true, ident = true),
-			@ColumnView(view = InfoView.INFORMATION, name = "name", orderBy = true, ident = true) })
 	public String getName() {
 		return name;
 	}
@@ -121,9 +110,6 @@ public class Project implements CatalogEntity {
 		return Collections.emptyList();
 	}
 
-	@InfoSchemaColumn(logicalName = "root_user", fieldName = "rootUser", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = "root_user"),
-			@ColumnView(view = InfoView.INFORMATION, name = "root_user") })
 	public User getRootUser() {
 		return rootUser;
 	}

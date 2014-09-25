@@ -83,8 +83,8 @@ public class ShowInformationSchemaTable extends ComputedInformationSchemaTable i
 		return proj;
 	}
 
-	public Statement buildUniqueStatement(SchemaContext sc, Name objectName) {
-		return new SchemaQueryStatement(isExtension(),getName().get(),executeUniqueSelect(sc,objectName));
+	public Statement buildUniqueStatement(SchemaContext sc, Name objectName, ShowOptions opts) {
+		return new SchemaQueryStatement(isExtension(),getName().get(),executeUniqueSelect(sc,objectName, opts));
 	}
 	
 	public Statement buildShowPlural(SchemaContext sc, List<Name> scoping, ExpressionNode likeExpr, ExpressionNode whereExpr, ShowOptions options) {
@@ -101,15 +101,11 @@ public class ShowInformationSchemaTable extends ComputedInformationSchemaTable i
 		}
 	}
 	
-	public IntermediateResultSet executeUniqueSelect(SchemaContext sc, Name onName) {
-		return LogicalSchemaQueryEngine.buildResultSet(sc, buildUniqueSelect(sc, onName),null);
+	public IntermediateResultSet executeUniqueSelect(SchemaContext sc, Name onName, ShowOptions opts) {
+		return LogicalSchemaQueryEngine.buildResultSet(sc, buildUniqueSelect(sc, onName, opts),null);
 	}
 
-    public ViewQuery buildUniqueSelect(SchemaContext sc, Name onName) {
-        return this.buildUniqueSelect(sc,onName,false);
-    }
-
-    public ViewQuery buildUniqueSelect(SchemaContext sc, Name onName, boolean alwaysReturnExtensions) {
+    public ViewQuery buildUniqueSelect(SchemaContext sc, Name onName, ShowOptions opts) {
 		if (requiresPriviledge() && !sc.getPolicyContext().isRoot())
 			throw new SchemaException(Pass.SECOND, "You do not have permission to show " + getName().get());
 		if (onName.isQualified())
@@ -126,7 +122,7 @@ public class ShowInformationSchemaTable extends ComputedInformationSchemaTable i
 		TableInstance ti = new TableInstance(this,null,new UnqualifiedName("a"),sc.getNextTable(),false);
 		AliasInformation ai = new AliasInformation();
 		ai.addAlias("a");
-		List<ExpressionNode> proj = buildProjection(sc, ti, alwaysReturnExtensions || useExtensions(sc), sc.getPolicyContext().isRoot(), ai, null);
+		List<ExpressionNode> proj = buildProjection(sc, ti, useExtensions(sc), sc.getPolicyContext().isRoot(), ai, null);
 		
 		SelectStatement ss = new SelectStatement(ai)
 			.setTables(ti)

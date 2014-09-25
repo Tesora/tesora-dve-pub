@@ -246,4 +246,9 @@ public class TempColumnType implements Type {
 	public TextType toTextType() {
 		return actual.toTextType();
 	}
+
+	@Override
+	public int getColumnAttributesFlags() {
+		return actual.getColumnAttributesFlags();
+	}
 }

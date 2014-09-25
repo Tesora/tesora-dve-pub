@@ -47,10 +47,7 @@ import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 
-@InfoSchemaTable(logicalName="range_table_relation",views={})
 @Entity
 @Table(name="range_table_relation" , uniqueConstraints=@UniqueConstraint(columnNames = { "table_id" }))
 public class RangeTableRelationship implements CatalogEntity {
@@ -80,16 +77,10 @@ public class RangeTableRelationship implements CatalogEntity {
 		this.distributionRange = range;
 	}
 	
-	@InfoSchemaColumn(logicalName="user_table", fieldName="table",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public UserTable getTable() {
 		return table;
 	}
 
-	@InfoSchemaColumn(logicalName="distribution_range", fieldName="distributionRange",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public DistributionRange getRange() {
 		return distributionRange;
 	}

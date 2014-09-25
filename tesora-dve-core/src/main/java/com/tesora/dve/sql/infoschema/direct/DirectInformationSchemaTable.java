@@ -23,7 +23,6 @@ package com.tesora.dve.sql.infoschema.direct;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
@@ -71,8 +70,9 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	private final DirectInformationSchemaColumn identColumn;
 	private final ResizableArray<DirectInformationSchemaColumn> orderByColumns;
 
-	// we maintain a separate lookup in the view columns - this handles the case sensitivity, etc
-	
+	public static final String tenantVariable = "tenant";
+	public static final String metadataExtensions = "mdex";
+	public static final String sessid = "sessid";
 	
 	public DirectInformationSchemaTable(SchemaContext sc, InfoView view, PEViewTable viewTab,
 			UnqualifiedName tableName,
@@ -95,8 +95,12 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 			
 				},				
 				false, view.isLookupCaseSensitive());
-		for(PEColumn pec : backing.getColumns(sc)) {
-			addColumn(sc,new DirectInformationSchemaColumn(view,pec.getName().getUnqualified(),pec));
+		List<PEColumn> cols = backing.getColumns(sc);
+		for(int i = 0; i < cols.size(); i++) {
+			DirectColumnGenerator dcg = columnGenerators.get(i);
+			PEColumn pec = cols.get(i);
+			addColumn(sc,new DirectInformationSchemaColumn(view,pec.getName().getUnqualified(),pec,
+					dcg.isIdent(),dcg.getOrderByOffset() > -1,dcg.isExtension(),dcg.isPrivilege(),dcg.isFull()));
 		}
 		this.name = (view.isCapitalizeNames() ? tableName.getCapitalized().getUnqualified() : tableName);
 		if (pluralTableName == null) this.pluralName = pluralTableName;
@@ -199,7 +203,7 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	public void buildTableEntity(CatalogSchema cs, CatalogDatabaseEntity db,
 			int dmid, int storageid, List<PersistedEntity> acc)
 			throws PEException {
-		buildTableEntity(cs,db,dmid,storageid,acc,backing);
+		buildTableEntity(cs,db,dmid,storageid,acc,backing,getName().getUnqualified());
 	}
 
 	@Override
@@ -229,8 +233,8 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	}
 
 	public static void buildTableEntity(CatalogSchema cs, CatalogDatabaseEntity db, int dmid, int storageid, 
-			List<PersistedEntity> acc, PEAbstractTable<?> table) throws PEException {
-		CatalogTableEntity cte = new CatalogTableEntity(cs,db,table.getName().get(),dmid,storageid,"MEMORY");
+			List<PersistedEntity> acc, PEAbstractTable<?> table, UnqualifiedName tableName) throws PEException {
+		CatalogTableEntity cte = new CatalogTableEntity(cs,db,tableName.get(),dmid,storageid,"MEMORY");
 		acc.add(cte);
 		int counter = 0;
 		for(PEColumn pec : table.getColumns(null)) {
@@ -268,7 +272,7 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	}
 
 	
-	public List<DirectInformationSchemaColumn> getProjectionColumns(boolean includeExtensions, boolean includePriviledged) {
+	public List<DirectInformationSchemaColumn> getProjectionColumns(boolean includeExtensions, boolean includePriviledged, boolean includeFull) {
 		ArrayList<DirectInformationSchemaColumn> out = new ArrayList<DirectInformationSchemaColumn>();
 		for(DirectInformationSchemaColumn isc : columns) {
 			if (!isc.isVisible())
@@ -276,6 +280,8 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 			if (isc.isExtension() && !includeExtensions)
 				continue;
 			if (isc.requiresPrivilege() && !includePriviledged)
+				continue;
+			if (isc.isFull() && !includeFull)
 				continue;
 			out.add(isc);
 		}
@@ -286,5 +292,4 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 		return 	KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 	}
 
-	
 }

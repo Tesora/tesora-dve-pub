@@ -34,23 +34,11 @@ import javax.xml.bind.annotation.XmlElement;
 
 import org.hibernate.annotations.ForeignKey;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName = "container", views = {
-		@TableView(view = InfoView.SHOW, name = "container", pluralName = "containers", columnOrder = {
-				ShowSchema.Container.NAME, ShowSchema.Container.BASE_TABLE,
-				ShowSchema.Container.PERSISTENT_GROUP }),
-		@TableView(view = InfoView.INFORMATION, name = "container", pluralName = "", columnOrder = {
-				"container_name", "base_table", "storage_group" }) })
 @Entity
 @Table(name = "container")
 public class Container implements CatalogEntity, PersistentContainer {
@@ -104,14 +92,10 @@ public class Container implements CatalogEntity, PersistentContainer {
 	}
 
 	@Override
-	@InfoSchemaColumn(logicalName = "id", fieldName = "id", sqlType = java.sql.Types.INTEGER, views = {})
 	public int getId() {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName = "container_name", fieldName = "name", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = ShowSchema.Container.NAME, orderBy = true, ident = true),
-			@ColumnView(view = InfoView.INFORMATION, name = "container_name", orderBy = true, ident = true) })
 	public String getName() {
 		return name;
 	}
@@ -120,9 +104,6 @@ public class Container implements CatalogEntity, PersistentContainer {
 		this.name = catalogName;
 	}
 
-	@InfoSchemaColumn(logicalName = "base_table", fieldName = "baseTable", sqlType = java.sql.Types.INTEGER, sqlWidth = 11, views = {
-			@ColumnView(view = InfoView.SHOW, name = ShowSchema.Container.BASE_TABLE),
-			@ColumnView(view = InfoView.INFORMATION, name = "base_table") })
 	public UserTable getBaseTable() {
 		return baseTable;
 	}
@@ -131,9 +112,6 @@ public class Container implements CatalogEntity, PersistentContainer {
 		this.baseTable = baseTable;
 	}
 
-	@InfoSchemaColumn(logicalName = "storage_group", fieldName = "storageGroup", sqlType = java.sql.Types.INTEGER, sqlWidth = 11, views = {
-			@ColumnView(view = InfoView.SHOW, name = ShowSchema.Container.PERSISTENT_GROUP),
-			@ColumnView(view = InfoView.INFORMATION, name = "storage_group") })
 	public PersistentGroup getStorageGroup() {
 		return storageGroup;
 	}

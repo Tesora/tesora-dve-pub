@@ -44,11 +44,7 @@ import org.hibernate.annotations.ForeignKey;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 
-@InfoSchemaTable(logicalName="table_visibility", 
-	views={})
 @Entity
 @Table(name="scope", uniqueConstraints=@UniqueConstraint(columnNames = {"scope_tenant_id", "local_name" }))
 public class TableVisibility implements CatalogEntity, HasAutoIncrementTracker {
@@ -90,9 +86,6 @@ public class TableVisibility implements CatalogEntity, HasAutoIncrementTracker {
 		}
 	}
 
-	@InfoSchemaColumn(logicalName="user_table", fieldName="table",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public UserTable getTable() {
 		return table;
 	}
@@ -101,17 +94,11 @@ public class TableVisibility implements CatalogEntity, HasAutoIncrementTracker {
 		table = target;
 	}
 	
-	@InfoSchemaColumn(logicalName="tenant", fieldName="ofTenant",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public Tenant getTenant() {
 		return ofTenant;
 	}
 
 	// null if the backing table name should be used
-	@InfoSchemaColumn(logicalName="local_name", fieldName="localName",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getLocalName() {
 		return this.localName;
 	}
@@ -121,9 +108,6 @@ public class TableVisibility implements CatalogEntity, HasAutoIncrementTracker {
 	}
 	
 	@Override
-	@InfoSchemaColumn(logicalName="id", fieldName="id",
-			sqlType=java.sql.Types.INTEGER,
-			views={})
 	public int getId() {
 		return id;
 	}

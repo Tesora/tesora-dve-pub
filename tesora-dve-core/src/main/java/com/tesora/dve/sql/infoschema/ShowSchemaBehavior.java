@@ -34,7 +34,7 @@ public interface ShowSchemaBehavior {
 
 	public Statement buildShowPlural(SchemaContext sc, List<Name> scoping, ExpressionNode likeExpr, ExpressionNode whereExpr, ShowOptions options);
 
-	public Statement buildUniqueStatement(SchemaContext sc, Name objectName);
+	public Statement buildUniqueStatement(SchemaContext sc, Name objectName, ShowOptions opts);
 
 	public List<CatalogEntity> getLikeSelectEntities(SchemaContext sc, String likeExpr, List<Name> scoping, ShowOptions options, Boolean overrideRequiresPrivilegeValue);
 

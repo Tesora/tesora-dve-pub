@@ -35,24 +35,10 @@ import javax.persistence.Table;
 
 import org.hibernate.annotations.ForeignKey;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName = "container_tenant", views = {
-		@TableView(view = InfoView.SHOW, name = "container_tenant", pluralName = "container_tenants", columnOrder = {
-				ShowSchema.ContainerTenant.CONTAINER, ShowSchema.ContainerTenant.NAME,
-				ShowSchema.ContainerTenant.ID })
-//		,
-//		@TableView(view = InfoView.INFORMATION, name = "container_tenant", pluralName = "", columnOrder = {
-//				"container", "discriminant", "id"}) 
-				})
 @Entity
 @Table(name = "container_tenant") 
 //@org.hibernate.annotations.Table(appliesTo="container_tenant",
@@ -99,27 +85,15 @@ public class ContainerTenant implements ITenant {
 		
 	}
 	
-	@InfoSchemaColumn(logicalName="id", fieldName="id",
-			sqlType=java.sql.Types.INTEGER,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.ContainerTenant.ID),
-				   @ColumnView(view=InfoView.INFORMATION,name="id")})
 	@Override
 	public int getId() {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName="container",fieldName="container",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.ContainerTenant.CONTAINER),
-				   @ColumnView(view=InfoView.INFORMATION,name="container")})
 	public Container getContainer() {
 		return container;
 	}
 	
-	@InfoSchemaColumn(logicalName="name",fieldName="discriminant",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.ContainerTenant.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="discriminant", orderBy=true, ident=true)})
 	public String getDiscriminant() {
 		return discriminant;
 	}

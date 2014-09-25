@@ -21,36 +21,17 @@ package com.tesora.dve.sql.transform.strategy;
  * #L%
  */
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.IntermediateResultSet;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.InformationSchemas;
-import com.tesora.dve.sql.infoschema.engine.EntityResults;
-import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
 import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
-import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
-import com.tesora.dve.sql.transform.execution.DDLQueryExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
-import com.tesora.dve.sql.transform.strategy.featureplan.NonDMLFeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 
 public class InformationSchemaRewriteTransformFactory extends TransformFactory {
-
-	// We don't support these yet - just return an empty result set
-	static final String[] emptyRSTables = { "plugins", "events", "files", "partitions", "routines" };
 
 	public static boolean applies(SchemaContext sc, DMLStatement stmt, boolean hasParent) throws PEException {
 		ListSet<TableKey> tables = EngineConstant.TABLES_INC_NESTED.getValue(stmt,sc);
@@ -60,30 +41,11 @@ public class InformationSchemaRewriteTransformFactory extends TransformFactory {
 		// stmt is not a select stmt
 		boolean haveInfo = false;
 		boolean haveUser = false;
-		List<Table<?>> emptyTables = null;
 		for(TableKey tk : tables) {
 			if (tk.getTable().isInfoSchema())
 				haveInfo = true;
 			else
 				haveUser = true;
-
-			if (haveInfo) {
-				if (emptyTables == null) {
-					InformationSchemas is = Singletons.require(HostService.class).getInformationSchema();
-					emptyTables = new ArrayList<Table<?>>();
-					for(String s : emptyRSTables) {
-						Table<?> t = is.getInfoSchema().lookup(s);
-						emptyTables.add(t);
-					}
-				}
-				for(Table<?> t : emptyTables) {
-					if (t == tk.getTable()) {
-						stmt.getBlock().store(InformationSchemaRewriteTransformFactory.class,Boolean.TRUE);
-						break;
-					}
-				}
-			}
-						
 		}
 		if (!haveInfo) return false;
 		if (haveInfo && haveUser)
@@ -102,40 +64,11 @@ public class InformationSchemaRewriteTransformFactory extends TransformFactory {
 		return FeaturePlannerIdentifier.INFO_SCHEMA;
 	}
 
-	private static IntermediateResultSet buildEmptyResultSet(SchemaContext schemaContext, SelectStatement src) {
-		EntityResults er = new EntityResults((LogicalCatalogQuery) LogicalSchemaQueryEngine.convertDown(schemaContext, new ViewQuery(
-				src, Collections.<String, Object> emptyMap(), null)),
-				Collections.<CatalogEntity> emptyList());
-		return er.getResultSet(schemaContext,src.getProjectionMetadata(schemaContext)); 
-	} 
-	
 	@Override
 	public FeatureStep plan(final DMLStatement stmt, PlannerContext ipc) throws PEException {
 		if (!applies(ipc.getContext(), stmt, !ipc.getApplied().isEmpty()))
-			return null;
-		Boolean value = (Boolean) stmt.getBlock().getFromStorage(InformationSchemaRewriteTransformFactory.class);
-		boolean forceEmptyRS = false;
-		if (value != null) {
-			stmt.getBlock().clearFromStorage(InformationSchemaRewriteTransformFactory.class);
-			forceEmptyRS = value.booleanValue();
-		}
-		
-		FeatureStep root = null;
-		
-		if (forceEmptyRS) {
-			root = new NonDMLFeatureStep(this, null) {
-
-				@Override
-				public void scheduleSelf(PlannerContext sc, ExecutionSequence es)
-						throws PEException {
-					es.append(new DDLQueryExecutionStep("select",
-							buildEmptyResultSet(sc.getContext(), (SelectStatement)stmt)));
-				}
-
-			};
-		} else {
-			root = LogicalSchemaQueryEngine.execute(ipc.getContext(), (SelectStatement)stmt, this);
-		}
+			return null;		
+		FeatureStep root = LogicalSchemaQueryEngine.execute(ipc.getContext(), (SelectStatement)stmt, this);
 		return root;
 	}
 }

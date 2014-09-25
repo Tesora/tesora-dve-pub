@@ -141,9 +141,15 @@ public class DirectSchemaQueryEngine {
 			log("After conversion: " + copy.getSQL(sc));
 		// and now we can explode it
 		ViewRewriteTransformFactory.applyViewRewrites(sc, copy);
-		if (!vq.getParams().isEmpty()) {
-			new VariableConverter(vq.getParams()).traverse(copy);
+		Map<String,Object> params = vq.getParams();
+		if (params == null) params = new HashMap<String,Object>();
+		Long anyTenant = sc.getPolicyContext().getTenantID(false);
+		if (sc.getPolicyContext().isContainerContext()) {
+			if (anyTenant == null) anyTenant = -1L; // global tenant
 		}
+		params.put(DirectInformationSchemaTable.tenantVariable,anyTenant);
+		params.put(DirectInformationSchemaTable.sessid,new Long(sc.getConnection().getConnectionId()));
+		new VariableConverter(params).traverse(copy);
 		if (canLog())
 			log("After explode: "+ copy.getSQL(sc));
 		return new DirectLogicalQuery(vq,copy,Collections.EMPTY_MAP);
@@ -207,8 +213,13 @@ public class DirectSchemaQueryEngine {
 			if (in instanceof VariableInstance) {
 				VariableInstance vi = (VariableInstance) in;
 				String name = vi.getVariableName().getUnquotedName().get();
-				String replacement = (String) params.get(name);
-				return LiteralExpression.makeStringLiteral(replacement);
+				Object repl = params.get(name);
+				if (repl == null)
+					return LiteralExpression.makeNullLiteral();
+				if (repl instanceof String)
+					return LiteralExpression.makeStringLiteral((String)repl);
+				else
+					return LiteralExpression.makeAutoIncrLiteral((Long)repl);
 			}
 			return in;
 		}

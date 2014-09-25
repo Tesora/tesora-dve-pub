@@ -34,17 +34,6 @@ import javax.persistence.Table;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
-
-@InfoSchemaTable(logicalName="server",
-views={@TableView(view=InfoView.SHOW, name="server", pluralName="servers",
-		columnOrder={"name", "ipAddress"}),
-	   @TableView(view=InfoView.INFORMATION, name="server", pluralName="",
-		columnOrder={"name", "ipAddress"})})
 
 @Entity
 @Table(name="server")
@@ -79,25 +68,14 @@ public class ServerRegistration implements CatalogEntity {
 	}
 
 	@Override
-	@InfoSchemaColumn(logicalName="server_id", fieldName="id",
-	sqlType=java.sql.Types.INTEGER,
-	views={})
 	public int getId() {
 		return this.id;
 	}
 	
-	@InfoSchemaColumn(logicalName="ipAddress", fieldName="ipAddress",
-			sqlType=java.sql.Types.VARCHAR, sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name="ipAddress", orderBy=false),
-		       	   @ColumnView(view=InfoView.INFORMATION, name="ipAddress", orderBy=false)})
 	public String getIpAddress() {
 		return this.ipAddress;
 	}
 	
-	@InfoSchemaColumn(logicalName="name", fieldName="name",
-			sqlType=java.sql.Types.VARCHAR, sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name="name", orderBy=true, ident=true),
-		       	   @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
 	public String getName() {
 		return this.name;
 	}

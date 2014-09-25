@@ -409,7 +409,7 @@ public class SQLVariableTest extends SchemaTest {
 		try {
 			nonRoot.assertResults("show variables like 'fromage'", br(nr,"fromage","blue"));
 		} finally {
-			nonRoot.disconnect();
+			nonRoot.close();
 		}
 	}
 	

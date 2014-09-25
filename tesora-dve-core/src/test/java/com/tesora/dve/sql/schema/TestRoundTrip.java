@@ -197,6 +197,7 @@ public class TestRoundTrip extends PETest {
 			Map.Entry<String, NativeType> me = iter.next();
 			NativeType nt = me.getValue();
 			if (nt.isUsedInCreate()) {
+				if (counter > 3) continue;
 				if (counter > 0)
 					buf.append(", ").append(PEConstants.LINE_SEPARATOR);
 				buf.append("`f").append(++counter).append("` ").append(nt.getTypeName());

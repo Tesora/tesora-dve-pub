@@ -241,4 +241,9 @@ public class UnknownType implements Type {
 		return null;
 	}
 
+	@Override
+	public int getColumnAttributesFlags() {
+		return 0;
+	}
+
 }

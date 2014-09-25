@@ -1,9 +1,5 @@
 package com.tesora.dve.db.mysql.common;
 
-import java.sql.Types;
-import java.util.HashMap;
-import java.util.Map;
-
 /*
  * #%L
  * Tesora Inc.

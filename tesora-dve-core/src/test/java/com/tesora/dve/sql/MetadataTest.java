@@ -47,6 +47,7 @@ import com.tesora.dve.sql.util.ResizableArray;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.sql.util.UnaryPredicate;
 
+@Ignore
 public class MetadataTest extends SchemaMirrorTest {
 
 	// normalization errors about charsets
@@ -107,7 +108,7 @@ public class MetadataTest extends SchemaMirrorTest {
 		List<ColumnAttribute> attrs = buildAttributes();
 		List<String> decls = buildTableDecls(types,attrs);
 		for(String s : decls) {
-			System.out.println(s);
+//			System.out.println(s);
 			out.add(new StatementMirrorProc(s));
 		}
 		return out;

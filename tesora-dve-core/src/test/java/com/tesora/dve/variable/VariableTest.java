@@ -57,6 +57,7 @@ import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSetScopedVariableOperation;
 import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.VariableScopeKind;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.test.simplequery.SimpleQueryTest;
 import com.tesora.dve.variables.KnownVariables;
@@ -81,10 +82,12 @@ public class VariableTest extends PETest {
 	QueryPlan plan;
 
 	@BeforeClass
-	public static void setup() throws Exception {
-		TestCatalogHelper.createTestCatalog(PETest.class, 2);
+	public static void setup() throws Throwable {
+		TestCatalogHelper.createTestCatalog(PETest.class);
 		bootHost = BootstrapHost.startServices(PETest.class);
-        populateMetadata(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.declareSchema(pcr);
+		pcr.disconnect();
 	}
 
 	public VariableTest() {

@@ -38,14 +38,14 @@ import com.tesora.dve.sql.schema.types.Type;
 public class TenantColumn extends PEColumn {
 
 	public static final String TENANT_COLUMN = "___mtid";
-	public static final Type TENANT_COLUMN_TYPE = BasicType.buildType("int", 0,
+	public static final Type TENANT_COLUMN_TYPE = BasicType.buildType("int", 10,
 			Collections.singletonList(new TypeModifier(TypeModifierKind.UNSIGNED)),
 			Singletons.require(HostService.class).getDBNative().getTypeCatalog()).normalize();
 
 	private static final UnqualifiedName tenantColumnName = new UnqualifiedName("`" + TENANT_COLUMN + "`");
 
 	public TenantColumn(SchemaContext sc) {
-		super(sc,tenantColumnName,TENANT_COLUMN_TYPE,(short)0,null,null);
+		super(sc,tenantColumnName,TENANT_COLUMN_TYPE,(short)TENANT_COLUMN_TYPE.getColumnAttributesFlags(),null,null);
 		makeNotNullable();
 	}
 	

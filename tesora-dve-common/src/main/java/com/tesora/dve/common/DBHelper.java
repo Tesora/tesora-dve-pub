@@ -321,6 +321,7 @@ public class DBHelper {
 					try {
 						executeQuery(command);
 					} catch (SQLException se) {
+						System.out.println(command);
 						throw se;
 					}
 					command = "";

@@ -1,5 +1,7 @@
 package com.tesora.dve.sql.infoschema.show;
 
+import java.util.EnumSet;
+
 /*
  * #%L
  * Tesora Inc.
@@ -23,19 +25,34 @@ package com.tesora.dve.sql.infoschema.show;
 
 public class ShowOptions {
 
-	private boolean full = false;
+	public enum ShowOption {
+		FULL,
+		IF_NOT_EXISTS
+	}
+	
+	private EnumSet<ShowOption> opts;
 	
 	public ShowOptions() {
-		
+		opts = EnumSet.noneOf(ShowOption.class);
 	}
+	
 	
 	public boolean isFull() {
-		return full;
+		return opts.contains(ShowOption.FULL);
+	}
+
+	public ShowOptions withFull() {
+		opts.add(ShowOption.FULL);
+		return this;
 	}
 	
-	public ShowOptions setFull() {
-		full = true;
+	public ShowOptions withIfNotExists() {
+		opts.add(ShowOption.IF_NOT_EXISTS);
 		return this;
+	}
+	
+	public boolean isIfNotExists() {
+		return opts.contains(ShowOption.IF_NOT_EXISTS);
 	}
 	
 }

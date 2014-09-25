@@ -118,5 +118,7 @@ public interface Type {
 	public abstract boolean isAcceptableRangeType();
 
 	public TextType toTextType();
+	
+	public int getColumnAttributesFlags();
 
 }

@@ -305,6 +305,8 @@ public class MultitenantTransformTest extends TransformTest {
 	 * NDB files, the queries return empty sets.
 	 * @throws Throwable 
 	 */
+	// maybe just toss this overboard?  we don't really have infoschema support for tschema anymore
+	@Ignore
 	@Test
 	public void testPE1153() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTIMT, schema);

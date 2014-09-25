@@ -52,7 +52,9 @@ import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.test.simplequery.SimpleQueryTest;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.UserCredentials;
 
@@ -70,11 +72,17 @@ public class TuplesTest extends PETest {
 	QueryPlan plan;
 	
 	@BeforeClass
-	public static void setup() throws Exception {
+	public static void setup() throws Throwable {
 		Class<?> bootClass = PETest.class;
-		TestCatalogHelper.createTestCatalog(bootClass,2);
+		TestCatalogHelper.createTestCatalog(bootClass);
 		bootHost = BootstrapHost.startServices(bootClass);
-        populateMetadata(TuplesTest.class, Singletons.require(HostService.class).getProperties());
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.cleanupSites(2, "TestDB");
+		SimpleQueryTest.createSites(2, pcr);
+		SimpleQueryTest.createGroupAndTestDB(2, pcr);
+		pcr.execute("create table t1 (a int, b int, c int, d tinyint unsigned) random distribute");
+		pcr.execute("create table t2 (a int, b int, p tinyint unsigned, q int) broadcast distribute");
+		pcr.disconnect();
 	}
 
 	@Before

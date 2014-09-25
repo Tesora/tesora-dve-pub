@@ -22,7 +22,6 @@ package com.tesora.dve.sql.infoschema.show;
  */
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
@@ -113,7 +112,7 @@ public class ShowVariablesInformationSchemaTable extends ShowInformationSchemaTa
 			.setProjection(projection)
 			.setWhereClause(ExpressionUtils.safeBuildAnd(whereClauses));
 
-		ViewQuery vq = new ViewQuery(ss,Collections.EMPTY_MAP,ti);
+		ViewQuery vq = new ViewQuery(ss,null,ti);
 
 		return logicalTable.execute(pc, vq, null);
 	}

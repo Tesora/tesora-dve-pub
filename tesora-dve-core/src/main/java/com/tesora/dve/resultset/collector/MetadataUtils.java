@@ -22,12 +22,10 @@ package com.tesora.dve.resultset.collector;
  */
 
 import java.sql.ParameterMetaData;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 

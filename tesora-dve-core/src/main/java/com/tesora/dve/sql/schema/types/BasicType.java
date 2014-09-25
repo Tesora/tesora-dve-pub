@@ -51,7 +51,6 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.modifiers.StringTypeModifier;
 import com.tesora.dve.sql.schema.modifiers.TypeModifier;
 import com.tesora.dve.sql.schema.modifiers.TypeModifierKind;
-import com.tesora.dve.sql.util.Functional;
 
 public class BasicType implements Type {
 	
@@ -199,6 +198,8 @@ public class BasicType implements Type {
 	@Override
 	public void addColumnTypeModifiers(CatalogColumnEntity cce) throws PEException {
 		int flags = cce.getFlags();
+		int typeFlags = getBaseType().getDefaultColumnAttrFlags();
+		flags |= typeFlags;
 		flags = ColumnAttributes.set(flags, ColumnAttributes.UNSIGNED, isUnsigned());
 		flags = ColumnAttributes.set(flags, ColumnAttributes.ZEROFILL, isZeroFill());
 		flags = ColumnAttributes.set(flags, ColumnAttributes.BINARY, isBinaryText());
@@ -764,6 +765,18 @@ public class BasicType implements Type {
 		}
 
 		throw new PECodingException("Type '" + this.getName() + "' cannot be converted to text.");
+	}
+
+	@Override
+	public int getColumnAttributesFlags() {
+		int def = getBaseType().getDefaultColumnAttrFlags();
+		if (isUnsigned())
+			def = ColumnAttributes.set(def, ColumnAttributes.UNSIGNED);
+		if (isZeroFill())
+			def = ColumnAttributes.set(def, ColumnAttributes.ZEROFILL);
+		if (isBinaryText())
+			def = ColumnAttributes.set(def, ColumnAttributes.BINARY);
+		return def;
 	}
 
 }

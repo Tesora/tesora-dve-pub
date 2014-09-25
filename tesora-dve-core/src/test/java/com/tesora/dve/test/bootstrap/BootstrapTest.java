@@ -107,10 +107,7 @@ public class BootstrapTest extends PETest {
 
 		bootHost = BootstrapHost.startServices(bootClass);
 		
-		catalogDAO = CatalogDAOFactory.newInstance();
         populateSites(BootstrapTest.class, Singletons.require(HostService.class).getProperties());
-		catalogDAO.close();
-		catalogDAO = null;
 	}
 
 	@AfterClass

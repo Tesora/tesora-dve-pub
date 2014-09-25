@@ -34,9 +34,11 @@ import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.errmap.ErrorMapper;
+import com.tesora.dve.errmap.FormattedErrorInfo;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.direct.DirectSchemaBuilder;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
@@ -113,7 +115,6 @@ public final class InformationSchemas {
 			// make the builders for each schema & then build them.
 			InformationSchemaBuilder builders[] = new InformationSchemaBuilder[] {
 					// the order these are built in is important
-					new AnnotationInformationSchemaBuilder(),
 					new SyntheticInformationSchemaBuilder(),
 					new DirectSchemaBuilder(catSchema)
 			};
@@ -130,8 +131,10 @@ public final class InformationSchemas {
 					catSchema);
 		} catch (PEException pe) {
 			throw pe;
-		} catch (SchemaException se) {
-			throw new PEException("Unable to initialize information schema: " + se.getMessage(), se);
+		} catch (PEMappedRuntimeException se) {
+			FormattedErrorInfo fei = ErrorMapper.makeResponse(se);
+			throw new PEException("Unable to initialize information schema: " +
+					(fei == null ? se.getMessage() : fei.getErrorMessage()), se);
 		} catch (Throwable t) {
 			throw new PEException("Unable to initialize information schema",t);
 		}

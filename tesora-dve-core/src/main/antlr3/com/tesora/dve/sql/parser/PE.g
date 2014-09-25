@@ -1333,7 +1333,7 @@ sql_schema_show_statement_target returns [Statement s] options {k=1;}:
     )
   | (w=WARNINGS | e=ERRORS) limit_specification? { $s = utils.buildShowErrorsOrWarnings($w.text == null ? $e.text : $w.text, $limit_specification.ls); }
   | COLLATION sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("COLLATION",null, $sql_schema_like_or_where.pair); } 
-  | EXTERNAL ((SERVICES { utils.push_info_schema_scope("EXTERNAL SERVICE");} esw=sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("EXTERNAL SERVICE", null, $esw.pair); })
+  | EXTERNAL ((SERVICES { utils.push_info_schema_scope("EXTERNAL SERVICES");} esw=sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("EXTERNAL SERVICES", null, $esw.pair); })
               | (SERVICE sn=unqualified_identifier { $s = utils.buildShowSingularQuery("EXTERNAL SERVICE", $sn.n); }))
   | (KEYS | INDEXES | INDEX ) { utils.push_info_schema_scope("KEY"); } sks=sql_schema_show_scoping? skw=sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("KEY", $sks.l, $skw.pair); }
   | ((CHARACTER SET) | CHARSET ) sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("CHARSET",null, $sql_schema_like_or_where.pair); } 
@@ -1345,7 +1345,7 @@ sql_schema_show_statement_target returns [Statement s] options {k=1;}:
   | SLAVE STATUS { $s = utils.buildShowPassthroughStatement("SLAVE STATUS"); }
   | GRANTS { $s = utils.buildShowPassthroughStatement("GRANTS"); }
   | CONTAINER unqualified_identifier  { $s = utils.buildShowSingularQuery("CONTAINER", $unqualified_identifier.n); } 
-  | CONTAINERS { utils.push_info_schema_scope("CONTAINER");} sql_schema_show_scoping? sql_schema_like_or_where?  { $s = utils.buildShowPluralQuery("CONTAINER", $sql_schema_show_scoping.l, $sql_schema_like_or_where.pair); }
+  | CONTAINERS { utils.push_info_schema_scope("CONTAINERS");} sql_schema_show_scoping? sql_schema_like_or_where?  { $s = utils.buildShowPluralQuery("CONTAINERS", $sql_schema_show_scoping.l, $sql_schema_like_or_where.pair); }
   | CONTAINER_TENANTS { utils.push_info_schema_scope("CONTAINER_TENANT"); } sql_schema_show_scoping? sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("CONTAINER_TENANT", $sql_schema_show_scoping.l, $sql_schema_like_or_where.pair); }
   | PROCEDURE STATUS { utils.push_info_schema_scope("PROCEDURE STATUS"); } sql_schema_like_or_where?  { $s = utils.buildShowPluralQuery("PROCEDURE STATUS", null, $sql_schema_like_or_where.pair); }
   | FUNCTION STATUS { utils.push_info_schema_scope("FUNCTION STATUS"); } sql_schema_like_or_where?  { $s = utils.buildShowPluralQuery("FUNCTION STATUS", null, $sql_schema_like_or_where.pair); }

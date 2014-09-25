@@ -32,21 +32,9 @@ import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.Table;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
-@InfoSchemaTable(logicalName="group_provider",
-		views={@TableView(view=InfoView.SHOW, name="dynamic site provider", pluralName="dynamic site providers", 
-				columnOrder={ShowSchema.GroupProvider.NAME, 
-							 ShowSchema.GroupProvider.PLUGIN,
-							 ShowSchema.GroupProvider.ENABLED}, extension=true, priviledged=true),
-		       @TableView(view=InfoView.INFORMATION, name="group_provider", pluralName="", columnOrder={"name", "plugin", "enabled"}, extension=true, priviledged=true)})
 @Entity
 @Table(name="provider")
 public class Provider implements CatalogEntity {
@@ -93,9 +81,6 @@ public class Provider implements CatalogEntity {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName="name",fieldName="name", sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.GroupProvider.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
 	public String getName() {
 		return name;
 	}
@@ -104,9 +89,6 @@ public class Provider implements CatalogEntity {
 		this.name = name;
 	}
 
-	@InfoSchemaColumn(logicalName="plugin",fieldName="plugin", sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.GroupProvider.PLUGIN),
-			       @ColumnView(view=InfoView.INFORMATION, name="plugin")})
 	public String getPlugin() {
 		return plugin;
 	}
@@ -123,9 +105,6 @@ public class Provider implements CatalogEntity {
 		this.config = config;
 	}
 
-	@InfoSchemaColumn(logicalName="enabled",fieldName="isEnabled", sqlType=java.sql.Types.VARCHAR,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.GroupProvider.ENABLED),
-			       @ColumnView(view=InfoView.INFORMATION, name="enabled")})
 	public Boolean isEnabled() {
 		return isEnabled;
 	}

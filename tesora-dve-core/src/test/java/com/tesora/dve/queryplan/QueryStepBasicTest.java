@@ -66,6 +66,7 @@ import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.test.simplequery.SimpleQueryTest;
 import com.tesora.dve.variables.KnownVariables;
@@ -95,18 +96,20 @@ public class QueryStepBasicTest extends PETest {
 	@BeforeClass
 	public static void setup() throws Throwable {
 		Class<?> bootClass = PETest.class;
-		TestCatalogHelper.createTestCatalog(bootClass,2);
+		TestCatalogHelper.createTestCatalog(bootClass);
 		bootHost = BootstrapHost.startServices(bootClass);
-        populateMetadata(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.declareSchema(pcr,"range distribute on (id) using busted","create range busted(int) persistent group DefaultGroup");
+		pcr.disconnect();
 	}
 	
 	@Before
 	public void setupTest() throws PEException, SQLException {
 		conProxy = new SSConnectionProxy();
 		ssConnection = SSConnectionAccessor.getSSConnection(conProxy);
-		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
+		SSConnectionAccessor.setCatalogDAO(ssConnection, getGlobalDAO());
 		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
-		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
+		ssConnection.setPersistentDatabase(getGlobalDAO().findDatabase("TestDB"));
 		db = ssConnection.getPersistentDatabase();
 		sg = db.getDefaultStorageGroup();
 		sg.getStorageSites();

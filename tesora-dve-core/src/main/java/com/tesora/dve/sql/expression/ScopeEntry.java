@@ -180,7 +180,7 @@ public class ScopeEntry implements Scope {
 				location.getExternal()));
 	}
 	
-	private static final TableResolver resolver = new TableResolver().withMTChecks()
+	public static final TableResolver resolver = new TableResolver().withMTChecks()
 			.withMissingTableFunction(new MissingTableFunction() {
 
 				@Override
