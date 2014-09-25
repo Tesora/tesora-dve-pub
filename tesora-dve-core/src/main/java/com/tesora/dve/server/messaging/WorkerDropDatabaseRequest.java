@@ -35,9 +35,6 @@ import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
 import com.tesora.dve.worker.Worker;
 
 public class WorkerDropDatabaseRequest extends WorkerRequest {
-	
-	static Logger logger = Logger.getLogger( WorkerDropDatabaseRequest.class );
-
 	private static final long serialVersionUID = 1L;
 
 	final String databaseName;
@@ -52,8 +49,8 @@ public class WorkerDropDatabaseRequest extends WorkerRequest {
 
 		String localizedDBName = UserDatabase.getNameOnSite(databaseName, w.getWorkerSite());
         SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getDropDatabaseStmt(localizedDBName);
-        simpleExecute(w, ddl, promise);
-	}
+        w.execute(getConnectionId(), ddl, this, promise);
+    }
 
     @Override
 	public String toString() {

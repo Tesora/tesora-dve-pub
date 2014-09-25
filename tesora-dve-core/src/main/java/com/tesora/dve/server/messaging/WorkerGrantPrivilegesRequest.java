@@ -52,8 +52,8 @@ public class WorkerGrantPrivilegesRequest extends WorkerRequest {
 	public void executeRequest(final Worker w, CompletionHandle<Boolean> promise)  {
 
         SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getGrantPriviledgesCommand(userDeclaration, "*");
-		simpleExecute(w, ddl,promise);
-	}
+        w.execute(getConnectionId(), ddl, this, promise);
+    }
 
 	@Override
 	public String toString() {

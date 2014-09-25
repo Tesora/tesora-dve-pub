@@ -23,7 +23,6 @@ package com.tesora.dve.server.messaging;
 
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
@@ -33,12 +32,8 @@ import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
 import com.tesora.dve.worker.Worker;
-import com.tesora.dve.worker.WorkerStatement;
 
 public class WorkerExecuteRequest extends WorkerRequest {
-	
-	static Logger logger = Logger.getLogger( WorkerExecuteRequest.class );
-
 	private static final long serialVersionUID = 1L;
 
 	PersistentDatabase defaultDatabase;
@@ -69,33 +64,7 @@ public class WorkerExecuteRequest extends WorkerRequest {
             if (isAutoTransact())
                 w.startTrans(getTransId());
 
-			final WorkerStatement stmt = w.getStatement();
-
-            CompletionHandle<Boolean> executeTracker = new PEDefaultPromise<Boolean>(){
-                @Override
-                public void failure(Exception t) {
-                    if (logger.isDebugEnabled())
-                        logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
-                                .append(stmtCommand)
-                                .append(")").append(" except=")
-						.append(t.getMessage())
-						.toString());
-
-                    callersResult.failure(t);
-                }
-
-                @Override
-                public void success(Boolean returnValue) {
-                    callersResult.success(true);
-                    if (logger.isDebugEnabled())
-                        logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
-                            .append(stmtCommand).append("\")")
-                            .toString());
-                }
-
-            };
-
-            stmt.execute(getConnectionId(), stmtCommand, this,executeTracker);
+            w.execute(getConnectionId(), stmtCommand, this,callersResult);
 		} catch (Exception pe) {
 			callersResult.failure(pe);
 		}

@@ -24,8 +24,10 @@ package com.tesora.dve.worker;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
 import io.netty.channel.EventLoopGroup;
@@ -441,6 +443,17 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		
 		return workerStatement;
 	}
+
+    //syntactic sugar to hide WorkerStatement from requests and reduce ephemeral coupling.
+    public void execute(int connectionId, SQLCommand sql, GroupDispatch resultConsumer, CompletionHandle<Boolean> promise) {
+        WorkerStatement statement;
+        try {
+            statement = this.getStatement();
+            statement.execute(connectionId, sql, resultConsumer, promise);
+        } catch (PEException pe){
+            promise.failure(pe);
+        }
+    }
 
 	public void onCommunicationsFailure() throws PESQLException {
 		closeWConnection();

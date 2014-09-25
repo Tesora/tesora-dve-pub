@@ -55,8 +55,8 @@ public class WorkerAlterDatabaseRequest extends WorkerRequest {
 		final String defaultCollation = alteredDatabase.getDefaultCollationName();
 
         final SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getAlterDatabaseStmt(onSiteName, defaultCharSet, defaultCollation);
-		simpleExecute(w, ddl,promise);
-	}
+        w.execute(getConnectionId(), ddl, this, promise);
+    }
 
 	@Override
 	public LogSiteStatisticRequest getStatisticsNotice() {

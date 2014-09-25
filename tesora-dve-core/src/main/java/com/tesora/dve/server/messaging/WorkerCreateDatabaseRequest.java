@@ -59,8 +59,8 @@ public class WorkerCreateDatabaseRequest extends WorkerRequest {
 		final String onSiteName = newDatabase.getNameOnSite(w.getWorkerSite());
 
         final SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getCreateDatabaseStmt(onSiteName, ifNotExists, defaultCharSet, defaultCollation);
-		simpleExecute(w, ddl, promise);
-	}
+        w.execute(getConnectionId(), ddl, this, promise);
+    }
 
 	@Override
 	public String toString() {

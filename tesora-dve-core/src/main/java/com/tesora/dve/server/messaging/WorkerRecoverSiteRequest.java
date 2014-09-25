@@ -40,7 +40,6 @@ import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.DevXid;
 import com.tesora.dve.worker.Worker;
-import com.tesora.dve.worker.WorkerStatement;
 
 public class WorkerRecoverSiteRequest extends WorkerRequest {
 
@@ -59,7 +58,6 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
 	public void executeRequest(final Worker w, final CompletionHandle<Boolean> callersResults) {
         try {
             final MysqlTextResultCollector results = new MysqlTextResultCollector();
-            final WorkerStatement stmt = w.getStatement();
 
             PEDefaultPromise<Boolean> recoverListSQL = new PEDefaultPromise<Boolean>(){
                 @Override
@@ -68,7 +66,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
                         List<Pair<String, Boolean>> xidsToRecover = buildRecoverList(w, results);
                         final Iterator<Pair<String, Boolean>> recoveryItemIterator = xidsToRecover.iterator();
 
-                        recoverNextItem(w, stmt, recoveryItemIterator, callersResults);
+                        recoverNextItem(w, recoveryItemIterator, callersResults);
                     } else {
                         Exception codingError = new PECodingException("XA RECOVER did not return results");
                         codingError.fillInStackTrace();
@@ -83,13 +81,13 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
             };
             //TODO: ignores provided groupDispatch
             this.withGroupDispatch(results);
-            stmt.execute(getConnectionId(), new SQLCommand("XA RECOVER"), this, recoverListSQL);
+            w.execute(getConnectionId(), new SQLCommand("XA RECOVER"), this, recoverListSQL);
         } catch (Exception e) {
             callersResults.failure(e);
         }
 	}
 
-    private void recoverNextItem(final Worker w, final WorkerStatement stmt, final Iterator<Pair<String, Boolean>> recoveryItemIterator, final CompletionHandle<Boolean> callersPromise) {
+    private void recoverNextItem(final Worker w, final Iterator<Pair<String, Boolean>> recoveryItemIterator, final CompletionHandle<Boolean> callersPromise) {
         if (!recoveryItemIterator.hasNext()){
             logger.info(w.getName() + ": Completed XA Transaction Recovery for site " + w.getWorkerSite());
             callersPromise.success(true);
@@ -104,7 +102,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
         CompletionHandle<Boolean> resultForCurrentItem = new PEDefaultPromise<Boolean>(){
             @Override
             public void success(Boolean returnValue) {
-                recoverNextItem(w, stmt, recoveryItemIterator, callersPromise);
+                recoverNextItem(w, recoveryItemIterator, callersPromise);
             }
 
             @Override
@@ -119,7 +117,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
             recoverStatement = "XA ROLLBACK " + xid;
         //TODO: ignores provided groupDispatch
         this.withGroupDispatch(DBEmptyTextResultConsumer.INSTANCE);
-        stmt.execute(getConnectionId(), new SQLCommand(recoverStatement), this, resultForCurrentItem);
+        w.execute(getConnectionId(), new SQLCommand(recoverStatement), this, resultForCurrentItem);
     }
 
     private List<Pair<String, Boolean>> buildRecoverList(Worker w, MysqlTextResultCollector results) {

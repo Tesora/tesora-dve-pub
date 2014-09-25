@@ -22,15 +22,11 @@ package com.tesora.dve.server.messaging;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.GroupDispatch;
-import com.tesora.dve.exceptions.PESQLException;
-import com.tesora.dve.worker.WorkerStatement;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.comms.client.messages.RequestMessage;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.worker.Worker;
@@ -91,39 +87,6 @@ public abstract class WorkerRequest extends RequestMessage implements GroupDispa
 	}
 
 	public abstract void executeRequest(Worker w, CompletionHandle<Boolean> promise);
-
-    protected void simpleExecute(final Worker w, SQLCommand ddl, final CompletionHandle<Boolean> promise) {
-        if (WorkerDropDatabaseRequest.logger.isDebugEnabled()) {
-            WorkerDropDatabaseRequest.logger.debug(w.getName()+": Current database is "+ w.getCurrentDatabaseName());
-            WorkerDropDatabaseRequest.logger.debug(w.getName()+":executing statement " + ddl);
-        }
-
-        CompletionHandle<Boolean> resultTracker = new DelegatingCompletionHandle<Boolean>(promise) {
-            @Override
-            public void success(Boolean returnValue) {
-                super.success(returnValue);
-            }
-
-            @Override
-            public void failure(Exception e) {
-                if (e instanceof PEException)
-                    super.failure(e);
-                else {
-                    PEException convert = new PEException(e);
-                    convert.fillInStackTrace();
-                    super.failure(convert);
-                }
-            }
-        };
-
-        WorkerStatement stmt = null;
-        try {
-            stmt = w.getStatement();
-            stmt.execute(getConnectionId(), ddl, this,resultTracker);
-        } catch (PESQLException e) {
-            resultTracker.failure(e);
-        }
-    }
 
     @Override
 	public String toString() {
