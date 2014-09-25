@@ -81,8 +81,9 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
                     super.failure(t);
                 }
             };
-
-            stmt.execute(getConnectionId(), new SQLCommand("XA RECOVER"), results, recoverListSQL);
+            //TODO: ignores provided groupDispatch
+            this.withGroupDispatch(results);
+            stmt.execute(getConnectionId(), new SQLCommand("XA RECOVER"), this, recoverListSQL);
         } catch (Exception e) {
             callersResults.failure(e);
         }
@@ -116,9 +117,8 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
             recoverStatement = "XA COMMIT " + xid;
         else
             recoverStatement = "XA ROLLBACK " + xid;
-
+        //TODO: ignores provided groupDispatch
         this.withGroupDispatch(DBEmptyTextResultConsumer.INSTANCE);
-
         stmt.execute(getConnectionId(), new SQLCommand(recoverStatement), this, resultForCurrentItem);
     }
 
