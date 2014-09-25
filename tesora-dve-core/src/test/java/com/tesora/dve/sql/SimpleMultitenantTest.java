@@ -313,7 +313,6 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			// on the tenant connection the block table is not yet visible
 			tenantConnection.assertResults("show tables like 'block'",none);
 			// nor is it visible in any of the varieties
-			System.out.println(tenantConnection.printResults("show tables"));
 			tenantConnection.assertResults("show tables", none);
 			tenantConnection.assertResults("show tables like '%blo%'",none);
 			// now, when we create it, should become visible in all varieties
@@ -341,7 +340,6 @@ public class SimpleMultitenantTest extends MultitenantTest {
 						nr,"theme",getIgnore(),getIgnore(),getIgnore(),getIgnore(),getIgnore());
 			String tn = (String) rootConnection.fetch("show tables like '%block%'").getResults().get(0).getResultColumn(1).getColumnValue();
 			rootConnection.execute("set @@dve_metadata_extensions = 1");
-			System.out.println(rootConnection.printResults("describe " + tn));
 			rootConnection.assertResults("describe " + tn, fullBlockCols);
 			rootConnection.execute("set @@dve_metadata_extensions = 0");
 			tenantConnection.assertResults("describe block",tenantBlockCols);
@@ -760,7 +758,6 @@ public class SimpleMultitenantTest extends MultitenantTest {
             tenantConnection.execute(def1);
             tenantConnection.execute(pop1 + ",('" + tens[i] + "')");
             String cts = AlterTest.getCreateTable(tenantConnection, "altest");
-            System.out.println(tenantConnection.printResults("show columns in altest like 'cola'"));
             assertAutoInc(tenantConnection,cts);
         }
 

@@ -217,13 +217,15 @@ public class DirectShowSchemaTable extends DirectInformationSchemaTable implemen
 			QualifiedName qn = new QualifiedName(new UnqualifiedName(scope.getFirst()), new UnqualifiedName(scope.getSecond()));
 			TableInstance matching = sc.getTemporaryTableSchema().buildInstance(sc, qn);
 			if (matching != null) {
+				List<DirectInformationSchemaColumn> projCols = 
+						getProjectionColumns(useExtensions(sc), sc.getPolicyContext().isRoot(), (options != null && options.isFull()));
 				List<List<InformationSchemaColumn>> proj = 
-						Functional.apply(getColumns(sc), new UnaryFunction<List<InformationSchemaColumn>,InformationSchemaColumn>() {
+						Functional.apply(projCols, new UnaryFunction<List<InformationSchemaColumn>,DirectInformationSchemaColumn>() {
 
 							@Override
 							public List<InformationSchemaColumn> evaluate(
-									InformationSchemaColumn object) {
-								return Collections.singletonList(object);
+									DirectInformationSchemaColumn object) {
+								return Collections.singletonList((InformationSchemaColumn)object);
 							}
 							
 						});

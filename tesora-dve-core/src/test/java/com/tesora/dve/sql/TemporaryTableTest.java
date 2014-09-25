@@ -100,7 +100,7 @@ public class TemporaryTableTest extends SchemaTest {
 		}
 		
 	}
-	
+		
 	@SuppressWarnings("resource")
 	@Test
 	public void testInfoSchema() throws Throwable {
@@ -129,8 +129,6 @@ public class TemporaryTableTest extends SchemaTest {
 					br(nr,"id",1,
 					   nr,"fid",2));
 	
-			System.out.println(conn1.printResults("describe narrow"));
-			
 			conn1.assertResults("describe narrow",
 					br(nr,"id","int(11)","NO","PRI",null,"auto_increment",
 					   nr,"fid","int(11)","YES","UNI",null,"",
@@ -185,7 +183,6 @@ public class TemporaryTableTest extends SchemaTest {
 			conn.execute("insert into targ (id,fid) values (1,1),(2,2),(3,3),(4,4),(5,5)");
 			conn.assertResults("select * from information_schema.temporary_tables",
 					br(nr,ignore,"sysdb","targ","InnoDB"));
-			System.out.println(conn.printResults("describe targ"));
 			conn.assertResults("describe targ",
 					br(nr,"id","int(11)","NO","PRI",null,"",
 					   nr,"fid","int(11)","YES","",null,""));

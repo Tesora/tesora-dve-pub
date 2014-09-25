@@ -144,28 +144,5 @@ public class ViewTransformTest extends TransformTest {
 		viewTransTest(db,"select v.fid from AB a inner join VAB v on v.id = a.bid where v.stuff = 'boy howdy'",
 				"SELECT v.`fid` FROM `AB` AS a INNER JOIN ( SELECT a_3.`aid` AS id,s.`bfid` AS fid,a_3.`astuff` AS stuff FROM `AA` AS a_3 INNER JOIN `SB` AS s ON a_3.`aid` = s.`bid` WHERE a_3.`astuff` like '%wow%' AND a_3.`astuff` = 'boy howdy') AS v ON v.`id` = a.`bid` WHERE v.`stuff` = 'boy howdy'"
 				);
-	}
-	
-	@Test
-	public void testInfoRewrite() throws Throwable {
-		SchemaContext db = buildSchema(TestName.MULTI,
-				"create table persistent_group (persistent_group_id int, name varchar(255), primary key (persistent_group_id))",
-				"create table storage_generation (generation_id int, locked bit(1), version int(11), persistent_group_id int, primary key (generation_id))",
-				"create table storage_site (id int, haType varchar(255), name varchar(255), primary key (id), unique key (name))",
-				"create table generation_sites (generation_id int, site_id int)",
-				"create view generation_site as "
-				+"select pg.name as `group`, sg.version as `version`, ss.name as `site` from "
-				+"generation_sites gs, storage_site ss, storage_generation sg, persistent_group pg where "
-				+"sg.persistent_group_id = pg.persistent_group_id and "
-				+"gs.site_id = ss.id and "
-				+"gs.generation_id = sg.generation_id order by pg.name, sg.version, ss.name "
-				+" table(`group` varchar(512), `version` int, `site` varchar(512))");
-
-		String sql =
-				"select * from generation_site";
-		viewTransTest(db,sql,
-				null);
-		
-	}
-	
+	}	
 }

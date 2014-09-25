@@ -879,7 +879,6 @@ public class StrictForeignKeyTest extends SchemaTest {
 			conn.assertResults("select constraint_name, constraint_type from information_schema.table_constraints where table_schema = 'otherdb' and table_name = 'tg' order by constraint_name, constraint_type", 
 					br(nr,"FK_TAG_FSICSSI","FOREIGN KEY",
 					   nr,"PRIMARY","PRIMARY KEY"));
-			System.out.println(conn.printResults("show keys in tg"));
 			conn.assertResults("show keys in tg", 
 					br(nr,"tg",0,"PRIMARY",1,"tid","A",-1L,null,null,"","BTREE","","",
 							nr,"tg",1,"FK_TAG_FSICSSI",1,"fsi","A",-1L,null,null,"YES","BTREE","",""
