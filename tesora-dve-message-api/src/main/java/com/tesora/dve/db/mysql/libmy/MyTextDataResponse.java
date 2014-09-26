@@ -25,7 +25,6 @@ import com.tesora.dve.db.NativeResultHandler;
 import io.netty.buffer.ByteBuf;
 
 import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 
@@ -38,7 +37,7 @@ public class MyTextDataResponse extends MyDataResponse {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		for (int col = 1; col <= columnSet.size(); ++col) {
 			MysqlAPIUtils.putLengthCodedString(	cb,
                     nativeResultHandler.getObjectAsBytes(

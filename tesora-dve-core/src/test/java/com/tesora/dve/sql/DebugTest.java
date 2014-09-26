@@ -30,7 +30,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.AllTests;
 
 import com.tesora.dve.common.CatalogHelperTest;
-import com.tesora.dve.common.PEThreadContextTest;
 import com.tesora.dve.common.UrlBalancerTest;
 import com.tesora.dve.common.catalog.CatalogTest;
 import com.tesora.dve.groupmanager.LocalTopicTest;
@@ -80,7 +79,6 @@ public class DebugTest {
 				QueryStepBasicTest.class,
 				CatalogTest.class,
 				UrlBalancerTest.class,
-				PEThreadContextTest.class,
 				CatalogHelperTest.class,
 				ShowTest.class,
 				ReplaceIntoTest.class,

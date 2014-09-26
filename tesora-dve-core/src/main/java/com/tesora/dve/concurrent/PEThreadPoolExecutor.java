@@ -38,9 +38,6 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.Priority;
 
-import com.tesora.dve.common.PEContext;
-import com.tesora.dve.common.PEThreadContext;
-
 public class PEThreadPoolExecutor extends ThreadPoolExecutor implements NamedTaskExecutorService {
 
     // minimum log level required to rename threads
@@ -102,13 +99,11 @@ public class PEThreadPoolExecutor extends ThreadPoolExecutor implements NamedTas
 	}
 
 	private Runnable wrapCommand(final Runnable command, final String taskName) {
-		final PEContext context = PEThreadContext.copy();
         final Timer contextTimer = timingService.getTimerOnThread();
 		return new Runnable() {
 
 			@Override
 			public void run() {
-				PEThreadContext.inherit(context);
                 timingService.attachTimerOnThread(contextTimer);
 				final String originalName = Thread.currentThread().getName();
 				boolean nameChanged = renameThreadForTask(taskName);
@@ -119,7 +114,6 @@ public class PEThreadPoolExecutor extends ThreadPoolExecutor implements NamedTas
 						Thread.currentThread().setName(originalName);
 					}
                     timingService.detachTimerOnThread();
-					PEThreadContext.clear();
 				}
 			}
 

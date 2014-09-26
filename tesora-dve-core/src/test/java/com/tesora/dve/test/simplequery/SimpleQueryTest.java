@@ -22,7 +22,6 @@ package com.tesora.dve.test.simplequery;
  */
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -33,8 +32,6 @@ import java.util.Set;
 
 import javax.sql.DataSource;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -49,6 +46,8 @@ import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.util.ConnectionResource;
@@ -188,13 +187,15 @@ public class SimpleQueryTest extends SchemaTest {
 	
 	@Test
 	public void badTableNameQueryBeforeGoodQuery() throws Throwable {
-		try {
-			conn.execute("select * from no_table_exists");
-			fail("Exception not thrown for bad table name");
-		} catch (SchemaException se) {
-			assertErrorInfo(se,MySQLErrors.missingTableFormatter,
+
+		// exception not thrown for bad table name
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("select * from no_table_exists");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.missingTableFormatter,
 					"TestDB","no_table_exists");
-		}
 
 		assertEquals(5, getRowCount(COUNT_ROWS_SELECT));
 	}

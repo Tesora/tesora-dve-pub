@@ -60,7 +60,8 @@ public class WorkerExecuteKillRequest extends WorkerExecuteRequest {
 
 		StringBuilder sql = new StringBuilder(stmtCommand.getRawSQL());
 		sql.append(' ').append(siteConnId);
-		super.executeStatement(w, new SQLCommand(sql.toString()), resultConsumer, callersResults);
+		super.executeStatement(w, new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), sql.toString()), resultConsumer,
+				callersResults);
 	}
 
 }

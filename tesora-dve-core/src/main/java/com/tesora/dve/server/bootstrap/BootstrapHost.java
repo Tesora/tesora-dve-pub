@@ -70,6 +70,7 @@ import com.tesora.dve.siteprovider.SiteProviderPlugin.SiteProviderFactory;
 import com.tesora.dve.smqplugin.SimpleMQPlugin;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.schema.mt.TableGarbageCollector;
+import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.worker.agent.Agent;
 import com.tesora.dve.worker.WorkerManager;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
@@ -213,23 +214,39 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 
 		props.put(DBHelper.CONN_DBNAME,  database);
 		DBHelper helper = new DBHelper(props);
+		int catalogAccessible = 1;
 		try {
 			// Check that we can connect to the database and that the catalog database exists
 			helper.connect();
 
 			// and also check that it is a valid catalog
-			helper.executeQuery("SELECT name FROM " + database + ".project");
+			helper.executeQuery("SELECT name FROM " + database + ".user_table");
 		} catch(Exception e) {
-			throw new Exception("A DVE catalog couldn't be found at '" + url + "' with name '" + database + "'");
+			String message = e.getMessage();
+			if (message != null && message.startsWith("Error using"))
+				catalogAccessible = -1;
+			else
+				catalogAccessible = 0;
+			if (catalogAccessible == 0)
+				throw new Exception("A DVE catalog couldn't be found at '" + url + "' with name '" + database + "' - use dve_config to set the connection credentials for the server (error was " + message + ")");
 		} finally  {
 			helper.disconnect();
 		}
-			
+		
+		if (catalogAccessible == -1) {
+			new CatalogHelper(bootstrapClass).createBootstrapCatalog();
+		}
+		
 		// Temporarily set the log level to info so that the below message will print and force the 
 		// header to print
 		Level logLevel = logger.getLevel();		// this is needed in case an explicit level is set on this category
 		Level effectiveLevel = logger.getEffectiveLevel();	// if an explicit level isn't set, this gets the level from the hierarchy
 		logger.setLevel(Level.INFO);
+		
+		if (catalogAccessible == -1) {
+			logger.info("INSTALLED BOOTSTRAP CATALOG " + database + " AT " + url);
+		}
+		
 		logger.info("Starting DVE server using:");
 		logger.info("... Catalog URL      : " + url);
 		logger.info("... Catalog database : " + database);

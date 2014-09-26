@@ -21,28 +21,31 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.db.mysql.MysqlConnection;
-import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
-import com.tesora.dve.db.mysql.SharedEventLoopHolder;
-import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
-import com.tesora.dve.exceptions.PECommunicationsException;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLException;
-import com.tesora.dve.server.messaging.SQLCommand;
 import io.netty.channel.EventLoopGroup;
+
+import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericKeyedObjectPool;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.log4j.Logger;
 
-import java.sql.SQLException;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.MysqlCommandResultsProcessor;
+import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
+import com.tesora.dve.db.mysql.SharedEventLoopHolder;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
+import com.tesora.dve.exceptions.PECommunicationsException;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PESQLException;
 
 /**
  *
@@ -154,17 +157,12 @@ public class DirectConnectionCache {
 
         @Override
         public void connect(String url, String userid, String password,  long clientCapabilities) throws PEException {
-            dbConnection.connect(url,userid,password, clientCapabilities);
+            dbConnection.connect(url, userid, password, clientCapabilities);
         }
 
         @Override
         public void close() {
             dbConnection.close();
-        }
-
-        @Override
-        public void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise) {
-            dbConnection.execute(sql,consumer,promise);
         }
 
         @Override
@@ -184,7 +182,7 @@ public class DirectConnectionCache {
 
         @Override
         public void commit(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) {
-            dbConnection.commit(xid,onePhase,promise);
+            dbConnection.commit(xid, onePhase, promise);
         }
 
         @Override
@@ -194,7 +192,7 @@ public class DirectConnectionCache {
 
         @Override
         public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise){
-            dbConnection.updateSessionVariables(desiredVariables,setBuilder,promise);
+            dbConnection.updateSessionVariables(desiredVariables, setBuilder, promise);
         }
 
         @Override
@@ -229,15 +227,47 @@ public class DirectConnectionCache {
         }
 
         @Override
-        public void success(Boolean returnValue) {
-            dbConnection.success(returnValue);
+        public String getName() { return dbConnection.getName(); }
+
+        @Override
+        public StorageSite getStorageSite() {
+            return dbConnection.getStorageSite();
         }
 
         @Override
-        public void failure(Exception e) {
-            dbConnection.failure(e);
+        public Monitor getMonitor() {
+            return dbConnection.getMonitor();
         }
 
+        @Override
+        public boolean isOpen() { return dbConnection.isOpen(); }
+
+        @Override
+        public void write(MysqlCommand command) { dbConnection.write(command); }
+
+        @Override
+        public void writeAndFlush(MysqlCommand command) { dbConnection.writeAndFlush(command); }
+
+        @Override
+        public void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+            dbConnection.write(outboundMessage, resultsProcessor);
+        }
+
+        @Override
+        public void writeAndFlush(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+            dbConnection.writeAndFlush(outboundMessage, resultsProcessor);
+        }
+
+        @Override
+        public CompletionHandle<Boolean> getExceptionDeferringPromise() { return dbConnection.getExceptionDeferringPromise(); }
+
+        @Override
+        public Exception getAndClearPendingException() { return dbConnection.getAndClearPendingException();}
+
+		@Override
+		public Charset lookupCurrentConnectionCharset() {
+			return dbConnection.lookupCurrentConnectionCharset();
+		}
     }
 
     public static class DSCacheKey {

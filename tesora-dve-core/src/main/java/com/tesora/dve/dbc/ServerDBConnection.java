@@ -192,7 +192,7 @@ public class ServerDBConnection {
 	public void executeLoadDataRequest(
 			ChannelHandlerContext channelHandlerContext,
 			byte[] query) throws SQLException {
-		MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(channelHandlerContext, (byte)0);
+		MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(channelHandlerContext);
 		try {
 			loadDataRequestExecuteInContext(channelHandlerContext, resultConsumer, query);
 			if (resultConsumer.getFileName() == null) {

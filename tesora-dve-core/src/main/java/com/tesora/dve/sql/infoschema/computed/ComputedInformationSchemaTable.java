@@ -49,6 +49,7 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
@@ -281,7 +282,7 @@ public class ComputedInformationSchemaTable implements InformationSchemaTable {
 	public boolean isTempTable() {
 		return false;
 	}
-	
+
 	public ComputedInformationSchemaColumn getOrderByColumn() {
 		return orderByColumn;
 	}

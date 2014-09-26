@@ -51,7 +51,6 @@ public class FieldMetadataAdapter {
      */
     public static MyFieldPktResponse buildPacket(ColumnMetadata columnMetadata, NativeTypeCatalog nativeTypeCatalog, NativeCharSet nativeCharSet) throws PEException {
         MyFieldPktResponse fieldPkt = new MyFieldPktResponse();
-        fieldPkt.setPacketNumber((byte)0);
         fieldPkt.setCatalog("def");
 
         if (columnMetadata.getTableName() == null) {

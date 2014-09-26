@@ -252,14 +252,14 @@ public class SchemaTest extends PETest {
 		} catch (SQLException se) {
 			// re.printStackTrace();
 			// ignore: reasons: the user doesn't exist, or the user exists on some but not all sites
-			assertSQLException(se,MySQLErrors.unknownUserFormatter,
+			ExpectedSqlErrorTester.assertSQLException(se, MySQLErrors.unknownUserFormatter,
 					"Operation DROP USER failed for " + accessSpec);
 		} catch (PEException pe) {
 			// re.printStackTrace();
 			// ignore: reasons: the user doesn't exist, or the user exists on some but not all sites
 			assertSchemaException(pe,"User " + accessSpec + " does not exist");
 		} catch (SchemaException se) {
-			assertErrorInfo(se,MySQLErrors.unknownUserFormatter,
+			ExpectedSqlErrorTester.assertErrorInfo(se, MySQLErrors.unknownUserFormatter,
 					username,host1);
 		}
 		DBHelper dbh = PETest.buildHelper();
@@ -476,6 +476,7 @@ public class SchemaTest extends PETest {
 		
 	}
 
+	@Deprecated
 	protected static List<Throwable> findExceptionsOfType(Class<?> k, Throwable t) {
 		ArrayList<Throwable> buf = new ArrayList<Throwable>();
 		Throwable c = t;
@@ -487,6 +488,7 @@ public class SchemaTest extends PETest {
 		return buf;
 	}
 	
+	@Deprecated
 	protected static void assertException(Throwable t, Class<?> k, String message) throws Throwable {
 		List<Throwable> matching = findExceptionsOfType(k,t);
 		for(Throwable m : matching)
@@ -494,11 +496,13 @@ public class SchemaTest extends PETest {
 				return;
 		throw t;
 	}
-	
+
+	@Deprecated
 	protected static void assertSchemaException(Throwable t, String message) throws Throwable {
 		assertException(t,SchemaException.class,message);
 	}
 	
+	@Deprecated
 	protected static boolean assertPEException(Throwable t, String message) throws Throwable {
 		Throwable c = t;
 		while(c != null) {

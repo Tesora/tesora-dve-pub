@@ -90,8 +90,11 @@ public class DBHelperConnectionResource extends JdbcConnectionResource {
 	}
 	
 	public void init() throws Throwable {
-		if ( useUTF8 )
-			this.addPostConnectCmd("SET NAMES UTF8");
+		if (useUTF8) {
+			this.addPostConnectCmd("SET NAMES utf8");
+		} else {
+			this.addPostConnectCmd("SET NAMES latin1");
+		}
 		
 		connected = false;
 		conn = new DBHelper(getPEUrl(), getUserid(), getPassword());
@@ -102,7 +105,7 @@ public class DBHelperConnectionResource extends JdbcConnectionResource {
 		Properties props = new Properties();
 		if ( useUTF8 ) {
 			props.setProperty("useUnicode","yes");
-			props.setProperty("characterEncoding","UTF8");
+			props.setProperty("characterEncoding", "utf8");
 		} else {
 			props.setProperty("characterEncoding","latin1");
 		}

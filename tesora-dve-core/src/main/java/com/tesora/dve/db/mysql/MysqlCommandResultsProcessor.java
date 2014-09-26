@@ -30,8 +30,6 @@ public interface MysqlCommandResultsProcessor {
 
     void active(ChannelHandlerContext ctx);
 
-    boolean isDone(ChannelHandlerContext ctx);
-
 	boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
 
     /**

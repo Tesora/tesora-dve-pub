@@ -28,6 +28,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
@@ -342,5 +343,35 @@ public class SelectTest extends SchemaTest {
 		} finally {
 			otherDDL.destroy(conn);
 		}
+	}
+
+	@Test
+	public void testPE1625() throws Throwable {
+		conn.assertResults("SELECT CONVERT('debian-linux-gnu' USING latin1)  IN ('debian-linux-gnu')", br(nr, 1L));
+	}
+
+	@Test
+	public void testPE1633() throws Throwable {
+		conn.assertResults("SELECT NOT NOT TRUE, NOT NOT NOT FALSE", br(nr, 1L, 1L));
+	}
+
+	@Test
+	public void testPE1648() throws Throwable {
+		conn.execute("DROP TABLE IF EXISTS pe1648");
+		conn.execute("CREATE TABLE pe1648 (i INT, j TEXT)");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("SELECT * FROM pe1648 NATURAL JOIN pe1648");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.nonUniqueTableFormatter, "pe1648");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("SELECT * FROM pe1648 NATURAL LEFT JOIN pe1648");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.nonUniqueTableFormatter, "pe1648");
 	}
 }

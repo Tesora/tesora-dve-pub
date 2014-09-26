@@ -238,6 +238,16 @@ public class JoinTest extends SchemaMirrorTest {
 	}
 
 	@Test
+	public void testNaturalJoin() throws Throwable {
+		runAll(lefts, rights, "select l.*, r.* from #L l natural join #R r", true);
+	}
+
+	@Test
+	public void testNaturalLeftJoin() throws Throwable {
+		runAll(lefts, rights, "select l.*, r.* from #L l natural left outer join #R r", true);
+	}
+
+	@Test
 	public void testPE227() throws Throwable {
 		ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
 		tests.add(new StatementMirrorFun(true,"select l.*, r.* from LRa l, tsysdb.otab r where l.id = r.id"));
@@ -784,6 +794,41 @@ public class JoinTest extends SchemaMirrorTest {
 		for(String s : decls)
 			tests.add(new StatementMirrorProc(s));
 		tests.add(new StatementMirrorProc(netNamesQuery));
+		runTest(tests);
+	}
+
+	@Test
+	public void testPE1648() throws Throwable {
+		final String[] decls = new String[] {
+				"CREATE TABLE pe1648_t1 (i INT, j INT)",
+				"CREATE TABLE pe1648_t2 (j INT, k INT)",
+				"INSERT INTO pe1648_t1 VALUES(1,1)",
+				"INSERT INTO pe1648_t1 VALUES(2,2)",
+				"INSERT INTO pe1648_t1 VALUES(3,3)",
+				"INSERT INTO pe1648_t2 VALUES(1,1)",
+				"INSERT INTO pe1648_t2 VALUES(3,2)",
+				"INSERT INTO pe1648_t2 VALUES(4,3)",
+		};
+
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
+		for (final String stmt : decls) {
+			tests.add(new StatementMirrorProc(stmt));
+		}
+		tests.add(new StatementMirrorFun("SELECT * FROM pe1648_t1 t1 NATURAL JOIN pe1648_t2 t2 ORDER BY t1.i"));
+		tests.add(new StatementMirrorFun("SELECT * FROM pe1648_t2 t2 NATURAL JOIN pe1648_t1 t1 ORDER BY t1.i"));
+		tests.add(new StatementMirrorFun("SELECT * FROM pe1648_t1 t1 NATURAL LEFT JOIN pe1648_t2 t2 ORDER BY t1.i"));
+		tests.add(new StatementMirrorFun("SELECT * FROM pe1648_t2 t2 NATURAL LEFT JOIN pe1648_t1 t1 ORDER BY t1.i"));
+
+		/*
+		 * Previously, this query would produce an error ERROR 1052 (23000):
+		 * Column 'j' in where clause is ambiguous. Now the query produces the
+		 * correct result.
+		 * 
+		 * @see http://dev.mysql.com/doc/refman/5.6/en/join.html
+		 */
+		tests.add(new StatementMirrorFun("SELECT * FROM pe1648_t1 t1 NATURAL JOIN pe1648_t2 t2 WHERE j > 3"));
+		tests.add(new StatementMirrorFun("SELECT j, i FROM pe1648_t1 t1 NATURAL LEFT JOIN pe1648_t2 t2 ORDER BY j"));
+
 		runTest(tests);
 	}
 }

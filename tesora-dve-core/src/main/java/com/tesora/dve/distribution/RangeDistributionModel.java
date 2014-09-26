@@ -36,9 +36,9 @@ import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.StorageGroupGeneration;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.mysql.MyFieldType;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
-import com.tesora.dve.db.mysql.MyFieldType;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.groupmanager.GroupManager;
@@ -191,7 +191,7 @@ public class RangeDistributionModel extends DistributionModel {
 
 		MysqlTextResultCollector results = new MysqlTextResultCollector(true);
 		WorkerRequest req = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(),
-				new SQLCommand(query)).onDatabase(ut.getDatabase());
+				new SQLCommand(ssCon, query)).onDatabase(ut.getDatabase());
 		wg.execute(MappingSolution.AllWorkers, req, results);
 		if (!results.hasResults()) {
 			throw new PENotFoundException("Could not get Key Ranges");

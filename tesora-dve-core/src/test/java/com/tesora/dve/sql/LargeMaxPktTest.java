@@ -28,14 +28,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testng.Assert;
 
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
+import com.tesora.dve.db.mysql.portal.protocol.Packet;
 import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
 import com.tesora.dve.sql.util.PEDDL;
@@ -85,9 +86,8 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 		tester.add(new StatementMirrorProc("CREATE TABLE `pe1512` (`data` longblob)"));
 		tester.add(new StatementMirrorProc("INSERT INTO `pe1512` VALUES ('" + StringUtils.repeat("0", 17000000) + "')"));
 		tester.add(new StatementMirrorFun("SELECT length(data) FROM `pe1512`"));
-		// TODO: There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
-		// that it doesn't handle extended packets properly 
-		//tester.add(new StatementMirrorFun("SELECT data FROM `pe1512`"));
+
+		tester.add(new StatementMirrorFun("SELECT data FROM `pe1512`"));
 
 		tester.runTests();
 	}
@@ -95,7 +95,11 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 	@Test
 	public void testPE1559() throws Throwable {
 		try {
-			final String payload = FileUtils.readFileToString(getFileFromLargeFileRepository("pe1559_payload.dat"));
+//            final String payload = FileUtils.readFileToString(getFileFromLargeFileRepository("pe1559_payload.dat"));
+            int desiredLength = 34000000;
+            Assume.assumeTrue("Didn't have enough memory to be confident test would run, skipped.", Runtime.getRuntime().maxMemory() >= (desiredLength * 20L));
+
+            final String payload = largeRandomString("testPE1559", desiredLength); //two full extended packets, plus ~500K
 
 			final ExtendedPacketTester tester = new ExtendedPacketTester(67108864);
 			tester.add(new StatementMirrorProc(
@@ -112,9 +116,8 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 			tester.add(new StatementMirrorProc("UPDATE `cache_views` SET serialized='1', created='1403888529', expire='0', data='"
 					+ payload + "' WHERE (cid = 'views_data:en')"));
 			tester.add(new StatementMirrorFun("SELECT length(data) FROM `cache_views`"));
-			// TODO: There is a bug (PE-1515) with the MysqlTextResultChunkProvider (used in tests) 
-			// that it doesn't handle extended packets properly 
-			//tester.add(new StatementMirrorFun("SELECT data FROM `cache_views`"));
+
+			tester.add(new StatementMirrorFun("SELECT data FROM `cache_views`"));
 
 			tester.runTests();
 		} catch (final LargeTestResourceNotAvailableException e) {
@@ -122,6 +125,22 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 			return;
 		}
 	}
+
+    private String largeRandomString(String testName, int desiredLength) throws LargeTestResourceNotAvailableException {
+        Random rand = new Random(938398373L); //fix the seed, so we always generate the same string.
+
+        StringBuilder builder = new StringBuilder(desiredLength);
+        int remainingChars = desiredLength;
+        while (remainingChars > 0){
+            char entry = (char)('a' + rand.nextInt(26));//this generates only ASCII lowercase 'a' through 'z'.
+            builder.append(entry);
+            remainingChars--;
+        }
+
+//            final String payload = FileUtils.readFileToString(getFileFromLargeFileRepository("pe1559_payload.dat"));
+        final String payload = builder.toString();
+        return payload;
+    }
 
     @Test
     public void testComQueryMessageContinuationOverlap() throws Exception {
@@ -135,8 +154,8 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 
         ByteBuf dest = Unpooled.buffer(payloadSize);
 
-        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage((byte)0, source.array() );
-        outboundMessage.writeTo(dest);
+        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage(source.array() );
+        Packet.encodeFullMessage((byte)0, outboundMessage, dest);
 
         int lengthOfNonUserdata = 5 + 4 + 4 + 4 + 4;
         Assert.assertEquals(dest.readableBytes(),payloadSize + lengthOfNonUserdata,"Number of bytes in destination buffer is wrong");
@@ -162,8 +181,8 @@ public class LargeMaxPktTest extends SchemaMirrorTest {
 
         ByteBuf dest = Unpooled.buffer(payloadSize);
 
-        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage((byte)0, source.array() );
-        outboundMessage.writeTo(dest);
+        MSPComQueryRequestMessage outboundMessage = MSPComQueryRequestMessage.newMessage(source.array() );
+        Packet.encodeFullMessage((byte)0, outboundMessage, dest);
 
         int lengthOfNonUserdata = 5 + 4 + 4 + 4 + 4;//last packet has zero length payload
         Assert.assertEquals(dest.readableBytes(),payloadSize + lengthOfNonUserdata,"Number of bytes in destination buffer is wrong");

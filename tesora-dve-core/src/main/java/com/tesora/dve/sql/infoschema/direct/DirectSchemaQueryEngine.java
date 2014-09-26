@@ -86,8 +86,7 @@ public class DirectSchemaQueryEngine {
 	public static FeatureStep buildStep(SchemaContext sc, LogicalQuery lq, FeaturePlanner planner, final ProjectionInfo pi) {
 		SelectStatement toExecute = lq.getQuery();
 		
-		GenericSQLCommand gsql = toExecute.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), EmitOptions.NONE.addCatalog());
-		final String sql = gsql.resolve(sc, false, null).getUnresolved();
+		final GenericSQLCommand gsql = toExecute.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), EmitOptions.NONE.addCatalog());
 				
 		// look up the system group now - we have to use the actual item
 		final PEPersistentGroup sg = sc.findStorageGroup(new UnqualifiedName(PEConstants.SYSTEM_GROUP_NAME));
@@ -117,7 +116,7 @@ public class DirectSchemaQueryEngine {
 				ProjectingExecutionStep pes =
 						ProjectingExecutionStep.build(
 								null, sg,
-								sql);
+							gsql);
 				if (pi != null)
 					pes.setProjectionOverride(pi);
 				es.append(pes);		

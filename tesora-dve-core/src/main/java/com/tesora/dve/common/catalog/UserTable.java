@@ -64,10 +64,14 @@ import com.tesora.dve.queryplan.QueryStepDDLOperation;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.infoschema.annos.ColumnView;
+import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
+import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.variables.VariableStoreSource;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.Manager;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
@@ -303,8 +307,9 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		return this.shape;
 	}
 	
-	public static SQLCommand getDropTableStmt(String tableName, boolean ifExists) {
-        return new SQLCommand("DROP TABLE " + (ifExists ? "IF EXISTS " : "") + Singletons.require(HostService.class).getDBNative().quoteIdentifier(tableName));
+	public static SQLCommand getDropTableStmt(final VariableStoreSource vs, String tableName, boolean ifExists) {
+		return new SQLCommand(vs, "DROP TABLE " + (ifExists ? "IF EXISTS " : "")
+				+ Singletons.require(HostService.class).getDBNative().quoteIdentifier(tableName));
 	}
 
 	public void addUserColumn(UserColumn uc) {
@@ -526,7 +531,7 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 				}
 				// TODO this could fail on a database with fks
 				QueryStepDDLOperation qso =
-						new QueryStepDDLOperation(getDatabase(), new SQLCommand(getCreateTableStmt()),null);
+						new QueryStepDDLOperation(getDatabase(), new SQLCommand(ssCon, getCreateTableStmt()), null);
 
 				qso.execute(ssCon, newWG, DBEmptyTextResultConsumer.INSTANCE);
 			}
@@ -726,8 +731,8 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		return true;
 	}
 	
-	public SQLCommand getTruncateStatement() {
-        return new SQLCommand("TRUNCATE " + Singletons.require(HostService.class).getDBNative().getNameForQuery(this));
+	public SQLCommand getTruncateStatement(final VariableStoreSource vs) {
+		return new SQLCommand(vs, "TRUNCATE " + Singletons.require(HostService.class).getDBNative().getNameForQuery(this));
 	}
 
 	public UserView getView() {

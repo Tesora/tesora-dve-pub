@@ -47,7 +47,6 @@ public class MSPComStatisticsRequest extends MSPActionBase {
 	@Override
 	public void execute(ExecutorService clientExecutorService, ChannelHandlerContext ctx,
                         SSConnection ssCon, MSPMessage protocolMessage) throws PEException {
-        byte sequenceId = protocolMessage.getSequenceID();
 		MyResponseMessage respMsg = null;
 
 		try {
@@ -56,7 +55,6 @@ public class MSPComStatisticsRequest extends MSPActionBase {
 			ResponseMessage rm = ssCon.sendAndReceive(e);
 
 			MyStatisticsResponse statResp = new MyStatisticsResponse();
-			statResp.withPacketNumber(1);
 
             HostService hostService = Singletons.require(HostService.class);
 
@@ -71,10 +69,8 @@ public class MSPComStatisticsRequest extends MSPActionBase {
 			respMsg = statResp;
 		} catch (PEException e) {
 			respMsg = new MyErrorResponse(e.rootCause());
-			respMsg.setPacketNumber(sequenceId + 1);
 		} catch (Throwable t) {
 			respMsg = new MyErrorResponse(new Exception(t.getMessage()));
-			respMsg.setPacketNumber(sequenceId + 1);
 		}
 
 		ctx.channel().write(respMsg);

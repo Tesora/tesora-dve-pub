@@ -31,27 +31,29 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.queryplan.QueryPlan;
 import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepInsertByKeyOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateByKeyOperation;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.UserCredentials;
@@ -124,7 +126,7 @@ public class SimpleConcurrencyTestNG extends PETest /* do not change this to a S
 			distValue.get("id").setValue(new Integer(currentId));
 
 			QueryPlan plan = new QueryPlan();
-			QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(db, distValue, "select * from foo where id = "+currentId);
+			QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(ssConnection, db, distValue, "select * from foo where id = " + currentId);
 			QueryStep step1 = new QueryStep(sg, step1op1);
 			plan.addStep(step1);
 			MysqlTextResultCollector results = new MysqlTextResultCollector();
@@ -181,7 +183,8 @@ public class SimpleConcurrencyTestNG extends PETest /* do not change this to a S
 			distValue.get("id").setValue(new Integer(currentId));
 
 			QueryPlan plan = new QueryPlan();
-			QueryStepOperation step1op1 = new QueryStepUpdateByKeyOperation(db, distValue, new SQLCommand("update foo set value = 'value"+currentId+"' where id = "+currentId));
+			QueryStepOperation step1op1 = new QueryStepUpdateByKeyOperation(db, distValue, new SQLCommand(ssConnection, "update foo set value = 'value"
+					+ currentId + "' where id = " + currentId));
 //			QueryStepOperation step1op1 = new QueryStepUpdateByKeyOperation(db, distValue, new SQLCommand("select * from foo where id = "+currentId));
 			QueryStep step1 = new QueryStep(sg, step1op1);
 			plan.addStep(step1);

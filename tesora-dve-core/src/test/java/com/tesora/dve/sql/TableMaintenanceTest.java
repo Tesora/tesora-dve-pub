@@ -21,8 +21,6 @@ package com.tesora.dve.sql;
  * #L%
  */
 
-import static org.junit.Assert.fail;
-
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -121,7 +119,7 @@ public class TableMaintenanceTest extends SchemaTest {
 				}
 				for (int i=0; i<tables.length; i++) {
 					StringBuilder tableCSV = new StringBuilder();
-					List<ResultRow> results = new ArrayList<ResultRow>();
+					final List<ResultRow> results = new ArrayList<ResultRow>();
 					for (int j=0; j<=i; j++) {
 						if (j>0) {
 							tableCSV.append(", ");
@@ -147,22 +145,20 @@ public class TableMaintenanceTest extends SchemaTest {
 						}
 					}
 					boolean shouldFail = tableCSV.toString().contains(otherPersistGroupTable);
-					String sql = operation + " " + option + " TABLE " + tableCSV;
-					try {
-						ResourceResponse response = conn.execute(sql);
-						response.assertResultsEqualUnordered(sql, results, response.getResults(),
-								response.getColumnCheckers());
-						if (shouldFail) {
-							fail("SQL: '" + sql + "' should fail, due to multiple Persistent Groups");
+					final String sql = operation + " " + option + " TABLE " + tableCSV;
+					final ExpectedSqlErrorTester tester = new ExpectedSqlErrorTester() {
+						@Override
+						public void test() throws Throwable {
+							ResourceResponse response = conn.execute(sql);
+							response.assertResultsEqualUnordered(sql, results, response.getResults(), response.getColumnCheckers());
 						}
-					} catch (Exception e) {
-						if (shouldFail) {
-							assertSQLException((SQLException)e,MySQLErrors.internalFormatter,
-									"Internal error: Table 'c' in maintenance command is not in Persistent Group 'checkg'");
-						}
-						else {
-							failWithStackTrace(e);
-						}
+					};
+
+					if (shouldFail) {
+						tester.assertError(SQLException.class, MySQLErrors.internalFormatter,
+								"Internal error: Table 'c' in maintenance command is not in Persistent Group 'checkg'");
+					} else {
+						tester.test();
 					}
 				}
 			}

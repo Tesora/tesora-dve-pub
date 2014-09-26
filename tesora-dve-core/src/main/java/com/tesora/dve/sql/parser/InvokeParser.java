@@ -177,6 +177,9 @@ public class InvokeParser {
 		} catch (Throwable t) {
 			// basically, just return null and try again
 			return null;
+		} finally {
+			if (pc != null)
+				pc.clearOrigStmt();
 		}
 		ParserException any = utils.buildError();
 		if (any != null)
@@ -236,6 +239,10 @@ public class InvokeParser {
 			throw pe;
 		} catch (Throwable t) {
 			throw new ParserException(Pass.SECOND, "Unable to parse '" + input.describe() + "'", t);
+		} finally {
+			// clear the input string
+			if (pc != null)
+				pc.clearOrigStmt();
 		}
 		ParserException any = utils.buildError();
 		if (any != null)

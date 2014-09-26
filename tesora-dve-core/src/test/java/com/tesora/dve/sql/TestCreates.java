@@ -52,7 +52,9 @@ import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.ConnectionResource;
+import com.tesora.dve.sql.util.JdbcConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
+import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResourceResponse;
 import com.tesora.dve.sql.util.ResourceResponse;
@@ -117,12 +119,13 @@ public class TestCreates extends SchemaTest {
 		String cts = AlterTest.getCreateTable(rootConnection, "testB");
 		assertTrue("enum should appear in create table stmt",cts.indexOf("bridge") > -1);
 		rootConnection.assertResults("show columns in testB like 'fund%'",br(nr,"funding","enum('angel','bridge','A','B')","NO","","angel",""));
-		try {
-			rootConnection.execute("create table uncreatable (`id` int, `funding` enum ('bankrupt')) static distribute on (`funding`)");
-		} catch (SchemaException pe) {
-			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				rootConnection.execute("create table uncreatable (`id` int, `funding` enum ('bankrupt')) static distribute on (`funding`)");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Invalid distribution column type: enum('bankrupt')");
-		}
 	}
 	
 	@Test
@@ -245,13 +248,15 @@ public class TestCreates extends SchemaTest {
 	public void testMultiDBCreate() throws Throwable {
 		ProxyConnectionResourceResponse rr = (ProxyConnectionResourceResponse) rootConnection.execute(testDDL.getCreateDatabaseStatement());
 		assertEquals("dup create should have 0 rows affected",rr.getNumRowsAffected(),0);
-		try {
-			rootConnection.execute("create database mtdb default persistent group pg using template " + TemplateMode.OPTIONAL);
-			fail("dup db should throw");
-		} catch (SchemaException pe) {
-			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+
+		// dup db should throw
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				rootConnection.execute("create database mtdb default persistent group pg using template " + TemplateMode.OPTIONAL);
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Database mtdb already exists");
-		}
 	}
 
 	@Test
@@ -1095,5 +1100,46 @@ public class TestCreates extends SchemaTest {
 				   nr,"dve1592",0,"fid",1,"fid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore,				   
 				   nr,"dve1592",1,"sid",1,"sid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore
 				   ));
+	}
+	
+	@Test
+	public void testPE1632() throws Throwable {
+		rootConnection.execute("DROP TABLE IF EXISTS pe1632;");
+		rootConnection.execute("SET SQL_MODE='TRADITIONAL'");
+		
+		// a table comment 2049 chars long
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				rootConnection.execute("CREATE TABLE t1 (c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment', c2 INTEGER,c3 INTEGER COMMENT '012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789', c4 INTEGER, c5 INTEGER, c6 INTEGER, c7 INTEGER, INDEX i1 (c1) COMMENT 'i1 comment',INDEX i2(c2)"
+								+ ") COMMENT='abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd'");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.tooLongTableCommentFormatter, "t1", 2048L);
+	}
+
+	@Test
+	public void testPE1651() throws Throwable {
+		try (final JdbcConnectionResource rc = new PortalDBHelperConnectionResource()) {
+			rc.connect();
+
+			rc.execute("SET NAMES utf8");
+			rc.execute("SET character_set_database = utf8");
+
+			rc.execute("DROP DATABASE IF EXISTS `ﾆﾎﾝｺﾞ`");
+			rc.execute("DROP DATABASE IF EXISTS `日本語`");
+			rc.execute("DROP DATABASE IF EXISTS `龔龖龗`");
+
+			rc.execute("CREATE DATABASE `ﾆﾎﾝｺﾞ` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + " USING TEMPLATE OPTIONAL");
+			rc.execute("CREATE DATABASE `日本語` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + "  USING TEMPLATE OPTIONAL");
+			rc.execute("CREATE DATABASE `龔龖龗` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + "  USING TEMPLATE OPTIONAL");
+
+			rc.execute("USE `ﾆﾎﾝｺﾞ`");
+			rc.execute("USE `日本語`");
+			rc.execute("USE `龔龖龗`");
+
+			rc.execute("DROP DATABASE `ﾆﾎﾝｺﾞ`");
+			rc.execute("DROP DATABASE `日本語`");
+			rc.execute("DROP DATABASE `龔龖龗`");
+		}
 	}
 }

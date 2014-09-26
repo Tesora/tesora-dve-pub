@@ -31,8 +31,8 @@ public class MSPComSetOptionRequestMessage extends BaseMSPMessage<Short> {
         super();
     }
 
-    protected MSPComSetOptionRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComSetOptionRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -47,9 +47,9 @@ public class MSPComSetOptionRequestMessage extends BaseMSPMessage<Short> {
     }
 
     @Override
-    public MSPComSetOptionRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComSetOptionRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComSetOptionRequestMessage(sequenceID,source);
+        return new MSPComSetOptionRequestMessage(source);
     }
 
     public short getOptionFlag() {

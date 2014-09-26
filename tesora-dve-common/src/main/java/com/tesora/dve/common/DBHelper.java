@@ -25,6 +25,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -38,6 +39,7 @@ import java.util.Properties;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
 public class DBHelper {
@@ -68,6 +70,20 @@ public class DBHelper {
 	protected boolean enableResultSetStreaming = false;
 	protected boolean useBufferedQuery = false;
 	protected boolean disconnectAfterProcess = true;
+
+	@SuppressWarnings("resource")
+	public static Charset getConnectionCharset(final DBHelper dbHelper) throws SQLException {
+		final Connection connection = dbHelper.getConnection();
+		if ((connection != null) && !connection.isClosed()) {
+			try (final ResultSet rs = connection.createStatement().executeQuery("SHOW VARIABLES WHERE Variable_name = 'character_set_connection'")) {
+				rs.last();
+				final String connectionCharsetName = rs.getString(2);
+				return Charset.forName(PEStringUtils.dequote(connectionCharsetName));
+			}
+		}
+
+		throw new PECodingException("Database connection is not open.");
+	}
 
 	/**
 	 * @param props

@@ -235,7 +235,7 @@ public abstract class Emitter {
 			final StringBuilder buf = new StringBuilder();
 			this.emitStatement(sc, buf);
 
-			return this.emitter.buildGenericCommand(buf.toString());
+			return this.emitter.buildGenericCommand(sc, buf.toString());
 		}
 
 		public final Emitter getEmitter() {
@@ -256,8 +256,8 @@ public abstract class Emitter {
 	public Emitter() {
 	}
 	
-	public GenericSQLCommand buildGenericCommand(String format) {
-		return builder.build(format);
+	public GenericSQLCommand buildGenericCommand(final SchemaContext sc, String format) {
+		return builder.build(sc, format);
 	}
 	
 	public abstract Emitter buildNew();

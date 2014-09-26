@@ -126,14 +126,14 @@ public class AlterTest extends SchemaTest {
 	
 	@Test
 	public void testRename() throws Throwable {
-		// this should not work
-		try {
-			conn.execute("alter table altest rename to `baltest`");
-			fail("shouldn't be able to rename to existing table name");
-		} catch (SchemaException e) {
-			assertErrorInfo(e,MySQLErrors.internalFormatter,
+		// shouldn't be able to rename to existing table name
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("alter table altest rename to `baltest`");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: Table `baltest` already exists");
-		}
 		conn.execute("alter table altest rename to `ralter`");
 		conn.assertResults("show tables like 'ralter'",br(nr,"ralter"));
 		conn.assertResults("show tables like 'altest'",br());
@@ -1272,5 +1272,21 @@ public class AlterTest extends SchemaTest {
 				br(nr,"pe1404_child",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
 					nr,"pe1404_child",0,"index1",1,"alt_id","A",ignore,null,null,"","BTREE","",""
 				   ));
+	}
+
+	@Test
+	public void testPE1632() throws Throwable {
+		conn.execute("DROP TABLE IF EXISTS pe1632;");
+		conn.execute("SET SQL_MODE='TRADITIONAL'");
+
+		// a field comment 1025 chars long
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("CREATE TABLE t1 (c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment', c2 INTEGER,"
+						+ "c3 INTEGER COMMENT '0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123',"
+						+ "c4 INTEGER, c5 INTEGER, c6 INTEGER, c7 INTEGER, INDEX i1 (c1) COMMENT 'i1 comment',INDEX i2(c2)) COMMENT='abc'");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.tooLongTableFieldCommentFormatter, "c3", 1024L);
 	}
 }

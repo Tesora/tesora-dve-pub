@@ -23,8 +23,6 @@ package com.tesora.dve.db.mysql.libmy;
 
 import io.netty.buffer.ByteBuf;
 
-import com.tesora.dve.exceptions.PEException;
-
 public class MyPrepareOKResponse extends MyResponseMessage {
 
 	public static final byte OKPKT_FIELD_COUNT = 0;
@@ -37,7 +35,6 @@ public class MyPrepareOKResponse extends MyResponseMessage {
 	}
 
     public MyPrepareOKResponse(MyPrepareOKResponse other) {
-        this.setPacketNumber( other.getPacketNumber() );//copy packet sequence.
         this.stmtId = other.stmtId;
         this.warningCount = other.warningCount;
         this.numColumns = other.numColumns;
@@ -50,7 +47,7 @@ public class MyPrepareOKResponse extends MyResponseMessage {
 	}
 	
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeZero(1);				// status
 		cb.writeInt((int) stmtId);
 		cb.writeShort(numColumns);

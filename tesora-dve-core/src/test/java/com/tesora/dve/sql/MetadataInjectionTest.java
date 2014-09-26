@@ -104,14 +104,14 @@ public class MetadataInjectionTest extends SchemaTest {
 		conn.assertResults("select model_type,  model_name from information_schema.distributions where database_name = 'mitdb' and table_name = 'laws'",
 				br(nr,RangeDistributionModel.MODEL_NAME,"openrange"));
 		
-		try {
-			// this should fail, as we had strict on
-			conn.execute("create table `titles` (`id` int auto_increment, `name` varchar(50))");
-			fail("strict template should cause failure on missing template");
-		} catch (SchemaException pe) {
-			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+		// strict template should cause failure on missing template
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("create table `titles` (`id` int auto_increment, `name` varchar(50))");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: No matching template found for table `titles`");
-		}
 
 		conn.execute("drop database mitdb");
 
@@ -122,13 +122,15 @@ public class MetadataInjectionTest extends SchemaTest {
 
 		// set the database on the connection
 		conn.execute("use mitdb");
-		try {
-			conn.execute("create table `laws` (`id` int auto_increment, `law` longtext)");
-			fail("Missing range should be caught");
-		} catch (SchemaException pe) {
-			assertErrorInfo(pe,MySQLErrors.internalFormatter,
+
+		// missing range should be caught
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("create table `laws` (`id` int auto_increment, `law` longtext)");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: No such range from template 'mit' on storage group mitg: longrange");
-		}
 		
 		conn.execute("drop database mitdb");
 		// set the template again, this time with a regex

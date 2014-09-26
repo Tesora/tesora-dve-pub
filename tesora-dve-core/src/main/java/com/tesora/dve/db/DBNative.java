@@ -22,6 +22,7 @@ package com.tesora.dve.db;
  */
 
 import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.sql.ParameterMetaData;
 import java.sql.SQLException;
 
@@ -39,6 +40,7 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.types.Type;
+import com.tesora.dve.variables.VariableStoreSource;
 
 public abstract class DBNative implements Serializable {
 	private static final long serialVersionUID = 1L;
@@ -141,15 +143,27 @@ public abstract class DBNative implements Serializable {
 	/**
 	 * Abstract methods for DB specific SQL statements
 	 */
-	public abstract SQLCommand getDropDatabaseStmt(String databaseName);
+	public abstract SQLCommand getDropDatabaseStmt(final VariableStoreSource vs, String databaseName);
 
-	public abstract SQLCommand getCreateDatabaseStmt(String databaseName, boolean ine, String defaultCharSet, String defaultCollation);
+	public abstract SQLCommand getCreateDatabaseStmt(final VariableStoreSource vs, String databaseName, boolean ine, String defaultCharSet,
+			String defaultCollation);
 
-	public abstract SQLCommand getAlterDatabaseStmt(String databaseName, String defaultCharSet, String defaultCollation);
+	public abstract SQLCommand getAlterDatabaseStmt(final VariableStoreSource vs, String databaseName, String defaultCharSet, String defaultCollation);
 
-	public abstract SQLCommand getCreateUserCommand(User user);
+	public abstract SQLCommand getCreateUserCommand(final VariableStoreSource vs, User user);
 
-	public abstract SQLCommand getGrantPriviledgesCommand(String userDeclaration, String databaseName);
+	public abstract SQLCommand getGrantPriviledgesCommand(final VariableStoreSource vs, String userDeclaration, String databaseName);
+
+	public abstract SQLCommand getDropDatabaseStmt(final Charset connectionCharset, String databaseName);
+
+	public abstract SQLCommand getCreateDatabaseStmt(final Charset connectionCharset, String databaseName, boolean ine, String defaultCharSet,
+			String defaultCollation);
+
+	public abstract SQLCommand getAlterDatabaseStmt(final Charset connectionCharset, String databaseName, String defaultCharSet, String defaultCollation);
+
+	public abstract SQLCommand getCreateUserCommand(final Charset connectionCharset, User user);
+
+	public abstract SQLCommand getGrantPriviledgesCommand(final Charset connectionCharset, String userDeclaration, String databaseName);
 
 	public abstract String getUserDeclaration(User user, boolean emitPassword);
 
@@ -277,6 +291,8 @@ public abstract class DBNative implements Serializable {
 
 	public abstract String getSetAutocommitStatement(String value);
 
+	public abstract void assertValidCharacterSet(String value) throws PEException;
+
 	public abstract void assertValidCollation(String value) throws PEException;
 
 	public abstract int convertTransactionIsolationLevel(String in) throws PEException;
@@ -324,4 +340,14 @@ public abstract class DBNative implements Serializable {
 	 * Default ON UPDATE FK referential action.
 	 */
 	public abstract ForeignKeyAction getDefaultOnUpdateAction();
+
+	/**
+	 * The maximum allowed length of a table comment.
+	 */
+	public abstract long getMaxTableCommentLength();
+
+	/**
+	 * The maximum allowed length of a table field comment.
+	 */
+	public abstract long getMaxTableFieldCommentLength();
 }

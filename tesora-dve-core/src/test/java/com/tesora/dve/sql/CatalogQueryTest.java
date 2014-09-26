@@ -25,7 +25,6 @@ package com.tesora.dve.sql;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -113,6 +112,7 @@ public class CatalogQueryTest extends SchemaTest {
 		conn = null;
 	}
 	
+	@SuppressWarnings("unused")
 	@Test
 	public void AtestCatalogQueries() throws Throwable {
 		conn.execute("use " + project.getDatabaseName());
@@ -195,12 +195,13 @@ public class CatalogQueryTest extends SchemaTest {
 		testCommand(conn,"range",br(nr,"offlimits","cqtps","int,int"),"offlimits",0,br(nr,"offlimits","cqtps","int,int"),false);
 		testCommand(conn,"range",br(nr,"offlimits","cqtps","int,int"),"offlimits",0,br(nr,"offlimits","cqtps","int,int"),true);
 		
-		try {
-			testCommand(conn,"table",br(nr,"A","AB"),"A",0,br(nr,"A"),false);
-			fail("Should have no results on show tables with no database set");
-		} catch (SQLException e) {
-			assertSQLException(e,MySQLErrors.missingDatabaseFormatter,"No database selected");
-		}
+		// should have no results on show tables with no database set
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				testCommand(conn, "table", br(nr, "A", "AB"), "A", 0, br(nr, "A"), false);
+			}
+		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter, "No database selected");
 
 		conn.execute("use cqtdb");
 		testCommand(conn,"table",br(nr,"A",nr,"AB"),"A",0,br(nr,"A"),false);
@@ -229,13 +230,14 @@ public class CatalogQueryTest extends SchemaTest {
 		// TODO
 		// unclear how this would work - maybe a postexecution filter?
 		if (false) {
-			try {
-				conn.execute("describe foo");
-				fail("describe foo for missing foo should throw");
-			} catch (SQLException e) {
-				assertSQLException(e,MySQLErrors.missingTableFormatter,
+			// describe foo for missing foo should throw
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					conn.execute("describe foo");
+				}
+			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
 						"Table 'cqtdb.foo' doesn't exist");
-			}
 		}
 	}
 	
@@ -349,12 +351,13 @@ public class CatalogQueryTest extends SchemaTest {
 		// reset the current database
 		conn.connect();
 		
-		try {
-			conn.execute("show table status");
-		} catch (SQLException e) {
-			assertSQLException(e,MySQLErrors.missingDatabaseFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("show table status");
+			}
+		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter,
 					"No database selected");
-		}
 				
 		rr = conn.fetch("show table status from " + project.getDatabaseName());
 		rows = rr.getResults();
@@ -365,12 +368,15 @@ public class CatalogQueryTest extends SchemaTest {
 
 		conn.assertResults("show table status from junk", br());
 
-		try {
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+
 			conn.execute("show tables");
-		} catch (SQLException e) {
-			assertSQLException(e,MySQLErrors.missingDatabaseFormatter,
+
+			}
+		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter,
 					"No database selected");
-		}
 		
 		rr = conn.fetch("show tables from " + project.getDatabaseName());
 		rows = rr.getResults();
@@ -543,7 +549,7 @@ public class CatalogQueryTest extends SchemaTest {
 	public void testPHPAdminConnect() throws Throwable {
 		conn.execute("create user 'nonroot'@'localhost' identified by 'password'");
 		conn.execute("GRANT ALL ON " + project.getDatabaseName() + ".* TO 'nonroot'@'localhost'");
-		ProxyConnectionResource nonRootConn = new ProxyConnectionResource("nonroot", "password");
+		final ProxyConnectionResource nonRootConn = new ProxyConnectionResource("nonroot", "password");
 		try {
 			// this just tests to make sure we don't blow up executing these statements...
 			nonRootConn.execute("use " + project.getDatabaseName());
@@ -588,26 +594,29 @@ public class CatalogQueryTest extends SchemaTest {
 			
 			nonRootConn.assertResults("SELECT USER()", br(nr, "nonroot@localhost"));
 
-			try {
-				nonRootConn.execute("show master logs");
-			} catch (SchemaException e) {
-				assertErrorInfo(e,MySQLErrors.internalFormatter,
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					nonRootConn.execute("show master logs");
+				}
+			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
-			}
 
-			try {
-				nonRootConn.execute("show master status");
-			} catch (SchemaException e) {
-				assertErrorInfo(e,MySQLErrors.internalFormatter,
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					nonRootConn.execute("show master status");
+				}
+			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
-			}
 
-			try {
-				nonRootConn.execute("show slave status");
-			} catch (SchemaException e) {
-				assertErrorInfo(e,MySQLErrors.internalFormatter,
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					nonRootConn.execute("show slave status");
+				}
+			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
-			}
 			
 			nonRootConn.assertResults("SELECT * FROM information_schema.character_sets", 
 					br(nr, "ascii", "US ASCII", Long.valueOf(1),

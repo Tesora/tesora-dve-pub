@@ -22,16 +22,14 @@ package com.tesora.dve.db;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.libmy.*;
-
-import io.netty.channel.Channel;
 
 import java.util.List;
 
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.mysql.MysqlExecuteCommand;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -40,7 +38,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class DBEmptyTextResultConsumer implements MysqlQueryResultConsumer, DBResultConsumer {
+public class DBEmptyTextResultConsumer extends DBResultConsumer implements MysqlQueryResultConsumer {
 	
 	static Logger logger = Logger.getLogger( DBEmptyTextResultConsumer.class );
 
@@ -127,9 +125,9 @@ public class DBEmptyTextResultConsumer implements MysqlQueryResultConsumer, DBRe
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled()) logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		channel.write(new MysqlExecuteCommand(sql, connectionMonitor, this, promise));
+		return new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise);
 	}
 
 	@Override

@@ -30,7 +30,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.logutil.ExecutionLogger;
@@ -106,13 +105,11 @@ public class QueryStep {
 	 * @throws Throwable 
 	 */
 	public void executeStep(SSConnection ssCon, DBResultConsumer resultConsumer) throws Throwable  {
-		PEThreadContext.pushFrame(getClass()).put("storageGroup", storageGroup).logDebug();
 		try {
 			validateStep();
 			needsCleanup = true;
 			doExecuteStep(ssCon, resultConsumer);
 		} finally {
-			PEThreadContext.popFrame();
 		}
 	}
 
@@ -196,10 +193,7 @@ public class QueryStep {
 	
 	void executeQueryOperation(QueryStepOperation op, SSConnection ssCon, DBResultConsumer resultConsumer) throws Throwable {
 		if (op!= null) {
-			PEThreadContext.pushFrame("QueryStepOperation")
-					.put("resultConsumer", resultConsumer)
-					.put("operation", op.describeForLog())
-					.logDebug();
+
 			try {
 				ExecutionLogger beforeLogger = ssCon.getExecutionLogger().getNewLogger("BeforeStepExec");
 				WorkerGroup wg = null;
@@ -232,7 +226,6 @@ public class QueryStep {
 					}
 				}
 			} finally {
-				PEThreadContext.popFrame();
 			}
 		}
 	}

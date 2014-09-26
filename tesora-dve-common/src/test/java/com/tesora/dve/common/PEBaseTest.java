@@ -157,6 +157,11 @@ public abstract class PEBaseTest {
 		 *            exception type or hit the end.
 		 */
 		public void assertException(final Class<? extends Throwable> expectedExceptionClass, final String expectedExceptionMessage, final boolean traceCauseTree) {
+			getAssertException(expectedExceptionClass, expectedExceptionMessage, traceCauseTree);
+		}
+
+		protected <T extends Throwable> T getAssertException(final Class<T> expectedExceptionClass, final String expectedExceptionMessage,
+				final boolean traceCauseTree) {
 			try {
 				test();
 			} catch (Throwable e) {
@@ -175,15 +180,16 @@ public abstract class PEBaseTest {
 					fail("An exception with wrong message ('" + e.getMessage() + "') was thrown.");
 					break;
 				case OK:
-					return;
+					return (T) e;
 				default:
 					break;
 				}
 			}
 
 			fail("Expected exception '" + expectedExceptionClass + "' was not thrown.");
+			return null;
 		}
-		
+
 		/**
 		 * The code to be tested.
 		 */
@@ -192,11 +198,7 @@ public abstract class PEBaseTest {
 		private Event checkException(final Throwable e, final Class<? extends Throwable> expectedExceptionClass, final String expectedExceptionMessage) {
 			if (expectedExceptionClass.isAssignableFrom(e.getClass())) {
 				String msg = e.getMessage();
-				// strip PEContext, if any
-				int ix = (msg != null ? msg.indexOf(PEContext.LOG_PREFIX) : -1);
-				if (ix > 0) {
-					msg = msg.substring(0, ix).trim();
-				}
+
 				if ((expectedExceptionMessage != null) && !msg.equals(expectedExceptionMessage)) {
 					return Event.WRONG_MSG;
 				} else {
@@ -206,7 +208,6 @@ public abstract class PEBaseTest {
 				return Event.WRONG_TYPE;
 			}
 		}
-
 	}
 	
 	/**

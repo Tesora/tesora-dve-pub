@@ -64,12 +64,12 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 		return new ProjectingExecutionStep(sc, db, storageGroup, vect, distKey, command, splain);
 	}
 
-	private ProjectingExecutionStep(Database<?> db, PEStorageGroup storageGroup, String sql) throws PEException {
-		super(db, storageGroup, null, null, new GenericSQLCommand(sql), DMLExplainReason.ADHOC.makeRecord());
+	private ProjectingExecutionStep(final SchemaContext sc, Database<?> db, PEStorageGroup storageGroup, String sql) throws PEException {
+		super(db, storageGroup, null, null, new GenericSQLCommand(sc, sql), DMLExplainReason.ADHOC.makeRecord());
 	}
 	
-	public static ProjectingExecutionStep build(Database<?> db, PEStorageGroup storageGroup, String sql) throws PEException {
-		return new ProjectingExecutionStep(db, storageGroup, sql);
+	public static ProjectingExecutionStep build(final SchemaContext sc, Database<?> db, PEStorageGroup storageGroup, String sql) throws PEException {
+		return new ProjectingExecutionStep(sc, db, storageGroup, sql);
 	}
 		
 	private ProjectingExecutionStep(Database<?> db, PEStorageGroup storageGroup, GenericSQLCommand gsql) throws PEException {

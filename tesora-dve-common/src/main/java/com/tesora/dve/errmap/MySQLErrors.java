@@ -73,6 +73,31 @@ public class MySQLErrors {
 					"Unknown system variable '%s'",
 					1193,
 					"HY000");
+	public static final ErrorCodeFormatter tooLongTableCommentFormatter =
+			new TwoParamErrorCodeFormatter<String, Long>(DVEErrors.TOO_LONG_TABLE_COMMENT,
+					"Comment for table '%s' is too long (max = %d).",
+					1628,
+					"HY000");
+	public static final ErrorCodeFormatter tooLongTableFieldCommentFormatter =
+			new TwoParamErrorCodeFormatter<String, Long>(DVEErrors.TOO_LONG_TABLE_FIELD_COMMENT,
+					"Comment for field '%s' is too long (max = %d).",
+					1629,
+					"HY000");
+	public static final ErrorCodeFormatter nonUniqueTableFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.NON_UNIQUE_TABLE,
+					"Not unique table/alias: '%s'",
+					1066,
+					"42000");
+	public static final ErrorCodeFormatter unknownCharacterSetFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_CHARACTER_SET,
+					"Unknown character set: '%s'",
+					1115,
+					"42000");
+	public static final ErrorCodeFormatter unknownCollationFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_COLLATION,
+					"Unknown collation: '%s'",
+					1273,
+					"HY000");
 			
 	
 	public static final ErrorCodeFormatter[] myFormatters = new ErrorCodeFormatter[] {
@@ -86,8 +111,12 @@ public class MySQLErrors {
 		invalidDiscriminantUpdateFormatter,
 		invalidContainerDeleteFormatter,
 		unknownSysVarFormatter,
-		internalFormatter
-
+		internalFormatter,
+		tooLongTableCommentFormatter,
+		tooLongTableFieldCommentFormatter,
+		nonUniqueTableFormatter,
+		unknownCharacterSetFormatter,
+		unknownCollationFormatter
 	};
 
 			

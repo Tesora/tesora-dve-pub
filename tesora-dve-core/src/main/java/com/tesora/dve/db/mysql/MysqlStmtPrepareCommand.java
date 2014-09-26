@@ -56,7 +56,7 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 	public void execute(ChannelHandlerContext ctx, Charset charset) {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
-        MSPComPrepareStmtRequestMessage prepStmt = MSPComPrepareStmtRequestMessage.newMessage((byte) 0, sqlCommand, charset);
+        MSPComPrepareStmtRequestMessage prepStmt = MSPComPrepareStmtRequestMessage.newMessage(sqlCommand, charset);
         ctx.write(prepStmt);
     }
 
@@ -149,11 +149,6 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 	}
 
     @Override
-    public boolean isDone(ChannelHandlerContext ctx){
-        return state == ResponseState.DONE;
-    }
-
-    @Override
     public void packetStall(ChannelHandlerContext ctx) {
     }
 
@@ -166,12 +161,7 @@ public class MysqlStmtPrepareCommand extends MysqlConcurrentCommand implements M
 		state = ResponseState.DONE;
 	}
 
-	@Override
-	public MysqlCommandResultsProcessor getResultHandler() {
-		return this;
-	}
-
-	@Override
+    @Override
 	public void failure(Exception e) {
 		getCompletionHandle().failure(e);
 	}

@@ -30,8 +30,6 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -46,6 +44,8 @@ import com.tesora.dve.externalservice.ExternalServiceFactory;
 import com.tesora.dve.externalservice.ExternalServicePlugin;
 import com.tesora.dve.groupmanager.GroupMembershipListener.MembershipEventType;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.schema.PEExternalService;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
@@ -211,19 +211,19 @@ public class ExternalServiceTest extends SchemaTest {
 				br(nr,testESConfig2,testESUser,Boolean.TRUE));
 	}
 
-	void verifyDrop(String datastore) throws Throwable {
+	void verifyDrop(final String datastore) throws Throwable {
 		dbh.assertResults("SELECT config, connect_user, uses_datastore FROM external_service WHERE name='" + testExternalServiceName + "'", 
 				br());
 
 		// make sure datastore has been dropped
 		if (datastore != null) {
-			try {
-				conn.execute("USE " + datastore);
-			} catch (SQLException e) {
-				// expected
-				assertSQLException(e,MySQLErrors.unknownDatabaseFormatter,
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					conn.execute("USE " + datastore);
+				}
+			}.assertError(SQLException.class, MySQLErrors.unknownDatabaseFormatter,
 						"Unknown database '" + datastore + "'");
-			}
 		}
 		
 		// make sure service is gone

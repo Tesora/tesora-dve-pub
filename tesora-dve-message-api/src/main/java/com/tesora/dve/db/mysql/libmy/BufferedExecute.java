@@ -106,7 +106,7 @@ public class BufferedExecute extends MyMessage {
         return initialCapacity;
     }
 
-    public void marshallMessage(ByteBuf stmtExecuteBuf) throws PEException {
+    public void marshallMessage(ByteBuf stmtExecuteBuf) {
         //header and type are marshalled by parent class.
 
         int rowsToFlush = this.size();

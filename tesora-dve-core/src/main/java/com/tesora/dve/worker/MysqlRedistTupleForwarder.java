@@ -21,25 +21,34 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import io.netty.channel.ChannelHandlerContext;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.SynchronousCompletion;
-import io.netty.channel.Channel;
-
-import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.db.mysql.*;
-import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.SynchronousCompletion;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
+import com.tesora.dve.db.mysql.FieldMetadataAdapter;
+import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.MysqlStmtExecuteCommand;
+import com.tesora.dve.db.mysql.RedistTupleBuilder;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
+import com.tesora.dve.db.mysql.libmy.MyBinaryResultRow;
+import com.tesora.dve.db.mysql.libmy.MyColumnCount;
+import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
+import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
+import com.tesora.dve.db.mysql.libmy.MyFieldPktResponse;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.libmy.MyOKResponse;
+import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
+import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.exceptions.PECodingException;
@@ -51,7 +60,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBResultConsumer {
+public class MysqlRedistTupleForwarder extends DBResultConsumer implements MysqlQueryResultConsumer {
 	
 	static Logger logger = Logger.getLogger(MysqlRedistTupleForwarder.class);
 
@@ -134,8 +143,8 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), this, promise));
+    public MysqlCommand  writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise);
 	}
 
 	private RedistTupleBuilder getTargetHandler() throws PEException {

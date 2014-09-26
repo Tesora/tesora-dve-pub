@@ -34,6 +34,7 @@ import org.apache.commons.lang.StringUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
@@ -229,8 +230,8 @@ public class StrictForeignKeyTest extends SchemaTest {
 		}
 	}
 
-	public static void testDropTargetTable(TestConnections conns) throws Throwable {
-		String[] rhsTabNames = new String[] {
+	public static void testDropTargetTable(final TestConnections conns) throws Throwable {
+		final String[] rhsTabNames = new String[] {
 				"RB",
 				"RRa"
 		};
@@ -270,12 +271,13 @@ public class StrictForeignKeyTest extends SchemaTest {
 		}
 		// first off - dropping any of the rhs tables should result in an error
 		for(int i = 0; i < rhsTabNames.length; i++) {
-			try {
-				conns.getTestConnection().execute("drop table " + rhsTabNames[i]);
-				fail("should not be able to drop ref'd table");
-			} catch (Throwable t) {
-				conns.assertSchemaException(t, "Unable to drop table `" + rhsTabNames[i] + "` because referenced by foreign keys");
-			}
+			final int nameIndex = i;
+			new ExpectedExceptionTester() {
+				@Override
+				public void test() throws Throwable {
+					conns.getTestConnection().execute("drop table " + rhsTabNames[nameIndex]);
+				}
+			}.assertException(PESQLStateException.class, "(1217: 23000) Cannot delete or update a parent row: a foreign key constraint fails", true);
 		}
 		Object[] cols = br(nr,"LB","fid","RB","id",
 				nr,"LRaRB","fid","RB","id",

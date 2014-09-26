@@ -26,36 +26,29 @@ import io.netty.buffer.Unpooled;
 import java.nio.ByteOrder;
 
 public abstract class BaseMSPMessage<S> implements MSPMessage {
-    private static final int MAX_MYSQL_PAYLOAD_SIZE = 0xFFFFFF; //16777215=(2 raised to the 24th, minus 1).
     public static final int INITIAL_CAPACITY = 256;
 
-    byte sequenceID;
     private S state;
     private ByteBuf buffer;
 
     public BaseMSPMessage(){
-        this.sequenceID = 0;
         this.state = null;
         this.buffer = null;
     }
 
-    public BaseMSPMessage(byte sequence, S state){
-        this.sequenceID = sequence;
+    public BaseMSPMessage(S state){
         this.set(state);
     }
 
-    public BaseMSPMessage(byte sequence, byte[] heapData){
-        this.sequenceID = sequence;
+    public BaseMSPMessage(byte[] heapData){
         this.set(Unpooled.wrappedBuffer(heapData));
     }
 
-    public BaseMSPMessage(byte sequence, ByteBuf buffer){
-        this.sequenceID = sequence;
+    public BaseMSPMessage(ByteBuf buffer){
         this.set(buffer);
     }
 
-    public BaseMSPMessage(byte sequence, S state, ByteBuf buffer){
-        this.sequenceID = sequence;
+    public BaseMSPMessage(S state, ByteBuf buffer){
         this.set(state,buffer);
     }
 
@@ -63,7 +56,7 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
     public abstract byte getMysqlMessageType();
 
     @Override
-    public abstract MSPMessage newPrototype(byte sequenceID, ByteBuf source);
+    public abstract MSPMessage newPrototype(ByteBuf source);
 
     protected S unmarshall(ByteBuf source) {
         throw new UnsupportedOperationException();
@@ -73,29 +66,9 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
         throw new UnsupportedOperationException();
     }
 
-    public void writeTo(ByteBuf destination){
-        ByteBuf sliceContents = readBuffer().slice().order(ByteOrder.LITTLE_ENDIAN);
-
-        ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
-        leBuf.ensureWritable(sliceContents.readableBytes() + 4);
-
-        int sequenceIter = this.getSequenceID();
-        boolean lastChunkWasMaximumLength;
-        do {
-            int initialSize = sliceContents.readableBytes();
-            int maxSlice = MAX_MYSQL_PAYLOAD_SIZE;
-            int sendingPayloadSize = Math.min(maxSlice, initialSize);//will send a zero payload packet if packet is exact multiple of MAX_MYSQL_PAYLOAD_SIZE.
-            lastChunkWasMaximumLength = (sendingPayloadSize == maxSlice);
-
-            ByteBuf nextChunk = sliceContents.readSlice(sendingPayloadSize);
-            int payloadLength = nextChunk.readableBytes();
-
-            leBuf.writeMedium(payloadLength);
-            leBuf.writeByte(sequenceIter);
-            leBuf.writeBytes(nextChunk);
-
-            sequenceIter++;
-        } while (sliceContents.readableBytes() > 0 || lastChunkWasMaximumLength);
+    public void marshallPayload(ByteBuf destination){
+        ByteBuf sliceContents = readBuffer().slice();
+        destination.writeBytes(sliceContents);
     }
 
     protected S readState() {
@@ -123,16 +96,6 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
         }
 
         throw new IllegalStateException(String.format("Cannot access buffer of %s, no fields or buffer provided.",this.getClass().getSimpleName()));
-    }
-
-    @Override
-    public byte getSequenceID() {
-        return sequenceID;
-    }
-
-    @Override
-    public void setSequenceID(byte newSeq){
-        this.sequenceID = newSeq;
     }
 
     public String toString(){

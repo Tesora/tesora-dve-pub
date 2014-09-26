@@ -22,6 +22,7 @@ package com.tesora.dve.db.mysql.libmy;
  */
 
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
@@ -54,7 +55,7 @@ public class ChannelHandlerContextStub implements ChannelHandlerContext {
 	@Override
 	public ByteBufAllocator alloc() {
 		// TODO Auto-generated method stub
-		return null;
+		return UnpooledByteBufAllocator.DEFAULT;
 	}
 
 	@Override
