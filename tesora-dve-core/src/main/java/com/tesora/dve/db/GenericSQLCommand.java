@@ -93,40 +93,54 @@ public class GenericSQLCommand {
 		}
 	}
 
-	private GenericSQLCommand(final SchemaContext sc, String format, OffsetEntry[] offsets, StatementType stmtType, Boolean isUpdate, Boolean hasLimit) {
-		this(getCurrentSessionConnectionCharSet(sc), format, offsets, stmtType, isUpdate, hasLimit);
+	public GenericSQLCommand(final SchemaContext sc, final String format) {
+		this(getCurrentSessionConnectionCharSet(sc), format);
 	}
 
-	private GenericSQLCommand(final VariableStoreSource vs, String format, OffsetEntry[] offsets, StatementType stmtType, Boolean isUpdate, Boolean hasLimit) {
-		this(getCurrentSessionConnectionCharSet(vs), format, offsets, stmtType, isUpdate, hasLimit);
+	public GenericSQLCommand(final VariableStoreSource vs, final String format) {
+		this(getCurrentSessionConnectionCharSet(vs), format);
 	}
 
-	private GenericSQLCommand(final Charset connectionCharset, String format, OffsetEntry[] offsets, StatementType stmtType, Boolean isUpdate, Boolean hasLimit) {
-		this(format.getBytes(connectionCharset), offsets, stmtType, isUpdate, hasLimit);
+	public GenericSQLCommand(final Charset connectionCharset, final String format) {
+		this(format.getBytes(connectionCharset));
 	}
 
-	private GenericSQLCommand(byte[] format, OffsetEntry[] offsets, StatementType stmtType, Boolean isUpdate, Boolean hasLimit) {
+	public GenericSQLCommand(final byte[] format) {
+		this(format, new OffsetEntry[0], null, null, null);
+	}
+
+	/**
+	 * TODO
+	 * 
+	 * @param entries
+	 *            Offsets into the given byte array.
+	 */
+	private GenericSQLCommand(final byte[] format, final OffsetEntry[] entries, final StatementType stmtType, final Boolean isUpdate,
+			final Boolean hasLimit) {
 		this.format = format;
-		this.entries = offsets;
+		this.entries = entries;
 		this.type = stmtType;
 		this.isUpdate = isUpdate;
 		this.hasLimit = hasLimit;
 	}
 
-	public GenericSQLCommand(final SchemaContext sc, String format) {
-		this(sc, format, new OffsetEntry[0], null, null, null);
+	private GenericSQLCommand(final SchemaContext sc, final String format, final OffsetEntry[] entries, StatementType stmtType, Boolean isUpdate,
+			Boolean hasLimit) {
+		this(getCurrentSessionConnectionCharSet(sc), format, entries, stmtType, isUpdate, hasLimit);
 	}
 
-	public GenericSQLCommand(final VariableStoreSource vs, String format) {
-		this(vs, format, new OffsetEntry[0], null, null, null);
-	}
-
-	public GenericSQLCommand(final Charset connectionCharset, String format) {
-		this(connectionCharset, format, new OffsetEntry[0], null, null, null);
-	}
-
-	public GenericSQLCommand(byte[] format) {
-		this(format, new OffsetEntry[0], null, null, null);
+	/**
+	 * This constructor takes entries. We need to map entries to positions in
+	 * the resolved string.
+	 */
+	private GenericSQLCommand(final Charset connectionCharset, final String format, final OffsetEntry[] entries, StatementType stmtType, Boolean isUpdate,
+			Boolean hasLimit) {
+		this.format = format.getBytes(connectionCharset);
+		this.entries = entries;
+		// TODO
+		this.type = stmtType;
+		this.isUpdate = isUpdate;
+		this.hasLimit = hasLimit;
 	}
 
 	public String getUnresolved() {
@@ -145,25 +159,27 @@ public class GenericSQLCommand {
 		return new SQLCommand(this);
 	}
 
-	// for fetch support
-	public GenericSQLCommand modify(final VariableStoreSource vs, String toAppend) {
-		return new GenericSQLCommand(vs, format + toAppend, entries, type, isUpdate, hasLimit);
-	}
+	// TODO for fetch support
+	//	public GenericSQLCommand modify(final VariableStoreSource vs, String toAppend) {
+	//		return new GenericSQLCommand(vs, format + toAppend, this.entries, this.type, isUpdate, hasLimit);
+	//	}
 
-	public GenericSQLCommand append(final Charset connectionCharset, final String formatToAppend) {
-		return this.append(formatToAppend.getBytes(connectionCharset));
-	}
+	//	TODO
+	//	public GenericSQLCommand append(final Charset connectionCharset, final String formatToAppend) {
+	//		return this.append(formatToAppend.getBytes(connectionCharset));
+	//	}
 
 	public GenericSQLCommand append(final GenericSQLCommand other) {
 		return this.append(other.entries).append(other.format);
 	}
 
-	public GenericSQLCommand append(final byte[] formatToAppend) {
+	private GenericSQLCommand append(final byte[] formatToAppend) {
 		this.format = ArrayUtils.addAll(this.format, formatToAppend);
 		return this;
 	}
 
 	/**
+	 * TODO
 	 * Append other command's entries and update their offsets.
 	 */
 	public GenericSQLCommand append(final OffsetEntry[] entriesToAppend) {
@@ -179,19 +195,19 @@ public class GenericSQLCommand {
 
 	private static final String forUpdate = "FOR UPDATE";
 
-	// also for fetch support
-	public GenericSQLCommand stripForUpdate(final VariableStoreSource vs) {
-		if (!isUpdate) {
-			return this;
-		}
-		final String formatStr = new String(format);
-		final int offset = formatStr.indexOf(forUpdate);
-		final StringBuilder out = new StringBuilder();
-		out.append(formatStr.substring(0, offset - 1));
-		out.append(" ");
-		out.append(formatStr.substring(offset + forUpdate.length()));
-		return new GenericSQLCommand(vs, out.toString(), entries, type, false, hasLimit);
-	}
+	// TODO also for fetch support
+	//	public GenericSQLCommand stripForUpdate(final VariableStoreSource vs) {
+	//		if (!isUpdate) {
+	//			return this;
+	//		}
+	//		final String formatStr = new String(format);
+	//		final int offset = formatStr.indexOf(forUpdate);
+	//		final StringBuilder out = new StringBuilder();
+	//		out.append(formatStr.substring(0, offset - 1));
+	//		out.append(" ");
+	//		out.append(formatStr.substring(offset + forUpdate.length()));
+	//		return new GenericSQLCommand(vs, out.toString(), entries, type, false, hasLimit);
+	//	}
 
 	public GenericSQLCommand resolve(SchemaContext sc, String prettyIndent) {
 		return resolve(sc, false, prettyIndent);
@@ -299,7 +315,7 @@ public class GenericSQLCommand {
 		}
 		sqlFragments.add(ArrayUtils.subarray(format, offset, format.length));
 		final OffsetEntry[] does = downstream.toArray(new OffsetEntry[0]);
-		return new GenericSQLCommand(concatSQLFragments(sqlFragments), does, type, isUpdate, hasLimit);
+		return new GenericSQLCommand(concatSQLFragments(sqlFragments), does, this.type, this.isUpdate, this.hasLimit);
 	}
 
 	public void display(SchemaContext sc, boolean preserveParamMarkers, String indent, List<String> lines) {
@@ -419,29 +435,18 @@ public class GenericSQLCommand {
 		}
 		buf.append(formatStr.substring(offset));
 		final OffsetEntry[] does = downstream.toArray(new OffsetEntry[0]);
-		return new GenericSQLCommand(sc, buf.toString(), does, type, isUpdate, hasLimit);
-	}
-
-	public List<Object> getFinalParams(SchemaContext sc) {
-		// does not apply if params are not pushdown
-		if (sc.getValueManager().hasPassDownParams()) {
-			final List<Object> out = new ArrayList<Object>();
-			for (final OffsetEntry oe : entries) {
-				if (oe.getKind() == EntryKind.PARAMETER) {
-					final ParameterOffsetEntry poe = (ParameterOffsetEntry) oe;
-					out.add(sc.getValueManager().getValue(sc, poe.getParameter()));
-				}
-			}
-			return out;
-		}
-		return null;
+		return new GenericSQLCommand(sc, buf.toString(), does, this.type, this.isUpdate, this.hasLimit);
 	}
 
 	public String resolve(final Charset connectionCharset, final Worker w) {
 		return new String(resolveAsBytes(connectionCharset, w));
 	}
 
-	public byte[] resolveAsBytes(final Charset connectionCharset, final Worker w) {
+	public GenericSQLCommand getResolvedCopy(final Charset connectionCharset, final Worker w) {
+		return new GenericSQLCommand(this.resolveAsBytes(connectionCharset, w));
+	}
+
+	private byte[] resolveAsBytes(final Charset connectionCharset, final Worker w) {
 		if (entries.length == 0) {
 			return format;
 		}
@@ -475,6 +480,21 @@ public class GenericSQLCommand {
 		sqlFragments.add(ArrayUtils.subarray(format, offset, format.length));
 		return concatSQLFragments(sqlFragments);
 
+	}
+
+	public List<Object> getFinalParams(SchemaContext sc) {
+		// does not apply if params are not pushdown
+		if (sc.getValueManager().hasPassDownParams()) {
+			final List<Object> out = new ArrayList<Object>();
+			for (final OffsetEntry oe : entries) {
+				if (oe.getKind() == EntryKind.PARAMETER) {
+					final ParameterOffsetEntry poe = (ParameterOffsetEntry) oe;
+					out.add(sc.getValueManager().getValue(sc, poe.getParameter()));
+				}
+			}
+			return out;
+		}
+		return null;
 	}
 
 	public Boolean isSelect() {
@@ -791,7 +811,7 @@ public class GenericSQLCommand {
 
 		public GenericSQLCommand build(final SchemaContext sc, String format) {
 			final OffsetEntry[] out = entries.toArray(new OffsetEntry[0]);
-			return new GenericSQLCommand(sc, format, out, type, isForUpdate, isLimit);
+			return new GenericSQLCommand(sc, format, out, this.type, this.isForUpdate, this.isLimit);
 		}
 	}
 }

@@ -116,10 +116,6 @@ public class SQLCommand implements Serializable {
 		return sql.resolve(connectionCharset, w);
 	}
 
-	public byte[] getSQLAsBytes(final Charset connectionCharset, final Worker w) {
-		return sql.resolveAsBytes(connectionCharset, w);
-	}
-
 	public boolean isEmpty() {
 		return (sql == null) || sql.getUnresolved().isEmpty();
 	}
@@ -187,7 +183,7 @@ public class SQLCommand implements Serializable {
 	}
 
 	public SQLCommand getResolvedCommand(final Charset connectionCharset, final Worker worker) {
-		final SQLCommand newCommand = new SQLCommand(new GenericSQLCommand(getSQLAsBytes(connectionCharset, worker)));
+		final SQLCommand newCommand = new SQLCommand(sql.getResolvedCopy(connectionCharset, worker));
 		newCommand.parameters = parameters;
 		newCommand.projection = projection;
 		newCommand.referenceTime = referenceTime;
