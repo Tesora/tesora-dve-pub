@@ -57,8 +57,8 @@ public abstract class WorkerRequest extends RequestMessage implements GroupDispa
     }
 
     @Override
-    public void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
-        this.groupDispatch.dispatch(connection,sql,promise);
+    public Bundle getDispatchBundle(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
+        return this.groupDispatch.getDispatchBundle(connection, sql, promise);
     }
 
     public WorkerRequest(SSContext ctx) {

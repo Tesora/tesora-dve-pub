@@ -103,7 +103,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        results.dispatch(mysqlConn, sqlc, promise);
+        results.getDispatchBundle(mysqlConn, sqlc, promise).writeAndFlush(mysqlConn);
         promise.sync();
 		
 		return new ProxyConnectionResourceResponse(results);
@@ -115,7 +115,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlPrepareStatementCollector collector = new MysqlPrepareStatementCollector();
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        collector.dispatch(mysqlConn, new SQLCommand(stmt), promise);
+        collector.getDispatchBundle(mysqlConn, new SQLCommand(stmt), promise).writeAndFlush(mysqlConn);
         promise.sync();
 		return collector.getPreparedStatement();
 	}
@@ -130,7 +130,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		
 		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand("EXEC PREPARED"), parameters);
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        collector.dispatch(mysqlConn, sqlc, promise);
+        collector.getDispatchBundle(mysqlConn, sqlc, promise).writeAndFlush(mysqlConn);
         promise.sync();
 		
 		return new ProxyConnectionResourceResponse(collector);

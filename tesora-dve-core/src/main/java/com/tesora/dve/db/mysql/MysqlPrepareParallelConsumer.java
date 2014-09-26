@@ -52,10 +52,10 @@ public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
 	private ChannelHandlerContext ctxToConsume = null;
 
     @Override
-    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(sql.getSQL(), channel.getTargetCharset());
 		MysqlCommand cmd = new MysqlStmtPrepareCommand(channel, sql.getSQL(), this, promise);
-        channel.writeAndFlush( message, cmd );
+        return new Bundle(message, cmd );
 	}
 
 	public void header(CommandChannel executingOnChannel, ChannelHandlerContext ctx, MyPrepareOKResponse prepareOK) {

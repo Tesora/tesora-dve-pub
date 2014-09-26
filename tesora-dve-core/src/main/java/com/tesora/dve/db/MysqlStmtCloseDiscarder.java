@@ -46,10 +46,10 @@ public class MysqlStmtCloseDiscarder extends DBResultConsumer  {
 	}
 
     @Override
-    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
         MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
-        channel.writeAndFlush(message, new MysqlStmtCloseCommand(preparedID, promise) );
+        return new Bundle(message, new MysqlStmtCloseCommand(preparedID, promise) );
 	}
 
 }

@@ -40,10 +40,12 @@ public class CommandChannelCollector extends DBResultConsumer {
     }
 
     @Override
-    public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-        builder.addSite(channel);
-        promise.success(true);
+    public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
         //NOTE: this DBResultConsumer / visitor is unusual because it doesn't issue any queries on the visited channel(s).
         //TODO: consider allowing callers to get the worker/channels directly and avoid this weird workaround. -sgossard
+
+        builder.addSite(channel);
+        promise.success(true);
+        return Bundle.NO_COMM;
     }
 }

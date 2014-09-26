@@ -75,18 +75,6 @@ public abstract class DBResultConsumer implements GroupDispatch {
     @Override
     public void setSenderCount(int senderCount){}
 
-    abstract public void writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
-
     @Override
-    public final void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
-        /**TODO: In order to decouple the DBResultConsumer hierarchy from the DBConnection classes, this logic was moved
-         * out of MysqlConnection, and unfortunately still has some connection state related dependencies.
-         * after all the DBResultConsumer nastiness is untangled, it would be good to move the exception deferring
-         * stuff 100% out of the connection, and the isOpen/communication failure stuff 100% back in. -sgossard
-          */
-        if (promise == null)
-            promise = connection.getExceptionDeferringPromise();
-
-        this.writeCommandExecutor(connection, sql, promise);
-    }
+    abstract public Bundle getDispatchBundle(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise);
 }

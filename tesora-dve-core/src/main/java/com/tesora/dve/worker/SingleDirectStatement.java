@@ -21,9 +21,6 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import java.sql.ResultSet;
-import java.util.concurrent.Callable;
-
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.db.GroupDispatch;
@@ -40,16 +37,21 @@ public class SingleDirectStatement implements WorkerStatement {
 	static Logger logger = Logger.getLogger( SingleDirectStatement.class );
 
 	DBConnection dbConnection;
-
+    final boolean notifyWorkerOnCommFailure;
 	final Worker worker;
 
 	protected Worker getWorker() {
 		return worker;
 	}
 
+    public SingleDirectStatement(Worker w, DBConnection dbConnection, boolean notifyWorkerOnCommFailure) throws PESQLException {
+        this.worker = w;
+        this.dbConnection = dbConnection;
+        this.notifyWorkerOnCommFailure = notifyWorkerOnCommFailure;
+    }
+
 	public SingleDirectStatement(Worker w, DBConnection dbConnection) throws PESQLException {
-		this.worker = w;
-		this.dbConnection = dbConnection;
+		this(w, dbConnection,false);
 	}
 
 	protected void doExecute(SQLCommand sqlCommand, GroupDispatch resultConsumer, final CompletionHandle<Boolean> promise) {
@@ -71,7 +73,7 @@ public class SingleDirectStatement implements WorkerStatement {
             }
 
         };
-        resultConsumer.dispatch(dbConnection,sqlCommand.getResolvedCommand(worker),transformErrors);
+        resultConsumer.getDispatchBundle(dbConnection,sqlCommand.getResolvedCommand(worker),transformErrors).writeAndFlush(dbConnection);
 	}
 
     @Override
@@ -127,29 +129,16 @@ public class SingleDirectStatement implements WorkerStatement {
             return psqlError;
     }
 
-    private <T> T connectionSafeJDBCCall(Callable<T> safeCall) throws PESQLException {
-		try {
-			return safeCall.call();
-		} catch (Exception e) {
-			throw processException(null,e);
-		}
-	}
-
-	protected void onCommunicationFailure(Worker worker) throws PESQLException {
+    protected void onCommunicationFailure(Worker worker) throws PESQLException {
+        if (notifyWorkerOnCommFailure)
+            worker.onCommunicationsFailure();
 	}
 	
 	@Override
-	public void cancel() throws PESQLException {
+	public void cancel() {
 		if (dbConnection != null) {
-			connectionSafeJDBCCall(new Callable<Object>() {
-
-				@Override
-				public Boolean call() throws Exception {
-					dbConnection.cancel();
-					return null;
-				}
-			});
-		}
+            dbConnection.cancel();
+        }
 	}
 
 	@Override
@@ -167,55 +156,4 @@ public class SingleDirectStatement implements WorkerStatement {
 		}
 	}
 
-	@Override
-	public ResultSet getResultSet() throws PESQLException {
-		return connectionSafeJDBCCall(new Callable<ResultSet>() {
-
-			@Override
-			public ResultSet call() throws Exception {
-				return null;
-//				return dbConnection.getResultSet();
-			}
-		});
-	}
-
-	@Override
-	public void addBatch(final SQLCommand sqlCommand) throws PESQLException {
-		try {
-			connectionSafeJDBCCall(new Callable<Object>() {
-
-				@Override
-				public Boolean call() throws Exception {
-//					dbConnection.addBatch(sqlCommand.getSQL(worker));
-					return null;
-				}
-			});
-		} catch (PESQLException e) {
-			throw new PESQLException("Executing: " + sqlCommand, e);
-		}
-	}
-
-	@Override
-	public void clearBatch() throws PESQLException {
-		connectionSafeJDBCCall(new Callable<Object>() {
-
-			@Override
-			public Boolean call() throws Exception {
-//				dbConnection.clearBatch();
-				return null;
-			}
-		});
-	}
-
-	@Override
-	public int[] executeBatch() throws PESQLException {
-		return connectionSafeJDBCCall(new Callable<int[]>() {
-
-			@Override
-			public int[] call() throws Exception {
-				return null;
-//				return dbConnection.executeBatch();
-			}
-		});
-	}
 }

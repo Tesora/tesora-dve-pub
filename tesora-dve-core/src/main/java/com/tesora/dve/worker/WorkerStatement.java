@@ -37,9 +37,4 @@ public interface WorkerStatement {
 
 	void close() throws PESQLException;
 
-	ResultSet getResultSet() throws PESQLException;
-
-	void addBatch(SQLCommand sql) throws PESQLException;
-	void clearBatch() throws PESQLException;
-	int[] executeBatch() throws PESQLException;	
 }

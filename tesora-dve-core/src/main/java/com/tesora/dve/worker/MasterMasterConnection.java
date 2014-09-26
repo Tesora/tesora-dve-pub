@@ -38,6 +38,6 @@ public class MasterMasterConnection extends SingleDirectConnection {
 
 	@Override
 	protected SingleDirectStatement getNewStatement(Worker w) throws PESQLException {
-		return new MasterMasterStatement(w, getConnection());
+		return new SingleDirectStatement(w, getConnection(),true);
 	}
 }

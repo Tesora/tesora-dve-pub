@@ -22,12 +22,37 @@ package com.tesora.dve.db;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.mysql.MysqlCommandResultsProcessor;
+import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 /**
  *
  */
 public interface GroupDispatch {
+
+    public class Bundle {
+        static final Bundle NO_COMM = new Bundle();
+        final MysqlMessage outboundMessage;
+        final MysqlCommandResultsProcessor resultsProcessor;
+
+        protected Bundle(){
+            this.outboundMessage = null;
+            this.resultsProcessor = null;
+        }
+
+        public Bundle(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor) {
+            this.outboundMessage = outboundMessage;
+            this.resultsProcessor = resultsProcessor;
+        }
+
+        public void writeAndFlush(CommandChannel channel){
+            if (outboundMessage != null)
+                channel.writeAndFlush(outboundMessage,resultsProcessor);
+        }
+
+    }
+
     void setSenderCount(int senderCount);
-    void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise);
+    Bundle getDispatchBundle(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise);
 }
