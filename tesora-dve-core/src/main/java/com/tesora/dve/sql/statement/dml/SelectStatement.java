@@ -575,8 +575,9 @@ public class SelectStatement extends ProjectingStatement {
 					ci = (ColumnInstance) e;
 					StringBuilder buf = new StringBuilder();
 					emitter.emitExpression(pc, e, buf);
-					columnName = buf.toString();
-					aliasName = PEStringUtils.dequote(columnName);
+					aliasName = PEStringUtils.dequote(buf.toString());
+					// always use the column name
+					columnName = ci.getColumn().getName().getUnquotedName().get();
 				} else {
 					if (aliasName != null) {
 						// via above

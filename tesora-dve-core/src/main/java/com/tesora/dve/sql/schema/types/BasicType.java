@@ -54,7 +54,7 @@ import com.tesora.dve.sql.schema.modifiers.TypeModifierKind;
 
 public class BasicType implements Type {
 	
-	protected static final String COMPARISON_TAG = "COMPARISON";
+	public static final String COMPARISON_TAG = "COMPARISON";
 	
 	public static final short UNSIGNED = 1;
 	public static final short ZEROFILL = 2;

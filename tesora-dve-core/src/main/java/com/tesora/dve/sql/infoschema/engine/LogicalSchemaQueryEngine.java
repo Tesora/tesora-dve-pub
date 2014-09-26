@@ -159,11 +159,14 @@ public class LogicalSchemaQueryEngine {
 				throw new InformationSchemaException("Missing feature planner");
 			return new InfoPlanningResults(DirectSchemaQueryEngine.buildStep(sc, lq, planner, pi));
 		} else {
+			throw new InformationSchemaException("Unhandled path");
+			/*
 			LogicalCatalogQuery lcq = (LogicalCatalogQuery) lq;
 			QueryExecutionKind qek = determineKind(lcq);
 			if (qek != QueryExecutionKind.RAW)
 				return new InfoPlanningResults(buildCatalogEntities(sc, lcq, qek).getResultSet(sc,pi));
 			return new InfoPlanningResults(buildRawResultSet(sc, lcq, pi));
+			*/
 		}
 	}
 	

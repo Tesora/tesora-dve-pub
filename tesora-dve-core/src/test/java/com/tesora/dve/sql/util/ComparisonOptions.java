@@ -46,8 +46,8 @@ public class ComparisonOptions {
 	}
 	
 	public boolean isIgnoreMD() {
-		return ignoreMD;
-		//return false;
+		//return ignoreMD;
+		return false;
 	}
 	
 	public UnaryFunction<List<ColumnChecker>,List<ColumnChecker>> getCheckerMutator() {

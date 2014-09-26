@@ -466,35 +466,23 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 				setFlag(ColumnAttributes.HAS_DEFAULT_VALUE);
 				if (isNullable()) {
 					uc.setDefaultValue(null);
-					setFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 				} else {
 					if (isSet(ColumnAttributes.ONUPDATE)) {
 						uc.setDefaultValue("0");						
 					} else {
 						uc.setDefaultValue(CURRENT_TIMESTAMP);
 					}
-					clearFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 				}
 			} else {
 				clearFlag(ColumnAttributes.HAS_DEFAULT_VALUE);
 				uc.setDefaultValue(null);
-				setFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 			}
 		} else {
 			setFlag(ColumnAttributes.HAS_DEFAULT_VALUE);
 			LiteralExpression le = (LiteralExpression)defaultValue;
 			if (le.isNullLiteral()) {
 				uc.setDefaultValue(null);
-				setFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
 			} else {
-				setFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
-				if (le instanceof IdentifierLiteralExpression) {
-					clearFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
-				}
-				if ((uc.getDataType() == Types.TIMESTAMP) && 
-						StringUtils.equals("0", le.getValue(sc).toString())) {
-					clearFlag(ColumnAttributes.CONSTANT_DEFAULT_VALUE);
-				}
 				uc.setDefaultValue(le.getValue(sc).toString());
 			}
 		}		
