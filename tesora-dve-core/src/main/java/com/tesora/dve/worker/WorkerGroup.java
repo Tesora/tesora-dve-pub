@@ -35,6 +35,7 @@ import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.server.connectionmanager.*;
 import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
 import io.netty.channel.Channel;
@@ -550,7 +551,7 @@ public class WorkerGroup {
             @Override
             public void success(Boolean returnValue) {
                 try {
-                    w.sendStatistics(req, System.currentTimeMillis() - reqStartTime);
+                    WorkerGroup.sendStatistics(w,req, System.currentTimeMillis() - reqStartTime);
                     workerComplete.success(w);
                 } catch (PEException e) {
                     this.failure(e);
@@ -590,6 +591,15 @@ public class WorkerGroup {
             }
         });
 
+    }
+
+    static void sendStatistics(Worker worker, WorkerRequest wReq, long execTime) throws PEException {
+        LogSiteStatisticRequest sNotice = wReq.getStatisticsNotice();
+        if (sNotice != null) {
+            worker.site.annotateStatistics(sNotice);
+            sNotice.setExecutionDetails(worker.site.getName(), (int)execTime);
+            Agent.dispatch(Singletons.require(HostService.class).getStatisticsManagerAddress(), sNotice);
+        }
     }
 
 //	public void sendToAllWorkers(Agent agent, Object m) throws PEException {

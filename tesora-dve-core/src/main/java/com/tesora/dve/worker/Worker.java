@@ -51,8 +51,6 @@ import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.collector.ResultChunkManager;
-import com.tesora.dve.server.messaging.WorkerRequest;
-import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 
 /**
  * Worker is the agent that processes commands against the database. It
@@ -129,15 +127,6 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
             bindingChangedSinceLastCatalogSet = true;
         }
     }
-
-	void sendStatistics(WorkerRequest wReq, long execTime) throws PEException {
-		LogSiteStatisticRequest sNotice = wReq.getStatisticsNotice();
-		if (sNotice != null) {
-			site.annotateStatistics(sNotice);
-			sNotice.setExecutionDetails(site.getName(), (int)execTime);
-            Agent.dispatch(Singletons.require(HostService.class).getStatisticsManagerAddress(), sNotice);
-		}
-	}
 
 	public void releaseResources() throws PEException {
 //		try {

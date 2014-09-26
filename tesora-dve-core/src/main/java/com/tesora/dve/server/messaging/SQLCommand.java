@@ -33,7 +33,6 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.statement.StatementType;
-import com.tesora.dve.worker.Worker;
 
 // we need to support both regular statements and parameterized statements;
 // this class just wraps that all up
@@ -107,11 +106,11 @@ public class SQLCommand implements Serializable {
 		return sql.getUnresolvedAsBytes();
 	}
 
-	public String getSQL(Worker w) {
+	public String getSQL(GenericSQLCommand.DBNameResolver w) {
 		return sql.resolve(w);
 	}
 	
-	public byte[] getSQLAsBytes(Worker w) {
+	public byte[] getSQLAsBytes(GenericSQLCommand.DBNameResolver w) {
 		return sql.resolveAsBytes(w);
 	}
 
@@ -177,7 +176,7 @@ public class SQLCommand implements Serializable {
 		return (sql.isForUpdate() == null ? false : sql.isForUpdate().booleanValue());
 	}
 
-	public SQLCommand getResolvedCommand(Worker worker) {
+	public SQLCommand getResolvedCommand(GenericSQLCommand.DBNameResolver worker) {
 		SQLCommand newCommand = new SQLCommand(new GenericSQLCommand(getSQLAsBytes(worker)));
 		newCommand.parameters = parameters;
 		newCommand.projection = projection;
