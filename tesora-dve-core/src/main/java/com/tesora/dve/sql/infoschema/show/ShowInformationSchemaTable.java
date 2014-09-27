@@ -35,6 +35,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.ShowOptions;
 import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;

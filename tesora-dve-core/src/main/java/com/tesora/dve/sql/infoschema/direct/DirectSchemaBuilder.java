@@ -34,14 +34,16 @@ import com.tesora.dve.sql.infoschema.InformationSchema;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.MysqlSchema;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
+import com.tesora.dve.sql.infoschema.ShowOptions;
+import com.tesora.dve.sql.infoschema.ShowView;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.direct.DirectShowSchemaTable.TemporaryTableHandler;
-import com.tesora.dve.sql.infoschema.show.ShowOptions;
-import com.tesora.dve.sql.infoschema.show.ShowView;
+import com.tesora.dve.sql.infoschema.direct.ViewShowSchemaTable.TemporaryTableHandler;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.ComplexPETable;
+import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 
 /*
@@ -88,6 +90,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 			DirectInformationSchemaTable view = g.generate(sc);
 			schemaByView.get(view.getView()).viewReplace(sc, view);
 		}
+		
 	}
 
 	private static final String gen_sites_format = 
@@ -98,14 +101,14 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					+"gs.generation_id = sg.generation_id order by 1,2,3";
 	private DirectTableGenerator[] generators = new DirectTableGenerator[] {
 		
-			new DirectTableGenerator(InfoView.INFORMATION, "generation_site", null,
+			new ViewTableGenerator(InfoView.INFORMATION, "generation_site", null,
 					"generation_site",
 					String.format(gen_sites_format,"group","version","site"),
 					c("group","varchar(512)"),
 					c("version","int"),
 					c("site","varchar(512)"))
 					.withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.SHOW, "generation site", "generation sites",
+			new ViewTableGenerator(InfoView.SHOW, "generation site", "generation sites",
 					"show_generation_site",
 					String.format(gen_sites_format,ShowSchema.GenerationSite.NAME,
 							ShowSchema.GenerationSite.VERSION,
@@ -114,7 +117,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c(ShowSchema.GenerationSite.VERSION,"int"),
 					c(ShowSchema.GenerationSite.SITE,"varchar(512)"))
 					.withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.INFORMATION,"scopes", null,
+			new ViewTableGenerator(InfoView.INFORMATION,"scopes", null,
 					"scopes",
 					"select ut.name as `TABLE_NAME`, ud.name as `TABLE_SCHEMA`, ut.state as `TABLE_STATE`, t.ext_tenant_id as `TENANT_NAME`, s.local_name as `SCOPE_NAME` "
 					+"from user_table ut inner join user_database ud on ut.user_database_id = ud.user_database_id "
@@ -127,7 +130,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("TENANT_NAME","varchar(255)"),
 					c("SCOPE_NAME","varchar(255)"))
 					.withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"distributions",null,
 					"distributions",
 					"select ud.name as `DATABASE_NAME`, ut.name as `TABLE_NAME`, uc.name as `COLUMN_NAME`, "
@@ -144,7 +147,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("MODEL_TYPE","varchar(255)"),
 					c("MODEL_NAME","varchar(255)"))
 					.withExtension(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"character_sets", null,
 					"character_sets",
 					"select cs.character_set_name as `CHARACTER_SET_NAME`, cs.description as `DESCRIPTION`, cs.maxlen as `MAXLEN` "
@@ -152,7 +155,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("CHARACTER_SET_NAME","varchar(32)"),
 					c("DESCRIPTION","varchar(60)"),
 					c("MAXLEN","int(11)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"charset",null,
 					"show_character_sets",
 					"select cs.character_set_name as `Charset`, cs.description as `Description`, cs.maxlen as `Maxlen` "
@@ -160,7 +163,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Charset","varchar(32)").withIdent().withOrderBy(0),
 					c("Description","varchar(60)"),
 					c("Maxlen","int(11)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"collations", null,
 					"collations",
 					// ah, let the stupid mysqlisms begin
@@ -176,7 +179,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("IS_DEFAULT","varchar(3)"),
 					c("IS_COMPILED","varchar(3)"),
 					c("SORTLEN","bigint(3)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"collation", null,
 					"show_collations",
 					"select c.name as `Collation`, c.character_set_name as `Charset`, "
@@ -191,7 +194,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Default","varchar(3)"),
 					c("Compiled","varchar(3)"),
 					c("Sortlen","bigint(3)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"dynamic site policy", "dynamic site policies",
 					"show_dyn_site_policies",
 					"select d.name as `Name`, case d.strict when 1 then '1' else '0' end as `strict`, "
@@ -215,7 +218,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("large_count","int(11)"),
 					c("large_provider","varchar(255)"))
 					.withExtension(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"engines",null,
 					"engines",
 					"select e.engine as `ENGINE`, e.support as `SUPPORT`, e.comment as `COMMENT`, e.transactions as `TRANSACTIONS`, "
@@ -226,7 +229,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("TRANSACTIONS","varchar(3)"),
 					c("XA","varchar(3)"),
 					c("SAVEPOINTS","varchar(3)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"engines",null,
 					"show_engines",
 					"select e.engine as `Engine`, e.support as `Support`, e.comment as `Comment`, e.transactions as `Transactions`, "
@@ -237,7 +240,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Transactions","varchar(3)"),
 					c("XA","varchar(3)"),
 					c("Savepoints","varchar(3)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"key_column_usage",null,
 					"key_column_usage",
 					"select 'def' as `CONSTRAINT_CATALOG`, 'def' as `TABLE_CATALOG`, sdb.name as `TABLE_SCHEMA`, sut.name as `TABLE_NAME`, sc.name as `COLUMN_NAME`, "
@@ -263,7 +266,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("REFERENCED_TABLE_SCHEMA","varchar(64)"),
 					c("REFERENCED_TABLE_NAME","varchar(64)"),
 					c("REFERENCED_COLUMN_NAME","varchar(64)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"table_constraints",null,
 					"table_constraints",
 					"select 'def' as `CONSTRAINT_CATALOG`, sdb.name as `CONSTRAINT_SCHEMA`, "
@@ -280,7 +283,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("TABLE_SCHEMA","varchar(64)"),
 					c("TABLE_NAME","varchar(64)"),
 					c("CONSTRAINT_TYPE","varchar(64)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"referential_constraints", null,
 					"referential_constraints",
 					"select 'def' as `CONSTRAINT_CATALOG`, sdb.name as `CONSTRAINT_SCHEMA`, uk.constraint_name as `CONSTRAINT_NAME`, "
@@ -302,7 +305,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("DELETE_RULE","varchar(64)"),
 					c("TABLE_NAME","varchar(64)"),
 					c("REFERENCED_TABLE_NAME","varchar(64)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"key", "keys",
 					"show_keys",
 					"select sut.name as `Table`, case uk.constraint_type when 'UNIQUE' then 0 when 'PRIMARY' then 0 else 1 end as `Non_unique`, "
@@ -344,7 +347,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 						
 					}),
 					
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"persistent instance","persistent instances",
 					"show_persistent_instance",
 					"select pi.name as `Name`, ss.name as `Persistent_Site`, pi.instance_url as `URL`, "
@@ -360,7 +363,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Master","varchar(3)"),
 					c("Status","varchar(255)")
 					).withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"site_instance", null,
 					"Site_instance",
 					"select pi.name as `NAME`, ss.name as `STORAGE_SITE`, pi.instance_url as `INSTANCE_URL`, "
@@ -376,7 +379,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("IS_MASTER","varchar(3)"),
 					c("STATUS","varchar(255)")
 					).withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"storage_site",null,
 					"storage_site",
 					"select ss.name as `NAME`, ss.haType as `HATYPE`, si.instance_url as `MASTERURL` "
@@ -384,7 +387,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("NAME","varchar(255)"),
 					c("HATYPE","varchar(255)"),
 					c("MASTERURL","varchar(255)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"persistent site","persistent sites",
 					"show_persistent_site",
 					"select ss.name as `Persistent_Site`, ss.haType as `HA_Type`, si.instance_url as `Master_Url` "
@@ -394,7 +397,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Master_Url","varchar(255)")
 					).withExtension().withPrivilege(),
 				
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"columns",null,
 					"columns",
 					"select 'def' as `TABLE_CATALOG`, ud.name as `TABLE_SCHEMA`, ut.name as `TABLE_NAME`, "
@@ -439,7 +442,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 			//    show ___mtid
 			// match: coalesce(t.ext_ten_id,ud.name) = @dbn
 			// match: coalesce(s.local_name,ut.name) = @tn
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"column","columns",
 					"show_columns",
 					"select uc.name as `Field`, "
@@ -478,7 +481,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 						}
 						
 					}),
-					new DirectTableGenerator(InfoView.SHOW,
+					new ViewTableGenerator(InfoView.SHOW,
 				"persistent group","persistent groups",
 				"show_persistent_group",
 				"select pg.name as `Name`, max(sg.generation_id) as `Latest_generation` "
@@ -487,7 +490,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 				c("Name","varchar(255)").withIdent(),
 				c("Latest_generation","bigint"))
 			.withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 				"storage_group",null,
 				"storage_group",
 				"select pg.name as `NAME`, max(sg.generation_id) as `LAST_GENERATION` "
@@ -496,7 +499,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 				c("NAME","varchar(255)"),
 				c("LAST_GENERATION","bigint"))
 				.withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"range","ranges",
 					"show_range",
 					"select dr.name as `Range`, pg.name as `Persistent_Group`, dr.signature as `Signature` "
@@ -506,7 +509,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Persistent_Group","varchar(255)"),
 					c("Signature","varchar(255)"))
 					.withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"range_distribution",null,
 					"range_distribution",
 					"select dr.name as `NAME`, pg.name as `STORAGE_GROUP`, dr.signature as `SIGNATURE` "
@@ -516,7 +519,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("STORAGE_GROUP","varchar(255)"),
 					c("SIGNATURE","varchar(255)"))
 					.withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"template","templates",
 					"show_template",
 					"select t.name as `Template_Name`, t.dbmatch as `DB_Match`, t.template_comment as `Comment`, t.definition as `Template` "
@@ -525,7 +528,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("DB_Match","varchar(255)"),
 					c("Comment","varchar(255)"),
 					c("Template","longtext")).withExtension(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"templates",null,
 					"templates",
 					"select t.name as `NAME`, t.dbmatch as `DBMATCH`, t.definition as `DEFINITION`, t.template_comment as `TEMPLATE_COMMENT` "
@@ -534,7 +537,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("DBMATCH","varchar(255)"),
 					c("DEFINITION","longtext"),
 					c("TEMPLATE_COMMENT","varchar(255)")).withExtension(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"rawplan","rawplans",
 					"show_rawplan",
 					"select r.name as `Plan_Name`, "
@@ -546,7 +549,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Cache_Key","longtext"),
 					c("Comment","varchar(255)"),
 					c("Plan","longtext")).withExtension(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"rawplans",null,
 					"rawplans",
 					"select r.name as `NAME`, ud.name as `PLAN_SCHEMA`, "
@@ -561,7 +564,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("CACHE_KEY","longtext"),
 					c("PLAN_COMMENT","varchar(255)"),
 					c("DEFINITION","longtext")).withExtension(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"container_tenant","container_tenants",
 					"show_container_tenant",
 					"select c.name as `Container`, ct.discriminant as `Discriminant`, ct.ctid as `ID` "
@@ -570,7 +573,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Container","varchar(255)"),
 					c("Discriminant","longtext").withIdent(),
 					c("ID","int(11)")).withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"containers",null,
 					"show_containers",
 					"select c.name as `Container`, ut.name as `Base_Table`, pg.name as `Persistent_Group` "
@@ -580,7 +583,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Container","varchar(255)").withIdent(),
 					c("Base_Table","varchar(255)"),
 					c("Persistent_Group","varchar(255)")).withExtension(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"container",null,
 					"show_container",
 					"select c.name as `Container`, ut.name as `Table`, "
@@ -590,7 +593,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Container","varchar(255)").withIdent(),
 					c("Table","varchar(255)"),
 					c("Type","varchar(6)")).withExtension(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"container",null,
 					"container",
 					"select c.name as `CONTAINER_NAME`, ut.name as `BASE_TABLE`, pg.name as `STORAGE_GROUP` "
@@ -600,7 +603,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("CONTAINER_NAME","varchar(255) NOT NULL"),
 					c("BASE_TABLE","varchar(255)"),
 					c("STORAGE_GROUP","varchar(255) NOT NULL")).withExtension(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"events",null,
 					"show_events",
 					null,
@@ -617,7 +620,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("character_set_client","varchar(32)"),
 					c("collation_connection","varchar(32)"),
 					c("Database Collation","varchar(32)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"events",null,
 					"events",
 					null,
@@ -646,7 +649,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("COLLATION_CONNECTION","varchar(32)"),
 					c("DATABASE_COLLATION","varchar(32)")),
 					
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"table","tables",
 					"show_table",
 					"select coalesce(s.local_name,if(@tenant is null,ut.name,null)) as `Tables`, ut.table_type as `Table_type`, "
@@ -662,7 +665,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Table_type","varchar(64)").withFull(),
 					c("Distribution_Model","varchar(255)").withExtension(),
 					c("Persistent_group","varchar(255)").withExtension()),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"tables",null,
 					"tables",
 					"select ud.name as `TABLE_SCHEMA`, ut.name as `TABLE_NAME`, ut.table_type as `TABLE_TYPE`, "
@@ -681,7 +684,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("TABLE_COLLATION","varchar(32)"),
 					c("CREATE_OPTIONS","varchar(255)"),
 					c("TABLE_COMMENT","varchar(2048)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"views",null,
 					"views",
 					"select 'def' as `TABLE_CATALOG`, ud.name as `TABLE_SCHEMA`, ut.name as `TABLE_NAME`, "
@@ -703,7 +706,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("CHARACTER_SET_CLIENT","varchar(32)"),
 					c("COLLATION_CONNECTION","varchar(32)"),
 					c("MODE","varchar(7)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"plugins",null,
 					"plugins",
 					null,
@@ -718,7 +721,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("PLUGIN_DESCRIPTION","longtext"),
 					c("PLUGIN_LICENSE","varchar(80)"),
 					c("LOAD_OPTION","varchar(64)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"plugins",null,
 					"show_plugins",
 					null,
@@ -727,7 +730,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Type","varchar(80)"),
 					c("Library","varchar(64)"),
 					c("License","varchar(80)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"files",null,
 					"files",
 					null,
@@ -769,7 +772,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("CHECKSUM",            "bigint(21)"),
 					c("STATUS",              "varchar(20)"),
 					c("EXTRA",               "varchar(255)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"partitions",null,
 					"partitions",
 					null,
@@ -798,7 +801,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("PARTITION_COMMENT",            "varchar(80)"),
 					c("NODEGROUP",                    "varchar(12)"),
 					c("TABLESPACE_NAME",              "varchar(64)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"routines",null,
 					"routines",
 					null,
@@ -832,7 +835,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("CHARACTER_SET_CLIENT",    "varchar(32)"),
 					c("COLLATION_CONNECTION",    "varchar(32)"),
 					c("DATABASE_COLLATION",      "varchar(32)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"triggers",null,"triggers",null,
 					c("TRIGGER_CATALOG",           "varchar(512)"),
 					c("TRIGGER_SCHEMA",            "varchar(64)"),
@@ -856,7 +859,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("CHARACTER_SET_CLIENT",      "varchar(32)"),
 					c("COLLATION_CONNECTION",      "varchar(32)"),
 					c("DATABASE_COLLATION",        "varchar(32)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"trigger","triggers","triggers",null,
 					c("Trigger","varchar(64)").withIdent(),
 					c("Event","varchar(6)"),
@@ -869,7 +872,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("character_set_client","varchar(32)"),
 					c("collation_connection","varchar(32)"),
 					c("Database Collation","varchar(32)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"procedure status",null,
 					"procedure_status",null,
 					c("Db","varchar(64)"),
@@ -883,7 +886,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("character_set_client","varchar(32)"),
 					c("collation_connection","varchar(32)"),
 					c("Database Collation","varchar(32)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"function status",null,
 					"function_status",null,
 					c("Db","varchar(64)"),
@@ -897,7 +900,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("character_set_client","varchar(32)"),
 					c("collation_connection","varchar(32)"),
 					c("Database Collation","varchar(32)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"generation","generations",
 					"show_storage_generation",
 					"select sg.generation_id as `id`, pg.name as `Persistent_Group`, sg.version as `Version`, "
@@ -908,7 +911,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Persistent_Group","varchar(255)"),
 					c("Version","int(11)"),
 					c("Locked","varchar(3)")).withPrivilege().withExtension(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"storage_generation",null,
 					"storage_generation",
 					"select sg.generation_id as `ID`, pg.name as `STORAGE_GROUP`, sg.version as `VERSION`, "
@@ -919,17 +922,17 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("STORAGE_GROUP","varchar(255)"),
 					c("VERSION","int(11)"),
 					c("LOCKED","varchar(3)")).withPrivilege().withExtension(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"model","models",
 					"show_models",
 					"select dm.name as `Model` from distribution_model dm order by dm.name",
 					c("Model","varchar(255)").withIdent()).withExtension(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"distribution_model",null,
 					"distribution_model",
 					"select dm.name as `NAME` from distribution_model dm order by dm.name",
 					c("NAME","varchar(255)")).withExtension(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"schemata",null,
 					"schemata",
 					"select 'def'as `CATALOG_NAME`, ud.name as `SCHEMA_NAME`, pg.name as `DEFAULT_PERSISTENT_GROUP`, "
@@ -947,7 +950,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("FKMODE","varchar(255)"),
 					c("DEFAULT_CHARACTER_SET_NAME","varchar(255)"),
 					c("DEFAULT_COLLATION_NAME","varchar(255)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"database","databases",
 					"show_databases",
 					"select coalesce(t.ext_tenant_id,ud.name) as `Database`, pg.name as `Default_Persistent_Group`, ud.template as `Template`, "
@@ -964,7 +967,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Foreign_Key_Mode","varchar(255)").withExtension(),
 					c("Default_Character_Set_Name","varchar(255)").withExtension(),
 					c("Default_Collation_Name","varchar(255)").withExtension()),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"multitenant database","multitenant databases",
 					"show_mt_databases",
 					"select ud.name as `Database`, pg.name as `Default_Persistent_Group`, ud.template as `Template`, "
@@ -981,7 +984,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Foreign_Key_Mode","varchar(255)").withExtension(),
 					c("Default_Character_Set_Name","varchar(255)").withExtension(),
 					c("Default_Collation_Name","varchar(255)").withExtension()),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"template on database","template on databases",
 					"show_template_on_database",
 					"select ud.name as `Database`, ud.template as `Template`, ud.template_mode as `Template_Mode` "
@@ -990,7 +993,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Template","varchar(255)"),
 					c("Template_Mode","varchar(255)")).withExtension(),
 					
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"tenant","tenants",
 					"show_tenants",
 					"select t.ext_tenant_id as `Tenant`, ud.name as `Database`, "
@@ -1002,7 +1005,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Database","varchar(255)"),
 					c("Suspended","varchar(3)"),
 					c("Description","varchar(255)")).withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"tenant",null,
 					"tenant",
 					"select t.ext_tenant_id as `NAME`, ud.name as `DATABASE`, "
@@ -1014,7 +1017,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("DATABASE","varchar(255)"),
 					c("SUSPENDED","varchar(3)"),
 					c("DESCRIPTION","varchar(255)")).withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.MYSQL,
+			new ViewTableGenerator(InfoView.MYSQL,
 					"db",null,
 					"mysql_db",
 					// Db, Host, User
@@ -1026,7 +1029,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Host","varchar(60)"),
 					c("Db","varchar(64)"),
 					c("User","varchar(16)")),
-			 new DirectTableGenerator(InfoView.SHOW,
+			 new ViewTableGenerator(InfoView.SHOW,
 					 "create database",null,
 					 "show_create_database",
 					 "select ud.name as `Database`, "
@@ -1034,7 +1037,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					 +"from user_database ud where ud.name = @dbn",
 					 c("Database","varchar(64)").withIdent(),
 					 c("Create Database","varchar(1024)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"temporary_tables",null,
 					"temporary_tables",
 					"select tt.session_id as `SESSION_ID`, tt.db as `TABLE_SCHEMA`, tt.name as `TABLE_NAME`, tt.table_engine as `ENGINE` "
@@ -1044,7 +1047,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("TABLE_SCHEMA","varchar(255)"),
 					c("TABLE_NAME","varchar(255)"),
 					c("ENGINE","varchar(255)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"global_temporary_tables",null,
 					"global_temporary_tables",
 					"select tt.server_id as `SERVER_NAME`, tt.session_id as `SESSION_ID`, tt.db as `TABLE_SCHEMA`, "
@@ -1055,7 +1058,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("TABLE_SCHEMA","varchar(255)"),
 					c("TABLE_NAME","varchar(255)"),
 					c("ENGINE","varchar(255)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"group_provider",null,
 					"group_provider",
 					"select p.name as `NAME`, p.plugin as `PLUGIN`, case p.enabled when 1 then 'YES' else 'NO' end as `ENABLED` "
@@ -1063,7 +1066,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("NAME","varchar(255)"),
 					c("PLUGIN","varchar(255)"),
 					c("ENABLED","varchar(3)")).withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"dynamic site provider","dynamic site providers",
 					"show_dynamic_site_provider",
 					"select p.name as `Group_Provider`, p.plugin as `Plugin`, case p.enabled when 1 then 'YES' else 'NO' end as `Enabled` "
@@ -1071,21 +1074,21 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Group_Provider","varchar(255)").withIdent(),
 					c("Plugin","varchar(255)"),
 					c("Enabled","varchar(3)")).withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"server",null,
 					"server",
 					"select s.name as `NAME`, s.ipAddress as `IPADDRESS` "
 					+"from server s order by s.name ",
 					c("NAME","varchar(255)"),
 					c("IPADDRESS","varchar(255)")),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"server","servers",
 					"server",
 					"select s.name as `NAME`, s.ipAddress as `IPADDRESS` "
 					+"from server s order by s.name ",
 					c("NAME","varchar(255)").withIdent(),
 					c("IPADDRESS","varchar(255)")),
-			new DirectTableGenerator(InfoView.MYSQL,
+			new ViewTableGenerator(InfoView.MYSQL,
 					"user",null,
 					"user",
 					"select u.accessSpec as `Host`, u.name as `User`, u.password as `Password`, "
@@ -1096,7 +1099,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("Password","char(41)"),
 					// todo - this needs to be enum('Y','N')
 					c("Grant_priv","char(1)")),
-			new DirectTableGenerator(InfoView.INFORMATION,
+			new ViewTableGenerator(InfoView.INFORMATION,
 					"variable_definitions",null,
 					"variable_definitions",
 					"select v.name as `NAME`, v.value as `VALUE`, v.value_type as `TYPE`, "
@@ -1108,7 +1111,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("SCOPES","varchar(255)"),
 					c("OPTIONS","varchar(255)"),
 					c("DESCRIPTION","varchar(255)")).withExtension(),
-					new DirectTableGenerator(InfoView.INFORMATION,
+					new ViewTableGenerator(InfoView.INFORMATION,
 					"external_service",null,
 					"external_service",
 					"select e.name as `NAME`, e.plugin as `PLUGIN`, "
@@ -1123,7 +1126,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("CONNECT_USER","varchar(255)"),
 					c("USES_DATASTORE","varchar(3)"),
 					c("CONFIG","longtext")).withExtension().withPrivilege(),
-			new DirectTableGenerator(InfoView.SHOW,
+			new ViewTableGenerator(InfoView.SHOW,
 					"external services",null,
 					"show_external_services",
 					"select e.name as `name`, e.plugin as `plugin`, "
@@ -1138,6 +1141,59 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("connect_user","varchar(255)"),
 					c("uses_datastore","varchar(3)"),
 					c("config","longtext")).withExtension().withPrivilege(),
+			new DirectTableGenerator(InfoView.SHOW,
+					"create table",null,
+					c("Table","varchar(255)").withIdent(),
+					c("Create Table","longtext")) {
+
+						@Override
+						public DirectInformationSchemaTable generate(
+								SchemaContext sc) {
+							return new DirectShowCreateTable(sc, buildColumns(sc), columns);
+						}
+				
+			},
+			new DirectTableGenerator(InfoView.SHOW,
+					"external service",null,
+					c("Name","varchar(255)").withIdent(),
+					c("Status","varchar(255)")) {
+
+						@Override
+						public DirectInformationSchemaTable generate(
+								SchemaContext sc) {
+							return new DirectShowExternalService(sc,buildColumns(sc), columns);
+						}
+				
+			}.withExtension().withPrivilege(),
+			new DirectTableGenerator(InfoView.SHOW,
+					"table status",null,
+					c("Name","varchar(64)"),
+					c("Engine","varchar(64)"),
+					c("Version","bigint"),
+					c("Row_format","varchar(10)"),
+					c("Rows","bigint"),
+					c("Avg_row_length","bigint"),
+					c("Data_length","bigint"),
+					c("Max_data_length","bigint"),
+					c("Index_length","bigint"),
+					c("Data_free","bigint"),
+					c("Auto_increment","bigint"),
+					c("Create_time","datetime"),
+					c("Update_time","datetime"),
+					c("Check_time","datetime"),
+					c("Collation","varchar(32)"),
+					c("Checksum","bigint"),
+					c("Create_options","varchar(255)"),
+					c("Comment","varchar(2048)")) {
+
+						@Override
+						public DirectInformationSchemaTable generate(
+								SchemaContext sc) {
+							return new DirectShowTableStatus(sc,buildColumns(sc),columns);
+						}
+				
+			},
+					
 	};
 	
 	// helper functions

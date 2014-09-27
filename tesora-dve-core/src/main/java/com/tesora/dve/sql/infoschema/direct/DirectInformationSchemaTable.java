@@ -23,15 +23,16 @@ package com.tesora.dve.sql.infoschema.direct;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.persist.CatalogColumnEntity;
@@ -53,10 +54,8 @@ import com.tesora.dve.sql.util.ResizableArray;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variables.KnownVariables;
 
-// we can use this for info and mysql
 public class DirectInformationSchemaTable implements InformationSchemaTable {
 
-	private final PEViewTable backing;
 	private final boolean privileged;
 	private final boolean extension;
 	private final InfoView view;
@@ -73,13 +72,12 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	public static final String tenantVariable = "tenant";
 	public static final String metadataExtensions = "mdex";
 	public static final String sessid = "sessid";
-	
-	public DirectInformationSchemaTable(SchemaContext sc, InfoView view, PEViewTable viewTab,
+
+	public DirectInformationSchemaTable(SchemaContext sc, InfoView view, List<PEColumn> cols,
 			UnqualifiedName tableName,
 			UnqualifiedName pluralTableName,
 			boolean privileged, boolean extension,
 			List<DirectColumnGenerator> columnGenerators) {
-		this.backing = viewTab;
 		this.privileged = privileged;
 		this.extension = extension;
 		this.view = view;
@@ -95,7 +93,6 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 			
 				},				
 				false, view.isLookupCaseSensitive());
-		List<PEColumn> cols = backing.getColumns(sc);
 		for(int i = 0; i < cols.size(); i++) {
 			DirectColumnGenerator dcg = columnGenerators.get(i);
 			PEColumn pec = cols.get(i);
@@ -116,7 +113,7 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 		}
 		this.identColumn = ic;
 	}
-	
+
 	@Override
 	public InformationSchemaColumn addColumn(SchemaContext sc, InformationSchemaColumn c) {
 		DirectInformationSchemaColumn cv = (DirectInformationSchemaColumn) c;
@@ -195,17 +192,6 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 		return null;
 	}
 
-	public PEViewTable getBackingView() {
-		return backing;
-	}
-	
-	@Override
-	public void buildTableEntity(CatalogSchema cs, CatalogDatabaseEntity db,
-			int dmid, int storageid, List<PersistedEntity> acc)
-			throws PEException {
-		buildTableEntity(cs,db,dmid,storageid,acc,backing,getName().getUnqualified());
-	}
-
 	@Override
 	public DirectInformationSchemaColumn getOrderByColumn() {
 		if (orderByColumns.size() > 0)
@@ -230,21 +216,6 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	@Override
 	public boolean isExtension() {
 		return extension;
-	}
-
-	public static void buildTableEntity(CatalogSchema cs, CatalogDatabaseEntity db, int dmid, int storageid, 
-			List<PersistedEntity> acc, PEAbstractTable<?> table, UnqualifiedName tableName) throws PEException {
-		CatalogTableEntity cte = new CatalogTableEntity(cs,db,tableName.get(),dmid,storageid,"MEMORY");
-		acc.add(cte);
-		int counter = 0;
-		for(PEColumn pec : table.getColumns(null)) {
-			CatalogColumnEntity cce = new CatalogColumnEntity(cs,cte);
-			cce.setName(pec.getName().get());
-			cce.setNullable(pec.isNullable());
-			cce.setType(pec.getType());
-			cce.setPosition(counter);
-			acc.add(cce);
-		}
 	}
 
 	@Override
@@ -290,6 +261,39 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 
 	protected boolean useExtensions(SchemaContext sc) {
 		return 	KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
+	}
+
+	@Override
+	public void buildTableEntity(CatalogSchema cs, CatalogDatabaseEntity db,
+			int dmid, int storageid, List<PersistedEntity> acc)
+			throws PEException {
+		buildTableEntity(cs,db,dmid,storageid,acc,
+				Functional.apply(columns,new UnaryFunction<PEColumn,DirectInformationSchemaColumn>() {
+
+					@Override
+					public PEColumn evaluate(
+							DirectInformationSchemaColumn object) {
+						return object.getColumn();
+					}
+					
+				}),
+				getName().getUnqualified());
+	}
+
+
+	public static void buildTableEntity(CatalogSchema cs, CatalogDatabaseEntity db, int dmid, int storageid, 
+			List<PersistedEntity> acc, List<PEColumn> columns, UnqualifiedName tableName) throws PEException {
+		CatalogTableEntity cte = new CatalogTableEntity(cs,db,tableName.get(),dmid,storageid,"MEMORY");
+		acc.add(cte);
+		int counter = 0;
+		for(PEColumn pec : columns) {
+			CatalogColumnEntity cce = new CatalogColumnEntity(cs,cte);
+			cce.setName(pec.getName().get());
+			cce.setNullable(pec.isNullable());
+			cce.setType(pec.getType());
+			cce.setPosition(counter);
+			acc.add(cce);
+		}
 	}
 
 }

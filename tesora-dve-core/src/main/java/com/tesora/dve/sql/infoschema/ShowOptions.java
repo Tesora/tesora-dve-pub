@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema;
 
 import java.util.EnumSet;
 

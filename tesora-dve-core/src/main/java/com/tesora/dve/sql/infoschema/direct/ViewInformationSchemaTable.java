@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema;
+package com.tesora.dve.sql.infoschema.direct;
 
 /*
  * #%L
@@ -21,20 +21,31 @@ package com.tesora.dve.sql.infoschema;
  * #L%
  */
 
+
 import java.util.List;
 
-import com.tesora.dve.common.catalog.CatalogEntity;
-import com.tesora.dve.sql.node.expression.ExpressionNode;
-import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.schema.PEViewTable;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.schema.UnqualifiedName;
 
-public interface ShowSchemaBehavior {
+public class ViewInformationSchemaTable extends DirectInformationSchemaTable {
 
-	public Statement buildShowPlural(SchemaContext sc, List<Name> scoping, ExpressionNode likeExpr, ExpressionNode whereExpr, ShowOptions options);
+	private final PEViewTable backing;
+	
+	public ViewInformationSchemaTable(SchemaContext sc, InfoView view, PEViewTable viewTab,
+			UnqualifiedName tableName,
+			UnqualifiedName pluralTableName,
+			boolean privileged, boolean extension,
+			List<DirectColumnGenerator> columnGenerators) {
+		super(sc,view,viewTab.getColumns(sc),tableName,pluralTableName,privileged,extension,columnGenerators);
+		this.backing = viewTab;
+	}
+	
+	public PEViewTable getBackingView() {
+		return backing;
+	}
+	
 
-	public Statement buildUniqueStatement(SchemaContext sc, Name objectName, ShowOptions opts);
-
-	public List<CatalogEntity> getLikeSelectEntities(SchemaContext sc, String likeExpr, List<Name> scoping, ShowOptions options, Boolean overrideRequiresPrivilegeValue);
 
 }

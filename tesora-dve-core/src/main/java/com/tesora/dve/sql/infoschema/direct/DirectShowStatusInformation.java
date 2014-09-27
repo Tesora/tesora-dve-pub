@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema.direct;
 
 /*
  * #%L
@@ -38,39 +38,42 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.ShowOptions;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.logical.StatusLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.ddl.SchemaQueryStatement;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryPredicate;
 
-public class StatusInformationSchemaTable extends ShowInformationSchemaTable {
-	protected StatusLogicalInformationSchemaTable logicalTable = null;
+public class DirectShowStatusInformation extends DirectShowSchemaTable {
 
-	public StatusInformationSchemaTable(StatusLogicalInformationSchemaTable logicalTable) {
-		super(null, logicalTable.getName().getUnqualified(), logicalTable.getName().getUnqualified(), false, false);
-		
-		this.logicalTable = logicalTable;
-		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(StatusLogicalInformationSchemaTable.NAME_COL_NAME), new UnqualifiedName(StatusLogicalInformationSchemaTable.NAME_COL_NAME)));
-		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(StatusLogicalInformationSchemaTable.VALUE_COL_NAME), new UnqualifiedName(StatusLogicalInformationSchemaTable.VALUE_COL_NAME)));
-	}
-	
-	@Override
-	public IntermediateResultSet executeWhereSelect(SchemaContext sc, ExpressionNode wc, List<Name> scoping,
-			ShowOptions options) {
-		throw new SchemaException(Pass.SECOND, "WHERE clause not supported on SHOW STATUS");
+	public DirectShowStatusInformation(SchemaContext sc, 
+			List<PEColumn> cols,List<DirectColumnGenerator> columnGenerators) {
+		super(sc, InfoView.SHOW, cols, new UnqualifiedName("table status"), null, false, false,
+				columnGenerators);
 	}
 
+
+
 	@Override
-	public IntermediateResultSet executeLikeSelect(SchemaContext sc, String likeExpr, List<Name> scoping,
+	public Statement buildShowPlural(SchemaContext sc, List<Name> scoping,
+			ExpressionNode likeExprNode, ExpressionNode whereExpr,
 			ShowOptions options) {
+		if (whereExpr != null)
+			throw new InformationSchemaException("show table status where ... not supported");
+		String likeExpr = null;
+		if (likeExprNode != null) {
+			likeExpr = (String)((LiteralExpression)likeExprNode).getValue(sc);
+		}
 		List<ResultRow> rows = new ArrayList<ResultRow>();
 
 		List<Pair<String, String>> sortedVarList;
@@ -88,34 +91,37 @@ public class StatusInformationSchemaTable extends ShowInformationSchemaTable {
 		});
 				
 		UnaryPredicate<Pair<String,String>> pred = buildPredicate(likeExpr);
-			for( Pair<String,String> varPair : sortedVarList) {
-				if (!pred.test(varPair)) continue;
-				
-				ResultRow row = new ResultRow();
-				row.addResultColumn(varPair.getFirst());
-				row.addResultColumn(varPair.getSecond());
-				rows.add(row);
-			}
-		
-		return new IntermediateResultSet(buildColumnSet(), rows );
+		for( Pair<String,String> varPair : sortedVarList) {
+			if (!pred.test(varPair)) continue;
+
+			ResultRow row = new ResultRow();
+			row.addResultColumn(varPair.getFirst());
+			row.addResultColumn(varPair.getSecond());
+			rows.add(row);
+		}
+
+		return new SchemaQueryStatement(false,getName().get(),new IntermediateResultSet(buildColumnSet(), rows ));
+	}
+
+	
+	
+	@Override
+	public Statement buildUniqueStatement(SchemaContext sc, Name objectName,
+			ShowOptions opts) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	private List<Pair<String,String>> getCurrentStatusValues(SchemaContext sc) throws PEException {
         return Singletons.require(HostService.class).getStatusVariables(sc.getCatalog().getDAO());
 	}
-	
-	@Override
-	protected void validate(AbstractInformationSchema ofView) {
-	}
 
 	private ColumnSet buildColumnSet() {
-		LogicalInformationSchemaColumn name_lc = logicalTable.lookup(StatusLogicalInformationSchemaTable.NAME_COL_NAME);
-		LogicalInformationSchemaColumn value_lc = logicalTable.lookup(StatusLogicalInformationSchemaTable.VALUE_COL_NAME);
-		
 		ColumnSet cs = new ColumnSet();
-		cs.addColumn(name_lc.getName().getUnqualified().get(), name_lc.getDataSize(), name_lc.getType().getTypeName(), name_lc.getDataType());
-		cs.addColumn(value_lc.getName().getUnqualified().get(), value_lc.getDataSize(), value_lc.getType().getTypeName(), value_lc.getDataType());
-
+		for(DirectInformationSchemaColumn isc : columns) {
+			PEColumn pec = isc.getColumn();
+			cs.addColumn(pec.getName().getUnqualified().get(),pec.getType().getSize(),pec.getType().getTypeName(), pec.getType().getDataType());
+		}
 		return cs;
 	}
 
@@ -140,4 +146,5 @@ public class StatusInformationSchemaTable extends ShowInformationSchemaTable {
 			}
 		};
 	}
+
 }

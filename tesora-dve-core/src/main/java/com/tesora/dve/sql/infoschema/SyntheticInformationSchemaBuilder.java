@@ -30,12 +30,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.infoschema.info.InfoSchemaVariablesInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.StatusLogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.logical.TableStatusInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.CreateTableInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ExternalServiceSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowTableStatusInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowView;
 import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
 import com.tesora.dve.sql.infoschema.show.ShowVariablesInformationSchemaTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
@@ -49,10 +44,7 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 	public void populate(LogicalInformationSchema logicalSchema,
 			InformationSchema infoSchema, ShowView showSchema,
 			MysqlSchema mysqlSchema, DBNative dbn) throws PEException {
-		showSchema.addTable(null, new CreateTableInformationSchemaTable());
-		showSchema.addTable(null, new ExternalServiceSchemaTable());
 		addVariablesTable(logicalSchema, showSchema, infoSchema, dbn);
-		addTableStatusTable(showSchema,dbn);
 		addStatusTable(logicalSchema, showSchema, dbn);
 	}
 	
@@ -74,11 +66,5 @@ public class SyntheticInformationSchemaBuilder implements InformationSchemaBuild
 		showSchema.addTable(null,new StatusInformationSchemaTable(baseTable));
 	}
 
-	private void addTableStatusTable(ShowView showSchema, DBNative dbn) {
-		// for show table status - the underlying logical table doesn't exist, so we can't add to the logical schema.
-		TableStatusInformationSchemaTable tsist = new TableStatusInformationSchemaTable(dbn);
-		showSchema.addTable(null, new ShowTableStatusInformationSchemaTable(tsist));
-	}
-	
 	
 }

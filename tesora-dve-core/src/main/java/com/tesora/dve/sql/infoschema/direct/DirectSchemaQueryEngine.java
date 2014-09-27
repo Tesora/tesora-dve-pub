@@ -146,8 +146,8 @@ public class DirectSchemaQueryEngine {
 		if (sc.getPolicyContext().isContainerContext()) {
 			if (anyTenant == null) anyTenant = -1L; // global tenant
 		}
-		params.put(DirectInformationSchemaTable.tenantVariable,anyTenant);
-		params.put(DirectInformationSchemaTable.sessid,new Long(sc.getConnection().getConnectionId()));
+		params.put(ViewInformationSchemaTable.tenantVariable,anyTenant);
+		params.put(ViewInformationSchemaTable.sessid,new Long(sc.getConnection().getConnectionId()));
 		new VariableConverter(params).traverse(copy);
 		if (canLog())
 			log("After explode: "+ copy.getSQL(sc));
@@ -187,7 +187,7 @@ public class DirectSchemaQueryEngine {
 		private TableInstance map(TableInstance in) {
 			if (in.getTable().isInfoSchema()) {
 				// I already know these will be view based info schema tables
-				DirectInformationSchemaTable infoTab = (DirectInformationSchemaTable) in.getTable();
+				ViewInformationSchemaTable infoTab = (ViewInformationSchemaTable) in.getTable();
 				TableInstance out =  new TableInstance(infoTab.getBackingView(),in.getSpecifiedAs(context),in.getAlias(),in.getNode(),false);
 				if (!forwarding.containsKey(in.getTableKey()))
 					forwarding.put(in.getTableKey(),out.getTableKey());

@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema;
 
 /*
  * #%L
@@ -25,10 +25,6 @@ import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.InformationSchemaTable;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
-import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.schema.Name;

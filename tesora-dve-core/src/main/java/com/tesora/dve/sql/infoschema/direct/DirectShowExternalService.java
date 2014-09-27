@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema.direct;
 
 /*
  * #%L
@@ -29,24 +29,35 @@ import com.tesora.dve.externalservice.ExternalServicePlugin;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
+import com.tesora.dve.sql.infoschema.ShowOptions;
+import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.ddl.SchemaQueryStatement;
 
-public class ExternalServiceSchemaTable extends ShowInformationSchemaTable {
+public class DirectShowExternalService extends DirectShowSchemaTable {
 
-	public ExternalServiceSchemaTable() {
-		super(null, new UnqualifiedName("external service"),new UnqualifiedName("external service"),true,true);
+	public DirectShowExternalService(SchemaContext sc, 
+			List<PEColumn> cols, List<DirectColumnGenerator> columnGenerators) {
+		super(sc, InfoView.SHOW, cols, new UnqualifiedName("external service"), null, true,true,
+				columnGenerators);
 	}
 
-	protected void validate(AbstractInformationSchema ofView) {
-	}
-	
 	@Override
-	public IntermediateResultSet executeUniqueSelect(SchemaContext sc,
-			Name onName, ShowOptions opts) {
+	public Statement buildShowPlural(SchemaContext sc, List<Name> scoping,
+			ExpressionNode likeExpr, ExpressionNode whereExpr,
+			ShowOptions options) {
+		throw new InformationSchemaException("Illegal operation: show external service does not support multiple targets");
+	}
+
+	@Override
+	public Statement buildUniqueStatement(SchemaContext sc, Name onName,
+			ShowOptions opts) {
 		String serviceName = onName.getUnqualified().get();
 
 		ColumnSet md = new ColumnSet();
@@ -72,6 +83,7 @@ public class ExternalServiceSchemaTable extends ShowInformationSchemaTable {
 		List<ResultRow> rows = new ArrayList<ResultRow>();
 		rows.add(rr);
 
-		return new IntermediateResultSet(md, rows);
+		return new SchemaQueryStatement(true,getName().get(),new IntermediateResultSet(md, rows));
 	}
+
 }

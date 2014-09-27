@@ -42,7 +42,6 @@ import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.direct.DirectSchemaBuilder;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
-import com.tesora.dve.sql.infoschema.show.ShowView;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.Name;

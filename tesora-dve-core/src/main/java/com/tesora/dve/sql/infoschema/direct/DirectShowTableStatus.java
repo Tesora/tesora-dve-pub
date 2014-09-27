@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema.direct;
 
 /*
  * #%L
@@ -21,7 +21,6 @@ package com.tesora.dve.sql.infoschema.show;
  * #L%
  */
 
-
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,13 +35,14 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
-import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.logical.TableStatusInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.InformationSchemaException;
+import com.tesora.dve.sql.infoschema.ShowOptions;
+import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
+import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
@@ -52,37 +52,22 @@ import com.tesora.dve.sql.statement.ddl.SchemaQueryStatement;
 import com.tesora.dve.sql.statement.ddl.ShowTableStatusStatement;
 import com.tesora.dve.sql.util.ListSet;
 
-// we use the catalog to figure out where to send the actual show table status command
-// then plan the actual as regular dml.
-// nonmt only for now.
-public class ShowTableStatusInformationSchemaTable extends ShowInformationSchemaTable {
+public class DirectShowTableStatus extends DirectShowSchemaTable {
 
-	private TableStatusInformationSchemaTable tableStatusTable;
-	@SuppressWarnings("unused")
-	private ComputedInformationSchemaColumn nameColumn = null;
-	
-	public ShowTableStatusInformationSchemaTable(TableStatusInformationSchemaTable basedOn) {
-		super(basedOn, new UnqualifiedName("TABLE STATUS"), new UnqualifiedName("TABLE STATUS"), false, false);
-		tableStatusTable = basedOn;
-		nameColumn = passthroughView(tableStatusTable);
+	public DirectShowTableStatus(SchemaContext sc, 
+			List<PEColumn> cols, List<DirectColumnGenerator> columnGenerators) {
+		super(sc, InfoView.SHOW, cols, new UnqualifiedName("table status"), null, false, false,
+				columnGenerators);
 	}
 
+	@Override
+	public Statement buildShowPlural(SchemaContext sc, List<Name> scoping,
+			ExpressionNode likeExpr, ExpressionNode whereExpr,
+			ShowOptions options) {
 
-	@Override
-	protected void validate(AbstractInformationSchema ofView) {
-	}
-	
-	@Override
-	public Statement buildUniqueStatement(SchemaContext sc, Name objectName, ShowOptions opts) {
-		throw new SchemaException(Pass.SECOND, "Invalid show table status command");
-	}
-	
-	@Override
-	public Statement buildShowPlural(SchemaContext sc, List<Name> scoping, ExpressionNode likeExpr, ExpressionNode whereExpr, ShowOptions options) {
-				
 		if (sc == null)
 			return new ShowTableStatusStatement(likeExpr,this);
-		
+
 		boolean tenant = sc.getPolicyContext().isSchemaTenant();
 
 		if (whereExpr != null) {
@@ -130,10 +115,16 @@ public class ShowTableStatusInformationSchemaTable extends ShowInformationSchema
 		if(onGroup == null) {
 			return new EmptyShowTableStatusStatement();
 		}
-		
+
 		return new ShowTableStatusStatement(tks,whereExpr,onGroup,this);
-	}	
-	
+	}
+
+	@Override
+	public Statement buildUniqueStatement(SchemaContext sc, Name objectName,
+			ShowOptions opts) {
+		throw new InformationSchemaException("Invalid show table status command");
+	}
+
 	public static class EmptyShowTableStatusStatement extends SchemaQueryStatement {
 
 		public EmptyShowTableStatusStatement() {
@@ -166,4 +157,5 @@ public class ShowTableStatusInformationSchemaTable extends ShowInformationSchema
 		}
 
 	}
+
 }

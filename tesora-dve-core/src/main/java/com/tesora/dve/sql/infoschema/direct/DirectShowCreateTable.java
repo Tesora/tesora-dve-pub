@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema.direct;
 
 /*
  * #%L
@@ -21,17 +21,10 @@ package com.tesora.dve.sql.infoschema.show;
  * #L%
  */
 
-
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.UserDatabase;
-import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.db.DBNative;
-import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
@@ -39,14 +32,14 @@ import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.MTTableKey;
 import com.tesora.dve.sql.expression.ScopeEntry;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
-import com.tesora.dve.sql.infoschema.engine.ViewQuery;
+import com.tesora.dve.sql.infoschema.ShowOptions;
+import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.LockInfo;
@@ -58,40 +51,29 @@ import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.modifiers.AutoincTableModifier;
+import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.ddl.SchemaQueryStatement;
 import com.tesora.dve.variables.KnownVariables;
 
-public class CreateTableInformationSchemaTable extends ShowInformationSchemaTable {
+public class DirectShowCreateTable extends DirectShowSchemaTable {
 
-	public CreateTableInformationSchemaTable() {
-		super(null, new UnqualifiedName("create table"), new UnqualifiedName("create table"), false, false);
+	public DirectShowCreateTable(SchemaContext sc, 
+			List<PEColumn> cols, List<DirectColumnGenerator> columnGenerators) {
+		super(sc, InfoView.SHOW, cols, new UnqualifiedName("create table"), null, false, false,
+				columnGenerators);
+		// TODO Auto-generated constructor stub
 	}
 
 	@Override
-	protected void validate(AbstractInformationSchema ofView) {
+	public Statement buildShowPlural(SchemaContext sc, List<Name> scoping,
+			ExpressionNode likeExpr, ExpressionNode whereExpr,
+			ShowOptions options) {
+		throw new InformationSchemaException("Illegal operation: show create table does not support multiple targets");
 	}
 
-	/**
-	 * @param sc
-	 * @param likeExpr
-	 * @param scoping
-	 * @return
-	 */
-	public ViewQuery buildLikeSelect(SchemaContext sc, String likeExpr, List<Name> scoping) {
-		throw new InformationSchemaException("Illegal operation: show create table does not support the like clause");
-	}
-	
-	/**
-	 * @param sc
-	 * @param wc
-	 * @param scoping
-	 * @return
-	 */
-	public ViewQuery buildWhereSelect(SchemaContext sc, ExpressionNode wc, List<Name> scoping) {
-		throw new InformationSchemaException("Illegal operation: show create table does not support the where clause");
-	}
-	
 	@Override
-	public IntermediateResultSet executeUniqueSelect(SchemaContext sc, Name onName, ShowOptions opts) {
+	public Statement buildUniqueStatement(SchemaContext sc, Name onName,
+			ShowOptions opts) {
 		TableInstance tab = sc.getTemporaryTableSchema().buildInstance(sc, onName);
 		// delegate to the table table to get the basic information
 		try {
@@ -213,24 +195,12 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 				rr.addResultColumn(tschema.asView().getView(sc).getCharset().getUnquotedName().get());
 				rr.addResultColumn(tschema.asView().getView(sc).getCollation().getUnquotedName().get());
 			}
-			return new IntermediateResultSet(cs, rr);
+			return new SchemaQueryStatement(false, getName().get(),new IntermediateResultSet(cs,rr));
 		} finally {
 			sc.getCatalog().rollbackTxn();
 		}
-		
 	}
-	
-	/**
-	 * @param c
-	 * @param udb
-	 * @param rdm
-	 * @param dbn
-	 * @return
-	 */
-	public UserTable persist(CatalogDAO c, UserDatabase udb, RandomDistributionModel rdm, DBNative dbn) {
-		return null;
-	}
-	
+
 	private static ColumnMetadata buildColumnMetadata(String name, int size, String typeName, int typeCode) {
 		ColumnMetadata cmc = new ColumnMetadata();
 		cmc.setName(name);
@@ -241,4 +211,5 @@ public class CreateTableInformationSchemaTable extends ShowInformationSchemaTabl
 		return cmc;
 
 	}
+
 }
