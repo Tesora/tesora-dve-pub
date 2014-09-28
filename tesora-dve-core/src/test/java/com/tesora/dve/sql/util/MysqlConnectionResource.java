@@ -24,6 +24,7 @@ package com.tesora.dve.sql.util;
 import io.netty.channel.EventLoopGroup;
 import io.netty.util.CharsetUtil;
 
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -96,8 +97,8 @@ public class MysqlConnectionResource extends ConnectionResource {
 		return execute(new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(mysqlConn.getConnectionId()), stmt));
 	}
 
-	public ResourceResponse execute(LineInfo info, byte[] stmt)	throws Throwable {
-		return execute(new SQLCommand(new GenericSQLCommand(stmt)));
+	public ResourceResponse execute(LineInfo info, Charset encoding, byte[] stmt) throws Throwable {
+		return execute(new SQLCommand(new GenericSQLCommand(encoding, stmt)));
 	}
 
 	private ResourceResponse execute(SQLCommand sqlc) throws Throwable {

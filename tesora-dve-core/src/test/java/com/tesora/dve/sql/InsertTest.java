@@ -829,7 +829,6 @@ public class InsertTest extends SchemaMirrorTest {
 		runTest(tests);
 	}
 
-	@Ignore
 	@Test
 	public void testPE1655() throws Throwable {
 		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
@@ -849,9 +848,9 @@ public class InsertTest extends SchemaMirrorTest {
 		tests.add(new StatementMirrorProc("INSERT INTO `あああ` VALUES ('あああああ'),('いいいいい'),('ううううう')"));
 		tests.add(new StatementMirrorProc("INSERT INTO `龖龖龖` VALUES ('丂丂丂丂丂'),('丄丄丄丄丄'),('丅丅丅丅丅')"));
 
-		tests.add(new StatementMirrorFun("SELECT * FROM `ｱｱｱ`"));
-		tests.add(new StatementMirrorFun("SELECT * FROM `あああ`"));
-		tests.add(new StatementMirrorFun("SELECT * FROM `龖龖龖`"));
+		tests.add(new StatementMirrorFun("SELECT * FROM `ｱｱｱ` ORDER BY `ｷｷｷ`"));
+		tests.add(new StatementMirrorFun("SELECT * FROM `あああ` ORDER BY `ききき`"));
+		tests.add(new StatementMirrorFun("SELECT * FROM `龖龖龖` ORDER BY `丂丂丂`"));
 
 		runTest(tests);
 	}
