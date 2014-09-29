@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import com.tesora.dve.worker.Worker;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -48,8 +49,6 @@ import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
 import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.variables.KnownVariables;
-import com.tesora.dve.worker.MasterMasterWorker;
-import com.tesora.dve.worker.SingleDirectWorker;
 
 public class DVEConfigCLITest extends PETest {
 
@@ -302,7 +301,7 @@ public class DVEConfigCLITest extends PETest {
 		PersistentSite site = c.findPersistentSite(siteName);
 
 		assertTrue("Site " + siteName + " should exist", site != null);
-		assertEquals(SingleDirectWorker.HA_TYPE, site.getHAType());
+		assertEquals(Worker.SINGLE_DIRECT_HA_TYPE, site.getHAType());
 
 		// Verify the site instance
 		List<SiteInstance> instances = site.getSiteInstances();
@@ -324,7 +323,7 @@ public class DVEConfigCLITest extends PETest {
 		PersistentSite site = c.findPersistentSite(siteName);
 
 		assertTrue("Site " + siteName + " should exist", site != null);
-		assertEquals(MasterMasterWorker.HA_TYPE, site.getHAType());
+		assertEquals(Worker.MASTER_MASTER_HA_TYPE, site.getHAType());
 
 		// Verify the site instance
 		List<SiteInstance> instances = site.getSiteInstances();

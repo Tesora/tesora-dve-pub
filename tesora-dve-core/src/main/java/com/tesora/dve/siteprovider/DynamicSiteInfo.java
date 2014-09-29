@@ -38,7 +38,6 @@ import com.tesora.dve.server.statistics.SiteStatKey.SiteType;
 import com.tesora.dve.sql.transform.execution.AdhocCatalogEntity;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.worker.AdditionalConnectionInfo;
-import com.tesora.dve.worker.SingleDirectWorker;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 
@@ -153,7 +152,7 @@ public class DynamicSiteInfo extends AbstractDynamicSiteInfo implements StorageS
 		return sb.toString();
 	}
 
-	private static SingleDirectWorker.Factory factory = new SingleDirectWorker.Factory();
+	private static Worker.Factory factory = Worker.SINGLE_DIRECT_SINGLE_DIRECT_FACTORY;
 
 	@Override
 	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {

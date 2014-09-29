@@ -1043,8 +1043,8 @@ persistent_sub1 returns [Statement s] options {k=1;}:
   ;
 
 ha_definition_tag returns [String s] options {k=1;}:
-  SINGLE { $s = SingleDirectWorker.HA_TYPE; }
-  | MASTERMASTER { $s = MasterMasterWorker.HA_TYPE; }
+  SINGLE { $s = Worker.SINGLE_DIRECT_HA_TYPE; }
+  | MASTERMASTER { $s = Worker.MASTER_MASTER_HA_TYPE; }
   ;
   
 sql_pe_session_statement returns [Statement s] options {k=1;}:

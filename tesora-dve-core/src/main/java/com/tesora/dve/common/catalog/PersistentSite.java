@@ -61,8 +61,6 @@ import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.annos.TableView;
 import com.tesora.dve.sql.schema.PEStorageSite.TCacheSite;
 import com.tesora.dve.worker.AdditionalConnectionInfo;
-import com.tesora.dve.worker.MasterMasterWorker;
-import com.tesora.dve.worker.SingleDirectWorker;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 
@@ -82,8 +80,8 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 	static Map<String, Worker.Factory> workerFactoryMap = new HashMap<String, Worker.Factory>() {
 		private static final long serialVersionUID = 1L;
 		{
-			put(SingleDirectWorker.HA_TYPE, new SingleDirectWorker.Factory());
-			put(MasterMasterWorker.HA_TYPE, new MasterMasterWorker.Factory());
+			put(Worker.SINGLE_DIRECT_HA_TYPE, Worker.SINGLE_DIRECT_SINGLE_DIRECT_FACTORY);
+			put(Worker.MASTER_MASTER_HA_TYPE, Worker.MASTER_MASTER_FACTORY);
 		}
 	};
 
@@ -109,11 +107,11 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 	public PersistentSite(String name, SiteInstance siteInstance) throws PEException {
 		this(name);
 		addInstance(siteInstance);
-		haType = SingleDirectWorker.HA_TYPE;
+		haType = Worker.SINGLE_DIRECT_HA_TYPE;
 	}
 
 	public PersistentSite(String name) {
-		this(name, SingleDirectWorker.HA_TYPE);
+		this(name, Worker.SINGLE_DIRECT_HA_TYPE);
 	}
 
 	public PersistentSite(String name, String haType) {

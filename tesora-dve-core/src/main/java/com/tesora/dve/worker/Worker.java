@@ -21,6 +21,7 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.common.catalog.*;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
@@ -43,10 +44,6 @@ import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.ISiteInstance;
-import com.tesora.dve.common.catalog.PersistentDatabase;
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
@@ -60,9 +57,14 @@ import com.tesora.dve.resultset.collector.ResultChunkManager;
  * Temp), though which database it is connected to can be changed by the
  * WorkerManager.
  */
-public abstract class Worker implements GenericSQLCommand.DBNameResolver {
-	
-	public interface Factory {
+public class Worker implements GenericSQLCommand.DBNameResolver {
+    public static final Factory MASTER_MASTER_FACTORY = new MasterMasterFactory();
+    public static final String MASTER_MASTER_HA_TYPE = "MasterMaster";
+
+    public static final SingleDirectFactory SINGLE_DIRECT_SINGLE_DIRECT_FACTORY = new SingleDirectFactory();
+    public static final String SINGLE_DIRECT_HA_TYPE = "Single";
+
+    public interface Factory {
 		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException;
 
 		public void onSiteFailure(StorageSite site) throws PEException;
@@ -109,17 +111,21 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 	long lastAccessTime = System.currentTimeMillis();
 
     boolean bindingChangedSinceLastCatalogSet = false;
+    boolean statementFailureTriggersCommFailure;
 
-	Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
+    protected Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop, boolean statementFailureTriggersCommFailure) throws PEException {
 		this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
 		this.site = site;
 		this.userAuthentication = auth;
 		this.additionalConnInfo = additionalConnInfo;
         this.previousEventLoop = null;
         this.preferredEventLoop = preferredEventLoop;
+        this.statementFailureTriggersCommFailure = statementFailureTriggersCommFailure;
 	}
 
-	public abstract WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop);
+    public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
+        return new SingleDirectConnection(auth, additionalConnInfo, site, preferredEventLoop);
+    }
 
     public void bindToClientThread(EventLoopGroup eventLoop) throws PESQLException {
         this.previousEventLoop = this.preferredEventLoop;
@@ -446,11 +452,13 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
         }
     }
 
-    protected void statementHadCommFailure(){
-        //called when an executing statement hits a communication failure.
+
+    protected void statementHadCommFailure() {
+        if (statementFailureTriggersCommFailure)
+            this.processCommunicationFailure();
     }
 
-	public void processCommunicationFailure() {
+	protected void processCommunicationFailure() {
 		closeWConnection();
 //		lastException = PECommunicationsException.INSTANCE;
 		try {
@@ -576,5 +584,43 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
         StatementManager.INSTANCE.registerStatement(connectionId, executingStatement);
         PerHostConnectionManager.INSTANCE.changeConnectionState(
                 connectionId, "Query", "", (sql == null) ? "Null Query" : sql.getRawSQL());
+    }
+
+    public static class MasterMasterFactory implements Factory {
+        @Override
+        public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop)
+                throws PEException {
+            return new Worker(auth, additionalConnInfo, site, preferredEventLoop, true);
+        }
+
+        @Override
+        public void onSiteFailure(StorageSite site) throws PEException {
+            // We know a MasterMasterWorker can only work on a PersistentSite, so to
+            // avoid implementing empty methods everywhere, we'll cast
+            ((PersistentSite)site).ejectMaster();
+        }
+
+        @Override
+        public String getInstanceIdentifier(StorageSite site, ISiteInstance instance) {
+            return site.getName();
+        }
+    }
+
+    public static class SingleDirectFactory implements Factory {
+        @Override
+        public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop)
+                throws PEException {
+            return new Worker(auth, additionalConnInfo, site, preferredEventLoop,false);
+        }
+
+        @Override
+        public void onSiteFailure(StorageSite site) {
+        }
+
+        @Override
+        public String getInstanceIdentifier(StorageSite site,
+                ISiteInstance instance) {
+            return site.getName();
+        }
     }
 }

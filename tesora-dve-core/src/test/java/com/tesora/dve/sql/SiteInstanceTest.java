@@ -23,6 +23,7 @@ package com.tesora.dve.sql;
 
 import static org.junit.Assert.assertTrue;
 
+import com.tesora.dve.worker.Worker;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -38,8 +39,6 @@ import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
-import com.tesora.dve.worker.MasterMasterWorker;
-import com.tesora.dve.worker.SingleDirectWorker;
 
 public class SiteInstanceTest extends SchemaTest {
 
@@ -95,7 +94,7 @@ public class SiteInstanceTest extends SchemaTest {
 		// make sure old syntax for creating persistent site works
 		conn.execute("create persistent site ss1 url='myurl' " + getCreds());
 		conn.assertResults("show persistent site ss1",
-				br(nr, "ss1", SingleDirectWorker.HA_TYPE, "myurl"));
+				br(nr, "ss1", Worker.SINGLE_DIRECT_HA_TYPE, "myurl"));
 
 		// drop ss1
 		conn.execute("drop persistent site ss1");
@@ -104,17 +103,17 @@ public class SiteInstanceTest extends SchemaTest {
 		// make sure new single site syntax for creating persistent site works
 		conn.execute("create persistent site ss1 url='myurl' " + getCreds());
 		conn.assertResults("show persistent site ss1",
-				br(nr, "ss1", SingleDirectWorker.HA_TYPE, "myurl"));
+				br(nr, "ss1", Worker.SINGLE_DIRECT_HA_TYPE, "myurl"));
 
 		// add existing persistent instance when creating new persistent site
 		conn.execute("create persistent site ss2 of type MasterMaster set master si1");
 		conn.assertResults("show persistent sites like 'ss2'",
-				br(nr, "ss2", MasterMasterWorker.HA_TYPE, "test.url1"));
+				br(nr, "ss2", Worker.MASTER_MASTER_HA_TYPE, "test.url1"));
 
 		// add the persistent instances to the new persistent site
 		conn.execute("alter persistent site ss2 add si2");
 		conn.assertResults("show persistent sites like 'ss2'",
-				br(nr, "ss2", MasterMasterWorker.HA_TYPE, "test.url1"));
+				br(nr, "ss2", Worker.MASTER_MASTER_HA_TYPE, "test.url1"));
 		conn.assertResults("show persistent instances like 'si%'",
 				br(nr, "si1", "ss2", "test.url1", catalogUser, encryptedCatalogPass, "YES", "ONLINE",
 				   nr, "si2", "ss2", "test.url2", catalogUser, encryptedCatalogPass, "NO", "ONLINE"));
@@ -129,7 +128,7 @@ public class SiteInstanceTest extends SchemaTest {
 		// remove si1 from the persistent site 
 		conn.execute("alter persistent site ss2 drop si1");
 		conn.assertResults("show persistent sites like 'ss2'",
-				br(nr, "ss2", MasterMasterWorker.HA_TYPE, "new si2 url"));
+				br(nr, "ss2", Worker.MASTER_MASTER_HA_TYPE, "new si2 url"));
 		conn.assertResults("show persistent instances like 'si%'",
 				br(nr, "si1", null, "new si1 url", catalogUser, encryptedCatalogPass, "YES", "OFFLINE",
 				   nr, "si2", "ss2", "new si2 url", catalogUser, encryptedCatalogPass, "YES", "ONLINE"));
@@ -157,7 +156,7 @@ public class SiteInstanceTest extends SchemaTest {
 
 		conn.execute("create persistent site ss3 of type MasterMaster set master si3 add si4");
 		conn.assertResults("show persistent sites like 'ss3'",
-				br(nr, "ss3", MasterMasterWorker.HA_TYPE, "test.url3"));
+				br(nr, "ss3", Worker.MASTER_MASTER_HA_TYPE, "test.url3"));
 		conn.assertResults("show persistent instances like 'si%'",
 				br(nr, "si3", "ss3", "test.url3", catalogUser, encryptedCatalogPass, "YES", "ONLINE",
 				   nr, "si4", "ss3", "test.url4", catalogUser, encryptedCatalogPass, "NO", "OFFLINE"));
@@ -165,13 +164,13 @@ public class SiteInstanceTest extends SchemaTest {
 		// change HA type 
 		conn.execute("alter persistent site ss3 set type single");
 		conn.assertResults("show persistent sites like 'ss3'",
-				br(nr, "ss3", SingleDirectWorker.HA_TYPE, "test.url3"));
+				br(nr, "ss3", Worker.SINGLE_DIRECT_HA_TYPE, "test.url3"));
 
 		// change master sites 
 		conn.execute("alter persistent instance si4 status='online'");
 		conn.execute("alter persistent site ss3 set master si4");
 		conn.assertResults("show persistent sites like 'ss3'",
-				br(nr, "ss3", SingleDirectWorker.HA_TYPE, "test.url4"));
+				br(nr, "ss3", Worker.SINGLE_DIRECT_HA_TYPE, "test.url4"));
 		conn.assertResults("show persistent instances like 'si%'",
 				br(nr, "si3", "ss3", "test.url3", catalogUser, encryptedCatalogPass, "NO", "ONLINE",
 				   nr, "si4", "ss3", "test.url4", catalogUser, encryptedCatalogPass, "YES", "ONLINE"));
