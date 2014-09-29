@@ -46,4 +46,13 @@ public class PESQLException extends PEException {
 
 	private static final long serialVersionUID = 1L;
 
+    public static PESQLException coerce(Throwable t){
+        if (t instanceof PESQLException)
+            return (PESQLException)t;
+        else {
+            PESQLException pesql = new PESQLException(t);
+            pesql.fillInStackTrace();
+            return pesql;
+        }
+    }
 }

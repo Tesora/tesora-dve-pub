@@ -29,8 +29,8 @@ import io.netty.channel.EventLoopGroup;
 import java.util.Map;
 
 public interface WorkerConnection {
-	
-	WorkerStatement getStatement(Worker w) throws PESQLException;
+
+    Worker.SingleDirectStatement getStatement(Worker w) throws PESQLException;
 	
 	void closeActiveStatements() throws PESQLException;
 	

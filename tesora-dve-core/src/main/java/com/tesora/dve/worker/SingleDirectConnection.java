@@ -46,8 +46,8 @@ public class SingleDirectConnection implements WorkerConnection {
 	final AdditionalConnectionInfo additionalConnInfo;
 
 	AtomicReference<DirectConnectionCache.CachedConnection> datasourceInfo = new AtomicReference<>();
-	
-	WorkerStatement wSingleStatement = null;
+
+    Worker.SingleDirectStatement wSingleStatement = null;
 
 
 
@@ -62,7 +62,7 @@ public class SingleDirectConnection implements WorkerConnection {
 	}
 
 	@Override
-	public WorkerStatement getStatement(Worker w) throws PESQLException {
+	public Worker.SingleDirectStatement getStatement(Worker w) throws PESQLException {
 		if (wSingleStatement==null) {
 			w.setPreviousDatabaseWithCurrent();
 				
@@ -71,16 +71,8 @@ public class SingleDirectConnection implements WorkerConnection {
 		return wSingleStatement;
 	}
 
-	/**
-	 * @param w
-	 * @throws PESQLException
-	 */
-	protected void onCommunicationsFailure(Worker w) throws PESQLException {
-		// do nothing?
-	}
-
-	protected SingleDirectStatement getNewStatement(Worker w) throws PESQLException {
-		return new SingleDirectStatement(w, getConnection());
+    protected Worker.SingleDirectStatement getNewStatement(Worker w) throws PESQLException {
+		return new Worker.SingleDirectStatement(w,getConnection());
 	}
 
 

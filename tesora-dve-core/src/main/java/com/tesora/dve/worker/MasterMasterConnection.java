@@ -31,13 +31,4 @@ public class MasterMasterConnection extends SingleDirectConnection {
 		super(auth, additionalConnInfo, site, preferredEventLoop);
 	}
 
-	@Override
-	protected void onCommunicationsFailure(Worker w) throws PESQLException {
-		w.onCommunicationsFailure();
-	}
-
-	@Override
-	protected SingleDirectStatement getNewStatement(Worker w) throws PESQLException {
-		return new SingleDirectStatement(w, getConnection(),true);
-	}
 }

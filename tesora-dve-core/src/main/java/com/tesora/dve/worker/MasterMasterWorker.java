@@ -60,4 +60,9 @@ public class MasterMasterWorker extends Worker {
 	public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
 		return new MasterMasterConnection(auth, additionalConnInfo, site, preferredEventLoop);
 	}
+
+    @Override
+    protected void statementHadCommFailure() {
+        this.processCommunicationFailure();
+    }
 }
