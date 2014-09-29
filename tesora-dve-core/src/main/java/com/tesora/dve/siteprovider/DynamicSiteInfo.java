@@ -24,6 +24,7 @@ package com.tesora.dve.siteprovider;
 import java.util.Comparator;
 import java.util.Map;
 
+import com.tesora.dve.worker.WorkerFactory;
 import io.netty.channel.EventLoopGroup;
 import org.apache.log4j.Logger;
 
@@ -152,7 +153,7 @@ public class DynamicSiteInfo extends AbstractDynamicSiteInfo implements StorageS
 		return sb.toString();
 	}
 
-	private static Worker.Factory factory = Worker.SINGLE_DIRECT_SINGLE_DIRECT_FACTORY;
+	private static WorkerFactory factory = WorkerFactory.SINGLE_DIRECT_SINGLE_DIRECT_FACTORY;
 
 	@Override
 	public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {

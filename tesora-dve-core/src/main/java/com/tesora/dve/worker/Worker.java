@@ -58,21 +58,10 @@ import com.tesora.dve.resultset.collector.ResultChunkManager;
  * WorkerManager.
  */
 public class Worker implements GenericSQLCommand.DBNameResolver {
-    public static final Factory MASTER_MASTER_FACTORY = new MasterMasterFactory();
-    public static final String MASTER_MASTER_HA_TYPE = "MasterMaster";
 
-    public static final SingleDirectFactory SINGLE_DIRECT_SINGLE_DIRECT_FACTORY = new SingleDirectFactory();
-    public static final String SINGLE_DIRECT_HA_TYPE = "Single";
+    public enum AvailabilityType { SINGLE, MASTER_MASTER }
 
-    public interface Factory {
-		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException;
-
-		public void onSiteFailure(StorageSite site) throws PEException;
-
-		public String getInstanceIdentifier(StorageSite site, ISiteInstance instance);
-	}
-	
-	// TODO: With XADataSource, we are now using a connection pool. Does it
+    // TODO: With XADataSource, we are now using a connection pool. Does it
 	// still make sense to
 	// have the worker keep connections, or should we get a new one for each
 	// transaction and
@@ -113,15 +102,15 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
     boolean bindingChangedSinceLastCatalogSet = false;
     boolean statementFailureTriggersCommFailure;
 
-    protected Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop, boolean statementFailureTriggersCommFailure) throws PEException {
-		this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
-		this.site = site;
-		this.userAuthentication = auth;
-		this.additionalConnInfo = additionalConnInfo;
+    protected Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop, AvailabilityType availability) {
+        this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
+        this.site = site;
+        this.userAuthentication = auth;
+        this.additionalConnInfo = additionalConnInfo;
         this.previousEventLoop = null;
         this.preferredEventLoop = preferredEventLoop;
-        this.statementFailureTriggersCommFailure = statementFailureTriggersCommFailure;
-	}
+        this.statementFailureTriggersCommFailure = (availability == AvailabilityType.MASTER_MASTER);
+    }
 
     public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
         return new SingleDirectConnection(auth, additionalConnInfo, site, preferredEventLoop);
@@ -586,41 +575,4 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
                 connectionId, "Query", "", (sql == null) ? "Null Query" : sql.getRawSQL());
     }
 
-    public static class MasterMasterFactory implements Factory {
-        @Override
-        public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop)
-                throws PEException {
-            return new Worker(auth, additionalConnInfo, site, preferredEventLoop, true);
-        }
-
-        @Override
-        public void onSiteFailure(StorageSite site) throws PEException {
-            // We know a MasterMasterWorker can only work on a PersistentSite, so to
-            // avoid implementing empty methods everywhere, we'll cast
-            ((PersistentSite)site).ejectMaster();
-        }
-
-        @Override
-        public String getInstanceIdentifier(StorageSite site, ISiteInstance instance) {
-            return site.getName();
-        }
-    }
-
-    public static class SingleDirectFactory implements Factory {
-        @Override
-        public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop)
-                throws PEException {
-            return new Worker(auth, additionalConnInfo, site, preferredEventLoop,false);
-        }
-
-        @Override
-        public void onSiteFailure(StorageSite site) {
-        }
-
-        @Override
-        public String getInstanceIdentifier(StorageSite site,
-                ISiteInstance instance) {
-            return site.getName();
-        }
-    }
 }
