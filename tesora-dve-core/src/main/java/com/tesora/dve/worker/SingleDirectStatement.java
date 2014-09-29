@@ -81,7 +81,7 @@ public class SingleDirectStatement implements WorkerStatement {
 
 		StatementManager.INSTANCE.registerStatement(connectionId, this);
 		PerHostConnectionManager.INSTANCE.changeConnectionState(
-				connectionId, "Query", "", (sql == null) ? "Null Query" : sql.getRawSQL());
+                connectionId, "Query", "", (sql == null) ? "Null Query" : sql.getRawSQL());
 
         CompletionHandle<Boolean> wrapped = new DelegatingCompletionHandle<Boolean>(promise){
             @Override
