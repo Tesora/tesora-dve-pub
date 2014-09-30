@@ -104,7 +104,14 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
 
     public void processSourceRow(KeyValue distValue, List<MysqlRedistTupleForwarder.ColumnValueInspector> columnInspectorList, MyBinaryResultRow binRow) throws PEException {
         //this get's called by MysqlRedistTupleForwarder when we receive a new row from a source query.
+        try {
+            innerHandleRow(distValue, columnInspectorList, binRow);
+        } catch (Exception e){
+            this.failure(e);
+        }
+    }
 
+    private void innerHandleRow(KeyValue distValue, List<MysqlRedistTupleForwarder.ColumnValueInspector> columnInspectorList, MyBinaryResultRow binRow) throws PEException {
         if (failedRedist)
             return;//drop our source rows quickly if redist has already failed.
 
