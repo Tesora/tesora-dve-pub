@@ -30,6 +30,7 @@ import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.DelegatingResultsProcessor;
 import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
+import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
@@ -38,6 +39,7 @@ import io.netty.channel.EventLoopGroup;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -55,6 +57,7 @@ import com.tesora.dve.exceptions.PESQLException;
  * WorkerManager.
  */
 public class Worker implements GenericSQLCommand.DBNameResolver {
+    static final EventLoopGroup DEFAULT_EVENTLOOP = SharedEventLoopHolder.getLoop();
 
     public enum AvailabilityType { SINGLE, MASTER_MASTER }
 
@@ -71,16 +74,16 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
     EventLoopGroup previousEventLoop;
     EventLoopGroup preferredEventLoop;
 
-	StorageSite site;
-	UserAuthentication userAuthentication;
-	AdditionalConnectionInfo additionalConnInfo;
+	protected StorageSite site;
+	protected UserAuthentication userAuthentication;
+	protected AdditionalConnectionInfo additionalConnInfo;
 	
 	@Override
 	public String toString() {
 		return getName()+"("+site+")";
 	}
 
-	WorkerConnection wConnection = null;
+    Worker.SingleDirectConnection wConnection = null;
 	boolean connectionAllocated = false;
 
 	String currentDatabaseName = null;
@@ -95,6 +98,9 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
     boolean bindingChangedSinceLastCatalogSet = false;
     boolean statementFailureTriggersCommFailure;
 
+    AtomicReference<DirectConnectionCache.CachedConnection> datasourceInfo = new AtomicReference<>();
+    SingleDirectStatement wSingleStatement = null;
+
     protected Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop, AvailabilityType availability) {
         this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
         this.site = site;
@@ -105,16 +111,20 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         this.statementFailureTriggersCommFailure = (availability == AvailabilityType.MASTER_MASTER);
     }
 
-    public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
-        //overridden by tests to inject failures.
-        return new SingleDirectConnection(auth, additionalConnInfo, site, preferredEventLoop);
+    protected Worker.SingleDirectConnection innerGetConnection() {
+        //don't delete, overridden by tests to inject failures.
+        return new SingleDirectConnection();
     }
 
     public void bindToClientThread(EventLoopGroup eventLoop) throws PESQLException {
         this.previousEventLoop = this.preferredEventLoop;
         this.preferredEventLoop = eventLoop;
+        if (eventLoop == null)
+            this.preferredEventLoop = DEFAULT_EVENTLOOP;
+
         if (wConnection != null){
-            wConnection.bindToClientThread(eventLoop);
+            if (previousEventLoop != preferredEventLoop)
+                wConnection.releaseConnection(true);
             bindingChangedSinceLastCatalogSet = true;
         }
     }
@@ -190,7 +200,7 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 	}
 
     public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise) {
-        WorkerConnection connection = getConnection();
+        Worker.SingleDirectConnection connection = getConnection();
         connection.updateSessionVariables(desiredVariables, setBuilder, promise);
     }
 
@@ -209,11 +219,11 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 		previousDatabaseID = currentDatabaseID;
 	}
 	
-	private WorkerConnection getConnection() {
+	private Worker.SingleDirectConnection getConnection() {
 		if (wConnection == null) {
 			if (connectionAllocated)
 				throw new PECodingException("Worker connection reallocated");
-			wConnection = getConnection(site, additionalConnInfo, userAuthentication, preferredEventLoop);
+			wConnection = innerGetConnection();
 			connectionAllocated = true;
 		}
 		return wConnection;
@@ -359,7 +369,8 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         SingleDirectStatement workerStatement;
 
 		try {
-			workerStatement = getConnection().getStatement(this);
+            Worker.SingleDirectConnection connection = getConnection();
+            workerStatement = connection.getStatement(this);
 		} catch (PECommunicationsException ce) {
 			processCommunicationFailure();
 			throw ce;
@@ -458,4 +469,143 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         }
     }
 
+    public class SingleDirectConnection {
+
+        public SingleDirectConnection() {
+        }
+
+
+        public SingleDirectStatement getStatement(Worker w) throws PESQLException {
+            if (wSingleStatement==null) {
+                w.setPreviousDatabaseWithCurrent();
+
+                wSingleStatement = new SingleDirectStatement(w, getConnection());
+            }
+            return wSingleStatement;
+        }
+
+
+        protected DBConnection getConnection() throws PESQLException {
+            DirectConnectionCache.CachedConnection cacheEntry = datasourceInfo.get();
+            while (cacheEntry == null){
+                cacheEntry = DirectConnectionCache.checkoutDatasource(preferredEventLoop,userAuthentication, additionalConnInfo, site);
+
+                if (datasourceInfo.compareAndSet(null, cacheEntry))
+                    break;
+
+                DirectConnectionCache.returnDatasource(cacheEntry);
+                cacheEntry = datasourceInfo.get();
+            }
+            return cacheEntry;
+        }
+
+
+        public synchronized void close(boolean isStateValid) throws PESQLException {
+            releaseConnection(isStateValid);
+        }
+
+        private void releaseConnection(boolean isStateValid) throws PESQLException {
+            closeActiveStatements();
+
+            DirectConnectionCache.CachedConnection currentConnection = datasourceInfo.getAndSet(null);
+
+            if (currentConnection != null){
+                if (isStateValid) {
+                    DirectConnectionCache.returnDatasource(currentConnection);
+                } else {
+                    DirectConnectionCache.discardDatasource(currentConnection);
+                }
+            }
+        }
+
+
+
+        public void closeActiveStatements() throws PESQLException {
+            if (wSingleStatement != null) {
+                wSingleStatement.close();
+                wSingleStatement = null;
+            }
+        }
+
+
+        public void setCatalog(String databaseName) throws PESQLException {
+            getConnection().setCatalog(databaseName, null);
+        }
+
+        public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise) {
+            DBConnection connection = null;
+            try {
+                connection = getConnection();
+                connection.updateSessionVariables(desiredVariables, setBuilder, promise);
+            } catch (PESQLException e) {
+                promise.failure(e);
+            }
+        }
+
+
+
+
+        public void rollbackXA(DevXid xid, CompletionHandle<Boolean> promise) {
+            try {
+                getConnection().rollback(xid, promise);
+            } catch (Exception e) {
+                PESQLException problem = new PESQLException("Cannot rollback XA Transaction " + xid, e);
+                problem.fillInStackTrace();
+                promise.failure(problem);
+            }
+        }
+
+
+        public void commitXA(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) {
+            try {
+                getConnection().commit(xid, onePhase, promise);
+            } catch (PESQLException e) {
+                promise.failure(e);
+            }
+        }
+
+
+        public void prepareXA(DevXid xid, CompletionHandle<Boolean> promise) {
+            try {
+                getConnection().prepare(xid, promise);
+            } catch (PESQLException sqlError){
+                promise.failure(sqlError);
+            }
+        }
+
+
+        public void endXA(DevXid xid) throws PESQLException {
+            try {
+                getConnection().end(xid,null);
+            } catch (Exception e) {
+                throw new PESQLException("Cannot end XA Transaction " + xid, e);
+            }
+        }
+
+
+        public void startXA(DevXid xid) throws PESQLException {
+            try {
+                getConnection().start(xid, null);
+            } catch (Exception e) {
+                throw new PESQLException("Cannot start XA Transaction " + xid, e);
+            }
+        }
+
+
+
+        public boolean isModified() throws PESQLException {
+            return getConnection().hasPendingUpdate();
+        }
+
+
+        public boolean hasActiveTransaction() throws PESQLException {
+            return getConnection().hasActiveTransaction();
+        }
+
+
+        public int getConnectionId() throws PESQLException {
+            return getConnection().getConnectionId();
+        }
+
+    }
 }

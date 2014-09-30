@@ -132,8 +132,8 @@ public class DirectConnectionCache {
      */
     static CachedConnection connect(DSCacheKey key) throws SQLException, PEException {
 
-        if (SingleDirectConnection.logger.isDebugEnabled())
-            SingleDirectConnection.logger.debug("Allocating new JDBC connection to " + key.site.getName() + " ==> " + key.toString());
+        if (logger.isDebugEnabled())
+            logger.debug("Allocating new JDBC connection to " + key.site.getName() + " ==> " + key.toString());
 
         DBConnection dbConnection = MYSQL_FACTORY.newInstance(key.eventLoop, key.site);
         dbConnection.connect(key.url, key.userId, key.password, key.clientCapabilities);
@@ -338,8 +338,8 @@ public class DirectConnectionCache {
 
         @Override
         public void activateObject(DSCacheKey key, CachedConnection entry) throws Exception {
-            if (SingleDirectConnection.logger.isDebugEnabled())
-                SingleDirectConnection.logger.debug("Re-activating JDBC connection to " + key.site.getName() + " ==> " + key.toString());
+            if (logger.isDebugEnabled())
+                logger.debug("Re-activating JDBC connection to " + key.site.getName() + " ==> " + key.toString());
 
         }
 
