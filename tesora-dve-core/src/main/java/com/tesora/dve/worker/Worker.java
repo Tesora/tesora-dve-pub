@@ -34,13 +34,11 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
 import io.netty.channel.EventLoopGroup;
-import io.netty.util.concurrent.Future;
 
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -49,7 +47,6 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
-import com.tesora.dve.resultset.collector.ResultChunkManager;
 
 /**
  * Worker is the agent that processes commands against the database. It
@@ -86,9 +83,7 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 	WorkerConnection wConnection = null;
 	boolean connectionAllocated = false;
 
-	ResultChunkManager chunkMgr;
 	String currentDatabaseName = null;
-	String userVisibleDatabaseName;
 	Integer currentDatabaseID = null;
 	Integer previousDatabaseID = null;
 	String currentGlobalTransaction = null;
@@ -96,8 +91,6 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 	final String name;
 	
 	Exception lastException = null;
-
-	long lastAccessTime = System.currentTimeMillis();
 
     boolean bindingChangedSinceLastCatalogSet = false;
     boolean statementFailureTriggersCommFailure;
@@ -113,6 +106,7 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
     }
 
     public WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop) {
+        //overridden by tests to inject failures.
         return new SingleDirectConnection(auth, additionalConnInfo, site, preferredEventLoop);
     }
 
@@ -125,17 +119,7 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         }
     }
 
-	public void releaseResources() throws PEException {
-//		try {
-//			resetStatement();
-			closeWConnection();
-//		} catch (SQLException e1) {
-//			if (logger.isDebugEnabled())
-//				throw new PEException("Exception encountered releasing resources for worker " + getName(), e1);
-//		}
-	}
-
-	private void closeWConnection() {
+    private void closeWConnection() {
 		if (wConnection != null) {
 			try {
                 PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
@@ -159,15 +143,6 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         CompletionHandle<Boolean> resultTracker = new DelegatingCompletionHandle<Boolean>(promise){
             @Override
             public void success(Boolean returnValue) {
-                if (chunkMgr != null) {
-                    try {
-                        chunkMgr.close();
-                        chunkMgr = null;
-                    } catch (SQLException e) {
-                        this.failure(e);
-                        return;
-                    }
-                }
                 super.success(returnValue);
             }
 
@@ -207,7 +182,6 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
                 previousDatabaseID = currentDatabaseID;
 				currentDatabaseID = currentDatabase.getId();
 				currentDatabaseName = newDatabaseName;
-				userVisibleDatabaseName = currentDatabase.getUserVisibleName();
                 previousEventLoop = preferredEventLoop;
 				getConnection().setCatalog(currentDatabaseName);
                 bindingChangedSinceLastCatalogSet = false;
@@ -219,22 +193,18 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         WorkerConnection connection = getConnection();
         connection.updateSessionVariables(desiredVariables, setBuilder, promise);
     }
-	
+
 	// used in late resolution support
 	@Override
 	public String getNameOnSite(String dbName) {
 		return UserDatabase.getNameOnSite(dbName, site);
 	}
-	
+
 	@Override
 	public int getSiteIndex() {
 		return site.getInstanceIdentifier().hashCode();
 	}
 
-	public boolean databaseChanged() {
-		return !ObjectUtils.equals(previousDatabaseID, currentDatabaseID);
-	}
-	
 	public void setPreviousDatabaseWithCurrent() {
 		previousDatabaseID = currentDatabaseID;
 	}
@@ -249,18 +219,6 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 		return wConnection;
 	}
 
-	public void setChunkManager(ResultChunkManager mgr) {
-		chunkMgr = mgr;
-	}
-
-	public ResultChunkManager getChunkManager() {
-		return chunkMgr;
-	}
-
-	String getWorkerId() throws PEException {
-		return getName();
-	}
-	
 	public String getName() {
 		return name;
 	}
@@ -269,11 +227,7 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 		return site;
 	}
 
-	public void setSite(StorageSite site2) {
-		this.site = site2;
-	}
-
-	public DevXid getXid(String globalId) {
+	protected DevXid getXid(String globalId) {
 		return new DevXid(globalId, getName());
 	}
 
@@ -398,35 +352,19 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 	}
 
 	public void close() throws PEException {
-		try {
-			releaseResources();
-		} catch (PEException e) {
-			logger.warn("Exception encountered closing worker " + getName(), e);
-		}
+		closeWConnection();
 	}
 
-	public long getLastAccessTime() {
-		return lastAccessTime;
-	}
-
-	public String getCurrentDatabaseName() {
-		return currentDatabaseName;
-	}
-	
-	public String getUserVisibleDatabaseName() {
-		return userVisibleDatabaseName;
-	}
-
-	public SingleDirectStatement getStatement() throws PESQLException {
+	protected SingleDirectStatement getStatement() throws PESQLException {
         SingleDirectStatement workerStatement;
-		
+
 		try {
 			workerStatement = getConnection().getStatement(this);
 		} catch (PECommunicationsException ce) {
 			processCommunicationFailure();
 			throw ce;
 		}
-		
+
 		return workerStatement;
 	}
 
@@ -456,37 +394,13 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 			logger.error("Unable to send site failure notification", e1);
 		}
 	}
-	
-	private int uniqueValue = 0;
-
-	private Future<Void> executionFuture;
 
 	public void setLastException(Exception lastException) {
 		this.lastException = lastException;
 	}
 
-	public long getUniqueValue() {
-		return ++uniqueValue  ;
-	}
-
-	public boolean isActiveSiteInstance(int siteInstanceId) {
-		return site.getMasterInstanceId() == siteInstanceId;
-	}
-
-	public void setFuture(Future<Void> future) {
-		this.executionFuture = future;
-	}
-
-	public Future<Void> getFuture() {
-		return executionFuture;
-	}
-
 	public boolean isModified() throws PESQLException {
 		return getConnection().isModified();
-	}
-	
-	public String getAddress() {
-		return name;
 	}
 
 	public boolean hasActiveTransaction() throws PESQLException {
