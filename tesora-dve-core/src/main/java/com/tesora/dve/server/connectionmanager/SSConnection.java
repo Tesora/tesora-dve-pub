@@ -476,7 +476,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 	private void doSessionTimeoutCheck() {
 		try {
-			final long wait_timeout = KnownVariables.WAIT_TIMEOUT.getSessionValue(this).longValue(); 
+			final long wait_timeout = KnownVariables.WAIT_TIMEOUT.getSessionValue(this).longValue();
 			if (!executingInContext) {
 				Singletons.require(HostService.class).submit(new Callable<Void>() {
                     public Void call() throws Exception {

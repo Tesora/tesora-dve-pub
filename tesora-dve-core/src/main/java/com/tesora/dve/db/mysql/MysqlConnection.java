@@ -71,6 +71,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.ServerGlobalVariableStore;
+import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.DevXid;
 import com.tesora.dve.worker.UserCredentials;
 
@@ -122,12 +123,17 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
         this(SharedEventLoopHolder.getLoop(),site);
     }
 
-    private void setupDefaultSessionVars(StorageSite site) {
+	private void setupDefaultSessionVars(StorageSite site) {
         //provide some default session variables that can be overridden.
-        sessionDefaults.put("@" + DBNative.DVE_SITENAME_VAR,site.getName());
-        sessionDefaults.put("character_set_connection", MysqlNativeConstants.DB_CHAR_SET);
-        sessionDefaults.put("character_set_client", MysqlNativeConstants.DB_CHAR_SET);
-        sessionDefaults.put("character_set_results", MysqlNativeConstants.DB_CHAR_SET);
+		sessionDefaults.put("@" + DBNative.DVE_SITENAME_VAR, site.getName());
+		sessionDefaults.put("wait_timeout", getGlobalValueForVariable(KnownVariables.BACKEND_WAIT_TIMEOUT));
+        sessionDefaults.put("character_set_connection", getGlobalValueForVariable(KnownVariables.CHARACTER_SET_CONNECTION));  // MysqlNativeConstants.DB_CHAR_SET
+        sessionDefaults.put("character_set_client", getGlobalValueForVariable(KnownVariables.CHARACTER_SET_CLIENT));  // MysqlNativeConstants.DB_CHAR_SET
+		sessionDefaults.put("character_set_results", getGlobalValueForVariable(KnownVariables.CHARACTER_SET_RESULTS)); // MysqlNativeConstants.DB_CHAR_SET
+    }
+
+	private static String getGlobalValueForVariable(final VariableHandler<?> variable) {
+		return variable.getGlobalValue(null).toString();
     }
 
     public void setShutdownQuietPeriod(final long seconds) {

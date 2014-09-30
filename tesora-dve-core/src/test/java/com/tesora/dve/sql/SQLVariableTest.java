@@ -584,6 +584,16 @@ public class SQLVariableTest extends SchemaTest {
 		assertVariableValue("protocol_version", "10");
 	}
 
+	@Test
+	public void testPE1656() throws Throwable {
+		assertVariableValue("backend_wait_timeout", "28800");
+		assertVariableValue("wait_timeout", "28800");
+
+		conn.execute("set wait_timeout = 14400");
+		assertVariableValue("backend_wait_timeout", "28800");
+		assertVariableValue("wait_timeout", "14400");
+	}
+
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}
