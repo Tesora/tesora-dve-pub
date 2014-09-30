@@ -442,12 +442,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
     }
 
     @Override
-    public void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) {
-        String setTimestampSQL = "SET TIMESTAMP=" + referenceTime + ";";
-        execute(setTimestampSQL, promise);
-    }
-
-    @Override
 	public void setCatalog(String databaseName, CompletionHandle<Boolean> promise) {
 		execute("use " + databaseName, promise);
 	}

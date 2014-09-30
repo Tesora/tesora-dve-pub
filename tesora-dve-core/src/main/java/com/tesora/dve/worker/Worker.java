@@ -25,17 +25,14 @@ import com.tesora.dve.common.catalog.*;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.db.mysql.DelegatingResultsProcessor;
-import com.tesora.dve.db.mysql.MysqlCommandResultsProcessor;
+import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
-import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
 
 import java.sql.SQLException;
@@ -358,7 +355,7 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 		closeWConnection();
 	}
 
-	protected SingleDirectStatement getStatement() throws PESQLException {
+	public SingleDirectStatement getStatement() throws PESQLException {
         SingleDirectStatement workerStatement;
 
 		try {
@@ -370,18 +367,6 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 
 		return workerStatement;
 	}
-
-    //syntactic sugar to hide WorkerStatement from requests and reduce ephemeral coupling.
-    public void execute(int connectionId, SQLCommand sql, GroupDispatch resultConsumer, CompletionHandle<Boolean> promise) {
-        SingleDirectStatement statement;
-        try {
-            statement = this.getStatement();
-            statementExecute(connectionId, sql, resultConsumer, promise, statement);
-        } catch (PEException pe){
-            promise.failure(pe);
-        }
-    }
-
 
     protected void statementHadCommFailure() {
         if (statementFailureTriggersCommFailure)
@@ -415,8 +400,8 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 	}
 
     public static class SingleDirectStatement implements WorkerStatement {
-        DBConnection dbConnection;
-        Worker worker;
+        public DBConnection dbConnection;
+        public Worker worker;
 
         public SingleDirectStatement(Worker worker,DBConnection dbConnection) throws PESQLException {
             this.worker = worker;
@@ -445,53 +430,32 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
             stmt.dbConnection = null;
     }
 
-    private void statementExecute(final int connectionId, final SQLCommand sql, GroupDispatch resultConsumer, final CompletionHandle<Boolean> promise, final SingleDirectStatement executingStatement) {
-        statementStart(connectionId, sql, executingStatement);
+    public void writeAndFlush(CommandChannel dbConnection, MysqlMessage outboundMessage, final DelegatingResultsProcessor statementInterceptor) {
+        //TODO: this dbConnection is one we handed out earlier.  Need to pull it back in.  Maybe have Worker delegate? -sgossard
 
-        if (sql.hasReferenceTime()) {
-            executingStatement.dbConnection.setTimestamp( sql.getReferenceTime(), null);
-        }
-
-        GroupDispatch.Bundle dispatchBundle = resultConsumer.getDispatchBundle(executingStatement.dbConnection, sql.getResolvedCommand(this), promise);
-
-        final DelegatingResultsProcessor workerResultInterceptor = new DelegatingResultsProcessor(dispatchBundle.resultsProcessor){
-            @Override
-            public void end(ChannelHandlerContext ctx) {
-                statementEnd(connectionId, executingStatement);
-                super.end(ctx);
-            }
-
+        final DelegatingResultsProcessor workerResultInterceptor = new DelegatingResultsProcessor(statementInterceptor){
+            boolean triggeredFailure = false;
             @Override
             public void failure(Exception e) {
-                PESQLException psqlError = PESQLException.coerce(e);
+                if (!triggeredFailure) {
+                    PESQLException psqlError = PESQLException.coerce(e);
 
-                if (psqlError instanceof PECommunicationsException){
-                    statementHadCommFailure();
+                    if (psqlError instanceof PECommunicationsException) {
+                        statementHadCommFailure();
+                    }
+
+                    setLastException(psqlError);
+
+                    super.failure(psqlError);
+                    triggeredFailure = true;
                 }
-
-                setLastException(psqlError);
-
-                psqlError = new PESQLException(psqlError.getMessage(), new PESQLException("On statement: " + sql.getDisplayForLog(), psqlError));
-
-                statementEnd(connectionId, executingStatement);
-                super.failure(psqlError);
             }
         };
 
-        if (dispatchBundle.outboundMessage != null)
-            executingStatement.dbConnection.writeAndFlush(dispatchBundle.outboundMessage,workerResultInterceptor);
+        if (outboundMessage != null) {
 
-    }
-
-    private static void statementEnd(int connectionId, SingleDirectStatement executingStatement) {
-        StatementManager.INSTANCE.unregisterStatement(connectionId, executingStatement);
-        PerHostConnectionManager.INSTANCE.resetConnectionState(connectionId);
-    }
-
-    private static void statementStart(int connectionId, SQLCommand sql, SingleDirectStatement executingStatement) {
-        StatementManager.INSTANCE.registerStatement(connectionId, executingStatement);
-        PerHostConnectionManager.INSTANCE.changeConnectionState(
-                connectionId, "Query", "", (sql == null) ? "Null Query" : sql.getRawSQL());
+            dbConnection.writeAndFlush(outboundMessage, workerResultInterceptor);
+        }
     }
 
 }

@@ -23,7 +23,6 @@ package com.tesora.dve.server.messaging;
 
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
@@ -64,7 +63,7 @@ public class WorkerExecuteRequest extends WorkerRequest {
             if (isAutoTransact())
                 w.startTrans(getTransId());
 
-            w.execute(getConnectionId(), stmtCommand, this,callersResult);
+            this.execute(w, stmtCommand, callersResult);
 		} catch (Exception pe) {
 			callersResult.failure(pe);
 		}

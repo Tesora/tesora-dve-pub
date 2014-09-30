@@ -52,7 +52,7 @@ public class WorkerGrantPrivilegesRequest extends WorkerRequest {
 	public void executeRequest(final Worker w, CompletionHandle<Boolean> promise)  {
 
         SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getGrantPriviledgesCommand(userDeclaration, "*");
-        w.execute(getConnectionId(), ddl, this, promise);
+        this.execute(w, ddl, promise);
     }
 
 	@Override

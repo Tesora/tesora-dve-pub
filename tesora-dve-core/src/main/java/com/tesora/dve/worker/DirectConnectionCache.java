@@ -195,11 +195,6 @@ public class DirectConnectionCache {
             dbConnection.setCatalog(databaseName, promise);
         }
 
-        @Override
-        public void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) {
-            dbConnection.setTimestamp(referenceTime, promise);
-        }
-
         @Deprecated
         @Override
         public void cancel() {

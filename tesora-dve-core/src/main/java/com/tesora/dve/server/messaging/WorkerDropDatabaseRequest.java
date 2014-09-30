@@ -24,7 +24,6 @@ package com.tesora.dve.server.messaging;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
@@ -49,7 +48,7 @@ public class WorkerDropDatabaseRequest extends WorkerRequest {
 
 		String localizedDBName = UserDatabase.getNameOnSite(databaseName, w.getWorkerSite());
         SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getDropDatabaseStmt(localizedDBName);
-        w.execute(getConnectionId(), ddl, this, promise);
+        this.execute(w, ddl, promise);
     }
 
     @Override

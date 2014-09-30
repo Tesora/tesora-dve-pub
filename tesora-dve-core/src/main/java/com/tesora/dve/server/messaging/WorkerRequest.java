@@ -24,6 +24,15 @@ package com.tesora.dve.server.messaging;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.GroupDispatch;
+import com.tesora.dve.db.mysql.DelegatingResultsProcessor;
+import com.tesora.dve.db.mysql.MysqlMessage;
+import com.tesora.dve.db.mysql.PassFailProcessor;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PESQLException;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
+import com.tesora.dve.worker.StatementManager;
+import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.comms.client.messages.RequestMessage;
@@ -88,6 +97,68 @@ public abstract class WorkerRequest extends RequestMessage implements GroupDispa
 
 	public abstract void executeRequest(Worker w, CompletionHandle<Boolean> promise);
 
+
+    public void execute(final Worker targetWorker, final SQLCommand sql, CompletionHandle<Boolean> promise) {
+        //NOTE: all worker requests that need to execute statements should come through here to make things easy to refactor.
+        final int connectionId = getConnectionId();
+        final GroupDispatch resultConsumer = this;
+        final Worker.SingleDirectStatement statement;
+        try {
+            statement = targetWorker.getStatement();
+            CommandChannel dbConnection = statement.dbConnection;
+
+            Long referenceTime = null;
+            if (sql.hasReferenceTime())
+                referenceTime = sql.getReferenceTime();
+
+            SQLCommand resolvedSQL = sql.getResolvedCommand(targetWorker);
+
+            Bundle dispatchBundle = resultConsumer.getDispatchBundle(dbConnection, resolvedSQL, promise);
+            MysqlMessage outboundMessage = dispatchBundle.outboundMessage;
+
+
+            final DelegatingResultsProcessor statementInterceptor = new DelegatingResultsProcessor(dispatchBundle.resultsProcessor){
+                boolean ended = false;
+                @Override
+                public void active(ChannelHandlerContext ctx) {
+                    statementStart(connectionId, sql, statement);
+                    super.active(ctx);
+                }
+
+                @Override
+                public void end(ChannelHandlerContext ctx) {
+                    if (!ended) {
+                        statementEnd(connectionId, statement);
+                        super.end(ctx);
+                        ended = true;
+                    }
+                }
+
+                @Override
+                public void failure(Exception e) {
+                    if (!ended) {
+                        statementEnd(connectionId, statement);
+                        PESQLException psqlError = new PESQLException(e.getMessage(), new PESQLException("On statement: " + sql.getDisplayForLog(), e));
+                        super.failure(psqlError);
+                        ended = true;
+                    }
+                }
+            };
+
+            //TODO: this is one of the null promises that gets deferred. -sgossard
+            if (referenceTime != null) {
+                CompletionHandle<Boolean> deferred = dbConnection.getExceptionDeferringPromise();
+                String setTimestampSQL = "SET TIMESTAMP=" + referenceTime + ";";
+                MysqlMessage message = MSPComQueryRequestMessage.newMessage(new SQLCommand(setTimestampSQL).getSQLAsBytes());
+                dbConnection.writeAndFlush(message, new PassFailProcessor(deferred));
+            }
+
+            targetWorker.writeAndFlush(dbConnection, outboundMessage, statementInterceptor);
+        } catch (PEException pe){
+            promise.failure(pe);
+        }
+    }
+
     @Override
 	public String toString() {
 		return new StringBuffer(getClass()
@@ -102,4 +173,15 @@ public abstract class WorkerRequest extends RequestMessage implements GroupDispa
 	}
 
 	public abstract LogSiteStatisticRequest getStatisticsNotice();
+
+    public static void statementEnd(int connectionId, Worker.SingleDirectStatement executingStatement) {
+        StatementManager.INSTANCE.unregisterStatement(connectionId, executingStatement);
+        PerHostConnectionManager.INSTANCE.resetConnectionState(connectionId);
+    }
+
+    public static void statementStart(int connectionId, SQLCommand sql, Worker.SingleDirectStatement executingStatement) {
+        StatementManager.INSTANCE.registerStatement(connectionId, executingStatement);
+        PerHostConnectionManager.INSTANCE.changeConnectionState(
+                connectionId, "Query", "", (sql == null) ? "Null Query" : sql.getRawSQL());
+    }
 }
