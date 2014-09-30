@@ -26,6 +26,7 @@ import io.netty.buffer.Unpooled;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
@@ -102,34 +103,49 @@ public class GenericSQLCommand {
 			throw new PECodingException("Session variable '" + KnownVariables.CHARACTER_SET_CONNECTION.getName() + "' is set to an unsupported value.", e);
 		}
 	}
-	
+
 	private static byte[] resolveToByteArrayWithOffsetMap(final Charset encoding, final String value, final OffsetEntry[] entries,
-			final Map<OffsetEntry, Integer> offsetMap) {
+			final Map<OffsetEntry, Integer> offsetMap) throws PEException {
 		final CharsetEncoder encoder = encoding.newEncoder();
 		final int inputLength = value.length();
 		final int maxBytesPerChar = (int) Math.ceil(encoder.maxBytesPerChar());
 		final CharBuffer input = CharBuffer.wrap(value).asReadOnlyBuffer();
 		final ByteBuffer resolved = ByteBuffer.allocate(maxBytesPerChar * inputLength);
-		if (entries.length > 0) {
-			for (final OffsetEntry entry : entries) {
-				final int stringOffset = entry.getCharacterOffset();
-				encodeInputSlice(encoder, input, stringOffset, false, resolved);
-				offsetMap.put(entry, resolved.position());
+
+		try {
+			if (entries.length > 0) {
+				for (final OffsetEntry entry : entries) {
+					final int stringOffset = entry.getCharacterOffset();
+					encodeInputSlice(encoder, input, stringOffset, false, resolved);
+					offsetMap.put(entry, resolved.position());
+				}
 			}
+
 			encodeInputSlice(encoder, input, inputLength, true, resolved);
 
+			return slice((ByteBuffer) resolved.flip());
+		} catch (final CharacterCodingException e) {
+			throw new PEException("Error encoding command: " + value, e);
 		}
-
-		return value.getBytes(encoding);
 	}
 
-	private static void encodeInputSlice(final CharsetEncoder encoder, final CharBuffer in, final int limit, final boolean isEnd, final ByteBuffer out) {
+	/**
+	 * Copy bytes from a given buffer to a new byte array.
+	 * The copy starts at the current position()
+	 * and ends at the limit().
+	 */
+	private static byte[] slice(final ByteBuffer buffer) {
+		final byte[] format = new byte[buffer.limit()];
+		buffer.get(format);
+		return format;
+	}
+
+	private static void encodeInputSlice(final CharsetEncoder encoder, final CharBuffer in, final int limit, final boolean isEnd, final ByteBuffer out)
+			throws CharacterCodingException {
 		in.limit(limit);
 		final CoderResult status = encoder.encode(in, out, isEnd);
 		if (status.isError()) {
-			// TODO
-			System.out.println(status.toString());
-			//status.throwException();
+			status.throwException();
 		}
 	}
 
@@ -174,7 +190,7 @@ public class GenericSQLCommand {
 	}
 
 	private GenericSQLCommand(final SchemaContext sc, final String format, final OffsetEntry[] entries, StatementType stmtType, Boolean isUpdate,
-			Boolean hasLimit) {
+			Boolean hasLimit) throws PEException {
 		this(getCurrentSessionConnectionCharSet(sc), format, entries, stmtType, isUpdate, hasLimit);
 	}
 
@@ -183,7 +199,7 @@ public class GenericSQLCommand {
 	 * the resolved string.
 	 */
 	private GenericSQLCommand(final Charset connectionCharset, final String format, final OffsetEntry[] entries, StatementType stmtType, Boolean isUpdate,
-			Boolean hasLimit) {
+			Boolean hasLimit) throws PEException {
 		this.numCharacters = format.length();
 		this.entryMap = new TreeMap<OffsetEntry, Integer>();
 		this.format = resolveToByteArrayWithOffsetMap(connectionCharset, format, entries, this.entryMap);
@@ -452,7 +468,7 @@ public class GenericSQLCommand {
 		lines.add(new String(concatSQLFragments(sqlFragments)));
 	}
 
-	public GenericSQLCommand resolve(Map<Integer, String> rawRepls, SchemaContext sc) {
+	public GenericSQLCommand resolve(Map<Integer, String> rawRepls, SchemaContext sc) throws PEException {
 		if (!this.hasLateResolution()) {
 			return this;
 		}
@@ -643,7 +659,7 @@ public class GenericSQLCommand {
 		public String getToken() {
 			return token;
 		}
-		
+
 		@Override
 		public int hashCode() {
 			return Integer.valueOf(this.offset).hashCode();
@@ -906,7 +922,7 @@ public class GenericSQLCommand {
 			return this;
 		}
 
-		public GenericSQLCommand build(final SchemaContext sc, String format) {
+		public GenericSQLCommand build(final SchemaContext sc, String format) throws PEException {
 			final OffsetEntry[] out = entries.toArray(new OffsetEntry[0]);
 			return new GenericSQLCommand(sc, format, out, this.type, this.isForUpdate, this.isLimit);
 		}

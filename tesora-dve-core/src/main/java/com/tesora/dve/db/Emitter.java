@@ -230,7 +230,7 @@ public abstract class Emitter {
 			return buf.toString();
 		}
 
-		public final GenericSQLCommand buildGenericCommand(final SchemaContext sc) {
+		public final GenericSQLCommand buildGenericCommand(final SchemaContext sc) throws PEException {
 			final StringBuilder buf = new StringBuilder();
 			this.emitStatement(sc, buf);
 
@@ -256,7 +256,11 @@ public abstract class Emitter {
 	}
 	
 	public GenericSQLCommand buildGenericCommand(final SchemaContext sc, String format) {
-		return builder.build(sc, format);
+		try {
+			return builder.build(sc, format);
+		} catch (final PEException e) {
+			throw new SchemaException(Pass.EMITTER, e);
+		}
 	}
 	
 	public void startGenericCommand() {
