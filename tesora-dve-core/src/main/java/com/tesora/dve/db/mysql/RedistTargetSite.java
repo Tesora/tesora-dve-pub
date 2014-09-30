@@ -233,6 +233,11 @@ class RedistTargetSite implements AutoCloseable {
             public void failure(Exception e) {
                 builder.failure(e);
             }
+
+            @Override
+            public void end(ChannelHandlerContext ctx) {
+
+            }
         };
     }
 

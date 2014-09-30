@@ -32,9 +32,9 @@ import com.tesora.dve.server.messaging.SQLCommand;
 public interface GroupDispatch {
 
     public class Bundle {
-        static final Bundle NO_COMM = new Bundle();
-        final MysqlMessage outboundMessage;
-        final MysqlCommandResultsProcessor resultsProcessor;
+        public static final Bundle NO_COMM = new Bundle();
+        public final MysqlMessage outboundMessage;
+        public final MysqlCommandResultsProcessor resultsProcessor;
 
         protected Bundle(){
             this.outboundMessage = null;

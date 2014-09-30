@@ -27,12 +27,15 @@ import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.GroupDispatch;
+import com.tesora.dve.db.mysql.DelegatingResultsProcessor;
+import com.tesora.dve.db.mysql.MysqlCommandResultsProcessor;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
 
 import java.sql.SQLException;
@@ -445,11 +448,17 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
     private void statementExecute(final int connectionId, final SQLCommand sql, GroupDispatch resultConsumer, final CompletionHandle<Boolean> promise, final SingleDirectStatement executingStatement) {
         statementStart(connectionId, sql, executingStatement);
 
-        final CompletionHandle<Boolean> wrapped = new DelegatingCompletionHandle<Boolean>(promise){
+        if (sql.hasReferenceTime()) {
+            executingStatement.dbConnection.setTimestamp( sql.getReferenceTime(), null);
+        }
+
+        GroupDispatch.Bundle dispatchBundle = resultConsumer.getDispatchBundle(executingStatement.dbConnection, sql.getResolvedCommand(this), promise);
+
+        final DelegatingResultsProcessor workerResultInterceptor = new DelegatingResultsProcessor(dispatchBundle.resultsProcessor){
             @Override
-            public void success(Boolean returnValue) {
+            public void end(ChannelHandlerContext ctx) {
                 statementEnd(connectionId, executingStatement);
-                super.success(returnValue);
+                super.end(ctx);
             }
 
             @Override
@@ -462,20 +471,16 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 
                 setLastException(psqlError);
 
-                if (sql != null)
-                    psqlError = new PESQLException(psqlError.getMessage(), new PESQLException("On statement: " + sql.getDisplayForLog(), psqlError));
+                psqlError = new PESQLException(psqlError.getMessage(), new PESQLException("On statement: " + sql.getDisplayForLog(), psqlError));
 
                 statementEnd(connectionId, executingStatement);
                 super.failure(psqlError);
             }
-
         };
 
-        if (sql.hasReferenceTime()) {
-            executingStatement.dbConnection.setTimestamp( sql.getReferenceTime(), null);
-        }
+        if (dispatchBundle.outboundMessage != null)
+            executingStatement.dbConnection.writeAndFlush(dispatchBundle.outboundMessage,workerResultInterceptor);
 
-        resultConsumer.getDispatchBundle(executingStatement.dbConnection, sql.getResolvedCommand(this), wrapped).writeAndFlush(executingStatement.dbConnection);
     }
 
     private static void statementEnd(int connectionId, SingleDirectStatement executingStatement) {

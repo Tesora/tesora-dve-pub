@@ -100,6 +100,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
         } else {
             //no response expected, so this command is done early.  Fire all the lifecycle stuff now.
             command.active(ctx);
+            command.end(ctx);
             commandTimer.end(
                 command.getClass().getName()
             );
@@ -130,7 +131,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
 
     protected void dispatchRead(ChannelHandlerContext ctx, MyMessage message) throws Exception {
         boolean messageSignalsEndOfRequest = message.isSequenceEnd();
-
+        boolean triggeredError = false;
         SimpleMysqlCommandBundle activeCommand = null;
         Timer responseProcessing = null;
         try {
@@ -159,8 +160,10 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
             );
 
         } catch (PEException e) {
+            triggeredError = true;
             activeCommand.failure(e);
         } catch (Exception e) {
+            triggeredError = true;
             String errorMsg = String.format("encountered problem processing %s via %s, failing command.\n", (message.getClass().getName()), (activeCommand == null ? "null" : activeCommand.getClass().getName()));
             if (activeCommand==null || logger.isDebugEnabled())
                 logger.warn(errorMsg,e);
@@ -170,7 +173,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
                 activeCommand.failure(e);
         } finally {
             if (messageSignalsEndOfRequest) {
-                popActiveCommand(ctx);
+                popActiveCommand(ctx, triggeredError);
                 activateFirstCommandIfNeeded(ctx);
             }
             timingService.detachTimerOnThread();
@@ -183,11 +186,15 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
         cmdList.addLast(command);
     }
 
-    private void popActiveCommand(ChannelHandlerContext ctx) {
+    private void popActiveCommand(ChannelHandlerContext ctx, boolean hadError) {
         SimpleMysqlCommandBundle cmd = cmdList.pollFirst();
 
-        if (cmd != null && logger.isDebugEnabled())
-            logger.debug(ctx.channel() + ": " + packetsInThisResponse + " results received for deregistered cmd " + cmd);
+        if (cmd != null) {
+            if (logger.isDebugEnabled())
+                logger.debug(ctx.channel() + ": " + packetsInThisResponse + " results received for deregistered cmd " + cmd);
+            if (!hadError)
+                cmd.end(ctx);
+        }
 
         sentActiveEventToHeadOfQueue = false;
         packetsInThisResponse = 0;

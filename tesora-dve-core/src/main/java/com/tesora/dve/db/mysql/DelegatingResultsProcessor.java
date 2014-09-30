@@ -22,29 +22,41 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.exceptions.PEException;
 import io.netty.channel.ChannelHandlerContext;
 
-import com.tesora.dve.exceptions.PEException;
+/**
+ *
+ */
+public class DelegatingResultsProcessor implements MysqlCommandResultsProcessor {
+    MysqlCommandResultsProcessor delegate;
 
-public abstract class MysqlCommand implements MysqlCommandResultsProcessor {
-
-    protected MysqlCommand() {
+    public DelegatingResultsProcessor(MysqlCommandResultsProcessor delegate) {
+        this.delegate = delegate;
     }
 
     @Override
-    abstract public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
+    public void active(ChannelHandlerContext ctx) {
+        delegate.active(ctx);
+    }
 
     @Override
-    abstract public void packetStall(ChannelHandlerContext ctx) throws PEException;
+    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        return delegate.processPacket(ctx, message);
+    }
 
     @Override
-    abstract public void failure(Exception e);
+    public void packetStall(ChannelHandlerContext ctx) throws PEException {
+        delegate.packetStall(ctx);
+    }
 
     @Override
-    abstract public void active(ChannelHandlerContext ctx);
+    public void failure(Exception e) {
+        delegate.failure(e);
+    }
 
     @Override
     public void end(ChannelHandlerContext ctx) {
-
+        delegate.end(ctx);
     }
 }

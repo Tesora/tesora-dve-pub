@@ -44,4 +44,6 @@ public interface MysqlCommandResultsProcessor {
 
 	void failure(Exception e);
 
+    void end(ChannelHandlerContext ctx);
+
 }

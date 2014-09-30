@@ -51,6 +51,9 @@ public class MysqlExecuteCommand extends MysqlCommand {
     private int writtenFrames;
 	private Monitor connectionMonitor;
 
+    private boolean encounteredFailure = false;
+
+
     public MysqlExecuteCommand(SQLCommand sqlCommand, Monitor monitor,
                                MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
         super();
@@ -74,6 +77,9 @@ public class MysqlExecuteCommand extends MysqlCommand {
     //this is an execute response, which returns a ERR, OK for zero rows, or for N rows, [FIELD COUNT, N*fields, an EOF, M*rows, final EOF]
 	@Override
 	public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        if (encounteredFailure)
+            return false;
+
         try{
             switch (messageState) {
                 case AWAIT_ROW:
@@ -93,8 +99,8 @@ public class MysqlExecuteCommand extends MysqlCommand {
             }
             return true;
         } catch (Exception e){
-            promise.failure(e);
-            throw e;
+            failure(e);
+            return false;
         }
 	}
 
@@ -143,7 +149,7 @@ public class MysqlExecuteCommand extends MysqlCommand {
                 messageState = ResponseState.DONE;
                 MyErrorResponse errorResponse = (MyErrorResponse)message;
                 resultConsumer.error(errorResponse);
-                promise.failure(new PEMysqlErrorException(errorResponse.asException()));
+                failure(new PEMysqlErrorException(errorResponse.asException()));
                 break;
             case RESULTSET_RESPONSE:
                 messageState = ResponseState.AWAIT_FIELD;
@@ -185,6 +191,7 @@ public class MysqlExecuteCommand extends MysqlCommand {
 
     @Override
 	public void failure(Exception e) {
+        encounteredFailure = true;
         promise.failure(e);
 	}
 

@@ -85,6 +85,11 @@ public class SimpleMysqlCommandBundle implements MysqlCommandBundle, MysqlComman
     }
 
     @Override
+    public void end(ChannelHandlerContext ctx) {
+        responseProcessor.end(ctx);
+    }
+
+    @Override
     public void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
         requestProcessor.executeInContext(ctx,charset);
     }

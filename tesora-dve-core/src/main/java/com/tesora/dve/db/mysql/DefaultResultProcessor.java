@@ -68,4 +68,7 @@ public class DefaultResultProcessor implements MysqlCommandResultsProcessor, Com
         return promise.isFulfilled();
     }
 
+    @Override
+    public void end(ChannelHandlerContext ctx) {
+    }
 }

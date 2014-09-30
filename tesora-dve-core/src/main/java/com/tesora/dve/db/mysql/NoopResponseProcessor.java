@@ -49,4 +49,9 @@ public class NoopResponseProcessor implements MysqlCommandResultsProcessor {
     public void failure(Exception e) {
 
     }
+
+    @Override
+    public void end(ChannelHandlerContext ctx) {
+
+    }
 }
