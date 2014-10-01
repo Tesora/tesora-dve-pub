@@ -72,6 +72,12 @@ public class DVEErrors {
 	public static final OneParamErrorCode<String> UNKNOWN_COLLATION =
 			new OneParamErrorCode<String>("UNKNOWN_COLLATION", false);
 
+	// variable related errors
+	public static final TwoParamErrorCode<String, String> WRONG_VALUE_FOR_VARIABLE =
+			new TwoParamErrorCode<String, String>("WRONG_VALUE_FOR_VARIABLE", false);
+	public static final OneParamErrorCode<String> WRONG_TYPE_FOR_VARIABLE =
+			new OneParamErrorCode<String>("WRONG_TYPE_FOR_VARIABLE", false);
+
 	public static final ErrorCode[] universe = new ErrorCode[] {
 		TABLE_DNE,
 		COLUMN_DNE,
@@ -86,7 +92,8 @@ public class DVEErrors {
 		NON_UNIQUE_TABLE,
 		UNKNOWN_CHARACTER_SET,
 		UNKNOWN_COLLATION,
-		
+		WRONG_VALUE_FOR_VARIABLE,
+		WRONG_TYPE_FOR_VARIABLE,
 		
 		INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
 		INVALID_CONTAINER_DELETE,

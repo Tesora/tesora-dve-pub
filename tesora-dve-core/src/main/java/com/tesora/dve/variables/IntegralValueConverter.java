@@ -23,9 +23,12 @@ package com.tesora.dve.variables;
 
 import java.sql.Types;
 
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.resultset.collector.ResultCollector.ResultCollectorFactory;
+import com.tesora.dve.sql.SchemaException;
 
 public class IntegralValueConverter extends ValueMetadata<Long> {
 
@@ -34,8 +37,8 @@ public class IntegralValueConverter extends ValueMetadata<Long> {
 		if (in == null) return null;
 		try {
 			return Long.parseLong(in);
-		} catch (NumberFormatException nfe) {
-			throw new PEException("Not an integral value: '" + in + "'");
+		} catch (final NumberFormatException nfe) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_TYPE_FOR_VARIABLE, varName));
 		}
 	}
 

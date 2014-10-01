@@ -21,7 +21,10 @@ package com.tesora.dve.variables;
  * #L%
  */
 
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.SchemaException;
 
 public class FloatingPointValueConverter extends ValueMetadata<Double> {
 
@@ -33,8 +36,8 @@ public class FloatingPointValueConverter extends ValueMetadata<Double> {
 	public Double convertToInternal(String varName, String in) throws PEException {
 		try {
 			return Double.valueOf(in);
-		} catch (NumberFormatException nfe) {
-			throw new PEException("Not a floating point value '" + "'");
+		} catch (final NumberFormatException nfe) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_TYPE_FOR_VARIABLE, varName));
 		}
 	}
 
