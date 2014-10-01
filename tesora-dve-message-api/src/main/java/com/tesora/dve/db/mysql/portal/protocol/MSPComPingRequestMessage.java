@@ -30,8 +30,8 @@ public class MSPComPingRequestMessage extends BaseMSPMessage {
         super();
     }
 
-    protected MSPComPingRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComPingRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -40,8 +40,8 @@ public class MSPComPingRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPComPingRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComPingRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComPingRequestMessage(sequenceID,source);
+        return new MSPComPingRequestMessage(source);
     }
 }

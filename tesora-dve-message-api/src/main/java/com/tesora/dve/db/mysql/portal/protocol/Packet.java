@@ -21,11 +21,14 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.MysqlMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteOrder;
 
@@ -42,6 +45,7 @@ import java.nio.ByteOrder;
  *
  */
 public class Packet {
+    static final Logger logger = LoggerFactory.getLogger(Packet.class);
     public enum Modifier {HEAPCOPY_ON_READ}
     static final int HEADER_LENGTH = 4;
     static final int MAX_PAYLOAD = 0xffffff;
@@ -49,15 +53,16 @@ public class Packet {
     final ByteBuf header;
     final CompositeByteBuf payload;
     Modifier modifier;
+    int expectedSequence;
+    int lastDecodedSeq;
     int totalFullBytes = 0;
     boolean sealed = false;
+    String context;
 
-    public Packet(ByteBufAllocator alloc) {
-        this(alloc, null);
-    }
-
-    public Packet(ByteBufAllocator alloc, Modifier mod) {
+    public Packet(ByteBufAllocator alloc, int expectedSequence, Modifier mod, String context) {
+        this.expectedSequence = expectedSequence;
         this.modifier = mod;
+        this.context = context;
         if (modifier == Modifier.HEAPCOPY_ON_READ) {
             header = Unpooled.buffer(4,4).order(ByteOrder.LITTLE_ENDIAN);
             payload = Unpooled.compositeBuffer(50);
@@ -71,8 +76,12 @@ public class Packet {
         return payload.readableBytes();
     }
 
-    public int getSequenceNumber(){
-        return header.getByte(3);
+    public byte getSequenceNumber(){
+        return (byte)(0xFF & lastDecodedSeq);
+    }
+
+    public int getNextSequenceNumber(){
+        return (0xFF) & (getSequenceNumber() + 1);
     }
 
     public ByteBuf unwrapHeader(){
@@ -94,7 +103,7 @@ public class Packet {
         ReferenceCountUtil.release(payload);
     }
 
-    public boolean decodeMore(ByteBufAllocator alloc, ByteBuf input){
+    public boolean decodeMore(ByteBuf input){
         if (! sealed ) {
             int transferToHeader = Math.min(header.writableBytes(),input.readableBytes());
             input.readBytes(header,transferToHeader);
@@ -104,6 +113,8 @@ public class Packet {
             }
 
             int chunkLength = header.getUnsignedMedium(0);
+            lastDecodedSeq = header.getUnsignedByte(3);
+
             int chunkAlreadyReceived = payload.writerIndex() - totalFullBytes;
             int chunkExpecting = chunkLength - chunkAlreadyReceived;
             int payloadTransfer = Math.min(chunkExpecting,input.readableBytes());
@@ -118,6 +129,11 @@ public class Packet {
             chunkExpecting = chunkLength - chunkAlreadyReceived;
 
             if (chunkExpecting == 0){
+                if (lastDecodedSeq != expectedSequence){
+                    String message = context + " , sequence problem decoding packet, expected=" + expectedSequence + " , decoded=" + lastDecodedSeq;
+                    logger.warn(message);
+                }
+                expectedSequence++;
                 //finished this packet, mark how many full packet bytes we've read.
                 totalFullBytes = payload.writerIndex();
                 if (chunkLength < MAX_PAYLOAD){
@@ -129,6 +145,51 @@ public class Packet {
             }
         }
         return sealed;
+    }
+
+    public static int encodeFullMessage(int sequenceStart, MysqlMessage mysql, ByteBuf destination) {
+
+        //copies the message payload to a heap buffer, so we can size the actual output.
+        ByteBuf payloadHolder = Unpooled.buffer();
+        mysql.marshallPayload(payloadHolder); //copy full payload to heap buffer (might be an extended payload)
+
+        return encodeFullPayload(sequenceStart, payloadHolder, destination);
+    }
+
+    public static int encodeFullPayload(int sequenceStart, ByteBuf payloadHolder, ByteBuf destination) {
+        ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
+
+        //TODO: this loop is identical to the one below, except it doesn't consume the source or update the destination.  Consolidate?
+        //calculate the size of the final encoding, so we resize the destination at most once.
+        int payloadRemaining = payloadHolder.readableBytes();
+        int outputSize = 0;
+        do {
+            outputSize += 4; //header
+            int chunkLength = Math.min(payloadRemaining,MAX_PAYLOAD);
+            outputSize += chunkLength;
+            payloadRemaining -= chunkLength;
+            if (chunkLength == MAX_PAYLOAD)
+                outputSize += 4; //need one more packet if last fragment is exactly 0xFFFF long.
+        } while (payloadRemaining > 0);
+
+        leBuf.ensureWritable(outputSize);
+
+        int sequenceIter = sequenceStart;
+        boolean lastChunkWasMaximumLength;
+        do {
+            int initialSize = payloadHolder.readableBytes();
+            int maxSlice = MAX_PAYLOAD;
+            int sendingPayloadSize = Math.min(maxSlice, initialSize);
+            lastChunkWasMaximumLength = (sendingPayloadSize == maxSlice); //need to send a zero length payload if last fragment was exactly 0xFFFF long.
+
+            ByteBuf nextChunk = payloadHolder.readSlice(sendingPayloadSize);
+            leBuf.writeMedium(sendingPayloadSize);
+            leBuf.writeByte(sequenceIter);
+            leBuf.writeBytes(nextChunk);
+
+            sequenceIter++;
+        } while (payloadHolder.readableBytes() > 0 || lastChunkWasMaximumLength);
+        return sequenceIter;  //returns the next usable/expected sequence number.
     }
 
 }

@@ -44,7 +44,8 @@ public final class AnalyzerOptions {
 	public static final String FK_AS_JOIN = "fk_as_join";
 	public static final String USE_ROW_WIDTH_WEIGHTS = "use_row_width_weights";
 	public static final String RDS_FORMAT = "rds_format";
-
+	public static final String VERBOSE_ERRORS = "verbose_corpus_errors";
+	
 	private final List<AnalyzerOption> options = new ArrayList<AnalyzerOption>();
 
 	public AnalyzerOptions() {
@@ -80,6 +81,7 @@ public final class AnalyzerOptions {
 				"If available, information on average row width can be used to weight row counts in table size estimations.",
 				true));
 		options.add(new AnalyzerOption(RDS_FORMAT, "Set to true to indicate that the log to be processed is from Amazon RDS", false));
+		options.add(new AnalyzerOption(VERBOSE_ERRORS, "Emit stack traces in error log during corpus generation", false));
 	}
 
 	public void reset() {
@@ -147,6 +149,10 @@ public final class AnalyzerOptions {
 		return getIntegerValue(REDIST_CUTOFF_NAME);
 	}
 
+	public boolean isVerboseErrors() {
+		return getBooleanValue(VERBOSE_ERRORS);
+	}
+	
 	private Object getValue(final String name) {
 		for (final AnalyzerOption ao : options) {
 			if (ao.getName().equals(name)) {

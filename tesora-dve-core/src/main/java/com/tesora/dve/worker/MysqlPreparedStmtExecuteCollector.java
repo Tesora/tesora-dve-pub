@@ -22,18 +22,16 @@ package com.tesora.dve.worker;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.libmy.*;
-
-import io.netty.channel.Channel;
 
 import java.util.List;
 
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.ResultChunkProvider;
@@ -51,7 +49,7 @@ import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlPreparedStmtExecuteCollector implements MysqlQueryResultConsumer, DBResultConsumer, ResultChunkProvider {
+public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implements MysqlQueryResultConsumer, ResultChunkProvider {
 	
 	static Logger logger = Logger.getLogger(MysqlPreparedStmtExecuteCollector.class);
 
@@ -82,8 +80,8 @@ public class MysqlPreparedStmtExecuteCollector implements MysqlQueryResultConsum
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), this, promise));
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise);
 	}
 
 	@Override

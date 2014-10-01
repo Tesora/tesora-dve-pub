@@ -27,7 +27,7 @@ import io.netty.buffer.ByteBuf;
 public class MyFieldPktFieldListResponse extends MyFieldPktResponse {
 
 	@Override
-	public void marshallMessage(ByteBuf cb) {
+    public void marshallMessage(ByteBuf cb) {
 		super.marshallMessage(cb);
 		MysqlAPIUtils.putLengthCodedString(cb, getDefaultValue(), true);
 	}

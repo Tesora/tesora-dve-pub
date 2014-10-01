@@ -128,12 +128,13 @@ public class TruncateTest extends SchemaMirrorTest {
 			connection.execute(buildTableColumnInsert("t", "id", Arrays.asList(null, null, null)));
 			connection.execute("create view v as select * from t");
 
-			try {
-				connection.execute("truncate table v");
-			} catch (SQLException e) {
-				assertSQLException(e,MySQLErrors.missingTableFormatter,
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					connection.execute("truncate table v");
+				}
+			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
 						String.format("Table '%s.%s' doesn't exist", dbName, "v"));
-			}
 			
 			testTableTruncate(connection, dbName, "t", 3);
 		} finally {

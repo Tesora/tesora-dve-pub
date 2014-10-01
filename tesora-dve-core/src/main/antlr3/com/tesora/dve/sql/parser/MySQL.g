@@ -333,8 +333,10 @@ joined_table returns [ExpressionNode expr] options {k=1;}:
   ;
 
 join_rhs returns [JoinedTable jt] options {k=1;}:
-  join_type? JOIN table_factor join_specification?
-  { $jt = utils.buildJoinedTable($table_factor.expr, $join_specification.expr, $join_type.js); }
+  (join_type? JOIN table_factor join_specification?
+  { $jt = utils.buildJoinedTable($table_factor.expr, $join_specification.expr, $join_type.js); })
+  | (NATURAL (outer_join_type OUTER?)? JOIN table_factor
+  { $jt = utils.buildJoinedTable($table_factor.expr, null, utils.buildJoinType($outer_join_type.text, $NATURAL.text, $OUTER.text)); })
   ;
 
 join_specification returns [JoinClauseType expr] options {k=1;}: 
@@ -343,8 +345,8 @@ join_specification returns [JoinClauseType expr] options {k=1;}:
   ;
   
 join_type returns [JoinSpecification js] options {k=1;}:
-  (ijt=(CROSS | INNER) { $js = utils.buildJoinType($ijt.text, null); })
-  | outer_join_type OUTER? { $js = utils.buildJoinType($outer_join_type.text, $OUTER.text); }
+  (ijt=(CROSS | INNER) { $js = utils.buildJoinType($ijt.text); })
+  | (outer_join_type OUTER? { $js = utils.buildJoinType($outer_join_type.text, null, $OUTER.text); })
   ;
 outer_join_type options {k=1;}: 
   LEFT | RIGHT | FULL
@@ -606,15 +608,22 @@ boolean_operator options {k=1;}:
   
 
 boolean_expr returns [ExpressionNode expr] options{k=1;}:
-  ln=NOT? predicate (i=IS in=NOT? is_parameters)?
-  { $expr = utils.buildBooleanExpr(this.adaptor, $ln, $predicate.expr, $i, $in, $is_parameters.l); }
+  ln=multi_not_expr? predicate (i=IS in=NOT? is_parameters)?
+  { $expr = utils.buildBooleanExpr(this.adaptor, $ln.t, $predicate.expr, $i, $in, $is_parameters.l); }
+  ;
+  
+multi_not_expr returns [Token t] options {k=1;}
+  @init { List l = new ArrayList(); }
+  :
+  (nl=NOT { l.add($nl); } (nr=NOT { l.add($nr); })*)
+  { $t = ((l.size() \% 2) == 0) ? null : $nl; }
   ;
 
 predicate returns [ExpressionNode expr] options {k=1;}:
   lhs=math_binop_expr
   (
     ((n=NOT)?
-     ((i=IN in_parameters)
+     ((i=IN in_parameters (op=relational_binop orhs=predicate)?)
      |(b=BETWEEN blhs=math_binop_expr AND brhs=predicate)
      |(l=LIKE like_parameters)
      |((bre=REGEXP | rl=RLIKE) string_literal)

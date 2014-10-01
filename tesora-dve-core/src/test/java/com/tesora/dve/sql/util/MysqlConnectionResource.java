@@ -35,8 +35,8 @@ import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.GenericSQLCommand;
-import com.tesora.dve.db.MysqlStmtCloseDiscarder;
 import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
@@ -101,7 +101,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        mysqlConn.execute(sqlc, results, promise);
+        results.dispatch(mysqlConn, sqlc, promise);
         promise.sync();
 		
 		return new ProxyConnectionResourceResponse(results);
@@ -113,7 +113,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlPrepareStatementCollector collector = new MysqlPrepareStatementCollector();
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        mysqlConn.execute(new SQLCommand(stmt), collector, promise);
+        collector.dispatch(mysqlConn, new SQLCommand(stmt), promise);
         promise.sync();
 		return collector.getPreparedStatement();
 	}
@@ -128,7 +128,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		
 		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand("EXEC PREPARED"), parameters);
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        mysqlConn.execute(sqlc, collector, promise);
+        collector.dispatch(mysqlConn, sqlc, promise);
         promise.sync();
 		
 		return new ProxyConnectionResourceResponse(collector);
@@ -137,11 +137,10 @@ public class MysqlConnectionResource extends ConnectionResource {
 	@Override
 	public void destroyPrepared(Object id) throws Throwable {
 		@SuppressWarnings("unchecked")
-		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id; 
-		MysqlStmtCloseDiscarder discarder = new MysqlStmtCloseDiscarder(pstmt);
-		
-		mysqlConn.execute(new SQLCommand(new GenericSQLCommand("CLOSE PREP STMT")), discarder, new PEDefaultPromise<Boolean>() );
-	}
+
+		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id;
+        mysqlConn.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
+    }
 
 	@Override
 	public ResourceResponse fetch(LineInfo info, String stmt) throws Throwable {

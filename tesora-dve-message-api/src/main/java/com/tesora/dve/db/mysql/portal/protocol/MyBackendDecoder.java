@@ -21,6 +21,10 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.MysqlMessage;
+import com.tesora.dve.mysqlapi.repl.messages.MyComBinLogDumpRequest;
+import com.tesora.dve.mysqlapi.repl.messages.MyComRegisterSlaveRequest;
+import com.tesora.dve.mysqlapi.repl.messages.MyReplEvent;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.handler.codec.ByteToMessageDecoder;
@@ -59,6 +63,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 	protected static final Logger logger = Logger.getLogger(MyBackendDecoder.class);
     protected static final ParseStrategy UNSOLICITED = new UnsolicitedMessageParser();
 
+    CachedAppendBuffer bufferCache = new CachedAppendBuffer();
     Packet mspPacket;
 
 	String socketDesc;
@@ -96,6 +101,19 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
     };
 
     @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        try{
+            super.channelInactive(ctx);
+        } finally {
+            bufferCache.releaseSlab();
+            if (mspPacket != null){
+                mspPacket.release();
+                mspPacket = null;
+            }
+        }
+    }
+
+    @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         decoder.channelRead(ctx, msg);
     }
@@ -123,6 +141,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             responseParseStrategy = new SimpleOKParser();
         } else if (msg instanceof MSPComPrepareStmtRequestMessage){
             responseParseStrategy = new PrepareResponseParser();
+        } else if (msg instanceof MyComRegisterSlaveRequest){
+            responseParseStrategy = new SimpleOKParser();
+        } else if (msg instanceof MyComBinLogDumpRequest) {
+            responseParseStrategy = new ReplDumpLogParser();
         } else {
             logger.warn(String.format("Unexpected message transmitted, %s",msg.getClass().getName()));
         }
@@ -136,7 +158,26 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 parserStack.add(responseParseStrategy);
             }
         }
-        super.write(ctx, msg, promise);
+
+        try {
+        if (msg instanceof MysqlMessage){
+            MysqlMessage mysql = (MysqlMessage)msg;
+            int sequenceStart = 0; //right now all outbound messages on the backend are full requests, and start a new sequence.
+            ByteBuf append = bufferCache.startAppend(ctx);
+
+            int nextSequence = Packet.encodeFullMessage(sequenceStart, mysql, append);
+
+            ByteBuf fullyEncodedSlice = bufferCache.sliceWritableData();
+
+            if (responseParseStrategy != null) //if a response is expected, save the sequence number the response should start with.
+                responseParseStrategy.setNextSequenceNumber(nextSequence);
+
+            super.write(ctx, fullyEncodedSlice,promise);
+        } else
+            super.write(ctx, msg, promise);
+        } catch (Exception e){
+            logger.warn("Problem during encoding of message." , e);
+        }
         backendEncoding.end(
             socketDesc,
             (msg == null ? "null" : msg.getClass().getName())
@@ -151,14 +192,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
     }
 
     protected void decodeLast(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-        try{
-            this.decode0(ctx,in,out,true);
-        } finally {
-            if (mspPacket != null){
-                mspPacket.release();
-                mspPacket = null;
-            }
-        }
+        this.decode0(ctx,in,out,true);
     }
 
 	protected void decode0(ChannelHandlerContext ctx, ByteBuf in, List<Object> out, boolean lastPacket) throws Exception {
@@ -166,12 +200,18 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             logger.debug("processing packet, "+in);
 
         try {
+            //get a contextual parser that decodes data based on what was previously transmitted, never null.
+            ParseStrategy responseParser = lookupParser();
+            int expectedSequence = responseParser.nextSequenceNumber();
 
             if (mspPacket == null)
-                mspPacket = new Packet(ctx.alloc(), Packet.Modifier.HEAPCOPY_ON_READ);
+                mspPacket = new Packet(ctx.alloc(), expectedSequence, Packet.Modifier.HEAPCOPY_ON_READ, "backend");
 
-            if (!mspPacket.decodeMore(ctx.alloc(),in)) //deals with framing and extended packets.
+            if (!mspPacket.decodeMore(in)) //deals with framing and extended packets.
                 return;
+
+            //we got a packet, maybe extended.  update the next expected sequence (might be > +1, if extended)
+            responseParser.setNextSequenceNumber( mspPacket.getNextSequenceNumber() );
 
             ByteBuf leHeader = mspPacket.unwrapHeader().order(ByteOrder.LITTLE_ENDIAN).retain();
             ByteBuf lePayload = mspPacket.unwrapPayload().order(ByteOrder.LITTLE_ENDIAN).retain();//retain a separate reference to the payload.
@@ -179,8 +219,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             mspPacket = null;
 
 
-            //get a contextual parser that decodes data based on what was previously transmitted, never null.
-            ParseStrategy responseParser = lookupParser();
+
 
             //ok, we aren't waiting for a packet anymore, end the wait timer, start the decode timer.
             responseParser.endAtomicWaitTimer();
@@ -240,12 +279,15 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
         void startAtomicWaitTimer();
         void endAtomicWaitTimer();
+        void setNextSequenceNumber(int seq);
+        int nextSequenceNumber();
     }
 
     static abstract class BaseParseStrategy implements ParseStrategy {
         String socketDesc;
         Timer parent;
         AtomicReference<Timer> waitTimer = new AtomicReference<>(null);
+        int nextSeq;
 
         public void setSocketDesc(String desc){
             this.socketDesc = desc;
@@ -279,6 +321,15 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
                 );
         }
+
+        @Override
+        public void setNextSequenceNumber(int seq) {
+            this.nextSeq = seq;
+        }
+
+        public int nextSequenceNumber(){
+            return this.nextSeq;
+        }
     }
 
     static class UnsolicitedMessageParser extends BaseParseStrategy {
@@ -303,7 +354,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
             parsedOne = true;
             ByteBuf payload = lePayload;
-            byte statusByte = payload.getByte(4);//5th byte in the full packet
+            byte statusByte = payload.getByte(0); //5th byte in the full packet
             MyMessage message;
             if (statusByte == 0){
                 message = new MyOKResponse();
@@ -312,12 +363,54 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 message = new MyErrorResponse();
                 message.unmarshallMessage(payload);
             }
+            message.setSequenceEnd(true);
             return message;
         }
 
         @Override
         public boolean isDone() {
             return parsedOne;
+        }
+    }
+
+    static class ReplDumpLogParser extends BaseParseStrategy {
+        boolean errorOrEof = false;
+        @Override
+        public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
+
+            ByteBuf payload = lePayload;
+            byte statusByte = payload.getByte(0);//5th byte in the full packet
+            MyMessage message;
+            switch (statusByte){
+                case MyOKResponse.OKPKT_INDICATOR: //replication events use 0 to indicate a replication event, same as an OK packet.
+                    MyReplEvent repl = new MyReplEvent();
+                    lePayload.skipBytes(1);//TODO: MyReplEvent expects first byte of payload to already be consumed. -sgossard
+                    repl.unmarshallMessage(lePayload);
+                    message = repl;
+                    break;
+                case MyErrorResponse.ERRORPKT_FIELD_COUNT:
+                    errorOrEof = true;
+                    MyErrorResponse errorResponse = new MyErrorResponse();
+                    errorResponse.unmarshallMessage(lePayload);
+                    errorResponse.setSequenceEnd(true);
+                    message = errorResponse;
+                    break;
+                case MyEOFPktResponse.EOFPKK_FIELD_COUNT:
+                    errorOrEof = true;
+                    MyEOFPktResponse eofResponse = new MyEOFPktResponse();
+                    eofResponse.unmarshallMessage(lePayload);
+                    eofResponse.setSequenceEnd(true);
+                    message = eofResponse;
+                    break;
+                default:
+                    throw new PEException("Unexpected response while parsing replication dump log response, type ID was " + statusByte);
+            }
+            return message;
+        }
+
+        @Override
+        public boolean isDone() {
+            return errorOrEof;
         }
     }
 
@@ -453,12 +546,14 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                     bufferState = ResponseState.DONE;
                     MyOKResponse ok = new MyOKResponse();
                     ok.unmarshallMessage(lePayload);
+                    ok.setSequenceEnd(true);
                     message = ok;
                     break;
                 case MyErrorResponse.ERRORPKT_FIELD_COUNT:
                     bufferState = ResponseState.DONE;
                     MyErrorResponse errorResponse = new MyErrorResponse();
                     errorResponse.unmarshallMessage(lePayload);
+                    errorResponse.setSequenceEnd(true);
                     message = errorResponse;
                     break;
                 case MyEOFPktResponse.EOFPKK_FIELD_COUNT:
@@ -474,7 +569,6 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         }
 
 		public MyMessage parseAwaitRow(ByteBuf leHeader, ByteBuf lePayload) throws PEException {
-			final byte packetSequenceId = leHeader.getByte(3); // 4th byte
             final byte messageType = lePayload.getByte(0);
 
 			MyMessage message = null;
@@ -482,6 +576,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 				bufferState = ResponseState.DONE;
 				MyEOFPktResponse eofPkt = new MyEOFPktResponse();
 				eofPkt.unmarshallMessage(lePayload);
+                eofPkt.setSequenceEnd(true);
 				message = eofPkt;
 			} else if (mode == ExecMode.PROTOCOL_BINARY) {
 				MyBinaryResultRow binRow = new MyBinaryResultRow(typeDecoders);
@@ -495,7 +590,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 				throw new PECodingException("Unexpected reponse parsing mode, " + mode);
 			}
 
-			return message.withPacketNumber(packetSequenceId);
+			return message;
 		}
     }
 
@@ -507,8 +602,6 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
         @Override
         public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
-
-            byte sequence = leHeader.getByte(3);
             byte pktId = lePayload.getByte(0);
 
             MyMessage message;
@@ -542,11 +635,6 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                         throw new PECodingException("received packet, but already in DONE state.");
                 }
 
-
-                if (message != null){
-                    message.setPacketNumber(sequence);
-                }
-
                 return message;
             } catch (PEException e) {
                 logger.warn(e);
@@ -566,6 +654,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             MyMessage message;
             message = new MyEOFPktResponse();
             message.unmarshallMessage(wholePacket);
+            message.setSequenceEnd(true);
             bufferState = ResponseState.DONE;
             return message;
         }
@@ -585,6 +674,8 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             message = new MyEOFPktResponse();
             message.unmarshallMessage(wholePacket);
             bufferState = (bufferNumColumns == 0) ? ResponseState.DONE : ResponseState.AWAIT_COL_DEF;
+            if (bufferState == ResponseState.DONE)
+                message.setSequenceEnd(true);
             return message;
         }
 
@@ -602,6 +693,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             MyMessage message;//an error packet
             message = new MyErrorResponse();
             message.unmarshallMessage(wholePacket);
+            message.setSequenceEnd(true);
             bufferState = ResponseState.DONE;
             return message;
         }
@@ -617,8 +709,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 bufferState = ResponseState.AWAIT_PARAM_DEF;
             else if (bufferNumColumns > 0)
                 bufferState = ResponseState.AWAIT_COL_DEF;
-            else
+            else {
+                message.setSequenceEnd(true);
                 bufferState = ResponseState.DONE;
+            }
             return message;
         }
 

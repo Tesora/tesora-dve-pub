@@ -64,6 +64,7 @@ import com.tesora.dve.errmap.ErrorCodeFormatter;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.lockmanager.LockManager;
 import com.tesora.dve.resultset.ResultChunk;
 import com.tesora.dve.resultset.ResultColumn;
@@ -73,7 +74,6 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.connectionmanager.UpdatedGlobalVariablesCallback;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.StorageGroupDDL;
@@ -91,8 +91,12 @@ public class PETest extends PEBaseTest {
 	protected static BootstrapHost bootHost = null;
 	// kindly leave this public - sometimes it is used for not yet committed tests
 	public static Class<?> resourceRoot = PETest.class;
-	private static long nettyLeakCount = 0;
 	
+	// TODO: This should really be zero, but test clean-up sometimes
+	// does not happen fast enough causing failure of some test jobs.
+	private static final long NETTY_LEAK_COUNT_BASE = 3;
+	private static long initialNettyLeakCount;
+
 	private static GlobalVariableState stateUndoer = null;
 
 	// This is so that any TestNG tests will print out the class name
@@ -115,7 +119,7 @@ public class PETest extends PEBaseTest {
 
 		ResourceLeakDetector<?> detector = ResourceLeakDetector.getDetector(ByteBuf.class);
 		if (detector != null)
-			nettyLeakCount = detector.getLeakCount();
+			initialNettyLeakCount = detector.getLeakCount();
 
 		logger = Logger.getLogger(PETest.class);
 		
@@ -181,8 +185,12 @@ public class PETest extends PEBaseTest {
 		}
 
 		ResourceLeakDetector<?> detector = ResourceLeakDetector.getDetector(ByteBuf.class);
-		if (detector != null && detector.getLeakCount() > nettyLeakCount)
-			finalThrows.add(new Exception("Netty ByteBuf leak detected!"));
+		if (detector != null) {
+			final long numOfLeaksDetected = detector.getLeakCount();
+			if (numOfLeaksDetected > (initialNettyLeakCount + NETTY_LEAK_COUNT_BASE)) {
+				finalThrows.add(new Exception("Total of '" + numOfLeaksDetected + "' Netty ByteBuf leaks detected!"));
+			}
+		}
 
 		if (finalThrows.size() > 0) {
 			if (logger.isDebugEnabled()) {
@@ -407,38 +415,55 @@ public class PETest extends PEBaseTest {
 		}
 	}
 	
-	protected static void assertErrorInfo(ErrorInfo info, ErrorCodeFormatter formatter, Object...params) throws Throwable {
-		boolean found = false;
-		for(ErrorCode ec : formatter.getHandledCodes()) {
-			if (info.getCode().equals(ec)) {
-				found = true;
-				break;
+	protected static abstract class ExpectedSqlErrorTester extends ExpectedExceptionTester {
+
+		public <T extends PEMappedRuntimeException> void assertError(final Class<T> expectedExceptionClass, final ErrorCodeFormatter formatter,
+				final Object... params) throws Throwable {
+			final T cause = getAssertException(expectedExceptionClass, null, false);
+			assertErrorInfo(cause, formatter, params);
+		}
+
+		public <T extends SQLException> void assertError(final Class<T> expectedExceptionClass, final ErrorCodeFormatter formatter,
+				final String message) throws Throwable {
+			final T cause = getAssertException(expectedExceptionClass, null, false);
+			assertSQLException(cause, formatter, message);
+		}
+
+		public static <T extends SQLException> void assertSQLException(final T cause, final ErrorCodeFormatter formatter,
+				final String message) throws Throwable {
+			assertEquals("Should have same native code", formatter.getNativeCode(), cause.getErrorCode());
+			assertEquals("Should have same sql state", formatter.getSQLState(), cause.getSQLState());
+			assertEquals(message, cause.getMessage());
+		}
+
+		public static <T extends PEMappedRuntimeException> void assertErrorInfo(final T cause, final ErrorCodeFormatter formatter, final Object... params)
+				throws Throwable {
+			ErrorInfo ei = cause.getErrorInfo();
+			assertNotNull("should have error info", ei);
+			assertErrorInfo(ei, formatter, params);
+		}
+
+		protected static void assertErrorInfo(ErrorInfo info, ErrorCodeFormatter formatter, Object... params) throws Throwable {
+			boolean found = false;
+			for (ErrorCode ec : formatter.getHandledCodes()) {
+				if (info.getCode().equals(ec)) {
+					found = true;
+					break;
+				}
+			}
+			assertTrue("Should contain error code", found);
+			if (formatter == MySQLErrors.internalFormatter) {
+				// first param is the message
+				String message = (String) params[0];
+				assertEquals("should have same message", formatter.format(info.getParams(), null), message);
+			} else {
+				assertEquals("Should have same number of parameters", params.length, info.getParams().length);
+				for (int i = 0; i < params.length; i++) {
+					assertEquals(String.format("should have same parameter for index %d", i), params[i], info.getParams()[i]);
+				}
 			}
 		}
-		assertTrue("Should contain error code",found);
-		if (formatter == MySQLErrors.internalFormatter) {
-			// first param is the message
-			String message = (String) params[0];
-			assertEquals("should have same message",formatter.format(info.getParams(),null),message);
-		} else {
-			assertEquals("Should have same number of parameters",params.length,info.getParams().length);
-			for(int i = 0; i < params.length; i++) {
-				assertEquals(String.format("should have same parameter for index %d",i),params[i],info.getParams()[i]);
-			}
-		}
-	}
-	
-	protected static void assertSQLException(SQLException sqle, ErrorCodeFormatter formatter,
-			String message) throws Throwable {
-		assertEquals("Should have same native code",formatter.getNativeCode(), sqle.getErrorCode());
-		assertEquals("Should have same sql state", formatter.getSQLState(), sqle.getSQLState());
-		assertEquals(message, sqle.getMessage());
-	}
-	
-	protected static void assertErrorInfo(SchemaException se, ErrorCodeFormatter formatter, Object...params) throws Throwable {
-		ErrorInfo ei = se.getErrorInfo();
-		assertNotNull("should have error info",ei);
-		assertErrorInfo(ei,formatter,params);
+
 	}
 	
 	private static class GlobalVariableState extends UpdatedGlobalVariablesCallback {

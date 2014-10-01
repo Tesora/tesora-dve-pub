@@ -23,6 +23,7 @@ package com.tesora.dve.common;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.regex.Pattern;
@@ -137,10 +138,18 @@ public class PEStringUtilsTest  extends PEBaseTest {
 				PEStringUtils.trimToInt("Hello, World!");
 			}
 		}.assertException(PECodingException.class, "The input must be a valid number but was: Hello, World!");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				PEStringUtils.trimToInt(null);
+			}
+		}.assertException(PECodingException.class, "The input must be a valid number but was: null");
 	}
 
 	@Test
 	public void testDequote() {
+		assertNull(PEStringUtils.dequote(null));
 		assertEquals("", PEStringUtils.dequote(""));
 		assertEquals("Hello, World!", PEStringUtils.dequote("Hello, World!"));
 		assertEquals("Hello, World!", PEStringUtils.dequote("\"Hello, World!\""));
@@ -152,6 +161,7 @@ public class PEStringUtilsTest  extends PEBaseTest {
 
 	@Test
 	public void testSingleQuote() {
+		assertNull(PEStringUtils.singleQuote(null));
 		assertEquals("", PEStringUtils.singleQuote(""));
 		assertEquals("'Hello, World!'", PEStringUtils.singleQuote("Hello, World!"));
 		assertEquals("'Hello, World!'", PEStringUtils.singleQuote("'Hello, World!'"));

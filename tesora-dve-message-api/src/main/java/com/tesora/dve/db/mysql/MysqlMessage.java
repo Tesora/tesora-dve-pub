@@ -27,5 +27,7 @@ import io.netty.buffer.ByteBuf;
  *
  */
 public interface MysqlMessage {
-    void writeTo(ByteBuf destination);
+
+    //returns sequence number to use for next inbound or outbound packet..
+    void marshallPayload(ByteBuf destination);
 }

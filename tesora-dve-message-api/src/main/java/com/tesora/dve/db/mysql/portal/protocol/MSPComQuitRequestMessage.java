@@ -29,11 +29,11 @@ public class MSPComQuitRequestMessage extends BaseMSPMessage {
     public static final byte TYPE_IDENTIFIER = (byte) 0x01;
 
     protected MSPComQuitRequestMessage() {
-        super((byte)0, Unpooled.buffer());
+        super(Unpooled.buffer());
     }
 
-    protected MSPComQuitRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComQuitRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     public static MSPComQuitRequestMessage newMessage(){
@@ -46,9 +46,9 @@ public class MSPComQuitRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPComQuitRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComQuitRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComQuitRequestMessage(sequenceID,source);
+        return new MSPComQuitRequestMessage(source);
     }
 
 }

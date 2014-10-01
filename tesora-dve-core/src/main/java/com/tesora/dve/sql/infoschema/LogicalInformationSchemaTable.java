@@ -213,6 +213,11 @@ public class LogicalInformationSchemaTable implements Table<LogicalInformationSc
 	public boolean isInfoSchema() {
 		return true;
 	}
+
+	@Override
+	public boolean isTempTable() {
+		return false;
+	}
 		
 	public LogicalInformationSchemaColumn getIDColumn() {
 		if (idcol == null)
@@ -449,6 +454,4 @@ public class LogicalInformationSchemaTable implements Table<LogicalInformationSc
 	protected static Type buildDateTimeType(DBNative dbn) {
 		return BasicType.buildType(java.sql.Types.TIMESTAMP, 0, dbn);
 	}
-
-	
 }

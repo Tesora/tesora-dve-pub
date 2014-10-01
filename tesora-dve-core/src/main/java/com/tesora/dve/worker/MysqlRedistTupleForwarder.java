@@ -27,15 +27,13 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.SynchronousCompletion;
-import io.netty.channel.Channel;
+import com.tesora.dve.db.CommandChannel;
 
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
@@ -51,7 +49,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBResultConsumer {
+public class MysqlRedistTupleForwarder extends DBResultConsumer implements MysqlQueryResultConsumer {
 	
 	static Logger logger = Logger.getLogger(MysqlRedistTupleForwarder.class);
 
@@ -134,8 +132,8 @@ public class MysqlRedistTupleForwarder implements MysqlQueryResultConsumer, DBRe
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), this, promise));
+    public MysqlCommand  writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise);
 	}
 
 	private RedistTupleBuilder getTargetHandler() throws PEException {

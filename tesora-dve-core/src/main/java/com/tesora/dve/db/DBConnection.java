@@ -24,15 +24,16 @@ package com.tesora.dve.db;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.CompletionTarget;
+import com.tesora.dve.db.mysql.DefaultResultProcessor;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.DevXid;
 import io.netty.channel.EventLoopGroup;
 
 import java.util.Map;
 
-public interface DBConnection extends CompletionTarget<Boolean> {
+public interface DBConnection extends CommandChannel {
 	
 	interface Factory {
 		DBConnection newInstance(EventLoopGroup eventLoop,StorageSite site);
@@ -44,9 +45,7 @@ public interface DBConnection extends CompletionTarget<Boolean> {
 	
 	void connect(String url, String userid, String password, long clientCapabilities) throws PEException;
 	void close();
-	
-	void execute(SQLCommand sql, DBResultConsumer consumer, CompletionHandle<Boolean> promise);
-	
+
 	void start(DevXid xid, CompletionHandle<Boolean> promise);
 	void end(DevXid xid, CompletionHandle<Boolean> promise);
 	void prepare(DevXid xid, CompletionHandle<Boolean> promise);

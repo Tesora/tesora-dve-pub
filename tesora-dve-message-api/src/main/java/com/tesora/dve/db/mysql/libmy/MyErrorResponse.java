@@ -51,7 +51,6 @@ public class MyErrorResponse extends MyResponseMessage {
 
 	public MyErrorResponse() {
 		setOK(false);
-		setPacketNumber(1);
 	}
 
 	public MyErrorResponse(FormattedErrorInfo fei) {
@@ -124,7 +123,7 @@ public class MyErrorResponse extends MyResponseMessage {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeByte(ERRORPKT_FIELD_COUNT);
 		cb.writeShort((short) errorNumber);
 		cb.writeBytes("#".getBytes());

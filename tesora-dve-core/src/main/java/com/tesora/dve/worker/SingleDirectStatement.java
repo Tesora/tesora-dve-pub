@@ -71,7 +71,7 @@ public class SingleDirectStatement implements WorkerStatement {
             }
 
         };
-        dbConnection.execute(sqlCommand.getResolvedCommand(worker), resultConsumer, transformErrors);
+        resultConsumer.dispatch(dbConnection,sqlCommand.getResolvedCommand(worker),transformErrors);
 	}
 
     @Override

@@ -45,7 +45,6 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 	protected static ByteLogger byteLogger = new ByteLogger();
 	
 	protected final ChannelHandlerContext outboundCtx;
-	protected byte sequenceId = 0;
 	long tmr;
 
 	private long resultsLimit = Long.MAX_VALUE;
@@ -53,11 +52,6 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 
 	public MysqlDemultiplexingResultForwarder(ChannelHandlerContext outboundCtx) {
 		this.outboundCtx = outboundCtx;
-	}
-
-	public MysqlDemultiplexingResultForwarder(ChannelHandlerContext outboundCtx, byte sequenceId) {
-		this.outboundCtx = outboundCtx;
-		this.sequenceId = sequenceId;
 	}
 
 
@@ -89,7 +83,6 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
     }
 
     public void sendMessage(MyMessage msg, boolean flush) {
-        msg.setPacketNumber(++sequenceId);
         byteLogger.printBuffer("writtenMessage", msg);
         if (flush)
             outboundCtx.writeAndFlush(msg);
@@ -147,15 +140,8 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
             return;
 
         rowCount++;
-        row.setPacketNumber(++sequenceId);
         outboundCtx.write(row);
     }
-
-
-    public byte getSequenceId() {
-		return sequenceId;
-	}
-
 
 	@Override
 	public void setResultsLimit(long resultsLimit) {
@@ -180,7 +166,6 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 	 */
 	private void sendEOFPacket(SSConnection ssConn) {
 		MyEOFPktResponse eofPacket1 = new MyEOFPktResponse();
-		eofPacket1.setPacketNumber(++sequenceId);
 		eofPacket1.setStatusFlags(statusFlags);
 		eofPacket1.setWarningCount(warnings);
         outboundCtx.writeAndFlush(eofPacket1);
@@ -189,8 +174,6 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 
 	private void sendOKPacket(SSConnection ssConn) {
 		MyOKResponse okPacket1 = new MyOKResponse();
-        byte sendingPacketNumber = ++sequenceId;
-        okPacket1.setPacketNumber(sendingPacketNumber);
 		okPacket1.setAffectedRows(numRowsAffected);
 		okPacket1.setServerStatus(statusFlags);
 		okPacket1.setInsertId(ssConn.getLastInsertedId());
@@ -202,12 +185,10 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 
 	public void sendError(Exception e) {
 		MyMessage respMsg = new MyErrorResponse(e);
-		respMsg.setPacketNumber(++sequenceId);
 		outboundCtx.writeAndFlush(respMsg);
 	}
 	
 	public void sendError(MyErrorResponse constructed) {
-		constructed.setPacketNumber(++sequenceId);
 		outboundCtx.write(constructed);
 		outboundCtx.flush();		
 	}

@@ -37,10 +37,8 @@ public class MSPComProcessInfoRequest extends MSPActionBase {
 	@Override
 	public void execute(ExecutorService clientExecutorService, ChannelHandlerContext ctx,
                         SSConnection ssCon, MSPMessage protocolMessage) throws PEException {
-        byte sequenceId = protocolMessage.getSequenceID();
 		MyErrorResponse errMsg = new MyErrorResponse(new PEException(
 				"COM_PROCESS_INFO message has been deprecated - use SHOW PROCESSLIST"));
-		errMsg.setPacketNumber(sequenceId + 1);
 		ctx.channel().write(errMsg);
 	}
 

@@ -57,6 +57,21 @@ public class DVEErrors {
 	public static final OneParamErrorCode<String> INVALID_CONTAINER_DELETE =
 			new OneParamErrorCode<String>("INVALID_CONTAINER_DELETE",false);
 	
+	// max comment length exceeded
+	public static final TwoParamErrorCode<String, Long> TOO_LONG_TABLE_COMMENT =
+			new TwoParamErrorCode<String, Long>("TOO_LONG_TABLE_COMMENT", false);
+	public static final TwoParamErrorCode<String, Long> TOO_LONG_TABLE_FIELD_COMMENT =
+			new TwoParamErrorCode<String, Long>("TOO_LONG_TABLE_FIELD_COMMENT", false);
+
+	public static final OneParamErrorCode<String> NON_UNIQUE_TABLE =
+			new OneParamErrorCode<String>("NON_UNIQUE_TABLE", false);
+
+	// charset/collation related errors
+	public static final OneParamErrorCode<String> UNKNOWN_CHARACTER_SET =
+			new OneParamErrorCode<String>("UNKNOWN_CHARACTER_SET", false);
+	public static final OneParamErrorCode<String> UNKNOWN_COLLATION =
+			new OneParamErrorCode<String>("UNKNOWN_COLLATION", false);
+
 	public static final ErrorCode[] universe = new ErrorCode[] {
 		TABLE_DNE,
 		COLUMN_DNE,
@@ -66,6 +81,11 @@ public class DVEErrors {
 		UNKNOWN_DATABASE,
 		INCORRECT_PARAM_COUNT_FUNCTION_CALL,
 		UNKNOWN_SYS_VAR,
+		TOO_LONG_TABLE_COMMENT,
+		TOO_LONG_TABLE_FIELD_COMMENT,
+		NON_UNIQUE_TABLE,
+		UNKNOWN_CHARACTER_SET,
+		UNKNOWN_COLLATION,
 		
 		
 		INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,

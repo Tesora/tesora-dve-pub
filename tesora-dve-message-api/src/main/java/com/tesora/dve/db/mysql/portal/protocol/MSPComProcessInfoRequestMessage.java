@@ -30,8 +30,8 @@ public class MSPComProcessInfoRequestMessage extends BaseMSPMessage {
         super();
     }
 
-    protected MSPComProcessInfoRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComProcessInfoRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -40,8 +40,8 @@ public class MSPComProcessInfoRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPComProcessInfoRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComProcessInfoRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComProcessInfoRequestMessage(sequenceID,source);
+        return new MSPComProcessInfoRequestMessage(source);
     }
 }

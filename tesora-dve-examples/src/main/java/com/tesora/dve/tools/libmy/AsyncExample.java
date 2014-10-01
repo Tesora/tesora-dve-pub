@@ -46,7 +46,6 @@ import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQuitRequestMessage;
-import com.tesora.dve.db.mysql.portal.protocol.MSPEncoder;
 import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 
@@ -78,7 +77,6 @@ public class AsyncExample {
 
 						ch.pipeline()
 								.addLast(authHandler)
-								.addLast(MSPEncoder.class.getSimpleName(), MSPEncoder.getInstance())
 								.addLast(MyBackendDecoder.class.getSimpleName(), new MyBackendDecoder(charsetHelper))
 								.addLast(new ChannelDuplexHandler() {
 
@@ -127,8 +125,8 @@ public class AsyncExample {
 
 		System.out.println("Sending two pipelined requests without blocking for first response.");
 
-		chan.write(MSPComQueryRequestMessage.newMessage((byte) 0, "show databases", CharsetUtil.UTF_8));
-		chan.write(MSPComQueryRequestMessage.newMessage((byte) 0, "select * from information_schema.tables", CharsetUtil.UTF_8));
+		chan.write(MSPComQueryRequestMessage.newMessage("show databases", CharsetUtil.UTF_8));
+		chan.write(MSPComQueryRequestMessage.newMessage("select * from information_schema.tables", CharsetUtil.UTF_8));
 		chan.flush();//NOTE:  nothing is sent until this is called.  Use writeAndFlush if you want it to go out immediately.
 
 		System.out.println("Sleeping 5 sec so all results come back"); //normally you would sync to responses here.

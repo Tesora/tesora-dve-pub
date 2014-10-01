@@ -238,8 +238,8 @@ alterable_target returns [Statement s] options {k=1;}:
     (DEFAULT? (ch=create_db_charset_expr? co=create_db_collate_expr?) { $s = utils.buildAlterDatabaseStatement($dbn.n, $ch.n, $co.n); })
     | (templ=template_declaration_kern { $s = utils.buildAlterDatabaseStatement($dbn.n, $templ.p); })
   )
-  | (TABLE altered_table { ArrayList acts = new ArrayList(); } 
-      ((lata=alter_table_action { acts.addAll($lata.l); }) (Comma tata=alter_table_action { acts.addAll($tata.l); })*)
+  | (TABLE altered_table { ArrayList acts = new ArrayList(); Name tableName = $altered_table.tk.getTable().getName(); } 
+      ((lata=alter_table_action[tableName] { acts.addAll($lata.l); }) (Comma tata=alter_table_action[tableName] { acts.addAll($tata.l); })*)
       { $s = utils.buildAlterTableStatement($altered_table.tk, acts); utils.popScope(); })       
   ;
   
@@ -247,7 +247,7 @@ altered_table returns [TableKey tk] options {k=1;}:
   qualified_identifier { $tk = utils.lookupAlteredTable($qualified_identifier.n); }
   ;
 
-alter_table_action returns [List l] options {k=1;}:
+alter_table_action [Name tableName] returns [List l] options {k=1;}:
   (RENAME TO? ntn=qualified_identifier { $l = utils.buildRenameTableAction($ntn.n); })
   | (CONVERT TO
     ((charset_expr_tag cs=charset_type) (COLLATE cn=collate_type)?
@@ -263,7 +263,7 @@ alter_table_action returns [List l] options {k=1;}:
   | (DROP drop_target_action { $l = $drop_target_action.l; }) 
   | (DISABLE KEYS { $l = utils.buildDisableKeysAction(); })
   | (ENABLE KEYS { $l = utils.buildEnableKeysAction(); })
-  | (mysql_table_option { $l = utils.buildTableOptionAction($mysql_table_option.t); })
+  | (mysql_table_option[tableName] { $l = utils.buildTableOptionAction($mysql_table_option.t); })
   | (MODIFY COLUMN? mfs=field_specification add_col_first_or_after_spec? { $l = utils.buildModifyColumnAction($mfs.l, $add_col_first_or_after_spec.p); })
   | distribution_declaration_target { $l = utils.buildModifyDistributionAction($distribution_declaration_target.dv); }
   ;  
@@ -303,14 +303,14 @@ sql_schema_query_statement returns [Statement s] options {k=1;}:
 // [5] | <table_opts> select statement
 
 table_definition returns [Statement s] options {k=1;}:
-  (temptab=TEMPORARY { utils.notddl(); })? TABLE push_scope if_not_exists tn=qualified_identifier
+  (temptab=TEMPORARY { utils.notddl(); })? TABLE push_scope if_not_exists tn=qualified_identifier { Name tableName = $tn.n; }
   (
     // [2]
     ( LIKE npon=qualified_identifier 
       { $s = utils.buildCreateTable($tn.n, $npon.n, $if_not_exists.b); utils.popScope(); } )
     |
     // [5]
-    ( (cta_dto=db_table_options)? partition?
+    ( (cta_dto=db_table_options[tableName])? partition?
       (PERSISTENT GROUP ctasgn=unqualified_identifier)?
       ((ctadist=distribution_declaration) | (ctacont=container_discriminator))?
       AS? (ctasel=select_statement)
@@ -325,7 +325,7 @@ table_definition returns [Statement s] options {k=1;}:
             { $s = utils.buildCreateTable($tn.n, $pon.n, $if_not_exists.b); utils.popScope(); } )
           |
           // [1] & [4]
-          ( table_define_fields? Right_Paren (nt_dto=db_table_options)? partition? 
+          ( table_define_fields? Right_Paren (nt_dto=db_table_options[tableName])? partition? 
             (PERSISTENT GROUP sgn=unqualified_identifier)?
             ((ntdist=distribution_declaration) | (ntcont=container_discriminator))?
             (AS? ntsel=select_statement)?
@@ -514,9 +514,10 @@ field_attribute returns [ColumnModifier cm] options {k=1;}:
 field_attribute_no_default returns [ColumnModifier cm] options {k=1;}: 
   ((n=NOT? NULL) { $cm = utils.buildColumnModifier($n != null ? ColumnModifierKind.NOT_NULLABLE : ColumnModifierKind.NULLABLE); }) 
   | (AUTOINCREMENT { $cm = utils.buildColumnModifier(ColumnModifierKind.AUTOINCREMENT); })
-  | (ON UPDATE CURRENT_TIMESTAMP { $cm = utils.buildOnUpdate(); })  
-  | (UNIQUE KEY { $cm = utils.buildInlineKeyModifier(ConstraintType.UNIQUE); })
-  | (pk=PRIMARY? KEY { $cm = utils.buildInlineKeyModifier($pk == null ? null : ConstraintType.PRIMARY); })
+  | (ON UPDATE CURRENT_TIMESTAMP { $cm = utils.buildOnUpdate(); })
+  | (PRIMARY KEY { $cm = utils.buildInlineKeyModifier(ConstraintType.PRIMARY); })  
+  | (UNIQUE { $cm = utils.buildInlineKeyModifier(ConstraintType.UNIQUE); })
+  | (KEY { $cm = utils.buildInlineKeyModifier(null); })
   ;
 
 field_default_value returns [ExpressionNode expr] options {k=1;}:
@@ -525,14 +526,14 @@ field_default_value returns [ExpressionNode expr] options {k=1;}:
     )
     ;
 
-db_table_options returns [List l] options {k=1;}:
+db_table_options [Name tableName] returns [List l] options {k=1;}:
   { $l = new ArrayList(); }
-  lto=mysql_table_option { $l.add($lto.t); } (Comma? tto=mysql_table_option { $l.add($tto.t);} )* 
+  lto=mysql_table_option[tableName] { $l.add($lto.t); } (Comma? tto=mysql_table_option[tableName] { $l.add($tto.t);} )* 
   ;
 
-mysql_table_option returns [TableModifier t] options {k=1;}:
+mysql_table_option [Name tableName] returns [TableModifier t] options {k=1;}:
   engine_modifier { $t = $engine_modifier.t; }
-  | (FIELD_COMMENT Equals_Operator? Character_String_Literal { $t = utils.buildCommentTableModifier($Character_String_Literal.text); })
+  | (FIELD_COMMENT Equals_Operator? Character_String_Literal { $t = utils.buildCommentTableModifier($tableName, $Character_String_Literal.text); })
   | (DEFAULT? 
     ((COLLATE Equals_Operator? cn=unqualified_identifier { $t = utils.buildCollationTableModifier($cn.n); })
     |(charset_expr_tag (cseq=Equals_Operator)? charset_type { $t = utils.buildCharsetTableModifier($charset_type.n); })

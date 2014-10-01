@@ -51,6 +51,11 @@ public class IntegralValueConverter extends ValueMetadata<Long> {
 	}
 
 	@Override
+	public boolean isNumeric() {
+		return true;
+	}
+
+	@Override
 	public String getTypeName() {
 		return "int";
 	}

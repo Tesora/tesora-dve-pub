@@ -25,8 +25,6 @@ import static com.tesora.dve.db.mysql.libmy.MyProtocolDefs.MYSQL_PROTOCOL_VERSIO
 import static com.tesora.dve.db.mysql.libmy.MyProtocolDefs.SERVER_STATUS_AUTOCOMMIT;
 
 import com.tesora.dve.db.mysql.common.JavaCharsetCatalog;
-import com.tesora.dve.db.mysql.libmy.MyMessageType;
-import com.tesora.dve.db.mysql.libmy.MyResponseMessage;
 import com.tesora.dve.db.mysql.common.MysqlHandshake;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.CharsetUtil;
@@ -53,7 +51,6 @@ public class MyHandshakeV10 extends MyResponseMessage {
 	private String plugInProvidedData;
 
 	public MyHandshakeV10() {
-		setPacketNumber((byte) 0); // ServerGreeting is always packet # 0
 	};
 	
 	public MyHandshakeV10(int connectionId, MysqlHandshake handshake) {
@@ -127,7 +124,7 @@ public class MyHandshakeV10 extends MyResponseMessage {
 	}
 
 	@Override
-	public void marshallMessage(ByteBuf cb) {
+    public void marshallMessage(ByteBuf cb) {
 		cb.writeByte(protocolVersion);
 		cb.writeBytes(getServerVersion().getBytes());
 		cb.writeZero(1);

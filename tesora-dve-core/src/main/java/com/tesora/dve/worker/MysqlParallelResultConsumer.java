@@ -29,7 +29,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
 import io.netty.channel.ChannelHandlerContext;
 
-public abstract class MysqlParallelResultConsumer implements MysqlQueryResultConsumer, DBResultConsumer {
+public abstract class MysqlParallelResultConsumer extends DBResultConsumer implements MysqlQueryResultConsumer {
 
 	protected enum ResponseState {
 		AWAIT_FIELD_COUNT, AWAIT_FIELD, AWAIT_ROW, DONE

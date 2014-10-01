@@ -30,9 +30,5 @@ import io.netty.util.ReferenceCounted;
  */
 public interface MSPMessage extends MysqlMessage, ReferenceCounted {
     byte getMysqlMessageType();
-    byte getSequenceID();
-    void setSequenceID(byte sequence);
-    MSPMessage newPrototype(byte sequenceID, ByteBuf source);
-
-    void writeTo(ByteBuf destination);
+    MSPMessage newPrototype(ByteBuf source);
 }

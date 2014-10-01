@@ -24,15 +24,14 @@ package com.tesora.dve.db;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.concurrent.*;
-import io.netty.channel.Channel;
 
 import java.util.List;
 import java.util.concurrent.Future;
 
+import com.tesora.dve.db.mysql.MysqlCommand;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentTable;
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.mysql.MysqlForwardedExecuteCommand;
 import com.tesora.dve.db.mysql.RedistTupleBuilder;
 import com.tesora.dve.exceptions.PEException;
@@ -41,7 +40,7 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.WorkerGroup;
 
-public class RedistTupleUpdateConsumer implements DBResultConsumer {
+public class RedistTupleUpdateConsumer extends DBResultConsumer  {
 	
 	static final Logger logger = Logger.getLogger(RedistTupleUpdateConsumer.class);
 
@@ -73,13 +72,10 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		MysqlForwardedExecuteCommand execCommand =
-				new MysqlForwardedExecuteCommand(forwardedResultHandler, promise, site);
-		channel.write(execCommand);
-		if (logger.isDebugEnabled())
-			logger.debug(channel + " <== " + execCommand);
-		promise.success(false);
+				new MysqlForwardedExecuteCommand(channel.getStorageSite(), forwardedResultHandler, promise);
+		return execCommand;
 	}
 	
 	public RedistTupleBuilder getExecutionHandler() throws Exception {

@@ -45,7 +45,6 @@ public class MSPAuthenticateV10Message extends MSPActionBase {
 	public void execute(ExecutorService clientExecutorService, ChannelHandlerContext ctx, SSConnection ssCon, MSPMessage protocolMessage) throws PEException {
 
         MSPAuthenticateV10MessageMessage authMessage = castProtocolMessage(MSPAuthenticateV10MessageMessage.class,protocolMessage);
-        byte sequenceId = authMessage.getSequenceID();
 
 		ssCon.setClientCapabilities(authMessage.getClientCapabilities());
 
@@ -68,18 +67,14 @@ public class MSPAuthenticateV10Message extends MSPActionBase {
 			NativeCharSet cliendCharSet = MysqlNativeCharSetCatalog.DEFAULT_CATALOG.findNativeCharsetById(clientCharsetId);
 			if (cliendCharSet != null) {
 				mysqlResp = new MyOKResponse();
-				mysqlResp.setPacketNumber(sequenceId + 1);
 				ssCon.setClientCharSet(cliendCharSet);
 			} else {
 				mysqlResp = new MyErrorResponse(new PEException("Unsupported character set specified (id=" + clientCharsetId + ")"));
-				mysqlResp.setPacketNumber(sequenceId + 1);
 			}
 		} catch (PEException e) {
 			mysqlResp = new MyErrorResponse(e.rootCause());
-			mysqlResp.setPacketNumber(sequenceId + 1);
 		} catch (Throwable t) {
 			mysqlResp = new MyErrorResponse(new Exception(t.getMessage()));
-			mysqlResp.setPacketNumber(sequenceId + 1);
 		}
 		
 		ctx.writeAndFlush(mysqlResp);

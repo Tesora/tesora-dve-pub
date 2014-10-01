@@ -36,6 +36,7 @@ import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.statement.session.FlushPrivilegesStatement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -76,9 +77,13 @@ public class PECreateUserStatement extends
 			StringBuilder buf = new StringBuilder();
 			buf.append("CREATE USER ");
             Singletons.require(HostService.class).getDBNative().getEmitter().emitUserDeclaration(peu, buf);
-			es.append(new SimpleDDLExecutionStep(null, sg, (Persistable<?,?>)peu, getAction(), new SQLCommand(buf.toString()), 
-					(List<CatalogEntity>)Collections.EMPTY_LIST, 
-					Collections.singletonList((CatalogEntity)peu.getPersistent(pc)), null));
+
+			final FlushPrivilegesStatement flush = new FlushPrivilegesStatement();
+			flush.plan(pc, es, null);
+			es.append(new SimpleDDLExecutionStep(null, sg, (Persistable<?, ?>) peu, getAction(), new SQLCommand(buf.toString()),
+					(List<CatalogEntity>) Collections.EMPTY_LIST,
+					Collections.singletonList((CatalogEntity) peu.getPersistent(pc)), null));
+			flush.plan(pc, es, null);
 		}
 	}
 

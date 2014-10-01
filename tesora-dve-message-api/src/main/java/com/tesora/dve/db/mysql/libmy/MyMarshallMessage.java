@@ -27,7 +27,7 @@ import com.tesora.dve.exceptions.PEException;
 
 public interface MyMarshallMessage {
 
-	public abstract void marshallMessage(ByteBuf cb) throws PEException;
+	public abstract void marshallMessage(ByteBuf cb);
 
 	public abstract boolean isMessageTypeEncoded();
 }

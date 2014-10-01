@@ -326,6 +326,7 @@ import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PassThroughCommand.Command;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
+import com.tesora.dve.sql.transform.strategy.NaturalJoinRewriter;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
@@ -577,6 +578,27 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		SelectStatement ss = new SelectStatement(tableRefs, projection, 
 				whereClause, orderbys, limit, sq, options, groupbys,
 				havingExpr, locking, new AliasInformation(scope), SourceLocation.make(tree));
+
+		/*
+		 * The NATURAL [LEFT] JOIN are rewritten to an INNER JOIN or a LEFT JOIN
+		 * with a USING clause.
+		 * The rewrite must take place after ColumnInstance resolution (to
+		 * prevent premature failure on ambiguous column names), but before
+		 * USING-to-ON clause conversion and wildcard expansion which affect the
+		 * projection coalescing and ordering.
+		 */
+		if (tableRefs != null) {
+			for (final FromTableReference ftr : tableRefs) {
+				final TableInstance base = ftr.getBaseTable();
+				final ListSet<JoinedTable> naturalJoins = NaturalJoinRewriter.collectNaturalJoins(ftr.getTableJoins());
+				for (final JoinedTable join : naturalJoins) {
+					NaturalJoinRewriter.rewriteToInnerJoin(this.pc, base, join);
+				}
+
+				convertUsingColSpecToOnSpec(base, naturalJoins);
+			}
+		}
+
 		ss.getDerivedInfo().takeScope(scope);
 		Scope ps = scope.getParentScope();
 		if (ps != null)
@@ -1746,10 +1768,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public List<TableComponent<?>> buildFieldDefinition(Name fieldName, Type type,
-			List<ColumnModifier> attrs, String commentText) {
+			List<ColumnModifier> attrs, String commentText) throws SchemaException {
 		Comment comment = null;
-		if (commentText != null)
-			comment = new Comment(PEStringUtils.dequote(commentText));
+		if (commentText != null) {
+			comment = buildTableFieldComment(fieldName, commentText);
+		}
 		List<ColumnKeyModifier> inlineKeys = new ArrayList<ColumnKeyModifier>();
 		for(Iterator<ColumnModifier> iter = attrs.iterator(); iter.hasNext();) {
 			ColumnModifier cm = iter.next();
@@ -1768,6 +1791,19 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		else
 			nc = scope.registerColumn(new TenantColumn(pc));
 		out.add(nc);
+		// collapse the case where we see UNIQUE, KEY
+		if (inlineKeys.size() > 1) {
+			int uniqued = -1;
+			int keyed = -1;
+			for(int i = 0; i < inlineKeys.size(); i++) {
+				if (inlineKeys.get(i).getConstraint() == ConstraintType.UNIQUE && uniqued == -1)
+					uniqued = i;
+				else if (inlineKeys.get(i).getConstraint() == null && keyed == -1)
+					keyed = i;
+			}
+			if (uniqued > -1 && keyed > uniqued)
+				inlineKeys.remove(keyed);
+		}
 		for(ColumnKeyModifier ckm : inlineKeys) {
 			// first build the key
 			@SuppressWarnings("unchecked")
@@ -1779,17 +1815,18 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return out;
 	}
 
-	public PEKey buildKey(IndexType type, Name name, List<PEKeyColumnBase> cols, List<Object> options) {
+	public PEKey buildKey(IndexType type, Name name, List<PEKeyColumnBase> cols, List<Object> options) throws SchemaException {
 		// unpack the options in case we have anything lurking
 		IndexType postSpecifiedType = null;
 		Comment anyComment = null;
 		for(Object o : options) {
-			if (o instanceof String)
-				anyComment = new Comment(PEStringUtils.dequote((String) o));
-			else if (o instanceof IndexType)
+			if (o instanceof String) {
+				anyComment = buildTableFieldComment(name, (String) o);
+			} else if (o instanceof IndexType) {
 				postSpecifiedType = (IndexType) o;
-			else
+			} else {
 				throw new SchemaException(Pass.SECOND, "Unknown key option: " + o);
+			}
 		}
 		IndexType actualType = type;
 		if (actualType == null) actualType = postSpecifiedType;
@@ -2174,12 +2211,18 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				SourceLocation.make(tok));
 	}
 
-	public JoinSpecification buildJoinType(String primary, String outer) {
+	public JoinSpecification buildJoinType(String primary) {
+		return buildJoinType(primary, null, null);
+	}
+
+	public JoinSpecification buildJoinType(String primary, String natural, String outer) {
 		StringBuilder buf = new StringBuilder();
+		if (natural != null)
+			buf.append(natural).append(" ");
 		if (primary != null)
-			buf.append(primary);
+			buf.append(primary).append(" ");
 		if (outer != null)
-			buf.append(" ").append(outer);
+			buf.append(outer);
 		return JoinSpecification.makeJoinSpecification(buf.toString()
 				.toUpperCase());
 	}
@@ -2191,7 +2234,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public JoinedTable buildJoinedTable(ExpressionNode target,
 			JoinClauseType joinOn, JoinSpecification injoinType) {
 		// JOIN is INNER JOIN
-		JoinSpecification joinType = (injoinType == null ? buildJoinType("INNER",null) : injoinType);
+		JoinSpecification joinType = (injoinType == null ? buildJoinType("INNER") : injoinType);
 		return new JoinedTable(target, (joinOn == null ? null : joinOn.getNode()), joinType, (joinOn == null ? null : joinOn.getColumnIdentifiers()));
 	}
 
@@ -2202,10 +2245,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public FromTableReference buildFromTableReference(ExpressionNode factor,
 			List<JoinedTable> joins) {
 		
+		if (joins.isEmpty()) {
+			return new FromTableReference(factor);
+		}
+
 		convertUsingColSpecToOnSpec(factor, joins);
 		
-		if (joins.isEmpty())
-			return new FromTableReference(factor);
 		return new FromTableReference(new TableJoin(factor,joins));		
 	}
 
@@ -2213,7 +2258,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (!opts.isResolve()) return;
 		List<UnqualifiedName> visibleAliases = new LinkedList<UnqualifiedName>();
 		if (factor instanceof TableInstance)
-			visibleAliases.add(0, ((TableInstance)factor).getReferenceName(pc).getUnqualified());
+			visibleAliases.add(0, ((TableInstance) factor).getReferenceName(pc).getUnqualified());
 		for (JoinedTable jt : joins) {
 			List<Name> usingColSpec = jt.getUsingColSpec();
 			if (usingColSpec != null && usingColSpec.size() > 0 ) {
@@ -2494,7 +2539,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return AddGlobalVariableStatement.decode(pc, varName, options);
 	}
 	
-	public Comment buildComment(String c) {
+	private Comment buildComment(String c) {
 		return new Comment(PEStringUtils.dequote(c));
 	}
 
@@ -2531,10 +2576,24 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new EngineTableModifier(actualTag);
 	}
 	
-	public TableModifier buildCommentTableModifier(String s) {
+	public TableModifier buildCommentTableModifier(final Name tableName, final String s) throws SchemaException {
+		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableCommentLength();
+		if (s.length() > maxAllowedLength) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.TOO_LONG_TABLE_COMMENT, tableName.getUnqualified().getUnquotedName().get(), maxAllowedLength));
+		}
+
 		return new CommentTableModifier(buildComment(s));
 	}
 	
+	public Comment buildTableFieldComment(final Name fieldName, final String s) throws SchemaException {
+		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableFieldCommentLength();
+		if (s.length() > maxAllowedLength) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.TOO_LONG_TABLE_FIELD_COMMENT, fieldName.getUnquotedName().get(), maxAllowedLength));
+		}
+
+		return buildComment(s);
+	}
+
 	public TableModifier buildCollationTableModifier(Name collationName) {
 		return new CollationTableModifier(collationName.getUnqualified());
 	}

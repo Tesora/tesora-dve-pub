@@ -22,6 +22,7 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
@@ -54,20 +55,19 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
     private int writtenFrames;
 	private Monitor connectionMonitor;
 
-	public MysqlExecuteCommand(SQLCommand sqlCommand,
-			Monitor connectionMonitor, MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+	public MysqlExecuteCommand(SQLCommand sqlCommand, DBConnection.Monitor monitor,
+                               MysqlQueryResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
 		super(promise);
 		this.sqlCommand = sqlCommand;
 		this.resultConsumer = resultConsumer;
-		this.connectionMonitor = connectionMonitor;
+        this.connectionMonitor = monitor;
 	}
 
 	@Override
 	public void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
 		if (logger.isDebugEnabled())
 			logger.debug("Written: " + this);
-
-        MSPComQueryRequestMessage queryMsg = MSPComQueryRequestMessage.newMessage((byte)0,sqlCommand.getSQLAsBytes());
+        MSPComQueryRequestMessage queryMsg = MSPComQueryRequestMessage.newMessage(sqlCommand.getSQLAsBytes());
         ctx.write(queryMsg);
     }
 
@@ -76,12 +76,6 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
 		return this.getClass().getSimpleName() + "{" + getCompletionHandle() + ", " + sqlCommand.getDisplayForLog() + "}";
 	}
 
-
-
-    @Override
-    public boolean isDone(ChannelHandlerContext ctx) {
-        return messageState == ResponseState.DONE;
-    }
 
     @Override
     public void packetStall(ChannelHandlerContext ctx) throws PEException {
@@ -108,7 +102,7 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
                 default:
                     throw new PECodingException("Unrecognized message state " + messageState + " occurred while processing packets in " + this.getClass().getSimpleName());
             }
-            return isDone(ctx);
+            return true;
         } catch (Exception e){
             getCompletionHandle().failure(e);
             throw e;
@@ -201,11 +195,6 @@ public class MysqlExecuteCommand extends MysqlConcurrentCommand implements Mysql
     }
 
     @Override
-	public MysqlCommandResultsProcessor getResultHandler() {
-		return this;
-	}
-
-	@Override
 	public void failure(Exception e) {
 		getCompletionHandle().failure(e);
 	}

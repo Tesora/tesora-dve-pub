@@ -55,7 +55,7 @@ public class MyFieldPktResponse extends MyResponseMessage {
     ByteBuf cachedBuffer = Unpooled.EMPTY_BUFFER;
 
 	@Override
-	public void marshallMessage(ByteBuf cb) {
+    public void marshallMessage(ByteBuf cb) {
         if (state == CacheState.NOT_CACHED){
             ByteBuf newCache = Unpooled.buffer().order(ByteOrder.LITTLE_ENDIAN);
             fullPack(newCache);

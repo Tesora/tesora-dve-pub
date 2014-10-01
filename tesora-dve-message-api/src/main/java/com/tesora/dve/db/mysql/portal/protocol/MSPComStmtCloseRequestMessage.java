@@ -32,8 +32,8 @@ public class MSPComStmtCloseRequestMessage extends BaseMSPMessage<Long> {
         super();
     }
 
-    protected MSPComStmtCloseRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComStmtCloseRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -42,9 +42,9 @@ public class MSPComStmtCloseRequestMessage extends BaseMSPMessage<Long> {
     }
 
     @Override
-    public MSPComStmtCloseRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComStmtCloseRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComStmtCloseRequestMessage(sequenceID,source);
+        return new MSPComStmtCloseRequestMessage(source);
     }
 
     public long getStatementID() {
@@ -67,9 +67,8 @@ public class MSPComStmtCloseRequestMessage extends BaseMSPMessage<Long> {
         destination.writeInt(statementID.intValue());
     }
 
-    public static MSPComStmtCloseRequestMessage newMessage(byte sequenceID, int pstmtId) {
+    public static MSPComStmtCloseRequestMessage newMessage(int pstmtId) {
         MSPComStmtCloseRequestMessage closeReq = new MSPComStmtCloseRequestMessage();
-        closeReq.setSequenceID(sequenceID);
         closeReq.setStatementID(pstmtId);
         return closeReq;
     }

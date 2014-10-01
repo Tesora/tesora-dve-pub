@@ -44,7 +44,6 @@ import com.tesora.dve.common.PECharsetUtils;
 import com.tesora.dve.db.mysql.MysqlLoadDataInfileRequestCollector;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementDiscarder;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
-import com.tesora.dve.server.connectionmanager.loaddata.MSPLoadDataDecoder ;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.parser.InvokeParser;
@@ -203,7 +202,7 @@ public class LoadDataRequestExecutor {
 				throw new PEException(io);
 			}
 			
-			resultConsumer.getCtx().write(MSPLoadDataDecoder.createLoadDataEOFMsg(resultConsumer.getLoadDataInfileContext(), Byte.valueOf("0")));
+			resultConsumer.getCtx().write(MSPLoadDataDecoder.createLoadDataEOFMsg(resultConsumer.getLoadDataInfileContext()));
 		}
 	}
 	

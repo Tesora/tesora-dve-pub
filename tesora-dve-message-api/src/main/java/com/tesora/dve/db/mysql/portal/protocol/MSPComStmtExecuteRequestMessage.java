@@ -52,12 +52,12 @@ public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtEx
         super();
     }
 
-    protected MSPComStmtExecuteRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComStmtExecuteRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
-    protected MSPComStmtExecuteRequestMessage(byte sequenceID, ParsedData data) {
-        super(sequenceID,data);
+    protected MSPComStmtExecuteRequestMessage(ParsedData data) {
+        super(data);
     }
 
     @Override
@@ -66,9 +66,9 @@ public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtEx
     }
 
     @Override
-    public MSPComStmtExecuteRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPComStmtExecuteRequestMessage newPrototype(ByteBuf source) {
         source = source.slice();
-        return new MSPComStmtExecuteRequestMessage(sequenceID,source);
+        return new MSPComStmtExecuteRequestMessage(source);
     }
 
     @Override
@@ -167,7 +167,7 @@ public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtEx
         data.iterationCount = 1;
         data.metadata = metadata;
         data.values = values;
-        return new MSPComStmtExecuteRequestMessage((byte)0,data);
+        return new MSPComStmtExecuteRequestMessage(data);
     }
 
 }

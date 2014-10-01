@@ -22,15 +22,13 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.*;
-import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import com.tesora.dve.exceptions.PESQLStateException;
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer {
@@ -53,22 +51,22 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 	}
 
     @Override
-    public void writeCommandExecutor(final Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, final CompletionHandle<Boolean> promise) {
+    public MysqlCommand  writeCommandExecutor(final CommandChannel channel, SQLCommand sql, final CompletionHandle<Boolean> promise) {
+        //TODO: this executor is weird.  It sends a prepare to a backend site, forwards the response to a frontend site (with a tweaked stmtID), and then closes the backend prepared statement. -sgossard
 		final MysqlPrepareStatementForwarder resultForwarder = this;
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
 		preparePromise.addListener(new CompletionTarget<Boolean>() {
 			@Override
 			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = resultForwarder.getPreparedStatement();
-				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
-				promise.success(false);
+				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt,promise));
 			}
 			@Override
 			public void failure(Exception e) {
 				promise.failure(e);
 			}
 		});
-		super.writeCommandExecutor(channel, site, connectionMonitor, sql, preparePromise);
+		return super.writeCommandExecutor(channel, sql, preparePromise);
 	}
 
 	@Override
@@ -107,7 +105,6 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
         }
 
 		MyMessage respMsg = new MyErrorResponse(e);
-		respMsg.setPacketNumber(1);
 		outboundCtx.writeAndFlush(respMsg);
 	}
 

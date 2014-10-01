@@ -22,11 +22,10 @@ package com.tesora.dve.db;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import io.netty.channel.Channel;
 
 import java.util.List;
 
-import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
@@ -35,7 +34,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlStmtCloseDiscarder implements DBResultConsumer {
+public class MysqlStmtCloseDiscarder extends DBResultConsumer  {
 	
 	final MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt;
 
@@ -77,9 +76,8 @@ public class MysqlStmtCloseDiscarder implements DBResultConsumer {
 	}
 
     @Override
-    public void writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		channel.write(new MysqlStmtCloseCommand(pstmt));
-		promise.success(false);
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		return new MysqlStmtCloseCommand(pstmt,promise);
 	}
 
 	@Override

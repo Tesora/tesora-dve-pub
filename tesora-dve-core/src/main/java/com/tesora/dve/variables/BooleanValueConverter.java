@@ -96,6 +96,11 @@ public class BooleanValueConverter extends ValueMetadata<Boolean> {
 	}
 
 	@Override
+	public boolean isNumeric() {
+		return false;
+	}
+
+	@Override
 	public String getTypeName() {
 		return "boolean";
 	}

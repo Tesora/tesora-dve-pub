@@ -31,12 +31,9 @@ public class MysqlLoadDataInfileRequestCollector {
 
 	ChannelHandlerContext ctx = null;
 	String fileName = null;
-	byte sequenceId;
 
-	public MysqlLoadDataInfileRequestCollector(ChannelHandlerContext ctx,
-			byte sequenceId) {
+	public MysqlLoadDataInfileRequestCollector(ChannelHandlerContext ctx) {
 		this.ctx = ctx;
-		this.sequenceId = sequenceId;
 	}
 
 	public ChannelHandlerContext getCtx() {
@@ -64,13 +61,11 @@ public class MysqlLoadDataInfileRequestCollector {
 	}
 
 	public void sendStartDataRequest() {
-		ctx.writeAndFlush(new MyLoadDataResponse(getFileName())
-				.withPacketNumber(sequenceId + 1));
+		ctx.writeAndFlush(new MyLoadDataResponse(getFileName()));
 	}
 
 	public void sendError(Exception e) {
 		MyMessage respMsg = new MyErrorResponse(e);
-		respMsg.setPacketNumber(++sequenceId);
 		ctx.writeAndFlush(respMsg);
 	}
 }

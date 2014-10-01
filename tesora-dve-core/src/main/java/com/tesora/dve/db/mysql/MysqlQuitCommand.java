@@ -37,12 +37,6 @@ public class MysqlQuitCommand extends MysqlCommand implements
 
     boolean closed = false;
 
-
-    @Override
-    public boolean isDone(ChannelHandlerContext ctx) {
-        return closed;
-    }
-
     @Override
     public void packetStall(ChannelHandlerContext ctx) {
     }
@@ -51,7 +45,7 @@ public class MysqlQuitCommand extends MysqlCommand implements
 	public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
         if (message instanceof MyOKResponse)
             closed = true;
-        return isDone(ctx);
+        return true;
 	}
 
 	@Override
@@ -73,11 +67,6 @@ public class MysqlQuitCommand extends MysqlCommand implements
         MSPComQuitRequestMessage quitRequest = MSPComQuitRequestMessage.newMessage();
         ctx.write(quitRequest);
     }
-
-	@Override
-	MysqlCommandResultsProcessor getResultHandler() {
-		return this;
-	}
 
     @Override
     public void active(ChannelHandlerContext ctx) {

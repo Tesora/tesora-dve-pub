@@ -584,12 +584,13 @@ public class FunctionsTest extends SchemaTest {
 
 	@Test
 	public void testPE1403_Rand() throws Throwable {
-		try {
-			conn.execute("SELECT RAND(1,2,3)");
-		} catch (SchemaException se) {
-			assertErrorInfo(se,MySQLErrors.incorrectParamCountFormatter,
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("SELECT RAND(1,2,3)");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.incorrectParamCountFormatter,
 					"RAND");
-		}
 
 		assertResultDistribution("SELECT RAND()", 1, 1, 10, true);
 		assertResultDistribution("SELECT RAND(0)", 1, 1, 10, false);

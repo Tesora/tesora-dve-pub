@@ -204,6 +204,11 @@ public class InformationSchemaTableView implements
 		return true;
 	}
 
+	@Override
+	public boolean isTempTable() {
+		return false;
+	}
+
 	public LogicalInformationSchemaTable getLogicalTable() {
 		return backing;
 	}

@@ -106,7 +106,7 @@ public abstract class NativeCollationCatalog implements Serializable {
 		return defaultCollation;
 	}
 	
-	public boolean validateUTF8Collation(String collation) throws PEException {
+	public boolean isCompatibleCollation(String collation) throws PEException {
 		return (findCollationByName(collation, false) != null);
 	}
 	

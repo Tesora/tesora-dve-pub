@@ -27,6 +27,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,12 +42,16 @@ import org.junit.Test;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.errmap.MySQLErrors;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.resultset.ColumnSet;
+import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.parser.TimestampVariableUtils;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.Functional;
@@ -100,20 +105,26 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", "latin1",
 				   nr,"character_set_connection", "latin1",
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results","latin1",
-				   nr,"character_set_server","utf8"));
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"));
 		conn.assertResults("show variables like 'character%'",
 				br(nr,"character_set_client", "latin1",
 				   nr,"character_set_connection", "latin1",
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results","latin1",
-				   nr,"character_set_server","utf8"));
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"));
 		conn.execute("set @prevcharset = @@character_set_connection");
 		conn.execute("set names utf8");
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", "utf8",
 				   nr,"character_set_connection", "utf8",
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results","utf8",
-				   nr,"character_set_server","utf8"));
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"));
 		conn.assertResults("select @@character_set_client,@@session.character_set_connection,@@character_set_results",br(nr,"utf8","utf8","utf8"));
 		conn.execute("set @@character_set_connection = @prevcharset");
 		conn.assertResults("select @@character_set_connection",br(nr,"latin1"));
@@ -181,8 +192,10 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results",charSet,
-				   nr,"character_set_server","utf8"
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"
 				   ));
 		
 		charSet = "utf8";
@@ -190,8 +203,10 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results",charSet,
-				   nr,"character_set_server","utf8"
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"
 				   ));
 		
 		charSet = "ascii";
@@ -199,8 +214,10 @@ public class SQLVariableTest extends SchemaTest {
 		conn.assertResults("show session variables like 'character%'",
 				br(nr,"character_set_client", charSet,
 				   nr,"character_set_connection", charSet,
+				   nr,"character_set_database","utf8",
 				   nr,"character_set_results",charSet,
-				   nr,"character_set_server","utf8"
+				   nr,"character_set_server","utf8",
+				   nr,"character_set_system","utf8"
 				   ));
 	}
 
@@ -262,13 +279,15 @@ public class SQLVariableTest extends SchemaTest {
 	
 	@Test
 	public void testDisabledVariables() throws Throwable {
-		try {
-			conn.execute("set sql_auto_is_null = 1");
-			fail("should not be able to set sql_auto_is_null to 1");
-		} catch (SchemaException e) {
-			assertErrorInfo(e,MySQLErrors.internalFormatter,
+
+		// should not be able to set sql_auto_is_null to 1
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set sql_auto_is_null = 1");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 					"Internal error: No support for sql_auto_is_null = 1 (planned)");
-		}
 		conn.execute("set sql_auto_is_null = 0");
 	}
 	
@@ -294,15 +313,19 @@ public class SQLVariableTest extends SchemaTest {
 	public void testSqlModeDefault() throws Throwable {
 		final String variableName = "sql_mode";
 
-		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
+		// Reset the GLOBAL value first to test for PE-1608.
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION");
+		conn.execute("SET GLOBAL sql_mode=default;");
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION");
+
 		conn.execute("SET sql_mode=ALLOW_INVALID_DATES;");
-		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,ALLOW_INVALID_DATES");
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION,ALLOW_INVALID_DATES");
 		conn.execute("SET sql_mode=default;");
-		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION");
 		conn.execute("SET sql_mode=\" NO_AUTO_CREATE_USER , no_engine_substitution , ALLOW_INVALID_DATES \";");
 		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,ALLOW_INVALID_DATES");
 		conn.execute("SET sql_mode=\"\";");
-		assertVariableValue(variableName, "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION");
+		assertVariableValue(variableName, "NO_ENGINE_SUBSTITUTION");
 	}
 
 	@Test
@@ -326,10 +349,259 @@ public class SQLVariableTest extends SchemaTest {
 		assertVariableValue("thread_handling", "one-thread-per-connection");
 	}
 
+	@Test
+	public void testPE1609() throws Throwable {
+		assertVariableValue("time_format", "%H:%i:%s");
+	}
+
+	@Test
+	public void testPE1610() throws Throwable {
+		assertVariableValue("thread_concurrency", "10");
+	}
+
+	@Test
+	public void testPE1611() throws Throwable {
+		assertVariableValue("log_bin", "OFF");
+	}
+
+	@Test
+	public void testPE1612() throws Throwable {
+		assertVariableValue("license", "AGPL");
+	}
+
+	@Test
+	public void testPE1613() throws Throwable {
+		final String serverVersion = getVariableValue("version");
+		assertVariableValue("innodb_version", serverVersion);
+	}
+
+	@Test
+	public void testPE1614() throws Throwable {
+		assertVariableValue("ignore_builtin_innodb", "OFF");
+	}
+
+	@Test
+	public void testPE1615() throws Throwable {
+		assertVariableValue("have_profiling", "NO");
+	}
+
+	@Test
+	public void testPE1616() throws Throwable {
+		assertVariableValue("datetime_format", "%Y-%m-%d %H:%i:%s");
+	}
+
+	@Test
+	public void testPE1617() throws Throwable {
+		assertVariableValue("date_format", "%Y-%m-%d");
+	}
+
+	@Test
+	public void testPE1618() throws Throwable {
+		assertVariableValue("character_set_system", "utf8");
+	}
+
+	@Test
+	public void testPE1619() throws Throwable {
+		assertVariableValue("div_precision_increment", "4");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session div_precision_increment = 31");
+			}
+		}.assertException(PEException.class, "Invalid value '31' must be no more than 30 for variable 'div_precision_increment'");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session div_precision_increment = -1");
+			}
+		}.assertException(PEException.class, "Invalid value '-1' must be at least 0 for variable 'div_precision_increment'");
+
+		conn.assertResults("SELECT 1/7", br(nr, BigDecimal.valueOf(0.1429)));
+
+		conn.execute("set session div_precision_increment = 12");
+
+		conn.assertResults("SELECT 1/7", br(nr, BigDecimal.valueOf(0.142857142857)));
+	}
+
+	@Test
+	public void testPE1620() throws Throwable {
+		assertVariableValue("default_week_format", "0");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session default_week_format = 8");
+			}
+		}.assertException(PEException.class, "Invalid value '8' must be no more than 7 for variable 'default_week_format'");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session default_week_format = -1");
+			}
+		}.assertException(PEException.class, "Invalid value '-1' must be at least 0 for variable 'default_week_format'");
+
+		conn.assertResults("SELECT WEEK('2008-02-20')", br(nr, 7L));
+
+		conn.execute("set session default_week_format = 1");
+
+		conn.assertResults("SELECT WEEK('2008-02-20')", br(nr, 8L));
+		conn.assertResults("SELECT WEEK('2008-12-31')", br(nr, 53L));
+	}
+
+	@Test
+	public void testPE1621() throws Throwable {
+		assertVariableValue("version_compile_machine", "64-bit");
+	}
+
+	@Test
+	public void testPE1603() throws Throwable {
+		assertTimestampValue(2, null);
+
+		conn.execute("set session timestamp = 10");
+
+		assertTimestampValue(2, 10l);
+
+		conn.execute("set session timestamp = 0");
+
+		assertTimestampValue(2, null);
+
+		conn.execute("set session timestamp = 300000000");
+
+		assertTimestampValue(2, 300000000l);
+
+		conn.execute("set session timestamp = DEFAULT");
+
+		assertTimestampValue(2, null);
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session timestamp = '10'");
+			}
+		}.assertException(PESQLStateException.class, "(1232: 42000) Incorrect argument type to variable 'timestamp'");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set session timestamp = 'DEFAULT'");
+			}
+		}.assertException(PESQLStateException.class, "(1232: 42000) Incorrect argument type to variable 'timestamp'");
+	}
+
+	private void assertTimestampValue(final int waitTimeSec, final Long expected) throws Throwable {
+		final Long value1 = Long.parseLong(getVariableValue("timestamp"));
+		Thread.sleep(Long.valueOf(1000 * waitTimeSec));
+		final Long value2 = Long.parseLong(getVariableValue("timestamp"));
+
+		if (expected != null) {
+            //this timestamp checks are simple, because set timestamp whould fix the returned value of NOW()
+			conn.assertResults("SELECT UNIX_TIMESTAMP(NOW())", br(nr, expected));
+			assertEquals(expected, value1);
+			assertEquals(expected, value2);
+		} else {
+            //these timestamp checks have to account for clock and execution drift, since the timestamp is set to DEFAULT.
+
+            assertTimestampBetween(value1, value1 + waitTimeSec, value2, /*allowed width*/waitTimeSec+2);//allow for 2 seconds of variation, Thread.sleep(2000) could easily measure as 3 seconds.
+
+            long beforeTime = TimestampVariableUtils.getCurrentSystemTime();
+            ResourceResponse queriedTimestamp = conn.fetch("SELECT UNIX_TIMESTAMP(NOW())");
+            long afterTime = TimestampVariableUtils.getCurrentSystemTime();
+            List<ResultRow> rows = queriedTimestamp.getResults();
+            assertEquals(1,rows.size());
+            final ResultRow row = rows.get(0);
+            final List<ResultColumn> resultColumns = row.getRow();
+            assertEquals(1,resultColumns.size());
+            ResultColumn col = resultColumns.get(0);
+            long entry = (Long)col.getColumnValue();
+
+			assertTimestampBetween(beforeTime,entry,afterTime, 1);
+
+		}
+	}
+
+    private void assertTimestampBetween(long before, long middle, long after, long allowedWidth){
+        assertTrue("before = "+before +" , middle= "+middle , before <= middle);
+        assertTrue("middle = " + middle + " , after = " + after, middle <= after);
+        assertTrue("before = "+before +" , after = " + after +" , allowedWidth = "+allowedWidth, after - before <= allowedWidth);
+    }
+
+	@Test
+	public void testPE1639() throws Throwable {
+		assertVariableValue("innodb_adaptive_flushing", "ON");
+	}
+
+	@Test
+	public void testPE1640() throws Throwable {
+		assertVariableValue("innodb_fast_shutdown", "1");
+	}
+
+	@Test
+	public void testPE1641() throws Throwable {
+		assertVariableValue("innodb_mirrored_log_groups", "1");
+	}
+
+	@Test
+	public void testPE1642() throws Throwable {
+		assertVariableValue("innodb_stats_method", "nulls_equal");
+	}
+
+	@Test
+	public void testPE1643() throws Throwable {
+		final String tspValue = getVariableValue("innodb_stats_transient_sample_pages");
+		assertVariableValue("innodb_stats_sample_pages", tspValue);
+	}
+
+	@Test
+	public void testPE1644() throws Throwable {
+		assertVariableValue("innodb_stats_transient_sample_pages", "8");
+	}
+
+	@Test
+	public void testPE1645() throws Throwable {
+		assertVariableValue("innodb_table_locks", "ON");
+	}
+
+	@Test
+	public void testPE1646() throws Throwable {
+		assertVariableValue("myisam_use_mmap", "OFF");
+	}
+
+	@Test
+	public void testPE1647() throws Throwable {
+		assertVariableValue("tmp_table_size", "16777216");
+	}
+
+	@Test
+	public void testPE1649() throws Throwable {
+		assertVariableValue("skip_networking", "OFF");
+	}
+
+	@Test
+	public void testPE1650() throws Throwable {
+		assertVariableValue("protocol_version", "10");
+	}
+
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}
 	
+	private String getVariableValue(final String variableName) throws Throwable {
+		final List<ResultRow> rows = conn.fetch("show variables like '" + variableName + "'").getResults();
+		assertEquals("Exactly one result row expected for variable '" + variableName + "'.", 1, rows.size());
+
+		final ResultRow row = rows.get(0);
+		final List<ResultColumn> resultColumns = row.getRow();
+		if (resultColumns.size() != 2) {
+			throw new PECodingException("\"SHOW VARIABLES LIKE ...\" should return exactly two columns.");
+		}
+		assertEquals("Wrong variable name returned for '" + variableName + "'.", variableName, resultColumns.get(0).getColumnValue());
+
+		return (String) resultColumns.get(1).getColumnValue();
+	}
+
 	// this is a cheesy test
 	@Test
 	public void testDynamicAdd() throws Throwable {
@@ -413,7 +685,7 @@ public class SQLVariableTest extends SchemaTest {
 	
 	private static final VariableRoundTrip[] globals = new VariableRoundTrip[] {
 		new VariableRoundTrip(
-				"set global %s = '%s'",
+				"set global %s = %s",
 				"show global variables like '%s'") {
 
 			public Object[] buildExpectedResults(String varName, String varValue) {
@@ -421,13 +693,13 @@ public class SQLVariableTest extends SchemaTest {
 			}
 		},
 		new VariableRoundTrip(
-				"set @@global.%s = '%s'",
+				"set @@global.%s = %s",
 				"select variable_value from information_schema.global_variables where variable_name like '%s'")
 	};
 
 	private static final VariableRoundTrip[] sessions = new VariableRoundTrip[] {
 		new VariableRoundTrip(
-				"set %s = '%s'",
+				"set %s = %s",
 				"show session variables like '%s'") {
 			public Object[] buildExpectedResults(String varName, String varValue) {
 				return br(nr,varName,varValue);
@@ -435,13 +707,13 @@ public class SQLVariableTest extends SchemaTest {
 			
 		},
 		new VariableRoundTrip(
-				"set @@session.%s = '%s'",
+				"set @@session.%s = %s",
 				"select variable_value from information_schema.session_variables where variable_name like '%s'"),
 		new VariableRoundTrip(
-				"set @@%s = '%s'",
+				"set @@%s = %s",
 				"select variable_value from information_schema.session_variables where variable_name like '%s'"),
 		new VariableRoundTrip(
-				"set @@local.%s = '%s'",
+				"set @@local.%s = %s",
 				"select variable_name, variable_value from information_schema.session_variables where variable_name = '%s'") {
 			public Object[] buildExpectedResults(String varName, String varValue) {
 				return br(nr,varName,varValue);
@@ -468,7 +740,7 @@ public class SQLVariableTest extends SchemaTest {
 				// now, for each root version, make sure a nonroot user cannot set it
 				for(VariableRoundTrip vrt : globals) {
 					try {
-						nonRoot.execute(vrt.buildSet(handler.getName(), values.current()));
+						nonRoot.execute(vrt.buildSet(handler.getName(), values.current(), handler.getMetadata().isNumeric()));
 						fail("non root should not be able to set global value of " + handler.getName());
 					} catch (PEException pe) {
 						if (!pe.getMessage().startsWith("Must be root"))
@@ -500,7 +772,7 @@ public class SQLVariableTest extends SchemaTest {
 	
 	private void roundTrip(ProxyConnectionResource proxyConn, VariableHandler handler,
 			VariableRoundTrip vrt, Values values) throws Throwable {
-		conn.execute(vrt.buildSet(handler.getName(), values.next()));
+		conn.execute(vrt.buildSet(handler.getName(), values.next(), handler.getMetadata().isNumeric()));
 		conn.assertResults(vrt.buildQuery(handler.getName()),
 				vrt.buildExpectedResults(handler.getName(), values.current()));
 	}
@@ -536,8 +808,8 @@ public class SQLVariableTest extends SchemaTest {
 			this.queryFormat = queryFormat;
 		}
 		
-		public String buildSet(String varName, String varValue) {
-			return String.format(setFormat,varName,varValue);
+		public String buildSet(String varName, String varValue, boolean isNumeric) {
+			return String.format(setFormat, varName, (isNumeric) ? varValue : PEStringUtils.singleQuote(varValue));
 		}
 		
 		public String buildQuery(String varName) {

@@ -35,8 +35,8 @@ public class MSPServerGreetingRequestMessage extends BaseMSPMessage {
         super();
     }
 
-    protected MSPServerGreetingRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPServerGreetingRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     public static void write(ChannelHandlerContext ctx, int connectionId, String salt, int serverCapabilities, String serverVersion, byte serverCharSet, String pluginData) {
@@ -87,9 +87,9 @@ public class MSPServerGreetingRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPServerGreetingRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
+    public MSPServerGreetingRequestMessage newPrototype(ByteBuf source) {
         final byte messageType = source.readByte();
         source = source.slice();
-        return new MSPServerGreetingRequestMessage(sequenceID,source);
+        return new MSPServerGreetingRequestMessage(source);
     }
 }

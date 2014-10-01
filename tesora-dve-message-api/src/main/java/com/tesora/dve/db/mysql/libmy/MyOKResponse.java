@@ -39,11 +39,10 @@ public class MyOKResponse extends MyResponseMessage {
 	private String message;
 
     public MyOKResponse() {
-        this.setPacketNumber((byte)1);//OK response is usually second packet in sequence.
     }
 
     @Override
-	public void marshallMessage(ByteBuf in) {
+    public void marshallMessage(ByteBuf in) {
 		ByteBuf cb = in.order(ByteOrder.LITTLE_ENDIAN);
 		cb.writeByte(0); // field_count - spec says this is always 0
 		MysqlAPIUtils.putLengthCodedLong(cb, affectedRows);

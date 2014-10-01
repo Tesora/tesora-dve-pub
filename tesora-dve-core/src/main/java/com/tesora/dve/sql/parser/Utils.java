@@ -441,7 +441,11 @@ public class Utils {
     	int l = lhs.getCharPositionInLine();
     	char first = origStmt.charAt(l);
     	if (first == ',') l++;
-    	String text = origStmt.substring(l, rhs.getCharPositionInLine()).trim();
+    	String text = null;
+    	if (rhs.getLine() != lhs.getLine())
+    		text = origStmt.substring(l).trim();
+    	else
+    		text = origStmt.substring(l, rhs.getCharPositionInLine()).trim();
     	en.setSourceLocation(new ComputedSourceLocation(l,lhs.getLine(),text,type));
     }
     

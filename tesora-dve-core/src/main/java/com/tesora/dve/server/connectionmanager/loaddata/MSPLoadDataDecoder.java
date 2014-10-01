@@ -182,7 +182,7 @@ public class MSPLoadDataDecoder extends ByteToMessageDecoder {
         boolean loadDataIsFinished = decodedEOF || (encounteredError != null);
 
         if (loadDataIsFinished) {
-            sendResponseAndRemove(ctx, packetNumber);
+            sendResponseAndRemove(ctx);
         } else {
             //not waiting for input, haven't seen input EOF or thrown an exception, must need more input data.
             resumeInput(ctx);
@@ -204,7 +204,7 @@ public class MSPLoadDataDecoder extends ByteToMessageDecoder {
         }
     }
 
-    private void sendResponseAndRemove(ChannelHandlerContext ctx, byte packetNumber)  {
+    private void sendResponseAndRemove(ChannelHandlerContext ctx)  {
         ChannelPipeline pipeline = ctx.pipeline();
         try {
             pauseInput(ctx);//stop incoming packets so we don't process the next request, we'll resume in the removal callback.
@@ -212,7 +212,7 @@ public class MSPLoadDataDecoder extends ByteToMessageDecoder {
             MyMessage response;
 
             if (encounteredError == null)
-                response = createLoadDataEOFMsg(myLoadDataInfileContext, packetNumber);
+                response = createLoadDataEOFMsg(myLoadDataInfileContext);
             else
                 response = new MyErrorResponse(new PEException(encounteredError));
 
@@ -309,13 +309,12 @@ public class MSPLoadDataDecoder extends ByteToMessageDecoder {
 		loadDataInfileCtx.clearPreparedStatements();
 	}
 
-	static public MyOKResponse createLoadDataEOFMsg(MyLoadDataInfileContext loadDataInfileCtx, byte packetNumber) {
+	static public MyOKResponse createLoadDataEOFMsg(MyLoadDataInfileContext loadDataInfileCtx) {
         MyOKResponse okResp = new MyOKResponse();
 		okResp.setAffectedRows(loadDataInfileCtx.getInfileRowsAffected());
 		okResp.setWarningCount((short) loadDataInfileCtx.getInfileWarnings());
 		okResp.setInsertId(0);
 		okResp.setStatusInTrans(false);
-		okResp.withPacketNumber(packetNumber);
 
 		return okResp;
 	}

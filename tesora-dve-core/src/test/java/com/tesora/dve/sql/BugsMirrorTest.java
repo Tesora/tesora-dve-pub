@@ -503,15 +503,27 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		runTest(tests);
 	}
 
-	@Ignore
 	@Test
 	public void testPE1591() throws Throwable {
 		runTest(new StatementMirrorFun("select convert(@@version_compile_os using latin1) NOT IN (\"Win32\",\"Win64\",\"Windows\")"));
 	}
 
-	@Ignore
 	@Test
 	public void testPE1593() throws Throwable {
 		runTest(new StatementMirrorFun("select @@thread_handling"));
+	}
+
+	@Test
+	public void testPE1624() throws Throwable {
+		runTest(new StatementMirrorFun("select @non_existing_user_variable__"));
+
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc("drop table if exists pe1624"));
+		tests.add(new StatementMirrorProc("create table pe1624 (`a` int(11)) /*#dve random distribute */"));
+		tests.add(new StatementMirrorProc("insert into pe1624 values (@non_existing_user_variable__)"));
+		tests.add(new StatementMirrorFun("select * from pe1624"));
+		runTest(tests);
+
+		runTest(new StatementMirrorFun("select @utf8_message as \"\" union select repeat(CONVERT('-' using utf8),80);"));
 	}
 }
