@@ -21,18 +21,19 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSContext;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.Worker;
 
 public class WorkerAlterDatabaseRequest extends WorkerRequest {
@@ -55,7 +56,8 @@ public class WorkerAlterDatabaseRequest extends WorkerRequest {
 		final String defaultCharSet = alteredDatabase.getDefaultCharacterSetName();
 		final String defaultCollation = alteredDatabase.getDefaultCollationName();
 
-        final SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getAlterDatabaseStmt(onSiteName, defaultCharSet, defaultCollation);
+		final SQLCommand ddl = Singletons.require(HostService.class).getDBNative()
+				.getAlterDatabaseStmt(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), onSiteName, defaultCharSet, defaultCollation);
 		simpleExecute(w,resultConsumer,ddl,promise);
 	}
 

@@ -51,8 +51,9 @@ public class QueryStepUpdateAllOperation extends QueryStepDMLOperation {
 		this.command = command;
 	}
 
-	public QueryStepUpdateAllOperation(PersistentDatabase execCtxDBName, DistributionModel distModelOfTable, String command) throws PEException {
-		this(execCtxDBName, distModelOfTable, new SQLCommand(command));
+	public QueryStepUpdateAllOperation(final SSConnection ssCon, PersistentDatabase execCtxDBName, DistributionModel distModelOfTable, String command)
+			throws PEException {
+		this(execCtxDBName, distModelOfTable, new SQLCommand(ssCon, command));
 	}
 	/**
 	 * Called by <b>QueryStep</b> to execute the query.

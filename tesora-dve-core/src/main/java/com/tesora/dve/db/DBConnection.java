@@ -21,17 +21,16 @@ package com.tesora.dve.db;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.CompletionTarget;
-import com.tesora.dve.db.mysql.DefaultResultProcessor;
-import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.worker.DevXid;
 import io.netty.channel.EventLoopGroup;
 
+import java.nio.charset.Charset;
 import java.util.Map;
+
+import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.worker.DevXid;
 
 public interface DBConnection extends CommandChannel {
 	
@@ -62,4 +61,5 @@ public interface DBConnection extends CommandChannel {
 	boolean hasPendingUpdate();
 	boolean hasActiveTransaction();
 	int getConnectionId();
+	public Charset lookupCurrentConnectionCharset();
 }

@@ -320,7 +320,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			}
 
 			public FilterExecutionStep getCollectorExecutionStep(final SchemaContext sc) throws PEException {
-				return new FilterExecutionStep(ProjectingExecutionStep.build(null, this.forTable.getStorageGroup(sc), this.buildSQL()), this);
+				return new FilterExecutionStep(ProjectingExecutionStep.build(sc, null, this.forTable.getStorageGroup(sc), this.buildSQL()), this);
 			}
 
 			private String buildSQL() {

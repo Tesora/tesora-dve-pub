@@ -21,32 +21,43 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.DistributionModel;
-import com.tesora.dve.concurrent.*;
-import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
-import com.tesora.dve.distribution.BroadcastDistributionModel;
-import com.tesora.dve.distribution.KeyValue;
-import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
-import com.tesora.dve.queryplan.TableHints;
-import com.tesora.dve.worker.MysqlRedistTupleForwarder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.CharsetUtil;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.common.PECollectionUtils;
+import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.concurrent.PECountdownPromise;
+import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.mysql.libmy.MyBinaryResultRow;
+import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.libmy.MyOKResponse;
+import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
+import com.tesora.dve.distribution.BroadcastDistributionModel;
+import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
+import com.tesora.dve.queryplan.TableHints;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.worker.MysqlRedistTupleForwarder;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
@@ -275,7 +286,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
         return rowSetMetadata;
     }
 
-    public SQLCommand buildInsertStatement(int tupleCount) throws PEException {
+	public SQLCommand buildInsertStatement(int tupleCount) throws PEException {
         SQLCommand insertCommand;
         if (tupleCount == maximumRowCount && insertStatementFuture != null) {
             try {
@@ -287,7 +298,12 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
                 throw new PEException("Sync to redist insert statement interrupted", ie);
             }
         } else {
-            insertCommand = QueryStepMultiTupleRedistOperation.getTableInsertStatement(targetTable, insertOptions, rowSetMetadata, tupleCount, insertIgnore);
+			insertCommand = QueryStepMultiTupleRedistOperation.getTableInsertStatement(
+					/*
+					 * PerHostConnectionManager.INSTANCE.lookupConnection(targetWG
+					 * .getCommectionId())
+					 */CharsetUtil.UTF_8, targetTable, insertOptions, rowSetMetadata, tupleCount,
+					insertIgnore);
         }
         return insertCommand;
     }

@@ -90,7 +90,9 @@ public class ValueConverter {
 		public T convert(String in, int literalKind) {
 			try {
 				return convertString(in, literalKind);
-			} catch (Exception e) {
+			} catch (final NumberFormatException e) {
+				throw e; // Possibly handled by using a different number converter.
+			} catch (final Exception e) {
 				throw conversionException(in, e);
 			}
 		}
@@ -213,7 +215,7 @@ public class ValueConverter {
 
 	private static class LongConverter extends Converter<Long> {
 		public LongConverter() {
-			super(Long.class, null, new int[] { TokenTypes.Unsigned_Large_Integer, TokenTypes.Signed_Large_Integer });
+			super(Long.class, null, new int[] { TokenTypes.Unsigned_Integer, TokenTypes.Signed_Large_Integer });
 		}
 
 		@Override
@@ -225,7 +227,7 @@ public class ValueConverter {
 
 	private static class BigIntegerConverter extends Converter<BigInteger> {
 		public BigIntegerConverter() {
-			super(BigInteger.class, new int[] { Types.BIGINT }, null);
+			super(BigInteger.class, new int[] { Types.BIGINT }, new int[] { TokenTypes.Unsigned_Integer, TokenTypes.Unsigned_Large_Integer });
 		}
 
 		@Override
@@ -346,17 +348,24 @@ public class ValueConverter {
 	}
 	
 	private static Converter<?>[] defaultConverters = new Converter[] { new StringConverter(),
-			new BigIntegerConverter(), new IntegerConverter(), new LongConverter(), new DoubleConverter(),
-			new FloatConverter(), new BinaryConverter(), new ByteConverter(), 
-			new DecimalConverter(), new DateConverter(), new TimeConverter(),
-			new BooleanConverter(), new ShortConverter() };
+			new ShortConverter(), new IntegerConverter(), new LongConverter(), new BigIntegerConverter(),
+			new FloatConverter(), new DoubleConverter(), new DecimalConverter(),
+			new BinaryConverter(), new ByteConverter(),
+			new DateConverter(), new TimeConverter(),
+			new BooleanConverter() };
 
 	public Object convertLiteral(String in, int kind) {
 		Converter<?>[] converters = defaultConverters;
 		for (int i = 0; i < converters.length; i++) {
-			if (converters[i].handlesLiteralType(kind))
-				return converters[i].convert(in, kind);
+			if (converters[i].handlesLiteralType(kind)) {
+				try {
+					return converters[i].convert(in, kind);
+				} catch (final NumberFormatException e) {
+					// Try the next converter that can handle this type.
+				}
+			}
 		}
+
 		throw new ParserException(Pass.SECOND, "Unknown literal kind: " + TokenTypes.tokenNames[kind]);
 	}
 

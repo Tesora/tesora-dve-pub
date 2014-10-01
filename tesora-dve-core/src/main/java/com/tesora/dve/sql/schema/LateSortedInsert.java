@@ -89,7 +89,8 @@ public class LateSortedInsert {
 		return out;
 	}
 	
-	private void emitJITInsert(final SchemaContext sc, final List<JustInTimeInsert> out, final DistributionKey dk, final List<List<ExpressionNode>> asList) {
+	private void emitJITInsert(final SchemaContext sc, final List<JustInTimeInsert> out, final DistributionKey dk, final List<List<ExpressionNode>> asList)
+			throws PEException {
 		final GenericSQLCommand prefix = new EmitterInvoker() {
 			@Override
 			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {

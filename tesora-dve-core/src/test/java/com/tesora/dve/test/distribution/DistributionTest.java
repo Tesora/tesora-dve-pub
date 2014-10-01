@@ -28,10 +28,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -57,7 +53,13 @@ import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSelectByKeyOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateByKeyOperation;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.standalone.PETest;
@@ -379,7 +381,7 @@ public class DistributionTest extends PETest{
 	}
 
 	public void selectAll(UserTable t, int expectedCount) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier()+" where id < 10");
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -392,7 +394,7 @@ public class DistributionTest extends PETest{
 
 	public void selectOne(UserTable t, int recId, int expectedCount)
 			throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier()+" where id = "+recId);
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -411,7 +413,7 @@ public class DistributionTest extends PETest{
 
 	public void selectByKey(UserTable t, KeyValue dv, int recId,
 			int expectedCount) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectByKeyOperation(t.getDatabase(), dv,
+		QueryStepOperation op = new QueryStepSelectByKeyOperation(ssConnection, t.getDatabase(), dv,
 				"select * from "+t.getNameAsIdentifier()+" where id = "+recId);
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		try {
@@ -440,7 +442,7 @@ public class DistributionTest extends PETest{
 	public void insertRecord(UserTable t, KeyValue distValue, int recId,
 			String value) throws Throwable {
 		QueryPlan plan;
-		QueryStepOperation op = new QueryStepInsertByKeyOperation(t.getDatabase(), distValue, 
+		QueryStepOperation op = new QueryStepInsertByKeyOperation(ssConnection, t.getDatabase(), distValue,
 				"insert into "+t.getNameAsIdentifier()+" values ("+recId+", '"+value+"')");
 		plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -452,7 +454,7 @@ public class DistributionTest extends PETest{
 
 	void selectWithDiscriminator(UserTable t, String col, String val,
 			int count) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier()+" where "+col+" = "+val);
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -475,7 +477,7 @@ public class DistributionTest extends PETest{
 	void updateRecord(UserTable t, KeyValue dv, int recId, String value)
 			throws Throwable {
 		QueryStepOperation op = new QueryStepUpdateByKeyOperation(t.getDatabase(), dv, 
-				new SQLCommand("update "+t.getNameAsIdentifier()+" set value = '"+value+"' where id = "+recId));
+				new SQLCommand(ssConnection, "update " + t.getNameAsIdentifier() + " set value = '" + value + "' where id = " + recId));
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		plan.executeStep(ssConnection, rc);
@@ -496,7 +498,7 @@ public class DistributionTest extends PETest{
 
 	void updateRange(UserTable t, int lowVal, int highVal, int count,
 			String value) throws Throwable {
-		QueryStepOperation op = new QueryStepUpdateAllOperation(t.getDatabase(), t.getDistributionModel(), 
+		QueryStepOperation op = new QueryStepUpdateAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"update "+t.getNameAsIdentifier()
 				+ " set value = '"+value+"'"
 				+ " where id >="+lowVal+" and id <="+highVal);
@@ -515,7 +517,7 @@ public class DistributionTest extends PETest{
 	}
 
 	long getRowCount(UserTable t) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier());
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -529,7 +531,7 @@ public class DistributionTest extends PETest{
 
 	void deleteRow(UserTable t, KeyValue dv, int recId) throws Throwable {
 		QueryStepOperation op = new QueryStepUpdateByKeyOperation(t.getDatabase(), dv, 
-				new SQLCommand("delete from "+t.getNameAsIdentifier()+" where id = "+recId));
+				new SQLCommand(ssConnection, "delete from " + t.getNameAsIdentifier() + " where id = " + recId));
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
@@ -553,7 +555,7 @@ public class DistributionTest extends PETest{
 
 	protected void selectAllFromAll(UserTable t, int expectedCount)
 			throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), StaticDistributionModel.SINGLETON,
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), StaticDistributionModel.SINGLETON,
 				"select * from "+t.getNameAsIdentifier()+" where id < 10");
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();

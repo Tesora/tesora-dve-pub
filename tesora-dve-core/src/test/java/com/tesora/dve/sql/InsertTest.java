@@ -804,4 +804,55 @@ public class InsertTest extends SchemaMirrorTest {
 		runTest(tests);
 	}
 
+	@Test
+	public void testPE1652() throws Throwable {
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1652"));
+		tests.add(new StatementMirrorProc(
+				"CREATE TABLE pe1652 ("
+						+ "c01 TINYINT,"
+						+ "c02 TINYINT UNSIGNED,"
+						+ "c03 SMALLINT,"
+						+ "c04 SMALLINT UNSIGNED,"
+						+ "c05 MEDIUMINT,"
+						+ "c06 MEDIUMINT UNSIGNED,"
+						+ "c07 INT,"
+						+ "c08 INT UNSIGNED,"
+						+ "c09 BIGINT,"
+						+ "c10 BIGINT UNSIGNED,"
+						+ "PRIMARY KEY(c01, c02, c03, c04, c05, c06, c07, c08, c09, c10))"));
+
+		tests.add(new StatementMirrorProc(
+				"INSERT INTO pe1652 VALUES (127, 255, 32767, 65535, 8388607, 16777215, 2147483647, 4294967295, 9223372036854775807, 18446744073709551615)"));
+		tests.add(new StatementMirrorFun("SELECT * FROM pe1652"));
+
+		runTest(tests);
+	}
+
+	@Test
+	public void testPE1655() throws Throwable {
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
+
+		tests.add(new StatementMirrorProc("SET NAMES utf8"));
+		tests.add(new StatementMirrorProc("SET character_set_database = utf8"));
+
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS `ｱｱｱ`"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS `あああ`"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS `龖龖龖`"));
+
+		tests.add(new StatementMirrorProc("CREATE TABLE `ｱｱｱ`(`ｷｷｷ` char(5)) DEFAULT CHARSET = utf8 engine=INNODB"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `あああ`(`ききき` char(5)) DEFAULT CHARSET = utf8 engine=INNODB"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `龖龖龖`(`丂丂丂` char(5)) DEFAULT CHARSET = utf8 engine=INNODB"));
+
+		tests.add(new StatementMirrorProc("INSERT INTO `ｱｱｱ` VALUES ('ｱｱｱｱｱ'),('ｲｲｲｲｲ'),('ｳｳｳｳｳ')"));
+		tests.add(new StatementMirrorProc("INSERT INTO `あああ` VALUES ('あああああ'),('いいいいい'),('ううううう')"));
+		tests.add(new StatementMirrorProc("INSERT INTO `龖龖龖` VALUES ('丂丂丂丂丂'),('丄丄丄丄丄'),('丅丅丅丅丅')"));
+
+		tests.add(new StatementMirrorFun("SELECT * FROM `ｱｱｱ` ORDER BY `ｷｷｷ`"));
+		tests.add(new StatementMirrorFun("SELECT * FROM `あああ` ORDER BY `ききき`"));
+		tests.add(new StatementMirrorFun("SELECT * FROM `龖龖龖` ORDER BY `丂丂丂`"));
+
+		runTest(tests);
+	}
+
 }

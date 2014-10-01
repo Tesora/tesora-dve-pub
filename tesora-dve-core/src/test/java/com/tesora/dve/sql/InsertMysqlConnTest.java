@@ -178,7 +178,7 @@ public class InsertMysqlConnTest extends MysqlConnSchemaMirrorTest {
 				}
 
 				MysqlConnectionResource pcr = (MysqlConnectionResource) mr.getConnection();
-				return pcr.execute(null, backingBinaryArray);
+				return pcr.execute(null, CharsetUtil.ISO_8859_1, backingBinaryArray);
 			}
 		});
 	}

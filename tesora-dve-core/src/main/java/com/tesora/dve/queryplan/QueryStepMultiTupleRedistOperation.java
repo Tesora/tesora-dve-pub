@@ -21,12 +21,10 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.concurrent.Future;
 
-import com.tesora.dve.db.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -37,6 +35,9 @@ import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.MysqlStmtCloseDiscarder;
+import com.tesora.dve.db.RedistTupleUpdateConsumer;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.IKeyValue;
@@ -46,8 +47,10 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.AggregationGroup;
@@ -248,7 +251,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 						tableHints, /* tempHints */ null, /* insertOptions */ null, /* allocatedWG */ null, /* cleanupWG */ null,
 						TempTableGenerator.DEFAULT_GENERATOR);
 				
-				SQLCommand tempQuery = new SQLCommand("select * from " + tempTable.getNameAsIdentifier());
+				SQLCommand tempQuery = new SQLCommand(ssCon, "select * from " + tempTable.getNameAsIdentifier());
 				doRedistribution(ssCon, resultConsumer, /* useSystemTempTable */ false, tempTableName,
 						cacheWG, targetUserDatabase, BroadcastDistributionModel.SINGLETON, tempQuery,
 						/* specifiedDistKeyValue */ null, /* distColumns */ null, distributeTempTableLike,
@@ -483,7 +486,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		return givenTargetTable;
 	}
 
-	static public SQLCommand getTableInsertStatement(PersistentTable targetTable, SQLCommand insertOptions, ColumnSet targetTableColumns, int tupleCount, boolean ignore) throws NumberFormatException, PEException {
+	static public SQLCommand getTableInsertStatement(final Charset connectionCharset, PersistentTable targetTable, SQLCommand insertOptions,
+			ColumnSet targetTableColumns, int tupleCount, boolean ignore) throws NumberFormatException, PEException {
 		StringBuffer query = new StringBuffer("insert ");
 				if (ignore) query.append(" ignore ");
         query.append("into ")
@@ -502,7 +506,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		if (insertOptions != null) {
 			query.append(" ").append(insertOptions.getRawSQL());
 		}
-		SQLCommand out = new SQLCommand(query.toString());
+		SQLCommand out = new SQLCommand(connectionCharset, query.toString());
 		out.setWidth(targetTableColumns.size());
 		return out;
 	}

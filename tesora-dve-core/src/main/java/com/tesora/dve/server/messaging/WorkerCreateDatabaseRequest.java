@@ -21,18 +21,19 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
+import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSContext;
-import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
+import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.Worker;
 
 public class WorkerCreateDatabaseRequest extends WorkerRequest {
@@ -59,7 +60,11 @@ public class WorkerCreateDatabaseRequest extends WorkerRequest {
 
 		final String onSiteName = newDatabase.getNameOnSite(w.getWorkerSite());
 
-        final SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getCreateDatabaseStmt(onSiteName, ifNotExists, defaultCharSet, defaultCollation);
+		final SQLCommand ddl = Singletons
+				.require(HostService.class)
+				.getDBNative()
+				.getCreateDatabaseStmt(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), onSiteName, ifNotExists, defaultCharSet,
+						defaultCollation);
 		simpleExecute(w,resultConsumer, ddl, promise);
 	}
 

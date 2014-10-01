@@ -21,15 +21,16 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import java.nio.charset.Charset;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.variables.VariableManager;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  *
@@ -58,7 +59,7 @@ public class DefaultSetVariableBuilder implements SetVariableSQLBuilder {
         }
 
         @Override
-        public SQLCommand generateSql() throws PENotFoundException {
+	public SQLCommand generateSql(final Charset connectionCharset) throws PENotFoundException {
             String setStatement = null;
             VariableManager vm = Singletons.require(HostService.class).getVariableManager();
             int clause = 0;
@@ -82,8 +83,8 @@ public class DefaultSetVariableBuilder implements SetVariableSQLBuilder {
 
             if (setStatement == null)
                 return SQLCommand.EMPTY;
-            else
-                return new SQLCommand(setStatement);
+
+		return new SQLCommand(connectionCharset, setStatement);
 
         }
 }

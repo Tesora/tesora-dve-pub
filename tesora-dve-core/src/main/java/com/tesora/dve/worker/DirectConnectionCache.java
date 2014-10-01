@@ -21,25 +21,31 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.mysql.*;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
-import com.tesora.dve.exceptions.PECommunicationsException;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLException;
 import io.netty.channel.EventLoopGroup;
+
+import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 import org.apache.commons.pool.BaseKeyedPoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericKeyedObjectPool;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.log4j.Logger;
 
-import java.sql.SQLException;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.MysqlCommandResultsProcessor;
+import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
+import com.tesora.dve.db.mysql.SharedEventLoopHolder;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
+import com.tesora.dve.exceptions.PECommunicationsException;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PESQLException;
 
 /**
  *
@@ -257,6 +263,11 @@ public class DirectConnectionCache {
 
         @Override
         public Exception getAndClearPendingException() { return dbConnection.getAndClearPendingException();}
+
+		@Override
+		public Charset lookupCurrentConnectionCharset() {
+			return dbConnection.lookupCurrentConnectionCharset();
+		}
     }
 
     public static class DSCacheKey {

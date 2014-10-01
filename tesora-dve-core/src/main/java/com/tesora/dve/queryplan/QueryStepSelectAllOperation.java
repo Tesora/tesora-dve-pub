@@ -70,8 +70,9 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 		this.command = command;
 	}
 
-	public QueryStepSelectAllOperation(PersistentDatabase execCtxDBName, DistributionModel distModel, String command) throws PEException {
-		this(execCtxDBName, distModel, new SQLCommand(command));
+	public QueryStepSelectAllOperation(final SSConnection ssCon, PersistentDatabase execCtxDBName, DistributionModel distModel, String command)
+			throws PEException {
+		this(execCtxDBName, distModel, new SQLCommand(ssCon, command));
 	}
 
 		/**

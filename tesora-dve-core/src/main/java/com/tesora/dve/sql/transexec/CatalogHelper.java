@@ -43,6 +43,7 @@ import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.PEXmlUtils;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.DAOPersistProvider;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.DynamicGroupClass;
@@ -56,7 +57,6 @@ import com.tesora.dve.common.catalog.Project;
 import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.ServerRegistration;
 import com.tesora.dve.common.catalog.SiteInstance;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.VariableConfig;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
@@ -108,7 +108,11 @@ public class CatalogHelper {
 	}
 
 	public String getCatalogDBUrl() throws PEException {
-		return getCatalogUrl() + "/" + getCatalogDBName();
+		final PEUrl baseUrl = PEUrl.fromUrlString(this.getCatalogUrl());
+		final PEUrl catalogDbUrl = PEUrl.fromUrlString(baseUrl.getStringWithoutQueryPart().concat("/").concat(this.getCatalogDBName()));
+		catalogDbUrl.setQuery(baseUrl.getQuery());
+
+		return catalogDbUrl.toString();
 	}
 
 	public String getCatalogUrl() throws PEException {
@@ -321,8 +325,7 @@ public class CatalogHelper {
 
 		try {
 			dbHelper.connect();
-
-			dbHelper.executeQuery(dbNative.getDropDatabaseStmt(getCatalogDBName()).getSQL());
+			dbHelper.executeQuery(dbNative.getDropDatabaseStmt(DBHelper.getConnectionCharset(dbHelper), getCatalogDBName()).getSQL());
 		} catch (SQLException e) {
 			throw new PEException("Error deleting DVE catalog - " + e.getMessage(), e);
 		} finally {
@@ -829,7 +832,8 @@ public class CatalogHelper {
 			final String catalogName = getCatalogDBName();
 			final String defaultScharSet = dbNative.getDefaultServerCharacterSet();
 			final String defaultCollation = dbNative.getDefaultServerCollation();
-			dbHelper.executeQuery(dbNative.getCreateDatabaseStmt(catalogName, false, defaultScharSet, defaultCollation).getSQL());
+			dbHelper.executeQuery(dbNative
+					.getCreateDatabaseStmt(DBHelper.getConnectionCharset(dbHelper), catalogName, false, defaultScharSet, defaultCollation).getSQL());
 		} catch (SQLException e) {
 			throw new PEException("Error creating DVE catalog - " + e.getMessage(), e);
 		} finally {

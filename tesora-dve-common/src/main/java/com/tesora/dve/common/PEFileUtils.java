@@ -418,19 +418,20 @@ public class PEFileUtils {
 	 * @param dirName
 	 * @return
 	 */
-	public static boolean createDirectory(String dirName) {
+	public static boolean createDirectory(final String dirName) {
 		if (dirName == null) {
 			return false;
 		}
 
-		boolean success = true;
-		File dir = new File(dirName);
+		return createDirectory(new File(dirName));
+	}
+
+	public static boolean createDirectory(final File dir) {
 		if (!dir.exists()) {
-			success = dir.mkdirs();
-		} else if (!dir.isDirectory()) {
-			return false;
+			return dir.mkdirs();
 		}
-		return success;
+
+		return dir.isDirectory();
 	}
 
 	public static String getCanonicalResourcePath(final Class<?> clazz, final String fileName) throws PEException {

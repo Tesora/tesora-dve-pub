@@ -21,23 +21,34 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import io.netty.channel.ChannelHandlerContext;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.log4j.Logger;
+
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.SynchronousCompletion;
 import com.tesora.dve.db.CommandChannel;
-
-import io.netty.channel.ChannelHandlerContext;
-import org.apache.log4j.Logger;
-
-import com.tesora.dve.db.mysql.*;
-import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
+import com.tesora.dve.db.mysql.FieldMetadataAdapter;
+import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.MysqlStmtExecuteCommand;
+import com.tesora.dve.db.mysql.RedistTupleBuilder;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
+import com.tesora.dve.db.mysql.libmy.MyBinaryResultRow;
+import com.tesora.dve.db.mysql.libmy.MyColumnCount;
+import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
+import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
+import com.tesora.dve.db.mysql.libmy.MyFieldPktResponse;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.libmy.MyOKResponse;
+import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
+import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.exceptions.PECodingException;

@@ -55,9 +55,10 @@
 		<PEMysqlProtocolConverter.port>3306</PEMysqlProtocolConverter.port>
 		<jdbc.portal.url>jdbc:mysql://localhost:${PEMysqlProtocolConverter.port}</jdbc.portal.url>
 		
-		<jdbc.mysql.version>5.1.32</jdbc.mysql.version>
+		<jdbc.mysql.version>5.1.33</jdbc.mysql.version>
 
 		<jdbc.mysql.url>jdbc:mysql://localhost:3307</jdbc.mysql.url>
+		<jdbc.mysql.catalog.url>${jdbc.mysql.url}?useUnicode=true&amp;characterEncoding=utf8&amp;connectionCollation=utf8_general_ci</jdbc.mysql.catalog.url>
 		<jdbc.mysql.user>root</jdbc.mysql.user>
 		<jdbc.mysql.password>ZYFvbxfjlE/gPQlL2yLtXA==</jdbc.mysql.password>
 

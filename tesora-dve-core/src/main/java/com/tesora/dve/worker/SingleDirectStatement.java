@@ -24,10 +24,10 @@ package com.tesora.dve.worker;
 import java.sql.ResultSet;
 import java.util.concurrent.Callable;
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECommunicationsException;
@@ -71,7 +71,8 @@ public class SingleDirectStatement implements WorkerStatement {
             }
 
         };
-        resultConsumer.dispatch(dbConnection,sqlCommand.getResolvedCommand(worker),transformErrors);
+
+		resultConsumer.dispatch(dbConnection, sqlCommand.getResolvedCommand(worker), transformErrors);
 	}
 
     @Override

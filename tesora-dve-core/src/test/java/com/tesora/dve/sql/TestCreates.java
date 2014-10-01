@@ -52,7 +52,9 @@ import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.ConnectionResource;
+import com.tesora.dve.sql.util.JdbcConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
+import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResourceResponse;
 import com.tesora.dve.sql.util.ResourceResponse;
@@ -1112,5 +1114,31 @@ public class TestCreates extends SchemaTest {
 								+ ") COMMENT='abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd'");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.tooLongTableCommentFormatter, "t1", 2048L);
+	}
+
+	@Test
+	public void testPE1651() throws Throwable {
+		try (final JdbcConnectionResource rc = new PortalDBHelperConnectionResource()) {
+			rc.connect();
+
+			rc.execute("SET NAMES utf8");
+			rc.execute("SET character_set_database = utf8");
+
+			rc.execute("DROP DATABASE IF EXISTS `ﾆﾎﾝｺﾞ`");
+			rc.execute("DROP DATABASE IF EXISTS `日本語`");
+			rc.execute("DROP DATABASE IF EXISTS `龔龖龗`");
+
+			rc.execute("CREATE DATABASE `ﾆﾎﾝｺﾞ` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + " USING TEMPLATE OPTIONAL");
+			rc.execute("CREATE DATABASE `日本語` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + "  USING TEMPLATE OPTIONAL");
+			rc.execute("CREATE DATABASE `龔龖龗` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + "  USING TEMPLATE OPTIONAL");
+
+			rc.execute("USE `ﾆﾎﾝｺﾞ`");
+			rc.execute("USE `日本語`");
+			rc.execute("USE `龔龖龗`");
+
+			rc.execute("DROP DATABASE `ﾆﾎﾝｺﾞ`");
+			rc.execute("DROP DATABASE `日本語`");
+			rc.execute("DROP DATABASE `龔龖龗`");
+		}
 	}
 }

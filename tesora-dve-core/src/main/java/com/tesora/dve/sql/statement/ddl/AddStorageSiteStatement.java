@@ -41,8 +41,8 @@ import com.tesora.dve.queryplan.QueryStepAddGenerationOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -58,9 +58,9 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
-import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.worker.WorkerGroup;
@@ -250,7 +250,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 						PEView pev = pevt.getView(sc);
 						if (pev.getMode() == ViewMode.EMULATE) {
 							// add a table def
-							commands.add(pevt.getPersistent(sc),new SQLCommand(pevt.getDeclaration()));
+							commands.add(pevt.getPersistent(sc), new SQLCommand(sc, pevt.getDeclaration()));
 							iter.remove();
 							emitted.add(pevt);
 						} else {
@@ -284,7 +284,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 			
 		}
 
-		private void emitUsers(SchemaContext sc,ListSet<PEDatabase> dbs, List<SQLCommand> commands) {
+		private void emitUsers(SchemaContext sc, ListSet<PEDatabase> dbs, List<SQLCommand> commands) {
 			MultiMap<PEUser,PEPriviledge> privs = sc.findUsersForGenAdd();
 			for(PEUser peu : privs.keySet()) {
 				commands.add(getCommand(sc, new PECreateUserStatement(Collections.singletonList(peu),false)));
