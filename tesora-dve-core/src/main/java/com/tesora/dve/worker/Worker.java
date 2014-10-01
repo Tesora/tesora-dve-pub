@@ -83,7 +83,7 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 		return getName()+"("+site+")";
 	}
 
-    Worker.SingleDirectConnection wConnection = null;
+    Object wConnection = null;
 	boolean connectionAllocated = false;
 
 	String currentDatabaseName = null;
@@ -111,11 +111,6 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         this.statementFailureTriggersCommFailure = (availability == AvailabilityType.MASTER_MASTER);
     }
 
-    protected Worker.SingleDirectConnection innerGetConnection() {
-        //don't delete, overridden by tests to inject failures.
-        return new SingleDirectConnection();
-    }
-
     public void bindToClientThread(EventLoopGroup eventLoop) throws PESQLException {
         this.previousEventLoop = this.preferredEventLoop;
         this.preferredEventLoop = eventLoop;
@@ -124,7 +119,7 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 
         if (wConnection != null){
             if (previousEventLoop != preferredEventLoop)
-                wConnection.releaseConnection(true);
+                dircon_releaseConnection(true);
             bindingChangedSinceLastCatalogSet = true;
         }
     }
@@ -136,10 +131,10 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 				resetStatement(promise);
                 promise.sync();
 //				rollback(currentGlobalTransaction);
-				wConnection.close(lastException == null);
-			} catch (Exception e) {
+                dircon_releaseConnection(lastException == null);
+            } catch (Exception e) {
                 try {
-                    wConnection.close(false);
+                    dircon_releaseConnection(false);
                 } catch (PESQLException e1) {
                     logger.warn("Encountered problem resetting and closing connection "+wConnection, e);
                 }
@@ -193,15 +188,22 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 				currentDatabaseID = currentDatabase.getId();
 				currentDatabaseName = newDatabaseName;
                 previousEventLoop = preferredEventLoop;
-				getConnection().setCatalog(currentDatabaseName);
+                ensureConnection();
+                dircon_getConnection().setCatalog(currentDatabaseName, null);
                 bindingChangedSinceLastCatalogSet = false;
 			}
 		}
 	}
 
     public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise) {
-        Worker.SingleDirectConnection connection = getConnection();
-        connection.updateSessionVariables(desiredVariables, setBuilder, promise);
+        ensureConnection();
+        DBConnection connection = null;
+        try {
+            connection = dircon_getConnection();
+            connection.updateSessionVariables(desiredVariables, setBuilder, promise);
+        } catch (PESQLException e) {
+            promise.failure(e);
+        }
     }
 
 	// used in late resolution support
@@ -218,18 +220,17 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 	public void setPreviousDatabaseWithCurrent() {
 		previousDatabaseID = currentDatabaseID;
 	}
-	
-	private Worker.SingleDirectConnection getConnection() {
-		if (wConnection == null) {
-			if (connectionAllocated)
-				throw new PECodingException("Worker connection reallocated");
-			wConnection = innerGetConnection();
-			connectionAllocated = true;
-		}
-		return wConnection;
-	}
 
-	public String getName() {
+    private void ensureConnection() {
+        if (wConnection == null) {
+            if (connectionAllocated)
+                throw new PECodingException("Worker connection reallocated");
+            wConnection = new Object();
+            connectionAllocated = true;
+        }
+    }
+
+    public String getName() {
 		return name;
 	}
 
@@ -246,8 +247,14 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 			if (StringUtils.isEmpty(currentGlobalTransaction)) {
 				if (logger.isDebugEnabled())
 					logger.debug("Txn: "+getName()+".startTrans("+globalId+")");
-				getConnection().startXA(getXid(globalId));
-				currentGlobalTransaction = globalId;
+                ensureConnection();
+                DevXid xid = getXid(globalId);
+                try {
+                    dircon_getConnection().start(xid, null);
+                } catch (Exception e) {
+                    throw new PESQLException("Cannot start XA Transaction " + xid, e);
+                }
+                currentGlobalTransaction = globalId;
 			} else if (currentGlobalTransaction != globalId)
 				throw new PEException("Transaction id mismatch (expected " + currentGlobalTransaction
 						+ ", got " + globalId + ")");
@@ -262,8 +269,14 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 				if (currentGlobalTransaction != globalId)
 					throw new PEException("Transaction id mismatch (expected "
 							+ currentGlobalTransaction + ", got " + globalId + ")");
-				getConnection().endXA(getXid(globalId));
-			}
+                ensureConnection();
+                DevXid xid = getXid(globalId);
+                try {
+                    dircon_getConnection().end(xid, null);
+                } catch (Exception e) {
+                    throw new PESQLException("Cannot end XA Transaction " + xid, e);
+                }
+            }
 		}
 	}
 
@@ -286,7 +299,12 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
                     return;
                 }
 
-                getConnection().prepareXA(getXid(globalId), promise);
+                ensureConnection();
+                try {
+                    dircon_getConnection().prepare(getXid(globalId), promise);
+                } catch (PESQLException sqlError){
+                    promise.failure(sqlError);
+                }
                 return;
 			}
 		}
@@ -326,7 +344,12 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 
                 };
 
-                getConnection().commitXA(getXid(globalId), onePhase, resultTracker);
+                ensureConnection();
+                try {
+                    dircon_getConnection().commit(getXid(globalId), onePhase, resultTracker);
+                } catch (PESQLException e) {
+                    resultTracker.failure(e);
+                }
                 return;
 			}
 		}
@@ -354,8 +377,16 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
                 }
 
                 currentGlobalTransaction = null;
-				getConnection().rollbackXA(getXid(globalId), promise);
-			}
+                ensureConnection();
+                DevXid xid = getXid(globalId);
+                try {
+                    dircon_getConnection().rollback(xid, promise);
+                } catch (Exception e) {
+                    PESQLException problem = new PESQLException("Cannot rollback XA Transaction " + xid, e);
+                    problem.fillInStackTrace();
+                    promise.failure(problem);
+                }
+            }
 		}
 
         promise.success(true);
@@ -369,8 +400,13 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         SingleDirectStatement workerStatement;
 
 		try {
-            Worker.SingleDirectConnection connection = getConnection();
-            workerStatement = connection.getStatement(this);
+            ensureConnection();
+            if (wSingleStatement==null) {
+                setPreviousDatabaseWithCurrent();
+
+                wSingleStatement = new SingleDirectStatement(this, dircon_getConnection());
+            }
+            workerStatement = wSingleStatement;
 		} catch (PECommunicationsException ce) {
 			processCommunicationFailure();
 			throw ce;
@@ -399,16 +435,19 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 	}
 
 	public boolean isModified() throws PESQLException {
-		return getConnection().isModified();
-	}
+        ensureConnection();
+        return dircon_getConnection().hasPendingUpdate();
+    }
 
 	public boolean hasActiveTransaction() throws PESQLException {
-		return getConnection().hasActiveTransaction();
-	}
+        ensureConnection();
+        return dircon_getConnection().hasActiveTransaction();
+    }
 
 	public int getConnectionId() throws PESQLException {
-		return getConnection().getConnectionId();
-	}
+        ensureConnection();
+        return dircon_getConnection().getConnectionId();
+    }
 
     public static class SingleDirectStatement implements WorkerStatement {
         public DBConnection dbConnection;
@@ -469,143 +508,38 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         }
     }
 
-    public class SingleDirectConnection {
 
-        public SingleDirectConnection() {
+    protected DBConnection dircon_getConnection() throws PESQLException {
+        DirectConnectionCache.CachedConnection cacheEntry = datasourceInfo.get();
+        while (cacheEntry == null){
+            cacheEntry = DirectConnectionCache.checkoutDatasource(preferredEventLoop,userAuthentication, additionalConnInfo, site);
+
+            if (datasourceInfo.compareAndSet(null, cacheEntry))
+                break;
+
+            DirectConnectionCache.returnDatasource(cacheEntry);
+            cacheEntry = datasourceInfo.get();
         }
-
-
-        public SingleDirectStatement getStatement(Worker w) throws PESQLException {
-            if (wSingleStatement==null) {
-                w.setPreviousDatabaseWithCurrent();
-
-                wSingleStatement = new SingleDirectStatement(w, getConnection());
-            }
-            return wSingleStatement;
-        }
-
-
-        protected DBConnection getConnection() throws PESQLException {
-            DirectConnectionCache.CachedConnection cacheEntry = datasourceInfo.get();
-            while (cacheEntry == null){
-                cacheEntry = DirectConnectionCache.checkoutDatasource(preferredEventLoop,userAuthentication, additionalConnInfo, site);
-
-                if (datasourceInfo.compareAndSet(null, cacheEntry))
-                    break;
-
-                DirectConnectionCache.returnDatasource(cacheEntry);
-                cacheEntry = datasourceInfo.get();
-            }
-            return cacheEntry;
-        }
-
-
-        public synchronized void close(boolean isStateValid) throws PESQLException {
-            releaseConnection(isStateValid);
-        }
-
-        private void releaseConnection(boolean isStateValid) throws PESQLException {
-            closeActiveStatements();
-
-            DirectConnectionCache.CachedConnection currentConnection = datasourceInfo.getAndSet(null);
-
-            if (currentConnection != null){
-                if (isStateValid) {
-                    DirectConnectionCache.returnDatasource(currentConnection);
-                } else {
-                    DirectConnectionCache.discardDatasource(currentConnection);
-                }
-            }
-        }
-
-
-
-        public void closeActiveStatements() throws PESQLException {
-            if (wSingleStatement != null) {
-                wSingleStatement.close();
-                wSingleStatement = null;
-            }
-        }
-
-
-        public void setCatalog(String databaseName) throws PESQLException {
-            getConnection().setCatalog(databaseName, null);
-        }
-
-        public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise) {
-            DBConnection connection = null;
-            try {
-                connection = getConnection();
-                connection.updateSessionVariables(desiredVariables, setBuilder, promise);
-            } catch (PESQLException e) {
-                promise.failure(e);
-            }
-        }
-
-
-
-
-        public void rollbackXA(DevXid xid, CompletionHandle<Boolean> promise) {
-            try {
-                getConnection().rollback(xid, promise);
-            } catch (Exception e) {
-                PESQLException problem = new PESQLException("Cannot rollback XA Transaction " + xid, e);
-                problem.fillInStackTrace();
-                promise.failure(problem);
-            }
-        }
-
-
-        public void commitXA(DevXid xid, boolean onePhase, CompletionHandle<Boolean> promise) {
-            try {
-                getConnection().commit(xid, onePhase, promise);
-            } catch (PESQLException e) {
-                promise.failure(e);
-            }
-        }
-
-
-        public void prepareXA(DevXid xid, CompletionHandle<Boolean> promise) {
-            try {
-                getConnection().prepare(xid, promise);
-            } catch (PESQLException sqlError){
-                promise.failure(sqlError);
-            }
-        }
-
-
-        public void endXA(DevXid xid) throws PESQLException {
-            try {
-                getConnection().end(xid,null);
-            } catch (Exception e) {
-                throw new PESQLException("Cannot end XA Transaction " + xid, e);
-            }
-        }
-
-
-        public void startXA(DevXid xid) throws PESQLException {
-            try {
-                getConnection().start(xid, null);
-            } catch (Exception e) {
-                throw new PESQLException("Cannot start XA Transaction " + xid, e);
-            }
-        }
-
-
-
-        public boolean isModified() throws PESQLException {
-            return getConnection().hasPendingUpdate();
-        }
-
-
-        public boolean hasActiveTransaction() throws PESQLException {
-            return getConnection().hasActiveTransaction();
-        }
-
-
-        public int getConnectionId() throws PESQLException {
-            return getConnection().getConnectionId();
-        }
-
+        return cacheEntry;
     }
+
+
+    private void dircon_releaseConnection(boolean isStateValid) throws PESQLException {
+        if (wSingleStatement != null) {
+            wSingleStatement.close();
+            wSingleStatement = null;
+        }
+
+        DirectConnectionCache.CachedConnection currentConnection = datasourceInfo.getAndSet(null);
+
+        if (currentConnection != null){
+            if (isStateValid) {
+                DirectConnectionCache.returnDatasource(currentConnection);
+            } else {
+                DirectConnectionCache.discardDatasource(currentConnection);
+            }
+        }
+    }
+
+
 }
