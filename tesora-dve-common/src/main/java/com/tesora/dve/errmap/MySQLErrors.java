@@ -98,6 +98,16 @@ public class MySQLErrors {
 					"Unknown collation: '%s'",
 					1273,
 					"HY000");
+	public static final ErrorCodeFormatter wrongValueForVariable =
+			new TwoParamErrorCodeFormatter<String, String>(DVEErrors.WRONG_VALUE_FOR_VARIABLE,
+					"Variable '%s' can't be set to the value of '%s'",
+					1231,
+					"42000");
+	public static final ErrorCodeFormatter wrongTypeForVariable =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.WRONG_TYPE_FOR_VARIABLE,
+					"Incorrect argument type to variable '%s'",
+					1232,
+					"42000");
 			
 	
 	public static final ErrorCodeFormatter[] myFormatters = new ErrorCodeFormatter[] {
@@ -116,7 +126,9 @@ public class MySQLErrors {
 		tooLongTableFieldCommentFormatter,
 		nonUniqueTableFormatter,
 		unknownCharacterSetFormatter,
-		unknownCollationFormatter
+		unknownCollationFormatter,
+		wrongValueForVariable,
+		wrongTypeForVariable
 	};
 
 			

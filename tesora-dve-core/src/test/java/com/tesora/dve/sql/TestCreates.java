@@ -46,7 +46,6 @@ import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeTypeCatalog;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
@@ -174,19 +173,19 @@ public class TestCreates extends SchemaTest {
 		testCreateWithStorageEngine("ARCHIVE");
 		testCreateWithStorageEngine("CSV");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				testCreateWithStorageEngine("BLACKHOLE");
 			}
-		}.assertException(PEException.class, "Invalid value for 'storage_engine' (allowed values are INNODB, MEMORY, MYISAM, ARCHIVE, CSV)");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "storage_engine", "BLACKHOLE");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				testCreateWithStorageEngine("FEDERATED");
 			}
-		}.assertException(PEException.class, "Invalid value for 'storage_engine' (allowed values are INNODB, MEMORY, MYISAM, ARCHIVE, CSV)");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "storage_engine", "FEDERATED");
 	}
 
 	private void testCreateWithStorageEngine(final String engine) throws Throwable {

@@ -341,26 +341,26 @@ public class VariableTest extends PETest {
 		KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "OFF");
 		assertEquals(Boolean.FALSE, KnownVariables.AUTOCOMMIT.getSessionValue(ssConnection));
 				
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, null);
 			}
-		}.assertException(PEException.class, "Invalid value for variable 'autocommit': null not allowed");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "autocommit", "NULL");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "");
 			}
-		}.assertException(PEException.class, "Invalid boolean value '' given for variable autocommit");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "autocommit", "");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "2");
 			}
-		}.assertException(PEException.class, "Invalid boolean value '2' given for variable autocommit");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "autocommit", "2");
 	}
 
 	@Test

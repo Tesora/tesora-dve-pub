@@ -1320,7 +1320,7 @@ public final class AiTemplateBuilder {
 				for (final TableStats childTable : table.getReferencingForeignTables()) {
 					if (childTable.getTableDistributionModel() instanceof Broadcast) {
 						final Set<TableStats> affectedTables = makeBackwardTableTreeRange(childTable);
-						log("FK forced range: range table '" + table.getFullTableName() + "' is referenced a broadcast table '"
+						log("FK forced range: range table '" + table.getFullTableName() + "' is referenced by a broadcast table '"
 								+ childTable.getFullTableName() + "'. Had to range '" + affectedTables.size() + "' table(s).", MessageSeverity.ALERT);
 					}
 				}
