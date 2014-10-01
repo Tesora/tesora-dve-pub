@@ -23,12 +23,15 @@ package com.tesora.dve.sql.transexec;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.variables.GlobalVariableStore;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.ValueReference;
 import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.variables.AbstractVariableStore;
+import com.tesora.dve.variables.VariableManager;
 
 // non locking version, since the full stack is not available
 public class TransientGlobalVariableStore extends AbstractVariableStore implements
@@ -47,12 +50,10 @@ public class TransientGlobalVariableStore extends AbstractVariableStore implemen
 
 	@Override
 	public LocalVariableStore buildNewLocalStore() {
+		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
 		LocalVariableStore out = new LocalVariableStore();
-		for(ValueReference<?> vr : values.values()) {
-			VariableHandler<?> vh = vr.getVariable();
-			if (vh.getScopes().contains(VariableScopeKind.SESSION)) {
-				out.setInternal(vh,vr.get());
-			}
+		for(VariableHandler vh : vm.getAllHandlers()) {
+			out.setInternal(vh, getReference(vh).get());
 		}
 		return out;
 	}

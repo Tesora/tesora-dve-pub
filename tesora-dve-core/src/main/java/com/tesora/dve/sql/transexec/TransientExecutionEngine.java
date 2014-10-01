@@ -128,6 +128,7 @@ import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.GlobalVariableStore;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.VariableStoreSource;
 import com.tesora.dve.variables.VariableValueStore;
@@ -178,6 +179,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	public TransientExecutionEngine(String ttkern) {
 		Singletons.require(HostService.class).getVariableManager().initialiseTransient(globalVariables);
 		sessionVariables = globalVariables.buildNewLocalStore();
+		sessionVariables.setValue(KnownVariables.DYNAMIC_POLICY, OnPremiseSiteProvider.DEFAULT_POLICY_NAME);
 		tpc = SchemaContext.createContext(this,this);
 		currentUser = new PEUser(tpc);
 		users.add(new User(currentUser.getUserScope().getUserName(), 
