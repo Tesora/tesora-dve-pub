@@ -60,6 +60,7 @@ import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.JoinStats;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.Relationship;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.Relationship.RelationshipSpecification;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.StatementType;
+import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableSizeComparator;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.ForeignRelationship;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.TableColumn;
@@ -551,7 +552,7 @@ public final class AiTemplateBuilder {
 
 			if (table.hasStatements(StatementType.JOIN)) {
 				for (final JoinStats join : CorpusStats.findJoinsForTable(joins, table)) {
-					if (isRangeToRangeRelationship(join) || isJoinToBroadcastAndRequiresRedist(join)) {
+					if ((model instanceof Random) || (isRangeToRangeRelationship(join) || isJoinToBroadcastAndRequiresRedist(join))) {
 						if (dv.isEmpty()
 								|| (table.equals(join.getLHS()) && !dv.equals(join.getLeftColumns()))
 								|| (table.equals(join.getRHS()) && !dv.equals(join.getRightColumns()))) {
@@ -1009,7 +1010,7 @@ public final class AiTemplateBuilder {
 		if (followForeignKeys) {
 
 			/* Handle special foreign relationship cases. */
-			resolveForeignCollocationConflicts(tables);
+			resolveForeignCollocationConflicts(tables, isRowWidthWeightingEnabled);
 
 			/* Add joins compatible with the FK relationships. */
 			for (final JoinStats join : joins) {
@@ -1204,7 +1205,13 @@ public final class AiTemplateBuilder {
 
 			final MultiMap<RedistCause, Object> operations = getRedistOperations(table, joins, ranges);
 			if (!operations.isEmpty()) {
-				log("The following operations on table " + table.toString() + " still require redistribution.", MessageSeverity.WARNING);
+				final StringBuilder message = new StringBuilder();
+				message.append("The following operations on table ").append(table);
+				if (table.hasDistributionModelFreezed()) {
+					message.append(" distributed based on a user-defined model ").append(table.getTableDistributionModel());
+				}
+				message.append(" still require redistribution.");
+				log(message.toString(), MessageSeverity.WARNING);
 				for (final RedistCause cause : operations.keySet()) {
 					for (final Object operation : operations.get(cause)) {
 						log(cause.print(operation), MessageSeverity.WARNING, 1);
@@ -1308,7 +1315,7 @@ public final class AiTemplateBuilder {
 	 * NOTE: Same rules hold for self-referencing relationships (table with a
 	 * foreign key into itself).
 	 */
-	private void resolveForeignCollocationConflicts(final Collection<TableStats> tables) throws PEException {
+	private void resolveForeignCollocationConflicts(final Collection<TableStats> tables, final boolean isRowWidthWeightingEnabled) throws PEException {
 		log("Resolving FK collocation...");
 
 		/*
@@ -1331,6 +1338,9 @@ public final class AiTemplateBuilder {
 		 * Now, we should have only Range -> Broadcast (a) and Range -> Range
 		 * (b) relationships.
 		 */
+
+		final SortedSet<TableStats> forcedBroadcastTables = new TreeSet<TableStats>(
+				Collections.reverseOrder(new TableSizeComparator(isRowWidthWeightingEnabled)));
 
 		/* Resolve the special cases. */
 		for (final TableStats table : tables) {
@@ -1359,6 +1369,7 @@ public final class AiTemplateBuilder {
 										+ "' on two or more unique column groups. Had to broadcast '" + affectedTables.size()
 										+ "' table(s) with total size of '"
 										+ CorpusStats.computeTotalSizeKb(affectedTables) + "KB'", MessageSeverity.WARNING);
+								forcedBroadcastTables.addAll(affectedTables);
 								break;
 							}
 						}
@@ -1384,6 +1395,7 @@ public final class AiTemplateBuilder {
 						log("FK forced broadcast: table '" + table.getFullTableName()
 								+ "' has unique foreign and target column groups. Had to broadcast '" + affectedTables.size()
 								+ "' table(s) with total size of '" + CorpusStats.computeTotalSizeKb(affectedTables) + "KB'", MessageSeverity.WARNING);
+						forcedBroadcastTables.addAll(affectedTables);
 					}
 
 				} else if (uniqueTargetColumnGroups.size() > 1) { // Case (2)
@@ -1391,8 +1403,15 @@ public final class AiTemplateBuilder {
 					log("FK forced broadcast: table '" + table.getFullTableName() + "' referenced on two or more unique column groups. Had to broadcast '"
 							+ affectedTables.size() + "' table(s) with total size of '" + CorpusStats.computeTotalSizeKb(affectedTables) + "KB'",
 							MessageSeverity.WARNING);
+					forcedBroadcastTables.addAll(affectedTables);
 				}
 			}
+		}
+
+		/* Print out broadcasted tables. */
+		log("The following tables were forced broadcast:", MessageSeverity.WARNING);
+		for (final TableStats table : forcedBroadcastTables) {
+			log(table.toString(), MessageSeverity.WARNING, 1);
 		}
 	}
 

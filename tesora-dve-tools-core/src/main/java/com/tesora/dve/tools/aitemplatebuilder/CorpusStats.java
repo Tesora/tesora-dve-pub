@@ -65,6 +65,22 @@ import com.tesora.dve.tools.analyzer.stats.StatsVisitor;
 
 public class CorpusStats implements StatsVisitor {
 
+	static final class TableSizeComparator implements Comparator<TableStats> {
+
+		private final boolean isRowWidthWeightingEnabled;
+
+		public TableSizeComparator(final boolean isRowWidthWeightingEnabled) {
+			this.isRowWidthWeightingEnabled = isRowWidthWeightingEnabled;
+		}
+
+		@Override
+		public int compare(final TableStats a, final TableStats b) {
+			final long aSize = a.getPredictedFutureSize(this.isRowWidthWeightingEnabled);
+			final long bSize = b.getPredictedFutureSize(this.isRowWidthWeightingEnabled);
+			return Long.compare(aSize, bSize);
+		}
+	};
+
 	public static enum StatementType {
 		SELECT("SELECT"),
 		INSERT("INSERT"),
