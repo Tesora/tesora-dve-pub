@@ -29,8 +29,9 @@ import java.util.List;
 
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.queryplan.QueryStepFilterOperation.OperationFilter;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -189,8 +190,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 				final VariableHandler<?> vh = vm.lookup(variableName);
 				if ((vh != null) && vh.getMetadata().isNumeric()
 						&& PEStringUtils.isQuoted(String.valueOf(sve.getVariableExpr()))) {
-					throw new PESQLStateException(1232, "42000", "Incorrect argument type to variable '"
-							+ variableName + "'");
+					throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_TYPE_FOR_VARIABLE, variableName));
 				}
 			}
 			es.append(new SetVariableExecutionStep(vi.getScope(), variableName, nva, pc.getPersistentGroup()));

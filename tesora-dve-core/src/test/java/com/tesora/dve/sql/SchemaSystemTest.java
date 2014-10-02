@@ -97,8 +97,10 @@ public class SchemaSystemTest extends SchemaTest {
 				List<MirrorTest> tests = buildTests();
 				for(MirrorTest mt : tests)
 					mt.execute(cmr, smr);
-			} finally {
-				// sysddl.destroy(smr);
+			} catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                // sysddl.destroy(smr);
 				// checkddl.destroy(cmr);
 			}
 		}
@@ -149,7 +151,8 @@ public class SchemaSystemTest extends SchemaTest {
 				response = (JdbcConnectionResourceResponse) conn.execute("insert into Bsst () values ()");
 				assertEquals(2, response.getLastInsertId());
 				response = (JdbcConnectionResourceResponse) conn.execute("insert into Bsst (desc) values ('the left handed programmer'),('is very frustrated'),('by how slow one hand is')");
-				assertEquals(5, response.getLastInsertId());
+                //See PE-1568.  DBHelper's getLastInsertId() actually returns the first generated row ID, not the last.
+				assertEquals(3, response.getLastInsertId());
 				conn.assertResults("select * from Bsst where id = 4",br(nr,new Integer(4), "is very frustrated"));
 				response = (JdbcConnectionResourceResponse) conn.execute("insert into Asbf (id, name) values (1, 'the ear is healing well'),(2, 'the finger not so well'),(3,'the bank account not at all')");
 				return response;

@@ -564,12 +564,13 @@ public class AlterTest extends SchemaTest {
 			conn.execute(SchemaTest.buildAlterTemplateModeStmt(TemplateMode.REQUIRED));
 			conn.execute(SchemaTest.buildAlterTemplateModeStmt(TemplateMode.STRICT));
 
-			new ExpectedExceptionTester() {
+			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
 					conn.execute("alter dve set " + VariableConstants.TEMPLATE_MODE_NAME + " = 'non_existing_mode'");
 				}
-			}.assertException(PEException.class, "Invalid value for 'template_mode' (allowed values are OPTIONAL, REQUIRED, STRICT)");
+			}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, VariableConstants.TEMPLATE_MODE_NAME, "non_existing_mode");
+
 		} finally {
 			conn.execute(SchemaTest.buildAlterTemplateModeStmt(TemplateMode.REQUIRED));
 		}

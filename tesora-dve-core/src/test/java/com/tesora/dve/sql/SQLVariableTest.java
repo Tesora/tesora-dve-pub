@@ -44,7 +44,6 @@ import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
@@ -476,19 +475,19 @@ public class SQLVariableTest extends SchemaTest {
 
 		assertTimestampValue(2, null);
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				conn.execute("set session timestamp = '10'");
 			}
-		}.assertException(PESQLStateException.class, "(1232: 42000) Incorrect argument type to variable 'timestamp'");
+		}.assertError(SchemaException.class, MySQLErrors.wrongTypeForVariable, "timestamp");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				conn.execute("set session timestamp = 'DEFAULT'");
 			}
-		}.assertException(PESQLStateException.class, "(1232: 42000) Incorrect argument type to variable 'timestamp'");
+		}.assertError(SchemaException.class, MySQLErrors.wrongTypeForVariable, "timestamp");
 	}
 
 	private void assertTimestampValue(final int waitTimeSec, final Long expected) throws Throwable {
@@ -582,6 +581,54 @@ public class SQLVariableTest extends SchemaTest {
 	@Test
 	public void testPE1650() throws Throwable {
 		assertVariableValue("protocol_version", "10");
+	}
+
+	@Test
+	public void testPE1656() throws Throwable {
+		assertVariableValue("backend_wait_timeout", "28800");
+		assertVariableValue("wait_timeout", "28800");
+
+		conn.execute("set wait_timeout = 14400");
+		assertVariableValue("backend_wait_timeout", "28800");
+		assertVariableValue("wait_timeout", "14400");
+	}
+
+	@Test
+	public void testPE1659() throws Throwable {
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set global wait_timeout = 'blah'");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.wrongTypeForVariable, "wait_timeout");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set global sql_auto_is_null = 2");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "sql_auto_is_null", "2");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set global sql_auto_is_null = 'blah'");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "sql_auto_is_null", "blah");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set global tx_isolation = 'blah'");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "tx_isolation", "blah");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("set global tx_isolation = NULL");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "tx_isolation", "NULL");
 	}
 
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {

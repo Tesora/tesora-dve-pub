@@ -72,7 +72,7 @@ public class SingleDirectStatement implements WorkerStatement {
 
         };
 
-		resultConsumer.dispatch(dbConnection, sqlCommand.getResolvedCommand(dbConnection.lookupCurrentConnectionCharset(), worker), transformErrors);
+		resultConsumer.dispatch(dbConnection, sqlCommand.getResolvedCommand(worker), transformErrors);
 	}
 
     @Override

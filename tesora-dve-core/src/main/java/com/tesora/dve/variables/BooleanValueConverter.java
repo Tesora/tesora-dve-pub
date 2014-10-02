@@ -27,9 +27,12 @@ import java.util.Set;
 
 import org.apache.commons.lang.BooleanUtils;
 
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.resultset.collector.ResultCollector.ResultCollectorFactory;
+import com.tesora.dve.sql.SchemaException;
 
 public class BooleanValueConverter extends ValueMetadata<Boolean> {
 	
@@ -82,7 +85,7 @@ public class BooleanValueConverter extends ValueMetadata<Boolean> {
 			return true;
 		if (falseMap.contains(lc))
 			return false;
-		throw new PEException(String.format("Invalid boolean value '%s' given for variable %s",in,varName));
+		throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_VALUE_FOR_VARIABLE, varName, lc));
 	}
 
 	@Override

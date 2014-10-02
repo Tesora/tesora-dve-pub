@@ -112,8 +112,8 @@ public class SQLCommand implements Serializable {
 		return sql.getUnresolvedAsBytes();
 	}
 
-	public String getSQL(final Charset connectionCharset, final Worker w) {
-		return sql.resolve(connectionCharset, w);
+	public String getSQL(final Worker w) {
+		return sql.resolve(w);
 	}
 
 	public boolean isEmpty() {
@@ -182,8 +182,8 @@ public class SQLCommand implements Serializable {
 		return (sql.isForUpdate() == null ? false : sql.isForUpdate().booleanValue());
 	}
 
-	public SQLCommand getResolvedCommand(final Charset connectionCharset, final Worker worker) {
-		final SQLCommand newCommand = new SQLCommand(sql.getResolvedCopy(connectionCharset, worker));
+	public SQLCommand getResolvedCommand(final Worker worker) {
+		final SQLCommand newCommand = new SQLCommand(sql.getResolvedCopy(worker));
 		newCommand.parameters = parameters;
 		newCommand.projection = projection;
 		newCommand.referenceTime = referenceTime;

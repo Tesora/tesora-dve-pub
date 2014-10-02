@@ -381,7 +381,12 @@ public class KnownVariables implements VariableConstants {
 			bothScope,
 			"utf8",
 			emulated);
-
+	public static final VariableHandler<String> CHARACTER_SET_RESULTS =
+			new VariableHandler<String>("character_set_results",
+			stringConverter,
+			bothScope,
+			"utf8",
+			EnumSet.of(VariableOption.EMULATED, VariableOption.PASSTHROUGH, VariableOption.NULLABLE));
 	public static final VariableHandler<NativeCharSet> CHARACTER_SET_CLIENT =
 			new VariableHandler<NativeCharSet>(CHARACTER_SET_CLIENT_NAME,
 					new ValueMetadata<NativeCharSet>() {
@@ -550,10 +555,18 @@ public class KnownVariables implements VariableConstants {
 					"Maximum byte size per redistribution insert");
 	public static final VariableHandler<Long> WAIT_TIMEOUT =
 			new VariableHandler<Long>("wait_timeout",
+			integralConverter,
+			bothScope,
+			28800L,
+			emulatedOnly,
+			"The number of seconds the server waits for activity on a noninteractive frontend connection before closing it");
+	public static final VariableHandler<Long> BACKEND_WAIT_TIMEOUT =
+			new VariableHandler<Long>("backend_wait_timeout",
 					integralConverter,
 					bothScope,
 					28800L,
-					emulated);
+					EnumSet.of(VariableOption.READONLY),
+					"The number of seconds the server waits for activity on a backend connection before closing it");
 	public static final VariableHandler<Boolean> AUTOCOMMIT =
 			new VariableHandler<Boolean>("autocommit",
 					booleanConverter,
@@ -742,6 +755,7 @@ public class KnownVariables implements VariableConstants {
 			REPL_TIMESTAMP,
 			SQL_MODE,
 			CHARACTER_SET_CONNECTION,
+			CHARACTER_SET_RESULTS,
 			COLLATION_CONNECTION,
 			CHARACTER_SET_CLIENT,
 			CACHE_LIMIT,
@@ -755,6 +769,7 @@ public class KnownVariables implements VariableConstants {
 			REDIST_MAX_COLUMNS,
 			REDIST_MAX_SIZE,
 			WAIT_TIMEOUT,
+			BACKEND_WAIT_TIMEOUT,
 			AUTOCOMMIT,
 			TIME_ZONE,
 			PERSISTENT_GROUP,
@@ -796,11 +811,6 @@ public class KnownVariables implements VariableConstants {
 					bothScope,
 					1L,
 					emulated),
-			new VariableHandler<String>("character_set_results",
-					stringConverter,
-					bothScope,
-					"utf8",
-					EnumSet.of(VariableOption.EMULATED, VariableOption.PASSTHROUGH, VariableOption.NULLABLE)),
 			new VariableHandler<String>("character_set_server",
 					stringConverter,
 					bothScope,
@@ -1176,7 +1186,7 @@ public class KnownVariables implements VariableConstants {
 					new BooleanValueConverter(BooleanToStringConverter.ON_OFF_CONVERTER),
 					globalScope,
 					Boolean.FALSE,
-					EnumSet.of(VariableOption.EMULATED, VariableOption.READONLY)),
+					EnumSet.of(VariableOption.EMULATED, VariableOption.READONLY))
 	};
 
 }

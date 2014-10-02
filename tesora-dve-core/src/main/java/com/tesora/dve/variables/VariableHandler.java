@@ -26,9 +26,12 @@ import java.util.Locale;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.VariableConfig;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
@@ -373,7 +376,7 @@ public class VariableHandler<Type> {
 		if (in == null || NULL_VALUE.equals(in)) {
 			if (options.contains(VariableOption.NULLABLE)) 
 				return null;
-			throw new PEException(String.format("Invalid value for variable '%s': null not allowed",getName()));			
+			throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_VALUE_FOR_VARIABLE, this.getName(), "NULL"));
 		}
 		return getMetadata().convertToInternal(getName(),in);
 	}
