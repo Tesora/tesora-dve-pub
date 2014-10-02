@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.show;
+package com.tesora.dve.sql.infoschema.direct;
 
 /*
  * #%L
@@ -23,22 +23,23 @@ package com.tesora.dve.sql.infoschema.show;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.sql.expression.ExpressionUtils;
+import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.computed.BackedComputedInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.ShowOptions;
+import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
-import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
-import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.VariableScope;
@@ -49,54 +50,38 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.util.ListSet;
 
-// show variables is still not really supported.  we return a fake result set.
-public class ShowVariablesInformationSchemaTable extends ShowInformationSchemaTable {
+public class DirectShowVariablesTable extends AbstractDirectVariablesTable implements ShowSchemaBehavior {
+
+	public static final String TABLE_NAME = "variables";
+	public static final String SCOPE_COL_NAME = "Scope";
+	public static final String NAME_COL_NAME = "Variable_name";
+	public static final String VALUE_COL_NAME = "Value";
 	
-	protected VariablesLogicalInformationSchemaTable logicalTable = null;
-	
-	public ShowVariablesInformationSchemaTable(VariablesLogicalInformationSchemaTable logicalTable) {
-		super(logicalTable, logicalTable.getName().getUnqualified(), logicalTable.getName().getUnqualified(), false, false);
-		
-		this.logicalTable = logicalTable;
-		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME), new UnqualifiedName(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME)));
-		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(VariablesLogicalInformationSchemaTable.NAME_COL_NAME), new UnqualifiedName(VariablesLogicalInformationSchemaTable.NAME_COL_NAME)));
-		addColumn(null,new BackedComputedInformationSchemaColumn(InfoView.SHOW, logicalTable.lookup(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME), new UnqualifiedName(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME)));
+	public DirectShowVariablesTable(SchemaContext sc, 
+			List<PEColumn> cols, 
+			List<DirectColumnGenerator> columnGenerators) {
+		super(sc, InfoView.SHOW, cols, new UnqualifiedName("variables"), null, columnGenerators);
 	}
 
-    public ViewQuery buildUniqueSelect(SchemaContext sc, Name onName) {
-    	throw new InformationSchemaException("No support for show variable");
-    }
-	
 	public Statement buildShow(SchemaContext pc, VariableScope vs1,
 			ExpressionNode likeExpr, ExpressionNode whereExpr) {
-		// first we're going to build a query and slap the appropriate scope on it; then we'll have the logical table execute it.
+		// build the query, then use the abstract table to execute it
 		List<ExpressionNode> whereClauses = new ArrayList<ExpressionNode>();
 		TableInstance ti = buildOriginalFilter(whereClauses,pc,whereExpr,likeExpr);
-		String filterBy = null;
 		boolean showScope = false;
-		if (vs1.getKind() == VariableScopeKind.GLOBAL) {
-			filterBy = VariablesLogicalInformationSchemaTable.GLOBAL_TABLE_NAME;
-		} else if (vs1.getKind() == VariableScopeKind.SCOPED) {
-			filterBy = vs1.getScopeName();
-			if (filterBy == null) { // not set
-				filterBy = VariablesLogicalInformationSchemaTable.SCOPED_TABLE_NAME;
+		if (vs1.getKind() == VariableScopeKind.SCOPED) {
+			if (vs1.getScopeName() == null)
 				showScope = true;
-			}
-		} else {
-			filterBy = VariablesLogicalInformationSchemaTable.SESSION_TABLE_NAME;
 		}
-		whereClauses.add(new FunctionCall(FunctionName.makeEquals(),
-				new ColumnInstance(lookup(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME),ti),
-				LiteralExpression.makeStringLiteral(filterBy)));
 
 		AliasInformation ai = new AliasInformation();
 		ai.addAlias(ti.getAlias().getUnquotedName().get());
 
 		List<InformationSchemaColumn> projCols = new ArrayList<InformationSchemaColumn>();
 		if (showScope)
-			projCols.add(lookup(VariablesLogicalInformationSchemaTable.SCOPE_COL_NAME));
-		projCols.add(lookup(VariablesLogicalInformationSchemaTable.NAME_COL_NAME));
-		projCols.add(lookup(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME));
+			projCols.add(lookup(SCOPE_COL_NAME));
+		projCols.add(lookup(NAME_COL_NAME));
+		projCols.add(lookup(VALUE_COL_NAME));
 				
 		List<ExpressionNode> projection = new ArrayList<ExpressionNode>();
 
@@ -111,10 +96,11 @@ public class ShowVariablesInformationSchemaTable extends ShowInformationSchemaTa
 			.setTables(ti)
 			.setProjection(projection)
 			.setWhereClause(ExpressionUtils.safeBuildAnd(whereClauses));
+		ss.getDerivedInfo().addLocalTable(ti.getTableKey());
 
 		ViewQuery vq = new ViewQuery(ss,null,ti);
 
-		return logicalTable.execute(pc, vq, null);
+		return execute(pc,this,vs1,vq,null);
 	}
 
 	private TableInstance buildOriginalFilter(List<ExpressionNode> acc, SchemaContext pc, ExpressionNode whereExpr, ExpressionNode likeExpr) {
@@ -130,18 +116,31 @@ public class ShowVariablesInformationSchemaTable extends ShowInformationSchemaTa
 					pc.getNextTable(),false);
 			if (likeExpr != null) {
 				acc.add(new FunctionCall(FunctionName.makeLike(),
-						new ColumnInstance(lookup(VariablesLogicalInformationSchemaTable.NAME_COL_NAME),out),
+						new ColumnInstance(lookup(NAME_COL_NAME),out),
 						likeExpr));
 			}
 		}
 		return out;
 	}
-	
-	
+
 	@Override
-	protected void validate(AbstractInformationSchema ofView) {
+	public Statement buildShowPlural(SchemaContext sc, List<Name> scoping,
+			ExpressionNode likeExpr, ExpressionNode whereExpr,
+			ShowOptions options) {
+		throw new InformationSchemaException("Illegal call to show variables.buildShowPlural");
 	}
 
-	
-	
+	@Override
+	public Statement buildUniqueStatement(SchemaContext sc, Name objectName,
+			ShowOptions opts) {
+		throw new InformationSchemaException("Illegal call to show variables.buildUniqueStatement");
+	}
+
+	@Override
+	public List<CatalogEntity> getLikeSelectEntities(SchemaContext sc,
+			String likeExpr, List<Name> scoping, ShowOptions options,
+			Boolean overrideRequiresPrivilegeValue) {
+		throw new InformationSchemaException("Direct tables do not have catalog entities");
+	}
+
 }

@@ -26,8 +26,7 @@ import com.tesora.dve.exceptions.PEException;
 
 public interface InformationSchemaBuilder {
 
-	public void populate(LogicalInformationSchema logicalSchema, 
-			InformationSchema infoSchema,
+	public void populate(InformationSchema infoSchema,
 			ShowView showSchema,
 			MysqlSchema mysqlSchema, DBNative dbn) throws PEException;
 		

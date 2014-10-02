@@ -21,13 +21,12 @@ package com.tesora.dve.sql.infoschema;
  * #L%
  */
 
+
 import java.util.List;
 
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.infoschema.persist.CatalogTableEntity;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -81,20 +80,6 @@ public abstract class InformationSchemaColumn implements Column<InformationSchem
 		
 	}
 	
-	public void prepare(AbstractInformationSchema ofView, InformationSchemaTable ofTable, DBNative dbn) {
-		if (getAdapter().getLogicalColumn() != null &&
-				getAdapter().getLogicalColumn().getReturnType() != null) {
-			for(InformationSchemaTable istv : ofView.getTables(null)) {
-				if (istv.getLogicalTable() == getAdapter().getLogicalColumn().getReturnType()) {
-					returnType = istv;
-					break;
-				}
-			}
-			if (returnType == null)
-				throw new InformationSchemaException("No view table in view " + view + " for return type " + getAdapter().getLogicalColumn().getReturnType().getName() + ", needed for column " + getName() + " in table " + ofTable.getName());
-		}
-	}
-	
 	@Override
 	public Name getName() {
 		return this.name;
@@ -138,14 +123,6 @@ public abstract class InformationSchemaColumn implements Column<InformationSchem
 		position = v;
 	}
 
-	public ColumnInstance buildNameTest(ColumnInstance ci) {
-		return new ScopedColumnInstance(returnType.getIdentColumn(),ci);
-	}
-
-	public ColumnInstance buildNameTest(TableInstance in) {
-		return buildNameTest(new ColumnInstance(null,this,in));
-	}
-		
 	public InformationSchemaTable getReturnType() {
 		return returnType;
 	}
@@ -162,9 +139,7 @@ public abstract class InformationSchemaColumn implements Column<InformationSchem
 	public String toString() {
 		Object backing = null;
 		if (getAdapter() != null) {
-			backing = getAdapter().getLogicalColumn();
-			if (backing == null)
-				backing = getAdapter().getDirectColumn();
+			backing = getAdapter().getDirectColumn();
 		}
 		return this.getClass().getSimpleName() + "{name=" + getName() + ", type=" + getType() + ", backing=" + backing + "}";
 	}
@@ -176,10 +151,6 @@ public abstract class InformationSchemaColumn implements Column<InformationSchem
 	// sucks...well, this will go away with time
 	public void setAdapter(InformationSchemaColumnAdapter adapter) {
 		this.adapter = adapter;
-	}
-	
-	public LogicalInformationSchemaColumn getLogicalColumn() {
-		return getAdapter().getLogicalColumn();
 	}
 	
 	// probably don't need this to be abstract

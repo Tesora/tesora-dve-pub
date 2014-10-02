@@ -29,8 +29,6 @@ import java.util.List;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.common.catalog.ConstraintType;
-import com.tesora.dve.db.NativeType;
-import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.MysqlNativeTypeCatalog;
@@ -39,8 +37,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.types.BasicType;
-import com.tesora.dve.sql.util.ListOfPairs;
-import com.tesora.dve.sql.util.Pair;
 
 public class DirectInfoSchema extends ComplexCatalogVersion {
 

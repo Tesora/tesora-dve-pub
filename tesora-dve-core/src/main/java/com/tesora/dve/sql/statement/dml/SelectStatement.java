@@ -47,8 +47,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnAttribute;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ProjectionInfo;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.MTTableKey;

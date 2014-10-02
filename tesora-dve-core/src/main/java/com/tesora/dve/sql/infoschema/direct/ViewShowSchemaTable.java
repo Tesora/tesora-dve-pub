@@ -31,12 +31,12 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.ShowOptions;
 import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.engine.LogicalCatalogQuery;
+import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
@@ -229,7 +229,7 @@ public class ViewShowSchemaTable extends ViewInformationSchemaTable implements S
 							}
 							
 						});
-				ColumnSet cs = LogicalCatalogQuery.buildProjectionMetadata(sc,proj,null,null);
+				ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(sc,proj,null,null);
 				IntermediateResultSet irs = new IntermediateResultSet(cs,
 						tempTableHandler.buildResults(sc, matching, options, (likeExpr == null ? null : (String)((LiteralExpression)likeExpr).getValue(sc))));
 				return new SchemaQueryStatement(false,getName().get(),irs);

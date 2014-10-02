@@ -28,7 +28,6 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
@@ -48,9 +47,6 @@ public interface InformationSchemaTable extends Table<InformationSchemaColumn> {
 	public void inject(AbstractInformationSchema view, DBNative dbn);
 
 	public void freeze();
-
-	// views have no backing logical table
-	public LogicalInformationSchemaTable getLogicalTable();
 
 	public void buildTableEntity(CatalogSchema cs, CatalogDatabaseEntity db, int dmid, int storageid, List<PersistedEntity> acc) throws PEException;
 

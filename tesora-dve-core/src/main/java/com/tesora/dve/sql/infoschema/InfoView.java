@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema.annos;
+package com.tesora.dve.sql.infoschema;
 
 /*
  * #%L

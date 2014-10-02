@@ -25,7 +25,6 @@ import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.UnqualifiedName;
@@ -33,8 +32,8 @@ import com.tesora.dve.sql.util.UnaryFunction;
 
 public class ShowView extends AbstractInformationSchema {
 
-	public ShowView(LogicalInformationSchema lis) {
-		super(lis,InfoView.SHOW,
+	public ShowView() {
+		super(InfoView.SHOW,
 				new UnaryFunction<Name[], InformationSchemaTable>() {
 
 			@Override

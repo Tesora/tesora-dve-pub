@@ -23,7 +23,6 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.singleton.Singletons;
 import io.netty.channel.ChannelHandlerContext;

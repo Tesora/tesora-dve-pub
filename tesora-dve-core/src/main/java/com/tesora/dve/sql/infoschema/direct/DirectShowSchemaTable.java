@@ -24,16 +24,14 @@ package com.tesora.dve.sql.infoschema.direct;
 import java.util.List;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.ShowOptions;
 import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.statement.Statement;
 
 public abstract class DirectShowSchemaTable extends DirectInformationSchemaTable
 		implements ShowSchemaBehavior {

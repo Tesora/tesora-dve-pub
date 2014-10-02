@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.infoschema;
+package com.tesora.dve.sql.infoschema.direct;
 
 /*
  * #%L
@@ -21,6 +21,24 @@ package com.tesora.dve.sql.infoschema;
  * #L%
  */
 
-public class InformationSchemaTableAdapter {
+import java.util.List;
+
+import com.tesora.dve.sql.infoschema.InfoView;
+import com.tesora.dve.sql.schema.PEColumn;
+import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.VariableScope;
+
+public class DirectVariablesTable extends AbstractDirectVariablesTable {
+
+	private final VariableScope scope;
+	
+	public DirectVariablesTable(SchemaContext sc,
+			List<PEColumn> cols, UnqualifiedName tableName,
+			VariableScope vs,
+			List<DirectColumnGenerator> columnGenerators) {
+		super(sc, InfoView.INFORMATION, cols, tableName, vs, columnGenerators);
+		this.scope = vs;
+	}
 
 }

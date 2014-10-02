@@ -23,6 +23,7 @@ package com.tesora.dve.db;
 
 
 
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -50,12 +51,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.direct.DirectInfoSchemaStatement;
-import com.tesora.dve.sql.infoschema.engine.NamedParameter;
-import com.tesora.dve.sql.infoschema.engine.ScopedColumnInstance;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.expression.AliasInstance;
 import com.tesora.dve.sql.node.expression.CaseExpression;
@@ -913,18 +909,15 @@ public abstract class Emitter {
 	}
 			
 	public void emitSelectStatement(SchemaContext sc, SelectStatement s, StringBuilder buf, int indent) {
-		boolean entityQuery = (this.hasOptions() && getOptions().isInfoSchema() && s.getProjectionEdge().isEmpty()) && false;
-		if (!entityQuery) {
-			emitIndent(buf,indent, "SELECT ");
-			if (s.getSetQuantifier() != null)
-				buf.append(s.getSetQuantifier().getSQL()).append(" ");
-			if (s.getSelectOptions() != null) {
-				for(MysqlSelectOption mso : s.getSelectOptions()) {
-					buf.append(mso.toString()).append(" ");
-				}
+		emitIndent(buf,indent, "SELECT ");
+		if (s.getSetQuantifier() != null)
+			buf.append(s.getSetQuantifier().getSQL()).append(" ");
+		if (s.getSelectOptions() != null) {
+			for(MysqlSelectOption mso : s.getSelectOptions()) {
+				buf.append(mso.toString()).append(" ");
 			}
-			emitExpressions(sc,s.getProjection(),buf, indent);
 		}
+		emitExpressions(sc,s.getProjection(),buf, indent);
 		if (!s.getTables().isEmpty()) {
 			emitIndent(buf,indent, "FROM ");
 			emitFromTableReferences(sc,s.getTables(), buf, indent);
@@ -1187,11 +1180,7 @@ public abstract class Emitter {
 			buf.append(" (");
 		
 		if (e instanceof ColumnInstance) {
-			if (e instanceof ScopedColumnInstance) {
-				emitScopedColumnInstance(sc,(ScopedColumnInstance)e, buf, indent);
-			} else {
-				emitColumnInstance(sc,(ColumnInstance)e, buf);
-			}
+			emitColumnInstance(sc,(ColumnInstance)e, buf);
 		} else if (e instanceof FunctionCall) {
 			emitFunctionCall(sc, (FunctionCall)e, buf, indent);
 		} else if (e instanceof TableInstance) {
@@ -1218,9 +1207,6 @@ public abstract class Emitter {
 			emitSubquery(sc,(Subquery)e, buf, indent);
 		} else if (e instanceof CaseExpression) {
 			emitCaseExpression(sc, (CaseExpression)e, buf, indent);
-		} else if (e instanceof NamedParameter) {
-			// info schema support
-			emitNamedParameter((NamedParameter)e, buf);
 		} else if (e instanceof NameInstance) {
 			// shouldn't see these - (well except for some tests)
 			buf.append(((NameInstance)e).getName().getSQL());
@@ -1235,26 +1221,9 @@ public abstract class Emitter {
 			buf.append(") ");
 	}
 	
-	public void emitScopedColumnInstance(SchemaContext sc, ScopedColumnInstance sci, StringBuilder buf, int indent) {
-		ColumnInstance relTo = sci.getRelativeTo();
-		emitExpression(sc,relTo,buf, indent);
-		buf.append(".");
-		if (sci.getColumn() instanceof LogicalInformationSchemaColumn) {
-			LogicalInformationSchemaColumn isc = (LogicalInformationSchemaColumn) sci.getColumn();
-			if (!this.hasOptions())
-				buf.append(isc.getName().getSQL());
-			else if (getOptions().isInfoSchema())
-				buf.append(isc.getFieldName());
-			else
-				buf.append(isc.getColumnName());
-		} else if (sci.getColumn() instanceof ComputedInformationSchemaColumn) {
-			buf.append(sci.getColumn().getName().getSQL());
-		}
-	}
-	
 	public void emitColumnInstance(SchemaContext sc,ColumnInstance cr, StringBuilder buf) {
 		// in order for the plan cache to work correctly, need to emit the table instance separately
-		if (!this.hasOptions() || (!getOptions().isResultSetMetadata() && !getOptions().isInfoSchema() && !getOptions().isInfoSchemaRaw())) {
+		if (!this.hasOptions() || (!getOptions().isResultSetMetadata())) {
 			if (cr.getColumn() == null)
 				buf.append(cr.getSpecifiedAs().getSQL());
 			else if (cr.getSpecifiedAs() == null || !cr.getSpecifiedAs().isQualified()) {
@@ -1287,27 +1256,13 @@ public abstract class Emitter {
 				buf.append(specified.getSQL());
 			else
 				buf.append(cr.getColumn().getName().getSQL());
-		} else if (getOptions().isInfoSchema() || getOptions().isInfoSchemaRaw()) {	
-			emitTableInstance(sc,cr.getTableInstance(), buf, TableInstanceContext.COLUMN);
-			buf.append(".");
-			LogicalInformationSchemaColumn isc = (LogicalInformationSchemaColumn) cr.getColumn();
-			if (getOptions().isInfoSchema())
-				buf.append(isc.getFieldName());
-			else 
-				buf.append(isc.getColumnName());
 		} else {
 			throw new SchemaException(Pass.REWRITER, "Unknown emit state for column");
 		}
 	}
 	
 	public void emitAliasInstance(SchemaContext sc, AliasInstance ai, StringBuilder buf) {
-		if (this.hasOptions() && getOptions().isInfoSchema()) {
-			// info schema entity query clears projection so an alias can't be used
-			ExpressionNode e = ExpressionUtils.getTarget(ai.getTarget());
-			emitExpression(sc, e, buf, -1);
-		} else {
-			buf.append(ai.getTarget().getAlias().getSQL());
-		}
+		buf.append(ai.getTarget().getAlias().getSQL());
 	}
 	
 	/**
@@ -1365,10 +1320,6 @@ public abstract class Emitter {
 		if (decorate)
 			builder.withLateVariable(buf.length(), tok, lrve);
 		buf.append(tok);
-	}
-	
-	public void emitNamedParameter(NamedParameter np, StringBuilder buf) {
-		buf.append(":").append(np.getName().get());
 	}
 	
 	public void emitSubquery(SchemaContext sc, Subquery sq, StringBuilder buf, int indent) {
@@ -1711,22 +1662,10 @@ public abstract class Emitter {
 				buf.append(" AS ").append(tr.getAlias().getSQL());
 		} else {
 			// info schema
-			if (!this.hasOptions()) {
-				if (context == TableInstanceContext.COLUMN && tr.getAlias() != null) {
-					buf.append(tr.getAlias().getSQL());
-				} else {
-					buf.append(tr.getTable().getName().getSQL());
-				}
+			if (context == TableInstanceContext.COLUMN && tr.getAlias() != null) {
+				buf.append(tr.getAlias().getSQL());
 			} else {
-				LogicalInformationSchemaTable ist = (LogicalInformationSchemaTable) tab;
-				if (context == TableInstanceContext.COLUMN && tr.getAlias() != null) 
-					buf.append(tr.getAlias().getSQL());
-				else if (getOptions().isInfoSchema())
-					buf.append(ist.getEntityName());
-				else if (getOptions().isInfoSchemaRaw())
-					buf.append(ist.getTableName());
-				else
-					throw new SchemaException(Pass.REWRITER,"Inconsistent emitter state for info schema table");				
+				buf.append(tr.getTable().getName().getSQL());
 			}
 			if (context == TableInstanceContext.TABLE_FACTOR && tr.getAlias() != null)
 				buf.append(" AS ").append(tr.getAlias().getSQL());
@@ -2439,9 +2378,6 @@ public abstract class Emitter {
 		public static final EmitOptions PEMETADATA = NONE.add(EmitOption.PEMETADATA, Boolean.TRUE);
 		// setting for result set metadata
 		public static final EmitOptions RESULTSETMETADATA = NONE.add(EmitOption.UNQUALIFIEDCOLUMNS, Boolean.TRUE);
-		// setting for info schema queries
-		public static final EmitOptions INFOSCHEMA_RAW = NONE.add(EmitOption.INFOSCHEMA_RAW, Boolean.TRUE);
-		public static final EmitOptions INFOSCHEMA_ENTITY = NONE.add(EmitOption.INFOSCHEMA_ENTITY, Boolean.TRUE);
 		public static final EmitOptions INFOSCHEMA_VIEW = NONE.add(EmitOption.INFOSCHEMA_VIEW, Boolean.TRUE);
 		// setting for table definitions - skips comments
 		public static final EmitOptions TABLE_DEFINITION = NONE.add(EmitOption.TABLE_DEFINITION, Boolean.TRUE);
@@ -2470,14 +2406,6 @@ public abstract class Emitter {
 		
 		public boolean isResultSetMetadata() {
 			return hasSetting(EmitOption.UNQUALIFIEDCOLUMNS);
-		}
-		
-		public boolean isInfoSchema() {
-			return hasSetting(EmitOption.INFOSCHEMA_ENTITY);
-		}
-		
-		public boolean isInfoSchemaRaw() {
-			return hasSetting(EmitOption.INFOSCHEMA_RAW);
 		}
 		
 		public boolean isTableDefinition() {
@@ -2544,10 +2472,6 @@ public abstract class Emitter {
 		// if pemetadata is set, we'll emit our metadata extensions
 		PEMETADATA,
 		UNQUALIFIEDCOLUMNS,
-		// if set, we'll build raw info schema queries (actual sql on our catalog)
-		INFOSCHEMA_RAW,
-		// if set, we'll build hibernate entity queries
-		INFOSCHEMA_ENTITY,
 		// if set, we're build one of our info schema view queries
 		INFOSCHEMA_VIEW,
 		// we're emitting a table definition - no comments, but autoincs and suppressed fks are included

@@ -21,6 +21,7 @@ package com.tesora.dve.sql.infoschema.direct;
  * #L%
  */
 
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,11 +30,10 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
+import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.persist.CatalogColumnEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
@@ -42,9 +42,7 @@ import com.tesora.dve.sql.infoschema.persist.CatalogTableEntity;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
-import com.tesora.dve.sql.schema.PEViewTable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -134,6 +132,10 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 		return lookup.lookup(n);
 	}
 
+	public DirectInformationSchemaColumn lookup(String n) {
+		return lookup.lookup(new UnqualifiedName(n));
+	}
+	
 	@Override
 	public Name getName(SchemaContext sc) {
 		return name;
@@ -184,12 +186,6 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	@Override
 	public void freeze() {
 		// already frozen
-	}
-
-	@Override
-	public LogicalInformationSchemaTable getLogicalTable() {
-		// no backing table
-		return null;
 	}
 
 	@Override

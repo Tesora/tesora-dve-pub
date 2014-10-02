@@ -21,11 +21,10 @@ package com.tesora.dve.sql.infoschema.direct;
  * #L%
  */
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.direct.ViewShowSchemaTable.TemporaryTableHandler;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;

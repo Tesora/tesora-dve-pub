@@ -30,7 +30,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
-import com.tesora.dve.sql.infoschema.computed.ComputedInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;

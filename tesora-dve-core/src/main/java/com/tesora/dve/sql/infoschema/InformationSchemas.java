@@ -39,7 +39,6 @@ import com.tesora.dve.errmap.FormattedErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.direct.DirectSchemaBuilder;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.parser.InvokeParser;
@@ -59,23 +58,16 @@ import com.tesora.dve.upgrade.CatalogSchemaGenerator;
 
 public final class InformationSchemas {
 
-	protected final LogicalInformationSchema logical;
-	
 	protected final InformationSchema infoSchema;
 	protected final ShowView show;
 	protected final MysqlSchema mysql;
 	protected final PEDatabase catalog;
 	
-	private InformationSchemas(LogicalInformationSchema lis, InformationSchema isv, ShowView sv, MysqlSchema msv, PEDatabase pdb) {
-		this.logical = lis;
+	private InformationSchemas(InformationSchema isv, ShowView sv, MysqlSchema msv, PEDatabase pdb) {
 		this.infoSchema = isv;
 		this.show = sv;
 		this.mysql = msv;
 		this.catalog = pdb;
-	}
-	
-	public LogicalInformationSchema getLogical() {
-		return logical;
 	}
 	
 	public InformationSchema getInfoSchema() {
@@ -105,28 +97,22 @@ public final class InformationSchemas {
 	
 	public static InformationSchemas build(DBNative dbn, CatalogDAO c, Properties props) throws PEException {
 		try {
-			LogicalInformationSchema logicalSchema = new LogicalInformationSchema();
-			InformationSchema informationSchema = new InformationSchema(logicalSchema);
-			ShowView showSchema = new ShowView(logicalSchema);
-			MysqlSchema mysqlSchema = new MysqlSchema(logicalSchema);
+			InformationSchema informationSchema = new InformationSchema();
+			ShowView showSchema = new ShowView();
+			MysqlSchema mysqlSchema = new MysqlSchema();
 			PEDatabase catSchema = buildCatalogSchema(c,dbn,props);
 			
 			// make the builders for each schema & then build them.
 			InformationSchemaBuilder builders[] = new InformationSchemaBuilder[] {
 					// the order these are built in is important
-					new SyntheticInformationSchemaBuilder(),
 					new DirectSchemaBuilder(catSchema)
 			};
 			for(InformationSchemaBuilder isb : builders)
-				isb.populate(logicalSchema, informationSchema, showSchema, mysqlSchema, dbn);
-			// freeze the schemas.  we freeze the logical schema
-			// first to build the derived information so that it can be used in the views.
-			logicalSchema.freeze(dbn);
-			
+				isb.populate(informationSchema, showSchema, mysqlSchema, dbn);
 			informationSchema.freeze(dbn);
 			showSchema.freeze(dbn);
 			mysqlSchema.freeze(dbn);
-			return new InformationSchemas(logicalSchema,informationSchema,showSchema,mysqlSchema,
+			return new InformationSchemas(informationSchema,showSchema,mysqlSchema,
 					catSchema);
 		} catch (PEException pe) {
 			throw pe;

@@ -23,7 +23,6 @@ package com.tesora.dve.db;
 
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.mysql.DefaultResultProcessor;
 import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.MysqlCommandResultsProcessor;
 import com.tesora.dve.db.mysql.libmy.MyMessage;

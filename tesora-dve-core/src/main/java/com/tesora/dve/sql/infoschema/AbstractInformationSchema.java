@@ -32,7 +32,6 @@ import java.util.TreeMap;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.direct.DirectSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
@@ -56,23 +55,15 @@ public abstract class AbstractInformationSchema implements
 
 	protected final InfoView view;
 	
-	// the backing logical view.
-	protected LogicalInformationSchema logical;
-	
-	// reverse lookup for injection purposes
-	protected Map<LogicalInformationSchemaTable, InformationSchemaTable> reverse;
-	
 	protected SchemaEdge<InformationSchemaDatabase> db;
 	
-	public AbstractInformationSchema(LogicalInformationSchema basedOn, InfoView servicing,
+	public AbstractInformationSchema(InfoView servicing,
 			UnaryFunction<Name[], InformationSchemaTable> getNamesFunc) {
 		super();
 		frozen = false;
 		tables = new ArrayList<InformationSchemaTable>();
 		lookup = new Lookup<InformationSchemaTable>(tables, getNamesFunc, false, servicing.isLookupCaseSensitive()); 
-		reverse = new HashMap<LogicalInformationSchemaTable, InformationSchemaTable>();
 		view = servicing;
-		logical = basedOn;
 	}
 	
 	public InfoView getView() {
@@ -97,8 +88,6 @@ public abstract class AbstractInformationSchema implements
 			return already;
 		tables.add(t);
 		lookup.refreshBacking(tables);
-		if (t.getLogicalTable() != null)
-			reverse.put(t.getLogicalTable(),t);
 		return t;
 	}
 
@@ -106,8 +95,6 @@ public abstract class AbstractInformationSchema implements
 		InformationSchemaTable already = lookup.lookup(t.getName());
 		if (already != null) {
 			tables.remove(already);
-			if (already.getLogicalTable() != null)
-				reverse.remove(already.getLogicalTable());
 		} else {
 			DirectSchemaQueryEngine.log("not replacing " + t.getName());
 		}
@@ -137,10 +124,6 @@ public abstract class AbstractInformationSchema implements
 	@Override
 	public UnqualifiedName getSchemaName(SchemaContext sc) {
 		return new UnqualifiedName(view.getUserDatabaseName());
-	}
-	
-	public InformationSchemaTable lookup(LogicalInformationSchemaTable list) {
-		return reverse.get(list);
 	}
 	
 	public InformationSchemaTable lookup(String s) {

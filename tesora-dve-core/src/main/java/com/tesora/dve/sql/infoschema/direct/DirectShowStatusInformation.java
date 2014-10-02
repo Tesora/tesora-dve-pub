@@ -38,11 +38,9 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.ShowOptions;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.logical.StatusLogicalInformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.schema.Name;
@@ -58,7 +56,7 @@ public class DirectShowStatusInformation extends DirectShowSchemaTable {
 
 	public DirectShowStatusInformation(SchemaContext sc, 
 			List<PEColumn> cols,List<DirectColumnGenerator> columnGenerators) {
-		super(sc, InfoView.SHOW, cols, new UnqualifiedName("table status"), null, false, false,
+		super(sc, InfoView.SHOW, cols, new UnqualifiedName("status"), null, false, false,
 				columnGenerators);
 	}
 

@@ -129,7 +129,7 @@ public class DirectSchemaQueryEngine {
 		SelectStatement in = vq.getQuery();
 		SelectStatement copy = CopyVisitor.copy(in);
 		if (canLog())
-			log("Before conversion: " + copy.getSQL(sc));
+			log("Before conversion: " + copy.getSQL(sc));		
 		Converter forwarder = new Converter(sc);
 		forwarder.traverse(copy);
 		for(Map.Entry<TableKey, TableKey> me : forwarder.getForwardedTableKeys().entrySet()) {

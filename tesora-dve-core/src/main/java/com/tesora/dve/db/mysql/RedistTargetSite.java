@@ -22,7 +22,6 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.exceptions.PECodingException;
@@ -34,7 +33,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
 
-import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**

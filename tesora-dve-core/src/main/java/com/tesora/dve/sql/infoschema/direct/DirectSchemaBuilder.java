@@ -21,6 +21,7 @@ package com.tesora.dve.sql.infoschema.direct;
  * #L%
  */
 
+
 import java.util.EnumMap;
 import java.util.List;
 
@@ -29,23 +30,22 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaBuilder;
 import com.tesora.dve.sql.infoschema.InformationSchema;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchema;
 import com.tesora.dve.sql.infoschema.MysqlSchema;
 import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.ShowOptions;
 import com.tesora.dve.sql.infoschema.ShowView;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.infoschema.direct.ViewShowSchemaTable.TemporaryTableHandler;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.ComplexPETable;
-import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
-
+import com.tesora.dve.sql.schema.VariableScopeKind;
 /*
  * Holds all the sql strings that back info schema tables.
  * There are some variables you can use in the queries.  At planning time the variables
@@ -71,8 +71,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 	}
 	
 	@Override
-	public void populate(LogicalInformationSchema logicalSchema,
-			InformationSchema infoSchema, ShowView showSchema,
+	public void populate(InformationSchema infoSchema, ShowView showSchema,
 			MysqlSchema mysqlSchema, DBNative dbn) throws PEException {
 		if (catalogSchema == null) // transient case, but we aren't doing any info schema queries then anyhow
 			return;
@@ -1193,7 +1192,54 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 						}
 				
 			},
-					
+			new DirectTableGenerator(InfoView.SHOW,
+					"status",null,
+					c("Variable_name","varchar(64)").withIdent(),
+					c("Value","varchar(1024)")) {
+
+						@Override
+						public DirectInformationSchemaTable generate(
+								SchemaContext sc) {
+							return new DirectShowStatusInformation(sc,buildColumns(sc),columns);
+						}
+				
+			},
+			new DirectTableGenerator(InfoView.INFORMATION,
+					"session_variables",null,
+					c("VARIABLE_NAME","varchar(64)"),
+					c("VARIABLE_VALUE","varchar(1024)")) {
+
+						@Override
+						public DirectInformationSchemaTable generate(
+								SchemaContext sc) {
+							return new DirectVariablesTable(sc,buildColumns(sc),new UnqualifiedName("session_variables"),new VariableScope(VariableScopeKind.SESSION),columns);
+						}
+				
+			},
+			new DirectTableGenerator(InfoView.INFORMATION,
+					"global_variables",null,
+					c("VARIABLE_NAME","varchar(64)"),
+					c("VARIABLE_VALUE","varchar(1024)")) {
+
+						@Override
+						public DirectInformationSchemaTable generate(
+								SchemaContext sc) {
+							return new DirectVariablesTable(sc,buildColumns(sc),new UnqualifiedName("global_variables"),new VariableScope(VariableScopeKind.GLOBAL),columns);
+						}
+				
+			},
+			new DirectTableGenerator(InfoView.SHOW,
+					"variables",null,
+					c("Scope","varchar(64)"),
+					c("Variable_name","varchar(64)").withIdent(),
+					c("Value","varchar(1024)")) {
+
+						@Override
+						public DirectInformationSchemaTable generate(
+								SchemaContext sc) {
+							return new DirectShowVariablesTable(sc,buildColumns(sc),columns);
+						}				
+			}
 	};
 	
 	// helper functions

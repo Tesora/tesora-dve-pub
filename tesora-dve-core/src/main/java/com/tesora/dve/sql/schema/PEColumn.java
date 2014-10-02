@@ -24,7 +24,6 @@ package com.tesora.dve.sql.schema;
 
 
 
-import java.sql.Types;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;

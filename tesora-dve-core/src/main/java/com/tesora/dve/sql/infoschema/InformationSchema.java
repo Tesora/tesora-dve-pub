@@ -23,14 +23,13 @@ package com.tesora.dve.sql.infoschema;
 
 import java.util.Locale;
 
-import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.util.UnaryFunction;
 
 public class InformationSchema extends AbstractInformationSchema {
 
-	protected InformationSchema(LogicalInformationSchema lis) {
-		super(lis,InfoView.INFORMATION, new UnaryFunction<Name[], InformationSchemaTable>() {
+	protected InformationSchema() {
+		super(InfoView.INFORMATION, new UnaryFunction<Name[], InformationSchemaTable>() {
 
 			@Override
 			public Name[] evaluate(InformationSchemaTable object) {

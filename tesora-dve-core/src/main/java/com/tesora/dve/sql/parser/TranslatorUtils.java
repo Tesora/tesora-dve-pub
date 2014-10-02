@@ -90,8 +90,8 @@ import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.ShowOptions;
 import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
-import com.tesora.dve.sql.infoschema.show.ShowVariablesInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.direct.DirectShowStatusInformation;
+import com.tesora.dve.sql.infoschema.direct.DirectShowVariablesTable;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.MigrationException;
@@ -3899,8 +3899,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	@SuppressWarnings("unchecked")
 	public Statement buildShowStatus(Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
-        StatusInformationSchemaTable ist = (StatusInformationSchemaTable) Singletons.require(HostService.class).getInformationSchema().lookupShowTable(
-						new UnqualifiedName("status"));
+		DirectShowStatusInformation ist = (DirectShowStatusInformation) Singletons.require(HostService.class).getInformationSchema().lookupShowTable(
+				new UnqualifiedName("status"));
 
 		ExpressionNode likeExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getFirst());
@@ -3914,7 +3914,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	@SuppressWarnings("unchecked")
 	public Statement buildShowVariables(VariableScope ivs,
 			Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
-        ShowVariablesInformationSchemaTable ist = (ShowVariablesInformationSchemaTable) Singletons.require(HostService.class).
+        DirectShowVariablesTable ist = (DirectShowVariablesTable) Singletons.require(HostService.class).
 				getInformationSchema().lookupShowTable(
 						new UnqualifiedName("variables"));
 		VariableScope vs = ivs;

@@ -29,10 +29,6 @@ public class InformationSchemaColumnAdapter {
 		return false;
 	}
 	
-	public LogicalInformationSchemaColumn getLogicalColumn() {
-		return null;
-	}
-	
 	public PEColumn getDirectColumn() {
 		return null;
 	}

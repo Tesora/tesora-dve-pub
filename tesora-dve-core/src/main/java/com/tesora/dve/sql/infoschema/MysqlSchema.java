@@ -21,14 +21,13 @@ package com.tesora.dve.sql.infoschema;
  * #L%
  */
 
-import com.tesora.dve.sql.infoschema.annos.InfoView;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.util.UnaryFunction;
 
 public class MysqlSchema extends AbstractInformationSchema {
 
-	protected MysqlSchema(LogicalInformationSchema lis) {
-		super(lis, InfoView.MYSQL,
+	protected MysqlSchema() {
+		super(InfoView.MYSQL,
 				new UnaryFunction<Name[], InformationSchemaTable>() {
 
 			@Override

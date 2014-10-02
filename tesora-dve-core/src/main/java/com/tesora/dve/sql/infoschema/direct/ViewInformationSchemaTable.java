@@ -24,7 +24,7 @@ package com.tesora.dve.sql.infoschema.direct;
 
 import java.util.List;
 
-import com.tesora.dve.sql.infoschema.annos.InfoView;
+import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.schema.PEViewTable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;

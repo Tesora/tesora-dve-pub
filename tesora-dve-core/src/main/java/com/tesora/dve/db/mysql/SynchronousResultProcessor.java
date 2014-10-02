@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.concurrent.SynchronousCompletion;
 

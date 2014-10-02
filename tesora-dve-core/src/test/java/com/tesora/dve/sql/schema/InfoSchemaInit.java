@@ -31,8 +31,6 @@ import com.tesora.dve.persist.InsertEngine;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.LogicalInformationSchemaTable;
 import com.tesora.dve.sql.transform.TransformTest;
 
 public class InfoSchemaInit extends TransformTest {
@@ -42,17 +40,6 @@ public class InfoSchemaInit extends TransformTest {
 		// TODO Auto-generated constructor stub
 	}
 
-	@Test
-	public void testLogical() {
-        InformationSchemas schema = Singletons.require(HostService.class).getInformationSchema();
-		System.out.println("Logical tables:");
-		for(LogicalInformationSchemaTable list : schema.getLogical().getTables(null)) {
-			System.out.println(list);
-			for(LogicalInformationSchemaColumn isc : list.getColumns(null))
-				System.out.println("   " + isc);
-		}
-	}
-	
 	@Test
 	public void testShow() {
         InformationSchemas schema = Singletons.require(HostService.class).getInformationSchema();
