@@ -33,8 +33,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.testng.annotations.AfterClass;
@@ -50,6 +48,8 @@ import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.standalone.PETest;
 
@@ -206,7 +206,7 @@ public class ClientTestNG extends PETest {
 				.executeQuery("INSERT INTO simpletest_test_id (last_prefix, null_column) VALUES (default, NULL), (default, 'nonull')"));
 		assertFalse(dbHelper
 				.executeQuery("INSERT INTO simpletest_test_id (test_id, last_prefix) VALUES (10,'hi'), (default,'there'), (default, default)"));
-		assertEquals(5, dbHelper.getLastInsertID());
+		assertEquals(3, dbHelper.getLastInsertID());
 
 		assertTrue(dbHelper.executeQuery("SELECT * FROM simpletest_test_id"));
 		int rows = countResultSetRows(dbHelper.getResultSet());
