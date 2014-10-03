@@ -655,7 +655,15 @@ public class CorpusStats implements StatsVisitor {
 		}
 
 		public boolean hasForeignRelationship() {
-			return !this.forwardRelationships.isEmpty() || !this.backwardRelationships.isEmpty();
+			return hasForwardRelationships() || hasBackwardRelationships();
+		}
+
+		public boolean hasForwardRelationships() {
+			return !this.forwardRelationships.isEmpty();
+		}
+
+		public boolean hasBackwardRelationships() {
+			return !this.backwardRelationships.isEmpty();
 		}
 
 		public Set<TableColumn> getColumns(final Set<String> columnNames) throws PEException {
@@ -847,7 +855,7 @@ public class CorpusStats implements StatsVisitor {
 			 * This join is not involved in a foreign key relationship and
 			 * therefore should always be safe to collocate.
 			 */
-			if (!this.lhs.hasForeignRelationship() && !this.rhs.hasForeignRelationship()) {
+			if (!this.lhs.hasBackwardRelationships() && !this.rhs.hasBackwardRelationships()) {
 				return true;
 			}
 
@@ -910,7 +918,7 @@ public class CorpusStats implements StatsVisitor {
 			final List<String> joinProperties = new ArrayList<String>();
 			joinProperties.add("F:" + String.valueOf(this.getFrequency()) + "x");
 			joinProperties.add("C:" + String.valueOf(this.getTotalCardinality()));
-			joinProperties.add("C:" + String.valueOf(this.getTotalDataSizeKb()) + "KB");
+			joinProperties.add("L:" + String.valueOf(this.getTotalDataSizeKb()) + "KB");
 			value.append("[").append(this.signature).append("; ").append(StringUtils.join(joinProperties, ", ")).append("]");
 			return value.toString();
 		}
