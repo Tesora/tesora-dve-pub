@@ -24,15 +24,13 @@ package com.tesora.dve.sql.infoschema;
 
 import java.util.List;
 
-import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.infoschema.persist.CatalogTableEntity;
-import com.tesora.dve.sql.node.expression.ColumnInstance;
-import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 
 public abstract class InformationSchemaColumn implements Column<InformationSchemaTable> {
@@ -43,28 +41,25 @@ public abstract class InformationSchemaColumn implements Column<InformationSchem
 	protected InformationSchemaTable table;
 	protected int position = -1;
 	
-	protected InformationSchemaColumnAdapter adapter;
+	protected PEColumn backedBy;
 	protected InformationSchemaTable returnType;
 	
-	public InformationSchemaColumn(InfoView view, UnqualifiedName nameInView, InformationSchemaColumnAdapter columnAdapter) {
+	public InformationSchemaColumn(InfoView view, UnqualifiedName nameInView, PEColumn pec) {
 		super();
 		this.view = view;
 		if (this.view == null)
 			this.name = nameInView; // temporary
 		else
 			this.name =	(view.isCapitalizeNames() ? nameInView.getCapitalized().getUnqualified() : nameInView);
-		this.adapter = (columnAdapter == null ? new InformationSchemaColumnAdapter() : columnAdapter);
+		this.backedBy = pec;
 	}
 	
 	protected InformationSchemaColumn(InformationSchemaColumn copy) {
 		super();
 		view = copy.view;
 		name = copy.name;
-		adapter = copy.adapter;
 		returnType = copy.returnType;
 	}
-	
-	public abstract InformationSchemaColumn copy(InformationSchemaColumnAdapter newAdapter);
 	
 	@Override
 	public InformationSchemaTable getTable() {
@@ -76,6 +71,10 @@ public abstract class InformationSchemaColumn implements Column<InformationSchem
 		table = t;
 	}
 
+	public PEColumn getColumn() {
+		return backedBy;
+	}
+	
 	public void validate(AbstractInformationSchema ofView, InformationSchemaTable ofTable) {
 		
 	}
@@ -128,31 +127,15 @@ public abstract class InformationSchemaColumn implements Column<InformationSchem
 	}
 	
 	public boolean isBacked() {
-		return isSynthetic() ? false : adapter.isBacked(); 
+		return true;
 	}
-	
-	public boolean isSynthetic() {
-		return false;
-	}
-	
+		
 	@Override
 	public String toString() {
-		Object backing = null;
-		if (getAdapter() != null) {
-			backing = getAdapter().getDirectColumn();
-		}
+		Object backing = backedBy;
 		return this.getClass().getSimpleName() + "{name=" + getName() + ", type=" + getType() + ", backing=" + backing + "}";
 	}
 
-	public InformationSchemaColumnAdapter getAdapter() {
-		return adapter;
-	}
-	
-	// sucks...well, this will go away with time
-	public void setAdapter(InformationSchemaColumnAdapter adapter) {
-		this.adapter = adapter;
-	}
-	
 	// probably don't need this to be abstract
 	public abstract void buildColumnEntity(CatalogSchema schema, CatalogTableEntity cte, int ordinal_position, List<PersistedEntity> acc) throws PEException;
 	

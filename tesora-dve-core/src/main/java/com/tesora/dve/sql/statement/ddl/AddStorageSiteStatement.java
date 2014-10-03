@@ -36,11 +36,14 @@ import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.common.catalog.ViewMode;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepAddGenerationOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
@@ -63,6 +66,7 @@ import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup> {
@@ -312,7 +316,8 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 
 		
 		private SQLCommand getCommand(SchemaContext sc, Statement s) {
-			GenericSQLCommand gsql = s.getGenericSQL(sc, false, false);
+			EmitOptions opts = EmitOptions.NONE.addQualifiedTables();
+	        GenericSQLCommand gsql = s.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), opts);
 			return gsql.resolve(sc,null).getSQLCommand();			
 		}
 

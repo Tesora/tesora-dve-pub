@@ -31,6 +31,8 @@ import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.modifiers.ColumnKeyModifier;
+import com.tesora.dve.sql.schema.modifiers.ColumnModifier;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
@@ -50,10 +52,12 @@ public abstract class DirectTableGenerator extends DirectSchemaGenerator {
 		this.columns = Arrays.asList(colDefs);
 	}
 	
+	@SuppressWarnings("unchecked")
 	public DirectTableGenerator withExtension() {
 		return super.withExtension();
 	}
 	
+	@SuppressWarnings("unchecked")
 	public DirectTableGenerator withPrivilege() {
 		return super.withPrivilege();
 	}
@@ -67,7 +71,7 @@ public abstract class DirectTableGenerator extends DirectSchemaGenerator {
 			@Override
 			public PEColumn evaluate(DirectColumnGenerator object) {
 				Type type = InvokeParser.parseType(sc, topts, object.getType());
-				return PEColumn.buildColumn(sc, new UnqualifiedName(object.getName()), type, Collections.EMPTY_LIST, null, Collections.EMPTY_LIST);
+				return PEColumn.buildColumn(sc, new UnqualifiedName(object.getName()), type, Collections.<ColumnModifier> emptyList(), null, Collections.<ColumnKeyModifier> emptyList());
 			}
 			
 		});

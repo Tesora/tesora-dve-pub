@@ -50,7 +50,7 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.util.ListSet;
 
-public class DirectShowVariablesTable extends AbstractDirectVariablesTable implements ShowSchemaBehavior {
+public class DirectShowVariablesTable extends DirectVariablesTable implements ShowSchemaBehavior {
 
 	public static final String TABLE_NAME = "variables";
 	public static final String SCOPE_COL_NAME = "Scope";

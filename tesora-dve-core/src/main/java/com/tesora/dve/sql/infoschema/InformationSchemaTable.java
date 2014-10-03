@@ -24,17 +24,13 @@ package com.tesora.dve.sql.infoschema;
 
 import java.util.List;
 
-import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.Table;
-import com.tesora.dve.sql.statement.dml.SelectStatement;
 
 // strip the type info off for now
 public interface InformationSchemaTable extends Table<InformationSchemaColumn> {
@@ -42,12 +38,6 @@ public interface InformationSchemaTable extends Table<InformationSchemaColumn> {
 
 	public InfoView getView();
 	
-	public void prepare(AbstractInformationSchema view, DBNative dbn);
-	
-	public void inject(AbstractInformationSchema view, DBNative dbn);
-
-	public void freeze();
-
 	public void buildTableEntity(CatalogSchema cs, CatalogDatabaseEntity db, int dmid, int storageid, List<PersistedEntity> acc) throws PEException;
 
 	public InformationSchemaColumn getOrderByColumn();
@@ -58,8 +48,6 @@ public interface InformationSchemaTable extends Table<InformationSchemaColumn> {
 	
 	public boolean isExtension();
 	
-	public void annotate(SchemaContext sc, ViewQuery vq, SelectStatement in, TableKey onTK);
-
 	public boolean isVariablesTable();
 
 	public void assertPermissions(SchemaContext sc);

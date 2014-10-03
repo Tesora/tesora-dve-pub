@@ -30,11 +30,13 @@ public abstract class DirectSchemaGenerator {
 		
 	}
 	
+	@SuppressWarnings("unchecked")
 	public <T> T withPrivilege() {
 		privilege = true;
 		return (T) this;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public <T> T withExtension() {
 		extension = true;
 		return (T) this;

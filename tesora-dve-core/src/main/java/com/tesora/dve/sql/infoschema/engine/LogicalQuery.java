@@ -32,7 +32,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 
-public abstract class LogicalQuery {
+public class LogicalQuery {
 
 	protected ViewQuery orig;
 	
@@ -54,7 +54,9 @@ public abstract class LogicalQuery {
 		return orig;
 	}
 
-	public abstract boolean isDirect();
+	public boolean isDirect() {
+		return true;
+	}
 	
 	public static void buildNativeType(ColumnSet cs, String colName, String colAlias, Object in) throws PEException {
 		if (in instanceof String) {

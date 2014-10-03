@@ -72,7 +72,7 @@ public class ViewTableGenerator extends DirectTableGenerator {
 		ParserOptions opts = sc.getOptions();
 		try {
 			ParserOptions topts = ParserOptions.TEST.setResolve().setIgnoreMissingUser().setInfoSchemaView();
-			List<Statement> stmts = InvokeParser.parse(vc, sc, Collections.EMPTY_LIST, topts);
+			List<Statement> stmts = InvokeParser.parse(vc, sc, Collections.emptyList(), topts);
 			PECreateViewStatement pecs = (PECreateViewStatement) stmts.get(0);
 			if (view == InfoView.SHOW) {
 				return new ViewShowSchemaTable(sc,view,pecs.getViewTable(),

@@ -22,17 +22,15 @@ package com.tesora.dve.sql.infoschema;
  */
 
 
+
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 
-import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.direct.DirectSchemaQueryEngine;
+import com.tesora.dve.sql.infoschema.engine.LogicalSchemaQueryEngine;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.node.expression.TableInstance;
@@ -70,15 +68,6 @@ public abstract class AbstractInformationSchema implements
 		return view;
 	}
 	
-	public void freeze(DBNative dbn) {
-		for(InformationSchemaTable istv : tables)
-			istv.prepare(this,dbn);
-		for(InformationSchemaTable istv : tables) 
-			istv.inject(this, dbn);
-		for(InformationSchemaTable istv : tables)
-			istv.freeze();
-	}
-	
 	@Override
 	public InformationSchemaTable addTable(SchemaContext sc, InformationSchemaTable t) {
 		if (frozen)
@@ -96,7 +85,7 @@ public abstract class AbstractInformationSchema implements
 		if (already != null) {
 			tables.remove(already);
 		} else {
-			DirectSchemaQueryEngine.log("not replacing " + t.getName());
+			LogicalSchemaQueryEngine.log("not replacing " + t.getName());
 		}
 		tables.add(t);
 		lookup.refreshBacking(tables);

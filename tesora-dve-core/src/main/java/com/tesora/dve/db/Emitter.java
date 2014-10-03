@@ -48,7 +48,6 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
-import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.direct.DirectInfoSchemaStatement;
@@ -456,7 +455,8 @@ public abstract class Emitter {
 			PETable pet = (PETable) p;
 			if (pet.isUserlandTemporaryTable())
 				buf.append(" TEMPORARY");
-			buf.append(" TABLE ").append(p.getName().getSQL());
+			buf.append(" TABLE ");
+			emitTable(sc,pet,sc.getCurrentDatabase(false),buf);
 			emitTableDeclaration(sc,(PETable)p, buf);
 		}
 		else if (p instanceof PESiteInstance)
@@ -766,7 +766,7 @@ public abstract class Emitter {
 		}
 		buf.append(") REFERENCES ");
 		if (key.isForward()) 
-			buf.append(key.getTargetTableName(sc).getQuotedName());
+			buf.append(key.getTargetTableName(sc, getOptions() != null && getOptions().isQualifiedTables()));
 		else
 			emitTable(sc,key.getTargetTable(sc),key.getTable(sc).getPEDatabase(sc),buf);
 		buf.append(" (");
@@ -1572,8 +1572,9 @@ public abstract class Emitter {
 	// for ddl
 	public void emitTable(SchemaContext sc, PEAbstractTable<?> pet, Database<?> defaultDB, StringBuilder buf) {
 		Database<?> tblDb = pet.getDatabase(sc);
-		if ((defaultDB == null && tblDb != null) || 
-				((defaultDB != null && tblDb != null) && (defaultDB.getId() != tblDb.getId()))) {
+		if ((getOptions() != null && getOptions().isQualifiedTables())
+				|| ((defaultDB == null && tblDb != null) || 
+				((defaultDB != null && tblDb != null) && (defaultDB.getId() != tblDb.getId())))) {
 			buf.append("`");
 			int offset = buf.length();
 			String toAdd = pet.getDatabase(sc).getName().getUnqualified().getUnquotedName().getSQL();
@@ -2435,6 +2436,14 @@ public abstract class Emitter {
 		public boolean isForceParamValues() {
 			return hasSetting(EmitOption.FORCE_PARAMETER_VALUES);
 		}
+
+		public EmitOptions addQualifiedTables() {
+			return this.add(EmitOption.QUALIFIED_TABLES, Boolean.TRUE);
+		}
+		
+		public boolean isQualifiedTables() {
+			return hasSetting(EmitOption.QUALIFIED_TABLES);
+		}
 		
 		public EmitOptions addOmitDistVect() {
 			return this.add(EmitOption.OMIT_DIST_VECT, Boolean.TRUE);
@@ -2493,7 +2502,9 @@ public abstract class Emitter {
 		// for planner error messages - emit the table declarations for views as well (pe extension)
 		VIEW_DECL_EMIT_TABLE_DECL,
 		// we are querying the catalog directly, do not emit db entries
-		CATALOG
+		CATALOG,
+		// if set, then all table refs should be fully qualified - used in storage gen add
+		QUALIFIED_TABLES
 	}
 	
 	public static class EmitContext {

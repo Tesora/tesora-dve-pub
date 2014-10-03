@@ -25,16 +25,12 @@ package com.tesora.dve.sql.infoschema.direct;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchema;
 import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
-import com.tesora.dve.sql.infoschema.engine.ViewQuery;
 import com.tesora.dve.sql.infoschema.persist.CatalogColumnEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
@@ -45,7 +41,6 @@ import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.Cast;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ResizableArray;
@@ -174,21 +169,6 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	}
 
 	@Override
-	public void prepare(AbstractInformationSchema view, DBNative dbn) {
-		// does nothing
-	}
-
-	@Override
-	public void inject(AbstractInformationSchema view, DBNative dbn) {
-		// does nothing
-	}
-
-	@Override
-	public void freeze() {
-		// already frozen
-	}
-
-	@Override
 	public DirectInformationSchemaColumn getOrderByColumn() {
 		if (orderByColumns.size() > 0)
 			return orderByColumns.get(0);
@@ -212,13 +192,6 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	@Override
 	public boolean isExtension() {
 		return extension;
-	}
-
-	@Override
-	public void annotate(SchemaContext sc, ViewQuery vq, SelectStatement in,
-			TableKey onTK) {
-		// TODO Auto-generated method stub
-		
 	}
 
 	@Override
