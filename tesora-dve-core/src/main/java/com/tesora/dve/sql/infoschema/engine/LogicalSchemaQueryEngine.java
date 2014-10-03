@@ -21,12 +21,21 @@ package com.tesora.dve.sql.infoschema.engine;
  * #L%
  */
 
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.NativeType;
+import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -40,22 +49,35 @@ import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
-import com.tesora.dve.sql.infoschema.direct.AbstractDirectVariablesTable;
-import com.tesora.dve.sql.infoschema.direct.DirectSchemaQueryEngine;
+import com.tesora.dve.sql.infoschema.direct.DirectVariablesTable;
+import com.tesora.dve.sql.infoschema.direct.DirectInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.direct.ViewInformationSchemaTable;
+import com.tesora.dve.sql.node.LanguageNode;
+import com.tesora.dve.sql.node.Traversal;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
+import com.tesora.dve.sql.node.expression.LiteralExpression;
+import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.schema.PEColumn;
+import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.Statement;
-import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
-import com.tesora.dve.sql.statement.dml.UnionStatement;
+import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.execution.DDLQueryExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
+import com.tesora.dve.sql.transform.strategy.ExecutionCost;
+import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
+import com.tesora.dve.sql.transform.strategy.ViewRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.NonDMLFeatureStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 
 // responsible for flattening view queries down to logical table queries
@@ -67,7 +89,7 @@ public class LogicalSchemaQueryEngine {
 	
 	private static boolean canLog() { return emit || logger.isDebugEnabled(); }
 	
-	private static void log(String in) {
+	public static void log(String in) {
 		if (emit)
 			System.out.println(in);
 		if (logger.isDebugEnabled())
@@ -75,17 +97,15 @@ public class LogicalSchemaQueryEngine {
 	}
 	
 	// planning entry point
-	@SuppressWarnings("unchecked")
 	public static FeatureStep execute(SchemaContext sc, SelectStatement ss, FeaturePlanner planner) {
 		ProjectionInfo pi = ss.getProjectionMetadata(sc);
 		ViewQuery vq = new ViewQuery(ss, null, null);
-		annotate(sc,vq,ss);
-		AbstractDirectVariablesTable haveVariables = null;
+		DirectVariablesTable haveVariables = null;
 		boolean haveOthers = false;
 		for(TableKey tk : ss.getAllTableKeys()) {
 			InformationSchemaTable istv = (InformationSchemaTable) tk.getTable();
 			if (istv.isVariablesTable())
-				haveVariables = (AbstractDirectVariablesTable) istv;
+				haveVariables = (DirectVariablesTable) istv;
 			else
 				haveOthers = true;
 		}
@@ -111,7 +131,7 @@ public class LogicalSchemaQueryEngine {
 		} else {
 			// all variables
 			final Statement planned =
-					AbstractDirectVariablesTable.execute(sc, haveVariables, haveVariables.getDefaultScope(), vq, pi);
+					DirectVariablesTable.execute(sc, haveVariables, haveVariables.getDefaultScope(), vq, pi);
 			return new NonDMLFeatureStep(planner, null) {
 
 				@Override
@@ -130,7 +150,7 @@ public class LogicalSchemaQueryEngine {
 		LogicalQuery lq = convertDown(sc,vq);
 		if (planner == null)
 			throw new InformationSchemaException("Missing feature planner");
-		return new InfoPlanningResults(DirectSchemaQueryEngine.buildStep(sc, lq, planner, pi));
+		return new InfoPlanningResults(buildStep(sc, lq, planner, pi));
 	}
 	
 	// convenience entry point, transitional
@@ -147,8 +167,6 @@ public class LogicalSchemaQueryEngine {
 			String sql = in.getSQL(sc);
 			log("info schema query before logical conversion: '" + sql + "'");						
 		}
-		boolean haveViews = false;
-		boolean haveNonViews = false;
 		if (sc != null ) {
 			ListSet<TableKey> tabs = EngineConstant.TABLES_INC_NESTED.getValue(in,sc);
 			for(TableKey tk : tabs) {
@@ -162,18 +180,9 @@ public class LogicalSchemaQueryEngine {
 						istv.assertPermissions(sc);
 					}
 				}
-				if (istv.isView()) haveViews = true;
-				else haveNonViews = true;
 			}
 		}
-		// having checked perms, let's see if the query consists of only info schema views; if so we can just expand and
-		// skip all the other stuff.
-		if (haveViews && haveNonViews)
-			throw new InformationSchemaException("Unable to handle info schema query involving view impls and non view impls");
-		if (haveViews) 
-			return DirectSchemaQueryEngine.convertDown(sc,vq);
-		
-		throw new InformationSchemaException("Unmigrated info schema query");
+		return convertDirectDown(sc,vq);
 		
 	}
 	
@@ -232,24 +241,154 @@ public class LogicalSchemaQueryEngine {
 		
 	}
 
-
-	/**
-	 * @param cs
-	 * @param colName
-	 * @param colAlias
-	 * @param in
-	 * @throws PEException
-	 */
+	// convenience
+	public static FeatureStep buildStep(SchemaContext sc, ViewQuery vq, ProjectionInfo pi) {
+		LogicalQuery dlq = convertDown(sc,vq);
+		return buildStep(sc,dlq,new InformationSchemaRewriteTransformFactory(),pi);
+	}
 	
-	private static void annotate(SchemaContext sc, ViewQuery vq, SelectStatement in) {
-		for(TableKey tk : in.getDerivedInfo().getLocalTableKeys()) {
-			InformationSchemaTable istv = (InformationSchemaTable) tk.getTable();
-			istv.annotate(sc, vq, in, tk);
+	
+	public static FeatureStep buildStep(SchemaContext sc, LogicalQuery lq, FeaturePlanner planner, final ProjectionInfo pi) {
+		SelectStatement toExecute = lq.getQuery();
+		
+		final GenericSQLCommand gsql = toExecute.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), EmitOptions.NONE.addCatalog());
+				
+		// look up the system group now - we have to use the actual item
+		final PEPersistentGroup sg = sc.findStorageGroup(new UnqualifiedName(PEConstants.SYSTEM_GROUP_NAME));
+		
+		if (canLog()) {
+			log("execute on " + sg.getName().getSQL());
+			List<String> lines = new ArrayList<String>();
+			gsql.display(sc, false, "  ", lines);
+			for(String s : lines)
+				log(s);
+			if (pi != null) {
+				for(int i = 1; i <= pi.getWidth(); i++) {
+					log("[" + i + "]: " + pi.getColumnInfo(i));
+				}
+			} else {
+				log("no projection info");
+			}
 		}
-		for(ProjectingStatement ss : in.getDerivedInfo().getAllNestedQueries()) {
-			if (ss instanceof UnionStatement) continue;
-			annotate(sc, vq, (SelectStatement)ss);
+		
+		return new ProjectingFeatureStep(null, planner, toExecute, new ExecutionCost(true,true,null,-1),
+				sg,null,null,null) {
+			
+			@Override
+			public void scheduleSelf(PlannerContext pc, ExecutionSequence es)
+					throws PEException {
+				
+				ProjectingExecutionStep pes =
+						ProjectingExecutionStep.build(
+								null, sg,
+							gsql);
+				if (pi != null)
+					pes.setProjectionOverride(pi);
+				es.append(pes);		
+			}
+
+		};
+	}
+	
+	public static LogicalQuery convertDirectDown(SchemaContext sc, ViewQuery vq) {
+		SelectStatement in = vq.getQuery();
+		SelectStatement copy = CopyVisitor.copy(in);
+		if (canLog())
+			log("Before conversion: " + copy.getSQL(sc));		
+		Converter forwarder = new Converter(sc);
+		forwarder.traverse(copy);
+		for(Map.Entry<TableKey, TableKey> me : forwarder.getForwardedTableKeys().entrySet()) {
+			copy.getDerivedInfo().removeLocalTable(me.getKey().getTable());
+			copy.getDerivedInfo().addLocalTable(me.getValue());
+		}
+		if (canLog())
+			log("After conversion: " + copy.getSQL(sc));
+		// and now we can explode it
+		ViewRewriteTransformFactory.applyViewRewrites(sc, copy);
+		Map<String,Object> params = vq.getParams();
+		if (params == null) params = new HashMap<String,Object>();
+		Long anyTenant = sc.getPolicyContext().getTenantID(false);
+		if (sc.getPolicyContext().isContainerContext()) {
+			if (anyTenant == null) anyTenant = -1L; // global tenant
+		}
+		params.put(ViewInformationSchemaTable.tenantVariable,anyTenant);
+		params.put(ViewInformationSchemaTable.sessid,new Long(sc.getConnection().getConnectionId()));
+		new VariableConverter(params).traverse(copy);
+		if (canLog())
+			log("After explode: "+ copy.getSQL(sc));
+		return new LogicalQuery(vq,copy,Collections.<String, Object> emptyMap());
+	}
+
+	private static class Converter extends Traversal {
+		
+		final SchemaContext context;
+		final Map<TableKey,TableKey> forwarding;
+		
+		public Converter(SchemaContext sc) {
+			super(Order.POSTORDER, ExecStyle.ONCE);
+			this.context = sc;
+			this.forwarding = new HashMap<TableKey,TableKey>();
+		}
+
+		public Map<TableKey,TableKey> getForwardedTableKeys() {
+			return forwarding;
+		}
+
+		@Override
+		public LanguageNode action(LanguageNode in) {
+			if (in instanceof TableInstance) {
+				return map((TableInstance)in);
+			} else if (in instanceof ColumnInstance) {
+				ColumnInstance ci = (ColumnInstance) in;
+				if (ci.getColumn() instanceof DirectInformationSchemaColumn) {
+					DirectInformationSchemaColumn vc = (DirectInformationSchemaColumn) ci.getColumn();
+					PEColumn backing = vc.getColumn();
+					return new ColumnInstance(ci.getSpecifiedAs(),backing,map(ci.getTableInstance()));
+				}
+			}
+			return in;
+		}
+		
+		private TableInstance map(TableInstance in) {
+			if (in.getTable().isInfoSchema()) {
+				// I already know these will be view based info schema tables
+				ViewInformationSchemaTable infoTab = (ViewInformationSchemaTable) in.getTable();
+				TableInstance out =  new TableInstance(infoTab.getBackingView(),in.getSpecifiedAs(context),in.getAlias(),in.getNode(),false);
+				if (!forwarding.containsKey(in.getTableKey()))
+					forwarding.put(in.getTableKey(),out.getTableKey());
+				return out;
+			}
+			return in;
+		}
+
+	}
+
+	private static class VariableConverter extends Traversal {
+		
+		final Map<String,Object> params;
+		
+		public VariableConverter(Map<String,Object> params) {
+			super(Order.POSTORDER, ExecStyle.ONCE);
+			this.params = params;
+		}
+		
+		@Override
+		public LanguageNode action(LanguageNode in) {
+			if (in instanceof VariableInstance) {
+				VariableInstance vi = (VariableInstance) in;
+				String name = vi.getVariableName().getUnquotedName().get();
+				Object repl = params.get(name);
+				if (repl == null)
+					return LiteralExpression.makeNullLiteral();
+				if (repl instanceof String)
+					return LiteralExpression.makeStringLiteral((String)repl);
+				else
+					return LiteralExpression.makeAutoIncrLiteral((Long)repl);
+			}
+			return in;
 		}
 	}
+	
+
 	
 }

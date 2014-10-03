@@ -1212,7 +1212,10 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 						@Override
 						public DirectInformationSchemaTable generate(
 								SchemaContext sc) {
-							return new DirectVariablesTable(sc,buildColumns(sc),new UnqualifiedName("session_variables"),new VariableScope(VariableScopeKind.SESSION),columns);
+							return new DirectVariablesTable(sc,InfoView.INFORMATION,buildColumns(sc),
+									new UnqualifiedName("session_variables"),
+									new VariableScope(VariableScopeKind.SESSION),
+									columns);
 						}
 				
 			},
@@ -1224,7 +1227,10 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 						@Override
 						public DirectInformationSchemaTable generate(
 								SchemaContext sc) {
-							return new DirectVariablesTable(sc,buildColumns(sc),new UnqualifiedName("global_variables"),new VariableScope(VariableScopeKind.GLOBAL),columns);
+							return new DirectVariablesTable(sc,InfoView.INFORMATION,buildColumns(sc),
+									new UnqualifiedName("global_variables"),
+									new VariableScope(VariableScopeKind.GLOBAL),
+									columns);
 						}
 				
 			},

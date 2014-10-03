@@ -51,6 +51,7 @@ public class DirectColumnGenerator extends DirectSchemaGenerator {
 		return this;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public DirectColumnGenerator withExtension() {
 		return super.withExtension();
 	}

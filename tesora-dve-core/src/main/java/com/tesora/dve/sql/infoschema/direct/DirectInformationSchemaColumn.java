@@ -27,7 +27,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumnAdapter;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.infoschema.persist.CatalogTableEntity;
 import com.tesora.dve.sql.schema.PEColumn;
@@ -52,7 +51,7 @@ public class DirectInformationSchemaColumn extends InformationSchemaColumn {
 			boolean isExtension,
 			boolean isPrivilege,
 			boolean isFull) {
-		super(view, nameInView, new DirectInformationSchemaColumnAdapter(backedBy));
+		super(view, nameInView, backedBy);
 		byte f = 0;
 		if (isIdent) f |= IDENT;
 		if (isOrderBy) f |= ORDERBY;
@@ -64,24 +63,9 @@ public class DirectInformationSchemaColumn extends InformationSchemaColumn {
 
 	@Override
 	public Type getType() {
-		return getAdapter().getDirectColumn().getType();
+		return getColumn().getType();
 	}
 
-	@Override
-	public InformationSchemaColumn copy(InformationSchemaColumnAdapter adapter) {
-		return new DirectInformationSchemaColumn(view,getName().getUnqualified(),
-				(adapter == null ? getAdapter().getDirectColumn() : adapter.getDirectColumn()),
-				isIdentColumn(),isOrderByColumn(),isExtension(),requiresPrivilege(), isFull()); 
-	}
-
-	DirectInformationSchemaColumnAdapter getMyAdapter() {
-		return (DirectInformationSchemaColumnAdapter) getAdapter();
-	}
-	
-	public PEColumn getColumn() {
-		return getMyAdapter().getDirectColumn();
-	}
-	
 	@Override
 	public void buildColumnEntity(CatalogSchema schema, CatalogTableEntity cte,
 			int ordinal_position, List<PersistedEntity> acc) throws PEException {
@@ -112,25 +96,5 @@ public class DirectInformationSchemaColumn extends InformationSchemaColumn {
 	public boolean isFull() {
 		return isSet(FULL);
 	}
-	
-	public static class DirectInformationSchemaColumnAdapter extends InformationSchemaColumnAdapter {
-
-		// eventually we will have more than one here, or else a lookup into the actual 
-		private final PEColumn backing;
 		
-		public DirectInformationSchemaColumnAdapter(PEColumn pec) {
-			this.backing = pec;
-		}
-		
-		@Override
-		public boolean isBacked() {
-			return true;
-		}
-		
-		@Override
-		public PEColumn getDirectColumn() {
-			return backing;
-		}
-	}
-	
 }

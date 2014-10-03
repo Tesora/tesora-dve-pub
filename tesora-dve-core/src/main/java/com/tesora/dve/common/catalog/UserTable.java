@@ -501,7 +501,7 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 //		return userDatabase.getName()+"."+getName();
 	}
 
-	public void prepareGenerationAddition(SSConnection ssCon, WorkerGroup wg, StorageGroupGeneration newGen) throws Throwable {
+	public void prepareGenerationAddition(SSConnection ssCon, WorkerGroup wg, StorageGroupGeneration newGen, SQLCommand command) throws Throwable {
 		Set<PersistentSite> netNewSites = new HashSet<PersistentSite>(newGen.getStorageSites());
 		netNewSites.removeAll(wg.getStorageSites());
 		PersistentGroup newSG = new PersistentGroup(netNewSites);
@@ -513,27 +513,14 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 			if (getView() != null && getView().getViewMode() == ViewMode.EMULATE) {
 				// nothing to do
 			} else {
-				if (getView() != null)
-					// the persisted create table stmt is incorrect - we need to create an context
-					// to build a sqlcommand for the actual definition (because it may refer to other databases)
-					throw new PEException("No support for storage gen add with views");
-				for(Key k : getKeys()) {
-					if (!k.isForeignKey()) continue;
-					if (k.getTable() == null)
-						// forward, this is ok
-						continue;
-					UserTable ot = k.getTable();
-					if (ot.getDatabase().getId() != getDatabase().getId())
-						throw new PEException("No support for storage gen add with cross db fks");
-				}
-				// TODO this could fail on a database with fks
 				QueryStepDDLOperation qso =
-						new QueryStepDDLOperation(getDatabase(), new SQLCommand(ssCon, getCreateTableStmt()), null);
+						new QueryStepDDLOperation(getDatabase(), (command == null ? new SQLCommand(ssCon,getCreateTableStmt()) : command), null);
 
 				qso.execute(ssCon, newWG, DBEmptyTextResultConsumer.INSTANCE);
 			}
 
-			distributionModel.prepareGenerationAddition(ssCon, wg, this, newGen);
+			if (getView() == null)
+				distributionModel.prepareGenerationAddition(ssCon, wg, this, newGen);
 		} finally {
 			WorkerGroupFactory.purgeInstance(ssCon, newWG);
 			wg.setManager(wgManager);

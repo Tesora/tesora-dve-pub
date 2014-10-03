@@ -140,7 +140,7 @@ public class ViewShowSchemaTable extends ViewInformationSchemaTable implements S
 		normalizeScoping(sc,scoping,params);
 		ProjectionInfo pi = ss.getProjectionMetadata(sc);
 		ViewQuery vq = new ViewQuery(ss,params,ss.getBaseTables().get(0));
-		return new DirectInfoSchemaStatement(DirectSchemaQueryEngine.buildStep(sc, vq, pi));
+		return new DirectInfoSchemaStatement(LogicalSchemaQueryEngine.buildStep(sc, vq, pi));
 	}
 
 	@Override
@@ -155,7 +155,7 @@ public class ViewShowSchemaTable extends ViewInformationSchemaTable implements S
 		normalizeScoping(sc,null,params);
 		ProjectionInfo pi = ss.getProjectionMetadata(sc);
 		ViewQuery vq = new ViewQuery(ss,params,ss.getBaseTables().get(0));
-		return new DirectInfoSchemaStatement(DirectSchemaQueryEngine.buildStep(sc, vq, pi));
+		return new DirectInfoSchemaStatement(LogicalSchemaQueryEngine.buildStep(sc, vq, pi));
 	}
 
 	@Override

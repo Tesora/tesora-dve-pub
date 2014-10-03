@@ -46,6 +46,7 @@ import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
+import com.tesora.dve.sql.schema.PEStorageSite;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;
@@ -109,9 +110,6 @@ public final class InformationSchemas {
 			};
 			for(InformationSchemaBuilder isb : builders)
 				isb.populate(informationSchema, showSchema, mysqlSchema, dbn);
-			informationSchema.freeze(dbn);
-			showSchema.freeze(dbn);
-			mysqlSchema.freeze(dbn);
 			return new InformationSchemas(informationSchema,showSchema,mysqlSchema,
 					catSchema);
 		} catch (PEException pe) {
@@ -140,7 +138,7 @@ public final class InformationSchemas {
 		ParserOptions opts = ParserOptions.TEST.setResolve().setIgnoreMissingUser();
 		SchemaContext sc = tee.getPersistenceContext();
 		
-		PEPersistentGroup catalogGroup = new PEPersistentGroup(sc,new UnqualifiedName(PEConstants.SYSTEM_GROUP_NAME), Collections.EMPTY_LIST);
+		PEPersistentGroup catalogGroup = new PEPersistentGroup(sc,new UnqualifiedName(PEConstants.SYSTEM_GROUP_NAME), Collections.<PEStorageSite> emptyList());
 		PEDatabase pdb = new PEDatabase(sc,new UnqualifiedName(database),catalogGroup,new Pair<Name,TemplateMode>(null, TemplateMode.OPTIONAL), MultitenantMode.OFF, FKMode.STRICT, "","");
 		pdb.setID(-1);
 		

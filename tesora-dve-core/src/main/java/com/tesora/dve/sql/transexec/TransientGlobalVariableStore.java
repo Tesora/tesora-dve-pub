@@ -24,15 +24,11 @@ package com.tesora.dve.sql.transexec;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.variables.GlobalVariableStore;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.ValueReference;
 import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.variables.AbstractVariableStore;
-import com.tesora.dve.variables.VariableManager;
 
 // non locking version, since the full stack is not available
 public class TransientGlobalVariableStore extends AbstractVariableStore implements
