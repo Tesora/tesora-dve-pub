@@ -21,11 +21,15 @@ package com.tesora.dve.tools.analyzer.stats;
  * #L%
  */
 
+import java.util.List;
+
 import org.apache.commons.lang.ObjectUtils;
 
 import com.tesora.dve.sql.node.expression.ColumnInstance;
+import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.structural.JoinSpecification;
 import com.tesora.dve.sql.schema.Database;
+import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -38,16 +42,20 @@ public class EquijoinInfo {
 	protected PEAbstractTable<?> rhs;
 	protected Database<?> rdb;
 	protected JoinSpecification type;
+	protected List<Name> usingSpec;
+	protected ExpressionNode onClause;
 
 	protected ListOfPairs<PEColumn, PEColumn> joinExpressions;
 
-	public EquijoinInfo(PEAbstractTable<?> l, PEAbstractTable<?> r, JoinSpecification spec, SchemaContext sc) {
+	public EquijoinInfo(PEAbstractTable<?> l, PEAbstractTable<?> r, JoinSpecification spec, List<Name> usingSpec, ExpressionNode onClause, SchemaContext sc) {
 		lhs = l;
 		rhs = r;
 		joinExpressions = new ListOfPairs<PEColumn, PEColumn>();
 		type = spec;
 		this.ldb = lhs.getDatabase(sc);
 		this.rdb = rhs.getDatabase(sc);
+		this.usingSpec = usingSpec;
+		this.onClause = onClause;
 	}
 
 	public PEAbstractTable<?> getLHS() {
@@ -68,6 +76,14 @@ public class EquijoinInfo {
 
 	public JoinSpecification getType() {
 		return type;
+	}
+
+	public List<Name> getUsingSpecNames() {
+		return usingSpec;
+	}
+
+	public ExpressionNode getOnClause() {
+		return onClause;
 	}
 
 	protected void addJoinExpression(ColumnInstance lc, ColumnInstance rc) {
