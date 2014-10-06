@@ -38,9 +38,9 @@ import java.util.TreeMap;
 
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.MathUtils;
-import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -70,6 +70,8 @@ import com.tesora.dve.tools.analyzer.stats.StatementAnalysis;
 import com.tesora.dve.tools.analyzer.stats.StatsVisitor;
 
 public class CorpusStats implements StatsVisitor {
+
+	private static final Logger logger = Logger.getLogger(CorpusStats.class);
 
 	static final class TableSizeComparator implements Comparator<TableStats> {
 
@@ -1171,7 +1173,7 @@ public class CorpusStats implements StatsVisitor {
 						} else if (lhsJoinTable.equals(rightColumn.getTable()) && rhsJoinTable.equals(leftColumn.getTable())) {
 							joinColumns.add(rightColumn, leftColumn);
 						} else {
-							throw new PECodingException("Unknown table in the join-on clause.");
+							logger.warn("Unsupported join-on condition: " + func);
 						}
 					}
 				}
