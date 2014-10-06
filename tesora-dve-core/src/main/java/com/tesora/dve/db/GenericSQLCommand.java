@@ -31,6 +31,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -216,7 +217,7 @@ public class GenericSQLCommand {
 	}
 
 	public String getUnresolved() {
-		return new String(getUnresolvedAsBytes());
+		return new String(getUnresolvedAsBytes(), this.encoding);
 	}
 
 	public byte[] getUnresolvedAsBytes() {
@@ -404,77 +405,83 @@ public class GenericSQLCommand {
 				this.hasLimit);
 	}
 
-	public void display(SchemaContext sc, boolean preserveParamMarkers, String indent, List<String> lines) {
-		if (!this.hasLateResolution()) {
-			lines.add(new String(format));
-			return;
-		}
-
-		final List<byte[]> sqlFragments = new ArrayList<byte[]>();
-		final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
-		int currentByteArrayOffset = 0;
-		for (final OffsetEntry oe : entryMap.keySet()) {
-			final int tokenBytesPosition = this.entryMap.get(oe);
-			final String token = oe.getToken();
-			final byte[] tokenBytes = token.getBytes(this.encoding);
-			final byte[] originalPart = ArrayUtils.subarray(format, currentByteArrayOffset, tokenBytesPosition);
-			if (originalPart.length > 0) {
-				sqlFragments.add(originalPart);
-			}
-			if (oe.getKind().isLate()) {
-				// still need to get the next part of the format
-				sqlFragments.add(tokenBytes);
-			} else if (oe.getKind() == EntryKind.LITERAL) {
-				final LiteralOffsetEntry loe = (LiteralOffsetEntry) oe;
-				final StringBuilder buf = new StringBuilder();
-				emitter.emitLiteral(sc, loe.getLiteral(), buf);
-				sqlFragments.add(buf.toString().getBytes(this.encoding));
-			} else if (oe.getKind() == EntryKind.PRETTY) {
-				// tie off the old one
-				if (getTotalBytes(sqlFragments) > 0) {
-					lines.add(new String(concatSQLFragments(sqlFragments)));
-				}
-				sqlFragments.clear();
-				final PrettyOffsetEntry poe = (PrettyOffsetEntry) oe;
-				final StringBuilder buf = new StringBuilder();
-				poe.addIndent(buf, indent);
-				sqlFragments.add(buf.toString().getBytes(this.encoding));
-			} else if (oe.getKind() == EntryKind.TEMPTABLE) {
-				final TempTableOffsetEntry ttoe = (TempTableOffsetEntry) oe;
-				sqlFragments.add(ttoe.getTempTable().getName(sc).get().getBytes(this.encoding));
-			} else if (oe.getKind() == EntryKind.PARAMETER) {
-				final ParameterOffsetEntry poe = (ParameterOffsetEntry) oe;
-				if (!preserveParamMarkers) {
-					// get the expr from the expr manager and swap it in
-					final Object o = sc.getValueManager().getValue(sc, poe.getParameter());
-					if (o != null) {
-						if (o.getClass().isArray()) {
-							sqlFragments.add(Tokens.SINGLE_QUOTE.getBytes(this.encoding));
-							sqlFragments.add((byte[]) o);
-							sqlFragments.add(Tokens.SINGLE_QUOTE.getBytes(this.encoding));
-						} else {
-							sqlFragments.add(String.valueOf(o).getBytes(this.encoding));
-						}
-					} else {
-						sqlFragments.add(Tokens.NULL.getBytes(this.encoding));
-					}
-				} else {
-					sqlFragments.add(Tokens.QUESTION_MARK.getBytes(this.encoding));
-				}
-			} else if (oe.getKind() == EntryKind.LATEVAR) {
-				final LateResolvingVariableOffsetEntry lrvoe = (LateResolvingVariableOffsetEntry) oe;
-				final Object value = lrvoe.expr.getValue(sc);
-				if (value != null) {
-					sqlFragments.add(PEStringUtils.singleQuote(value.toString()).getBytes(this.encoding));
-				} else {
-					sqlFragments.add(Tokens.NULL.getBytes(encoding));
-				}
-			}
-			currentByteArrayOffset = tokenBytesPosition + tokenBytes.length;
-		}
-		sqlFragments.add(ArrayUtils.subarray(format, currentByteArrayOffset, format.length));
-		lines.add(new String(concatSQLFragments(sqlFragments)));
+	public void display(final SchemaContext sc, final boolean preserveParamMarkers, final String indent, final List<String> lines) {
+		final GenericSQLCommand resolved = resolve(sc, preserveParamMarkers, indent);
+		final String resolvedAsString = resolved.getUnresolved();
+		lines.addAll(Arrays.asList(resolvedAsString.split(PEConstants.LINE_SEPARATOR)));
 	}
+
+	//	public void display(SchemaContext sc, boolean preserveParamMarkers, String indent, List<String> lines) {
+	//		if (!this.hasLateResolution()) {
+	//			lines.add(new String(format));
+	//			return;
+	//		}
+	//
+	//		final List<byte[]> sqlFragments = new ArrayList<byte[]>();
+	//		final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+	//		int currentByteArrayOffset = 0;
+	//		for (final OffsetEntry oe : entryMap.keySet()) {
+	//			final int tokenBytesPosition = this.entryMap.get(oe);
+	//			final String token = oe.getToken();
+	//			final byte[] tokenBytes = token.getBytes(this.encoding);
+	//			final byte[] originalPart = ArrayUtils.subarray(format, currentByteArrayOffset, tokenBytesPosition);
+	//			if (originalPart.length > 0) {
+	//				sqlFragments.add(originalPart);
+	//			}
+	//			if (oe.getKind().isLate()) {
+	//				// still need to get the next part of the format
+	//				sqlFragments.add(tokenBytes);
+	//			} else if (oe.getKind() == EntryKind.LITERAL) {
+	//				final LiteralOffsetEntry loe = (LiteralOffsetEntry) oe;
+	//				final StringBuilder buf = new StringBuilder();
+	//				emitter.emitLiteral(sc, loe.getLiteral(), buf);
+	//				sqlFragments.add(buf.toString().getBytes(this.encoding));
+	//			} else if (oe.getKind() == EntryKind.PRETTY) {
+	//				// tie off the old one
+	//				if (getTotalBytes(sqlFragments) > 0) {
+	//					lines.add(new String(concatSQLFragments(sqlFragments)));
+	//				}
+	//				sqlFragments.clear();
+	//				final PrettyOffsetEntry poe = (PrettyOffsetEntry) oe;
+	//				final StringBuilder buf = new StringBuilder();
+	//				poe.addIndent(buf, indent);
+	//				sqlFragments.add(buf.toString().getBytes(this.encoding));
+	//			} else if (oe.getKind() == EntryKind.TEMPTABLE) {
+	//				final TempTableOffsetEntry ttoe = (TempTableOffsetEntry) oe;
+	//				sqlFragments.add(ttoe.getTempTable().getName(sc).get().getBytes(this.encoding));
+	//			} else if (oe.getKind() == EntryKind.PARAMETER) {
+	//				final ParameterOffsetEntry poe = (ParameterOffsetEntry) oe;
+	//				if (!preserveParamMarkers) {
+	//					// get the expr from the expr manager and swap it in
+	//					final Object o = sc.getValueManager().getValue(sc, poe.getParameter());
+	//					if (o != null) {
+	//						if (o.getClass().isArray()) {
+	//							sqlFragments.add(Tokens.SINGLE_QUOTE.getBytes(this.encoding));
+	//							sqlFragments.add((byte[]) o);
+	//							sqlFragments.add(Tokens.SINGLE_QUOTE.getBytes(this.encoding));
+	//						} else {
+	//							sqlFragments.add(String.valueOf(o).getBytes(this.encoding));
+	//						}
+	//					} else {
+	//						sqlFragments.add(Tokens.NULL.getBytes(this.encoding));
+	//					}
+	//				} else {
+	//					sqlFragments.add(Tokens.QUESTION_MARK.getBytes(this.encoding));
+	//				}
+	//			} else if (oe.getKind() == EntryKind.LATEVAR) {
+	//				final LateResolvingVariableOffsetEntry lrvoe = (LateResolvingVariableOffsetEntry) oe;
+	//				final Object value = lrvoe.expr.getValue(sc);
+	//				if (value != null) {
+	//					sqlFragments.add(PEStringUtils.singleQuote(value.toString()).getBytes(this.encoding));
+	//				} else {
+	//					sqlFragments.add(Tokens.NULL.getBytes(encoding));
+	//				}
+	//			}
+	//			currentByteArrayOffset = tokenBytesPosition + tokenBytes.length;
+	//		}
+	//		sqlFragments.add(ArrayUtils.subarray(format, currentByteArrayOffset, format.length));
+	//		lines.add(new String(concatSQLFragments(sqlFragments)));
+	//	}
 
 	public GenericSQLCommand resolve(Map<Integer, String> rawRepls, SchemaContext sc) throws PEException {
 		if (!this.hasLateResolution()) {
