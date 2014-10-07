@@ -136,7 +136,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	@Override
 	public void displaySQL(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
 		ArrayList<String> sub = new ArrayList<String>();
-		sql.display(sc, false, "  ", sub);
+		sql.resolveAsTextLines(sc, false, "  ", sub);
 		for(String s : sub) {
 			buf.add(indent + "    " + s);
 		}

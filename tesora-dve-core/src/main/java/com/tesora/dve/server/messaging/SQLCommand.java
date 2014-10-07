@@ -112,10 +112,6 @@ public class SQLCommand implements Serializable {
 		return sql.getUnresolvedAsBytes();
 	}
 
-	public String getSQL(final Worker w) {
-		return sql.resolve(w);
-	}
-
 	public boolean isEmpty() {
 		return (sql == null) || sql.getUnresolved().isEmpty();
 	}
@@ -183,7 +179,7 @@ public class SQLCommand implements Serializable {
 	}
 
 	public SQLCommand getResolvedCommand(final Worker worker) {
-		final SQLCommand newCommand = new SQLCommand(sql.getResolvedCopy(worker));
+		final SQLCommand newCommand = new SQLCommand(sql.resolveLateEntries(worker));
 		newCommand.parameters = parameters;
 		newCommand.projection = projection;
 		newCommand.referenceTime = referenceTime;
