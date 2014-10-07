@@ -201,6 +201,10 @@ public class PEView extends Persistable<PEView,UserView> {
 		return algorithm;
 	}
 	
+	public void setAlgorithm(String v) {
+		algorithm = v;
+	}
+	
 	public String getCheckOption() {
 		return check;
 	}
@@ -209,6 +213,10 @@ public class PEView extends Persistable<PEView,UserView> {
 		return security;
 	}
 
+	public void setSecurity(String s) {
+		security = s;
+	}
+	
 	@Override
 	protected Class<? extends CatalogEntity> getPersistentClass() {
 		return UserView.class;

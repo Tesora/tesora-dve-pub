@@ -504,6 +504,7 @@ Signed_Float
   ALGORITHM                   :   A L G O R I T H M;
   ANALYZE                     :   A N A L Y Z E;
   AUTOINCREMENT               :   A U T O Underscore I N C R E M E N T;
+  BEFORE                      :   B E F O R E;
   BINARY                      :   B I N A R Y;
   BIT_AND                     :   B I T Underscore A N D;
   BIT_OR                      :   B I T Underscore O R;
@@ -526,6 +527,7 @@ Signed_Float
   DISABLE                     :   D I S A B L E;
   DUAL                        :   D U A L;
   DUPLICATE                   :   D U P L I C A T E;
+  EACH                        :   E A C H;
   ENABLE                      :   E N A B L E;
   ENCLOSED                    :   E N C L O S E D;
   ENGINE                      :   E N G I N E;

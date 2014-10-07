@@ -62,6 +62,7 @@ import com.tesora.dve.sql.schema.*;
 import com.tesora.dve.sql.schema.types.*;
 import com.tesora.dve.sql.schema.modifiers.*;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.MysqlSelectOption;
 import com.tesora.dve.sql.statement.session.*;
@@ -202,7 +203,7 @@ creatable_target returns [Statement s] options {k=1;}:
   { $s = utils.buildAlterTableStatement($altered_table.tk,utils.buildAddIndexAction(
       utils.buildKey(($f != null ? IndexType.FULLTEXT : $key_index_option.it), $indname.n, $key_list.l, $all_key_option_list.l)
       )); utils.popScope();}
-  | view_definition { $s = $view_definition.s; }
+  | view_or_trigger_definition { $s = $view_or_trigger_definition.s; }
   ;
 
 grantable_target returns [Statement s] options {k=1;}:
@@ -480,11 +481,6 @@ builtin_type_value_keyword options {k=1;}:
   | BINARY | UNSIGNED | SERIAL | BOOLEAN
   ;  
 
-field_width returns [SizeTypeAttribute ts] options {k=1;}:
-  Left_Paren a=unsigned_integral_literal (Comma b=unsigned_integral_literal)? Right_Paren 
-  { $ts = utils.buildSizeTypeAttribute($a.expr,$b.expr); }
-  ;
-
 field_modifier returns [TypeModifier tm] options {k=1;}:
 //  simple_unqualified_identifier { $cm = utils.buildColumnModifier($simple_unqualified_identifier.n); }
 //  | 
@@ -496,15 +492,6 @@ field_modifier returns [TypeModifier tm] options {k=1;}:
   | ((CHARACTER SET) | CHARSET) unqualified_identifier { $tm = utils.buildCharsetSpec($unqualified_identifier.n); } 
   | BINARY { $tm = utils.buildTypeModifier(TypeModifierKind.BINARY); }
   ;
-
-convert_type_description returns [Type type] options {k=1;}:
-  (cst=(BINARY | CHAR | DECIMAL) field_width? { $type = utils.buildType(Collections.singletonList(bkn($cst)),$field_width.ts,null); })
-  | (cust=(DATE | DATETIME | TIME) { $type = utils.buildType(Collections.singletonList(bkn($cust)), null, null); })
-  | ((s=SIGNED | UNSIGNED) INTEGER?  
-    { ArrayList l = new ArrayList();
-      l.add($s == null ? utils.buildTypeModifier(TypeModifierKind.UNSIGNED) : utils.buildTypeModifier(TypeModifierKind.SIGNED));
-      $type = utils.buildType(Collections.singletonList(utils.buildName("INTEGER")),null, l); })
-  ; 
 
 field_attribute returns [ColumnModifier cm] options {k=1;}: 
   (field_attribute_no_default { $cm = $field_attribute_no_default.cm; } )
@@ -639,15 +626,50 @@ key_part_spec returns [PEKeyColumnBase c] options {k=1;}:
   { $c = utils.buildPEKeyColumn($unqualified_identifier.n, $unsigned_integral_literal.expr, $key_cardinality.expr); }
   ;
 
-view_definition returns [Statement s] options {k=1;}:
-  (OR (r=REPLACE))? algorithm_clause? definer_clause? security_clause? 
+// view and trigger are ambiguous in the first few tokens.  fun!
+view_or_trigger_definition returns [Statement s] options {k=1;}:
+  (OR (r=REPLACE))? algorithm_clause? definer_clause? security_clause?
+  (vdb=view_def_body | tdb=trigger_def_body)
+  { $s = utils.addViewTriggerFields(
+      ($vdb.s != null ? $vdb.s : $tdb.s),
+      $r != null, $algorithm_clause.a, $definer_clause.us, $security_clause.s); }
+  ;
+  
+view_def_body returns [Statement s] options {k=1;}:
   VIEW qualified_identifier (Left_Paren unqualified_identifier_list Right_Paren)? AS select_statement with_clause?
   (TABLE push_scope Left_Paren table_define_fields Right_Paren)?
-  { $s = utils.buildCreateViewStatement($qualified_identifier.n, $select_statement.s, 
-       $definer_clause.us, $unqualified_identifier_list.l, 
-       $r != null, $algorithm_clause.a, $security_clause.s, $with_clause.s, $table_define_fields.l); 
+  { $s = utils.buildCreateViewStatementKern($qualified_identifier.n, $select_statement.s, 
+       $unqualified_identifier_list.l, 
+       $with_clause.s, $table_define_fields.l); 
        if ($table_define_fields.l != null) utils.popScope(); }
   ;
+  
+trigger_def_body returns [Statement s] options {k=1;}:
+  TRIGGER unqualified_identifier (b=BEFORE | AFTER) 
+  statement_type ON qualified_identifier FOR EACH ROW
+  (ps=sql_data_statement | c=compound_statement)
+  { $s = utils.buildCreateTrigger($unqualified_identifier.n,
+    $b != null,$statement_type.st, $qualified_identifier.n,
+    ($ps.s != null ? $ps.s : $c.s)); } 
+  ;
+
+statement_type returns [StatementType st] options {k=1;}:
+  (INSERT { $st = StatementType.INSERT; })
+  | (UPDATE { $st = StatementType.UPDATE; })
+  | (DELETE { $st = StatementType.DELETE; })
+  ;
+
+
+
+//view_definition returns [Statement s] options {k=1;}:
+//  (OR (r=REPLACE))? algorithm_clause? definer_clause? security_clause? 
+//  VIEW qualified_identifier (Left_Paren unqualified_identifier_list Right_Paren)? AS select_statement with_clause?
+//  (TABLE push_scope Left_Paren table_define_fields Right_Paren)?
+//  { $s = utils.buildCreateViewStatement($qualified_identifier.n, $select_statement.s, 
+//       $definer_clause.us, $unqualified_identifier_list.l, 
+//       $r != null, $algorithm_clause.a, $security_clause.s, $with_clause.s, $table_define_fields.l); 
+//       if ($table_define_fields.l != null) utils.popScope(); }
+//  ;
   
 algorithm_clause returns [String a] options {k=1;}:
   ALGORITHM Equals_Operator algorithm_type { $a = $algorithm_type.t; }
@@ -872,18 +894,6 @@ lhs_variable_ref returns [VariableInstance vi] options {k=1;}:
   (rhs_variable_ref { $vi = $rhs_variable_ref.vi; })
   | (variable_scope_kind? unqualified_identifier
      {$vi = utils.buildLHSVariableInstance(utils.buildVariableScope($variable_scope_kind.vsk),$unqualified_identifier.n,$unqualified_identifier.tree); })
-  ;
-  
-rhs_variable_ref returns [VariableInstance vi] options {k=1;}:
-  (f=AT_Sign (t=AT_Sign (variable_scope_kind Period)?)? unqualified_identifier
-  { $vi = utils.buildRHSVariableInstance($f,$t,$variable_scope_kind.vsk, $unqualified_identifier.n, $unqualified_identifier.tree); })
-  ;
-
-variable_scope_kind returns [VariableScopeKind vsk] options {k=1;}:
-  (GLOBAL { $vsk = VariableScopeKind.GLOBAL; })
-  | (SESSION { $vsk = VariableScopeKind.SESSION; })
-  | (DVE { $vsk = VariableScopeKind.SCOPED; })
-  | (LOCAL { $vsk = VariableScopeKind.SESSION; })
   ;
   
 charset_type returns [Name n] options {k=1;}:

@@ -172,7 +172,10 @@ import com.tesora.dve.sql.schema.PESiteInstance;
 import com.tesora.dve.sql.schema.PEStorageSite;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETemplate;
+import com.tesora.dve.sql.schema.PETrigger;
 import com.tesora.dve.sql.schema.PEUser;
+import com.tesora.dve.sql.schema.PEView;
+import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.PolicyClass;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.RangeDistribution;
@@ -219,6 +222,7 @@ import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementTraits;
+import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.ddl.AddGlobalVariableStatement;
 import com.tesora.dve.sql.statement.ddl.AddStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseStatement;
@@ -273,6 +277,7 @@ import com.tesora.dve.sql.statement.ddl.alter.DropColumnAction;
 import com.tesora.dve.sql.statement.ddl.alter.DropIndexAction;
 import com.tesora.dve.sql.statement.ddl.alter.RenameTableAction;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
+import com.tesora.dve.sql.statement.dml.CompoundStatement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;
 import com.tesora.dve.sql.statement.dml.InsertIntoSelectStatement;
@@ -4216,12 +4221,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new PEAlterRawPlanStatement(perp,fields[1],(fields[2] == null ? null : Boolean.valueOf(fields[2])),fields[0]);
 	}
 	
-	public Statement buildCreateViewStatement(Name viewName, ProjectingStatement viewDef, 
-			UserScope definer, List<UnqualifiedName> colNames,
-			boolean orReplace, String algo, String security, String checkOption,
-			List<TableComponent<?>> colDefs) {
-		return PECreateViewStatement.build(pc, viewName, viewDef, definer, colNames,
-				algo, security, checkOption, orReplace, colDefs);
+	public Statement buildCreateViewStatementKern(Name viewName, ProjectingStatement viewDef,
+			List<UnqualifiedName> columnNames, String checkOption, List<TableComponent<?>> colDefs) {
+		return PECreateViewStatement.build(pc,viewName,viewDef,columnNames,checkOption,colDefs);
 	}
 	
 	public Statement buildDropViewStatement(Name viewName, boolean ifExists) {
@@ -4322,4 +4324,61 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return supportedCollations;
 	}
 
+	public Statement buildCompoundStatement(List<Statement> stmts) {
+		return new CompoundStatement(null,stmts,null);
+	}
+	
+	public Statement buildCreateTrigger(Name triggerName, boolean isBefore, StatementType triggerType,
+			Name targetTable, Statement body) {
+		return null;
+	}
+	
+	public Statement addViewTriggerFields(Statement in, boolean createOrReplace, String algo, UserScope definer, String security) {
+		PECreateStatement pect = (PECreateStatement) in;
+		Persistable pt = pect.getCreated();
+		
+		PEUser user = null;
+		if (definer == null || pc.getOptions().isIgnoreMissingUser())
+			user = pc.getCurrentUser().get(pc);
+		else {
+			user = pc.findUser(definer.getUserName(), definer.getScope());
+			if (user == null)
+				throw new SchemaException(Pass.SECOND, "No such user: " + definer.getSQL());
+		}
+
+		
+		if (pt instanceof PEView) {
+			PECreateViewStatement cvs = (PECreateViewStatement) pect;
+			PEView pev = (PEView) pt;
+			pev.setUser(pc, user, false);
+			
+			PEDatabase theDB = cvs.getDatabase(pc);
+
+			PEAbstractTable<?> existing = pc.findTable(PEAbstractTable.getTableKey(theDB, pev.getName()));
+			if (existing != null && !createOrReplace) {
+				throw new SchemaException(Pass.SECOND, "View " + pev.getName() + " already exists");
+			}
+
+			if (createOrReplace) {
+				((PECreateViewStatement)pect).setCreateOrReplace();
+			}
+			
+			String algorithm = (algo == null ? "UNDEFINED" : algo);
+			String sec = (security == null ? "DEFINER" : security);
+
+			pev.setAlgorithm(algorithm);
+			pev.setSecurity(sec);
+			
+		} else {
+			PETrigger trig = (PETrigger) pt;
+			trig.setUser(pc,user);
+			if (createOrReplace || algo != null || security != null) {
+				// TODO:
+				// come back and put in the right error message
+				throw new SchemaException(Pass.FIRST, "Illegal syntax");
+			}
+		}
+		return pect;
+	}
+	
 }
