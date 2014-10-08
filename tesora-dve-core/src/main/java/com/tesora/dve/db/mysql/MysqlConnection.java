@@ -258,8 +258,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
                     else
                         channel.write(command);
                 } else {
-                    deferredException.printStackTrace(System.out);
-                    command.failure(deferredException); //if we are using the deferred error handle again, we'll just defer the exception again.
+                    command.getResponseProcessor().failure(deferredException); //if we are using the deferred error handle again, we'll just defer the exception again.
                 }
             } else {
                 command.getResponseProcessor().failure(new PECommunicationsException("Channel closed: " + connection));

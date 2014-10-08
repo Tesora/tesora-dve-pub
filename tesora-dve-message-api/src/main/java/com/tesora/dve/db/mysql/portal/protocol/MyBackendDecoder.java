@@ -26,6 +26,7 @@ import com.tesora.dve.mysqlapi.repl.messages.MyComBinLogDumpRequest;
 import com.tesora.dve.mysqlapi.repl.messages.MyComRegisterSlaveRequest;
 import com.tesora.dve.mysqlapi.repl.messages.MyReplEvent;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.ByteToMessageDecoder;
 

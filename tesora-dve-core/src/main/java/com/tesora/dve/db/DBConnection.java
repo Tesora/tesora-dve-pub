@@ -60,5 +60,4 @@ public interface DBConnection extends CommandChannel {
 	boolean hasPendingUpdate();
 	boolean hasActiveTransaction();
 	int getConnectionId();
-	public Charset lookupCurrentConnectionCharset();
 }

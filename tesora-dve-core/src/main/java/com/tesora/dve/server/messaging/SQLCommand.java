@@ -109,7 +109,8 @@ public class SQLCommand implements Serializable {
 		if (sql.hasLateResolution()) {
 			throw new IllegalStateException("Per site resolution required but no worker available");
 		}
-		return sql.getUnresolvedAsBytes();
+
+        return sql.getUnresolvedAsBytes();
 	}
 
 	public boolean isEmpty() {

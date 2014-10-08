@@ -76,30 +76,6 @@ public class WorkerExecuteRequest extends WorkerRequest {
 		}
 	}
 
-    private void rollbackToSavepoint(Worker w, String savepointId) throws PEException {
-        try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-            w.getStatement().execute(getConnectionId(), new SQLCommand("rollback to " + savepointId), DBEmptyTextResultConsumer.INSTANCE,promise);
-            promise.sync();
-        } catch (Exception e) {
-            throw new PEException(e);
-        }
-    }
-
-    private String executeSavepoint(Worker w) throws PEException {
-        String savepointId;
-        savepointId = "barrier" + w.getUniqueValue();
-
-        try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-            w.getStatement().execute(getConnectionId(), new SQLCommand("savepoint " + savepointId), DBEmptyTextResultConsumer.INSTANCE, promise);
-            promise.sync();
-        } catch (Exception e) {
-            throw new PEException(e);
-        }
-        return savepointId;
-    }
-
     @Override
 	public String toString() {
 		return new StringBuffer().append("WorkerExecuteRequest("+getCommand()+")").toString();

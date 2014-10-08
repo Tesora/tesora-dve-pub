@@ -82,8 +82,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
             };
             //TODO: ignores provided groupDispatch
             this.withGroupDispatch(results);
-			this.execute(getConnectionId(), new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), "XA RECOVER"), results,
-					recoverListSQL);
+            this.execute(w, new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()),"XA RECOVER"), recoverListSQL);
         } catch (Exception e) {
             callersResults.failure(e);
         }
@@ -119,7 +118,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
             recoverStatement = "XA ROLLBACK " + xid;
         //TODO: ignores provided groupDispatch
         this.withGroupDispatch(DBEmptyTextResultConsumer.INSTANCE);
-		this.execute(getConnectionId(), new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), recoverStatement),resultForCurrentItem);
+        this.execute(w, new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()),recoverStatement), resultForCurrentItem);
     }
 
     private List<Pair<String, Boolean>> buildRecoverList(Worker w, MysqlTextResultCollector results) {

@@ -22,7 +22,7 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
@@ -170,7 +170,7 @@ class RedistTargetSite implements AutoCloseable {
                             prepareFailed(error);
                         }
                     };
-                    MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(insertCommand.getSQL(), this.channel.getTargetCharset());
+                    MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(insertCommand.getSQL(), this.channel.lookupCurrentConnectionCharset());
                     MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
 
                     this.waitingForPrepare = true; //we flip this back when the prepare response comes back in.

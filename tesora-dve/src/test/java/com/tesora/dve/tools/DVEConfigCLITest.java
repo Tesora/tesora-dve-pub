@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.worker.WorkerFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;

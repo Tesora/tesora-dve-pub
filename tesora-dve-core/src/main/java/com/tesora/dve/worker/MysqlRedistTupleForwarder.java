@@ -27,6 +27,7 @@ import java.util.List;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtExecuteRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 

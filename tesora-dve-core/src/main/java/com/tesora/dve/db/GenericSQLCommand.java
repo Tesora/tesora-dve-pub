@@ -482,11 +482,11 @@ public class GenericSQLCommand {
 	 * Here we resolve late entries whose values depend on the worker/site they
 	 * execute on.
 	 */
-	public GenericSQLCommand resolveLateEntries(final Worker w) {
+	public GenericSQLCommand resolveLateEntries(final DBNameResolver w) {
 		return new GenericSQLCommand(this.encoding, this.numCharacters, this.resolveAsBytesOnWorker(w));
 	}
 
-	private byte[] resolveAsBytesOnWorker(final Worker w) {
+	private byte[] resolveAsBytesOnWorker(final DBNameResolver w) {
 		if (!this.hasLateResolution()) {
 			return format;
 		}

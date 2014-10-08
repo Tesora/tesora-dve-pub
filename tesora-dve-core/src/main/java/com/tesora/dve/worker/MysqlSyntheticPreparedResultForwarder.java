@@ -68,7 +68,7 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 			}
 		});
 
-        MysqlMessage prepareMessage = MSPComPrepareStmtRequestMessage.newMessage(sql.getSQL(), channel.getTargetCharset());
+        MysqlMessage prepareMessage = MSPComPrepareStmtRequestMessage.newMessage(sql.getSQL(), channel.lookupCurrentConnectionCharset());
         return new Bundle(prepareMessage, new MysqlStmtPrepareCommand(channel,sql.getSQL(), prepareCollector, preparePromise));
 	}
 
