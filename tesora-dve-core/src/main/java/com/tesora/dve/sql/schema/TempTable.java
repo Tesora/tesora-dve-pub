@@ -68,7 +68,8 @@ import com.tesora.dve.sql.util.ListSet;
 public final class TempTable extends PETable {
     static final TempColumnType NULL_COLUMN_TYPE = new TempColumnType(
             BasicType.buildType("SMALLINT", 0,
-                    Collections.singletonList(new TypeModifier(TypeModifierKind.UNSIGNED))).normalize()
+                    Collections.singletonList(new TypeModifier(TypeModifierKind.UNSIGNED)),
+                    Singletons.require(HostService.class).getDBNative().getTypeCatalog()).normalize()
     );
 
 	// the select this was based on

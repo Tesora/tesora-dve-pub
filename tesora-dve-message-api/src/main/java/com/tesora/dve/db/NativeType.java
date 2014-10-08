@@ -38,7 +38,8 @@ import com.tesora.dve.exceptions.PEException;
 public abstract class NativeType implements Serializable {
 	private static final long serialVersionUID = 1L;
 
-	private String typeName;
+	// simple type name, i.e. varchar, varbinary, enum, set, float
+	private String typeName; 
 	private int nativeTypeId;
 	private int dataType;
 	private boolean jdbcType;
@@ -505,6 +506,10 @@ public abstract class NativeType implements Serializable {
 		return "";
 	}
 		
+	public int getDefaultColumnAttrFlags() {
+		return 0;
+	}
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;

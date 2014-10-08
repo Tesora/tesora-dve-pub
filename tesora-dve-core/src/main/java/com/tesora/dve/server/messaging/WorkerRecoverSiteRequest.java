@@ -26,19 +26,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.sql.util.Pair;
-import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.DevXid;
+import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.Worker;
 
 public class WorkerRecoverSiteRequest extends WorkerRequest {
@@ -81,7 +82,8 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
             };
             //TODO: ignores provided groupDispatch
             this.withGroupDispatch(results);
-            this.execute(w, new SQLCommand("XA RECOVER"), recoverListSQL);
+			this.execute(getConnectionId(), new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), "XA RECOVER"), results,
+					recoverListSQL);
         } catch (Exception e) {
             callersResults.failure(e);
         }
@@ -117,7 +119,7 @@ public class WorkerRecoverSiteRequest extends WorkerRequest {
             recoverStatement = "XA ROLLBACK " + xid;
         //TODO: ignores provided groupDispatch
         this.withGroupDispatch(DBEmptyTextResultConsumer.INSTANCE);
-        this.execute(w, new SQLCommand(recoverStatement), resultForCurrentItem);
+		this.execute(getConnectionId(), new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), recoverStatement),resultForCurrentItem);
     }
 
     private List<Pair<String, Boolean>> buildRecoverList(Worker w, MysqlTextResultCollector results) {

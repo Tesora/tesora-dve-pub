@@ -33,8 +33,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.testng.annotations.AfterClass;
@@ -50,20 +48,38 @@ import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.template.TemplateBuilder;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.test.simplequery.SimpleQueryTest;
 
 @Test(groups = { "NonSmokeTest" })
 public class ClientTestNG extends PETest {
 	static DBHelper dbHelper;
 
 	@BeforeClass
-	public static void startup() throws Exception {
+	public static void startup() throws Throwable {
 
-		TestCatalogHelper.createTestCatalog(PETest.class, 2);
+		TestCatalogHelper.createTestCatalog(PETest.class);
 		BootstrapHost.startServices(PETest.class);
 
-        populateMetadata(ClientTestNG.class, Singletons.require(HostService.class).getProperties());
+		SimpleQueryTest.cleanupSites(6, "TestDB","d7test");
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.createSites(2, pcr);
+		SimpleQueryTest.createGroupAndTestDB(2, pcr);
+		
+		pcr.execute("create table alltypes ( bit_column bit,tinyint_column tinyint,bigint_column bigint,"
+						+"longvarb_column long varbinary,varb_column varbinary(200),binary_column binary(10),"
+						+"text_column text,	char_column char(10),num_column numeric(10,2),dec_column decimal(5,4),"
+						+"int_column integer,smallint_column smallint,float_column float,double_column double,"
+						+"varchar_column varchar(10),date_column date,time_column time,	datetime_column datetime,"
+						+"intu_column integer unsigned,	bigintu_column bigint unsigned "
+						+") engine=innodb random distribute");
+		pcr.disconnect();
+		
+//        populateMetadata(ClientTestNG.class, Singletons.require(HostService.class).getProperties());
         populateSites(ClientTestNG.class, Singletons.require(HostService.class).getProperties());
 	}
 	
@@ -206,7 +222,7 @@ public class ClientTestNG extends PETest {
 				.executeQuery("INSERT INTO simpletest_test_id (last_prefix, null_column) VALUES (default, NULL), (default, 'nonull')"));
 		assertFalse(dbHelper
 				.executeQuery("INSERT INTO simpletest_test_id (test_id, last_prefix) VALUES (10,'hi'), (default,'there'), (default, default)"));
-		assertEquals(5, dbHelper.getLastInsertID());
+		assertEquals(3, dbHelper.getLastInsertID());
 
 		assertTrue(dbHelper.executeQuery("SELECT * FROM simpletest_test_id"));
 		int rows = countResultSetRows(dbHelper.getResultSet());

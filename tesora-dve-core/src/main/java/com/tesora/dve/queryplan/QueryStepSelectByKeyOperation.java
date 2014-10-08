@@ -23,8 +23,6 @@ package com.tesora.dve.queryplan;
 
 import javax.xml.bind.annotation.XmlType;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
@@ -32,8 +30,10 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.worker.MysqlParallelResultConsumer;
 import com.tesora.dve.worker.WorkerGroup;
@@ -56,9 +56,9 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 		this.distValue = distValue;
 	}
 
-	public QueryStepSelectByKeyOperation(PersistentDatabase execCtxDBName, IKeyValue distValue, String command) 
+	public QueryStepSelectByKeyOperation(final SSConnection ssCon, PersistentDatabase execCtxDBName, IKeyValue distValue, String command)
 			throws PEException {
-		this(execCtxDBName, distValue, new SQLCommand(command));
+		this(execCtxDBName, distValue, new SQLCommand(ssCon, command));
 	}
 	
 	@Override

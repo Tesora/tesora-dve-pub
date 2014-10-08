@@ -52,6 +52,8 @@ import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -178,7 +180,8 @@ public class SimpleMultitenantTest extends MultitenantTest {
 		CatalogDAO cat = CatalogDAOFactory.newInstance();
 		// find the db with name
 		UserDatabase edb = cat.findDatabase("mtdb");
-		SchemaContext sc = SchemaContext.createContext(cat);
+		SchemaContext sc = SchemaContext.createContext(cat,
+				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
 		sc.setOptions(ParserOptions.NONE);
 		PEDatabase ped = sc.findPEDatabase(new UnqualifiedName("mtdb"));
 		sc.setCurrentDatabase(ped);
@@ -325,8 +328,8 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			tenantConnection.execute("create table adblock (`bid` int(11) not null auto_increment, `blech` varchar(32) not null)");
 			tenantConnection.assertResults("show tables like 'block'", one);
 			tenantConnection.assertResults("show tables like 'adblock'",br(nr,"adblock"));
-			tenantConnection.assertResults("show tables", br(nr,"block",nr,"adblock"));
-			tenantConnection.assertResults("show tables like '%blo%'", br(nr,"block",nr,"adblock"));
+			tenantConnection.assertResults("show tables", br(nr,"adblock",nr,"block"));
+			tenantConnection.assertResults("show tables like '%blo%'", br(nr,"adblock",nr,"block"));
 			tenantConnection.assertResults("show tables like '%ad%'", br(nr,"adblock"));
 			Object[] fullBlockCols = 
 				br(nr,"bid",getIgnore(),getIgnore(),getIgnore(),getIgnore(),getIgnore(),
@@ -589,10 +592,10 @@ public class SimpleMultitenantTest extends MultitenantTest {
 		tenantConnection.execute("use " + tenantNames[1]);
 		tenantConnection.execute("drop table st1");
 		rootConnection.assertResults("select count(*) from " + mangledNames.get("st1"),br(nr,new Long(7)));
-		tenantConnection.assertResults("show tables",br(nr,"st2",nr,"st3",nr,"pt1"));
+		tenantConnection.assertResults("show tables",br(nr,"pt1",nr,"st2",nr,"st3"));
 		becomeLT();
 		tenantConnection.execute("drop table st2");
-		tenantConnection.assertResults("show tables",br(nr,"st3",nr,"pt1"));
+		tenantConnection.assertResults("show tables",br(nr,"pt1",nr,"st3"));
 		becomeL();
 		rootConnection.execute("drop database " + tenantNames[1]);
 		rootConnection.assertResults("select count(*) from " + mangledNames.get("st1"),br(nr,new Long(7)));

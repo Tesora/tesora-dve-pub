@@ -116,11 +116,7 @@ public class TempTableDeclHints extends TableHints {
 			String cn = me.getKey();
 			TempTableColumnHints ttch = me.getValue();
 			UserColumn uc = ut.getUserColumn(cn);
-			if (ttch.isZeroFilled()) {
-				String ntm = uc.getNativeTypeModifiers();
-				String nntm = (ntm == null ? "zerofill" : ntm + " zerofill");
-				uc.setNativeTypeModifiers(nntm);				
-			}
+			uc.setZerofill(ttch.isZeroFilled());
 			if (ttch.getCharset() != null) {
 				uc.setCharset(ttch.getCharset());
 			}

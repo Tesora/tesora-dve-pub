@@ -29,9 +29,10 @@ import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.IntermediateResultSet;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.parser.CandidateParser;
 import com.tesora.dve.sql.parser.ExtractedLiteral;
 import com.tesora.dve.sql.parser.SourceLocation;
@@ -179,7 +180,11 @@ public final class ExecToRawConverter {
 		for(ExecutionStep es : stepsInOrder) {
 			StepType out = null;
 			if (es instanceof AbstractProjectingExecutionStep) {
-				out = buildProjectingStep((AbstractProjectingExecutionStep)es);
+				try {
+					out = buildProjectingStep((AbstractProjectingExecutionStep) es);
+				} catch (final PEException e) {
+					throw new SchemaException(Pass.PLANNER, e);
+				}
 			} else if (es instanceof UpdateExecutionStep || es instanceof DeleteExecutionStep) {
 				out = buildUpdateStep((DirectExecutionStep)es);
 			} else if (es instanceof TransactionExecutionStep) {
@@ -206,7 +211,7 @@ public final class ExecToRawConverter {
 		}
 	}
 	
-	private StepType buildProjectingStep(AbstractProjectingExecutionStep pes) {
+	private StepType buildProjectingStep(AbstractProjectingExecutionStep pes) throws PEException {
 		ProjectingStepType out = new ProjectingStepType();
 		if (pes instanceof RedistributionExecutionStep) {
 			RedistributionExecutionStep redist = (RedistributionExecutionStep) pes;
@@ -224,7 +229,7 @@ public final class ExecToRawConverter {
 		return null;
 	}
 	
-	private void fillDML(DMLStepType dmlt, DirectExecutionStep des, DMLType action) {
+	private void fillDML(DMLStepType dmlt, DirectExecutionStep des, DMLType action) throws PEException {
 		dmlt.setAction(action);
 		PEStorageGroup src = des.getPEStorageGroup();
 		PEStorageGroup actual = src.getPEStorageGroup(sc);
@@ -276,12 +281,12 @@ public final class ExecToRawConverter {
 		return out;
 	}
 	
-	private String parameterize(GenericSQLCommand in) {
+	private String parameterize(GenericSQLCommand in) throws PEException {
 		Map<Integer, String> mapping = new HashMap<Integer, String>();
-		for(Map.Entry<IDelegatingLiteralExpression, ParameterType> me : parameters.entrySet()) {
+		for (Map.Entry<IDelegatingLiteralExpression, ParameterType> me : parameters.entrySet()) {
 			mapping.put(me.getKey().getPosition(), "@" + me.getValue().getName());
 		}
-		GenericSQLCommand p = in.resolve(mapping, sc);
+		GenericSQLCommand p = in.resolveRawEntries(mapping, sc);
 		return p.getUnresolved();
 	}
 }

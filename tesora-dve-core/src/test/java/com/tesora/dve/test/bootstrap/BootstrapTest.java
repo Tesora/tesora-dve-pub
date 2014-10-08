@@ -29,10 +29,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -41,6 +37,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentGroup;
@@ -51,7 +48,6 @@ import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.DistributionRange;
@@ -67,7 +63,12 @@ import com.tesora.dve.queryplan.QueryStepInsertByKeyOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSelectByKeyOperation;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.worker.MysqlTextResultChunkProvider;
@@ -107,10 +108,7 @@ public class BootstrapTest extends PETest {
 
 		bootHost = BootstrapHost.startServices(bootClass);
 		
-		catalogDAO = CatalogDAOFactory.newInstance();
         populateSites(BootstrapTest.class, Singletons.require(HostService.class).getProperties());
-		catalogDAO.close();
-		catalogDAO = null;
 	}
 
 	@AfterClass
@@ -330,7 +328,7 @@ public class BootstrapTest extends PETest {
 
 		UserTable foo = utilCreateTableTwoColumns(tableName, sg, dm, db);
 		QueryStepDDLOperation createTableDDL =
-				new QueryStepDDLOperation(db, new SQLCommand(foo.getCreateTableStmt()), null);
+				new QueryStepDDLOperation(db, new SQLCommand(ssConnection, foo.getCreateTableStmt()), null);
 		createTableDDL.addCatalogUpdate(foo);
 
 		WorkerGroup wg = WorkerGroupFactory.newInstance(ssConnection, sg, db);
@@ -366,7 +364,7 @@ public class BootstrapTest extends PETest {
 			for (int i = 0; i < 20; ++i) {
 				KeyValue dv = foo.getDistValue(ssConnection.getCatalogDAO());
 				dv.get("id").setValue(i);
-				qso = new QueryStepSelectByKeyOperation(db, dv,
+				qso = new QueryStepSelectByKeyOperation(ssConnection, db, dv,
 						"select * from " + foo.getNameAsIdentifier() + " where id = " + i);
 				results = new MysqlTextResultChunkProvider();
 				qso.execute(ssConnection, wg, results);
@@ -383,7 +381,7 @@ public class BootstrapTest extends PETest {
 				expCntSG = new PersistentGroup(sg.getStorageSites());
 
 			wg = WorkerGroupFactory.newInstance(ssConnection, expCntSG, db);
-			qso = new QueryStepSelectAllOperation(db, dm,
+			qso = new QueryStepSelectAllOperation(ssConnection, db, dm,
 					"select * from " + foo.getNameAsIdentifier());
 			results = new MysqlTextResultChunkProvider();
 			qso.execute(ssConnection, wg, results);
@@ -455,13 +453,13 @@ public class BootstrapTest extends PETest {
 		
 		UserTable foo = utilCreateTableTwoColumns(tableName1, sg, dm, db);
 		QueryStepDDLOperation createTable1DDL =
-				new QueryStepDDLOperation(db, new SQLCommand(foo.getCreateTableStmt()), null);
+				new QueryStepDDLOperation(db, new SQLCommand(ssConnection, foo.getCreateTableStmt()), null);
 		createTable1DDL.addCatalogUpdate(foo);
 		createTable1DDL.addCatalogUpdate(new RangeTableRelationship(foo, dr));
 
 		UserTable foobar = utilCreateTableTwoColumns(tableName2, sg, dm, db);
 		QueryStepDDLOperation createTable2DDL =
-				new QueryStepDDLOperation(db, new SQLCommand(foobar.getCreateTableStmt()), null);
+				new QueryStepDDLOperation(db, new SQLCommand(ssConnection, foobar.getCreateTableStmt()), null);
 		createTable2DDL.addCatalogUpdate(foobar);
 		createTable2DDL.addCatalogUpdate(new RangeTableRelationship(foobar, dr));
 
@@ -485,7 +483,7 @@ public class BootstrapTest extends PETest {
 		for (int i = 0; i < 10; ++i) {
 			KeyValue dv = foo.getDistValue(ssConnection.getCatalogDAO());
 			dv.get("id").setValue(i);
-			QueryStepOperation qso = new QueryStepSelectByKeyOperation(db, dv, 
+			QueryStepOperation qso = new QueryStepSelectByKeyOperation(ssConnection, db, dv,
 					"select * from " + foo.getNameAsIdentifier() + " foo, " + foobar.getNameAsIdentifier() + " foobar where foo.id=foobar.id and foo.id = " + i);
 			results = new MysqlTextResultChunkProvider();
 			qso.execute(ssConnection, wg, results);
@@ -545,7 +543,7 @@ public class BootstrapTest extends PETest {
 			for (int i = 0; i < 20; ++i) {
 				KeyValue dv = foo.getDistValue(ssConnection.getCatalogDAO());
 				dv.get("id").setValue(i);
-				QueryStepOperation qso = new QueryStepSelectByKeyOperation(db, dv, 
+				QueryStepOperation qso = new QueryStepSelectByKeyOperation(ssConnection, db, dv,
 						"select * from " + foo.getNameAsIdentifier() + " where id = " + i);
 				results = new MysqlTextResultChunkProvider();
 				qso.execute(ssConnection, wg, results);
@@ -558,7 +556,7 @@ public class BootstrapTest extends PETest {
 		PersistentGroup lastGenSG = new PersistentGroup(sg.getLastGen().getStorageSites());
 		wg = WorkerGroupFactory.newInstance(ssConnection, lastGenSG, db);
 		try {
-			QueryStepOperation qso = new QueryStepSelectAllOperation(db, dm, 
+			QueryStepOperation qso = new QueryStepSelectAllOperation(ssConnection, db, dm,
 					"select * from " + foo.getNameAsIdentifier());
 			results = new MysqlTextResultChunkProvider();
 			qso.execute(ssConnection, wg, results);
@@ -572,7 +570,7 @@ public class BootstrapTest extends PETest {
 		KeyValue dv = ut.getDistValue(ssConnection.getCatalogDAO());
 		dv.get("id").setValue(id);
 		QueryStepOperation qso = 
-				new QueryStepInsertByKeyOperation(db, dv,
+				new QueryStepInsertByKeyOperation(ssConnection, db, dv,
 						"insert into " + ut.getNameAsIdentifier() + " values (" + id + ", 'value" + id + "')");
 		qso.execute(ssConnection, wg, results);
 	}

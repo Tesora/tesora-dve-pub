@@ -29,13 +29,15 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import com.tesora.dve.db.mysql.common.ColumnAttributes;
+
 public class ColumnSetTest {
 
 	@Test
 	public void basicTest() {
 
 		ColumnSet cs = new ColumnSet();
-		ColumnMetadata cm = new ColumnMetadata("col1", Types.INTEGER, "integer");
+		ColumnMetadata cm = new ColumnMetadata("col1", ColumnAttributes.SIZED_TYPE, Types.INTEGER, "integer");
 		cm.setSize(10);
 		cm.setAliasName("intcol1");
 		cs.addColumn(cm);

@@ -83,6 +83,31 @@ public class MySQLErrors {
 					"Comment for field '%s' is too long (max = %d).",
 					1629,
 					"HY000");
+	public static final ErrorCodeFormatter nonUniqueTableFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.NON_UNIQUE_TABLE,
+					"Not unique table/alias: '%s'",
+					1066,
+					"42000");
+	public static final ErrorCodeFormatter unknownCharacterSetFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_CHARACTER_SET,
+					"Unknown character set: '%s'",
+					1115,
+					"42000");
+	public static final ErrorCodeFormatter unknownCollationFormatter =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_COLLATION,
+					"Unknown collation: '%s'",
+					1273,
+					"HY000");
+	public static final ErrorCodeFormatter wrongValueForVariable =
+			new TwoParamErrorCodeFormatter<String, String>(DVEErrors.WRONG_VALUE_FOR_VARIABLE,
+					"Variable '%s' can't be set to the value of '%s'",
+					1231,
+					"42000");
+	public static final ErrorCodeFormatter wrongTypeForVariable =
+			new OneParamErrorCodeFormatter<String>(DVEErrors.WRONG_TYPE_FOR_VARIABLE,
+					"Incorrect argument type to variable '%s'",
+					1232,
+					"42000");
 			
 	
 	public static final ErrorCodeFormatter[] myFormatters = new ErrorCodeFormatter[] {
@@ -98,7 +123,12 @@ public class MySQLErrors {
 		unknownSysVarFormatter,
 		internalFormatter,
 		tooLongTableCommentFormatter,
-		tooLongTableFieldCommentFormatter
+		tooLongTableFieldCommentFormatter,
+		nonUniqueTableFormatter,
+		unknownCharacterSetFormatter,
+		unknownCollationFormatter,
+		wrongValueForVariable,
+		wrongTypeForVariable
 	};
 
 			

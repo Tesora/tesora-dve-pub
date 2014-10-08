@@ -46,13 +46,14 @@ import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeTypeCatalog;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.ConnectionResource;
+import com.tesora.dve.sql.util.JdbcConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
+import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResourceResponse;
 import com.tesora.dve.sql.util.ResourceResponse;
@@ -172,19 +173,19 @@ public class TestCreates extends SchemaTest {
 		testCreateWithStorageEngine("ARCHIVE");
 		testCreateWithStorageEngine("CSV");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				testCreateWithStorageEngine("BLACKHOLE");
 			}
-		}.assertException(PEException.class, "Invalid value for 'storage_engine' (allowed values are INNODB, MEMORY, MYISAM, ARCHIVE, CSV)");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "storage_engine", "BLACKHOLE");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				testCreateWithStorageEngine("FEDERATED");
 			}
-		}.assertException(PEException.class, "Invalid value for 'storage_engine' (allowed values are INNODB, MEMORY, MYISAM, ARCHIVE, CSV)");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "storage_engine", "FEDERATED");
 	}
 
 	private void testCreateWithStorageEngine(final String engine) throws Throwable {
@@ -210,8 +211,8 @@ public class TestCreates extends SchemaTest {
 	public void testFulltextIndex() throws Throwable {
 		rootConnection.execute("create table ftitest (`id` int, `partay` text, `partee` text, fulltext index `dict` (`partay`, `partee`)) engine=myisam");
 		rootConnection.assertResults("show keys in ftitest",
-				br(nr,"ftitest",I_ONE,"dict",new Integer(1),"partay",null,getIgnore(),null,null,"YES","FULLTEXT","","",
-				   nr,"ftitest",I_ONE,"dict",new Integer(2),"partee",null,getIgnore(),null,null,"YES","FULLTEXT","",""));
+				br(nr,"ftitest",1,"dict",1,"partay",null,getIgnore(),null,null,"YES","FULLTEXT","","",
+				   nr,"ftitest",1,"dict",2,"partee",null,getIgnore(),null,null,"YES","FULLTEXT","",""));
 	}
 	
 	@Test
@@ -382,7 +383,7 @@ public class TestCreates extends SchemaTest {
 		String cts = AlterTest.getCreateTable(rootConnection, "colpref");
 		assertTrue("should have prefix",cts.indexOf("`body`(200)") > -1);
 		rootConnection.assertResults("show keys in colpref",
-				br(nr,"colpref",I_ZERO,"body",I_ONE,"body","A",getIgnore(),new Integer(200),null,"YES","BTREE","",""));
+				br(nr,"colpref",0,"body",1,"body","A",getIgnore(),new Integer(200),null,"YES","BTREE","",""));
 	}
 
 	@Test
@@ -451,16 +452,16 @@ public class TestCreates extends SchemaTest {
 	public void testPE339() throws Throwable {
 		rootConnection.execute("create table pe339 (a int, unique (a), b int not null, unique(b), c int not null, index(c))");
 		rootConnection.assertResults("show keys in pe339",
-				br(nr,"pe339",I_ZERO,"a",I_ONE,"a","A",getIgnore(),null,null,"YES","BTREE","","",
-				   nr,"pe339",I_ZERO,"b",I_ONE,"b","A",getIgnore(),null,null,"","BTREE","","",
-				   nr,"pe339",I_ONE,"c",I_ONE,"c","A",getIgnore(),null,null,"","BTREE","",""));
+				br(nr,"pe339",0,"a",I_ONE,"a","A",getIgnore(),null,null,"YES","BTREE","","",
+				   nr,"pe339",0,"b",I_ONE,"b","A",getIgnore(),null,null,"","BTREE","","",
+				   nr,"pe339",1,"c",I_ONE,"c","A",getIgnore(),null,null,"","BTREE","",""));
 	}
 	
 	@Test
 	public void testPE329() throws Throwable {
 		rootConnection.execute("create table pe329 (a int not null, b int not null, primary key using BTREE (a))");
 		rootConnection.assertResults("show keys in pe329",
-				br(nr,"pe329",new Integer(0),"PRIMARY",new Integer(1),"a","A",getIgnore(),null, null, "", "BTREE", "", ""));
+				br(nr,"pe329",0,"PRIMARY",new Integer(1),"a","A",getIgnore(),null, null, "", "BTREE", "", ""));
 	}
 	
 	@Test
@@ -470,7 +471,7 @@ public class TestCreates extends SchemaTest {
 			rootConnection.execute("create table pe330 (c1 varchar(10) not null, index i1 (c1) comment 'c1')");
 			assertTrue("still has comment decl",AlterTest.getCreateTable(rootConnection,"pe330").indexOf("COMMENT 'c1'") > -1);
 			rootConnection.assertResults("show keys in pe330",
-					br(nr,"pe330",I_ONE,"i1",I_ONE,"c1","A",getIgnore(),null,null,"","BTREE","","c1"));
+					br(nr,"pe330",1,"i1",I_ONE,"c1","A",getIgnore(),null,null,"","BTREE","","c1"));
 		}
 	}
 	
@@ -562,13 +563,15 @@ public class TestCreates extends SchemaTest {
 	public void testPE214() throws Throwable {
 		rootConnection.execute("create table pe214a (a int primary key, b int unique key, c int key)");
 		rootConnection.assertResults("show keys in pe214a",
-				br(nr,"pe214a",I_ZERO,"b",I_ONE,"b","A",getIgnore(),null,null,"YES","BTREE","","",
-				   nr,"pe214a",I_ONE,"c",I_ONE,"c","A",getIgnore(),null,null,"YES","BTREE","","",
-				   nr,"pe214a",I_ZERO,"PRIMARY",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","",""));
+				br(nr,"pe214a",0,"PRIMARY",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","","",
+				   nr,"pe214a",0,"b",I_ONE,"b","A",getIgnore(),null,null,"YES","BTREE","","",
+				   nr,"pe214a",1,"c",I_ONE,"c","A",getIgnore(),null,null,"YES","BTREE","",""
+				   ));
 		rootConnection.execute("create table pe214b (a int unique key primary key)");
 		rootConnection.assertResults("show keys in pe214b",
-				br(nr,"pe214b",I_ZERO,"a",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","","",
-				   nr,"pe214b",I_ZERO,"PRIMARY",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","",""));
+				br(nr,"pe214b",0,"PRIMARY",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","","",
+				   nr,"pe214b",0,"a",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","",""				   
+				   ));
 	}
 	
 	@Test
@@ -1091,12 +1094,11 @@ public class TestCreates extends SchemaTest {
 	@Test
 	public void testDVE1592() throws Throwable {
 		rootConnection.execute("create table dve1592 (id int primary key, fid int unique, sid int key)");
-//		System.out.println(rootConnection.printResults("show create table dve1592"));
-//		System.out.println(rootConnection.printResults("show keys in dve1592"));
 		rootConnection.assertResults("show keys in dve1592",
-				br(nr,"dve1592",0,"fid",1,"fid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore,
-				   nr,"dve1592",0,"PRIMARY",1,"id",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore,
-				   nr,"dve1592",1,"sid",1,"sid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore));
+				br(nr,"dve1592",0,"PRIMARY",1,"id",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore,
+				   nr,"dve1592",0,"fid",1,"fid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore,				   
+				   nr,"dve1592",1,"sid",1,"sid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore
+				   ));
 	}
 	
 	@Test
@@ -1112,5 +1114,31 @@ public class TestCreates extends SchemaTest {
 								+ ") COMMENT='abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd'");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.tooLongTableCommentFormatter, "t1", 2048L);
+	}
+
+	@Test
+	public void testPE1651() throws Throwable {
+		try (final JdbcConnectionResource rc = new PortalDBHelperConnectionResource()) {
+			rc.connect();
+
+			rc.execute("SET NAMES utf8");
+			rc.execute("SET character_set_database = utf8");
+
+			rc.execute("DROP DATABASE IF EXISTS `ﾆﾎﾝｺﾞ`");
+			rc.execute("DROP DATABASE IF EXISTS `日本語`");
+			rc.execute("DROP DATABASE IF EXISTS `龔龖龗`");
+
+			rc.execute("CREATE DATABASE `ﾆﾎﾝｺﾞ` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + " USING TEMPLATE OPTIONAL");
+			rc.execute("CREATE DATABASE `日本語` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + "  USING TEMPLATE OPTIONAL");
+			rc.execute("CREATE DATABASE `龔龖龗` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + "  USING TEMPLATE OPTIONAL");
+
+			rc.execute("USE `ﾆﾎﾝｺﾞ`");
+			rc.execute("USE `日本語`");
+			rc.execute("USE `龔龖龗`");
+
+			rc.execute("DROP DATABASE `ﾆﾎﾝｺﾞ`");
+			rc.execute("DROP DATABASE `日本語`");
+			rc.execute("DROP DATABASE `龔龖龗`");
+		}
 	}
 }

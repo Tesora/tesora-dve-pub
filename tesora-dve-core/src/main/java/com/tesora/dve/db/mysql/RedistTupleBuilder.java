@@ -32,8 +32,15 @@ import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import com.tesora.dve.queryplan.TableHints;
 import com.tesora.dve.worker.MysqlRedistTupleForwarder;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.CharsetUtil;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -260,7 +267,7 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
         return rowSetMetadata;
     }
 
-    public SQLCommand buildInsertStatement(int tupleCount) throws PEException {
+	public SQLCommand buildInsertStatement(int tupleCount) throws PEException {
         SQLCommand insertCommand;
         if (tupleCount == maximumRowCount && insertStatementFuture != null) {
             try {
@@ -272,7 +279,12 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
                 throw new PEException("Sync to redist insert statement interrupted", ie);
             }
         } else {
-            insertCommand = QueryStepMultiTupleRedistOperation.getTableInsertStatement(targetTable, insertOptions, rowSetMetadata, tupleCount, insertIgnore);
+			insertCommand = QueryStepMultiTupleRedistOperation.getTableInsertStatement(
+					/*
+					 * PerHostConnectionManager.INSTANCE.lookupConnection(targetWG
+					 * .getCommectionId())
+					 */CharsetUtil.UTF_8, targetTable, insertOptions, rowSetMetadata, tupleCount,
+					insertIgnore);
         }
         return insertCommand;
     }

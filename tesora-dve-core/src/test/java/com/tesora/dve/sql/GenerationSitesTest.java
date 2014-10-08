@@ -386,7 +386,6 @@ public class GenerationSitesTest extends SchemaTest {
 		conn.assertResults("select * from t1 order by a", br(nr, 93, 1, 1, nr, 3641, 1, 1));
 	}
 	
-	@Ignore
 	@Test
 	public void test1390() throws Throwable {
 		try {
@@ -424,7 +423,6 @@ public class GenerationSitesTest extends SchemaTest {
 		}
 	}
 	
-	@Ignore
 	@Test
 	public void test1390MT() throws Throwable {
 		try {

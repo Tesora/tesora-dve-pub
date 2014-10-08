@@ -204,7 +204,7 @@ public class ClusterLockManager implements GroupTopicListener<ClusterLockManager
         ColumnSet cs = new ColumnSet();
         cs.addColumn("lock_name", 255, "varchar", java.sql.Types.VARCHAR);
         cs.addColumn("connection", 255, "varchar", java.sql.Types.VARCHAR);
-        cs.addColumn("state", 12, "varchar", java.sql.Types.VARCHAR);
+        cs.addColumn("state", 12, "varchar", java.sql.Types.VARCHAR);        
         cs.addColumn("globalDeclare", 255, "varchar", java.sql.Types.VARCHAR);
         cs.addColumn("globalGrant", 255, "varchar", java.sql.Types.VARCHAR);
         cs.addColumn("shareCount", 12, "int", Types.INTEGER);

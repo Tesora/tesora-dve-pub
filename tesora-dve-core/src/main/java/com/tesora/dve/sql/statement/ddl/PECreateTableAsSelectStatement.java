@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.DistributionModel;
@@ -51,13 +52,13 @@ import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.server.messaging.ConditionalWorkerRequest.GuardFunction;
 import com.tesora.dve.server.messaging.ConditionalWorkerRequest;
+import com.tesora.dve.server.messaging.ConditionalWorkerRequest.GuardFunction;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.Edge;
@@ -97,10 +98,10 @@ import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.DelegatingBehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.FeaturePlanTransformerBehavior;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
-import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.strategy.AdhocFeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
@@ -284,12 +285,12 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 			List<ColumnModifier> modifiers = new ArrayList<ColumnModifier>();
 			LiteralExpression litex = (LiteralExpression) target;
 			if (litex.isNullLiteral()) {
-				ctype = BasicType.buildType("BINARY", 0, Collections.<TypeModifier> emptyList());
+				ctype = BasicType.buildType("BINARY", 0, Collections.<TypeModifier> emptyList(),pc.getTypes());
 				modifiers.add(new DefaultValueModifier(litex));
 			} else if (litex.isStringLiteral()) {
 				String str = litex.asString(pc);
 				ctype = BasicType.buildType("VARCHAR",str.length(),
-						Arrays.asList(new TypeModifier[] { new StringTypeModifier(TypeModifierKind.CHARSET,"utf8")}));
+						Arrays.asList(new TypeModifier[] { new StringTypeModifier(TypeModifierKind.CHARSET,"utf8")}),pc.getTypes());
 				modifiers.add(notNullableModifier);
 				modifiers.add(new DefaultValueModifier(LiteralExpression.makeStringLiteral("")));
 			} else if (litex.isFloatLiteral()) {
@@ -316,9 +317,9 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 					bigint = (bi.compareTo(maxIntValue) > 0);
 				}
 				if (bigint)
-					ctype = BasicType.buildType("BIGINT", displayWidth, Collections.<TypeModifier> emptyList());
+					ctype = BasicType.buildType("BIGINT", displayWidth, Collections.<TypeModifier> emptyList(), pc.getTypes());
 				else
-					ctype = BasicType.buildType("INT", displayWidth, Collections.<TypeModifier> emptyList());
+					ctype = BasicType.buildType("INT", displayWidth, Collections.<TypeModifier> emptyList(), pc.getTypes());
 				modifiers.add(notNullableModifier);
 				modifiers.add(new DefaultValueModifier(LiteralExpression.makeStringLiteral("0")));				
 			} else {
@@ -617,7 +618,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		public void addCleanupStep(SSConnection ssCon, UserTable theTable, PersistentDatabase database, WorkerGroup cleanupWG) {
 			WorkerRequest wer = new WorkerExecuteRequest(
 							ssCon.getNonTransactionalContext(), 
-							UserTable.getDropTableStmt(theTable.getName(), false)).onDatabase(database);
+					UserTable.getDropTableStmt(ssCon, theTable.getName(), false)).onDatabase(database);
 			cleanupWG.addCleanupStep(
 					new ConditionalWorkerRequest(wer, guard));
 			

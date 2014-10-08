@@ -75,7 +75,7 @@ public class MultitenantTransformTest extends TransformTest {
 	private SchemaContext clearTenantID(SchemaContext db) throws Throwable {
 		TransientExecutionEngine tee = (TransientExecutionEngine) db.getCatalog();
 		tee.parse(new String[] { "use " + PEConstants.LANDLORD_TENANT });
-		return SchemaContext.createContext(tee, tee);
+		return SchemaContext.createContext(tee, tee, db.getTypes());
 	}
 	
 	@Test
@@ -305,6 +305,8 @@ public class MultitenantTransformTest extends TransformTest {
 	 * NDB files, the queries return empty sets.
 	 * @throws Throwable 
 	 */
+	// maybe just toss this overboard?  we don't really have infoschema support for tschema anymore
+	@Ignore
 	@Test
 	public void testPE1153() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTIMT, schema);

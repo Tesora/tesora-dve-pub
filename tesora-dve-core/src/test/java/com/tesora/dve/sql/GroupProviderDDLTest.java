@@ -35,6 +35,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
@@ -153,7 +154,7 @@ public class GroupProviderDDLTest extends SchemaTest {
 				new Object[] {});
 		conn.assertResults("show dynamic site providers", 
 				br( nr,OnPremiseSiteProvider.DEFAULT_NAME, OnPremiseSiteProvider.class.getCanonicalName(), "YES"));
-		String sl = TestCatalogHelper.getInstance().getCatalogUrl();
+		String sl = PEUrl.stripUrlParameters(TestCatalogHelper.getInstance().getCatalogUrl());
 		String ops = "OnPremise";
 		String local = "LOCAL";
 		Integer negone = new Integer(-1);

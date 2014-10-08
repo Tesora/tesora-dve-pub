@@ -60,6 +60,7 @@ import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.common.catalog.UserView;
+import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.distribution.IKeyValue;
@@ -128,7 +129,9 @@ import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.GlobalVariableStore;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.LocalVariableStore;
+import com.tesora.dve.variables.VariableManager;
 import com.tesora.dve.variables.VariableStoreSource;
 import com.tesora.dve.variables.VariableValueStore;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
@@ -176,9 +179,18 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	private final ConnectionMessageManager messages = new ConnectionMessageManager();
 	
 	public TransientExecutionEngine(String ttkern) {
-		Singletons.require(HostService.class).getVariableManager().initialiseTransient(globalVariables);
-		sessionVariables = globalVariables.buildNewLocalStore();
-		tpc = SchemaContext.createContext(this,this);
+		this(ttkern, Singletons.require(HostService.class).getDBNative().getTypeCatalog());
+	}
+	
+	public TransientExecutionEngine(String ttkern, NativeTypeCatalog types) {
+		try {
+			VariableManager.getManager().initialiseTransient(globalVariables);
+			sessionVariables = globalVariables.buildNewLocalStore();
+		} catch (PEException pe) {
+			throw new SchemaException(Pass.FIRST, "Unable to initialize global vars for trans exec engine");
+		}
+		sessionVariables.setValue(KnownVariables.DYNAMIC_POLICY, OnPremiseSiteProvider.DEFAULT_POLICY_NAME);
+		tpc = SchemaContext.createContext(this,this,types);
 		currentUser = new PEUser(tpc);
 		users.add(new User(currentUser.getUserScope().getUserName(), 
 				currentUser.getPassword(),

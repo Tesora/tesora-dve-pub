@@ -152,8 +152,8 @@ public class ContainerSqlTest extends SchemaTest {
 		conn.execute("use information_schema");
 		conn.assertResults("DESCRIBE CONTAINER",
 				br(nr,"CONTAINER_NAME","varchar(255)", "NO", "", null, "", 
-				   nr,"BASE_TABLE","int(11)", "YES", "", null, "",
-				   nr,"STORAGE_GROUP","int(11)", "NO", "", null, ""));
+				   nr,"BASE_TABLE","varchar(255)", "YES", "", null, "",
+				   nr,"STORAGE_GROUP","varchar(255)", "NO", "", null, ""));
 
 		// test if exists
 		conn.execute("CREATE CONTAINER IF NOT EXISTS " + container1 + " PERSISTENT GROUP " + testDDL.getPersistentGroup().getName() + " BROADCAST DISTRIBUTE");
@@ -258,10 +258,10 @@ public class ContainerSqlTest extends SchemaTest {
 		conn.assertResults("SHOW CONTAINER duk",
 				br());
 		conn.assertResults("SHOW CONTAINER cont1",
-				br(nr,"A","base",
-				   nr,"B","member",
-				   nr,"C","member",
-				   nr,"D","member"));
+				br(nr,"cont1","A","base",
+				   nr,"cont1","B","member",
+				   nr,"cont1","C","member",
+				   nr,"cont1","D","member"));
 	
 		// TODO
 		// add tests for the container vector stuff

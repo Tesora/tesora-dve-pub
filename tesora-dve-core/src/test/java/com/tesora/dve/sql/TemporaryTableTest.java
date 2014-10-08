@@ -100,7 +100,7 @@ public class TemporaryTableTest extends SchemaTest {
 		}
 		
 	}
-	
+		
 	@SuppressWarnings("resource")
 	@Test
 	public void testInfoSchema() throws Throwable {
@@ -141,11 +141,11 @@ public class TemporaryTableTest extends SchemaTest {
 					br(nr,"fid","int(11)","YES","UNI",null,""));
 			
 			conn1.assertResults("show keys in narrow",
-					br(nr,"narrow",1L,"PRIMARY",1,"id","A",-1,4,"","NO","BTREE","","",
-					   nr,"narrow",1L,"fid",1,"fid","A",-1,4,"","YES","BTREE","","",
-					   nr,"narrow",0L,"sid",1,"sid","A",-1,4,"","YES","BTREE","",""));
+					br(nr,"narrow",1,"PRIMARY",1,"id","A",-1,4,"","NO","BTREE","","",
+					   nr,"narrow",1,"fid",1,"fid","A",-1,4,"","YES","BTREE","","",
+					   nr,"narrow",0,"sid",1,"sid","A",-1,4,"","YES","BTREE","",""));
 			conn2.assertResults("show keys in narrow",
-					br(nr,"narrow",0L,"PRIMARY",1,"id","A",-1,null,null,"","BTREE","",""));
+					br(nr,"narrow",0,"PRIMARY",1,"id","A",-1L,null,null,"","BTREE","",""));
 			conn1.execute("drop table narrow");
 			conn1.execute("drop table narrow");
 		} finally {
@@ -213,7 +213,7 @@ public class TemporaryTableTest extends SchemaTest {
 			
 			Object[] pdesc = 
 					br(nr,"id","int(11)","NO","PRI",null,"auto_increment",
-					   nr,"booyeah","int(11)","YES","",null,"");
+					   nr,"booyeah","int(11)","YES","UNI",null,"");
 			Object[] tdesc =
 					br(nr,"id","int(11)","NO","PRI",null,"auto_increment",
 					   nr,"fid","int(11)","YES","",null,"");
@@ -441,7 +441,7 @@ public class TemporaryTableTest extends SchemaTest {
 						
 			conn1.assertResults("select count(*) from ctatarg",br(nr,2L));
 			
-			conn1.disconnect();
+			conn1.close();
 			conn1 = null;
 
 			conn2.execute("drop table ctasrca, ctasrcb");			
@@ -449,13 +449,13 @@ public class TemporaryTableTest extends SchemaTest {
 			conn2.assertResults(globalQuery, br());
 		} finally {
 			if (conn1 != null) try {
-				conn1.disconnect();
+				conn1.close();
 				conn1 = null;
 			} catch (Throwable t) {
 				// ignore
 			}
 			if (conn2 != null) try {
-				conn2.disconnect();
+				conn2.close();
 				conn2 = null;
 			} catch (Throwable t) {
 				// ignore

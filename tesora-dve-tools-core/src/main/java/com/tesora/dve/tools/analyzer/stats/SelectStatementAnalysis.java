@@ -36,7 +36,9 @@ import com.tesora.dve.sql.node.expression.AliasInstance;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
+import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.Table;
@@ -57,7 +59,11 @@ public class SelectStatementAnalysis extends StatementAnalysis<SelectStatement> 
 		final UncollapsedJoinGraph ujg = new UncollapsedJoinGraph(getSchemaContext(), getStatement(), true);
 		final ArrayList<EquijoinInfo> out = new ArrayList<EquijoinInfo>();
 		for (final JoinEdge je : ujg.getJoins()) {
-			final EquijoinInfo eji = new EquijoinInfo(je.getLHSTab().getAbstractTable(), je.getRHSTab().getAbstractTable(), je.getJoinType(), sc);
+			final JoinedTable jt = je.getJoin().getJoin();
+			final List<Name> usingSpec = (jt != null) ? jt.getUsingColSpec() : null;
+			final ExpressionNode onClause = (jt != null) ? jt.getJoinOn() : null;
+			final EquijoinInfo eji = new EquijoinInfo(je.getLHSTab().getAbstractTable(), je.getRHSTab().getAbstractTable(), je.getJoinType(),
+					usingSpec, onClause, sc);
 			for (final Pair<ColumnInstance, ColumnInstance> p : je.getSimpleColumns()) {
 				eji.addJoinExpression(p.getFirst(), p.getSecond());
 			}

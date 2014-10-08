@@ -77,7 +77,7 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 				public CatalogEntity generate() throws Throwable {
 					StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
 					ssCon.getCatalogDAO().persistToCatalog(newGen);
-					group.addGeneration(ssCon, wg, newGen);
+					group.addGeneration(ssCon, wg, newGen, tableDecls, mustIgnoreFKs, userDecls);
 					return newGen;
 				}
 			}.execute();

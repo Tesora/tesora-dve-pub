@@ -29,6 +29,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.tesora.dve.db.mysql.common.ColumnAttributes;
+
 public class ColumnSet implements Serializable {
 
 	private static final long serialVersionUID = 1L;
@@ -36,9 +38,9 @@ public class ColumnSet implements Serializable {
 	@SuppressWarnings("serial")
 	private static final Map<Integer, ColumnMetadata> TYPE_MAP = 
 	Collections.unmodifiableMap(new HashMap<Integer, ColumnMetadata>(){{
-		put(Types.VARCHAR, new ColumnMetadata("Value", 255, "varchar", Types.VARCHAR, false));
-		put(Types.INTEGER, new ColumnMetadata("Value", 4, "int", Types.INTEGER, false));
-		put(Types.BOOLEAN, new ColumnMetadata("Value", 1, "boolean", Types.BOOLEAN, false));
+		put(Types.VARCHAR, new ColumnMetadata("Value", ColumnAttributes.SIZED_TYPE, 255, "varchar", Types.VARCHAR));
+		put(Types.INTEGER, new ColumnMetadata("Value", ColumnAttributes.SIZED_TYPE, 4, "int", Types.INTEGER));
+		put(Types.BOOLEAN, new ColumnMetadata("Value", 0, 1, "boolean", Types.BOOLEAN));
 	}});
 
 	protected List<ColumnMetadata> columns;
@@ -77,7 +79,7 @@ public class ColumnSet implements Serializable {
 	}
 
 	public ColumnSet addColumn(String name, int length, String nativeType, int SQLtype) {
-		return addColumn(createBasicColumn(name, length, nativeType, SQLtype));
+		return addColumn(createBasicColumn(name,length,nativeType,SQLtype));
 	}
 	
 	public ColumnSet addNullableColumn(String name, int length, String nativeType, int SQLtype) {
@@ -90,7 +92,7 @@ public class ColumnSet implements Serializable {
 		ColumnMetadata cmc = new ColumnMetadata();
 		cmc.setName(name);
 		cmc.setSize(length);
-		cmc.setNativeTypeName(nativeType);
+		cmc.setTypeName(nativeType);
 		cmc.setDataType(SQLtype);
 		return cmc;
 	}
@@ -134,7 +136,7 @@ public class ColumnSet implements Serializable {
 	public static ColumnSet singleColumn(String alias, int type) {
 		ColumnMetadata template = TYPE_MAP.get(type);
 		ColumnSet cs = new ColumnSet();
-		cs.addColumn(alias, template.getSize(), template.getNativeTypeName(), type);
+		cs.addColumn(alias, template.getSize(), template.getTypeName(), type);
 		return cs;
 	}
 }

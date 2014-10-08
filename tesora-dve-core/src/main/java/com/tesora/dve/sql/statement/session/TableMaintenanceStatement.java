@@ -147,7 +147,7 @@ public class TableMaintenanceStatement extends SessionStatement {
 		public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
 				throws PEException {
 			addStep(sc,qsteps,new QueryStepSelectAllOperation(
-					getPersistentDatabase(), StaticDistributionModel.SINGLETON, getSQLCommand())) ;
+					getPersistentDatabase(), StaticDistributionModel.SINGLETON, getSQLCommand(sc)));
 		}
 
 	}

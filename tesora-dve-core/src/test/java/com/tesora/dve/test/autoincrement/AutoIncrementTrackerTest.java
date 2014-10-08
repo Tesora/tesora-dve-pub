@@ -35,8 +35,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -50,8 +48,9 @@ import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.standalone.PETest;
-import com.tesora.dve.test.distribution.DistributionTest;
+import com.tesora.dve.test.simplequery.SimpleQueryTest;
 
 public class AutoIncrementTrackerTest extends PETest {
 
@@ -59,22 +58,21 @@ public class AutoIncrementTrackerTest extends PETest {
 	static UserTable foo, bar;
 
 	@BeforeClass
-	public static void setup() throws Exception {
+	public static void setup() throws Throwable {
 		Class<?> bootClass = PETest.class;
-		TestCatalogHelper.createTestCatalog(bootClass,2);
+		TestCatalogHelper.createTestCatalog(bootClass);
 		bootHost = BootstrapHost.startServices(bootClass);
-
-        populateMetadata(AutoIncrementTrackerTest.class, Singletons.require(HostService.class).getProperties());
-        populateSites(DistributionTest.class, Singletons.require(HostService.class).getProperties());
-
-		db = catalogDAO.findDatabase(UserDatabase.DEFAULT);
+		SimpleQueryTest.cleanupSites(2,"TestDB");
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.createSites(2, pcr);
+		SimpleQueryTest.createGroupAndTestDB(2, pcr);
+		pcr.execute("create table foo (id int auto_increment, value varchar(20)) random distribute");
+		pcr.execute("create table bar (id int auto_increment, value varchar(20)) random distribute");
+		pcr.disconnect();
+		
+		db = getGlobalDAO().findDatabase(UserDatabase.DEFAULT);
 		foo = db.getTableByName("foo");
 		bar = db.getTableByName("bar");
-
-		catalogDAO.begin();
-		foo.addAutoIncr();
-		bar.addAutoIncr();
-		catalogDAO.commit();
 	}
 
 	@Before
@@ -82,10 +80,10 @@ public class AutoIncrementTrackerTest extends PETest {
 		AutoIncrementTracker autoIncrBar = bar.getAutoIncr();
 		AutoIncrementTracker autoIncrFoo = foo.getAutoIncr();
 
-		catalogDAO.begin();
+		getGlobalDAO().begin();
 		autoIncrBar.reset(catalogDAO);
 		autoIncrFoo.reset(catalogDAO);
-		catalogDAO.commit();
+		getGlobalDAO().commit();
 
 		assertEquals("Tracker " + bar.getAutoIncr().getId() + " not reset: ", 1, bar.getAutoIncr().readNextValue(catalogDAO));
 		assertEquals("Tracker " + foo.getAutoIncr().getId() + " not reset: ", 1, foo.getAutoIncr().readNextValue(catalogDAO));

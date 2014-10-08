@@ -63,8 +63,10 @@ public class ExpressionUtils {
 
 	public static ExpressionNode safeBuildAnd(List<ExpressionNode> args) {
 		ExpressionNode out = buildAnd(args);
-		if (out == null)
-			out = args.get(0);
+		if (out == null) {
+			if (!args.isEmpty())
+				out = args.get(0);
+		}
 		return out;
 	}
 	

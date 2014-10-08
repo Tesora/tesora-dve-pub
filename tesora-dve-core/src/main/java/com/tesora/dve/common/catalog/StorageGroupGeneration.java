@@ -47,23 +47,10 @@ import org.hibernate.annotations.ForeignKey;
 
 import com.tesora.dve.common.PECollectionUtils;
 import com.tesora.dve.common.PEStringUtils;
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.distribution.PELockedException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName="storage_generation",
-		views={@TableView(view=InfoView.SHOW, name="generation", pluralName="generations", 
-				columnOrder={ShowSchema.Generation.NAME, 
-							 ShowSchema.Generation.PERSISTENT_GROUP, 
-							 ShowSchema.Generation.VERSION, 
-							 ShowSchema.Generation.LOCKED}, extension=true, priviledged=true),
-		       @TableView(view=InfoView.INFORMATION, name="storage_generation", pluralName="", columnOrder={"id", "storage_group", "version", "locked"}, extension=true, priviledged=true)})
 @Entity
 @Table(name="storage_generation")
 @XmlAccessorType(XmlAccessType.NONE)
@@ -178,10 +165,6 @@ public class StorageGroupGeneration implements CatalogEntity {
 		return PECollectionUtils.selectRandom(groupMembers);
 	}
 
-	@InfoSchemaColumn(logicalName="locked", fieldName="locked",
-			sqlType=java.sql.Types.VARCHAR,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Generation.LOCKED),
-				   @ColumnView(view=InfoView.INFORMATION, name="locked")})
 	public boolean isLocked() {
 		return locked;
 	}
@@ -195,10 +178,6 @@ public class StorageGroupGeneration implements CatalogEntity {
 	 * Returns the version number of the persistent <b>StorageGroup</b>
 	 * @return the version
 	 */
-	@InfoSchemaColumn(logicalName="version",fieldName="version",
-			sqlType=java.sql.Types.INTEGER,sqlWidth=3,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Generation.VERSION),
-				   @ColumnView(view=InfoView.INFORMATION,name="version")})
 	public int getVersion() {
 		return version;
 	}
@@ -255,18 +234,10 @@ public class StorageGroupGeneration implements CatalogEntity {
 	}
 
 	@Override
-	@InfoSchemaColumn(logicalName="id", fieldName="id",
-			sqlType=java.sql.Types.INTEGER,sqlWidth=3,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Generation.NAME,ident=true,orderBy=true),
-			       @ColumnView(view=InfoView.INFORMATION,name="id",ident=true,orderBy=true)})
 	public int getId() {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName="storage_group", fieldName="storageGroup",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Generation.PERSISTENT_GROUP),
-				   @ColumnView(view=InfoView.INFORMATION,name="storage_group")})
 	public PersistentGroup getStorageGroup() {
 		return storageGroup;
 	}

@@ -85,6 +85,7 @@ public class DBNativeTest {
 		public GenericNativeType(String typeName, MyFieldType mft, int dataType, boolean jdbcType, NativeTypeAlias[] aliases) {
 			super(typeName, mft.getByteValue(), dataType, jdbcType, aliases);
 		}
+
 	}
 
 }

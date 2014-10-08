@@ -23,6 +23,8 @@ package com.tesora.dve.sql.util;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.SchemaContext;
 
 public class TestResource {
@@ -59,7 +61,8 @@ public class TestResource {
 	
 	public SchemaContext getContext() throws Exception {
 		CatalogDAO cat = CatalogDAOFactory.newInstance();
-		SchemaContext sc = SchemaContext.createContext(cat);
+		SchemaContext sc = SchemaContext.createContext(cat,
+				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
 		sc.setCurrentDatabase(sc.findDatabase(ddl.getDatabaseName()));
 		return sc;
 	}

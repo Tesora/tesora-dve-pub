@@ -79,7 +79,7 @@ public class ColumnDatum implements Serializable, IColumnDatum {
 		if (MysqlNativeType.MysqlType.DATETIME.toString().equals(col.getNativeType())) {
 			if (value instanceof String) {
                 valueForCompare = (Comparable<?>) Singletons.require(HostService.class).getDBNative().getValueConverter().convert(
-						(String)value, BasicType.getDateTimeType());
+						(String)value, BasicType.getDateTimeType(Singletons.require(HostService.class).getDBNative().getTypeCatalog()));
 			}
 		}
 		else
@@ -129,7 +129,7 @@ public class ColumnDatum implements Serializable, IColumnDatum {
 	
 	@Override
 	public String getNativeType() {
-		return this.userColumn.getNativeTypeName();
+		return this.userColumn.getTypeName();
 	}
 
 	@Override

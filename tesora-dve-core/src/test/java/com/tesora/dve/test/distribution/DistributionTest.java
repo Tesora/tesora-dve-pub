@@ -28,10 +28,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -42,9 +38,11 @@ import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageGroupAccessor;
 import com.tesora.dve.common.catalog.StorageGroupGeneration;
+import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.distribution.GenerationKeyRange;
 import com.tesora.dve.distribution.KeyValue;
@@ -57,10 +55,19 @@ import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSelectByKeyOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateByKeyOperation;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.test.simplequery.SimpleQueryTest;
+import com.tesora.dve.variable.VariableConstants;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.UserCredentials;
 
@@ -90,20 +97,69 @@ public class DistributionTest extends PETest{
 
 	static Map<String, PersistentSite> siteMap = new HashMap<String, PersistentSite>();
 
-	@BeforeClass
-	public static void setup() throws Exception {
-		Class<?> bootClass = PETest.class;
-		TestCatalogHelper.createTestCatalog(bootClass,2);
-		bootHost = BootstrapHost.startServices(bootClass);
-        populateMetadata(DistributionTest.class, Singletons.require(HostService.class).getProperties());
+	private static final String body = "create table `%s` (id int, value varchar(20)) persistent group %s %s ";
+	
+	private static final String[] tabDecls = new String[] {
+		
+		String.format(body,"Random","DefaultGroup","random distribute"),
+		String.format(body,"RandomGen2","sg2Ref","random distribute"),
+		String.format(body,"RandomGen3","sg3Ref","random distribute"),
+		String.format(body,"RandomOneSite","sgOneSite","random distribute"),
+		String.format(body,"Broadcast","DefaultGroup","broadcast distribute"),
+		String.format(body,"BroadcastGen2","sg2Ref","broadcast distribute"),
+		String.format(body,"BroadcastGen3","sg3Ref","broadcast distribute"),
+		String.format(body,"BroadcastOneSite","sgOneSite","broadcast distribute"),
+		String.format(body,"Static","DefaultGroup","static distribute on (id)"),
+		String.format(body,"StaticGen2","sg2Ref","static distribute on (id)"),
+		String.format(body,"StaticGen3","sg3Ref","static distribute on (id)"),
+		String.format(body,"StaticOneSite","sgOneSite","static distribute on (id)"),
+		String.format(body,"Range","DefaultGroup","range distribute on (id) using Range"),
+		String.format(body,"RangeGen2","sg2Ref","range distribute on (id) using RangeGen2"),
+		String.format(body,"RangeGen3","sg3Ref","range distribute on (id) using RangeGen3"),
+		String.format(body,"RangeOneSite","sgOneSite","range distribute on (id) using RangeOneSite"),
+		
+	};
+	
+	private static void populateMetadata() throws Throwable {
+		SimpleQueryTest.cleanupSites(3, "TestDB");
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.createSites(10, pcr);
+		pcr.execute("create persistent group DefaultGroup add site1, site2");
+		pcr.execute("create persistent group sg2Ref add site1,site2");
+		pcr.execute("alter persistent group sg2Ref add generation site3");
+		pcr.execute("create persistent group sg3Ref add site1,site2");
+		pcr.execute("alter persistent group sg3Ref add generation site1,site2,site3");
+		pcr.execute("create persistent group sgOneSite add site1");
+		pcr.execute("create range Range (int) persistent group DefaultGroup");
+		pcr.execute("create range RangeGen2 (int) persistent group sg2Ref");
+		pcr.execute("create range RangeGen3 (int) persistent group sg3Ref");
+		pcr.execute("create range RangeOneSite (int) persistent group sgOneSite");
+		
+		pcr.execute(String.format("alter dve set %s = '%s'",VariableConstants.TEMPLATE_MODE_NAME, TemplateMode.OPTIONAL));
+		pcr.execute("create database TestDB default character set utf8 default persistent group DefaultGroup");
+		pcr.execute("use TestDB");
 
+		for(String s : tabDecls) {
+			pcr.execute(s);
+		}
+	}
+	
+	
+	
+	@BeforeClass
+	public static void setup() throws Throwable {
+		Class<?> bootClass = PETest.class;
+		TestCatalogHelper.createTestCatalog(bootClass);
+		bootHost = BootstrapHost.startServices(bootClass);
+		populateMetadata();
+		
         populateSites(DistributionTest.class, Singletons.require(HostService.class).getProperties());
 
 		ssConnProxy = new SSConnectionProxy();
 		ssConnection = SSConnectionAccessor.getSSConnection(ssConnProxy);
-		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
+		SSConnectionAccessor.setCatalogDAO(ssConnection, getGlobalDAO());
 		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
-		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
+		ssConnection.setPersistentDatabase(getGlobalDAO().findDatabase("TestDB"));
 		UserDatabase db = ssConnection.getPersistentDatabase();
 
 		tRand = db.getTableByName("Random");
@@ -136,6 +192,13 @@ public class DistributionTest extends PETest{
 		ssConnProxy.close();
 	}
 
+	private KeyValue setId(UserTable t, int recId) throws PEException {
+		KeyValue dv = t.getDistValue(catalogDAO);
+		ColumnDatum cd = dv.get("id");
+		if (cd != null) cd.setValue(recId);
+		return dv;
+	}
+	
 	@Test public void randSelectAll() throws Throwable { selectAll(tRand, 5); }
 	@Test public void randSelectOne() throws Throwable { selectOne(tRand, 1, 1); }
 	@Test public void randSelectOneByKey() throws Throwable { selectByKey(tRand, 1); }
@@ -379,7 +442,7 @@ public class DistributionTest extends PETest{
 	}
 
 	public void selectAll(UserTable t, int expectedCount) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier()+" where id < 10");
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -392,7 +455,7 @@ public class DistributionTest extends PETest{
 
 	public void selectOne(UserTable t, int recId, int expectedCount)
 			throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier()+" where id = "+recId);
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -404,14 +467,13 @@ public class DistributionTest extends PETest{
 	}
 
 	public void selectByKey(UserTable t, int recId) throws Throwable {
-		KeyValue dv = t.getDistValue(catalogDAO);
-		dv.get("id").setValue(recId);
+		KeyValue dv = setId(t,recId);
 		selectByKey(t, dv, recId);
 	}
 
 	public void selectByKey(UserTable t, KeyValue dv, int recId,
 			int expectedCount) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectByKeyOperation(t.getDatabase(), dv,
+		QueryStepOperation op = new QueryStepSelectByKeyOperation(ssConnection, t.getDatabase(), dv,
 				"select * from "+t.getNameAsIdentifier()+" where id = "+recId);
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		try {
@@ -432,15 +494,14 @@ public class DistributionTest extends PETest{
 
 	public void selectItemIdMismatch(UserTable t, int recId, int expectedCount)
 			throws Throwable {
-		KeyValue dv = t.getDistValue(catalogDAO);
-		dv.get("id").setValue(recId);
+		KeyValue dv = setId(t,recId);
 		selectByKey(t, dv, recId+1, expectedCount);
 	}
 
 	public void insertRecord(UserTable t, KeyValue distValue, int recId,
 			String value) throws Throwable {
 		QueryPlan plan;
-		QueryStepOperation op = new QueryStepInsertByKeyOperation(t.getDatabase(), distValue, 
+		QueryStepOperation op = new QueryStepInsertByKeyOperation(ssConnection, t.getDatabase(), distValue,
 				"insert into "+t.getNameAsIdentifier()+" values ("+recId+", '"+value+"')");
 		plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -452,7 +513,7 @@ public class DistributionTest extends PETest{
 
 	void selectWithDiscriminator(UserTable t, String col, String val,
 			int count) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier()+" where "+col+" = "+val);
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -464,8 +525,7 @@ public class DistributionTest extends PETest{
 	}
 
 	public void insertOneRecord(UserTable t, int recId) throws Throwable {
-		KeyValue dv = t.getDistValue(catalogDAO);
-		dv.get("id").setValue(recId);
+		KeyValue dv = setId(t,recId);
 
 		insertRecord(t, dv, recId, "Hello");
 		selectByKey(t, dv, recId);
@@ -475,7 +535,7 @@ public class DistributionTest extends PETest{
 	void updateRecord(UserTable t, KeyValue dv, int recId, String value)
 			throws Throwable {
 		QueryStepOperation op = new QueryStepUpdateByKeyOperation(t.getDatabase(), dv, 
-				new SQLCommand("update "+t.getNameAsIdentifier()+" set value = '"+value+"' where id = "+recId));
+				new SQLCommand(ssConnection, "update " + t.getNameAsIdentifier() + " set value = '" + value + "' where id = " + recId));
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		plan.executeStep(ssConnection, rc);
@@ -486,8 +546,7 @@ public class DistributionTest extends PETest{
 
 	public void updateOne(UserTable t, int recId, String value)
 			throws Throwable {
-		KeyValue dv = t.getDistValue(catalogDAO);
-		dv.get("id").setValue(recId);
+		KeyValue dv = setId(t,recId);
 
 		updateRecord(t, dv, recId, value);
 		selectByKey(t, dv, recId);
@@ -496,7 +555,7 @@ public class DistributionTest extends PETest{
 
 	void updateRange(UserTable t, int lowVal, int highVal, int count,
 			String value) throws Throwable {
-		QueryStepOperation op = new QueryStepUpdateAllOperation(t.getDatabase(), t.getDistributionModel(), 
+		QueryStepOperation op = new QueryStepUpdateAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"update "+t.getNameAsIdentifier()
 				+ " set value = '"+value+"'"
 				+ " where id >="+lowVal+" and id <="+highVal);
@@ -515,7 +574,7 @@ public class DistributionTest extends PETest{
 	}
 
 	long getRowCount(UserTable t) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier());
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
@@ -529,7 +588,7 @@ public class DistributionTest extends PETest{
 
 	void deleteRow(UserTable t, KeyValue dv, int recId) throws Throwable {
 		QueryStepOperation op = new QueryStepUpdateByKeyOperation(t.getDatabase(), dv, 
-				new SQLCommand("delete from "+t.getNameAsIdentifier()+" where id = "+recId));
+				new SQLCommand(ssConnection, "delete from " + t.getNameAsIdentifier() + " where id = " + recId));
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
@@ -540,8 +599,7 @@ public class DistributionTest extends PETest{
 
 	protected void insertAndDelete(UserTable t, int recId, String value)
 			throws Throwable {
-		KeyValue distValue = t.getDistValue(catalogDAO);
-		distValue.get("id").setValue(recId);
+		KeyValue distValue = setId(t,recId);
 
 		insertRecord(t, distValue, recId, value);
 		selectByKey(t, distValue, recId);
@@ -553,7 +611,7 @@ public class DistributionTest extends PETest{
 
 	protected void selectAllFromAll(UserTable t, int expectedCount)
 			throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(t.getDatabase(), StaticDistributionModel.SINGLETON,
+		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), StaticDistributionModel.SINGLETON,
 				"select * from "+t.getNameAsIdentifier()+" where id < 10");
 		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();

@@ -42,7 +42,7 @@ public class QueryStepRecoverTempOperation extends QueryStepOperation {
 
 	@Override
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-		WorkerRequest req = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(tempTable.getName(), false)
+		WorkerRequest req = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, tempTable.getName(), false)
 				).onDatabase(database);
 		wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 //		wg.sendToAllWorkers(ssCon, req);

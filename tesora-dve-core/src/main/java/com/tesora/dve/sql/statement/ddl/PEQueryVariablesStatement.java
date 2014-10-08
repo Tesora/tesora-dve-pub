@@ -34,7 +34,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.infoschema.logical.VariablesLogicalInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.direct.DirectShowVariablesTable;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -151,9 +151,9 @@ public class PEQueryVariablesStatement extends DDLStatement {
 		Table<?> fromTable = in.getTablesEdge().get(0).getBaseTable().getTable(); 
 		Map<Column<?>,Column<?>> mapping = new HashMap<Column<?>,Column<?>>();
 		
-		mapping.put(fromTable.lookup(sc, new UnqualifiedName(VariablesLogicalInformationSchemaTable.NAME_COL_NAME)),
+		mapping.put(fromTable.lookup(sc, new UnqualifiedName(DirectShowVariablesTable.NAME_COL_NAME)),
 				toTable.getAbstractTable().lookup(sc, "variable_name"));
-		mapping.put(fromTable.lookup(sc, new UnqualifiedName(VariablesLogicalInformationSchemaTable.VALUE_COL_NAME)),
+		mapping.put(fromTable.lookup(sc, new UnqualifiedName(DirectShowVariablesTable.VALUE_COL_NAME)),
 				toTable.getAbstractTable().lookup(sc, "variable_value"));		
 		new TableForwarder(query.getDerivedInfo().getLocalTableKeys().get(0).getTable(),toTable,mapping).traverse(in);
 		

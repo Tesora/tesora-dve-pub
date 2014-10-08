@@ -137,6 +137,11 @@ public class UnknownType implements Type {
 	}
 
 	@Override
+	public void persistTypeName(UserColumn uc) {
+	}
+
+	
+	@Override
 	public Integer getDataType() {
 		return null;
 	}
@@ -234,6 +239,11 @@ public class UnknownType implements Type {
 	@Override
 	public TextType toTextType() {
 		return null;
+	}
+
+	@Override
+	public int getColumnAttributesFlags() {
+		return 0;
 	}
 
 }

@@ -176,7 +176,12 @@ public abstract class MysqlDemultiplexingResultForwarder extends MysqlParallelRe
 		MyOKResponse okPacket1 = new MyOKResponse();
 		okPacket1.setAffectedRows(numRowsAffected);
 		okPacket1.setServerStatus(statusFlags);
-		okPacket1.setInsertId(ssConn.getLastInsertedId());
+
+        //See PE-1568.  Protocol format looks like last insert ID is the *first* ID in the autoinc sequence, IE: [insertID...(insertID+affectedRows-1)]
+        //autoinc behavior is undefined if they go negative, and zero is reserved for 'generate', so if we compute less than 1, revert to previous behavior (probably a zero)
+        long lastInsertedId = ssConn.getLastInsertedId();
+        long computedStartID = lastInsertedId <=numRowsAffected ? lastInsertedId : (lastInsertedId - numRowsAffected + 1L);
+		okPacket1.setInsertId( computedStartID );
 		okPacket1.setWarningCount(ssConn.getMessageManager().getNumberOfMessages());
 		okPacket1.setMessage(infoString);
 		outboundCtx.writeAndFlush(okPacket1);

@@ -42,10 +42,7 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.Host;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 
-@InfoSchemaTable(logicalName="temporary_table",views={})
 @Entity
 @Table(name = "user_temp_table")
 public class TemporaryTable implements CatalogEntity {
@@ -99,38 +96,23 @@ public class TemporaryTable implements CatalogEntity {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName="name", fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getTableName() {
 		return name;
 	}
 
-	@InfoSchemaColumn(logicalName="dbname", fieldName="db",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getDatabaseName() {
 		return db;
 	}
 
-	@InfoSchemaColumn(logicalName="engine", fieldName="engine",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getEngineName() {
 		return engine;
 	}
 	
 
-	@InfoSchemaColumn(logicalName="session",fieldName="sessionID",
-			sqlType=java.sql.Types.INTEGER,
-			views={})
 	public int getSessionID() {
 		return sessionID;
 	}
 	
-	@InfoSchemaColumn(logicalName="server", fieldName="server",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getServer() {
 		return server;
 	}

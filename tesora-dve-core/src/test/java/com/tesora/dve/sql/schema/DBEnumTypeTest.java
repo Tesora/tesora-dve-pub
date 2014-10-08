@@ -33,10 +33,12 @@ import org.junit.Test;
 
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.db.NativeType;
+import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.server.connectionmanager.TestHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.modifiers.TypeModifier;
-import com.tesora.dve.sql.schema.modifiers.TypeModifierKind;
 import com.tesora.dve.sql.schema.types.BasicType;
 import com.tesora.dve.sql.schema.types.DBEnumType;
 import com.tesora.dve.sql.schema.types.Type;
@@ -67,46 +69,40 @@ public class DBEnumTypeTest extends PETest {
 				String expBackTypeStr = rec[2][0];
 				String sizingStr = rec[2][1];
 
-				StringBuilder nativeTypeModifiers = new StringBuilder();
 				List<TypeModifier> mods = new ArrayList<TypeModifier>();
-				int modCount = 0;
+				boolean unsigned = false;
 				if (strMods != null) {
 					for (String strMod : strMods) {
-						TypeModifier mod = null;
 						if ("UNSIGNED".equalsIgnoreCase(strMod))
-							mod = new TypeModifier(TypeModifierKind.UNSIGNED);
-						else
-							throw new Exception("Unknown type modifier: " + strMod);
-						mods.add(mod);
-						if (modCount > 0 )
-							nativeTypeModifiers.append(" ");
-						nativeTypeModifiers.append(strMod);
-						modCount++;
+							unsigned = true;
 					}
 				}
-				NativeType expBackType = BasicType.lookupNativeType(expBackTypeStr);
+				NativeTypeCatalog typeCatalog = Singletons.require(HostService.class).getDBNative().getTypeCatalog(); 
+				NativeType expBackType = BasicType.lookupNativeType(expBackTypeStr,typeCatalog);
 				Integer expSta = Integer.valueOf(sizingStr);
-				StringBuilder nativeTypeName = new StringBuilder(MysqlType.ENUM.toString());
-				nativeTypeName.append("(");
+				String typeName = MysqlType.ENUM.toString();
+				StringBuilder universe = new StringBuilder();
 				boolean first = true;
 				for (String value : values) {
 					if (!first)
-						nativeTypeName.append(",");
-					nativeTypeName.append(value);
+						universe.append(",");
+					universe.append(value);
 					first = false;
 				}
-				nativeTypeName.append(")");
+				String nativeTypeName = String.format("%s(%s)",typeName,universe);
+//				nativeTypeName.append(")");
 				// test make
-				Type newType = DBEnumType.makeFromStrings(false, Arrays.asList(values), mods);
+				Type newType = DBEnumType.makeFromStrings(false, Arrays.asList(values), mods,typeCatalog);
 				assertEquals("Should get the right type" + msg, nativeTypeName.toString(), newType.getTypeName());
 				assertEquals("Should get the right sizing" + msg, false, newType.declUsesSizing());
 				assertEquals("Should get the right sizing" + msg, expSta.intValue(), newType.getSize());
 				assertEquals("Should get the right backing type" + msg, expBackType, newType.getBaseType());
 				// test build
 				UserColumn uc = new UserColumn();
-				uc.setNativeTypeName(nativeTypeName.toString());
-				uc.setNativeTypeModifiers(nativeTypeModifiers.toString());
-				newType = DBEnumType.buildType(uc, null);
+				uc.setTypeName(typeName);
+				uc.setESUniverse(universe.toString());
+				uc.setUnsigned(unsigned);
+				newType = DBEnumType.buildType(uc, typeCatalog);
 				msg = " for build for data row " + dataRow;
 				assertEquals("Should get the right type" + msg, nativeTypeName.toString(), newType.getTypeName());
 				assertEquals("Should get the right sizing" + msg, false, newType.declUsesSizing());

@@ -36,15 +36,15 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
+import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
@@ -77,9 +77,9 @@ import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
-import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
@@ -186,19 +186,23 @@ public class PECreateViewStatement extends
 
 		// we can push the view down if processing it only requires one step - so figure that out now
 		ViewMode vm = null;
-		ParserOptions pm = sc.getOptions();
-		try {
-			ParserOptions npm = pm.setInhibitSingleSiteOptimization();
-			sc.setOptions(npm);
-			ExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
-			if (ep.getSequence().getSteps().size() > 1)
-				vm = ViewMode.EMULATE;
-			else
-				vm = ViewMode.ACTUAL;
-		} catch (PEException pe) {
-			throw new SchemaException(Pass.PLANNER, "Unable to compute view definition plan",pe);
-		} finally {
-			sc.setOptions(pm);
+		if (sc.getOptions().isInfoSchemaView())
+			vm = ViewMode.EMULATE;
+		else {
+			ParserOptions pm = sc.getOptions();
+			try {
+				ParserOptions npm = pm.setInhibitSingleSiteOptimization();
+				sc.setOptions(npm);
+				ExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
+				if (ep.getSequence().getSteps().size() > 1)
+					vm = ViewMode.EMULATE;
+				else
+					vm = ViewMode.ACTUAL;
+			} catch (PEException pe) {
+				throw new SchemaException(Pass.PLANNER, "Unable to compute view definition plan",pe);
+			} finally {
+				sc.setOptions(pm);
+			}
 		}
 				
 		String checkMode = (checkOption == null ? "NONE" : checkOption);
@@ -219,7 +223,7 @@ public class PECreateViewStatement extends
 					if (pec.getName().equals(columnNames.get(i))) {
 						// ok
 					} else {
-						throw new SchemaException(Pass.SECOND, "Invalid tschema table def - mismatched names");
+						throw new SchemaException(Pass.SECOND, "Invalid tschema table def - mismatched names.  Expected " + columnNames.get(i) + " but found " + pec.getName());
 					}
 				} else {
 					throw new SchemaException(Pass.SECOND, "Invalid tschema table def - keys not allowed");
@@ -391,7 +395,11 @@ public class PECreateViewStatement extends
 				for(int i = 0; i < columnNames.size(); i++) {
 					UserColumn uc = new UserColumn(cmd.get(i));
 					uc.setName(columnNames.get(i).getUnquotedName().get());
-					columns.add(PEColumn.build(context, uc));
+					PEColumn pec = PEColumn.build(context,uc);
+					pec.clearPrimaryKeyPart();
+					pec.clearUniqueKeyPart();
+					pec.clearKeyPart();
+					columns.add(pec);
 				}
 				
 				backingTable = new PEViewTable(context, nascentDefinition.getName(),columns,
@@ -402,7 +410,7 @@ public class PECreateViewStatement extends
 						nascentDefinition);
 				backingTable.setDeclaration(context, backingTable);
 				if (nascentDefinition.getMode() == ViewMode.EMULATE) {
-					emulatedDefinition = new SQLCommand(backingTable.getDeclaration());
+					emulatedDefinition = new SQLCommand(conn, backingTable.getDeclaration());
 				}
 			}			
 		}

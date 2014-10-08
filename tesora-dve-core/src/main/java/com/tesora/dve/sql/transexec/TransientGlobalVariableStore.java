@@ -21,9 +21,9 @@ package com.tesora.dve.sql.transexec;
  * #L%
  */
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.variables.GlobalVariableStore;
 import com.tesora.dve.variables.LocalVariableStore;
 import com.tesora.dve.variables.ValueReference;
@@ -47,12 +47,11 @@ public class TransientGlobalVariableStore extends AbstractVariableStore implemen
 
 	@Override
 	public LocalVariableStore buildNewLocalStore() {
+		// we can't use singletons here since this is now part of the infoschema
+		// init code path.  instead we will iterate over the map.
 		LocalVariableStore out = new LocalVariableStore();
-		for(ValueReference<?> vr : values.values()) {
-			VariableHandler<?> vh = vr.getVariable();
-			if (vh.getScopes().contains(VariableScopeKind.SESSION)) {
-				out.setInternal(vh,vr.get());
-			}
+		for(Map.Entry<VariableHandler, ValueReference> me : values.entrySet()) {
+			out.setInternal(me.getKey(), me.getValue().get());
 		}
 		return out;
 	}

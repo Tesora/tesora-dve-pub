@@ -23,10 +23,11 @@ package com.tesora.dve.variables;
 
 import java.util.LinkedHashMap;
 
-import org.apache.commons.lang.StringUtils;
-
 import com.tesora.dve.common.PEStringUtils;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.SchemaException;
 
 public class EnumValueConverter<E extends Enum<E>> extends ValueMetadata<E> {
 
@@ -43,8 +44,9 @@ public class EnumValueConverter<E extends Enum<E>> extends ValueMetadata<E> {
 	public E convertToInternal(String varName, String in) throws PEException {
 		String deq = PEStringUtils.dequote(in);
 		E any = universe.get(deq);
-		if (any == null)
-			throw new PEException("Invalid value for '" + varName + "' (allowed values are " + StringUtils.join(universe.keySet(), ", ") + ")");
+		if (any == null) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_VALUE_FOR_VARIABLE, varName, deq));
+		}
 		return any;
 	}
 	

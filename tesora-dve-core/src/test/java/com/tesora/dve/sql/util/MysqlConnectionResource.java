@@ -21,6 +21,10 @@ package com.tesora.dve.sql.util;
  * #L%
  */
 
+import io.netty.channel.EventLoopGroup;
+import io.netty.util.CharsetUtil;
+
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -36,14 +40,15 @@ import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
 import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
+import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
-import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
-import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.sql.parser.ParserInvoker.LineInfo;
@@ -53,7 +58,6 @@ import com.tesora.dve.worker.MysqlPreparedStmtExecuteCollector;
 import com.tesora.dve.worker.MysqlTextResultChunkProvider;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
-import io.netty.channel.EventLoopGroup;
 
 public class MysqlConnectionResource extends ConnectionResource {
 
@@ -92,11 +96,11 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 	@Override
 	public ResourceResponse execute(LineInfo info, String stmt)	throws Throwable {
-		return execute(new SQLCommand(stmt));
+		return execute(new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(mysqlConn.getConnectionId()), stmt));
 	}
 
-	public ResourceResponse execute(LineInfo info, byte[] stmt)	throws Throwable {
-		return execute(new SQLCommand(new GenericSQLCommand(stmt)));
+	public ResourceResponse execute(LineInfo info, Charset encoding, byte[] stmt) throws Throwable {
+		return execute(new SQLCommand(new GenericSQLCommand(encoding, stmt)));
 	}
 
 	private ResourceResponse execute(SQLCommand sqlc) throws Throwable {
@@ -115,7 +119,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlPrepareStatementCollector collector = new MysqlPrepareStatementCollector();
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        collector.getDispatchBundle(mysqlConn, new SQLCommand(stmt), promise).writeAndFlush(mysqlConn);
+        collector.getDispatchBundle(mysqlConn, new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(mysqlConn.getConnectionId()), stmt), promise).writeAndFlush(mysqlConn);;        
         promise.sync();
 		return collector.getPreparedStatement();
 	}
@@ -128,7 +132,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 		MysqlPreparedStmtExecuteCollector collector = new MysqlPreparedStmtExecuteCollector(pstmt);
 		
-		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand("EXEC PREPARED"), parameters);
+		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand(CharsetUtil.UTF_8, "EXEC PREPARED"), parameters);
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
         collector.getDispatchBundle(mysqlConn, sqlc, promise).writeAndFlush(mysqlConn);
         promise.sync();

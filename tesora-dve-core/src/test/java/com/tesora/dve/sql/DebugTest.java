@@ -21,6 +21,7 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+
 import junit.framework.JUnit4TestAdapter;
 import junit.framework.TestSuite;
 
@@ -31,7 +32,6 @@ import org.junit.runners.AllTests;
 import com.tesora.dve.common.CatalogHelperTest;
 import com.tesora.dve.common.UrlBalancerTest;
 import com.tesora.dve.common.catalog.CatalogTest;
-import com.tesora.dve.common.resultset.ResultChunkMgrTest;
 import com.tesora.dve.groupmanager.LocalTopicTest;
 import com.tesora.dve.queryplan.QueryStepBasicTest;
 import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProviderTest;
@@ -78,7 +78,6 @@ public class DebugTest {
 				OnPremiseSiteProviderTest.class,
 				QueryStepBasicTest.class,
 				CatalogTest.class,
-				ResultChunkMgrTest.class,
 				UrlBalancerTest.class,
 				CatalogHelperTest.class,
 				ShowTest.class,

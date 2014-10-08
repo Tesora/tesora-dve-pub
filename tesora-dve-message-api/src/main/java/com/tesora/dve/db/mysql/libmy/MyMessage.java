@@ -23,7 +23,6 @@ package com.tesora.dve.db.mysql.libmy;
 
 
 import com.tesora.dve.db.mysql.MysqlMessage;
-import com.tesora.dve.db.mysql.portal.protocol.Packet;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.ByteOrder;

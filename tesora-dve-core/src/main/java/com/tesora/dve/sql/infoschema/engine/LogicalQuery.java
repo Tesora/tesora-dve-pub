@@ -21,49 +21,54 @@ package com.tesora.dve.sql.infoschema.engine;
  * #L%
  */
 
+import java.math.BigInteger;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.AbstractInformationSchemaColumnView;
-import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.db.NativeType;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.resultset.ColumnSet;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 
 public class LogicalQuery {
-	
+
 	protected ViewQuery orig;
 	
 	protected SelectStatement stmt;
 	protected Map<String,Object> params;
-	protected Map<TableKey,ExpressionNode> viewToLogicalForwarding;
-	protected List<List<AbstractInformationSchemaColumnView>> projectionColumns;
-	
-	public LogicalQuery(ViewQuery basedOn, SelectStatement s, Map<String,Object> p, Map<TableKey, ExpressionNode> forwarding,
-			List<List<AbstractInformationSchemaColumnView>> projCols) {
-		stmt = s;
-		params = p;
+
+	public LogicalQuery(ViewQuery orig, SelectStatement xlated, Map<String,Object> p) {
+		this.orig = orig;
+		this.stmt = xlated;
+		params = (p == null ? new HashMap<String,Object>() : p);
 		if (params.isEmpty())
 			params = new HashMap<String,Object>();
-		this.viewToLogicalForwarding = forwarding;
-		orig = basedOn;
-		projectionColumns = projCols;
-	}
-	
-	public LogicalQuery(LogicalQuery base, SelectStatement ss) {
-		stmt = ss;
-		params = base.params;
-		viewToLogicalForwarding = base.viewToLogicalForwarding;
-		orig = base.orig;
-		projectionColumns = base.projectionColumns;
 	}
 	
 	public SelectStatement getQuery() { return stmt; }
 	public Map<String,Object> getParams() { return params; }
-	public Map<TableKey,ExpressionNode> getForwarding() { return viewToLogicalForwarding; }
-	public List<List<AbstractInformationSchemaColumnView>> getProjectionColumns() { return projectionColumns; }
-	
+
 	public ViewQuery getViewQuery() {
 		return orig;
 	}
+
+	public boolean isDirect() {
+		return true;
+	}
+	
+	public static void buildNativeType(ColumnSet cs, String colName, String colAlias, Object in) throws PEException {
+		if (in instanceof String) {
+            NativeType nt = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(java.sql.Types.VARCHAR, true);
+			cs.addColumn(colAlias, 255, nt.getTypeName(), java.sql.Types.VARCHAR);
+		} else if (in instanceof BigInteger) {
+            NativeType nt = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(java.sql.Types.BIGINT, true);
+			cs.addColumn(colAlias, 32, nt.getTypeName(), java.sql.Types.BIGINT);
+		} else {
+			throw new PEException("Fill me in: type guess for result column type: " + in);
+		}
+	}
+
+	
 }

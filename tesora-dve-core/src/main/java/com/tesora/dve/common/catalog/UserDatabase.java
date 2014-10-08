@@ -44,29 +44,12 @@ import javax.xml.bind.annotation.XmlElement;
 
 import org.hibernate.annotations.ForeignKey;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName="database",
-		views={@TableView(view=InfoView.SHOW, name="database", pluralName="databases",
-				columnOrder={ShowSchema.Database.NAME, 
-							 ShowSchema.Database.DEFAULT_PERSISTENT_GROUP,
-							 ShowSchema.Database.TEMPLATE,
-							 ShowSchema.Database.TEMPLATE_MODE,
-							 ShowSchema.Database.MULTITENANT,
-							 ShowSchema.Database.FKMODE,
-							 ShowSchema.Database.DEFAULT_CHARACTER_SET,
-							 ShowSchema.Database.DEFAULT_COLLATION
-							 })})
 @Entity
 @Table(name="user_database")
 @XmlAccessorType(XmlAccessType.NONE)
@@ -136,17 +119,10 @@ public class UserDatabase implements CatalogEntity, PersistentDatabase {
 	}
 
 	@Override
-	@InfoSchemaColumn(logicalName="id",fieldName="id",
-			sqlType=java.sql.Types.INTEGER,
-			views={})
 	public int getId() {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Database.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="schema_name", orderBy=true, ident=true)})
 	public String getName() {
 		return name;
 	}
@@ -155,10 +131,6 @@ public class UserDatabase implements CatalogEntity, PersistentDatabase {
 		this.name = catalogName;
 	}
 
-	@InfoSchemaColumn(logicalName="default_storage_group", fieldName="defaultStorageGroup",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Database.DEFAULT_PERSISTENT_GROUP,extension=true),
-				   @ColumnView(view=InfoView.INFORMATION,name="default_persistent_group")})
 	public PersistentGroup getDefaultStorageGroup() {
 		return defaultStorageGroup;
 	}
@@ -286,10 +258,6 @@ public class UserDatabase implements CatalogEntity, PersistentDatabase {
 		return dependents;
 	}
 
-	@InfoSchemaColumn(logicalName="template",fieldName="templateName",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Database.TEMPLATE,extension=true),
-				   @ColumnView(view=InfoView.INFORMATION,name="template",extension=true)})
 	public String getTemplateName() {
 		return templateName;
 	}
@@ -298,10 +266,6 @@ public class UserDatabase implements CatalogEntity, PersistentDatabase {
 		this.templateName = name;
 	}
 
-	@InfoSchemaColumn(logicalName = "template_mode", fieldName = "templateMode",
-			sqlType = java.sql.Types.VARCHAR, sqlWidth = 16,
-			views = { @ColumnView(view = InfoView.SHOW, name = ShowSchema.Database.TEMPLATE_MODE, extension = true),
-					@ColumnView(view = InfoView.INFORMATION, name = "template_mode") })
 	public String getTemplateMode() {
 		return this.templateMode;
 	}
@@ -310,18 +274,10 @@ public class UserDatabase implements CatalogEntity, PersistentDatabase {
 		this.templateMode = mode.toString();
 	}
 
-	@InfoSchemaColumn(logicalName="multitenant", fieldName="multitenant_mode",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Database.MULTITENANT,extension=true),
-				   @ColumnView(view=InfoView.INFORMATION, name="multitenant")})	
 	public String getMultitenantModeString() {
 		return this.multitenant_mode;
 	}
 	
-	@InfoSchemaColumn(logicalName="def_character_set_name", fieldName="defaultCharacterSetName",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=32,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Database.DEFAULT_CHARACTER_SET,extension=true),
-				   @ColumnView(view=InfoView.INFORMATION, name="default_character_set_name")})	
 	public String getDefaultCharacterSetName() {
         return (this.defaultCharacterSetName == null) ?
 				Singletons.require(HostService.class).getDBNative().getDefaultServerCharacterSet() : this.defaultCharacterSetName;
@@ -331,10 +287,6 @@ public class UserDatabase implements CatalogEntity, PersistentDatabase {
 		this.defaultCharacterSetName = value;
 	}
 
-	@InfoSchemaColumn(logicalName="def_collation_name", fieldName="defaultCollationName",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=32,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Database.DEFAULT_COLLATION,extension=true),
-				   @ColumnView(view=InfoView.INFORMATION, name="default_collation_name")})	
 	public String getDefaultCollationName() {
         return (this.defaultCollationName == null) ?
 				Singletons.require(HostService.class).getDBNative().getDefaultServerCollation() : this.defaultCollationName;
@@ -349,10 +301,6 @@ public class UserDatabase implements CatalogEntity, PersistentDatabase {
 		return mtmodeobj;
 	}
 
-	@InfoSchemaColumn(logicalName="fkmode", fieldName="fk_mode",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Database.FKMODE,extension=true),
-				   @ColumnView(view=InfoView.INFORMATION, name="foreign_key_mode")})	
 	public String getFKModeString() {
 		return this.fk_mode;
 	}

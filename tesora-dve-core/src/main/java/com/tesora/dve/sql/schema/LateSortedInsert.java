@@ -29,11 +29,14 @@ import java.util.Map;
 
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.PersistentSite;
+import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.db.Emitter.EmitterInvoker;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -89,22 +92,23 @@ public class LateSortedInsert {
 		return out;
 	}
 	
-	private void emitJITInsert(final SchemaContext sc, final List<JustInTimeInsert> out, final DistributionKey dk, final List<List<ExpressionNode>> asList) {
-		final GenericSQLCommand prefix = new EmitterInvoker() {
+	private void emitJITInsert(final SchemaContext sc, final List<JustInTimeInsert> out, final DistributionKey dk, final List<List<ExpressionNode>> asList) throws PEException {
+		Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+		final GenericSQLCommand prefix = new EmitterInvoker(emitter) {
 			@Override
 			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
 				getEmitter().emitInsertPrefix(sc, LateSortedInsert.this.stmt, buf);
 			}
 		}.buildGenericCommand(sc);
 
-		final GenericSQLCommand suffix = new EmitterInvoker() {
+		final GenericSQLCommand suffix = new EmitterInvoker(emitter) {
 			@Override
 			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
 				getEmitter().emitInsertSuffix(sc, LateSortedInsert.this.stmt, buf);
 			}
 		}.buildGenericCommand(sc);
 		
-		final EmitterInvoker valueEmitter = new EmitterInvoker() {
+		final EmitterInvoker valueEmitter = new EmitterInvoker(emitter) {
 			@Override
 			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
 				getEmitter().emitInsertValues(sc, asList, buf);

@@ -25,6 +25,7 @@ package com.tesora.dve.sql.schema;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -35,6 +36,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.codec.binary.Hex;
 
+import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.PECharsetUtils;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -48,6 +50,7 @@ import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaException;
@@ -64,6 +67,7 @@ import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifierTag;
 import com.tesora.dve.sql.schema.modifiers.TableModifiers;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
+import com.tesora.dve.sql.util.Cast;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryPredicate;
@@ -228,7 +232,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		
 	public void setDeclaration(SchemaContext sc, PETable basedOn) {
 		super.setDeclaration(sc,basedOn);
-        tableDefinition = Singletons.require(HostService.class).getDBNative().getEmitter().emitTableDefinition(sc,basedOn);
+        tableDefinition = new MysqlEmitter().emitTableDefinition(sc,basedOn); 
 	}
 	
 	public String getDefinition() {
@@ -341,6 +345,10 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return keys;
 	}
 
+	protected List<TableComponent<?>> getKeys() {
+		return Functional.apply(keys,new Cast<TableComponent<?>,PEKey>());
+	}
+	
 	
 	public PEKey lookupKey(SchemaContext sc, Name keyName) {
 		if (!loaded) return null;
@@ -522,7 +530,37 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	public void removeKey(SchemaContext sc, PEKey pek) {
 		checkLoaded(sc);
+		// also, at this point, clear the key flags on the columns
+		// but only if the column is now truly not a key
+		MultiMap<PEColumn,PEKey> colByKey = new MultiMap<PEColumn,PEKey>();
+		for(PEKey k : keys) {
+			if (k.isForeign()) continue; // doesn't matter
+			for(PEKeyColumnBase pekc : k.getKeyColumns()) {
+				colByKey.put(pekc.getColumn(), k);
+			}
+		}
+		for(PEColumn pec : colByKey.keySet()) {
+			Collection<PEKey> vals = colByKey.get(pec);
+			vals.remove(pek);
+			// now look at the remaining keys, and figure out the key parts
+			boolean isPrimary = false;
+			boolean isUnique = false;
+			boolean isKey = !vals.isEmpty();
+			for(PEKey ipek : vals) {
+				if (ipek.getConstraint() == ConstraintType.PRIMARY)
+					isPrimary = true;
+				if (ipek.getConstraint() == ConstraintType.UNIQUE)
+					isUnique = true;
+			}
+			if (!isPrimary)
+				pec.clearPrimaryKeyPart();
+			if (!isUnique)
+				pec.clearUniqueKeyPart();
+			if (!isKey)
+				pec.clearKeyPart();
+		}
 		keys.remove(pek);
+		
 	}
 	
 	public int getOffsetOf(SchemaContext sc, PEKey pek) {
@@ -831,6 +869,12 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 				// we don't store this in the declaration, but it is in the catalog
 				PEColumn ntc = c.getIn(sc, tschemaVersion);
 				ntc.makeBinaryText();
+			}
+			if (!c.hasDefault()) {
+				// make sure the rebuilt column has no default as well
+				PEColumn ntc = (PEColumn) c.getIn(sc, tschemaVersion);
+				if (ntc == null) continue;
+				ntc.setDefaultValue(null);
 			}
 		}
 		if (mtmode) {

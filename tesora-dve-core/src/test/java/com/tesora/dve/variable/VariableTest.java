@@ -25,14 +25,9 @@ package com.tesora.dve.variable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
 
-import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
@@ -45,6 +40,7 @@ import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedException;
 import com.tesora.dve.exceptions.PENotFoundException;
@@ -55,8 +51,16 @@ import com.tesora.dve.queryplan.QueryStepGetSessionVariableOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSetScopedVariableOperation;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.VariableScopeKind;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.test.simplequery.SimpleQueryTest;
 import com.tesora.dve.variables.KnownVariables;
@@ -81,10 +85,12 @@ public class VariableTest extends PETest {
 	QueryPlan plan;
 
 	@BeforeClass
-	public static void setup() throws Exception {
-		TestCatalogHelper.createTestCatalog(PETest.class, 2);
+	public static void setup() throws Throwable {
+		TestCatalogHelper.createTestCatalog(PETest.class);
 		bootHost = BootstrapHost.startServices(PETest.class);
-        populateMetadata(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.declareSchema(pcr);
+		pcr.disconnect();
 	}
 
 	public VariableTest() {
@@ -277,7 +283,7 @@ public class VariableTest extends PETest {
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSelectAllOperation(db, BroadcastDistributionModel.SINGLETON,
+		executeQuery(new QueryStepSelectAllOperation(ssConnection, db, BroadcastDistributionModel.SINGLETON,
 				"select @@session.collation_connection"), results);
 		assertTrue(results.hasResults());
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
@@ -292,7 +298,7 @@ public class VariableTest extends PETest {
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSelectAllOperation(db, BroadcastDistributionModel.SINGLETON,
+		executeQuery(new QueryStepSelectAllOperation(ssConnection, db, BroadcastDistributionModel.SINGLETON,
 				"select @@session.collation_connection"), results);
 		assertTrue(results.hasResults());
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
@@ -300,18 +306,12 @@ public class VariableTest extends PETest {
 
 	@Test
 	public void setInvalidCollation() throws Throwable {
-		QueryStepOperation step1op1 = new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
-				VariableConstants.COLLATION_CONNECTION_NAME, "latin1_junk_ci");
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		try {
-			plan.addStep(step1).executeStep(ssConnection, new MysqlTextResultChunkProvider());
-			fail("Expected exception not thrown");
-		} catch (PEException e) {
-            String receivedMessage = e.getMessage();
-            assertTrue("received incorrect error message: "+receivedMessage, receivedMessage.contains("not a supported collation"));
-		} catch (Throwable t) {
-			fail("Wrong exception thrown");
-		}
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				KnownVariables.COLLATION_CONNECTION.setSessionValue(ssConnection, "latin1_junk_ci");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.unknownCollationFormatter, "latin1_junk_ci");
 	}
 
 	/** PE-1154 */
@@ -344,26 +344,26 @@ public class VariableTest extends PETest {
 		KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "OFF");
 		assertEquals(Boolean.FALSE, KnownVariables.AUTOCOMMIT.getSessionValue(ssConnection));
 				
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, null);
 			}
-		}.assertException(PEException.class, "Invalid value for variable 'autocommit': null not allowed");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "autocommit", "NULL");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "");
 			}
-		}.assertException(PEException.class, "Invalid boolean value '' given for variable autocommit");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "autocommit", "");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "2");
 			}
-		}.assertException(PEException.class, "Invalid boolean value '2' given for variable autocommit");
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "autocommit", "2");
 	}
 
 	@Test

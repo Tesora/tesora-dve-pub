@@ -38,13 +38,19 @@ import java.util.TreeMap;
 
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.MathUtils;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.node.expression.ColumnInstance;
+import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.structural.JoinSpecification;
+import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.Name;
+import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PETable;
@@ -64,6 +70,24 @@ import com.tesora.dve.tools.analyzer.stats.StatementAnalysis;
 import com.tesora.dve.tools.analyzer.stats.StatsVisitor;
 
 public class CorpusStats implements StatsVisitor {
+
+	private static final Logger logger = Logger.getLogger(CorpusStats.class);
+
+	static final class TableSizeComparator implements Comparator<TableStats> {
+
+		private final boolean isRowWidthWeightingEnabled;
+
+		public TableSizeComparator(final boolean isRowWidthWeightingEnabled) {
+			this.isRowWidthWeightingEnabled = isRowWidthWeightingEnabled;
+		}
+
+		@Override
+		public int compare(final TableStats a, final TableStats b) {
+			final long aSize = a.getPredictedFutureSize(this.isRowWidthWeightingEnabled);
+			final long bSize = b.getPredictedFutureSize(this.isRowWidthWeightingEnabled);
+			return Long.compare(aSize, bSize);
+		}
+	};
 
 	public static enum StatementType {
 		SELECT("SELECT"),
@@ -639,7 +663,15 @@ public class CorpusStats implements StatsVisitor {
 		}
 
 		public boolean hasForeignRelationship() {
-			return !this.forwardRelationships.isEmpty() || !this.backwardRelationships.isEmpty();
+			return hasForwardRelationships() || hasBackwardRelationships();
+		}
+
+		public boolean hasForwardRelationships() {
+			return !this.forwardRelationships.isEmpty();
+		}
+
+		public boolean hasBackwardRelationships() {
+			return !this.backwardRelationships.isEmpty();
 		}
 
 		public Set<TableColumn> getColumns(final Set<String> columnNames) throws PEException {
@@ -759,26 +791,37 @@ public class CorpusStats implements StatsVisitor {
 
 	public final class JoinStats extends Relationship {
 
-		private final Pair<TableColumn, TableColumn> joinColumns;
+		private final Set<Pair<TableColumn, TableColumn>> joinColumns = new HashSet<Pair<TableColumn, TableColumn>>();
+		private final Set<TableColumn> leftColumns = new LinkedHashSet<TableColumn>();
+		private final Set<TableColumn> righColumns = new LinkedHashSet<TableColumn>();
 		private final TableStats lhs;
 		private final TableStats rhs;
 		private final RelationshipSpecification type;
 		private long count;
 		private final String signature;
 
-		private <T extends Column<?>> JoinStats(final JoinSpecification joinType, final Pair<T, T> joinColumns, final long count, final SchemaContext context) {
-			final Column<?> leftColumn = joinColumns.getFirst();
-			final Column<?> rightColumn = joinColumns.getSecond();
-			this.lhs = getStats(leftColumn.getTable(), context);
-			this.rhs = getStats(rightColumn.getTable(), context);
-			this.joinColumns = new Pair<TableColumn, TableColumn>(this.lhs.new TableColumn(leftColumn), this.rhs.new TableColumn(rightColumn));
+		private <T extends Column<?>> JoinStats(final JoinSpecification joinType, final ListOfPairs<? extends T, ? extends T> joinColumns, final long count,
+				final SchemaContext context) {
+			this.lhs = getStats(joinColumns.get(0).getFirst().getTable(), context);
+			this.rhs = getStats(joinColumns.get(0).getSecond().getTable(), context);
+
+			for (final Pair<? extends T, ? extends T> pair : joinColumns) {
+				final TableColumn leftColumn = this.lhs.new TableColumn(pair.getFirst());
+				final TableColumn rightColumn = this.rhs.new TableColumn(pair.getSecond());
+				this.joinColumns.add(new Pair<TableColumn, TableColumn>(leftColumn, rightColumn));
+				this.leftColumns.add(leftColumn);
+				this.righColumns.add(rightColumn);
+			}
+
 			this.type = new RelationshipSpecification(joinType);
 			this.count = count;
 			this.signature = getSignature();
 		}
 
 		private JoinStats(final JoinStats other, final JoinSpecification joinType) {
-			this.joinColumns = other.joinColumns;
+			this.joinColumns.addAll(other.joinColumns);
+			this.leftColumns.addAll(other.leftColumns);
+			this.righColumns.addAll(other.righColumns);
 			this.lhs = other.lhs;
 			this.rhs = other.rhs;
 			this.type = new RelationshipSpecification(joinType);
@@ -798,17 +841,17 @@ public class CorpusStats implements StatsVisitor {
 
 		@Override
 		public Set<TableColumn> getLeftColumns() {
-			return Collections.<TableColumn> singleton(this.joinColumns.getFirst());
+			return this.leftColumns;
 		}
 
 		@Override
 		public Set<TableColumn> getRightColumns() {
-			return Collections.<TableColumn> singleton(this.joinColumns.getSecond());
+			return this.righColumns;
 		}
 
 		@Override
 		public Set<Pair<TableColumn, TableColumn>> getColumnPairs() {
-			return Collections.singleton(this.joinColumns);
+			return this.joinColumns;
 		}
 
 		@Override
@@ -831,7 +874,7 @@ public class CorpusStats implements StatsVisitor {
 			 * This join is not involved in a foreign key relationship and
 			 * therefore should always be safe to collocate.
 			 */
-			if (!this.lhs.hasForeignRelationship() && !this.rhs.hasForeignRelationship()) {
+			if (!this.lhs.hasBackwardRelationships() && !this.rhs.hasBackwardRelationships()) {
 				return true;
 			}
 
@@ -894,7 +937,7 @@ public class CorpusStats implements StatsVisitor {
 			final List<String> joinProperties = new ArrayList<String>();
 			joinProperties.add("F:" + String.valueOf(this.getFrequency()) + "x");
 			joinProperties.add("C:" + String.valueOf(this.getTotalCardinality()));
-			joinProperties.add("C:" + String.valueOf(this.getTotalDataSizeKb()) + "KB");
+			joinProperties.add("L:" + String.valueOf(this.getTotalDataSizeKb()) + "KB");
 			value.append("[").append(this.signature).append("; ").append(StringUtils.join(joinProperties, ", ")).append("]");
 			return value.toString();
 		}
@@ -902,16 +945,17 @@ public class CorpusStats implements StatsVisitor {
 		private String getSignature() {
 			final StringBuilder signature = new StringBuilder();
 			signature.append(this.getLHS().getFullTableName()).append(" ").append(this.type).append(" ").append(this.getRHS().getFullTableName())
-					.append(" ON ").append(this.getLeftColumn()).append(" = ").append(this.getRightColumn());
+					.append(" ON ");
+
+			final Iterator<Pair<TableColumn, TableColumn>> pairs = this.joinColumns.iterator();
+			while (pairs.hasNext()) {
+				final Pair<TableColumn, TableColumn> pair = pairs.next();
+				signature.append(pair.getFirst()).append(" = ").append(pair.getSecond());
+				if (pairs.hasNext()) {
+					signature.append(" AND ");
+				}
+			}
 			return signature.toString();
-		}
-
-		private TableColumn getLeftColumn() {
-			return this.joinColumns.getFirst();
-		}
-
-		private TableColumn getRightColumn() {
-			return this.joinColumns.getSecond();
 		}
 	}
 
@@ -1023,19 +1067,120 @@ public class CorpusStats implements StatsVisitor {
 		rhs.bumpCount(StatementType.JOIN, freq);
 
 		final JoinSpecification joinType = joinInfo.getType();
-		final ListOfPairs<PEColumn, PEColumn> joinOnColumnPairs = joinInfo.getEquijoins();
-		for (final Pair<PEColumn, PEColumn> columnPair : joinOnColumnPairs) {
-			final JoinStats join = new JoinStats(joinType, columnPair, freq, currentContext);
-			if (joins.contains(join)) {
-				for (final JoinStats item : joins) {
-					if (item.equals(join)) {
-						item.bumpJoinCount(join.getFrequency());
+		final ExpressionNode onClause = joinInfo.getOnClause();
+
+		Set<? extends ListOfPairs<? extends Column<?>, ? extends Column<?>>> independentConditions;
+		if (onClause != null) {
+			independentConditions = getIndependentJoinColumnPairs(joinInfo, decomposeIntoIndependentJoinConditions(onClause));
+		} else {
+			independentConditions = Collections.singleton(joinInfo.getEquijoins());
+		}
+
+		for (final ListOfPairs<? extends Column<?>, ? extends Column<?>> columnPairs : independentConditions) {
+			if (!columnPairs.isEmpty()) {
+				final JoinStats join = new JoinStats(joinType, columnPairs, freq, currentContext);
+				if (joins.contains(join)) {
+					for (final JoinStats item : joins) {
+						if (item.equals(join)) {
+							item.bumpJoinCount(join.getFrequency());
+						}
 					}
+				} else {
+					joins.add(join);
 				}
-			} else {
-				joins.add(join);
 			}
 		}
+	}
+
+	/**
+	 * Build all combinations of colocatable join column pairs.
+	 * 
+	 * a) t1 JOIN t3 ON t1.a = t2.a AND t1.b = t2.b
+	 *    't1' and 't2' can be colocated in a single range on both column pairs 'a'
+	 *    and 'b'.
+	 * 
+	 * b) t1 JOIN t3 ON t1.a = t2.a OR t1.b = t2.b
+	 *    't1' and 't2' cannot be colocated on both column pairs 'a' and 'b'.
+	 *    The above join can however be handled as two independent joins:
+	 *    "t1 JOIN t3 ON t1.a = t2.a" and "t1 JOIN t3 ON t1.b = t2.b"
+	 *    Ranging 't1' and 't2' on one of the two column pairs ('a' or 'b') may
+	 *    benefit the planner/optimizer.
+	 * 
+	 * This method builds all independently colocatable column groups based on
+	 * the rules above.
+	 * A new join is constructed for each of the independent groups.
+	 */
+	private Set<Set<ExpressionNode>> decomposeIntoIndependentJoinConditions(final ExpressionNode expr) {
+		if (expr instanceof FunctionCall) {
+			final FunctionCall func = (FunctionCall) expr;
+			if (EngineConstant.FUNCTION.has(func, EngineConstant.EQUALS)) {
+				return Collections.singleton(Collections.singleton(expr));
+			}
+
+			final List<ExpressionNode> pars = func.getParameters();
+			final Set<Set<ExpressionNode>> left = decomposeIntoIndependentJoinConditions(pars.get(0));
+			final Set<Set<ExpressionNode>> right = decomposeIntoIndependentJoinConditions(pars.get(1));
+			final Set<Set<ExpressionNode>> decomposed = new LinkedHashSet<Set<ExpressionNode>>();
+
+			if (EngineConstant.FUNCTION.has(func, EngineConstant.OR)) {
+				decomposed.addAll(left);
+				decomposed.addAll(right);
+			} else if (EngineConstant.FUNCTION.has(func, EngineConstant.AND)) {
+				for (final Set<ExpressionNode> ln : left) {
+					for (final Set<ExpressionNode> rn : right) {
+						final Set<ExpressionNode> row = new LinkedHashSet<ExpressionNode>();
+						row.addAll(ln);
+						row.addAll(rn);
+						decomposed.add(row);
+					}
+				}
+			}
+
+			return decomposed;
+		}
+
+		return Collections.EMPTY_SET;
+	}
+
+	private Set<ListOfPairs<Column<?>, Column<?>>> getIndependentJoinColumnPairs(final EquijoinInfo joinInfo,
+			final Set<Set<ExpressionNode>> independentJoinConditions) {
+		final Set<ListOfPairs<Column<?>, Column<?>>> independentJoinClumnPairs = new LinkedHashSet<ListOfPairs<Column<?>, Column<?>>>(
+				independentJoinConditions.size());
+		for (final Set<ExpressionNode> joinConditions : independentJoinConditions) {
+			independentJoinClumnPairs.add(getJoinColumnPairs(joinInfo, joinConditions));
+		}
+
+		return independentJoinClumnPairs;
+	}
+
+	private ListOfPairs<Column<?>, Column<?>> getJoinColumnPairs(final EquijoinInfo joinInfo, final Set<ExpressionNode> joinConditions) {
+		final PEAbstractTable<?> lhsJoinTable = joinInfo.getLHS();
+		final PEAbstractTable<?> rhsJoinTable = joinInfo.getRHS();
+
+		final ListOfPairs<Column<?>, Column<?>> joinColumns = new ListOfPairs<Column<?>, Column<?>>(joinConditions.size());
+		for (final ExpressionNode expr : joinConditions) {
+			if (expr instanceof FunctionCall) {
+				if (EngineConstant.FUNCTION.has(expr, EngineConstant.EQUALS)) {
+					final FunctionCall func = (FunctionCall) expr;
+					final List<ExpressionNode> sides = func.getParameters();
+					final ExpressionNode left = sides.get(0);
+					final ExpressionNode right = sides.get(1);
+					if ((left instanceof ColumnInstance) && (right instanceof ColumnInstance)) {
+						final Column<?> leftColumn = ((ColumnInstance) left).getColumn();
+						final Column<?> rightColumn = ((ColumnInstance) right).getColumn();
+						if (lhsJoinTable.equals(leftColumn.getTable()) && rhsJoinTable.equals(rightColumn.getTable())) {
+							joinColumns.add(leftColumn, rightColumn);
+						} else if (lhsJoinTable.equals(rightColumn.getTable()) && rhsJoinTable.equals(leftColumn.getTable())) {
+							joinColumns.add(rightColumn, leftColumn);
+						} else {
+							logger.warn("Unsupported join-on condition: " + func);
+						}
+					}
+				}
+			}
+		}
+
+		return joinColumns;
 	}
 
 	@Override

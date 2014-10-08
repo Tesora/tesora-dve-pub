@@ -33,8 +33,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.schema.VariableScopeKind;
@@ -148,7 +146,6 @@ public class InsertAutoincrementTest extends SchemaTest {
 		buf.append("create table `autoinctab` (`id` int unsigned auto_increment, `junk` varchar(24), primary key (`id`)) ");
 		conn.execute(buf.toString());
 
-		CatalogDAO c = CatalogDAOFactory.newInstance();
 		Long orig = KnownVariables.CACHED_PLAN_LITERALS_MAX.getValue(null);
 		try {
 			KnownVariables.CACHED_PLAN_LITERALS_MAX.setValue(null, VariableScopeKind.GLOBAL, "1");

@@ -46,7 +46,7 @@ public class ComparisonOptions {
 	}
 	
 	public boolean isIgnoreMD() {
-		// return ignoreMD;
+		//return ignoreMD;
 		return false;
 	}
 	

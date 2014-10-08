@@ -229,14 +229,13 @@ public class Host implements HostService {
 				// is safe to initialize variables here.
 				variables.initialize(c);
 				variables.initializeDynamicMBeanHandlers(globalConfigMBean);
-				
+
+				infoSchema = InformationSchemas.build(dbNative, c, props);
+
 			} finally {
 				c.close();
 			}
 			
-			infoSchema = InformationSchemas.build(dbNative);
-
-
 			startTime = System.currentTimeMillis();
 			
 		} catch (Throwable e) {
@@ -274,8 +273,7 @@ public class Host implements HostService {
 			dbNative = DBNative.DBNativeFactory.newInstance(dbType);
 			charSetNative = CharSetNative.CharSetNativeFactory.newInstance(dbType, startCatalog);
 			
-			infoSchema = InformationSchemas.build(dbNative);
-			// initialiseSessionVariableTemplate(true);
+			infoSchema = InformationSchemas.build(dbNative,null,props);
 			if (startCatalog)
 				variables.initialize(null);
 		} catch (Exception e) {

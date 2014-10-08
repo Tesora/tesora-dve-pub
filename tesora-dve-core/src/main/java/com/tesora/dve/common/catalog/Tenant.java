@@ -39,25 +39,12 @@ import javax.persistence.Table;
 import org.hibernate.annotations.ForeignKey;
 
 import com.tesora.dve.common.PEConstants;
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 
-@InfoSchemaTable(logicalName="tenant",
-		views={@TableView(view=InfoView.SHOW, name="tenant", pluralName="tenants", 
-				columnOrder={ShowSchema.Tenant.NAME, 
-							 ShowSchema.Tenant.DATABASE, 
-							 ShowSchema.Tenant.SUSPENDED, 
-							 ShowSchema.Tenant.DESCRIPTION}, extension=true, priviledged=true),
-		       @TableView(view=InfoView.INFORMATION, name="tenant", pluralName="", columnOrder={"name", "database", "suspended", "description", "id"}, extension=true, priviledged=true)})
 @Entity
 @Table(name="tenant")
 public class Tenant implements ITenant {
@@ -102,41 +89,22 @@ public class Tenant implements ITenant {
 	}
 
 	@Override
-	@InfoSchemaColumn(logicalName="id", fieldName="id",
-			sqlType=java.sql.Types.INTEGER,
-			views={@ColumnView(view=InfoView.INFORMATION,name="id")})
 	public int getId() {
 		return id;
 	}
 	
-	@InfoSchemaColumn(logicalName="name",fieldName="externalID",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Tenant.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
 	public String getExternalTenantId() {
 		return externalID;
 	}
 	
-	@InfoSchemaColumn(logicalName="description", fieldName="description",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Tenant.DESCRIPTION),
-				   @ColumnView(view=InfoView.INFORMATION,name="description")})
 	public String getDescription() {
 		return description;
 	}
 
-	@InfoSchemaColumn(logicalName="suspended", fieldName="suspended",
-			sqlType=java.sql.Types.VARCHAR,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Tenant.SUSPENDED),
-				   @ColumnView(view=InfoView.INFORMATION,name="suspended")})
 	public Boolean isSuspended() {
 		return suspended;
 	}
 	
-	@InfoSchemaColumn(logicalName="database",fieldName="userDatabase",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.Tenant.DATABASE),
-				   @ColumnView(view=InfoView.INFORMATION,name="database")})
 	public UserDatabase getDatabase() {
 		return userDatabase;
 	}

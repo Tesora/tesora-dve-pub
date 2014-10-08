@@ -43,15 +43,6 @@ public class ErrorMapper {
 		}
 	}
 
-	/*
-	private static StackTraceElement getLocation(Throwable t) {
-		if (KnownVariables.ERROR_MIGRATOR.getGlobalValue(null)) {
-			return t.getStackTrace()[0];
-		}
-		return null;
-	}
-	*/
-	
 	// namespace
 	public static final FormattedErrorInfo makeResponse(HasErrorInfo se) {
 		ErrorInfo ex = se.getErrorInfo();

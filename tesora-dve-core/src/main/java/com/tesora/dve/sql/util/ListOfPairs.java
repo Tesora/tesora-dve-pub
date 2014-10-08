@@ -22,6 +22,7 @@ package com.tesora.dve.sql.util;
  */
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class ListOfPairs<First,Second> extends ArrayList<Pair<First,Second>> implements java.io.Serializable {
 
@@ -40,6 +41,10 @@ public class ListOfPairs<First,Second> extends ArrayList<Pair<First,Second>> imp
 	}
 	
 	public ListOfPairs(ListOfPairs<First,Second> other) {
+		super(other);
+	}
+
+	public ListOfPairs(List<Pair<First, Second>> other) {
 		super(other);
 	}
 }

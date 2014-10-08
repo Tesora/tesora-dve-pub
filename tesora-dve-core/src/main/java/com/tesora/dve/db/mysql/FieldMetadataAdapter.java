@@ -66,13 +66,13 @@ public class FieldMetadataAdapter {
         fieldPkt.setColumn(columnMetadata.getQueryName());
         fieldPkt.setOrig_column(columnMetadata.getName());
 
-        MysqlNativeType colNativeType = (MysqlNativeType) nativeTypeCatalog.findType(columnMetadata.getNativeTypeName(), true);
+        MysqlNativeType colNativeType = (MysqlNativeType) nativeTypeCatalog.findType(columnMetadata.getTypeName(), true);
         fieldPkt.setCharset(colNativeType.getCharSet());
 
         short flags = colNativeType.getFieldTypeFlags();
         if (MysqlNativeTypeUtils.isUnsigned(columnMetadata, colNativeType))
             flags = MysqlNativeConstants.FLDPKT_FLAG_UNSIGNED;
-        MyFieldType fieldType = MyFieldType.mapFromNativeType(columnMetadata.getNativeTypeName());
+        MyFieldType fieldType = MyFieldType.mapFromNativeType(columnMetadata.getTypeName());
         flags += (columnMetadata.isKeyPart() ? MysqlNativeConstants.FLDPKT_FLAG_PART_KEY : 0);
         flags += (columnMetadata.isUniqueKey() ? MysqlNativeConstants.FLDPKT_FLAG_UNIQUE_KEY : 0);
         flags += (columnMetadata.isNonUniqueKey() ? MysqlNativeConstants.FLDPKT_FLAG_MULTIPLE_KEY : 0);
@@ -127,7 +127,7 @@ public class FieldMetadataAdapter {
         if (mnt == null)
             throw new PECodingException("Unsupported native type " + fieldType);
 
-        ColumnMetadata columnMetadata = new ColumnMetadata(columnDefPacket.getOrig_column(), maxDataLen, mnt.getTypeName(), mnt.getDataType(), false /* requiresFix */);
+        ColumnMetadata columnMetadata = new ColumnMetadata(columnDefPacket.getOrig_column(), mnt.getDefaultColumnAttrFlags(), maxDataLen, mnt.getTypeName(), mnt.getDataType());
         columnMetadata.setNativeTypeId(fieldType.getByteValue());
         columnMetadata.setAliasName(columnDefPacket.getColumn());
         columnMetadata.setDbName(columnDefPacket.getDatabase());
@@ -147,7 +147,7 @@ public class FieldMetadataAdapter {
             columnMetadata.primaryKey();
 
         if ( fieldType.supportsUnsigned() && (flags & MysqlNativeConstants.FLDPKT_FLAG_UNSIGNED) > 0 )
-            columnMetadata.setNativeTypeModifiers(MysqlNativeType.MODIFIER_UNSIGNED);
+        	columnMetadata.setUnsigned(true);
 
         return columnMetadata;
     }

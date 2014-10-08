@@ -28,9 +28,10 @@ import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSContext;
-import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
+import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.worker.Worker;
 
 public class WorkerDropDatabaseRequest extends WorkerRequest {
@@ -47,9 +48,10 @@ public class WorkerDropDatabaseRequest extends WorkerRequest {
 	public void executeRequest(final Worker w, CompletionHandle<Boolean> promise) {
 
 		String localizedDBName = UserDatabase.getNameOnSite(databaseName, w.getWorkerSite());
-        SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getDropDatabaseStmt(localizedDBName);
+		SQLCommand ddl = Singletons.require(HostService.class).getDBNative()
+				.getDropDatabaseStmt(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), localizedDBName);
         this.execute(w, ddl, promise);
-    }
+	}
 
     @Override
 	public String toString() {

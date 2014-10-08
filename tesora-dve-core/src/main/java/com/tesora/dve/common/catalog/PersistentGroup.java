@@ -40,7 +40,7 @@ import javax.persistence.Table;
 
 import com.tesora.dve.common.PECollectionUtils;
 import com.tesora.dve.common.PEStringUtils;
-import com.tesora.dve.common.ShowSchema;
+import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.PELockedException;
 import com.tesora.dve.distribution.RandomDistributionModel;
@@ -52,15 +52,16 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.GetWorkerRequest;
+import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 import com.tesora.dve.sql.schema.PEPersistentGroup.TStorageGroup;
+import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
+import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.WorkerGroup;
+import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 import com.tesora.dve.worker.WorkerManager;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
 
@@ -76,10 +77,6 @@ import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
  * intermediate step in a {@link QueryPlan}.
  *
  */
-@InfoSchemaTable(logicalName="persistent_group",
-		views={@TableView(view=InfoView.SHOW, name="persistent group", pluralName="persistent groups", 
-				columnOrder={ShowSchema.PersistentGroup.NAME, ShowSchema.PersistentGroup.LAST_GENERATION}, extension=true, priviledged=true),
-		       @TableView(view=InfoView.INFORMATION, name="storage_group", pluralName="", columnOrder={"name", "last_generation"}, extension=true, priviledged=true)})
 @Entity
 @Table(name="persistent_group")
 public class PersistentGroup implements CatalogEntity, StorageGroup {
@@ -194,18 +191,10 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 	 * @return <b>StorageGroup</b> name
 	 */
 	@Override
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.PersistentGroup.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
 	public String getName() {
 		return this.name;
 	}
 
-	@InfoSchemaColumn(logicalName="last_generation",fieldName="",
-			sqlType=java.sql.Types.INTEGER,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.PersistentGroup.LAST_GENERATION),
-			       @ColumnView(view=InfoView.INFORMATION, name="last_generation")})
 	public Integer getLastGeneration() {
 		if (generations.isEmpty())
 			return null;
@@ -254,9 +243,6 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 	}
 	
 	@Override
-	@InfoSchemaColumn(logicalName="id", fieldName="id",
-			sqlType=java.sql.Types.INTEGER,
-			views={})
 	public int getId() {
 		return id;
 	}
@@ -267,19 +253,43 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 		getLastGen().addStorageSite(site);
 	}
 
-	public void addGeneration(SSConnection ssCon, WorkerGroup wg, StorageGroupGeneration newGen) throws Throwable {
+	public void addGeneration(SSConnection ssCon, WorkerGroup wg, StorageGroupGeneration newGen,
+			ListOfPairs<UserTable,SQLCommand> tableDecls, boolean ignoreFKs, List<SQLCommand> userDecls) throws Throwable {
 		if (false == this.equals(wg.getGroup()))
 			throw new PEException("WorkerGroup does not match StorageGroup");
 		if (generations.size() > 0)
 			lockGroup();
-		List<UserTable> tables = ssCon.getCatalogDAO().findAllTablesInPersistentGroup(this);
 		ListSet<UserDatabase> dbs = new ListSet<UserDatabase>();
-		for(UserTable ut : tables)
-			dbs.add(ut.getDatabase());
-		for(UserDatabase udb : dbs)
-			wg.assureDatabase(ssCon, udb);
-		for (UserTable t : tables) {
-			t.prepareGenerationAddition(ssCon, wg, newGen);
+		boolean fkVal = KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(ssCon);
+		if (ignoreFKs) 
+			ssCon.setSessionVariable("foreign_key_checks", "0");
+		if (tableDecls != null) {
+			for(Pair<UserTable,SQLCommand> p : tableDecls)
+				dbs.add(p.getFirst().getDatabase());
+			for(UserDatabase udb : dbs)
+				wg.assureDatabase(ssCon, udb);
+			for(Pair<UserTable,SQLCommand> p : tableDecls) {
+				p.getFirst().prepareGenerationAddition(ssCon, wg, newGen, p.getSecond());
+			}
+		} else {
+			List<UserTable> tables = ssCon.getCatalogDAO().findAllTablesInPersistentGroup(this);
+			for(UserTable ut : tables) {
+				dbs.add(ut.getDatabase());
+			}
+			for(UserDatabase udb : dbs)
+				wg.assureDatabase(ssCon, udb);
+			for(UserTable ut : tables)
+				ut.prepareGenerationAddition(ssCon,wg,newGen,null);
+		}
+		if (ignoreFKs)
+			ssCon.setSessionVariable("foreign_key_checks", (fkVal ? "1" : "0"));
+		// it's unclear whether newGen is just the new sites; if not then this stuff will fail
+		if (userDecls != null) {
+			for(SQLCommand usql : userDecls) {
+				wg.submit(MappingSolution.AllWorkers,
+						new WorkerExecuteRequest(ssCon.getNonTransactionalContext(),usql),
+						DBEmptyTextResultConsumer.INSTANCE);
+			}
 		}
 		generations.add(newGen);
 		wg.markForPurge();

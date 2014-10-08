@@ -213,12 +213,10 @@ public class DVEConfigCLI extends CLIBuilder {
 
 	public void cmd_locate_catalog(Scanner scanner) throws PEException {
 		if (scanner.hasNext()) {
-			final String url = scan(scanner, "url");
+			final String url = buildValidCatalogUrlFromLocation(scan(scanner, "url"));
 			final String user = scan(scanner, "user");
 			final String password = scan(scanner, "password");
 			final String database = scan(scanner);
-
-			PEUrl.isValidUrlWithPort(url);
 
 			final DBHelper dbHelper = new DBHelper(url, user, password);
 			try {
@@ -263,6 +261,16 @@ public class DVEConfigCLI extends CLIBuilder {
 		printlnIndent("User     = " + props.getProperty(DBHelper.CONN_USER, ""));
 		printlnIndent("Password = " + props.getProperty(DBHelper.CONN_PASSWORD, ""));
 		printlnIndent("Database = " + props.getProperty(DBHelper.CONN_DBNAME, ""));
+	}
+
+	private String buildValidCatalogUrlFromLocation(final String catalogLocation) throws PEException {
+		PEUrl.isValidUrlWithPort(catalogLocation);
+		final PEUrl urlBuilder = PEUrl.fromUrlString(catalogLocation);
+		urlBuilder.setQueryOption("useUnicode", "true");
+		urlBuilder.setQueryOption("characterEncoding", "utf8");
+		urlBuilder.setQueryOption("connectionCollation", "utf8_general_ci");
+
+		return urlBuilder.getURL();
 	}
 
 	public void cmd_encrypt(Scanner scanner) throws PEException {

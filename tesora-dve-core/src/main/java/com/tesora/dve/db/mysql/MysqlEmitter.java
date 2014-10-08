@@ -21,8 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import java.util.List;
-
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.sql.node.expression.CaseExpression;
@@ -31,9 +29,7 @@ import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.IndexHint;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.WhenClause;
-import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Comment;
-import com.tesora.dve.sql.schema.HasName;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
@@ -41,9 +37,7 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaLookup;
 import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.schema.cache.CacheAwareLookup;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifierTag;
 import com.tesora.dve.sql.schema.modifiers.TableModifiers;
@@ -69,6 +63,11 @@ public class MysqlEmitter extends Emitter {
 
 	private String getPersistentName(Name n) {
 		return n.get();
+	}
+	
+	@Override
+	public Emitter buildNew() {
+		return new MysqlEmitter();
 	}
 	
 	@Override
@@ -128,9 +127,9 @@ public class MysqlEmitter extends Emitter {
 
 	
 	@Override
-	public void emitTableInstance(SchemaContext sc, TableInstance tr, StringBuilder buf, boolean includeAlias) {
-		super.emitTableInstance(sc, tr, buf, includeAlias);
-		if (includeAlias) {
+	public void emitTableInstance(SchemaContext sc, TableInstance tr, StringBuilder buf, TableInstanceContext context) {
+		super.emitTableInstance(sc, tr, buf, context);
+		if (context == TableInstanceContext.TABLE_FACTOR) {
 			if (tr.getHints() != null) {
 				for(IndexHint ih : tr.getHints()) {
 					emitHint(ih,buf);
@@ -162,22 +161,6 @@ public class MysqlEmitter extends Emitter {
 		}
 		buf.append(" ");
 	}
-	
-	@Override
-	public <T extends Column<?>> SchemaLookup<T> getColumnLookup(List<T> in) {
-		return new SchemaLookup<T>(in, false, false);
-	}
-
-	@Override
-	public <T extends HasName> CacheAwareLookup<T> getTableLookup() {
-		return new CacheAwareLookup<T>(true, true);
-	}
-
-	@Override
-	public <T extends HasName> CacheAwareLookup<T> getTenantTableLookup() {
-		return new CacheAwareLookup<T>(true, true);
-	}
-
 	
 	@Override
 	public <T> Lookup<T> getLookup() {

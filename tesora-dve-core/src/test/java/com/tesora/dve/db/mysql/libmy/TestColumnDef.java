@@ -150,8 +150,8 @@ public class TestColumnDef {
 		String nativeTypeName = getNativeType();
 		UserColumn uc = new UserColumn(getOrigColName(), getSqlType(), nativeTypeName);
 		if (nativeTypeName.contains(" " + MysqlNativeType.MODIFIER_UNSIGNED)) {
-			uc.setNativeTypeName(nativeTypeName.replace(" " + MysqlNativeType.MODIFIER_UNSIGNED, ""));
-			uc.setNativeTypeModifiers(MysqlNativeType.MODIFIER_UNSIGNED);
+			uc.setTypeName(nativeTypeName.replace(" " + MysqlNativeType.MODIFIER_UNSIGNED, ""));
+			uc.setUnsigned(true);
 		}
 		uc.setDefaultValue(getDefaultValue());
 		if ( sqlType == Types.DECIMAL || sqlType == Types.NUMERIC )

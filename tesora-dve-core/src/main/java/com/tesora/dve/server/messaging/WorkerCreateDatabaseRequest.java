@@ -21,21 +21,21 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSContext;
-import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
+import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.Worker;
 
-public class WorkerCreateDatabaseRequest extends WorkerRequest {
-	
+public class WorkerCreateDatabaseRequest extends WorkerRequest {	
 	static Logger logger = Logger.getLogger( WorkerCreateDatabaseRequest.class );
 
 	private static final long serialVersionUID = 1L;
@@ -58,9 +58,14 @@ public class WorkerCreateDatabaseRequest extends WorkerRequest {
 
 		final String onSiteName = newDatabase.getNameOnSite(w.getWorkerSite());
 
-        final SQLCommand ddl = Singletons.require(HostService.class).getDBNative().getCreateDatabaseStmt(onSiteName, ifNotExists, defaultCharSet, defaultCollation);
-        this.execute(w, ddl, promise);
-    }
+        final SQLCommand ddl = Singletons
+                .require(HostService.class)
+                .getDBNative()
+                .getCreateDatabaseStmt(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), onSiteName, ifNotExists, defaultCharSet,
+                        defaultCollation);
+        
+		this.execute(w, ddl, promise);
+	}
 
 	@Override
 	public String toString() {

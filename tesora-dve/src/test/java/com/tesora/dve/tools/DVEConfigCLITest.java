@@ -58,6 +58,7 @@ public class DVEConfigCLITest extends PETest {
 	static final String LOCAL = "LOCAL";
 
 	static String CATALOG_URL;
+	static String SITE_URL;
 
 	@BeforeClass
 	public static void setup() throws Exception {
@@ -68,6 +69,7 @@ public class DVEConfigCLITest extends PETest {
 		CatalogHelper helper = pet.getCatalogHelper();
 
 		CATALOG_URL = helper.getCatalogUrl();
+		SITE_URL = PEUrl.stripUrlParameters(CATALOG_URL);
 	}
 
 	@AfterClass
@@ -92,7 +94,7 @@ public class DVEConfigCLITest extends PETest {
 
 		// We expect to have 5 sites we just created
 		for (int i = 1; i < sites.size(); i++) {
-			verifySingleSite(c, CatalogHelper.DEFAULT_SITE_PREFIX + i, CatalogHelper.DEFAULT_SITE_PREFIX + i);
+			verifySingleSite(c, CatalogHelper.DEFAULT_SITE_PREFIX + i, CatalogHelper.DEFAULT_SITE_PREFIX + i, CATALOG_URL);
 		}
 
 		// All of the persistent sites should be in the default persistent group
@@ -141,7 +143,7 @@ public class DVEConfigCLITest extends PETest {
 
 		// We expect to have 3 sites we just created
 		for (int i = 1; i < sites.size(); i++) {
-			verifySingleSite(c, "site" + i, "inst" + i);
+			verifySingleSite(c, "site" + i, "inst" + i, SITE_URL);
 		}
 
 		// All of the persistent sites should be in the default persistent group
@@ -297,7 +299,7 @@ public class DVEConfigCLITest extends PETest {
 	 * "configure es <name> <filename>", "remove es <name>",
 	 */
 
-	private void verifySingleSite(CatalogDAO c, String siteName, String instName) throws PEException {
+	private void verifySingleSite(CatalogDAO c, String siteName, String instName, String siteUrl) throws PEException {
 		PersistentSite site = c.findPersistentSite(siteName);
 
 		assertTrue("Site " + siteName + " should exist", site != null);
@@ -309,7 +311,7 @@ public class DVEConfigCLITest extends PETest {
 		SiteInstance inst = instances.get(0);
 		assertEquals(instName, inst.getName());
 		String url = inst.getInstanceURL();
-		assertEquals(CATALOG_URL, url);
+		assertEquals(siteUrl, url);
 		assertTrue("Site should be enabled", inst.isEnabled() == true);
 		assertTrue("Site should be master", inst.isMaster() == true);
 
@@ -332,14 +334,14 @@ public class DVEConfigCLITest extends PETest {
 		SiteInstance inst1 = instances.get(0);
 		assertEquals(inst1Name, inst1.getName());
 		String url1 = inst1.getInstanceURL();
-		assertEquals(CATALOG_URL, url1);
+		assertEquals(SITE_URL, url1);
 		assertTrue("Site should be enabled", inst1.isEnabled() == true);
 		assertTrue("Site should be master", inst1.isMaster() == true);
 
 		SiteInstance inst2 = instances.get(1);
 		assertEquals(inst2Name, inst2.getName());
 		String url2 = inst2.getInstanceURL();
-		assertEquals(CATALOG_URL, url2);
+		assertEquals(SITE_URL, url2);
 		assertTrue("Site should be enabled", inst2.isEnabled() == true);
 		assertTrue("Site should be master", inst2.isMaster() == false);
 

@@ -42,12 +42,11 @@ import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
+import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnAttribute;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ProjectionInfo;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.MTTableKey;
@@ -548,7 +547,7 @@ public class SelectStatement extends ProjectingStatement {
 	}
 
 	private ProjectionInfo buildProjectionMetadata(SchemaContext pc, List<ExpressionNode> proj) {
-        Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+        Emitter emitter = new MysqlEmitter(); // called during info schema initialization
 		try {
 			emitter.setOptions(EmitOptions.RESULTSETMETADATA);
 			emitter.pushContext(pc.getTokens());
@@ -582,8 +581,9 @@ public class SelectStatement extends ProjectingStatement {
 					ci = (ColumnInstance) e;
 					StringBuilder buf = new StringBuilder();
 					emitter.emitExpression(pc, e, buf);
-					columnName = buf.toString();
-					aliasName = PEStringUtils.dequote(columnName);
+					aliasName = PEStringUtils.dequote(buf.toString());
+					// always use the column name
+					columnName = ci.getColumn().getName().getUnquotedName().get();
 				} else {
 					if (aliasName != null) {
 						// via above

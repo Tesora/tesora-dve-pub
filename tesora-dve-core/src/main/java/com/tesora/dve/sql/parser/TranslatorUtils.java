@@ -64,6 +64,7 @@ import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.ValueConverter;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
@@ -86,12 +87,11 @@ import com.tesora.dve.sql.expression.ScopeParsePhase;
 import com.tesora.dve.sql.expression.ScopeStack;
 import com.tesora.dve.sql.expression.SetQuantifier;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.show.CreateDatabaseInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowColumnInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowOptions;
-import com.tesora.dve.sql.infoschema.show.ShowVariablesInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.InformationSchemaTable;
+import com.tesora.dve.sql.infoschema.ShowOptions;
+import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
+import com.tesora.dve.sql.infoschema.direct.DirectShowStatusInformation;
+import com.tesora.dve.sql.infoschema.direct.DirectShowVariablesTable;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.MigrationException;
@@ -326,6 +326,7 @@ import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PassThroughCommand.Command;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
+import com.tesora.dve.sql.transform.strategy.NaturalJoinRewriter;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
@@ -577,6 +578,27 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		SelectStatement ss = new SelectStatement(tableRefs, projection, 
 				whereClause, orderbys, limit, sq, options, groupbys,
 				havingExpr, locking, new AliasInformation(scope), SourceLocation.make(tree));
+
+		/*
+		 * The NATURAL [LEFT] JOIN are rewritten to an INNER JOIN or a LEFT JOIN
+		 * with a USING clause.
+		 * The rewrite must take place after ColumnInstance resolution (to
+		 * prevent premature failure on ambiguous column names), but before
+		 * USING-to-ON clause conversion and wildcard expansion which affect the
+		 * projection coalescing and ordering.
+		 */
+		if (tableRefs != null) {
+			for (final FromTableReference ftr : tableRefs) {
+				final TableInstance base = ftr.getBaseTable();
+				final ListSet<JoinedTable> naturalJoins = NaturalJoinRewriter.collectNaturalJoins(ftr.getTableJoins());
+				for (final JoinedTable join : naturalJoins) {
+					NaturalJoinRewriter.rewriteToInnerJoin(this.pc, base, join);
+				}
+
+				convertUsingColSpecToOnSpec(base, naturalJoins);
+			}
+		}
+
 		ss.getDerivedInfo().takeScope(scope);
 		Scope ps = scope.getParentScope();
 		if (ps != null)
@@ -1204,12 +1226,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public Statement buildShowCreateDatabaseQuery(String onInfoSchemaTable,
 			Name objectName, Boolean ifNotExists) {
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);
-		return ((CreateDatabaseInformationSchemaTable)ist).buildUniqueStatement(pc, objectName, ifNotExists);
+		ShowOptions opts = new ShowOptions();
+		if (Boolean.TRUE.equals(ifNotExists))
+			opts = opts.withIfNotExists();
+		return ist.buildUniqueStatement(pc, objectName, opts);
 	}
 
 	public Statement buildUseDatabaseStatement(Name firstName) {
@@ -1728,11 +1753,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public BasicType buildType(List<Name> typeNames, SizeTypeAttribute sizing,
 			List<TypeModifier> modifiers) {
 		return BasicType.buildType(typeNames, Collections.singletonList(sizing),
-				(modifiers == null ? Collections.EMPTY_LIST : modifiers));
+				(modifiers == null ? Collections.EMPTY_LIST : modifiers),
+				pc.getTypes());
 	}
 
 	public BasicType buildEnum(boolean isSet, List<LiteralExpression> values, List<TypeModifier> modifiers) {
-		return DBEnumType.make(isSet, values, modifiers);
+		return DBEnumType.make(isSet, values, modifiers,pc.getTypes());
 	}
 
 	public TypeModifier buildTypeModifier(TypeModifierKind tmk) {
@@ -2007,10 +2033,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 		ExpressionNode ex = null;
 		if (opts.isActualLiterals() || (pc != null && pc.isMutableSource()))
-            ex = new ActualLiteralExpression(Singletons.require(HostService.class).getDBNative().getValueConverter().convertLiteral(t, tok),tok, SourceLocation.make(o),charsetHint);
+            ex = new ActualLiteralExpression(ValueConverter.INSTANCE.convertLiteral(t,tok),
+            		tok, SourceLocation.make(o),charsetHint);
 		else {
 			DelegatingLiteralExpression litex = new DelegatingLiteralExpression(tok, SourceLocation.make(o),this,literals.size(), charsetHint);
-            literals.add(litex, Singletons.require(HostService.class).getDBNative().getValueConverter().convertLiteral(t, tok));
+            literals.add(litex, ValueConverter.INSTANCE.convertLiteral(t,tok)); 
 			ex = litex;
 		}
 		return ex;
@@ -2189,12 +2216,18 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				SourceLocation.make(tok));
 	}
 
-	public JoinSpecification buildJoinType(String primary, String outer) {
+	public JoinSpecification buildJoinType(String primary) {
+		return buildJoinType(primary, null, null);
+	}
+
+	public JoinSpecification buildJoinType(String primary, String natural, String outer) {
 		StringBuilder buf = new StringBuilder();
+		if (natural != null)
+			buf.append(natural).append(" ");
 		if (primary != null)
-			buf.append(primary);
+			buf.append(primary).append(" ");
 		if (outer != null)
-			buf.append(" ").append(outer);
+			buf.append(outer);
 		return JoinSpecification.makeJoinSpecification(buf.toString()
 				.toUpperCase());
 	}
@@ -2206,7 +2239,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public JoinedTable buildJoinedTable(ExpressionNode target,
 			JoinClauseType joinOn, JoinSpecification injoinType) {
 		// JOIN is INNER JOIN
-		JoinSpecification joinType = (injoinType == null ? buildJoinType("INNER",null) : injoinType);
+		JoinSpecification joinType = (injoinType == null ? buildJoinType("INNER") : injoinType);
 		return new JoinedTable(target, (joinOn == null ? null : joinOn.getNode()), joinType, (joinOn == null ? null : joinOn.getColumnIdentifiers()));
 	}
 
@@ -2217,10 +2250,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public FromTableReference buildFromTableReference(ExpressionNode factor,
 			List<JoinedTable> joins) {
 		
+		if (joins.isEmpty()) {
+			return new FromTableReference(factor);
+		}
+
 		convertUsingColSpecToOnSpec(factor, joins);
 		
-		if (joins.isEmpty())
-			return new FromTableReference(factor);
 		return new FromTableReference(new TableJoin(factor,joins));		
 	}
 
@@ -2228,7 +2263,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (!opts.isResolve()) return;
 		List<UnqualifiedName> visibleAliases = new LinkedList<UnqualifiedName>();
 		if (factor instanceof TableInstance)
-			visibleAliases.add(0, ((TableInstance)factor).getReferenceName(pc).getUnqualified());
+			visibleAliases.add(0, ((TableInstance) factor).getReferenceName(pc).getUnqualified());
 		for (JoinedTable jt : joins) {
 			List<Name> usingColSpec = jt.getUsingColSpec();
 			if (usingColSpec != null && usingColSpec.size() > 0 ) {
@@ -2746,20 +2781,21 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 		// TODO:
 		// handle !resolve
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);
-		return ist.buildUniqueStatement(pc, objectName);
+		return ist.buildUniqueStatement(pc, objectName, new ShowOptions());
 	}
 
 	public void push_info_schema_scope(Name n) {
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior sst = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable((UnqualifiedName) n);
-		if (ist == null)
-			throw new SchemaException(Pass.SECOND, "No such table: "
+		if (sst == null)
+			throw new SchemaException(Pass.SECOND, "No such table: "					
 					+ n.getSQL());
+		InformationSchemaTable ist = (InformationSchemaTable) sst;
 		pushScope();
 		// we put in an alias anyways
 		scope.buildTableInstance(ist.getName(), new UnqualifiedName("a"),
@@ -2780,7 +2816,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (pc != null && !pc.getCatalog().isPersistent())
 			return new EmptyStatement("no catalog queries with transient execution engine");
 
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
@@ -2791,7 +2827,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				.getSecond());
 		
 		ShowOptions so = new ShowOptions();
-		if (full != null) so.setFull();
+		if (full != null) so.withFull();
 		
 		// break up the scoping value into parts if qualified
 		List<Name> scopingParts = new ArrayList<Name>();
@@ -3863,8 +3899,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	@SuppressWarnings("unchecked")
 	public Statement buildShowStatus(Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
-        StatusInformationSchemaTable ist = (StatusInformationSchemaTable) Singletons.require(HostService.class).getInformationSchema().lookupShowTable(
-						new UnqualifiedName("status"));
+		DirectShowStatusInformation ist = (DirectShowStatusInformation) Singletons.require(HostService.class).getInformationSchema().lookupShowTable(
+				new UnqualifiedName("status"));
 
 		ExpressionNode likeExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getFirst());
@@ -3878,7 +3914,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	@SuppressWarnings("unchecked")
 	public Statement buildShowVariables(VariableScope ivs,
 			Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
-        ShowVariablesInformationSchemaTable ist = (ShowVariablesInformationSchemaTable) Singletons.require(HostService.class).
+        DirectShowVariablesTable ist = (DirectShowVariablesTable) Singletons.require(HostService.class).
 				getInformationSchema().lookupShowTable(
 						new UnqualifiedName("variables"));
 		VariableScope vs = ivs;
@@ -3897,7 +3933,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			List<Name> scoping, Pair<ExpressionNode, ExpressionNode> likeOrWhere, Token full) {
 		if (pc != null && !pc.getCatalog().isPersistent())
 			return new EmptyStatement("no catalog queries with transient execution engine");
-        ShowColumnInformationSchemaTable ist = (ShowColumnInformationSchemaTable) Singletons.require(HostService.class).getInformationSchema()
+		ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
@@ -3907,7 +3943,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		ExpressionNode whereExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getSecond());
 		ShowOptions so = new ShowOptions();
-		if (full != null) so.setFull();
+		if (full != null) so.withFull();
 		// break up the scoping value into parts if qualified
 		List<Name> scopingParts = new ArrayList<Name>();
 		for (Name name : scoping) {

@@ -92,40 +92,40 @@ public class GroupPolicyDDLTest extends SchemaTest {
 		conn.execute("create dynamic site policy ftpol (aggregate count 1 provider 'OnPremise' pool 'poolconf') strict=off");
 		conn.assertResults("show dynamic site policies like 'ftpol'",
 				br(nr,"ftpol","0",
-						"poolconf",1L,OnPremiseSiteProvider.DEFAULT_NAME,
+						"poolconf",1,OnPremiseSiteProvider.DEFAULT_NAME,
 						null,null,null,
 						null,null,null,
 						null,null,null));
 		conn.execute("alter dynamic site policy ftpol change aggregate count 2 provider 'OnPremise' pool 'poolconf'");
 		conn.assertResults("show dynamic site policies like 'ftpol'",
 				br(nr,"ftpol","0",
-						"poolconf",2L,OnPremiseSiteProvider.DEFAULT_NAME,
+						"poolconf",2,OnPremiseSiteProvider.DEFAULT_NAME,
 						null,null,null,
 						null,null,null,
 						null,null,null));
 		conn.execute("alter dynamic site policy ftpol change large count 15 provider 'OnPremise' pool 'excessive'");
 		conn.assertResults("show dynamic site policies like 'ftpol'",
 				br(nr,"ftpol","0",
-						"poolconf",2L,OnPremiseSiteProvider.DEFAULT_NAME,
+						"poolconf",2,OnPremiseSiteProvider.DEFAULT_NAME,
 						null,null,null,
 						null,null,null,
-						"excessive",15L,OnPremiseSiteProvider.DEFAULT_NAME));
+						"excessive",15,OnPremiseSiteProvider.DEFAULT_NAME));
 		conn.execute("alter dynamic site policy ftpol set strict=on change large count 3 provider 'OnPremise' pool 'restrained', small count 15 provider 'OnPremise' pool 'retained'");
 		conn.assertResults("show dynamic site policies like 'ftpol'",
 				br(nr,"ftpol","1",
-						"poolconf",2L,OnPremiseSiteProvider.DEFAULT_NAME,
-						"retained",15L,OnPremiseSiteProvider.DEFAULT_NAME,
+						"poolconf",2,OnPremiseSiteProvider.DEFAULT_NAME,
+						"retained",15,OnPremiseSiteProvider.DEFAULT_NAME,
 						null,null,null,
-						"restrained",3L,OnPremiseSiteProvider.DEFAULT_NAME));
+						"restrained",3,OnPremiseSiteProvider.DEFAULT_NAME));
 		conn.execute("drop dynamic site policy ftpol");
 		conn.assertResults("show dynamic site policy ftpol",br());
 		conn.execute("create dynamic site policy rgpol (large count 1000 provider 'Loaded', aggregate count 1 provider 'Loaded', small count 10 provider 'Loaded', medium count 100 provider 'Loaded') strict=ON");
 		conn.assertResults("show dynamic site policy rgpol", 
 				br(nr,"rgpol","1",
-						null,1L,"Loaded",
-						null,10L,"Loaded",
-						null,100L,"Loaded",
-						null,1000L,"Loaded"));
+						null,1,"Loaded",
+						null,10,"Loaded",
+						null,100,"Loaded",
+						null,1000,"Loaded"));
 		conn.execute("create dynamic site policy empty () strict=on");
 		conn.assertResults("show dynamic site policy empty",
 				br(nr,"empty","1",

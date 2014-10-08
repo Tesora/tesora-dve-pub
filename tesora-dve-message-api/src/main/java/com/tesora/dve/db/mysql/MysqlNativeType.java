@@ -26,6 +26,7 @@ import java.sql.Types;
 
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.NativeTypeAlias;
+import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
@@ -523,6 +524,40 @@ public class MysqlNativeType extends NativeType {
 		if (fieldTypeFlags != other.fieldTypeFlags)
 			return false;
 		return true;
+	}
+
+	@Override
+	public int getDefaultColumnAttrFlags() {
+		switch(mysqlType) {
+		case BIT:
+		case BIGINT:
+		case BINARY:
+		case BLOB:
+		case CHAR:
+		case INT:
+		case MEDIUMINT:
+		case LONGBLOB:
+		case LONGTEXT:
+		case MEDIUMBLOB:
+		case MEDIUMTEXT:
+		case SMALLINT:
+		case TEXT:
+		case TINYBLOB:
+		case TINYINT:
+		case TINYTEXT:
+		case VARBINARY:
+		case VARCHAR:
+		case YEAR:
+			return ColumnAttributes.SIZED_TYPE;
+			
+		case DECIMAL:
+		case DOUBLE_PRECISION:
+		case DOUBLE:
+		case FLOAT:
+			return ColumnAttributes.PS_TYPE;
+		default:
+			return 0;
+		}
 	}
 
 }

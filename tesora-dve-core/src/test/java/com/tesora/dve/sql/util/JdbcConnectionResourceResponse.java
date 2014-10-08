@@ -31,6 +31,8 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang.ObjectUtils;
+
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
@@ -124,7 +126,7 @@ public class JdbcConnectionResourceResponse extends ResourceResponse {
 			if (rsmd.getColumnType(i + 1) != sc.getDataType()) {
 				// emit names - easier to read
 				fail(colcntxt + " mismatched column type.  Expected " + rsmd.getColumnTypeName(i + 1) + " (" + rsmd.getColumnType(i + 1) + ") but found "
-						+ sc.getNativeTypeName() + " (" + sc.getDataType() + ")");
+						+ sc.getTypeName() + " (" + sc.getDataType() + ")");
 			}
 		}		
 	}
@@ -162,8 +164,10 @@ public class JdbcConnectionResourceResponse extends ResourceResponse {
 		}
 		
 		public void assertSame(String cntxt, int i, ResultSetMetaData expected, ResultSetMetaData actual) throws Exception {
-			assertEquals(cntxt + ", column " + i + " " + tag,
-					getValue(expected,i), getValue(actual,i));
+			Object eval = getValue(expected,i);
+			Object aval = getValue(actual,i);
+			if (!ObjectUtils.equals(eval, aval))
+				fail(cntxt + ", column " + i + " " + tag + ".  Expected: '" + eval + "'; Actual '" + aval + "'");
 		}
 		
 		public abstract Object getValue(ResultSetMetaData rsmd, int column) throws Exception;

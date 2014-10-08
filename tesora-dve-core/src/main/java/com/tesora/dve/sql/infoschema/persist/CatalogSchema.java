@@ -57,14 +57,9 @@ public class CatalogSchema {
 	private SimpleTableMetadata buildUserColumn() throws PEException {
 		SimpleTableMetadata t = new SimpleTableMetadata("user_column");
 		t.addColumn(new SimpleColumnMetadata("user_column_id",true));
-		t.addColumn(new SimpleColumnMetadata("auto_generated"));
 		t.addColumn(new SimpleColumnMetadata("data_type"));
-		t.addColumn(new SimpleColumnMetadata("default_value_is_constant"));
-		t.addColumn(new SimpleColumnMetadata("has_default_value"));
 		t.addColumn(new SimpleColumnMetadata("name"));
 		t.addColumn(new SimpleColumnMetadata("native_type_name"));
-		t.addColumn(new SimpleColumnMetadata("nullable"));
-		t.addColumn(new SimpleColumnMetadata("on_update"));
 		t.addColumn(new SimpleColumnMetadata("order_in_table"));
 		t.addColumn(new SimpleColumnMetadata("prec"));
 		t.addColumn(new SimpleColumnMetadata("scale"));
@@ -74,7 +69,8 @@ public class CatalogSchema {
 		t.addColumn(new SimpleColumnMetadata("user_table_id",userTable.getColumn("table_id")));
 		t.addColumn(new SimpleColumnMetadata("charset"));
 		t.addColumn(new SimpleColumnMetadata("collation"));
-		t.addColumn(new SimpleColumnMetadata("native_type_modifiers"));
+		t.addColumn(new SimpleColumnMetadata("es_universe"));
+		t.addColumn(new SimpleColumnMetadata("flags"));
 		return t;
 	}
 	

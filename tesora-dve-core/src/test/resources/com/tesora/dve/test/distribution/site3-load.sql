@@ -18,24 +18,30 @@
 -- along with this program. If not, see <http://www.gnu.org/licenses/>.
 -- #L%
 ---
-drop database if exists site3_TestDB;
-create database site3_TestDB;
 use site3_TestDB;
 
-create table RandomGen2 (
-	id int,
-	value varchar(20)
-);
+-- truncate table  Random;
+truncate table  RandomGen2;
+truncate table  RandomGen3;
+-- truncate table  RandomOneSite;
+-- truncate table  Broadcast;
+truncate table  BroadcastGen2;
+truncate table  BroadcastGen3;
+-- truncate table  BroadcastOneSite;
+-- truncate table  Static;
+truncate table  StaticGen2;
+truncate table  StaticGen3;
+-- truncate table  StaticOneSite;
+-- truncate table  `Range`;
+truncate table  RangeGen2;
+truncate table  RangeGen3;
+-- truncate table  RangeOneSite;
 
 insert into RandomGen2 
 values
 (6, "value6"),
 (7, "value7");
 
-create table BroadcastGen2 (
-	id int,
-	value varchar(20)
-);
 insert into BroadcastGen2
 values
 (1, "value1"),
@@ -46,34 +52,16 @@ values
 (6, "value6"),
 (7, "value7");
 
-create table StaticGen2 (
-	id int,
-	value varchar(20)
-);
-
-create table `RangeGen2` (
-	id int,
-	value varchar(20)
-);
 insert into RangeGen2
 values
 (6, "value6"),
 (7, "value7");
-
-create table RandomGen3 (
-	id int,
-	value varchar(20)
-);
 
 insert into RandomGen3 
 values
 (6, "value6"),
 (7, "value7");
 
-create table BroadcastGen3 (
-	id int,
-	value varchar(20)
-);
 insert into BroadcastGen3
 values
 (1, "value1"),
@@ -83,12 +71,3 @@ values
 (5, "value5"),
 (6, "value6"),
 (7, "value7");
-
-create table StaticGen3 (
-	id int,
-	value varchar(20)
-);
-create table `RangeGen3` (
-	id int,
-	value varchar(20)
-);

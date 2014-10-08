@@ -21,11 +21,9 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import java.nio.charset.Charset;
 import java.sql.ParameterMetaData;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Types;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -41,17 +39,18 @@ import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnAttribute;
-import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
-import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.types.Type;
+import com.tesora.dve.variables.VariableStoreSource;
 
 public class MysqlNative extends DBNative {
     
@@ -128,7 +127,7 @@ public class MysqlNative extends DBNative {
 	}
 	
 	private String getDataTypeForQuery(UserColumn uc, boolean extras) throws PEException {
-		MysqlNativeType typeInfo = (MysqlNativeType) findType(uc.getNativeTypeName());
+		MysqlNativeType typeInfo = (MysqlNativeType) findType(uc.getTypeName());
 
 		String typeName = typeInfo.getTypeName();
 		// DAS - HACK - we need to remove the "ALT" from the 3 BLOB types
@@ -140,7 +139,7 @@ public class MysqlNative extends DBNative {
 		
 		if (MysqlType.ENUM.equals(typeInfo.getMysqlType())) {
 			// with enum, use the full type, including values
-			sb = new StringBuilder(uc.getNativeTypeName());
+			sb = new StringBuilder(uc.getTypeName());
 		} else if (!typeInfo.getSupportsPrecision()) {
 			// type requires neither precision nor scale, so we're done
 		} else if (typeInfo.getSupportsPrecision() && !typeInfo.getSupportsScale()) {
@@ -182,6 +181,9 @@ public class MysqlNative extends DBNative {
 			}
 		}
 
+		if (uc.getESUniverse() != null)
+			sb.append("(").append(uc.getESUniverse()).append(")");
+		
 		if (extras && typeInfo.isStringType()) {
 			if (uc.getCharset() != null && !StringUtils.equalsIgnoreCase(MysqlNativeConstants.DB_CHAR_SET, uc.getCharset())) {
 				sb.append(" CHARACTER SET ").append(uc.getCharset());
@@ -192,8 +194,10 @@ public class MysqlNative extends DBNative {
 		}
 		
 		// add any type modifiers to the end
-		if (uc.getNativeTypeModifiers() != null)
-			sb.append(' ').append(uc.getNativeTypeModifiers());
+		if (uc.isUnsigned())
+			sb.append(" unsigned");
+		if (uc.isZerofill())
+			sb.append(" zerofill");
 
 		return sb.toString();
 		
@@ -204,6 +208,7 @@ public class MysqlNative extends DBNative {
 		return getDataTypeForQuery(uc,false);
 	}
 
+	/*
 	@Override
 	public ColumnMetadata getResultSetColumnInfo(ResultSetMetaData rsmd, ProjectionInfo projection, int colIdx)
 			throws SQLException {
@@ -272,6 +277,7 @@ public class MysqlNative extends DBNative {
 
 		return cm;
 	}
+	*/
 
 	@Override
 	public ColumnMetadata getParameterColumnInfo(ParameterMetaData pmd, int colIdx) throws SQLException {
@@ -281,14 +287,14 @@ public class MysqlNative extends DBNative {
 		out.setScale(pmd.getScale(colIdx));
 		if (ParameterMetaData.parameterNullable == pmd.isNullable(colIdx))
 			out.setNullable(Boolean.TRUE);
-		out.setNativeTypeName(NativeType.fixName(pmd.getParameterTypeName(colIdx)));
+		out.setTypeName(NativeType.fixName(pmd.getParameterTypeName(colIdx)));
 		return out;
 	}
 	
 	@Override
 	public UserColumn updateUserColumn(UserColumn iuc, Type schemaType) {
 		UserColumn uc = (iuc == null ? new UserColumn() : iuc);
-		uc.setNativeTypeName(schemaType.getTypeName());
+		schemaType.persistTypeName(uc);
 		uc.setDataType(schemaType.getDataType());
 		if (schemaType.hasSize()) {
 			uc.setSize(schemaType.getSize());
@@ -315,12 +321,60 @@ public class MysqlNative extends DBNative {
 	}
 
 	@Override
-	public SQLCommand getDropDatabaseStmt(String databaseName) {
-		return new SQLCommand("DROP DATABASE IF EXISTS " + quoteIdentifier(databaseName));
+	public SQLCommand getDropDatabaseStmt(final VariableStoreSource vs, String databaseName) {
+		return new SQLCommand(vs, buildDropDatabaseStmt(databaseName));
 	}
 
 	@Override
-	public SQLCommand getCreateDatabaseStmt(String databaseName, boolean ine, String defaultCharSet, String defaultCollation) {
+	public SQLCommand getCreateDatabaseStmt(final VariableStoreSource vs, String databaseName, boolean ine, String defaultCharSet, String defaultCollation) {
+		return new SQLCommand(vs, buildCreateDatabaseStmt(databaseName, ine, defaultCharSet, defaultCollation));
+	}
+
+	@Override
+	public SQLCommand getAlterDatabaseStmt(final VariableStoreSource vs, String databaseName, String defaultCharSet, String defaultCollation) {
+		return new SQLCommand(vs, buildAlterDatabaseStmt(databaseName, defaultCharSet, defaultCollation));
+	}
+
+	@Override
+	public SQLCommand getCreateUserCommand(final VariableStoreSource vs, User user) {
+		return new SQLCommand(vs, buildCreateUserCommand(user));
+	}
+
+	@Override
+	public SQLCommand getGrantPriviledgesCommand(final VariableStoreSource vs, String userDeclaration, String databaseName) {
+		return new SQLCommand(vs, buildGrantPriviledgesCommand(userDeclaration, databaseName));
+	}
+
+	@Override
+	public SQLCommand getDropDatabaseStmt(final Charset connectionCharset, String databaseName) {
+		return new SQLCommand(connectionCharset, buildDropDatabaseStmt(databaseName));
+	}
+
+	@Override
+	public SQLCommand getCreateDatabaseStmt(final Charset connectionCharset, String databaseName, boolean ine, String defaultCharSet, String defaultCollation) {
+		return new SQLCommand(connectionCharset, buildCreateDatabaseStmt(databaseName, ine, defaultCharSet, defaultCollation));
+	}
+
+	@Override
+	public SQLCommand getAlterDatabaseStmt(final Charset connectionCharset, String databaseName, String defaultCharSet, String defaultCollation) {
+		return new SQLCommand(connectionCharset, buildAlterDatabaseStmt(databaseName, defaultCharSet, defaultCollation));
+	}
+
+	@Override
+	public SQLCommand getCreateUserCommand(final Charset connectionCharset, User user) {
+		return new SQLCommand(connectionCharset, buildCreateUserCommand(user));
+	}
+
+	@Override
+	public SQLCommand getGrantPriviledgesCommand(final Charset connectionCharset, String userDeclaration, String databaseName) {
+		return new SQLCommand(connectionCharset, buildGrantPriviledgesCommand(userDeclaration, databaseName));
+	}
+
+	private String buildDropDatabaseStmt(String databaseName) {
+		return "DROP DATABASE IF EXISTS " + quoteIdentifier(databaseName);
+	}
+
+	private String buildCreateDatabaseStmt(String databaseName, boolean ine, String defaultCharSet, String defaultCollation) {
 		final StringBuilder command = new StringBuilder("CREATE DATABASE ");
 		if (ine) {
 			command.append("IF NOT EXISTS ");
@@ -328,29 +382,26 @@ public class MysqlNative extends DBNative {
 		command.append(quoteIdentifier(databaseName));
 		command.append(" DEFAULT CHARACTER SET = ").append(defaultCharSet);
 		command.append(" DEFAULT COLLATE = ").append(defaultCollation);
-		
-		return new SQLCommand(command.toString());
+
+		return command.toString();
 	}
 
-	@Override
-	public SQLCommand getAlterDatabaseStmt(String databaseName, String defaultCharSet, String defaultCollation) {
+	private String buildAlterDatabaseStmt(String databaseName, String defaultCharSet, String defaultCollation) {
 		final StringBuilder command = new StringBuilder("ALTER DATABASE ");
 		command.append(quoteIdentifier(databaseName));
 		command.append(" DEFAULT CHARACTER SET = ").append(defaultCharSet);
 		command.append(" DEFAULT COLLATE = ").append(defaultCollation);
 
-		return new SQLCommand(command.toString());
+		return command.toString();
 	}
 
-	@Override
-	public SQLCommand getCreateUserCommand(User user) {
+	private String buildCreateUserCommand(User user) {
 		// switch to doing a grant all - lets create be idempotent
-		return getGrantPriviledgesCommand(getUserDeclaration(user, true), "*");
+		return buildGrantPriviledgesCommand(getUserDeclaration(user, true), "*");
 	}
 
-	@Override
-	public SQLCommand getGrantPriviledgesCommand(String userDeclaration, String databaseName) {
-		return new SQLCommand("GRANT ALL PRIVILEGES ON " + databaseName + ".* TO " + userDeclaration);
+	private String buildGrantPriviledgesCommand(String userDeclaration, String databaseName) {
+		return "GRANT ALL PRIVILEGES ON " + databaseName + ".* TO " + userDeclaration;
 	}
 
 	@Override
@@ -392,10 +443,18 @@ public class MysqlNative extends DBNative {
 		return "SET autocommit = " + value;
 	}
 
+	@Override
+	public void assertValidCharacterSet(String value) throws PEException {
+		if (!getSupportedCharSets().isCompatibleCharacterSet(value)) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_CHARACTER_SET, value));
+		}
+	}
+
     @Override
     public void assertValidCollation(String value) throws PEException {
-        if (!getSupportedCollations().validateUTF8Collation(value))
-            throw new PEException("'" + value + "' is not a supported collation");
+		if (!getSupportedCollations().isCompatibleCollation(value)) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_COLLATION, value));
+		}
     }
 
 	@Override
@@ -462,7 +521,7 @@ public class MysqlNative extends DBNative {
 	public void convertColumnMetadataToUserColumn(ColumnMetadata cm, UserColumn uc)
 			throws PEException {
 		super.convertColumnMetadataToUserColumn(cm, uc);
-		NativeType nt = this.findType(uc.getNativeTypeName());
+		NativeType nt = this.findType(uc.getTypeName());
 		if ( uc.getPrecision() > nt.getMaxPrecision() )
 			uc.setPrecision((int) nt.getMaxPrecision());
 		if ( uc.getSize() > nt.getMaxPrecision() )

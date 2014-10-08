@@ -168,7 +168,8 @@ public class QueryPlanner {
         }
 	}
 
-    private static Timer startPlanTimer(Enum cat) {
+    @SuppressWarnings("rawtypes")
+	private static Timer startPlanTimer(Enum cat) {
         return Singletons.require(TimingService.class, NoopTimingService.SERVICE).startSubTimer(cat);
     }
 

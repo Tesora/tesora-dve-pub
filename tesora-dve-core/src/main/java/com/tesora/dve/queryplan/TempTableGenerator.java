@@ -57,7 +57,7 @@ public class TempTableGenerator {
 //		System.out.println(sqlCommand);
 		WorkerRequest req = 
 				new WorkerExecuteRequest(
-						ssCon.getNonTransactionalContext(), new SQLCommand(sqlCommand)
+						ssCon.getNonTransactionalContext(), new SQLCommand(ssCon, sqlCommand)
 						).onDatabase(database).forDDL();
 		ExecutionLogger logger = ssCon.getExecutionLogger().getNewLogger("CreateTempTable");
 
@@ -77,7 +77,7 @@ public class TempTableGenerator {
 			if (!useSystemTempTable || suppressTempDeletMode) {
 				WorkerRequest preCleanupReq = 
 						new WorkerExecuteRequest(
-								ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(tempTableName, true)
+								ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, tempTableName, true)
 								).onDatabase(database).forDDL();
 				wgForDDL.execute(MappingSolution.AllWorkers, preCleanupReq, DBEmptyTextResultConsumer.INSTANCE);
 			}
@@ -112,7 +112,7 @@ public class TempTableGenerator {
 		if (!suppressTempDeletMode) {
 			cleanupWG.addCleanupStep(
 					new WorkerExecuteRequest(
-							ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(theTable.getName(), false)
+							ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, theTable.getName(), false)
 							).onDatabase(database));
 		}
 	}		

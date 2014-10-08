@@ -80,7 +80,7 @@ public class PECreateUserStatement extends
 
 			final FlushPrivilegesStatement flush = new FlushPrivilegesStatement();
 			flush.plan(pc, es, null);
-			es.append(new SimpleDDLExecutionStep(null, sg, (Persistable<?, ?>) peu, getAction(), new SQLCommand(buf.toString()),
+			es.append(new SimpleDDLExecutionStep(null, sg, (Persistable<?, ?>) peu, getAction(), new SQLCommand(pc, buf.toString()),
 					(List<CatalogEntity>) Collections.EMPTY_LIST,
 					Collections.singletonList((CatalogEntity) peu.getPersistent(pc)), null));
 			flush.plan(pc, es, null);

@@ -144,6 +144,5 @@ public class ViewTransformTest extends TransformTest {
 		viewTransTest(db,"select v.fid from AB a inner join VAB v on v.id = a.bid where v.stuff = 'boy howdy'",
 				"SELECT v.`fid` FROM `AB` AS a INNER JOIN ( SELECT a_3.`aid` AS id,s.`bfid` AS fid,a_3.`astuff` AS stuff FROM `AA` AS a_3 INNER JOIN `SB` AS s ON a_3.`aid` = s.`bid` WHERE a_3.`astuff` like '%wow%' AND a_3.`astuff` = 'boy howdy') AS v ON v.`id` = a.`bid` WHERE v.`stuff` = 'boy howdy'"
 				);
-	}
-	
+	}	
 }

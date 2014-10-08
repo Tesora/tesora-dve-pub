@@ -71,7 +71,8 @@ public class TestRoundTrip extends PETest {
 	}
 	
 	private static SchemaContext buildContext(CatalogDAO c) throws Exception {
-		SchemaContext pc = SchemaContext.createContext(c);
+		SchemaContext pc = SchemaContext.createContext(c,
+				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
 		pc.getConnection().getVariableSource().getGlobalVariableStore().setValue(KnownVariables.TEMPLATE_MODE, TemplateMode.OPTIONAL);
 		return pc;
 	}
@@ -196,6 +197,7 @@ public class TestRoundTrip extends PETest {
 			Map.Entry<String, NativeType> me = iter.next();
 			NativeType nt = me.getValue();
 			if (nt.isUsedInCreate()) {
+				if (counter > 3) continue;
 				if (counter > 0)
 					buf.append(", ").append(PEConstants.LINE_SEPARATOR);
 				buf.append("`f").append(++counter).append("` ").append(nt.getTypeName());

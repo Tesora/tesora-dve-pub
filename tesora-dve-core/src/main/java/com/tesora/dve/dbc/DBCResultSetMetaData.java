@@ -130,7 +130,7 @@ public class DBCResultSetMetaData implements ResultSetMetaData {
 
 	@Override
 	public String getColumnTypeName(int column) throws SQLException {
-		return columnSet.getColumn(column).getNativeTypeName();
+		return columnSet.getColumn(column).getTypeName();
 	}
 
 	@Override
@@ -148,7 +148,7 @@ public class DBCResultSetMetaData implements ResultSetMetaData {
 
 	@Override
 	public boolean isSigned(int index) throws SQLException {
-		if ( !conn.findType(columnSet.getColumn(index).getNativeTypeName()).isUnsignedAttribute() )
+		if ( !conn.findType(columnSet.getColumn(index).getTypeName()).isUnsignedAttribute() )
 			return false;
 		
 		// TODO this is Mysql specific....

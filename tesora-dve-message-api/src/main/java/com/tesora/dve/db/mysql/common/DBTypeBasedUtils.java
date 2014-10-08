@@ -23,7 +23,6 @@ package com.tesora.dve.db.mysql.common;
 
 import com.tesora.dve.db.mysql.MyFieldType;
 import com.tesora.dve.db.mysql.MysqlNativeConstants;
-import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.resultset.ColumnSet;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.CharsetUtil;
@@ -451,7 +450,7 @@ public class DBTypeBasedUtils {
 		
 		@Override
 		public Object convertStringToObject(String value, ColumnMetadata colMd) throws PEException {
-			if ( colMd.getNativeTypeModifiers() == MysqlNativeType.MODIFIER_UNSIGNED )
+			if ( colMd.isUnsigned() )
 				return Long.valueOf(value);
 			
 			return Integer.valueOf(value);

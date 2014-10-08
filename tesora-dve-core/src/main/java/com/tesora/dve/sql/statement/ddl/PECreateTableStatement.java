@@ -354,7 +354,7 @@ public class PECreateTableStatement extends
 		// and then we do the create
 		es.append(new ComplexDDLExecutionStep(tab.getPEDatabase(pc),
 				tab.getStorageGroup(pc),null,Action.CREATE,
-				new CreateTableCallback(tab,alsoClear,modded)));		
+				new CreateTableCallback(pc, tab, alsoClear, modded)));
 	}
 	
 	protected void oneStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {		
@@ -629,7 +629,7 @@ public class PECreateTableStatement extends
 		private List<CatalogEntity> updates;
 		private SQLCommand sql;
 		
-		public CreateTableCallback(PETable translated, List<TableCacheKey> referring, List<TableCacheKey> modified) {
+		public CreateTableCallback(final SchemaContext pc, PETable translated, List<TableCacheKey> referring, List<TableCacheKey> modified) {
 			builtVersion = translated;
 			ListOfPairs<SchemaCacheKey<?>, InvalidationScope> invalidate = 
 					new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
@@ -639,7 +639,7 @@ public class PECreateTableStatement extends
 			for(TableCacheKey tck : referring)
 				invalidate.add(tck, InvalidationScope.LOCAL);
 			record = new CacheInvalidationRecord(invalidate);
-			sql = new SQLCommand(builtVersion.getDeclaration());
+			sql = new SQLCommand(pc, builtVersion.getDeclaration());
 		}
 		
 		@Override
@@ -682,7 +682,7 @@ public class PECreateTableStatement extends
 			} finally {
 				sc.endSaveContext();
 			}
-			sql = new SQLCommand(fresh.getDeclaration());
+			sql = new SQLCommand(conn, fresh.getDeclaration());
 		}
 
 		@Override

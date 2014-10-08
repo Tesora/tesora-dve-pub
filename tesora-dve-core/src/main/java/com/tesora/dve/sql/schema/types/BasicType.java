@@ -34,6 +34,7 @@ import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
+import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
@@ -50,11 +51,10 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.modifiers.StringTypeModifier;
 import com.tesora.dve.sql.schema.modifiers.TypeModifier;
 import com.tesora.dve.sql.schema.modifiers.TypeModifierKind;
-import com.tesora.dve.sql.util.Functional;
 
 public class BasicType implements Type {
 	
-	protected static final String COMPARISON_TAG = "COMPARISON";
+	public static final String COMPARISON_TAG = "COMPARISON";
 	
 	public static final short UNSIGNED = 1;
 	public static final short ZEROFILL = 2;
@@ -190,35 +190,30 @@ public class BasicType implements Type {
 	
 	@Override
 	public void addColumnTypeModifiers(UserColumn uc) {
-		ArrayList<String> entries = new ArrayList<String>();
-		if (isUnsigned())
-			entries.add(MysqlNativeType.MODIFIER_UNSIGNED);
-		if (isZeroFill())
-			entries.add(MysqlNativeType.MODIFIER_ZEROFILL);
-		if (isBinaryText())
-			entries.add("BINARY");
-		if (!entries.isEmpty()) 
-			uc.setNativeTypeModifiers(Functional.join(entries, " "));
-		else if (uc.getId() != 0)
-			uc.setNativeTypeModifiers(null);
+		uc.setUnsigned(isUnsigned());
+		uc.setZerofill(isZeroFill());
+		uc.setBinaryText(isBinaryText());
 	}
 	
 	@Override
 	public void addColumnTypeModifiers(CatalogColumnEntity cce) throws PEException {
-		ArrayList<String> entries = new ArrayList<String>();
-		if (isUnsigned())
-			entries.add(MysqlNativeType.MODIFIER_UNSIGNED);
-		if (isZeroFill())
-			entries.add(MysqlNativeType.MODIFIER_ZEROFILL);
-		if (isBinaryText())
-			entries.add("BINARY");
-		if (!entries.isEmpty())
-			cce.setNativeTypeModifiers(Functional.join(entries, " "));
+		int flags = cce.getFlags();
+		int typeFlags = getBaseType().getDefaultColumnAttrFlags();
+		flags |= typeFlags;
+		flags = ColumnAttributes.set(flags, ColumnAttributes.UNSIGNED, isUnsigned());
+		flags = ColumnAttributes.set(flags, ColumnAttributes.ZEROFILL, isZeroFill());
+		flags = ColumnAttributes.set(flags, ColumnAttributes.BINARY, isBinaryText());
+		cce.setFlags(flags);
 	}
 	
 	@Override
 	public String getTypeName() {
 		return getBaseType().getTypeName();
+	}
+	
+	@Override
+	public void persistTypeName(UserColumn uc) {
+		uc.setTypeName(getTypeName());
 	}
 	
 	@Override
@@ -269,9 +264,9 @@ public class BasicType implements Type {
 		return true;
 	}
 	
-	public static NativeType lookupNativeType(String name) {
+	public static NativeType lookupNativeType(String name, NativeTypeCatalog typeCatalog) {
 		try {
-            return Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(name, true);
+            return typeCatalog.findType(name, true);
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.SECOND, "No such type: " + name,pe);
 		}
@@ -373,13 +368,14 @@ public class BasicType implements Type {
 		return new FloatingPointType(backing,fam.flags,size,precision,scale);
 	}
 	
-	public static Type buildType(String typeName, int size, List<TypeModifier> modifiers) {
+	public static Type buildType(String typeName, int size, List<TypeModifier> modifiers, NativeTypeCatalog typeCatalog) {
 		ArrayList<TypeModifier> copy = new ArrayList<TypeModifier>(modifiers);
-		NativeType bt = lookupNativeType(typeName.toString());
+		NativeType bt = lookupNativeType(typeName.toString(), typeCatalog);
 		return buildType(bt,size,copy);
 	}
 	
-	public static BasicType buildType(List<Name> typeNames, List<SizeTypeAttribute> sizes, List<TypeModifier> modifiers) {
+	public static BasicType buildType(List<Name> typeNames, List<SizeTypeAttribute> sizes, List<TypeModifier> modifiers,
+			NativeTypeCatalog typeCatalog) {
 		StringBuilder buf = new StringBuilder();
 		for(Iterator<Name> iter = typeNames.iterator(); iter.hasNext();) {
 			buf.append(iter.next().getCapitalized().get());
@@ -387,9 +383,9 @@ public class BasicType implements Type {
 				buf.append(" ");
 		}
 		String str = buf.toString();
-		BasicType any = handleSerialType(str);
+		BasicType any = handleSerialType(str,typeCatalog);
 		if (any != null) return any;
-		NativeType bt = lookupNativeType(str);
+		NativeType bt = lookupNativeType(str,typeCatalog);
 		// there could be multiple sizing hints - collapse them down to one 
 		FloatSizeTypeAttribute floatSizing = null;
 		SizeTypeAttribute sizing = null;
@@ -418,7 +414,7 @@ public class BasicType implements Type {
 	}
 	
 	public static Type buildType(UserColumn uc, NativeTypeCatalog types) {
-		MysqlNativeType mnType = (MysqlNativeType)lookupNativeType(uc.getNativeTypeName());
+		MysqlNativeType mnType = (MysqlNativeType)lookupNativeType(uc.getTypeName(),types);
 		if (MysqlType.ENUM.equals(mnType.getMysqlType()) || MysqlType.SET.equals(mnType.getMysqlType()))
 			return DBEnumType.buildType(uc, types);
 		List<TypeModifier> modifiers = buildModifiers(uc);
@@ -430,12 +426,14 @@ public class BasicType implements Type {
 	
 	public static List<TypeModifier> buildModifiers(UserColumn uc) {
 		List<TypeModifier> modifiers = new ArrayList<TypeModifier>();
-		String mods = uc.getNativeTypeModifiers();
+		if (uc.isUnsigned())
+			modifiers.add(new TypeModifier(TypeModifierKind.UNSIGNED));
+		if (uc.isZerofill())
+			modifiers.add(new TypeModifier(TypeModifierKind.ZEROFILL));
+		if (uc.isBinaryText())
+			modifiers.add(new TypeModifier(TypeModifierKind.BINARY));
+		String mods = uc.getESUniverse();
 		if (mods != null) {
-			if (mods.contains(MysqlNativeType.MODIFIER_UNSIGNED))
-				modifiers.add(new TypeModifier(TypeModifierKind.UNSIGNED));
-			if (mods.contains(MysqlNativeType.MODIFIER_ZEROFILL))
-				modifiers.add(new TypeModifier(TypeModifierKind.ZEROFILL));
 			int offset = mods.indexOf(COMPARISON_TAG);
 			if (offset > -1) {
 				int boundary = offset + COMPARISON_TAG.length();
@@ -443,8 +441,6 @@ public class BasicType implements Type {
 				String value = mods.substring(boundary,nextSpace);
 				modifiers.add(new StringTypeModifier(TypeModifierKind.COMPARISON, value));
 			}
-			if (mods.contains("BINARY") || mods.contains("binary"))
-				modifiers.add(new TypeModifier(TypeModifierKind.BINARY));
 		}
 		
 		
@@ -544,22 +540,22 @@ public class BasicType implements Type {
         return BasicType.buildType(java.sql.Types.VARCHAR, value.length(), Singletons.require(HostService.class).getDBNative());
 	}
 	
-	public static Type getLongType() {
-		return buildType("INT");
+	public static Type getLongType(NativeTypeCatalog typeCatalog) {
+		return buildType("INT",typeCatalog);
 	}
-	public static Type getDateTimeType() {
-		return buildType("DATETIME");
+	public static Type getDateTimeType(NativeTypeCatalog typeCatalog) {
+		return buildType("DATETIME",typeCatalog);
 	}
 	
-	private static Type buildType(String nativeName) {
-		NativeType nt = lookupNativeType(nativeName);
+	private static Type buildType(String nativeName, NativeTypeCatalog typeCatalog) {
+		NativeType nt = lookupNativeType(nativeName,typeCatalog);
 		return new BasicType(nt, (short)0);
 	}
 	
 	public static class SerialPlaceholderType extends BasicType {
 		
-		public SerialPlaceholderType() {
-			super(lookupNativeType("BIGINT"),UNSIGNED);
+		public SerialPlaceholderType(NativeTypeCatalog typeCatalog) {
+			super(lookupNativeType("BIGINT",typeCatalog),UNSIGNED);
 		}
 		
 		@Override
@@ -572,9 +568,9 @@ public class BasicType implements Type {
 		}
 	}
 	
-	private static BasicType handleSerialType(String tn) {
+	private static BasicType handleSerialType(String tn, NativeTypeCatalog typeCatalog) {
 		if ("SERIAL".equalsIgnoreCase(tn)) {
-			return new SerialPlaceholderType();
+			return new SerialPlaceholderType(typeCatalog);
 		}
 		return null;
 	}
@@ -769,6 +765,18 @@ public class BasicType implements Type {
 		}
 
 		throw new PECodingException("Type '" + this.getName() + "' cannot be converted to text.");
+	}
+
+	@Override
+	public int getColumnAttributesFlags() {
+		int def = getBaseType().getDefaultColumnAttrFlags();
+		if (isUnsigned())
+			def = ColumnAttributes.set(def, ColumnAttributes.UNSIGNED);
+		if (isZeroFill())
+			def = ColumnAttributes.set(def, ColumnAttributes.ZEROFILL);
+		if (isBinaryText())
+			def = ColumnAttributes.set(def, ColumnAttributes.BINARY);
+		return def;
 	}
 
 }

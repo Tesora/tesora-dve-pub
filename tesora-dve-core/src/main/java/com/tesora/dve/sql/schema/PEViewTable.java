@@ -50,6 +50,12 @@ public class PEViewTable extends PEAbstractTable<PEViewTable> {
 		loaded = true;
 	}
 	
+	public PEViewTable(SchemaContext pc, PEViewTable other) {
+		super(pc,other);
+		this.view = StructuralUtils.buildEdge(pc, other.view, false);
+		loaded = true;
+	}
+	
 	@SuppressWarnings("unchecked")
 	protected PEViewTable(UserTable table, SchemaContext lc) {
 		super(table,lc);
