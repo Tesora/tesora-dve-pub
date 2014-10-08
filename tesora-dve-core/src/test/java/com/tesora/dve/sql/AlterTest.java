@@ -312,7 +312,7 @@ public class AlterTest extends SchemaTest {
 				   nr,"add_date",9
 				   ));
 		conn.execute("ALTER TABLE `pe710` ADD `subtitle` TEXT NULL AFTER `title`");
-		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe710'",
+		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe710' order by ordinal_position",
 				br(nr,"keyname",1,
 				   nr,"title",2,
 				   nr,"subtitle",3,
@@ -325,7 +325,7 @@ public class AlterTest extends SchemaTest {
 				   nr,"add_date",10
 				   ));
 		conn.execute("ALTER TABLE `pe710` ADD `first_col` INT NOT NULL FIRST");
-		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe710'",
+		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe710' order by ordinal_position",
 				br(nr,"first_col",1,
 				   nr,"keyname",2,
 				   nr,"title",3,
@@ -374,7 +374,7 @@ public class AlterTest extends SchemaTest {
 						nr,"st",15
 						));
 		conn.execute("ALTER TABLE `pe1335` ADD COLUMN `id` INT AUTO_INCREMENT PRIMARY KEY FIRST");
-		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe1335'",
+		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe1335' order by ordinal_position",
 				br(nr,"id",1,
 						nr,"idd",2,
 						nr,"lm",3,

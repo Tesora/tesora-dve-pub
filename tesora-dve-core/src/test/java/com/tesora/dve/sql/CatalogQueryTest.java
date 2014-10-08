@@ -618,13 +618,13 @@ public class CatalogQueryTest extends SchemaTest {
 			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
 			
-			nonRootConn.assertResults("SELECT * FROM information_schema.character_sets", 
+			nonRootConn.assertResults("SELECT * FROM information_schema.character_sets order by character_set_name", 
 					br(nr, "ascii", "US ASCII", Long.valueOf(1),
 					   nr, "latin1", "cp1252 West European", Long.valueOf(1),
 					   nr, "utf8", "UTF-8 Unicode", Long.valueOf(3),
 					   nr, "utf8mb4", "UTF-8 Unicode", Long.valueOf(4)));
 			
-			nonRootConn.assertResults("SELECT * FROM information_schema.collations", br(
+			nonRootConn.assertResults("SELECT * FROM information_schema.collations order by character_set_name, id", br(
 					nr, "ascii_general_ci", "ascii", Long.valueOf(11), "Yes", "Yes", Long.valueOf(1),
 					nr, "ascii_bin", "ascii", Long.valueOf(65), "", "Yes", Long.valueOf(1),
 					nr, "latin1_swedish_ci", "latin1", Long.valueOf(8), "Yes", "Yes", Long.valueOf(1),

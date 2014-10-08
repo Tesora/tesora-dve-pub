@@ -92,29 +92,27 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 		
 	}
 
-	private static final String gen_sites_format = 
-			"select pg.name as `%s`, sg.version as `%s`, ss.name as `%s` from "
-					+"generation_sites gs, storage_site ss, storage_generation sg, persistent_group pg where "
-					+"sg.persistent_group_id = pg.persistent_group_id and "
-					+"gs.site_id = ss.id and "
-					+"gs.generation_id = sg.generation_id order by 1,2,3";
 	private DirectTableGenerator[] generators = new DirectTableGenerator[] {
 		
 			new ViewTableGenerator(InfoView.INFORMATION, "generation_site", null,
 					"generation_site",
-					String.format(gen_sites_format,"group","version","site"),
+					"select pg.name as `group`, sg.version as `version`, ss.name as `site` from "
+					+"generation_sites gs, storage_site ss, storage_generation sg, persistent_group pg where "
+					+"sg.persistent_group_id = pg.persistent_group_id and "
+					+"gs.site_id = ss.id and gs.generation_id = sg.generation_id",
 					c("group","varchar(512)"),
 					c("version","int"),
 					c("site","varchar(512)"))
 					.withExtension().withPrivilege(),
 			new ViewTableGenerator(InfoView.SHOW, "generation site", "generation sites",
 					"show_generation_site",
-					String.format(gen_sites_format,ShowSchema.GenerationSite.NAME,
-							ShowSchema.GenerationSite.VERSION,
-							ShowSchema.GenerationSite.SITE),
-					c(ShowSchema.GenerationSite.NAME,"varchar(512)").withIdent(),
-					c(ShowSchema.GenerationSite.VERSION,"int"),
-					c(ShowSchema.GenerationSite.SITE,"varchar(512)"))
+					"select pg.name as `Persistent_Group`, sg.version as `Version`, ss.name as `Site` from "
+					+"generation_sites gs, storage_site ss, storage_generation sg, persistent_group pg where "
+					+"sg.persistent_group_id = pg.persistent_group_id and "
+					+"gs.site_id = ss.id and gs.generation_id = sg.generation_id",
+					c(ShowSchema.GenerationSite.NAME,"varchar(512)").withIdent().withOrderBy(0),
+					c(ShowSchema.GenerationSite.VERSION,"int").withOrderBy(1),
+					c(ShowSchema.GenerationSite.SITE,"varchar(512)").withOrderBy(2))
 					.withExtension().withPrivilege(),
 			new ViewTableGenerator(InfoView.INFORMATION,"scopes", null,
 					"scopes",
@@ -222,7 +220,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					"engines",
 					"select e.engine as `ENGINE`, e.support as `SUPPORT`, e.comment as `COMMENT`, e.transactions as `TRANSACTIONS`, "
 					+"e.xa as `XA`, e.savepoints as `SAVEPOINTS` from engines e order by e.engine",
-					c("ENGINE","varchar(64)"),
+					c("ENGINE","varchar(64)").withOrderBy(0),
 					c("SUPPORT","varchar(8)"),
 					c("COMMENT","varchar(80)"),
 					c("TRANSACTIONS","varchar(3)"),
@@ -234,8 +232,8 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					"select e.engine as `Engine`, e.support as `Support`, e.comment as `Comment`, e.transactions as `Transactions`, "
 					+"e.xa as `XA`, e.savepoints as `Savepoints` from engines e order by e.engine",
 					c("Engine","varchar(64)").withIdent().withOrderBy(0),
-					c("Support","varchar(8)"),
-					c("Comment","varchar(80)"),
+					c("Support","varchar(8)").withOrderBy(1),
+					c("Comment","varchar(80)").withOrderBy(2),
 					c("Transactions","varchar(3)"),
 					c("XA","varchar(3)"),
 					c("Savepoints","varchar(3)")),
