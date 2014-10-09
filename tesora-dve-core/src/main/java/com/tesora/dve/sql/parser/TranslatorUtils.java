@@ -2757,7 +2757,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return out;
 	}
 
-	public Statement buildAddPersistentSiteStatement(Name sgName, List<Name> siteNames) {
+	public Statement buildAddPersistentSiteStatement(Name sgName, List<Name> siteNames, boolean rebalance) {
 		pc.getPolicyContext().checkRootPermission("add a persistent site");
 		PEPersistentGroup pesg = pc.findStorageGroup(sgName);
 		if (pesg == null)
@@ -2771,7 +2771,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						+ n.getSQL());
 			sites.add(pess);
 		}
-		return new AddStorageSiteStatement(pesg, sites);
+		return new AddStorageSiteStatement(pesg, sites, rebalance);
 	}
 
 	public Statement buildShowSingularQuery(String onInfoSchemaTable,

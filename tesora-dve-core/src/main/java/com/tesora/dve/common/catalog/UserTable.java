@@ -510,7 +510,7 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		WorkerGroup newWG = WorkerGroupFactory.newInstance(ssCon, newSG, userDatabase);
 		newWG.assureDatabase(ssCon, userDatabase);
 		try {
-			if (getView() != null && getView().getViewMode() == ViewMode.EMULATE) {
+			if (command == null && getView() != null && getView().getViewMode() == ViewMode.EMULATE) {
 				// nothing to do
 			} else {
 				QueryStepDDLOperation qso =

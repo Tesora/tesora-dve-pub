@@ -56,6 +56,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.PEPersistentGroup.TStorageGroup;
+import com.tesora.dve.sql.statement.ddl.AddStorageGenRangeInfo;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
@@ -254,7 +255,8 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 	}
 
 	public void addGeneration(SSConnection ssCon, WorkerGroup wg, StorageGroupGeneration newGen,
-			ListOfPairs<UserTable,SQLCommand> tableDecls, boolean ignoreFKs, List<SQLCommand> userDecls) throws Throwable {
+			ListOfPairs<UserTable,SQLCommand> tableDecls, boolean ignoreFKs, List<SQLCommand> userDecls,
+			List<AddStorageGenRangeInfo> rebalanceInfo) throws Throwable {
 		if (false == this.equals(wg.getGroup()))
 			throw new PEException("WorkerGroup does not match StorageGroup");
 		if (generations.size() > 0)
