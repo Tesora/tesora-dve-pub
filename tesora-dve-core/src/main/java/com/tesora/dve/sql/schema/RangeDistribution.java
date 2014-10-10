@@ -122,7 +122,7 @@ public class RangeDistribution extends Persistable<RangeDistribution, Distributi
 		return rd;
 	}
 	
-	public List<NativeType> getTypes() {
+	public List<NativeType> getNativeTypes() {
 		if (nativeTypes == null) {
 			nativeTypes = new ArrayList<NativeType>();
 			for(Type t : types) {
@@ -130,6 +130,10 @@ public class RangeDistribution extends Persistable<RangeDistribution, Distributi
 			}
 		}
 		return nativeTypes;
+	}
+	
+	public List<Type> getTypes() {
+		return types;
 	}
 	
 	public String getSignature() {

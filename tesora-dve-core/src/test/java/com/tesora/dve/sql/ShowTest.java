@@ -94,7 +94,7 @@ public class ShowTest extends SchemaTest {
 			boolean doSelect = Boolean.parseBoolean(rec[5]);
 			String selectWhere = rec[6];
 
-			doTest(name, columnName, doShow, showDb, showLikeWhere, doSelect, selectWhere,
+			doTest(name, columnName, doShow, showDb, showLikeWhere, doSelect, selectWhere, null,
 					new Object[][] { br(), br(), br(), br(), br() });
 		}
 	}
@@ -122,7 +122,7 @@ public class ShowTest extends SchemaTest {
 
 		final Object[] fullResult = results.toArray();
 
-		doTest("Engines", "Engine", true, null, null, true, "MyISAM",
+		doTest("Engines", "Engine", true, null, null, true, "MyISAM", "ENGINE",
 				new Object[][] { fullResult, fullResult, innodbResult, fullResult, myisamResult });
 	}
 
@@ -138,7 +138,7 @@ public class ShowTest extends SchemaTest {
 		results.addAll(Arrays.asList(utf8mb4Result));
 		Object[] fullResult = results.toArray();
 		
-		doTest("Charset", null, true, null, "latin1", false, null, 
+		doTest("Charset", null, true, null, "latin1", false, null, null,
 				new Object[][] { fullResult, null, latin1Result, null, null });
 	}
 	
@@ -156,7 +156,7 @@ public class ShowTest extends SchemaTest {
 	 * @throws Throwable
 	 */
 	private void doTest(String name, String columnName, boolean doShow, String showDb,
-			String showLikeWhere, boolean doSelect, String selectWhere,
+			String showLikeWhere, boolean doSelect, String selectWhere, String orderBySelect,
 			Object[][] resultSets) throws Throwable {
 		StringBuilder buf;
 
@@ -200,12 +200,16 @@ public class ShowTest extends SchemaTest {
 		if (doSelect) {
 			buf = new StringBuilder();
 			buf.append("SELECT * FROM INFORMATION_SCHEMA." + name);
+			if (orderBySelect != null)
+				buf.append(" order by ").append(orderBySelect);
 			conn.assertResults(buf.toString(), resultSets[3]);
 
 			if (selectWhere != null && !selectWhere.isEmpty()) {
 				buf = new StringBuilder();
 				buf.append("SELECT * FROM INFORMATION_SCHEMA." + name
 						+ " WHERE `" + columnName + "` LIKE '%" + selectWhere + "%'");
+				if (orderBySelect != null)
+					buf.append(" order by ").append(orderBySelect);
 				conn.assertResults(buf.toString(), resultSets[4]);
 
 				try {
@@ -232,10 +236,10 @@ public class ShowTest extends SchemaTest {
 				{sysgrp}
 		};
 		
-		doTest("generation sites", null, true, null, "SystemGroup", false, null, fullResult); 
+		doTest("generation sites", null, true, null, "SystemGroup", false, null, null, fullResult); 
 
 		Object[][] fullResult2 = {{gen1}};
-		doTest("generation sites where Site='show1'", null, true, null, null, false, null, fullResult2); 
+		doTest("generation sites where Site='show1'", null, true, null, null, false, null, null, fullResult2); 
 	}
 	
 	@Test
@@ -244,8 +248,8 @@ public class ShowTest extends SchemaTest {
 				br(nr, DB_NAME, null, TemplateMode.OPTIONAL.toString())
 		};
 
-		doTest("template on database " + DB_NAME, null, true, null, null, false, null, fullResult);
-		doTest("template on schema " + DB_NAME, null, true, null, null, false, null, fullResult);
+		doTest("template on database " + DB_NAME, null, true, null, null, false, null, null, fullResult);
+		doTest("template on schema " + DB_NAME, null, true, null, null, false, null, null, fullResult);
 	}
 
 }
