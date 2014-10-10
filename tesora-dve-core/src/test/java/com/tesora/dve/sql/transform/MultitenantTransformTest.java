@@ -27,6 +27,7 @@ import org.junit.Test;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
+import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -75,7 +76,7 @@ public class MultitenantTransformTest extends TransformTest {
 	private SchemaContext clearTenantID(SchemaContext db) throws Throwable {
 		TransientExecutionEngine tee = (TransientExecutionEngine) db.getCatalog();
 		tee.parse(new String[] { "use " + PEConstants.LANDLORD_TENANT });
-		return SchemaContext.createContext(tee, tee, db.getTypes());
+		return SchemaContext.createContext(tee, tee, db.getTypes(),Capability.TRANSIENT);
 	}
 	
 	@Test

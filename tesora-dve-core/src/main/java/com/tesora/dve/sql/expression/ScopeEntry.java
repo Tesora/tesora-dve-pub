@@ -52,6 +52,7 @@ import com.tesora.dve.sql.node.expression.WildcardTable;
 import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.parser.LexicalLocation;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.MultiMapLookup;
@@ -202,9 +203,14 @@ public class ScopeEntry implements Scope {
 	// is not unique, emit an error
 	@Override
 	public TableInstance buildTableInstance(Name inTableName, UnqualifiedName alias, Schema<?> inSchema, SchemaContext sc, LockInfo info) {
-		TableInstance raw = resolver.lookupTable(sc, inSchema, inTableName, info);
-		TableInstance ti = raw.adapt(inTableName.getUnqualified(), alias, (sc == null ? 0 : sc.getNextTable()),
-				(sc != null && sc.getOptions().isResolve()));
+		TableInstance ti = null;
+		if (sc.getCapability() == Capability.PARSING_ONLY) {
+			ti = new TableInstance(null,inTableName,alias,false);
+		} else {
+			TableInstance raw = resolver.lookupTable(sc, inSchema, inTableName, info);
+			ti = raw.adapt(inTableName.getUnqualified(), alias, (sc == null ? 0 : sc.getNextTable()),
+					(sc != null && sc.getOptions().isResolve()));			
+		}
 		insertTable(ti,alias,inTableName.getUnqualified());
 		return ti;
 	}

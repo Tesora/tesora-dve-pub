@@ -39,6 +39,7 @@ import com.tesora.dve.sql.ParserException;
 import com.tesora.dve.sql.parser.ParserInvoker.LineInfo;
 import com.tesora.dve.sql.parser.ParserInvoker.TaggedLineInfo;
 import com.tesora.dve.sql.parser.filter.LogFileFilter;
+import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.ddl.DDLStatement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
@@ -190,7 +191,12 @@ public class FileParser {
 		new FileParser().parseOnePELogFile(in, cpi, CharsetUtil.ISO_8859_1);
 		cpi.close();
 	}
-		
+	
+	public static void convertNativeLog(InputStream in, LogFileFilter filter, ConvertingParserInvoker cpi) throws Throwable {
+		new FileParser().parseOneMysqlLogFile(in, cpi, CharsetUtil.ISO_8859_1, filter);
+		cpi.close();		
+	}
+	
 	public static class ConvertingParserInvoker extends ParserInvoker {
 
 		private PrintWriter out;
@@ -202,6 +208,10 @@ public class FileParser {
 			forceContinue = true;
 		}
 	
+		public SchemaContext buildContext() {
+			return null;
+		}
+		
 		public void close() {
 			out.close();
 		}
@@ -210,16 +220,17 @@ public class FileParser {
 		public String parseOneLine(LineInfo info, String line) throws Exception {
 			LineTag tag = null;
 			String updateTable = null;
+			SchemaContext dummy = buildContext();
 			// we could get Connect and Quit statements too - look for those early
 			String trimmed = line.trim();
-			if (trimmed.equals("Quit")) {
+			if (trimmed.equalsIgnoreCase("Quit")) {
 				tag = LineTag.DISCONNECT;
 			} else if (trimmed.equals("Connect")) {
 				tag = LineTag.CONNECT;
 			} else {
 				List<Statement> stmts = null;
 				try {
-					stmts = InvokeParser.parse(InvokeParser.buildInputState(trimmed,null), ParserOptions.TEST.setFailEarly(), null).getStatements();
+					stmts = InvokeParser.parse(InvokeParser.buildInputState(trimmed,dummy), ParserOptions.TEST.setFailEarly(), dummy).getStatements();
 				} catch (ParserException pe) {
 					if (forceContinue) {
 						// if we get an exception, just write out a session statement

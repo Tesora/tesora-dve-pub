@@ -76,4 +76,5 @@ public interface ConnectionContext {
 	public CatalogDAO getDAO();
 	
 	public VariableStoreSource getVariableSource();
+	
 }

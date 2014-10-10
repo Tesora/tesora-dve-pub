@@ -147,6 +147,7 @@ public abstract class AddStorageGenRangeTableInfo extends RebalanceInfo {
 		if (!hasSharedTable()) {
 			ps.println("Side table:");
 			ps.println(getCreateSideTableStmt().getRawSQL());
+			ps.println(getDropSideTableStmt().getRawSQL());
 		}
 		ps.println("Chunk query");
 		ps.println(getChunkQuery().getRawSQL());
