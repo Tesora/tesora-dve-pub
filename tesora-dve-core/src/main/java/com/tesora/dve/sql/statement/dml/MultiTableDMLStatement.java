@@ -32,6 +32,7 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.structural.FromTableReference;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.TriggerEvent;
 
 public abstract class MultiTableDMLStatement extends DMLStatement {
 
@@ -69,11 +70,12 @@ public abstract class MultiTableDMLStatement extends DMLStatement {
 	
 	@Override
 	public boolean hasTrigger(SchemaContext sc) {
-		if (this instanceof ProjectingStatement) return false;
+		TriggerEvent event = getTriggerEvent();
+		if (event == null) return false;
 		for(TableKey tk : getDerivedInfo().getLocalTableKeys()) {
 			if (tk.getAbstractTable().isView()) continue;
 			if (tk.getAbstractTable().isVirtualTable()) continue;
-			if (tk.getAbstractTable().asTable().hasTrigger(sc, getStatementType()))
+			if (tk.getAbstractTable().asTable().hasTrigger(sc, event))
 				return true;
 		}
 		return false;

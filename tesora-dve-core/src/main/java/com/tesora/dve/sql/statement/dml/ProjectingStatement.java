@@ -32,6 +32,7 @@ import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.TriggerEvent;
 
 public abstract class ProjectingStatement extends MultiTableDMLStatement {
 
@@ -76,4 +77,9 @@ public abstract class ProjectingStatement extends MultiTableDMLStatement {
 	// used in union support
 	protected abstract SelectStatement findLeftmostSelect();
 	
+	@Override
+	public TriggerEvent getTriggerEvent() {
+		return null;
+	}
+
 }

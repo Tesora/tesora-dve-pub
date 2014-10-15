@@ -40,6 +40,7 @@ import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
@@ -160,5 +161,10 @@ public class UpdateStatement extends MultiTableDMLStatement {
 	@Override
 	protected int selfHashCode() {
 		return addSchemaHash(1,ignore);
+	}
+
+	@Override
+	public TriggerEvent getTriggerEvent() {
+		return TriggerEvent.UPDATE;
 	}
 }

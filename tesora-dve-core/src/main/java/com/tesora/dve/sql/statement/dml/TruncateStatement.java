@@ -43,6 +43,7 @@ import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
@@ -210,6 +211,11 @@ public class TruncateStatement extends UnaryTableDMLStatement {
 	@Override
 	protected int selfHashCode() {
 		return 0;
+	}
+
+	@Override
+	public TriggerEvent getTriggerEvent() {
+		return null;
 	}
 
 }

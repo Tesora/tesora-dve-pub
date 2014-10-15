@@ -62,7 +62,6 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.ValueConverter;
@@ -188,6 +187,7 @@ import com.tesora.dve.sql.schema.SubqueryTable;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.TableComponent;
 import com.tesora.dve.sql.schema.TableResolver;
+import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.UnresolvedDistributionVector;
 import com.tesora.dve.sql.schema.UserScope;
@@ -224,7 +224,6 @@ import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementTraits;
-import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.ddl.AddGlobalVariableStatement;
 import com.tesora.dve.sql.statement.ddl.AddStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseStatement;
@@ -4331,7 +4330,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new CompoundStatement(null,stmts,null);
 	}
 	
-	public Statement buildCreateTrigger(Name triggerName, boolean isBefore, StatementType triggerType,
+	public Statement buildCreateTrigger(Name triggerName, boolean isBefore, TriggerEvent triggerType,
 			Name targetTable, Statement body,Token triggerToken) {
 		TableInstance targTab = basicResolver.lookupTable(pc, targetTable, lockInfo);
 		PETrigger already = pc.findTrigger(PETrigger.buildCacheKey(triggerName.getUnquotedName().get(), (TableCacheKey) targTab.getAbstractTable().getCacheKey()));

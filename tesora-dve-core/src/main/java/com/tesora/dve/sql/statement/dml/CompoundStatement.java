@@ -24,19 +24,13 @@ package com.tesora.dve.sql.statement.dml;
 import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.LanguageNode;
-import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.parser.SourceLocation;
-import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
-import com.tesora.dve.sql.transform.execution.ExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionType;
 
 public class CompoundStatement extends Statement {
 

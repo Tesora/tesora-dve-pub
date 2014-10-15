@@ -26,14 +26,13 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.codec.binary.Hex;
 
 import com.tesora.dve.common.MultiMap;
@@ -54,10 +53,11 @@ import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
-import com.tesora.dve.sql.schema.cache.SchemaEdgeList;
 import com.tesora.dve.sql.schema.modifiers.AutoincTableModifier;
 import com.tesora.dve.sql.schema.modifiers.CharsetTableModifier;
 import com.tesora.dve.sql.schema.modifiers.CollationTableModifier;
@@ -69,7 +69,6 @@ import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifierTag;
 import com.tesora.dve.sql.schema.modifiers.TableModifiers;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
-import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.util.Cast;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
@@ -87,7 +86,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	// tables which have fks which refer to this table.  used in fk action support.
 	private ListSet<SchemaCacheKey<PEAbstractTable<?>>> referring;
 	
-	private SchemaEdgeList<PETrigger> triggers = new SchemaEdgeList<PETrigger>();
+	private EnumMap<TriggerEvent,Triggers> triggers;
 	
 	// table options - this encompasses both those persisted separately and those not.
 	// for non-new tables (i.e. loaded) this contains the options separately persisted.
@@ -116,7 +115,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		this.referring = new ListSet<SchemaCacheKey<PEAbstractTable<?>>>();
 		this.keys = new ArrayList<PEKey>();
 		this.modifiers = new TableModifiers(modifier);
-		this.triggers = new SchemaEdgeList<PETrigger>();
+		this.triggers = new EnumMap<TriggerEvent,Triggers>(TriggerEvent.class);
 		// do keys & columns first so that database can propagate charset/collation
 		initializeColumnsAndKeys(pc,fieldsAndKeys,db);
 		setDatabase(pc,db,false);
@@ -235,15 +234,25 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		}
 		forceStorage(pc);
 		// load the triggers here
-		triggers = new SchemaEdgeList<PETrigger>();
+		this.triggers = new EnumMap<TriggerEvent,Triggers>(TriggerEvent.class);
 		if (!table.getTriggers().isEmpty()) {
 			for(UserTrigger ut : table.getTriggers()) {
-				triggers.add(pc, PETrigger.load(ut, pc, this), true);
+				PETrigger trig = PETrigger.load(ut, pc, this);
+				addTriggerInternal(trig);
 			}
 		}
 		
 	}		
-		
+
+	private void addTriggerInternal(PETrigger trig) {
+		Triggers any = triggers.get(trig.getEvent());
+		if (any == null) {
+			any = new Triggers();
+			triggers.put(trig.getEvent(),any);
+		}
+		any.set(trig);		
+	}
+	
 	public void setDeclaration(SchemaContext sc, PETable basedOn) {
 		super.setDeclaration(sc,basedOn);
         tableDefinition = new MysqlEmitter().emitTableDefinition(sc,basedOn); 
@@ -642,12 +651,14 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	public void addTrigger(SchemaContext sc, PETrigger trig) {
 		checkLoaded(sc);
-		triggers.add(sc, trig, false);
+		addTriggerInternal(trig);
 	}
 	
 	public void removeTrigger(SchemaContext sc, PETrigger trig) {
 		checkLoaded(sc);
-		triggers.remove(trig);
+		Triggers any = triggers.get(trig.getEvent());
+		if (any == null) return;
+		any.remove(trig);
 	}
 	
 	@Override
@@ -859,8 +870,11 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	protected void updateExistingTriggers(SchemaContext sc, UserTable ut) throws PEException {
 		HashMap<String, UserTrigger> persistent = new HashMap<String,UserTrigger>();
 		HashMap<String, PETrigger> trans = new HashMap<String,PETrigger>();
-		for(PETrigger trig : triggers.resolve(sc)) 
-			trans.put(trig.getName().getUnqualified().getUnquotedName().get(),trig);
+		for(Triggers trig : triggers.values()) {
+			for(PETrigger pet : trig.get()) {
+				trans.put(pet.getName().getUnqualified().getUnquotedName().get(),pet);
+			}
+		}
 		for(UserTrigger trig : ut.getTriggers()) 
 			persistent.put(trig.getName(),trig);
 		// anything that exists in persistent but not in trans has been deleted
@@ -1136,16 +1150,49 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return false;
 	}
 	
-	public boolean hasTrigger(SchemaContext sc, StatementType st) {
-		if (triggers == null) return false;
-		StatementType norm = st;
-		if (st == StatementType.INSERT_INTO_SELECT)
-			norm = StatementType.INSERT;
-		for(PETrigger trig : triggers.resolve(sc)) {
-			if (trig.getEvent() == norm)
-				return true;
-		}
-		return false;
+	public boolean hasTrigger(SchemaContext sc, TriggerEvent et) {
+		if (triggers == null || triggers.isEmpty()) return false;
+		Triggers any = triggers.get(et);
+		return any != null;
 	}
 	
+	private static class Triggers {
+		
+		private PETrigger before;
+		private PETrigger after;
+		
+		public Triggers() {
+			before = null;
+			after = null;
+		}
+
+		public void set(PETrigger trig) {
+			if (trig.isBefore())
+				before = trig;
+			else
+				after = trig;
+		}
+		
+		public void remove(PETrigger trig) {
+			if (trig.isBefore())
+				before = null;
+			else
+				after = null;
+		}
+		
+		public PETrigger getBefore() {
+			return before;
+		}
+
+		public PETrigger getAfter() {
+			return after;
+		}
+
+		public Collection<PETrigger> get() {
+			ArrayList<PETrigger> out = new ArrayList<PETrigger>();
+			if (before != null) out.add(before);
+			if (after != null) out.add(after);
+			return out;
+		}
+	}
 }

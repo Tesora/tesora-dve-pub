@@ -74,7 +74,7 @@ public class UserTrigger implements CatalogEntity {
 	
 	// this is the target table - the one upon which updates cause the trigger to fire
 	@ForeignKey(name="fk_trigger_table_def")
-	@OneToOne(optional=false,fetch=FetchType.LAZY)
+	@ManyToOne(optional=false,fetch=FetchType.LAZY)
 	@JoinColumn(name="table_id")
 	UserTable table;
 

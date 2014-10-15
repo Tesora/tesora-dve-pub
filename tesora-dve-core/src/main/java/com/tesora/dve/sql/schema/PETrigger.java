@@ -21,26 +21,21 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import java.util.Collections;
-
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.parser.InvokeParser;
-import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.statement.Statement;
-import com.tesora.dve.sql.statement.StatementType;
-import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 
 public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 
 	// triggers only make sense in the context of the target table, so no need for an edge
-	private final SchemaEdge<PETable> triggerTable;
-	private final StatementType triggerType;
+	// also, triggers are loaded/unloaded with the table
+	private final PETable triggerTable;
+	private final TriggerEvent triggerType;
 	private Statement body;
 	private String rawSQL;
 	private SchemaEdge<PEUser> definer;
@@ -52,14 +47,14 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	private final String charsetConnection;
 	private final String collationDatabase;
 	
-	public PETrigger(SchemaContext sc, Name name, PETable targetTable, Statement body, StatementType triggerOn,
+	public PETrigger(SchemaContext sc, Name name, PETable targetTable, Statement body, TriggerEvent triggerOn,
 			PEUser user, String collationConnection, String charsetConnection, String collationDatabase,
 			boolean before, SQLMode sqlMode, String rawSQL) {
 		super(buildCacheKey(name,targetTable));
 		setName(name.getUnqualified());
 		this.body = body;
 		this.rawSQL = null;
-		this.triggerTable = StructuralUtils.buildEdge(sc,targetTable,false);
+		this.triggerTable = targetTable;
 		this.triggerType = triggerOn;
 		this.definer = StructuralUtils.buildEdge(sc,user,false);
 		this.before = before;
@@ -79,12 +74,12 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 		return before;
 	}
 	
-	public StatementType getEvent() {
+	public TriggerEvent getEvent() {
 		return triggerType;
 	}
 	
-	public PETable getTargetTable(SchemaContext sc) {
-		return triggerTable.get(sc);
+	public PETable getTargetTable() {
+		return triggerTable;
 	}
 	
 	public Statement getBody() {
@@ -110,10 +105,10 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 		setName(new UnqualifiedName(ut.getName()));
 		setPersistent(sc,ut,ut.getId());
 		PETable ttab = (onTable == null ? PETable.load(ut.getTable(), sc).asTable() : onTable);
-		triggerTable = StructuralUtils.buildEdge(sc,ttab,true);
+		triggerTable = ttab;
 		// do something with the body
 		this.before = "BEFORE".equals(ut.getWhen());
-		this.triggerType = StatementType.valueOf(ut.getEvent());
+		this.triggerType = TriggerEvent.valueOf(ut.getEvent());
 		this.charsetConnection = ut.getCharsetConnection();
 		this.collationConnection = ut.getCollationConnection();
 		this.collationDatabase = ut.getDatabaseCollation();
@@ -148,7 +143,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	protected UserTrigger createEmptyNew(SchemaContext sc)
 			throws PEException {
 		return new UserTrigger(getName().get(),body.getSQL(sc),
-				triggerTable.get(sc).persistTree(sc),
+				triggerTable.persistTree(sc),
 				triggerType.name(),
 				before ? "BEFORE" : "AFTER",
 				(sqlMode == null ? "" : sqlMode.toString()),

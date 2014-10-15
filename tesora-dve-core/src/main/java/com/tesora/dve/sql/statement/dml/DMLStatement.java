@@ -55,6 +55,7 @@ import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.statement.CacheableStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.transform.SchemaMapper;
@@ -132,12 +133,6 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 			if (jg.getPartitions().size() > 1 && jg.getJoins().isEmpty())
 				return true;
 			return false;
-			/*
-			ListSet<ColocatedJoin> invalidJoins = EngineConstant.INVALID_JOINS.getValue(this,getPersistenceContext());
-			if ((partitions == null || partitions.isEmpty()) && (invalidJoins == null || invalidJoins.isEmpty()))
-				// cross join? 
-				return true;
-				*/
 		}
 		return false;
 	}
@@ -164,23 +159,6 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 	// well, more specifically, it requires redistribution if there is more than one persistent group
 	// (because worker groups are based on persistent groups)
 	public boolean requiresRedistribution(SchemaContext sc) {
-/*
-		ListSet<Partition> partitions = EngineConstant.PARTITIONS.getValue(this,getPersistenceContext());
-		ListSet<ColocatedJoin> invalidJoins = EngineConstant.INVALID_JOINS.getValue(this,getPersistenceContext());
-		if (partitions != null && partitions.size() > 1) {
-			if (!EngineConstant.EQUIJOINS.hasValue(this,getPersistenceContext())) {
-				// no joins at all - see if there is more than one persistent group involved
-				ListSet<PEStorageGroup> groups = EngineConstant.GROUPS.getValue(this,getPersistenceContext());
-				if (groups != null && groups.size() > 1)
-					return true;
-			} else {
-				return true;
-			}
-		}
-		if (invalidJoins != null && invalidJoins.size() > 0)
-			return true;
-		return false;
-		*/
 		JoinGraph jg = EngineConstant.PARTITIONS.getValue(this, sc);
 		if (jg != null && jg.getPartitions().size() > 1) {
 			if (jg.getJoins().isEmpty()) {
@@ -305,6 +283,8 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 		
 	public abstract DistKeyOpType getKeyOpType();
 
+	public abstract TriggerEvent getTriggerEvent();
+	
 	public abstract boolean hasTrigger(SchemaContext sc);
 
 	

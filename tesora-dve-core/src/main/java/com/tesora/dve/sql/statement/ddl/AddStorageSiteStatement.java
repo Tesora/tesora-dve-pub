@@ -66,7 +66,6 @@ import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup> {

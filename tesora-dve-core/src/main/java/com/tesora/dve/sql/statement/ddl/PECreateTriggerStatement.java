@@ -47,7 +47,7 @@ public class PECreateTriggerStatement extends
 	@Override
 	protected CatalogModificationExecutionStep buildStep(SchemaContext pc) throws PEException {
 		// go ahead and add this trigger to the table
-		getCreated().get().getTargetTable(pc).addTrigger(pc, getCreated().get());
+		getCreated().get().getTargetTable().addTrigger(pc, getCreated().get());
 		return new SimpleDDLExecutionStep(getDatabase(pc), getStorageGroup(pc), getRoot(), getAction(), SQLCommand.EMPTY,
 				getDeleteObjects(pc), getCatalogObjects(pc), getInvalidationRecord(pc));
 	}
@@ -57,7 +57,7 @@ public class PECreateTriggerStatement extends
 	public List<CatalogEntity> getCatalogObjects(SchemaContext pc) throws PEException {
 		pc.beginSaveContext();
 		try {
-			getCreated().get().getTargetTable(pc).persistTree(pc);
+			getCreated().get().getTargetTable().persistTree(pc);
 			return Functional.toList(pc.getSaveContext().getObjects());
 		} finally {
 			pc.endSaveContext();
@@ -67,7 +67,7 @@ public class PECreateTriggerStatement extends
 	
 	@Override
 	public CacheInvalidationRecord getInvalidationRecord(SchemaContext sc) {
-		return new CacheInvalidationRecord(getCreated().get().getTargetTable(sc).getCacheKey(),InvalidationScope.CASCADE);
+		return new CacheInvalidationRecord(getCreated().get().getTargetTable().getCacheKey(),InvalidationScope.CASCADE);
 	}
 
 }

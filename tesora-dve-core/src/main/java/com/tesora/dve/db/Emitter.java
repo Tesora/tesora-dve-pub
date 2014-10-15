@@ -2359,7 +2359,7 @@ public abstract class Emitter {
 		else
 			buf.append("AFTER");
 		buf.append(" ").append(trigger.getEvent().name()).append(" ON ");
-		emitTable(sc,trigger.getTargetTable(sc),sc.getCurrentDatabase(false),buf);
+		emitTable(sc,trigger.getTargetTable(),sc.getCurrentDatabase(false),buf);
 		buf.append(" FOR EACH ROW ");
 		emitStatement(sc,trigger.getBody(),buf);
 	}

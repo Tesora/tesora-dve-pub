@@ -21,8 +21,6 @@ package com.tesora.dve.sql;
  * #L%
  */
 
-import static org.junit.Assert.fail;
-
 import java.sql.SQLException;
 
 import org.junit.After;
@@ -30,9 +28,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
-import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;

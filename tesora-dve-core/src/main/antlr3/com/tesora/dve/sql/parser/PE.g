@@ -646,17 +646,17 @@ view_def_body returns [Statement s] options {k=1;}:
   
 trigger_def_body returns [Statement s] options {k=1;}:
   TRIGGER unqualified_identifier (b=BEFORE | AFTER) 
-  statement_type ON qualified_identifier FOR EACH ROW
+  trigger_event ON qualified_identifier FOR EACH ROW
   (ps=sql_data_statement | c=compound_statement)
   { $s = utils.buildCreateTrigger($unqualified_identifier.n,
-    $b != null,$statement_type.st, $qualified_identifier.n,
+    $b != null,$trigger_event.te, $qualified_identifier.n,
     ($ps.s != null ? $ps.s : $c.s),$TRIGGER); } 
   ;
 
-statement_type returns [StatementType st] options {k=1;}:
-  (INSERT { $st = StatementType.INSERT; })
-  | (UPDATE { $st = StatementType.UPDATE; })
-  | (DELETE { $st = StatementType.DELETE; })
+trigger_event returns [TriggerEvent te] options {k=1;}:
+  (INSERT { $te = TriggerEvent.INSERT; })
+  | (UPDATE { $te = TriggerEvent.UPDATE; })
+  | (DELETE { $te = TriggerEvent.DELETE; })
   ;
 
 
