@@ -106,6 +106,7 @@ import com.tesora.dve.sql.schema.PESiteInstance;
 import com.tesora.dve.sql.schema.PEStorageSite;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETemplate;
+import com.tesora.dve.sql.schema.PETrigger;
 import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.PEView;
 import com.tesora.dve.sql.schema.PEViewTable;
@@ -142,6 +143,7 @@ import com.tesora.dve.sql.statement.ddl.PEAlterTableStatement;
 import com.tesora.dve.sql.statement.ddl.PEAlterTemplateStatement;
 import com.tesora.dve.sql.statement.ddl.PEAlterTenantStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStatement;
+import com.tesora.dve.sql.statement.ddl.PECreateTriggerStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateViewStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropTableStatement;
@@ -490,6 +492,8 @@ public abstract class Emitter {
 			emitViewDeclaration(sc,((PEViewTable)p).getView(sc),(PECreateViewStatement)cs,buf);
 		} else if (p instanceof PEView) {
 			emitViewDeclaration(sc,(PEView)p,(PECreateViewStatement)cs,buf);
+		} else if (p instanceof PETrigger) {
+			emitTriggerDeclaration(sc,(PETrigger)p,(PECreateTriggerStatement)cs,buf);
 		}
 		else
 			error("Unknown persistable kind: " + p.getClass().getName());
@@ -2324,6 +2328,7 @@ public abstract class Emitter {
 		}
 	}
 
+
 	// this is for errors
 	public void emitDebugViewDeclaration(SchemaContext sc, PEViewTable viewTable, StringBuilder buf) {
 		emitViewDeclaration(sc, viewTable.getView(sc), null, buf);
@@ -2340,6 +2345,25 @@ public abstract class Emitter {
 			options = was;
 		}
 	}
+	
+	public void emitTriggerDeclaration(SchemaContext sc, PETrigger trigger, PECreateTriggerStatement pecs, StringBuilder buf) {
+		if (!trigger.getDefiner(sc).isRoot()) {
+			// TODO:
+			// having some issues getting this right for root
+			buf.append(" DEFINER = ");
+			emitUserSpec(trigger.getDefiner(sc),buf);
+		}
+		buf.append(" TRIGGER ").append(trigger.getName()).append(" ");
+		if (trigger.isBefore())
+			buf.append("BEFORE");
+		else
+			buf.append("AFTER");
+		buf.append(" ").append(trigger.getEvent().name()).append(" ON ");
+		emitTable(sc,trigger.getTargetTable(sc),sc.getCurrentDatabase(false),buf);
+		buf.append(" FOR EACH ROW ");
+		emitStatement(sc,trigger.getBody(),buf);
+	}
+
 	
 	public void emitAnalyzeKeysStatement(final SchemaContext sc, AnalyzeKeysStatement aks, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,"ANALYZE KEYS ");

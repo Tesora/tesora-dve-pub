@@ -23,6 +23,7 @@ package com.tesora.dve.sql.statement.dml;
 
 import java.util.List;
 
+import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.MultiEdge;
 import com.tesora.dve.sql.node.SingleEdge;
@@ -30,6 +31,7 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.structural.FromTableReference;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.SchemaContext;
 
 public abstract class MultiTableDMLStatement extends DMLStatement {
 
@@ -65,4 +67,16 @@ public abstract class MultiTableDMLStatement extends DMLStatement {
 		return true;
 	}
 	
+	@Override
+	public boolean hasTrigger(SchemaContext sc) {
+		if (this instanceof ProjectingStatement) return false;
+		for(TableKey tk : getDerivedInfo().getLocalTableKeys()) {
+			if (tk.getAbstractTable().isView()) continue;
+			if (tk.getAbstractTable().isVirtualTable()) continue;
+			if (tk.getAbstractTable().asTable().hasTrigger(sc, getStatementType()))
+				return true;
+		}
+		return false;
+	}
+
 }

@@ -145,6 +145,9 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	@OneToOne(mappedBy="table", cascade=CascadeType.ALL, fetch=FetchType.LAZY)
 	UserView view;
 	
+	@OneToMany(cascade=CascadeType.ALL, mappedBy="table")
+	List<UserTrigger> triggers = new ArrayList<UserTrigger>();
+	
 	// engine can be nullable for views
 	@Column(name = "engine", nullable=true)
 	String engine = null;
@@ -645,6 +648,10 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	public void setCreateOptions(String s) {
 		createOptions = s;
 	}
+
+	public final List<UserTrigger> getTriggers() {
+		return triggers;
+	}
 	
 	@Override
 	public void removeFromParent() throws Throwable {
@@ -660,7 +667,7 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 			ceList.addAll(view.getDependentEntities(c));
 			ceList.add(view);
 		}
-		
+				
 		RangeTableRelationship rtr = c.findRangeTableRelationship(this, false);
 		if ( rtr != null )
 			ceList.add(rtr);
@@ -675,6 +682,11 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		
 		if (isContainerBaseTable()) {
 			ceList.add(getContainer());
+		}
+		
+		for(UserTrigger ut : triggers) {
+			ceList.addAll(ut.getDependentEntities(c));
+			ceList.add(ut);
 		}
 		return ceList;
 	}

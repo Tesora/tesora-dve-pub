@@ -62,6 +62,7 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.ValueConverter;
@@ -152,6 +153,7 @@ import com.tesora.dve.sql.schema.LoadDataInfileModifier;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
+import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEContainer;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -246,6 +248,7 @@ import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableAsSelectStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
+import com.tesora.dve.sql.statement.ddl.PECreateTriggerStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateUserStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateViewStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropContainerStatement;
@@ -4329,8 +4332,38 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public Statement buildCreateTrigger(Name triggerName, boolean isBefore, StatementType triggerType,
-			Name targetTable, Statement body) {
-		return null;
+			Name targetTable, Statement body,Token triggerToken) {
+		TableInstance targTab = basicResolver.lookupTable(pc, targetTable, lockInfo);
+		PETrigger already = pc.findTrigger(PETrigger.buildCacheKey(triggerName.getUnquotedName().get(), (TableCacheKey) targTab.getAbstractTable().getCacheKey()));
+		if (already != null)
+			// todo: come back and do the right err msg
+			throw new SchemaException(Pass.SECOND,"Trigger " + triggerName + " already exists");
+		
+    	String origStmt = getInputSQL();
+    	int l = triggerToken.getCharPositionInLine();
+    	String rawSQL = origStmt.substring(l);
+		
+		String charset =
+				KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(pc.getConnection().getVariableSource()).getName();
+		String collation = 
+				KnownVariables.COLLATION_CONNECTION.getSessionValue(pc.getConnection().getVariableSource());
+		String collationDB =
+				KnownVariables.COLLATION_DATABASE.getSessionValue(pc.getConnection().getVariableSource());
+		SQLMode sqlMode =
+				KnownVariables.SQL_MODE.getSessionValue(pc.getConnection().getVariableSource());
+		SQLMode globalMode =
+				KnownVariables.SQL_MODE.getGlobalValue(pc.getConnection().getVariableSource());
+		if (globalMode.equals(sqlMode))
+			sqlMode = null;
+		
+		PETrigger trig = new PETrigger(pc,triggerName,targTab.getAbstractTable().asTable(),body,triggerType,
+				null /* PEUser user */,
+				collation,
+				charset,
+				collationDB,
+				isBefore,
+				sqlMode,rawSQL);
+		return new PECreateTriggerStatement(trig);
 	}
 	
 	public Statement addViewTriggerFields(Statement in, boolean createOrReplace, String algo, UserScope definer, String security) {

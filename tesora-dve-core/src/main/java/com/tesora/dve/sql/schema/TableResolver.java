@@ -95,8 +95,7 @@ public class TableResolver {
 		return raw;
 	}
 	
-	public TableInstance lookupTable(SchemaContext sc, Schema<?> inSchema, Name n, LockInfo lockType) {
-		// only for show schema - so don't do the temporary table lookup
+	public TableInstance lookupShowTable(SchemaContext sc, Schema<?> inSchema, Name n, LockInfo lockType) {
 		Name tableName = n;
 		Schema<?> schema = inSchema;
 		if (tableName.isQualified()) {

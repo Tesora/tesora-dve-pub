@@ -145,4 +145,39 @@ public class SQLMode {
 		out.unknownModes.addAll(other.unknownModes);
 		return out;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((knownModes == null) ? 0 : knownModes.hashCode());
+		result = prime * result
+				+ ((unknownModes == null) ? 0 : unknownModes.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		SQLMode other = (SQLMode) obj;
+		if (knownModes == null) {
+			if (other.knownModes != null)
+				return false;
+		} else if (!knownModes.equals(other.knownModes))
+			return false;
+		if (unknownModes == null) {
+			if (other.unknownModes != null)
+				return false;
+		} else if (!unknownModes.equals(other.unknownModes))
+			return false;
+		return true;
+	}
+	
+	
 }

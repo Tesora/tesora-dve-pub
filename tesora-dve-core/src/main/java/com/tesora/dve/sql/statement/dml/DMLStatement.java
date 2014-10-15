@@ -247,6 +247,8 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 	public static final DMLExplainRecord distKeyExplain = DMLExplainReason.DISTRIBUTION_KEY_MATCHED.makeRecord(); 
 	
 	protected static void planViaTransforms(SchemaContext sc, DMLStatement dmls, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
+		if (dmls.hasTrigger(sc))
+			throw new PEException("No support for trigger execution");
 		// for now, we're going to say dml statements are cacheable - we'll override this later
 		// don't cache plans with parameters yet - won't work right for reuse
 		if (es.getPlan() != null && !(sc.getValueManager().hasPassDownParams() || dmls.getDerivedInfo().hasUserlandTemporaryTables())) 
@@ -303,6 +305,9 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 		
 	public abstract DistKeyOpType getKeyOpType();
 
+	public abstract boolean hasTrigger(SchemaContext sc);
+
+	
 	@Override
 	public String toString() {
 		return System.identityHashCode(this) + "@ " + super.toString();

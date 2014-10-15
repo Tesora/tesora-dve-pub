@@ -650,7 +650,7 @@ trigger_def_body returns [Statement s] options {k=1;}:
   (ps=sql_data_statement | c=compound_statement)
   { $s = utils.buildCreateTrigger($unqualified_identifier.n,
     $b != null,$statement_type.st, $qualified_identifier.n,
-    ($ps.s != null ? $ps.s : $c.s)); } 
+    ($ps.s != null ? $ps.s : $c.s),$TRIGGER); } 
   ;
 
 statement_type returns [StatementType st] options {k=1;}:
@@ -1300,12 +1300,13 @@ sql_schema_show_statement_target returns [Statement s] options {k=1;}:
   ) unqualified_identifier { $s = utils.buildShowSingularQuery($a.text, $unqualified_identifier.n); }
   | SCHEMA unqualified_identifier { $s = utils.buildShowSingularQuery("DATABASE",$unqualified_identifier.n); }
   | CREATE (
-  	(TABLE tui=qualified_identifier) { $s = utils.buildShowSingularQuery("CREATE TABLE",$tui.n); }
-  	| ((DATABASE | SCHEMA) if_not_exists dsui=unqualified_identifier) { $s = utils.buildShowCreateDatabaseQuery("CREATE DATABASE",$dsui.n, $if_not_exists.b); }
+  	((TABLE tui=qualified_identifier) { $s = utils.buildShowSingularQuery("CREATE TABLE",$tui.n); })
+  	| (((DATABASE | SCHEMA) if_not_exists dsui=unqualified_identifier) { $s = utils.buildShowCreateDatabaseQuery("CREATE DATABASE",$dsui.n, $if_not_exists.b); })
+  	| (TRIGGER tn=unqualified_identifier { $s = utils.buildShowSingularQuery("CREATE TRIGGER",$tn.n); })
   	)
   | EVENTS sql_schema_show_scoping? sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("EVENTS",$sql_schema_show_scoping.l,$sql_schema_like_or_where.pair); }
   | ENGINES sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("ENGINES",null,null); }
-  | TRIGGERS sql_schema_show_scoping? sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("TRIGGER",$sql_schema_show_scoping.l,$sql_schema_like_or_where.pair); }
+  | TRIGGERS sql_schema_show_scoping? sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("TRIGGERS",$sql_schema_show_scoping.l,$sql_schema_like_or_where.pair); }
   | TABLE lui=unqualified_identifier { utils.push_info_schema_scope("TABLE STATUS"); } sql_schema_show_scoping? tsw=sql_schema_like_or_where?
   { if ($lui.n.get().toUpperCase().equals("STATUS")) {
        $s = utils.buildShowPluralQuery("TABLE STATUS",$sql_schema_show_scoping.l, $tsw.pair);        

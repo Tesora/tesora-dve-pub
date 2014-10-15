@@ -63,6 +63,7 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
+import com.tesora.dve.sql.schema.PETrigger.TriggerCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheType;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
@@ -698,6 +699,10 @@ public class SchemaContext {
 		return schemaSource.find(this, sck);
 	}
 		
+	public PETrigger findTrigger(TriggerCacheKey tck) {
+		return schemaSource.find(this,tck);
+	}
+	
 	public ListSet<TableScope> findScopesReferencing(PETable pet) {
 		List<TableVisibility> matching = catalog.findTenantsOf(pet.getPersistent(this));
 		ListSet<TableScope> out = new ListSet<TableScope>();

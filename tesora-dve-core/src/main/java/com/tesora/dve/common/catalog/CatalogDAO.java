@@ -1165,6 +1165,14 @@ public class CatalogDAO {
 		return onlyOne(keys, "Specific key", dbName + "." + encTabName + "/" + keyName, false);
 	}
 	
+	public UserTrigger findTrigger(String name, String dbName) throws PEException {
+		Query query = em.get().createQuery("from UserTrigger ut where ut.name = :name and ut.table.userDatabase.name = :dbname");
+		query.setParameter("name",name);
+		query.setParameter("dbname",dbName);
+		List<UserTrigger> trigs = query.getResultList();
+		return onlyOne(trigs, "Triggers", dbName + "." + name,false);
+	}
+	
 	public void deleteAllServerRegistration() {
 		Query q = em.get().createQuery("delete from ServerRegistration");
 		q.executeUpdate();

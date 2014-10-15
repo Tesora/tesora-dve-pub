@@ -21,36 +21,107 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
+import java.util.Collections;
+
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.parser.InvokeParser;
+import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 
 public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 
+	// triggers only make sense in the context of the target table, so no need for an edge
 	private final SchemaEdge<PETable> triggerTable;
 	private final StatementType triggerType;
-	private final Statement body;
+	private Statement body;
+	private String rawSQL;
 	private SchemaEdge<PEUser> definer;
 	
-	private String collationConnection;
-	private String charsetConnection;
-	private String collationDatabase;
+	private final boolean before;
+	private final SQLMode sqlMode;
+	
+	private final String collationConnection;
+	private final String charsetConnection;
+	private final String collationDatabase;
 	
 	public PETrigger(SchemaContext sc, Name name, PETable targetTable, Statement body, StatementType triggerOn,
-			PEUser user, String collationConnection, String charsetConnection, String collationDatabase) {
+			PEUser user, String collationConnection, String charsetConnection, String collationDatabase,
+			boolean before, SQLMode sqlMode, String rawSQL) {
 		super(buildCacheKey(name,targetTable));
 		setName(name.getUnqualified());
 		this.body = body;
-		this.triggerTable = StructuralUtils.buildEdge(sc, targetTable, false);
+		this.rawSQL = null;
+		this.triggerTable = StructuralUtils.buildEdge(sc,targetTable,false);
 		this.triggerType = triggerOn;
 		this.definer = StructuralUtils.buildEdge(sc,user,false);
+		this.before = before;
+		this.sqlMode = sqlMode;
+		this.collationConnection = collationConnection;
+		this.charsetConnection = charsetConnection;
+		this.collationDatabase = collationDatabase;
+		this.rawSQL = rawSQL;
 		setPersistent(sc,null,null);
+	}
+	
+	public PEUser getDefiner(SchemaContext sc) {
+		return definer.get(sc);
+	}
+	
+	public boolean isBefore() {
+		return before;
+	}
+	
+	public StatementType getEvent() {
+		return triggerType;
+	}
+	
+	public PETable getTargetTable(SchemaContext sc) {
+		return triggerTable.get(sc);
+	}
+	
+	public Statement getBody() {
+		return body;
+	}
+	
+	public static PETrigger load(UserTrigger ut, SchemaContext sc, PETable onTable) {
+		TriggerCacheKey tck = null;
+		if (onTable == null)
+			tck = buildCacheKey(ut.getName(),(TableCacheKey) PETable.getTableKey(ut.getTable()));
+		else
+			tck = buildCacheKey(ut.getName(), (TableCacheKey) onTable.getCacheKey());
+		PETrigger pep = (PETrigger) sc.getLoaded(ut,tck);
+		if (pep == null)
+			pep = new PETrigger(ut,sc,onTable);
+		return pep;
+	}
+	
+	private PETrigger(UserTrigger ut, SchemaContext sc, PETable onTable) {
+		super(buildCacheKey(ut.getName(),
+				(TableCacheKey)(onTable == null ? PETable.getTableKey(ut.getTable()) : onTable.getCacheKey())));
+		sc.startLoading(this, ut);
+		setName(new UnqualifiedName(ut.getName()));
+		setPersistent(sc,ut,ut.getId());
+		PETable ttab = (onTable == null ? PETable.load(ut.getTable(), sc).asTable() : onTable);
+		triggerTable = StructuralUtils.buildEdge(sc,ttab,true);
+		// do something with the body
+		this.before = "BEFORE".equals(ut.getWhen());
+		this.triggerType = StatementType.valueOf(ut.getEvent());
+		this.charsetConnection = ut.getCharsetConnection();
+		this.collationConnection = ut.getCollationConnection();
+		this.collationDatabase = ut.getDatabaseCollation();
+		if ("".equals(ut.getSQLMode())) this.sqlMode = null;
+		else this.sqlMode = new SQLMode(ut.getSQLMode());
+		this.rawSQL = ut.getOrigSQL();
+		this.body = PEView.buildStatement(sc,ttab.getPEDatabase(sc),ut.getBody(),false);
+		this.definer = StructuralUtils.buildEdge(sc,PEUser.load(ut.getDefiner(), sc),true);
 	}
 	
 	public void setUser(SchemaContext sc, PEUser targ) {
@@ -70,22 +141,28 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 
 	@Override
 	protected UserTrigger lookup(SchemaContext sc) throws PEException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	protected UserTrigger createEmptyNew(SchemaContext sc)
 			throws PEException {
-		// TODO Auto-generated method stub
-		return null;
+		return new UserTrigger(getName().get(),body.getSQL(sc),
+				triggerTable.get(sc).persistTree(sc),
+				triggerType.name(),
+				before ? "BEFORE" : "AFTER",
+				(sqlMode == null ? "" : sqlMode.toString()),
+				charsetConnection,
+				collationConnection,
+				collationDatabase,
+				definer.get(sc).persistTree(sc),
+				rawSQL);
 	}
 
 	@Override
 	protected void populateNew(SchemaContext sc, UserTrigger p)
 			throws PEException {
-		// TODO Auto-generated method stub
-		
+		// does nothing
 	}
 
 	@Override
@@ -97,21 +174,24 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 
 	@Override
 	protected String getDiffTag() {
-		// TODO Auto-generated method stub
-		return null;
+		return "trigger";
 	}
 
 	
+	public static TriggerCacheKey buildCacheKey(String triggerName, TableCacheKey onTable) {
+		return new TriggerCacheKey(onTable, triggerName);
+	}
+	
 	public static TriggerCacheKey buildCacheKey(Name trgName, PETable onTab) {
-		return new TriggerCacheKey((TableCacheKey) onTab.getCacheKey(),trgName);
+		return new TriggerCacheKey((TableCacheKey) onTab.getCacheKey(),trgName.getUnqualified().getUnquotedName().get());
 	}
 	
 	protected static class TriggerCacheKey extends SchemaCacheKey<PETrigger> {
 
 		private final TableCacheKey targetTable;
-		private final Name triggerName;
+		private final String triggerName;
 		
-		public TriggerCacheKey(TableCacheKey onTable, Name trgName) {
+		public TriggerCacheKey(TableCacheKey onTable, String trgName) {
 			this.targetTable = onTable;
 			this.triggerName = trgName;
 		}
@@ -138,13 +218,15 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 
 		@Override
 		public PETrigger load(SchemaContext sc) {
-			// TODO Auto-generated method stub
-			return null;
+			UserTrigger ut = sc.getCatalog().findTrigger(triggerName, targetTable.getDatabaseName());
+			if (ut == null)
+				return null;
+			return PETrigger.load(ut, sc, null);
 		}
 
 		@Override
 		public String toString() {
-			return String.format("PETrigger:%s(%s)",triggerName.getUnquotedName().get(),targetTable.toString());
+			return String.format("PETrigger:%s(%s)",triggerName,targetTable.toString());
 		}
 		
 	}

@@ -62,6 +62,11 @@ public class UserTrigger implements CatalogEntity {
 	@Lob
 	String definition;
 
+	// somewhat redundant but oh well
+	@Column(name = "origsql", nullable = false)
+	@Lob
+	String origsql;
+	
 	@ForeignKey(name="fk_trigger_user")
 	@ManyToOne(optional = false)
 	@JoinColumn(name = "user_id")
@@ -94,18 +99,26 @@ public class UserTrigger implements CatalogEntity {
 	@Column(name = "database_collation", nullable = false)
 	String databaseCollation;
 
+	public UserTrigger() {
+		
+	}
+	
 	public UserTrigger(String name, String body, UserTable triggerTable, 
 			String event, String when, String sqlMode, 
-			String charSetClient, String collationConnection, String databaseCollation) {
+			String charSetClient, String collationConnection, String databaseCollation, 
+			User definer, String origsql) {
 		this.name = name;
 		this.definition = body;
 		this.table = triggerTable;
+		triggerTable.getTriggers().add(this);
 		this.event = event;
 		this.when = when;
 		this.sqlMode = sqlMode;
 		this.charset = charSetClient;
 		this.collation = collationConnection;
 		this.databaseCollation = databaseCollation;
+		this.definer = definer;
+		this.origsql = origsql;
 	}
 	
 	@Override
@@ -113,6 +126,50 @@ public class UserTrigger implements CatalogEntity {
 		return id;
 	}
 
+	public String getName() {
+		return name;
+	}
+	
+	public String getBody() {
+		return definition;
+	}
+	
+	public UserTable getTable() {
+		return table;
+	}
+	
+	public String getEvent() {
+		return event;
+	}
+	
+	public String getWhen() {
+		return when;
+	}
+	
+	public String getCharsetConnection() {
+		return charset;
+	}
+	
+	public String getCollationConnection() {
+		return collation;
+	}
+	
+	public String getDatabaseCollation() {
+		return databaseCollation;
+	}
+	
+	public String getSQLMode() {
+		return sqlMode;
+	}
+	
+	public User getDefiner() {
+		return definer;
+	}
+	
+	public String getOrigSQL() {
+		return origsql;
+	}
+	
 	@Override
 	public ColumnSet getShowColumnSet(CatalogQueryOptions cqo)
 			throws PEException {

@@ -448,7 +448,7 @@ public class Utils {
     		text = origStmt.substring(l, rhs.getCharPositionInLine()).trim();
     	en.setSourceLocation(new ComputedSourceLocation(l,lhs.getLine(),text,type));
     }
-    
+        
     private static class ExpressionNodeList extends ExpressionNode {
 
     	List<ExpressionNode> args;

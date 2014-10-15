@@ -202,7 +202,7 @@ public class ScopeEntry implements Scope {
 	// is not unique, emit an error
 	@Override
 	public TableInstance buildTableInstance(Name inTableName, UnqualifiedName alias, Schema<?> inSchema, SchemaContext sc, LockInfo info) {
-		TableInstance raw = resolver.lookupTable(sc, inSchema, inTableName, info);
+		TableInstance raw = resolver.lookupShowTable(sc, inSchema, inTableName, info);
 		TableInstance ti = raw.adapt(inTableName.getUnqualified(), alias, (sc == null ? 0 : sc.getNextTable()),
 				(sc != null && sc.getOptions().isResolve()));
 		insertTable(ti,alias,inTableName.getUnqualified());

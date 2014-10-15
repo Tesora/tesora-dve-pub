@@ -59,6 +59,7 @@ import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.common.catalog.UserView;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
@@ -1223,6 +1224,12 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	@Override
 	public VariableValueStore getUserVariableStore() {
 		return userVariables;
+	}
+
+	@Override
+	public UserTrigger findTrigger(String name, String dbName) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

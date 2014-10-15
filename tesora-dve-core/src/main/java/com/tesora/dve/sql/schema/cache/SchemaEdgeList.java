@@ -22,6 +22,7 @@ package com.tesora.dve.sql.schema.cache;
  */
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -46,5 +47,12 @@ public class SchemaEdgeList<TClass> extends ArrayList<SchemaEdge<TClass>> {
 	@SuppressWarnings("unchecked")
 	public void add(SchemaContext sc, TClass o, boolean persistent) {
 		add(StructuralUtils.buildEdge(sc,o, persistent));
+	}
+	
+	public void remove(SchemaContext sc, TClass o) {
+		for(Iterator<SchemaEdge<TClass>> iter = iterator(); iter.hasNext();) {
+			if (iter.next().get(sc) == o)
+				iter.remove();
+		}
 	}
 }
