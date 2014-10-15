@@ -122,6 +122,7 @@ import com.tesora.dve.sql.node.expression.StringLiteralAlias;
 import com.tesora.dve.sql.node.expression.Subquery;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TableJoin;
+import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.node.expression.ValueSource;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WhenClause;
@@ -4330,9 +4331,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public Statement buildCreateTrigger(Name triggerName, boolean isBefore, TriggerEvent triggerType,
-			Name targetTable, Statement body,Token triggerToken) {
-		TableInstance targTab = basicResolver.lookupTable(pc, targetTable, lockInfo);
-		PETrigger already = pc.findTrigger(PETrigger.buildCacheKey(triggerName.getUnquotedName().get(), (TableCacheKey) targTab.getAbstractTable().getCacheKey()));
+			PETable targetTable, Statement body,Token triggerToken) {
+		PETrigger already = pc.findTrigger(PETrigger.buildCacheKey(triggerName.getUnquotedName().get(), (TableCacheKey) targetTable.getCacheKey()));
 		if (already != null)
 			// todo: come back and do the right err msg
 			throw new SchemaException(Pass.SECOND,"Trigger " + triggerName + " already exists");
@@ -4354,13 +4354,14 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (globalMode.equals(sqlMode))
 			sqlMode = null;
 		
-		PETrigger trig = new PETrigger(pc,triggerName,targTab.getAbstractTable().asTable(),body,triggerType,
+		PETrigger trig = new PETrigger(pc,triggerName,targetTable,body,triggerType,
 				null /* PEUser user */,
 				collation,
 				charset,
 				collationDB,
 				isBefore,
 				sqlMode,rawSQL);
+		popScope();
 		return new PECreateTriggerStatement(trig);
 	}
 	
@@ -4412,4 +4413,23 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return pect;
 	}
 	
+	public PETable pushTriggerTable(Name n) {
+		TableInstance targTab = basicResolver.lookupTable(pc, n, lockInfo);
+		PETable theTable = targTab.getAbstractTable().asTable();
+		TriggerTableInstance before = new TriggerTableInstance(theTable,true);
+		TriggerTableInstance after = new TriggerTableInstance(theTable,false);
+		pushScope();
+		scope.insertTable(before);
+		scope.insertTable(after);
+		return theTable;
+	}
+	
+	public PETable pushTriggerTable(PETable tab) {
+		TriggerTableInstance before = new TriggerTableInstance(tab,true);
+		TriggerTableInstance after = new TriggerTableInstance(tab,false);
+		pushScope();
+		scope.insertTable(before);
+		scope.insertTable(after);
+		return tab;
+	}
 }

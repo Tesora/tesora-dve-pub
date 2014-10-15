@@ -43,7 +43,6 @@ import com.martiansoftware.jsap.Parameter;
 import com.martiansoftware.jsap.SimpleJSAP;
 import com.martiansoftware.jsap.Switch;
 import com.tesora.dve.db.NativeTypeCatalog;
-import com.tesora.dve.server.bootstrap.Host;
 import com.tesora.dve.server.connectionmanager.TestHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;

@@ -104,8 +104,12 @@ public class InvokeParser {
 	}
 	
 	public static ParseResult parse(InputState icmd, ParserOptions opts, SchemaContext pc) throws ParserException {
+		return parse(icmd,opts,pc,TranslatorInitCallback.INSTANCE);
+	}
+	
+	public static ParseResult parse(InputState icmd, ParserOptions opts, SchemaContext pc, TranslatorInitCallback ticb) throws ParserException {
 		preparse(pc);
-		return parse(icmd, opts, pc, Collections.emptyList());
+		return parse(icmd, opts, pc, Collections.emptyList(),ticb);
 	}
 
 	private static void preparse(SchemaContext pc) throws ParserException {
@@ -116,7 +120,7 @@ public class InvokeParser {
 		}
 	}
 
-	private static ParseResult parse(InputState input, ParserOptions opts, SchemaContext pc, List<Object> parameters)
+	private static ParseResult parse(InputState input, ParserOptions opts, SchemaContext pc, List<Object> parameters, TranslatorInitCallback cb)
 			throws ParserException {
 		// debug log is set only for non tests
 		if (pc != null) {
@@ -129,7 +133,7 @@ public class InvokeParser {
 			result = parseFastInsert(pc, opts, input);
 		}
 		if (result == null)
-			result = parse(pc, opts, input);
+			result = parse(pc, opts, input, cb);
 		List<Statement> stmts = result.getSecond();
 		TranslatorUtils utils = result.getFirst();
 		if (stmts.isEmpty())
@@ -219,8 +223,9 @@ public class InvokeParser {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static Pair<TranslatorUtils, List<Statement>> parse(SchemaContext pc, ParserOptions opts, InputState input) {
+	private static Pair<TranslatorUtils, List<Statement>> parse(SchemaContext pc, ParserOptions opts, InputState input, TranslatorInitCallback cb) {
 		TranslatorUtils utils = new TranslatorUtils(opts, pc, input);
+		cb.onInit(utils);
 		PE parser = buildParser(input, utils);
 		if (pc != null)
 			pc.setTokenStream(parser.getTokenStream(), input.getCommand());
@@ -263,7 +268,11 @@ public class InvokeParser {
 	}
 
 	public static List<Statement> parse(String line, SchemaContext pc, List<Object> params, ParserOptions options) throws ParserException {
-		return parse(buildInputState(line,pc), options, pc, params).getStatements();		
+		return parse(line,pc,params,options,TranslatorInitCallback.INSTANCE);
+	}
+	
+	public static List<Statement> parse(String line, SchemaContext pc, List<Object> params, ParserOptions options, TranslatorInitCallback ticb) throws ParserException {
+		return parse(buildInputState(line,pc), options, pc, params, ticb).getStatements();		
 	}
 	
 	public static List<Statement> parse(String line, SchemaContext pc, List<Object> params) throws ParserException {
@@ -322,7 +331,7 @@ public class InvokeParser {
 						"Unable to parameterize SQL statement to handle characters invalid for character set "
 								+ cs.name());
 			orig = StringUtils.strip(orig, new String(Character.toString(Character.MIN_VALUE)));
-			out.addAll(parse(buildInputState(orig,pc), options, pc, params).getStatements());
+			out.addAll(parse(buildInputState(orig,pc), options, pc, params, TranslatorInitCallback.INSTANCE).getStatements());
 		}
 		return new ParseResult(out,null);
 	}

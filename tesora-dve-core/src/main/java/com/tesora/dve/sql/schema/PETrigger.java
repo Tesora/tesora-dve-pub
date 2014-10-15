@@ -24,11 +24,14 @@ package com.tesora.dve.sql.schema;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.parser.TranslatorInitCallback;
+import com.tesora.dve.sql.parser.TranslatorUtils;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 
 public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 
@@ -37,6 +40,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	private final PETable triggerTable;
 	private final TriggerEvent triggerType;
 	private Statement body;
+	private String bodySrc;
 	private String rawSQL;
 	private SchemaEdge<PEUser> definer;
 	
@@ -82,7 +86,11 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 		return triggerTable;
 	}
 	
-	public Statement getBody() {
+	public Statement getBody(SchemaContext sc) {
+		if (body == null) {
+			Statement parsed = PEView.buildStatement(sc, triggerTable.getPEDatabase(sc), bodySrc, false, new ScopeInjector(triggerTable));
+			body = parsed;
+		}
 		return body;
 	}
 	
@@ -115,7 +123,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 		if ("".equals(ut.getSQLMode())) this.sqlMode = null;
 		else this.sqlMode = new SQLMode(ut.getSQLMode());
 		this.rawSQL = ut.getOrigSQL();
-		this.body = PEView.buildStatement(sc,ttab.getPEDatabase(sc),ut.getBody(),false);
+		this.bodySrc = ut.getBody();
 		this.definer = StructuralUtils.buildEdge(sc,PEUser.load(ut.getDefiner(), sc),true);
 	}
 	
@@ -224,5 +232,19 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 			return String.format("PETrigger:%s(%s)",triggerName,targetTable.toString());
 		}
 		
+	}
+	
+	private static class ScopeInjector extends TranslatorInitCallback {
+		
+		private final PETable target;
+		
+		public ScopeInjector(PETable targ) {
+			this.target = targ;
+		}
+		
+		public void onInit(TranslatorUtils utils) {
+			utils.pushTriggerTable(target);
+		}
+
 	}
 }

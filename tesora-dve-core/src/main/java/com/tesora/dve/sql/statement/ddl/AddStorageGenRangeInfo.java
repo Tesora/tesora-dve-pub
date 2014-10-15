@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.ConstraintType;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.exceptions.PEException;

@@ -646,11 +646,15 @@ view_def_body returns [Statement s] options {k=1;}:
   
 trigger_def_body returns [Statement s] options {k=1;}:
   TRIGGER unqualified_identifier (b=BEFORE | AFTER) 
-  trigger_event ON qualified_identifier FOR EACH ROW
+  trigger_event ON push_trigger_table FOR EACH ROW
   (ps=sql_data_statement | c=compound_statement)
   { $s = utils.buildCreateTrigger($unqualified_identifier.n,
-    $b != null,$trigger_event.te, $qualified_identifier.n,
+    $b != null,$trigger_event.te, $push_trigger_table.tk,
     ($ps.s != null ? $ps.s : $c.s),$TRIGGER); } 
+  ;
+
+push_trigger_table returns [PETable tk] options {k=1;}:
+  qualified_identifier { $tk = utils.pushTriggerTable($qualified_identifier.n); }
   ;
 
 trigger_event returns [TriggerEvent te] options {k=1;}:
@@ -659,18 +663,6 @@ trigger_event returns [TriggerEvent te] options {k=1;}:
   | (DELETE { $te = TriggerEvent.DELETE; })
   ;
 
-
-
-//view_definition returns [Statement s] options {k=1;}:
-//  (OR (r=REPLACE))? algorithm_clause? definer_clause? security_clause? 
-//  VIEW qualified_identifier (Left_Paren unqualified_identifier_list Right_Paren)? AS select_statement with_clause?
-//  (TABLE push_scope Left_Paren table_define_fields Right_Paren)?
-//  { $s = utils.buildCreateViewStatement($qualified_identifier.n, $select_statement.s, 
-//       $definer_clause.us, $unqualified_identifier_list.l, 
-//       $r != null, $algorithm_clause.a, $security_clause.s, $with_clause.s, $table_define_fields.l); 
-//       if ($table_define_fields.l != null) utils.popScope(); }
-//  ;
-  
 algorithm_clause returns [String a] options {k=1;}:
   ALGORITHM Equals_Operator algorithm_type { $a = $algorithm_type.t; }
   ;

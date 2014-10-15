@@ -100,4 +100,19 @@ public class TriggerDDLTest extends SchemaTest {
 		conn.execute("delete from B where a = 1");
 	}
 	
+	@Test
+	public void testBodyColumns() throws Throwable {
+		conn.execute("create table alog (id int auto_increment, event varchar(32), a int, subject varchar(32), etype int, primary key (id)) broadcast distribute");
+		conn.execute("create table btarg (id int, subject varchar(32), etype int, primary key(id)) broadcast distribute");
+		conn.execute("create trigger b_insert_trig after insert on btarg for each row insert into alog (event,a,subject,etype) values ('insert',NEW.id,NEW.subject,NEW.etype)");
+		conn.execute("create trigger b_update_trig after update on btarg for each row insert into alog (event,a,subject,etype) values ('update',OLD.id,OLD.subject,NEW.etype)");
+		conn.execute("create trigger b_delete_trig after delete on btarg for each row insert into alog (event,a,subject,etype) values ('delete',OLD.id,OLD.subject,OLD.etype)");
+//		System.out.println(conn.printResults("show triggers"));
+		conn.assertResults("show triggers", 
+				br(nr,"b_delete_trig","DELETE","btarg","INSERT INTO `alog` (`alog`.`event`,`alog`.`a`,`alog`.`subject`,`alog`.`etype`) VALUES ('delete',OLD.`id`,OLD.`subject`,OLD.`etype`)","AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci",
+				nr,"b_insert_trig","INSERT","btarg","INSERT INTO `alog` (`alog`.`event`,`alog`.`a`,`alog`.`subject`,`alog`.`etype`) VALUES ('insert',NEW.`id`,NEW.`subject`,NEW.`etype`)","AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci",
+				nr,"b_update_trig","UPDATE","btarg","INSERT INTO `alog` (`alog`.`event`,`alog`.`a`,`alog`.`subject`,`alog`.`etype`) VALUES ('update',OLD.`id`,OLD.`subject`,NEW.`etype`)","AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci"));
+				
+	}
+	
 }
