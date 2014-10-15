@@ -393,6 +393,18 @@ public class GenerationSitesTest extends SchemaTest {
 		conn.assertResults("select * from t1 order by a", br(nr, 93, 1, 1, nr, 3641, 1, 1));
 	}
 	
+	// mostly about examining the metadata associated with rebalancing
+	@Ignore
+	@Test
+	public void test_pe495Alt() throws Throwable {
+		conn.execute("create range vrange (varchar) persistent group " + testDDL.getPersistentGroup().getName());
+	
+		conn.execute("create table vt1 (a varchar(32), b varchar(32), c int, primary key(a)) range distribute on (b) using vrange");
+		
+		conn.execute("insert into vt1 values ('one','one',1), ('two','two',2)");
+		conn.execute(testDDL.getPersistentGroup().getAddGenerations());
+	}
+	
 	@Test
 	public void test1390() throws Throwable {
 		try {

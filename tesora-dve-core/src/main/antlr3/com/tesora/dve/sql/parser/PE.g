@@ -1249,7 +1249,7 @@ alter_dynamic_site_provider_target returns [Statement s] options {k=1;}:
   ;
 
 alter_persistent_sub1 returns [Statement s] options {k=1;}:
-  (GROUP sg=unqualified_identifier ADD GENERATION sn=unqualified_identifier_list { $s = utils.buildAddPersistentSiteStatement($sg.n, $sn.l); })
+  (GROUP sg=unqualified_identifier ADD GENERATION sn=unqualified_identifier_list (WITH r=REBALANCE)? { $s = utils.buildAddPersistentSiteStatement($sg.n, $sn.l, $r != null); })
   |
   (SITE ssn=unqualified_identifier
     (

@@ -393,7 +393,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	public PEKey addKey(SchemaContext sc, PEKey pek, boolean doSyntheticChecks, PEDatabase theDB) {
 		checkLoaded(sc);
 		PEKey newlyDropped = null;
-		boolean mtmode = theDB.getMTMode().isMT();
+		boolean mtmode = (theDB == null ? false : theDB.getMTMode().isMT());
 		if (pek.getConstraint() == ConstraintType.FOREIGN) {
 			if (!mtmode) {
 				PEForeignKey pefk = (PEForeignKey) pek;

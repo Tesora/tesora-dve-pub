@@ -85,6 +85,7 @@ import com.tesora.dve.sql.schema.CatalogContext;
 import com.tesora.dve.sql.schema.ConnectionContext;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
+import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEContainerTenant;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -191,7 +192,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 			throw new SchemaException(Pass.FIRST, "Unable to initialize global vars for trans exec engine");
 		}
 		sessionVariables.setValue(KnownVariables.DYNAMIC_POLICY, OnPremiseSiteProvider.DEFAULT_POLICY_NAME);
-		tpc = SchemaContext.createContext(this,this,types);
+		tpc = SchemaContext.createContext(this,this,types,Capability.TRANSIENT);
 		currentUser = new PEUser(tpc);
 		users.add(new User(currentUser.getUserScope().getUserName(), 
 				currentUser.getPassword(),

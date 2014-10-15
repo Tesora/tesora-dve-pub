@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.util;
+package com.tesora.dve.sql.schema;
 
 /*
  * #%L
@@ -21,30 +21,14 @@ package com.tesora.dve.sql.util;
  * #L%
  */
 
-import java.util.ArrayList;
-import java.util.List;
+// controls how much of the product is really available
+public enum Capability {
 
-public class ListOfPairs<First,Second> extends ArrayList<Pair<First,Second>> implements java.io.Serializable {
-
-	private static final long serialVersionUID = 1L;
-
-	public ListOfPairs() {
-		super();
-	}
+	// just the parser
+	PARSING_ONLY,
+	// transient, i.e. transform tests, TransientExecutionEngine, upgrade, infoschema planning
+	TRANSIENT,
+	// whole stack - connection context is an SSConnection, CatalogContext is a DAOContext, etc
+	FULL
 	
-	public ListOfPairs(int s) {
-		super(s);
-	}
-	
-	public boolean add(First f, Second s) {
-		return add(new Pair<First,Second>(f,s));
-	}
-	
-	public ListOfPairs(ListOfPairs<First,Second> other) {
-		super(other);
-	}
-
-	public ListOfPairs(List<Pair<First, Second>> other) {
-		super(other);
-	}
 }

@@ -674,6 +674,7 @@ Signed_Float
   RANDOM                      :   R A N D O M;
   RANGES                      :   R A N G E S;
   RAW                         :   R A W;
+  REBALANCE                   :   R E B A L A N C E;
   RELOAD                      :   R E L O A D;
   RELAXED                     :   R E L A X E D;
   REQUIRED                    :   R E Q U I R E D;

@@ -283,10 +283,10 @@ public final class ExecToRawConverter {
 	
 	private String parameterize(GenericSQLCommand in) throws PEException {
 		Map<Integer, String> mapping = new HashMap<Integer, String>();
-		for(Map.Entry<IDelegatingLiteralExpression, ParameterType> me : parameters.entrySet()) {
+		for (Map.Entry<IDelegatingLiteralExpression, ParameterType> me : parameters.entrySet()) {
 			mapping.put(me.getKey().getPosition(), "@" + me.getValue().getName());
 		}
-		GenericSQLCommand p = in.resolve(mapping, sc);
+		GenericSQLCommand p = in.resolveRawEntries(mapping, sc);
 		return p.getUnresolved();
 	}
 }

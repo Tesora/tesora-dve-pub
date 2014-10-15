@@ -109,6 +109,7 @@ public class SchemaContext {
 	private ParserOptions opts;
 	private SchemaEdge<PEProject> defaultProject = null;
 	private ConnectionContext connection = null;
+	private final Capability capability;
 	private boolean mutableSource;
 	private Boolean mutableSourceOverride;
 
@@ -140,20 +141,20 @@ public class SchemaContext {
 			throw new IllegalArgumentException("Wrong constructor for null connection");
 		ConnectionContext cc = buildConnectionContext(conn);
 		return new SchemaContext(new DAOContext(cc),cc, 
-				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
+				Singletons.require(HostService.class).getDBNative().getTypeCatalog(),Capability.FULL);
 	}
 	
 	public static SchemaContext createContext(CatalogDAO dao, NativeTypeCatalog typeCatalog) {
 		ConnectionContext cc = new NullConnectionContext(dao);
-		return new SchemaContext(new DAOContext(cc),cc, typeCatalog);
+		return new SchemaContext(new DAOContext(cc),cc, typeCatalog,Capability.TRANSIENT);
 	}
 	
 	public static SchemaContext createContext(SchemaContext other) {
-		return createContext(other.getCatalog(), other.getConnection(),other.getTypes());
+		return createContext(other.getCatalog(), other.getConnection(),other.getTypes(),other.getCapability());
 	}
 	
-	public static SchemaContext createContext(CatalogContext cntxt, ConnectionContext conn, NativeTypeCatalog typeCatalog) {
-		return new SchemaContext(cntxt, conn,typeCatalog);
+	public static SchemaContext createContext(CatalogContext cntxt, ConnectionContext conn, NativeTypeCatalog typeCatalog, Capability cap) {
+		return new SchemaContext(cntxt, conn,typeCatalog, cap);
 	}
 
 	public static Database<?> loadDB(SchemaContext pc, UserDatabase db) {
@@ -176,7 +177,7 @@ public class SchemaContext {
 	// used in container tenant support
 	public static SchemaContext makeMutableIndependentContext(SchemaContext basedOn) {
 		ConnectionContext cc = basedOn.getConnection().copy();
-		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), cc, basedOn.getTypes());
+		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), cc, basedOn.getTypes(), basedOn.getCapability());
 		out.forceMutableSource();
 		return out;
 	}
@@ -184,16 +185,17 @@ public class SchemaContext {
 	// used in raw plan support
 	public static SchemaContext makeImmutableIndependentContext(SchemaContext basedOn) {
 		ConnectionContext cc = basedOn.getConnection().copy();
-		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), basedOn.getConnection().copy(), basedOn.getTypes());
+		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), basedOn.getConnection().copy(), basedOn.getTypes(), basedOn.getCapability());
 		return out;
 	}
 	
 	@SuppressWarnings("unchecked")
-	private SchemaContext(CatalogContext cat, ConnectionContext conn, NativeTypeCatalog typeCatalog) {
+	private SchemaContext(CatalogContext cat, ConnectionContext conn, NativeTypeCatalog typeCatalog, Capability cap) {
 		// always start out unmutable
 		mutableSource = false;
 		connection = conn;
 		catalog = cat;
+		capability = cap;
 		schemaSource = null;
 		setSource(buildSource());
 		defaultProject = StructuralUtils.buildEdge(this, null, false); 
@@ -214,6 +216,10 @@ public class SchemaContext {
 	public void cleanupPostPlanning() {
 		tokens = null;
 		origStmt = null;
+	}
+	
+	public Capability getCapability() {
+		return capability;
 	}
 	
 	public SchemaSource getSource() {
