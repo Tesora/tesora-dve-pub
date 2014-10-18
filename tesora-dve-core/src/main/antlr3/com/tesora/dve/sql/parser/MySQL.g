@@ -616,13 +616,39 @@ comment returns [String str] options {k=1;}:
   { $str = $Character_String_Literal.text; }
   ;
 
+compound_or_single_statement returns [Statement s] options {k=1;}:
+  ((sql_data_statement { $s = $sql_data_statement.s; })
+  | (compound_statement { $s = $compound_statement.s; }))
+  ;
+
 compound_statement returns [Statement s] options {k=1;}:
   { List acc = new ArrayList(); }
   BEGIN 
-  ( t=sql_data_statement { acc.add($t.s); } Semicolon)*
+  ( t=compound_statement_element { acc.add($t.s); } Semicolon)*
   END
   { $s = utils.buildCompoundStatement(acc); }
   ;
+
+compound_statement_element returns [Statement s] options {k=1;}:
+  sql_data_statement { $s = $sql_data_statement.s; }
+  | case_statement { $s = $case_statement.s; }
+  ;
+
+case_statement returns [Statement s] options {k=1;}:
+  CASE value_expression case_stmt_when_clauses (ELSE compound_or_single_statement Semicolon)? END CASE
+  { $s = utils.buildCaseStatement($value_expression.expr, $case_stmt_when_clauses.l, $compound_or_single_statement.s); }
+  ; 
+
+case_stmt_when_clauses returns [List l] options {k=1;}:
+  { $l = new ArrayList(); }
+  (case_stmt_when_clause { $l.add($case_stmt_when_clause.swc); })+
+  ;
+  
+case_stmt_when_clause returns [StatementWhenClause swc] options {k=1;}:
+  WHEN s=value_expression THEN compound_or_single_statement Semicolon
+  { $swc = utils.buildStatementWhenClause($s.expr,$compound_or_single_statement.s); }
+  ; 
+
 
 value_expression returns [ExpressionNode expr] options {k=1;}
   @init { PrecedenceCollector acc = utils.buildPrecedenceCollector(this.adaptor); }

@@ -172,6 +172,10 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.TruncateStatement;
 import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
+import com.tesora.dve.sql.statement.dml.compound.CaseStatement;
+import com.tesora.dve.sql.statement.dml.compound.CompoundStatement;
+import com.tesora.dve.sql.statement.dml.compound.CompoundStatementList;
+import com.tesora.dve.sql.statement.dml.compound.StatementWhenClause;
 import com.tesora.dve.sql.statement.session.AnalyzeKeysStatement;
 import com.tesora.dve.sql.statement.session.ExternalServiceControlStatement;
 import com.tesora.dve.sql.statement.session.LoadDataInfileStatement;
@@ -339,6 +343,8 @@ public abstract class Emitter {
 			emitDDLStatement(sc,(DDLStatement)s, buf);
 		} else if (s instanceof SessionStatement) {
 			emitSessionStatement(sc,(SessionStatement)s, buf);
+		} else if (s instanceof CompoundStatement) {
+			emitCompoundStatement(sc,(CompoundStatement)s, buf);
 		} else if (s instanceof EmptyStatement) {
 			// does nothing
 		} else {
@@ -349,7 +355,7 @@ public abstract class Emitter {
 	public void emitDMLStatement(SchemaContext sc, DMLStatement s, StringBuilder buf) {
 		emitDMLStatement(sc,s,buf,0);
 	}
-	
+		
 	public void emitDMLStatement(SchemaContext sc, DMLStatement s, StringBuilder buf, int indent) {
 		if (s instanceof SelectStatement) {
 			emitSelectStatement(sc,(SelectStatement)s, buf, indent);
@@ -2387,6 +2393,54 @@ public abstract class Emitter {
 	public abstract void emitLoadDataInfileStatement(SchemaContext sc, LoadDataInfileStatement s, StringBuilder buf, int indent);
 	
 
+	public void emitCompoundStatement(SchemaContext sc, CompoundStatement s, StringBuilder buf) {
+		emitCompoundStatement(sc,s,buf,0);
+	}
+		
+	public void emitCompoundStatement(SchemaContext sc, CompoundStatement s, StringBuilder buf, int indent) {
+		if (s instanceof CompoundStatementList) {
+			emitCompoundStatementList(sc, (CompoundStatementList)s, buf, indent);
+		} else if (s instanceof CaseStatement) {
+			emitCaseStatement(sc, (CaseStatement)s, buf, indent);
+		} else {
+			error("Unknown Compound statement kind for emitter: " + s.getClass().getName());
+		}
+	}
+
+	public void emitStatementForCompoundStatement(SchemaContext sc, Statement stmt, StringBuilder buf, int indent) {
+		if (stmt instanceof CompoundStatement) {
+			emitCompoundStatement(sc,(CompoundStatement)stmt,buf,indent);
+		} else {
+			emitDMLStatement(sc,(DMLStatement)stmt,buf,indent);
+		}	
+		buf.append("; ");
+	}
+	
+	public void emitCompoundStatementList(SchemaContext sc, CompoundStatementList s, StringBuilder buf, int indent) {
+		emitIndent(buf,indent, "BEGIN ");
+		for(Statement stmt : s.getStatementsEdge()) {
+			// let's try to preserve the indentation junk
+			emitStatementForCompoundStatement(sc,stmt,buf,indent);
+		}
+		emitIndent(buf,indent," END");	
+	}
+
+	public void emitCaseStatement(SchemaContext sc, CaseStatement stmt, StringBuilder buf, int indent) {
+		emitIndent(buf,indent,"CASE ");
+		emitExpression(sc,stmt.getTestExpression(),buf,indent);
+		for(StatementWhenClause swc : stmt.getWhenClausesEdge()) {
+			emitIndent(buf,indent," WHEN ");
+			emitExpression(sc,swc.getTestExpression(),buf,indent);
+			emitIndent(buf,indent," THEN ");
+			emitStatementForCompoundStatement(sc,swc.getResultStatement(),buf,indent);
+		}
+		if (stmt.getElseResult() != null) {
+			emitIndent(buf,indent," ELSE ");
+			emitStatementForCompoundStatement(sc,stmt.getElseResult(),buf,indent);
+		}
+		emitIndent(buf,indent," END CASE");
+	}
+	
 	// options
 	public static class EmitOptions extends Options<EmitOption> {
 

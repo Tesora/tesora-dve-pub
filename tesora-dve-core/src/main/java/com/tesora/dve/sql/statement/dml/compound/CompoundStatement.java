@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.statement.dml;
+package com.tesora.dve.sql.statement.dml.compound;
 
 /*
  * #%L
@@ -24,48 +24,35 @@ package com.tesora.dve.sql.statement.dml;
 import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.LanguageNode;
+import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.ExecutionStep;
+import com.tesora.dve.sql.transform.execution.ExecutionType;
 
-public class CompoundStatement extends Statement {
+public abstract class CompoundStatement extends Statement {
 
-	List<Statement> stmts;
-	UnqualifiedName label;
-	
-	public CompoundStatement(SourceLocation location, List<Statement> in, UnqualifiedName label) {
+	public CompoundStatement(SourceLocation location) {
 		super(location);
-		this.stmts = in;
-		this.label = label;
+		// TODO Auto-generated constructor stub
 	}
 
-	@Override
-	public void normalize(SchemaContext sc) {
-		// TODO Auto-generated method stub
-		
+	public boolean isCompound() {
+		return true;
 	}
-
-	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es,
-			BehaviorConfiguration config) throws PEException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	protected boolean schemaSelfEqual(LanguageNode other) {
-		// TODO Auto-generated method stub
+	
+	public boolean isDML() {
 		return false;
 	}
-
-	@Override
-	protected int selfHashCode() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
+	
 }

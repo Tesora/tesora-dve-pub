@@ -57,7 +57,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 		super(buildCacheKey(name,targetTable));
 		setName(name.getUnqualified());
 		this.body = body;
-		this.rawSQL = null;
+		this.bodySrc = null;
 		this.triggerTable = targetTable;
 		this.triggerType = triggerOn;
 		this.definer = StructuralUtils.buildEdge(sc,user,false);
@@ -150,7 +150,8 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	@Override
 	protected UserTrigger createEmptyNew(SchemaContext sc)
 			throws PEException {
-		return new UserTrigger(getName().get(),body.getSQL(sc),
+		return new UserTrigger(getName().get(),
+				(bodySrc != null ? bodySrc : body.getSQL(sc)),
 				triggerTable.persistTree(sc),
 				triggerType.name(),
 				before ? "BEFORE" : "AFTER",

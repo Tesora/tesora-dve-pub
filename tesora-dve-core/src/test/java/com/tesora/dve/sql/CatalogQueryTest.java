@@ -822,4 +822,18 @@ public class CatalogQueryTest extends SchemaTest {
 				   nr,"def","cqtdb","sid","decimal(10,5)","",""));		
 	}
 	
+	@Test
+	public void testMysqlDump() throws Throwable {
+		String sql = "select logfile_group_name, file_name, engine "
+				+"from information_schema.files "
+				+"where file_type = 'UNDOLOG' and file_name is not null and logfile_group_name in ( "
+				+"   select distinct logfile_group_name "
+				+"   from information_schema.files where file_type = 'DATAFILE' and tablespace_name in ( "
+				+"        select distinct tablespace_name "
+				+"        from information_schema.partitions "
+				+"        where table_schema in ('magento_schema'))) "
+				+"group by logfile_group_name, file_name, engine order by logfile_group_name";
+		conn.execute(sql);
+	}
+	
 }

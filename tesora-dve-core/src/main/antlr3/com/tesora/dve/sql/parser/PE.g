@@ -66,6 +66,7 @@ import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.MysqlSelectOption;
 import com.tesora.dve.sql.statement.session.*;
+import com.tesora.dve.sql.statement.dml.compound.*;
 import com.tesora.dve.worker.*;
 }
 
@@ -647,10 +648,10 @@ view_def_body returns [Statement s] options {k=1;}:
 trigger_def_body returns [Statement s] options {k=1;}:
   TRIGGER unqualified_identifier (b=BEFORE | AFTER) 
   trigger_event ON push_trigger_table FOR EACH ROW
-  (ps=sql_data_statement | c=compound_statement)
+  compound_or_single_statement
   { $s = utils.buildCreateTrigger($unqualified_identifier.n,
     $b != null,$trigger_event.te, $push_trigger_table.tk,
-    ($ps.s != null ? $ps.s : $c.s),$TRIGGER); } 
+    $compound_or_single_statement.s,$TRIGGER); }
   ;
 
 push_trigger_table returns [PETable tk] options {k=1;}:

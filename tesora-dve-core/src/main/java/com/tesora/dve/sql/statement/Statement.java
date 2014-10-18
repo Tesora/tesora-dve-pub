@@ -183,6 +183,8 @@ public abstract class Statement extends StatementNode {
 	public boolean isDDL() { return false; }
 	// is it a session statement, such as use database
 	public boolean isSession() { return false; }
+	// is it a compound statement - i.e. begin ... end, or case statement
+	public boolean isCompound() { return false; }
 	
 	public abstract void normalize(SchemaContext sc);
 	

@@ -73,7 +73,7 @@ public class TriggerDDLTest extends SchemaTest {
 		conn.execute("create trigger btrig after insert on B for each row insert into A (event) values ('insert')");
 //		System.out.println(conn.printResults("show triggers"));
 		conn.assertResults("show triggers",
-				br(nr,"btrig","INSERT","B","INSERT INTO `A` (`A`.`event`) VALUES ('insert')",
+				br(nr,"btrig","INSERT","B","INSERT INTO A (event) VALUES ('insert')",
 					"AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%",
 					"utf8","utf8_general_ci","utf8_general_ci"));
 //		System.out.println(conn.printResults("show create trigger btrig"));
@@ -84,7 +84,7 @@ public class TriggerDDLTest extends SchemaTest {
 //		System.out.println(conn.printResults("select * from information_schema.triggers where trigger_schema = 'adb'"));
 		conn.assertResults("select * from information_schema.triggers where trigger_schema = 'adb'",
 				br(nr,"def","adb","btrig","INSERT","def","adb","B",0,null,
-						"INSERT INTO `A` (`A`.`event`) VALUES ('insert')",
+						"INSERT INTO A (event) VALUES ('insert')",
 						"ROW","AFTER",null,null,"OLD","NEW",null,
 						"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci"));
 		// this should fail
@@ -109,9 +109,9 @@ public class TriggerDDLTest extends SchemaTest {
 		conn.execute("create trigger b_delete_trig after delete on btarg for each row insert into alog (event,a,subject,etype) values ('delete',OLD.id,OLD.subject,OLD.etype)");
 //		System.out.println(conn.printResults("show triggers"));
 		conn.assertResults("show triggers", 
-				br(nr,"b_delete_trig","DELETE","btarg","INSERT INTO `alog` (`alog`.`event`,`alog`.`a`,`alog`.`subject`,`alog`.`etype`) VALUES ('delete',OLD.`id`,OLD.`subject`,OLD.`etype`)","AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci",
-				nr,"b_insert_trig","INSERT","btarg","INSERT INTO `alog` (`alog`.`event`,`alog`.`a`,`alog`.`subject`,`alog`.`etype`) VALUES ('insert',NEW.`id`,NEW.`subject`,NEW.`etype`)","AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci",
-				nr,"b_update_trig","UPDATE","btarg","INSERT INTO `alog` (`alog`.`event`,`alog`.`a`,`alog`.`subject`,`alog`.`etype`) VALUES ('update',OLD.`id`,OLD.`subject`,NEW.`etype`)","AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci"));
+				br(nr,"b_delete_trig","DELETE","btarg","INSERT INTO alog (event,a,subject,etype) VALUES ('delete',OLD.id,OLD.subject,OLD.etype)","AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci",
+				nr,"b_insert_trig","INSERT","btarg","INSERT INTO alog (event,a,subject,etype) VALUES ('insert',NEW.id,NEW.subject,NEW.etype)","AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci",
+				nr,"b_update_trig","UPDATE","btarg","INSERT INTO alog (event,a,subject,etype) VALUES ('update',OLD.id,OLD.subject,NEW.etype)","AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci"));
 				
 	}
 	

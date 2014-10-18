@@ -135,6 +135,7 @@ import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.parser.ParserOptions.Option;
 import com.tesora.dve.sql.schema.Comment;
 import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.ContainerDistributionVector;
@@ -281,7 +282,6 @@ import com.tesora.dve.sql.statement.ddl.alter.DropColumnAction;
 import com.tesora.dve.sql.statement.ddl.alter.DropIndexAction;
 import com.tesora.dve.sql.statement.ddl.alter.RenameTableAction;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
-import com.tesora.dve.sql.statement.dml.CompoundStatement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;
 import com.tesora.dve.sql.statement.dml.InsertIntoSelectStatement;
@@ -294,6 +294,10 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.TruncateStatement;
 import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
+import com.tesora.dve.sql.statement.dml.compound.CaseStatement;
+import com.tesora.dve.sql.statement.dml.compound.CompoundStatement;
+import com.tesora.dve.sql.statement.dml.compound.CompoundStatementList;
+import com.tesora.dve.sql.statement.dml.compound.StatementWhenClause;
 import com.tesora.dve.sql.statement.session.AnalyzeKeysStatement;
 import com.tesora.dve.sql.statement.session.AnalyzeTablesStatement;
 import com.tesora.dve.sql.statement.session.DeallocatePStmtStatement;
@@ -4327,7 +4331,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public Statement buildCompoundStatement(List<Statement> stmts) {
-		return new CompoundStatement(null,stmts,null);
+		return new CompoundStatementList(null,stmts);
 	}
 	
 	public Statement buildCreateTrigger(Name triggerName, boolean isBefore, TriggerEvent triggerType,
@@ -4362,6 +4366,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				isBefore,
 				sqlMode,rawSQL);
 		popScope();
+		opts = opts.setResolve();
+
 		return new PECreateTriggerStatement(trig);
 	}
 	
@@ -4375,7 +4381,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		else {
 			user = pc.findUser(definer.getUserName(), definer.getScope());
 			if (user == null)
-				throw new SchemaException(Pass.SECOND, "No such user: " + definer.getSQL());
+				// apparently it is legal to specify a user that doesn't exist.  in that case, just use the current user
+				user = pc.getCurrentUser().get(pc);
+				// throw new SchemaException(Pass.SECOND, "No such user: " + definer.getSQL());
 		}
 
 		
@@ -4421,6 +4429,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		pushScope();
 		scope.insertTable(before);
 		scope.insertTable(after);
+		opts = opts.clearSetting(Option.RESOLVE);
 		return theTable;
 	}
 	
@@ -4431,5 +4440,14 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		scope.insertTable(before);
 		scope.insertTable(after);
 		return tab;
+	}
+	
+	public Statement buildCaseStatement(ExpressionNode testExpr, List<StatementWhenClause> whenClauses, Statement elseStatement) {
+		return new CaseStatement(null,testExpr, whenClauses, elseStatement);
+	}
+	
+	public StatementWhenClause buildStatementWhenClause(ExpressionNode testExpr, Statement result) {
+		return new StatementWhenClause(testExpr,result,null);
+		
 	}
 }
