@@ -468,7 +468,7 @@ public class InvokeParser {
 		return result;
 	}
 
-	public static PlanningResult bindPreparedStatement(SchemaContext sc, String stmtID, List<?> params) throws PEException {
+	public static PlanningResult bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
 		// make sure we clear the options
 		sc.setOptions(ParserOptions.NONE);
 		ExecutionPlan bound = PlanCacheUtils.bindPreparedStatement(sc, stmtID, params);

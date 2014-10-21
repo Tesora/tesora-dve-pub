@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.schema.cache;
+package com.tesora.dve.sql.expression;
 
 /*
  * #%L
@@ -21,16 +21,34 @@ package com.tesora.dve.sql.schema.cache;
  * #L%
  */
 
-import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.node.expression.TriggerTableInstance;
+import com.tesora.dve.sql.schema.Table;
 
-public interface IConstantExpression {
+public class TriggerTableKey extends TableKey {
 
-	public Object getValue(SchemaContext sc);
-
-	public int getPosition();
-
-	public ConstantType getConstantType();
+	protected boolean before;
 	
-	public IConstantExpression getCacheExpression();
+	public TriggerTableKey(TriggerTableInstance ti) {
+		super(ti);
+		this.before = ti.isBefore();
+	}
+
+	public TriggerTableKey(Table<?> backing, long n, boolean before) {
+		super(backing,n);
+		this.before = before;
+	}
 	
+	public boolean isBefore() {
+		return before;
+	}
+	
+	@Override
+	public TableInstance toInstance() {
+		if (instance == null)
+			instance = new TriggerTableInstance(backingTable, node, before);
+		return instance;
+	}
+	
+
 }

@@ -35,6 +35,7 @@ public enum ExecutionType {
 	TRANSACTION,
 	RAW,
 	UNION,
-	PREPARE
+	PREPARE,
+	TRIGGER
 	
 }

@@ -39,7 +39,7 @@ public class ExecutePreparedStatementRequestExecutor {
 
 	private static Logger logger = Logger.getLogger( ExecutePreparedStatementRequestExecutor.class );
 
-	public static void execute(SSConnection connMgr, String stmtId, List<String> params, DBResultConsumer resultConsumer) throws Throwable {
+	public static void execute(SSConnection connMgr, String stmtId, List<Object> params, DBResultConsumer resultConsumer) throws Throwable {
 		long stepStartTime = System.currentTimeMillis();
 
 		QueryPlan plan = QueryPlanner.buildPreparedPlan(connMgr, stmtId, params);

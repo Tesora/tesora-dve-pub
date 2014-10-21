@@ -295,7 +295,6 @@ import com.tesora.dve.sql.statement.dml.TruncateStatement;
 import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
 import com.tesora.dve.sql.statement.dml.compound.CaseStatement;
-import com.tesora.dve.sql.statement.dml.compound.CompoundStatement;
 import com.tesora.dve.sql.statement.dml.compound.CompoundStatementList;
 import com.tesora.dve.sql.statement.dml.compound.StatementWhenClause;
 import com.tesora.dve.sql.statement.session.AnalyzeKeysStatement;
@@ -4424,8 +4423,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public PETable pushTriggerTable(Name n) {
 		TableInstance targTab = basicResolver.lookupTable(pc, n, lockInfo);
 		PETable theTable = targTab.getAbstractTable().asTable();
-		TriggerTableInstance before = new TriggerTableInstance(theTable,true);
-		TriggerTableInstance after = new TriggerTableInstance(theTable,false);
+		long node = pc.getNextTable();
+		TriggerTableInstance before = new TriggerTableInstance(theTable,node,true);
+		TriggerTableInstance after = new TriggerTableInstance(theTable,node,false);
 		pushScope();
 		scope.insertTable(before);
 		scope.insertTable(after);
@@ -4434,11 +4434,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public PETable pushTriggerTable(PETable tab) {
-		TriggerTableInstance before = new TriggerTableInstance(tab,true);
-		TriggerTableInstance after = new TriggerTableInstance(tab,false);
+		// we always use the same node number for trigger tables so that
+		// we can correctly plan when there are both before and after triggers
+		long node = -1;
+		TriggerTableInstance before = new TriggerTableInstance(tab,node,true);
+		TriggerTableInstance after = new TriggerTableInstance(tab,node,false);
 		pushScope();
 		scope.insertTable(before);
 		scope.insertTable(after);
+		opts = opts.setTriggerColumns();
 		return tab;
 	}
 	

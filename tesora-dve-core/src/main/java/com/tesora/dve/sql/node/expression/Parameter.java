@@ -28,6 +28,7 @@ import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
 import com.tesora.dve.sql.schema.types.Type;
@@ -89,13 +90,13 @@ public class Parameter extends ConstantExpression implements IParameter {
 	}
 
 	@Override
-	public boolean isParameter() {
-		return true;
+	public IConstantExpression getCacheExpression() {
+		return new CachedParameterExpression(position);
 	}
 
 	@Override
-	public IConstantExpression getCacheExpression() {
-		return new CachedParameterExpression(position);
+	public ConstantType getConstantType() {
+		return ConstantType.PARAMETER;
 	}
 
 }

@@ -47,7 +47,7 @@ public class ExecutePStmtStatement extends PStmtStatement {
 	
 	@Override
 	public void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
-		List<String> values = new ArrayList<String>();
+		List<Object> values = new ArrayList<Object>();
 		for(VariableInstance vi : vars) {
 			String v = sc.getConnection().getVariableValue(vi.buildAccessor(sc));
 			if (v == null)

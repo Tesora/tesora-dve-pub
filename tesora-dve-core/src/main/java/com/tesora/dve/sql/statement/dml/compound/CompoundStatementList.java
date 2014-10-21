@@ -29,8 +29,6 @@ import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.MultiEdge;
-import com.tesora.dve.sql.node.expression.CaseExpression;
-import com.tesora.dve.sql.node.expression.WhenClause;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;

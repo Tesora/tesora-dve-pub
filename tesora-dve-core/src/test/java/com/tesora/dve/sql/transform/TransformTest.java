@@ -181,7 +181,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		PreparePlanningResult ppr = 
 				(PreparePlanningResult) InvokeParser.preparePlan(db, new InitialInputState(in), 
 				ParserOptions.NONE.setDebugLog(true).setResolve().setPrepare().setActualLiterals(), "42");
-		List<String> fakeParams = new ArrayList<String>();
+		List<Object> fakeParams = new ArrayList<Object>();
 		for(int i = 0; i < numParams; i++)
 			fakeParams.add("fp" + i);
 		ExecutionPlan ep = ppr.getCachedPlan().rebuildPlan(db, fakeParams);

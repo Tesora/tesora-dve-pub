@@ -21,16 +21,12 @@ package com.tesora.dve.sql.schema.cache;
  * #L%
  */
 
-import com.tesora.dve.sql.schema.SchemaContext;
+// kinds of constants - values that are constant for planning purposes
+// but may change from execution to execution
+public enum ConstantType {
 
-public interface IConstantExpression {
-
-	public Object getValue(SchemaContext sc);
-
-	public int getPosition();
-
-	public ConstantType getConstantType();
-	
-	public IConstantExpression getCacheExpression();
+	LITERAL,  // i.e. 1, 'foo'
+	PARAMETER, // originally '?', then gets bound upon execute
+	TRIGGER_COLUMN, // originally NEW.<col>, OLD.<col>, but bound at runtime
 	
 }

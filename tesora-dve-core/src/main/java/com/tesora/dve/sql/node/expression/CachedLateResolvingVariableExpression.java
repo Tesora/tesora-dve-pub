@@ -25,6 +25,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 
@@ -49,15 +50,15 @@ public class CachedLateResolvingVariableExpression implements IConstantExpressio
 	public int getPosition() {
 		return -1;
 	}
-
-	@Override
-	public boolean isParameter() {
-		return false;
-	}
-
+	
 	@Override
 	public IConstantExpression getCacheExpression() {
 		return this;
+	}
+
+	@Override
+	public ConstantType getConstantType() {
+		return ConstantType.LITERAL;
 	}
 
 }

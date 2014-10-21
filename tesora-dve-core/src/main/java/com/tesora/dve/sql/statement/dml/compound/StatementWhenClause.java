@@ -30,7 +30,6 @@ import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.SingleEdge;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
-import com.tesora.dve.sql.node.expression.WhenClause;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;

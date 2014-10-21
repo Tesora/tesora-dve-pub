@@ -71,11 +71,6 @@ public class ActualLiteralExpression extends LiteralExpression {
 	}
 
 	@Override
-	public boolean isParameter() {
-		return false;
-	}
-
-	@Override
 	public IConstantExpression getCacheExpression() {
 		// we still require a cache version for p statements, where literals are not delegated.
 		return new CachedActualLiteralExpression(getValueType(), getValue());
@@ -118,4 +113,5 @@ public class ActualLiteralExpression extends LiteralExpression {
 		result = prime * result + Objects.hashCode(this.value);
 		return result;
 	}
+
 }

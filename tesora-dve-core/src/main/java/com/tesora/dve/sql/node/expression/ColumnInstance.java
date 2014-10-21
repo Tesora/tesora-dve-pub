@@ -72,9 +72,9 @@ public class ColumnInstance extends ExpressionNode {
 		
 	};
 	
-	private Column<?> schemaColumn;
-	private TableInstance ofTable;
-	private Name specifiedAs;
+	protected Column<?> schemaColumn;
+	protected TableInstance ofTable;
+	protected Name specifiedAs;
 	
 	public ColumnInstance(Name origName, Column<?> column, TableInstance table) {
 		super(origName == null ? null : origName.getOrig());

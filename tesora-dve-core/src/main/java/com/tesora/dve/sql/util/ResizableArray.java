@@ -22,6 +22,7 @@ package com.tesora.dve.sql.util;
  */
 
 import java.util.Arrays;
+import java.util.List;
 
 // different than an array list - in particular inserts into the middle don't shift items
 public class ResizableArray<T> {
@@ -36,6 +37,11 @@ public class ResizableArray<T> {
 	public ResizableArray(int initCapacity) {
 		backing = new Object[initCapacity];
 		last = 0;
+	}
+	
+	public ResizableArray(List<T> basedOn) {
+		backing = basedOn.toArray();
+		last = backing.length;
 	}
 	
 	public int size() {

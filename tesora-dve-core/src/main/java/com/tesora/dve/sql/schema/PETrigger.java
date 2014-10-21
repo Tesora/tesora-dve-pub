@@ -31,7 +31,6 @@ import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.statement.Statement;
-import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 
 public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 

@@ -130,7 +130,7 @@ public class QueryPlanner {
 		PlanCacheUtils.destroyPreparedStatement(connMgr.getSchemaContext(),stmtID);
 	}
 	
-	public static QueryPlan buildPreparedPlan(SSConnection connMgr, String stmtID, List<String> params) throws PEException {
+	public static QueryPlan buildPreparedPlan(SSConnection connMgr, String stmtID, List<Object> params) throws PEException {
         Timer buildPlanTime = startPlanTimer(PlannerTime.PLANNER_BUILDPLAN);
 		SchemaContext cntxt = connMgr.getSchemaContext();
 		SchemaContext.setThreadContext(cntxt);
