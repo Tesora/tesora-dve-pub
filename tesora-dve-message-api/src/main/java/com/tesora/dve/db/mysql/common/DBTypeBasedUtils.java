@@ -470,12 +470,12 @@ public class DBTypeBasedUtils {
 	static class MediumValueFunc implements DataTypeValueFunc {
 		@Override
         public void writeObject(ByteBuf cb, Object value) {
-			cb.writeMedium((Integer) value);
+			cb.writeInt((Integer) value);
 		}
 
 		@Override
 		public Object readObject(ByteBuf cb) {
-			return cb.readMedium();
+			return cb.readInt();
 		}
 
 		@Override
