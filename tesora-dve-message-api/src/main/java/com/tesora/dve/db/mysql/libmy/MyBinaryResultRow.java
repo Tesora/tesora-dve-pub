@@ -26,21 +26,28 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MyBinaryResultRow extends MyResponseMessage {
-    static final int BINARY_MARKER_LENGTH = 1;
-    static final int NULL_BITMAP_OFFSET = BINARY_MARKER_LENGTH;
+    static final Logger log = LoggerFactory.getLogger(MyBinaryResultRow.class);
 
-    ByteBuf backingBuffer = Unpooled.EMPTY_BUFFER;
+    //TODO: need to figure out a way to reduce downstream need to collect rowset headers. introduce flags and allow autoinc modifications? -sgossard
     List<DataTypeValueFunc> fieldConverters;
     ByteBuf[] fieldSlices;
 
     public MyBinaryResultRow(List<DataTypeValueFunc> fieldConverters) {
         this.fieldConverters = fieldConverters;
         this.fieldSlices = new ByteBuf[fieldConverters.size()];
+    }
+
+    protected MyBinaryResultRow(List<DataTypeValueFunc> fieldConverters, ByteBuf[] fieldSlices) {
+        this.fieldConverters = fieldConverters;
+        this.fieldSlices = fieldSlices;
     }
 
     @Override
@@ -50,27 +57,42 @@ public class MyBinaryResultRow extends MyResponseMessage {
 
     @Override
     public void marshallMessage(ByteBuf cb) {
-        cb.writeBytes(backingBuffer.slice());
+        cb.writeZero(1);//binary row marker
+        byte[] bitmapArray = constructNullMap();
+        cb.writeBytes(bitmapArray);
+        marshallRawValues(cb);
+    }
+
+    private byte[] constructNullMap() {
+        MyNullBitmap constructBitMap = new MyNullBitmap(fieldSlices.length, MyNullBitmap.BitmapType.RESULT_ROW);
+        for (int i=0;i<fieldSlices.length;i++){
+            if (fieldSlices[i] == null)
+                constructBitMap.setBit(i + 1);
+        }
+        return constructBitMap.getBitmapArray();
     }
 
 
     public void marshallRawValues(ByteBuf cb) {
-        int expectedBitmapLength = MyNullBitmap.computeSize(fieldConverters.size(),MyNullBitmap.BitmapType.RESULT_ROW);
-        ByteBuf values = backingBuffer.slice().skipBytes(BINARY_MARKER_LENGTH + expectedBitmapLength).order(ByteOrder.LITTLE_ENDIAN);
-        cb.writeBytes(values);
+        for (int i=0;i<fieldSlices.length;i++){
+            ByteBuf fieldSlice = fieldSlices[i];
+            if (fieldSlice != null)
+                cb.writeBytes(fieldSlice.slice());
+        }
     }
 
     @Override
     public void unmarshallMessage(ByteBuf cb) throws PEException {
-        backingBuffer = Unpooled.buffer(cb.readableBytes()).writeBytes(cb);
         int expectedFieldCount = fieldConverters.size();
         int expectedBitmapLength = MyNullBitmap.computeSize(expectedFieldCount,MyNullBitmap.BitmapType.RESULT_ROW);
+        cb = cb.order(ByteOrder.LITTLE_ENDIAN);
+        cb.skipBytes(1);//skip the bin row marker.
 
         byte[] nullBitmap = new byte[expectedBitmapLength];
-        backingBuffer.getBytes(NULL_BITMAP_OFFSET,nullBitmap);
+        cb.readBytes(nullBitmap);
         MyNullBitmap resultBitmap = new MyNullBitmap(nullBitmap,expectedFieldCount, MyNullBitmap.BitmapType.RESULT_ROW);
 
-        ByteBuf values = backingBuffer.slice().skipBytes(BINARY_MARKER_LENGTH + expectedBitmapLength).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuf values = cb;
 
         for (int i=0;i < expectedFieldCount;i++){
             ByteBuf existing = fieldSlices[i];
@@ -86,6 +108,32 @@ public class MyBinaryResultRow extends MyResponseMessage {
                 existing.release();
             fieldSlices[i] = nextSlice;
         }
+        if (cb.readableBytes() > 0) {
+            log.warn("Decoded binary row had {} leftover bytes, re-encoding may fail.",cb.readableBytes());
+            cb.skipBytes(cb.readableBytes());//consume rest of buffer.
+        }
+    }
+
+    public MyBinaryResultRow projection(int[] desiredFields){
+        int expectedFieldCount = desiredFields.length;
+
+        ByteBuf[] newSlices = new ByteBuf[expectedFieldCount];
+        ArrayList<DataTypeValueFunc> newConverters = new ArrayList<>(expectedFieldCount);
+
+        for (int targetIndex=0;targetIndex<expectedFieldCount;targetIndex++){
+            int sourceIndex = desiredFields[targetIndex];
+            newConverters.add(fieldConverters.get(sourceIndex));//use the source index, not the target index..
+            if (fieldSlices[sourceIndex] == null) {
+                newSlices[targetIndex] = null;
+            } else {
+                ByteBuf fieldSlice = fieldSlices[sourceIndex];
+                ByteBuf copySlice = Unpooled.buffer(fieldSlice.readableBytes()).order(ByteOrder.LITTLE_ENDIAN);
+                copySlice.writeBytes(fieldSlice.slice());
+                newSlices[targetIndex] = copySlice;
+            }
+        }
+
+        return new MyBinaryResultRow(newConverters, newSlices);
     }
 
     public int size(){
@@ -113,6 +161,14 @@ public class MyBinaryResultRow extends MyResponseMessage {
     }
 
     public int sizeInBytes() {
-        return backingBuffer.readableBytes() + super.MESSAGE_HEADER_LENGTH;
+        int totalSize = super.MESSAGE_HEADER_LENGTH;
+        totalSize+= 1;
+        totalSize+= MyNullBitmap.computeSize(fieldSlices.length, MyNullBitmap.BitmapType.RESULT_ROW);
+        for (int i=0;i<fieldSlices.length;i++){
+            ByteBuf fieldSlice = fieldSlices[i];
+            if (fieldSlice != null)
+                totalSize+= fieldSlice.readableBytes();
+        }
+        return totalSize;
     }
 }
