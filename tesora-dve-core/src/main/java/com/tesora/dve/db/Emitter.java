@@ -258,11 +258,7 @@ public abstract class Emitter {
 	}
 	
 	public GenericSQLCommand buildGenericCommand(final SchemaContext sc, String format) {
-		try {
-			return builder.build(sc, format);
-		} catch (final PEException e) {
-			throw new SchemaException(Pass.EMITTER, e);
-		}
+		return builder.build(sc, format);
 	}
 	
 	public abstract Emitter buildNew();

@@ -77,6 +77,7 @@ public class InfoSchemaUpgrader {
 			helper.executeQuery("delete uc from user_column uc inner join user_table ut on uc.user_table_id = ut.table_id where ut.persistent_group_id = " + groupid);
 			helper.executeQuery("delete from user_table where persistent_group_id = " + groupid);
 			helper.executeQuery("delete from user_database where default_group_id = " + groupid);
+			helper.executeQuery("truncate table collations");
 		} catch (SQLException sqle) {
 			throw new PEException("Unable to drop info schema",sqle);
 		}

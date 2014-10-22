@@ -87,12 +87,8 @@ public abstract class NativeCharSet implements Serializable {
 	}
 
 	public boolean isCompatibleWith(final String collation) {
-		String charsetName = null;
-		try {
-			charsetName = Singletons.require(HostService.class).getDBNative().getSupportedCharSets().findCharSetByCollation(collation, false).getName();
-		} catch(Exception e) {
-			// to prevent adding the throw clause to method definition
-		}
+		final String charsetName = Singletons.require(HostService.class).getDBNative().getSupportedCharSets().findCharSetByCollation(collation)
+				.getName();
 		return StringUtils.equalsIgnoreCase(name, charsetName);
 	}
 

@@ -155,7 +155,7 @@ public class CatalogQueryTest extends SchemaTest {
 				   nr, "mtcqtps", new Integer(4),
 				   nr,PEConstants.SYSTEM_GROUP_NAME,new Integer(2)),
 				   "cqtps",0,br(nr,"cqtps",new Integer(3)),true);
-		String siteURL = TestCatalogHelper.getInstance().getCatalogUrl();
+		String siteURL = TestCatalogHelper.getInstance().getCatalogBaseUrl();
 		Object[] siteResults = br(nr,"cqt0","Single",siteURL, 
 				nr, "cqt1", "Single", siteURL, 
 				nr, "cqt2", "Single", siteURL, 
@@ -627,6 +627,7 @@ public class CatalogQueryTest extends SchemaTest {
 			nonRootConn.assertResults("SELECT * FROM information_schema.collations order by character_set_name, id", br(
 					nr, "ascii_general_ci", "ascii", Long.valueOf(11), "Yes", "Yes", Long.valueOf(1),
 					nr, "ascii_bin", "ascii", Long.valueOf(65), "", "Yes", Long.valueOf(1),
+					nr, "latin1_german1_ci", "latin1", Long.valueOf(5), "", "Yes", Long.valueOf(1),
 					nr, "latin1_swedish_ci", "latin1", Long.valueOf(8), "Yes", "Yes", Long.valueOf(1),
 					nr, "latin1_danish_ci", "latin1", Long.valueOf(15), "", "Yes", Long.valueOf(1),
 					nr, "latin1_german2_ci", "latin1", Long.valueOf(31), "", "Yes", Long.valueOf(2),
@@ -656,6 +657,7 @@ public class CatalogQueryTest extends SchemaTest {
 					nr, "utf8_esperanto_ci", "utf8", Long.valueOf(209), "", "Yes", Long.valueOf(8),
 					nr, "utf8_hungarian_ci", "utf8", Long.valueOf(210), "", "Yes", Long.valueOf(8),
 					nr, "utf8_sinhala_ci", "utf8", Long.valueOf(211), "", "Yes", Long.valueOf(8),
+					nr, "utf8_general_mysql500_ci", "utf8", Long.valueOf(223), "", "Yes", Long.valueOf(1),
 					nr, "utf8mb4_general_ci", "utf8mb4", Long.valueOf(45), "Yes", "Yes", Long.valueOf(1),
 					nr, "utf8mb4_bin", "utf8mb4", Long.valueOf(46), "", "Yes", Long.valueOf(1),
 					nr, "utf8mb4_unicode_ci", "utf8mb4", Long.valueOf(224), "", "Yes", Long.valueOf(8),

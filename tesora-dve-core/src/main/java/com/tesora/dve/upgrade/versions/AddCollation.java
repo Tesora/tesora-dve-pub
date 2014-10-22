@@ -57,7 +57,7 @@ public class AddCollation extends SimpleCatalogVersion {
 			helper.prepare("insert into collations (id, name, character_set_name, is_default, is_compiled, sortlen) values (?,?,?,?,?,?)");
 			
 			for(String collationName : MysqlNativeCollationCatalog.DEFAULT_CATALOG.getCollationsCatalogEntriesByName()) {
-				NativeCollation nc = MysqlNativeCollationCatalog.DEFAULT_CATALOG.findCollationByName(collationName, true);
+				NativeCollation nc = MysqlNativeCollationCatalog.DEFAULT_CATALOG.findCollationByName(collationName);
 				params.clear();
 				params.add(nc.getId());
 				params.add(nc.getName());

@@ -33,8 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.junit.After;
@@ -52,6 +50,8 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.TestHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.standalone.DefaultClassLoad;
 import com.tesora.dve.standalone.PETest;
 
@@ -343,19 +343,19 @@ public class CatalogTest extends PETest {
 			
 			for(CharacterSets cs : charSets) {
 				if(StringUtils.equals(cs.getCharacterSetName(), "ascii")) {
-					assertTrue(StringUtils.equals(Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(cs.getCharacterSetName(), true).getName(), "ascii_general_ci"));
+					assertTrue(StringUtils.equals(Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(cs.getCharacterSetName()).getName(), "ascii_general_ci"));
 					assertTrue(StringUtils.equals(cs.getDescription(), "US ASCII"));
 					assertTrue(StringUtils.equals(cs.getPeCharacterSetName(), "US-ASCII"));
 				} else if (StringUtils.equals(cs.getCharacterSetName(), "latin1")) {
-					assertTrue(StringUtils.equals(Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(cs.getCharacterSetName(), true).getName(), "latin1_swedish_ci"));
+					assertTrue(StringUtils.equals(Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(cs.getCharacterSetName()).getName(), "latin1_swedish_ci"));
 					assertTrue(StringUtils.equals(cs.getDescription(), "cp1252 West European"));
 					assertTrue(StringUtils.equals(cs.getPeCharacterSetName(), "ISO-8859-1"));
 				} else if(StringUtils.equals(cs.getCharacterSetName(), "utf8")) {
-					assertTrue(StringUtils.equals(Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(cs.getCharacterSetName(), true).getName(), "utf8_general_ci"));
+					assertTrue(StringUtils.equals(Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(cs.getCharacterSetName()).getName(), "utf8_general_ci"));
 					assertTrue(StringUtils.equals(cs.getDescription(), "UTF-8 Unicode"));
 					assertTrue(StringUtils.equals(cs.getPeCharacterSetName(), "UTF-8"));
 				} else if(StringUtils.equals(cs.getCharacterSetName(), "utf8mb4")) {
-					assertTrue(StringUtils.equals(Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(cs.getCharacterSetName(), true).getName(), "utf8mb4_general_ci"));
+					assertTrue(StringUtils.equals(Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(cs.getCharacterSetName()).getName(), "utf8mb4_general_ci"));
 					assertTrue(StringUtils.equals(cs.getDescription(), "UTF-8 Unicode"));
 					assertTrue(StringUtils.equals(cs.getPeCharacterSetName(), "UTF-8"));
 				} else {

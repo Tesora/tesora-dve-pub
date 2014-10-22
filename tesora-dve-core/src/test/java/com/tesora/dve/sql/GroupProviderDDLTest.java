@@ -154,7 +154,7 @@ public class GroupProviderDDLTest extends SchemaTest {
 				new Object[] {});
 		conn.assertResults("show dynamic site providers", 
 				br( nr,OnPremiseSiteProvider.DEFAULT_NAME, OnPremiseSiteProvider.class.getCanonicalName(), "YES"));
-		String sl = PEUrl.stripUrlParameters(TestCatalogHelper.getInstance().getCatalogUrl());
+		String sl = PEUrl.stripUrlParameters(TestCatalogHelper.getInstance().getCatalogBaseUrl());
 		String ops = "OnPremise";
 		String local = "LOCAL";
 		Integer negone = new Integer(-1);

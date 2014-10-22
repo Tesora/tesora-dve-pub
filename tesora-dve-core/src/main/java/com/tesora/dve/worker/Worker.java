@@ -21,13 +21,6 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.DelegatingCompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.worker.agent.Agent;
 import io.netty.channel.EventLoopGroup;
 import io.netty.util.concurrent.Future;
 
@@ -43,13 +36,19 @@ import com.tesora.dve.common.catalog.ISiteInstance;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.UserDatabase;
-import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.worker.agent.Agent;
 
 /**
  * Worker is the agent that processes commands against the database. It
@@ -57,7 +56,7 @@ import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
  * Temp), though which database it is connected to can be changed by the
  * WorkerManager.
  */
-public abstract class Worker implements GenericSQLCommand.DBNameResolver {
+public abstract class Worker {
 	
 	public interface Factory {
 		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException;
@@ -222,12 +221,10 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
     }
 	
 	// used in late resolution support
-	@Override
 	public String getNameOnSite(String dbName) {
 		return UserDatabase.getNameOnSite(dbName, site);
 	}
 	
-	@Override
 	public int getSiteIndex() {
 		return site.getInstanceIdentifier().hashCode();
 	}

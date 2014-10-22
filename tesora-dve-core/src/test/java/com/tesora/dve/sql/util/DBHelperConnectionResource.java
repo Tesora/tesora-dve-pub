@@ -91,9 +91,9 @@ public class DBHelperConnectionResource extends JdbcConnectionResource {
 	
 	public void init() throws Throwable {
 		if (useUTF8) {
-			this.addPostConnectCmd("SET NAMES utf8");
+			addPostConnectCmd("SET NAMES utf8");
 		} else {
-			this.addPostConnectCmd("SET NAMES latin1");
+			addPostConnectCmd("SET NAMES latin1");
 		}
 		
 		connected = false;
@@ -103,12 +103,14 @@ public class DBHelperConnectionResource extends JdbcConnectionResource {
 	
 	public void addJDBCOptions(JdbcConnectParams jdbcConnParams) throws Throwable {
 		Properties props = new Properties();
-		if ( useUTF8 ) {
-			props.setProperty("useUnicode","yes");
+		if (useUTF8) {
+			props.setProperty("useUnicode", "yes");
 			props.setProperty("characterEncoding", "utf8");
 		} else {
-			props.setProperty("characterEncoding","latin1");
+			props.setProperty("useUnicode", "no");
+			props.setProperty("characterEncoding", "latin1");
 		}
+
 		props.setProperty("zeroDateTimeBehavior", "round");
 		props.setProperty("allowMultiQueries", "true");
 

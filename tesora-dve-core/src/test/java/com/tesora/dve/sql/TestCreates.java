@@ -265,10 +265,10 @@ public class TestCreates extends SchemaTest {
         final String defaultCollation = Singletons.require(HostService.class).getDBNative().getDefaultServerCollation();
         final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
 
-		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8", true);
-		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII", true);
-		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1", true);
-		final NativeCharSet utf8mb4 = supportedCharsets.findCharSetByName("UTF8MB4", true);
+		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8");
+		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII");
+		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1");
+		final NativeCharSet utf8mb4 = supportedCharsets.findCharSetByName("UTF8MB4");
 		
 		String db = "onlypg";
 		StringBuilder createDBSql = new StringBuilder();
@@ -284,24 +284,24 @@ public class TestCreates extends SchemaTest {
 		createDBSql.append(db);
 		createDBSql.append(" character set = '" + utf8.getName() + "' ");
 		createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-		executeCreateDB(createDBSql.toString(), db, utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(utf8.getName(), true).getName());
+		executeCreateDB(createDBSql.toString(), db, utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(utf8.getName()).getName());
 
 		db = "collationonly";
 		createDBSql = new StringBuilder();
 		createDBSql.append("create database ");
 		createDBSql.append(db);
-		createDBSql.append(" collate " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+		createDBSql.append(" collate " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 		createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-		executeCreateDB(createDBSql.toString(), db, latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+		executeCreateDB(createDBSql.toString(), db, latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 
 		db = "charsetandcollation";
 		createDBSql = new StringBuilder();
 		createDBSql.append("create database ");
 		createDBSql.append(db);
 		createDBSql.append(" default character set '" + ascii.getName() + "' ");
-		createDBSql.append(" default collate = " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(ascii.getName(), true).getName());
+		createDBSql.append(" default collate = " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(ascii.getName()).getName());
 		createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-		executeCreateDB(createDBSql.toString(), db, ascii.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(ascii.getName(), true).getName());
+		executeCreateDB(createDBSql.toString(), db, ascii.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(ascii.getName()).getName());
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -311,9 +311,9 @@ public class TestCreates extends SchemaTest {
 				createDBSql.append("create database ");
 				createDBSql.append(db);
 				createDBSql.append(" default character set '" + utf8.getName() + "' ");
-				createDBSql.append(" default collate = " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+				createDBSql.append(" default collate = " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 				createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-				executeCreateDB(createDBSql.toString(), db, utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+				executeCreateDB(createDBSql.toString(), db, utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 			}
 		}.assertException(SchemaException.class, "COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
 
@@ -328,7 +328,7 @@ public class TestCreates extends SchemaTest {
 				createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
 				executeCreateDB(createDBSql.toString(), db, "big5", "big5_chinese_ci");
 			}
-		}.assertException(SchemaException.class, "No collations found for character set 'big5'");
+		}.assertException(SchemaException.class, "Unsupported CHARACTER SET big5");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -349,7 +349,7 @@ public class TestCreates extends SchemaTest {
 		createDBSql.append(db);
 		createDBSql.append(" default character set '" + utf8mb4.getName() + "' ");
 		createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-		executeCreateDB(createDBSql.toString(), db, utf8mb4.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(utf8mb4.getName(), true).getName());
+		executeCreateDB(createDBSql.toString(), db, utf8mb4.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(utf8mb4.getName()).getName());
 	}
 
 	private void executeCreateDB(String createSql, String db,

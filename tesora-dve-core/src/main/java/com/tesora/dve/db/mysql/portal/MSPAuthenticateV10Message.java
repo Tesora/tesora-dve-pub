@@ -21,8 +21,6 @@ package com.tesora.dve.db.mysql.portal;
  * #L%
  */
 
-import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
-import com.tesora.dve.db.mysql.portal.protocol.MSPMessage;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
 
@@ -34,6 +32,8 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyOKResponse;
+import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
+import com.tesora.dve.db.mysql.portal.protocol.MSPMessage;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.messages.ExecuteRequestExecutor;
@@ -64,7 +64,7 @@ public class MSPAuthenticateV10Message extends MSPActionBase {
 				ExecuteRequestExecutor.execute(ssCon, resultConsumer, query);
 			}
 			
-			NativeCharSet cliendCharSet = MysqlNativeCharSetCatalog.DEFAULT_CATALOG.findNativeCharsetById(clientCharsetId);
+			NativeCharSet cliendCharSet = MysqlNativeCharSetCatalog.DEFAULT_CATALOG.findCharSetByCollationId(clientCharsetId);
 			if (cliendCharSet != null) {
 				mysqlResp = new MyOKResponse();
 				ssCon.setClientCharSet(cliendCharSet);

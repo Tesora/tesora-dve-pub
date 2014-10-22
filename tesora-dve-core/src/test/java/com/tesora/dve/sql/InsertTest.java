@@ -22,18 +22,15 @@ package com.tesora.dve.sql;
  */
 
 import static org.junit.Assert.fail;
-import io.netty.util.CharsetUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.google.common.primitives.Bytes;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.ConnectionResource;
@@ -615,44 +612,6 @@ public class InsertTest extends SchemaMirrorTest {
 			buf.append("SELECT c1 FROM t1");
 			rootConnection.execute(buf.toString());
 		}
-	}
-	
-	@Test
-	public void testPE1149() throws Throwable {
-		final ProxyConnectionResource pcr = new ProxyConnectionResource();
-
-		try {
-			final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
-			tests.add(new StatementMirrorProc(
-					"CREATE TABLE `bug_repro_1149` (`user_session_id` varchar(32) NOT NULL,`detail` blob, PRIMARY KEY (`user_session_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8"));
-			final byte[] failingInput = { (byte) 255 };	// any value above 127 will fail
-			final List<Byte> binarySql = new ArrayList<Byte>();
-			binarySql.addAll(Bytes.asList("INSERT INTO `bug_repro_1149` VALUES ('somekey','".getBytes()));
-			binarySql.addAll(Bytes.asList(failingInput));
-			binarySql.addAll(Bytes.asList("')".getBytes()));
-			binaryTestHelper(pcr, binarySql, tests);
-			// The line below is commented out because we can't figure out why the values are different when the data in the database is the same
-//			tests.add(new StatementMirrorFun("SELECT * from `bug_repro_1149`"));
-	
-			runTest(tests);
-		} finally {
-			pcr.disconnect();
-		}
-	}
-	
-	private void binaryTestHelper(final ProxyConnectionResource pcr, List<Byte> binarySql, ArrayList<MirrorTest> tests) throws Throwable {
-		final byte[] backingBinaryArray = ArrayUtils.toPrimitive(binarySql.toArray(new Byte[] {}));
-		tests.add(new MirrorProc() {
-			@Override
-			public ResourceResponse execute(TestResource mr) throws Throwable {
-				if (mr.getDDL().isNative()) {
-					return mr.getConnection().execute(new String(backingBinaryArray, CharsetUtil.ISO_8859_1));
-				} else {
-					pcr.execute("use " + mr.getDDL().getDatabaseName());
-					return pcr.execute(null, backingBinaryArray);
-				}
-			}
-		});
 	}
 
 	@Test

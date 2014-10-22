@@ -90,7 +90,7 @@ public class SimpleQueryTest extends SchemaTest {
 		for(int i = 1; i <= nSites; i++) {
 			cr.execute(String.format("create persistent site site%d url='%s' user='%s' password='%s'",
 					i,
-					TestCatalogHelper.getInstance().getCatalogUrl(),
+					TestCatalogHelper.getInstance().getCatalogBaseUrl(),
 					TestCatalogHelper.getInstance().getCatalogUser(),
 					TestCatalogHelper.getInstance().getCatalogPassword()));
 		}

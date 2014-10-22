@@ -21,11 +21,14 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
-import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+
+import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 
 public class MSPComQueryRequestMessage extends BaseMSPMessage {
     public static final MSPComQueryRequestMessage PROTOTYPE = new MSPComQueryRequestMessage();
@@ -67,6 +70,10 @@ public class MSPComQueryRequestMessage extends BaseMSPMessage {
     public static MSPComQueryRequestMessage newMessage(String query, Charset encoding){
         return newMessage(query.getBytes(encoding) );
     }
+
+	public static MSPComQueryRequestMessage newMessage(ByteBuffer rawQuery) {
+		return newMessage(rawQuery.array());
+	}
 
     public static MSPComQueryRequestMessage newMessage(byte[] rawQuery){
         ByteBuf buf = Unpooled.buffer().order(ByteOrder.LITTLE_ENDIAN).ensureWritable(rawQuery.length + 1);

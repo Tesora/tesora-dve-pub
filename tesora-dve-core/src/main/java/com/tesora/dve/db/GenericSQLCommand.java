@@ -21,35 +21,21 @@ package com.tesora.dve.db;
  * #L%
  */
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
-import java.nio.charset.CoderResult;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.Set;
 
-import org.apache.commons.collections.MapUtils;
-import org.apache.commons.lang.ArrayUtils;
-
-import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.NativeCharSetCatalog;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.PersistentSite;
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
@@ -72,197 +58,6 @@ import com.tesora.dve.worker.Worker;
 // and a list of offsets for where literals exist.
 public class GenericSQLCommand {
 
-	public interface DBNameResolver {
-		String getNameOnSite(String dbName);
-
-		int getSiteIndex();
-
-		StorageSite getWorkerSite();
-	}
-
-	private int numCharacters;
-	private byte[] format;
-	private final Charset encoding;
-	private final SortedMap<OffsetEntry, Integer> entryMap;
-
-	private final StatementType type;
-
-	private Boolean isUpdate = null;
-	private Boolean hasLimit = null;
-
-	private static Charset getCurrentSessionConnectionCharSet(final SchemaContext sc) {
-		if (sc.getOptions() != null && sc.getOptions().isInfoSchemaView()) {
-			// won't have the host service set up, so hardcode in a charset.
-			return MysqlNativeCharSet.UTF8.getJavaCharset();
-		}
-		return getCurrentSessionConnectionCharSet(sc.getConnection().getVariableSource());
-	}
-
-	private static Charset getCurrentSessionConnectionCharSet(final VariableStoreSource vs) {
-		final NativeCharSetCatalog charSetcatalog = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
-		final String connectionCharSetName = KnownVariables.CHARACTER_SET_CONNECTION.getSessionValue(vs);
-		NativeCharSet connectionCharSet;
-		try {
-			connectionCharSet = charSetcatalog.findCharSetByName(connectionCharSetName, true);
-			return connectionCharSet.getJavaCharset();
-		} catch (final PEException e) {
-			// This should never happen as we validate the variable values when set.
-			throw new PECodingException("Session variable '" + KnownVariables.CHARACTER_SET_CONNECTION.getName() + "' is set to an unsupported value.", e);
-		}
-	}
-
-	private static byte[] resolveToByteArrayWithOffsetMap(final Charset encoding, final String value, final OffsetEntry[] entries,
-			final Map<OffsetEntry, Integer> offsetMap) throws PEException {
-		final CharsetEncoder encoder = encoding.newEncoder();
-		final int inputLength = value.length();
-		final int maxBytesPerChar = (int) Math.ceil(encoder.maxBytesPerChar());
-		final CharBuffer input = CharBuffer.wrap(value).asReadOnlyBuffer();
-		final ByteBuffer resolved = ByteBuffer.allocate(maxBytesPerChar * inputLength);
-
-		try {
-			if (entries.length > 0) {
-				for (final OffsetEntry entry : entries) {
-					final int stringOffset = entry.getCharacterOffset();
-					encodeInputSlice(encoder, input, stringOffset, false, resolved);
-					offsetMap.put(entry, resolved.position());
-				}
-			}
-
-			encodeInputSlice(encoder, input, inputLength, true, resolved);
-
-			return slice((ByteBuffer) resolved.flip());
-		} catch (final CharacterCodingException e) {
-			throw new PEException("Error encoding command: " + value, e);
-		}
-	}
-
-	/**
-	 * Copy bytes from a given buffer to a new byte array.
-	 * The copy starts at the current position()
-	 * and ends at the limit().
-	 */
-	private static byte[] slice(final ByteBuffer buffer) {
-		final byte[] format = new byte[buffer.limit()];
-		buffer.get(format);
-		return format;
-	}
-
-	private static void encodeInputSlice(final CharsetEncoder encoder, final CharBuffer in, final int limit, final boolean isEnd, final ByteBuffer out)
-			throws CharacterCodingException {
-		in.limit(limit);
-		final CoderResult status = encoder.encode(in, out, isEnd);
-		if (status.isError()) {
-			status.throwException();
-		}
-	}
-
-	public GenericSQLCommand(final SchemaContext sc, final String format) {
-		this(getCurrentSessionConnectionCharSet(sc), format);
-	}
-
-	public GenericSQLCommand(final VariableStoreSource vs, final String format) {
-		this(getCurrentSessionConnectionCharSet(vs), format);
-	}
-
-	public GenericSQLCommand(final Charset connectionCharset, final String format) {
-		this(connectionCharset, format.length(), format.getBytes(connectionCharset));
-	}
-
-	/**
-	 * This involves slow decoding of the format bytes. Intended for tests only!
-	 */
-	@Deprecated
-	public GenericSQLCommand(final Charset encoding, final byte[] format) {
-		this(encoding, new String(format, encoding).length(), format, MapUtils.EMPTY_SORTED_MAP, null, null, null);
-	}
-
-	public GenericSQLCommand(final Charset encoding, final int formatStringLength, final byte[] format) {
-		this(encoding, formatStringLength, format, MapUtils.EMPTY_SORTED_MAP, null, null, null);
-	}
-
-	/**
-	 * @param entryMap
-	 *            Offsets into the given byte array.
-	 */
-	private GenericSQLCommand(final Charset encoding, final int formatStringLength, final byte[] format, final SortedMap<OffsetEntry, Integer> entryMap,
-			final StatementType stmtType, final Boolean isUpdate,
-			final Boolean hasLimit) {
-		this.numCharacters = formatStringLength;
-		this.entryMap = entryMap;
-		this.format = format;
-		this.encoding = encoding;
-		this.type = stmtType;
-		this.isUpdate = isUpdate;
-		this.hasLimit = hasLimit;
-	}
-
-	private GenericSQLCommand(final SchemaContext sc, final String format, final OffsetEntry[] entries, StatementType stmtType, Boolean isUpdate,
-			Boolean hasLimit) throws PEException {
-		this(getCurrentSessionConnectionCharSet(sc), format, entries, stmtType, isUpdate, hasLimit);
-	}
-
-	/**
-	 * This constructor takes entries. We need to map entries to positions in
-	 * the resolved string.
-	 */
-	private GenericSQLCommand(final Charset connectionCharset, final String format, final OffsetEntry[] entries, StatementType stmtType, Boolean isUpdate,
-			Boolean hasLimit) throws PEException {
-		this.numCharacters = format.length();
-		this.entryMap = new TreeMap<OffsetEntry, Integer>();
-		this.format = resolveToByteArrayWithOffsetMap(connectionCharset, format, entries, this.entryMap);
-		this.encoding = connectionCharset;
-		this.type = stmtType;
-		this.isUpdate = isUpdate;
-		this.hasLimit = hasLimit;
-	}
-
-	public String getUnresolved() {
-		return new String(getUnresolvedAsBytes(), this.encoding);
-	}
-
-	public byte[] getUnresolvedAsBytes() {
-		return format;
-	}
-
-	public boolean hasLateResolution() {
-		return !entryMap.isEmpty();
-	}
-
-	public SQLCommand getSQLCommand() {
-		return new SQLCommand(this);
-	}
-
-	public GenericSQLCommand append(final GenericSQLCommand other) {
-		this.append(other.entryMap).append(other.format);
-		this.numCharacters += other.numCharacters;
-		return this;
-	}
-
-	private GenericSQLCommand append(final byte[] formatToAppend) {
-		this.format = ArrayUtils.addAll(this.format, formatToAppend);
-		return this;
-	}
-
-	/**
-	 * Append other command's entries and update their offsets.
-	 */
-	private GenericSQLCommand append(final Map<OffsetEntry, Integer> entriesToAppend) {
-		final int initialStringOffset = this.numCharacters;
-		final int initialArrayOffset = this.format.length;
-		for (final OffsetEntry entry : entriesToAppend.keySet()) {
-			final int originalStringOffset = entry.getCharacterOffset();
-			final int originalArrayOffset = entriesToAppend.get(entry);
-			final OffsetEntry adjustedEntry = entry.makeAdjusted(initialStringOffset + originalStringOffset);
-			this.entryMap.put(adjustedEntry, initialArrayOffset + originalArrayOffset);
-		}
-
-		return this;
-	}
-
-	public GenericSQLCommand resolve(SchemaContext sc, String prettyIndent) {
-		return resolve(sc, false, prettyIndent);
-	}
-
 	private static enum Tokens {
 
 		SPACE(" "),
@@ -276,12 +71,8 @@ public class GenericSQLCommand {
 			this.token = token;
 		}
 
-		public final byte[] getBytes(final Charset encoding) {
-			return this.token.getBytes(encoding);
-		}
-
-		public int length() {
-			return this.token.length();
+		public byte[] getBytes(final Charset encoding) {
+			return this.token.getBytes(encoding); // TODO: encode using CharsetEncoder.
 		}
 
 		@Override
@@ -290,36 +81,490 @@ public class GenericSQLCommand {
 		}
 	}
 
+	private static final class FragmentTable {
+
+		private final List<CommandFragment> fragments;
+		private final Map<OffsetEntry, Integer> fragmentIndex;
+
+		public FragmentTable(final int initialCapacity) {
+			this.fragments = new ArrayList<CommandFragment>(initialCapacity);
+			this.fragmentIndex = new HashMap<OffsetEntry, Integer>(initialCapacity);
+		}
+
+		public FragmentTable(final FragmentTable other) {
+			this(other.fragments, other.fragmentIndex);
+		}
+
+		private FragmentTable(final List<CommandFragment> fragments, final Map<OffsetEntry, Integer> fragmentIndex) {
+			this.fragments = new ArrayList<CommandFragment>(fragments);
+			this.fragmentIndex = new HashMap<OffsetEntry, Integer>(fragmentIndex);
+		}
+
+		/**
+		 * May trigger lazy decoding of all fragments.
+		 * 
+		 * @return The length of a String formed by concatenating decoded values
+		 *         of all fragments.
+		 */
+		public int getDecodedLength() {
+			int totalLength = 0;
+			for (final CommandFragment fragment : this.fragments) {
+				totalLength += fragment.getDecoded().length();
+			}
+
+			return totalLength;
+		}
+
+		/**
+		 * May trigger lazy encoding of all fragments.
+		 * 
+		 * @return The size of a buffer needed to accommodate encoded values of
+		 *         all fragments.
+		 */
+		public int getEncodedLength() {
+			int totalLength = 0;
+			for (final CommandFragment fragment : this.fragments) {
+				totalLength += fragment.getEncoded().remaining();
+			}
+
+			return totalLength;
+		}
+
+		public Set<OffsetEntry> viewIndexEntries() {
+			return Collections.unmodifiableSet(this.fragmentIndex.keySet());
+		}
+
+		public List<CommandFragment> viewFragments() {
+			return Collections.unmodifiableList(this.fragments);
+		}
+
+		public boolean hasIndexEntries() {
+			return !this.fragmentIndex.isEmpty();
+		}
+
+		/**
+		 * @return Position of an indexable fragment in the list of fragments.
+		 */
+		public int getFragmentPosition(final OffsetEntry key) {
+			return this.fragmentIndex.get(key);
+		}
+
+		/**
+		 * Add a non-indexable fragment that cannot be resolved/replaced.
+		 * It is safe to share these fragments between different command
+		 * instances as they never change.
+		 */
+		public void add(final CommandFragment fragment) {
+			this.add(null, fragment);
+		}
+
+		/**
+		 * Add an indexable fragment. These fragments can be accessed and
+		 * replaced during command resolution.
+		 */
+		public void add(final OffsetEntry key, final CommandFragment fragment) {
+			if (fragment != null) {
+				if (key != null) {
+					if (this.fragmentIndex.containsKey(key)) {
+						throw new PECodingException("Fragment for '" + key.toString() + "' is already occupied.");
+					}
+
+					this.fragmentIndex.put(key, this.fragments.size());
+				}
+
+				this.fragments.add(fragment);
+			}
+		}
+
+		public void replace(final OffsetEntry key, final CommandFragment newValue) {
+			final Integer position = this.fragmentIndex.get(key);
+			if (position == null) {
+				throw new PECodingException("No fragment to replace for '" + key.toString() + "' found.");
+			}
+
+			this.fragments.set(position, newValue);
+		}
+
+		public void addAll(final FragmentTable other) {
+			final int indexOffset = this.fragments.size();
+			this.fragments.addAll(other.fragments);
+			for (final Map.Entry<OffsetEntry, Integer> otherEntry : other.fragmentIndex.entrySet()) {
+				this.fragmentIndex.put(otherEntry.getKey(), otherEntry.getValue() + indexOffset);
+			}
+		}
+
+		/**
+		 * Produce a display-friendly version of this table.
+		 * 
+		 * The column headers are:
+		 * "fragment position" (index into the fragment list)"
+		 * "index key entry" (offset entry that binds to the fragment if any)"
+		 * "decoded fragment value"
+		 * 
+		 * May trigger lazy decoding of all fragments.
+		 * 
+		 * @return Text formatted version of this table.
+		 */
+		@Override
+		public String toString() {
+			final int numFragments = this.fragments.size();
+			final StringBuilder table = new StringBuilder();
+			for (int i = 0; i < numFragments; ++i) {
+				table
+						.append(i).append(" ")
+						.append(String.valueOf(findIndexKeyForValue(i))).append(" \"")
+						.append(this.fragments.get(i)).append("\"")
+						.append(PEConstants.LINE_SEPARATOR);
+			}
+
+			return table.toString();
+		}
+
+		private OffsetEntry findIndexKeyForValue(final int value) {
+			for (final Map.Entry<OffsetEntry, Integer> indexEntry : this.fragmentIndex.entrySet()) {
+				if (indexEntry.getValue() == value) {
+					return indexEntry.getKey();
+				}
+			}
+
+			return null;
+		}
+
+	}
+
+	public static final class CommandFragment {
+
+		private final Charset encoding;
+		private String decoded;
+		private ByteBuffer encoded;
+
+		protected CommandFragment(final Charset encoding, final Tokens sqlToken) {
+			this(encoding, sqlToken.toString());
+		}
+
+		protected CommandFragment(final Charset encoding, final Name schemaObjectName) {
+			this(encoding, schemaObjectName.get());
+		}
+
+		protected CommandFragment(final Charset encoding, final StringBuilder decoded) {
+			this(encoding, decoded.toString());
+		}
+
+		protected CommandFragment(final Charset encoding, final String decoded) {
+			this.encoding = encoding;
+			this.decoded = decoded;
+		}
+
+		protected CommandFragment(final Charset encoding, final ByteBuffer encoded) {
+			this.encoding = encoding;
+			this.encoded = (ByteBuffer) encoded.duplicate().rewind(); // TODO: is not read-only @see getDecoded()
+		}
+
+		/**
+		 * Decode the encoded value if not already.
+		 * 
+		 * @return Decoded value of this fragment.
+		 */
+		public String getDecoded() {
+			if (this.decoded == null) {
+				this.decoded = new String(this.encoded.array(), this.encoding); // TODO: decode using CharsetDecoder.
+			}
+			return this.decoded;
+		}
+
+		/**
+		 * Encode the decoded value if not already.
+		 * 
+		 * @return Encoded value of this fragment.
+		 */
+		public ByteBuffer getEncoded() {
+			if (this.encoded == null) {
+				this.encoded = ByteBuffer.wrap(this.decoded.getBytes(this.encoding)).asReadOnlyBuffer(); // TODO: encode using CharsetEncoder.
+			}
+			return this.encoded.duplicate();
+		}
+
+		/**
+		 * May trigger lazy decoding of this fragment.
+		 * 
+		 * @return Decoded value of this fragment.
+		 */
+		@Override
+		public String toString() {
+			return this.getDecoded();
+		}
+
+	}
+
+	//	private static final class FormatBuffer {
+	//
+	//		private static final float BUFFER_INITIAL_CAPACITY_FACTOR = 2.0f;
+	//
+	//		private ByteBuffer buffer;
+	//
+	//		private static ByteBuffer ensureCapacity(final ByteBuffer container, final int requiredRemainingCapacity) {
+	//			final int needeExtraCapacity = requiredRemainingCapacity - container.remaining();
+	//			if (needeExtraCapacity > 0) {
+	//				return expandCapacity(container, needeExtraCapacity);
+	//			}
+	//
+	//			return container;
+	//		}
+	//
+	//		private static ByteBuffer expandCapacity(final ByteBuffer container, final int extraSpace) {
+	//			final ByteBuffer extended = allocateByteBuffer(container.capacity() + extraSpace);
+	//			extended.put(container.array(), 0, container.position());
+	//			return extended;
+	//		}
+	//
+	//		private static ByteBuffer allocateByteBuffer(final int minInitialCapacity) {
+	//			return allocateByteBuffer(minInitialCapacity, BUFFER_INITIAL_CAPACITY_FACTOR);
+	//		}
+	//
+	//		private static ByteBuffer allocateByteBuffer(final int minInitialCapacity, final float extraCapacityFraction) {
+	//			return ByteBuffer.allocate((int) (minInitialCapacity * extraCapacityFraction));
+	//		}
+	//
+	//		public static FormatBuffer wrap(final byte[] bytes) {
+	//			return wrap(ByteBuffer.wrap(bytes));
+	//		}
+	//
+	//		public static FormatBuffer wrap(final ByteBuffer bytes) {
+	//			return new FormatBuffer(bytes);
+	//		}
+	//
+	//		public static FormatBuffer allocate(final int minInitialCapacity) {
+	//			return new FormatBuffer(minInitialCapacity);
+	//		}
+	//
+	//		private FormatBuffer(final int minInitialCapacity) {
+	//			this.buffer = allocateByteBuffer(minInitialCapacity);
+	//		}
+	//
+	//		private FormatBuffer(final ByteBuffer storage) {
+	//			this.buffer = storage;
+	//		}
+	//
+	//		public FormatBuffer append(final byte[] source) {
+	//			return append(ByteBuffer.wrap(source));
+	//		}
+	//
+	//		public FormatBuffer append(final FormatBuffer source) {
+	//			return append(source.viewBytes());
+	//		}
+	//
+	//		public FormatBuffer append(final ByteBuffer source) {
+	//			return append(source, 0, source.limit());
+	//		}
+	//
+	//		public FormatBuffer append(final FormatBuffer source, final int startIndexInclusive, final int endIndexExclusive) {
+	//			return append(source.viewBytes(), startIndexInclusive, endIndexExclusive);
+	//		}
+	//
+	//		public void ensureCapacity(final int requiredRemainingCapacity) {
+	//			this.buffer = ensureCapacity(this.buffer, requiredRemainingCapacity);
+	//		}
+	//
+	//		public void expandCapacity(final int extraSpace) {
+	//			this.buffer = expandCapacity(this.buffer, extraSpace);
+	//		}
+	//
+	//		private FormatBuffer append(final ByteBuffer source, final int startIndexInclusive, final int endIndexExclusive) {
+	//			final int numBytesToCopy = endIndexExclusive - startIndexInclusive;
+	//			if (numBytesToCopy > 0) {
+	//				this.ensureCapacity(numBytesToCopy);
+	//				this.buffer.put((ByteBuffer) source.asReadOnlyBuffer().position(startIndexInclusive).limit(endIndexExclusive));
+	//			}
+	//
+	//			return this;
+	//		}
+	//
+	//		public ByteBuffer viewBytes() {
+	//			final ByteBuffer readOnlyView = this.buffer.asReadOnlyBuffer();
+	//			if (readOnlyView.position() > 0) {
+	//				return (ByteBuffer) readOnlyView.flip();
+	//			}
+	//
+	//			return readOnlyView;
+	//		}
+	//
+	//		public int bytesWritten() {
+	//			return this.buffer.position();
+	//		}
+	//	}
+
+	private final Charset encoding;
+	private final FragmentTable commandFragments;
+
+	private final StatementType type;
+	private Boolean isUpdate = null;
+	private Boolean hasLimit = null;
+
+	private static Charset getCurrentSessionConnectionCharSet(final SchemaContext sc) {
+		if ((sc.getOptions() != null) && sc.getOptions().isInfoSchemaView()) {
+			// won't have the host service set up, so hardcode in a charset.
+			return KnownVariables.CHARACTER_SET_CLIENT.getDefaultOnMissing().getJavaCharset();
+		}
+		return getCurrentSessionConnectionCharSet(sc.getConnection().getVariableSource());
+	}
+
+	private static Charset getCurrentSessionConnectionCharSet(final VariableStoreSource vs) {
+		return KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(vs).getJavaCharset();
+	}
+
+	public GenericSQLCommand(final SchemaContext sc, final String format) {
+		this(getCurrentSessionConnectionCharSet(sc), format);
+	}
+
+	public GenericSQLCommand(final VariableStoreSource vs, final String format) {
+		this(getCurrentSessionConnectionCharSet(vs), format);
+	}
+
+	public GenericSQLCommand(final Charset connectionCharset, final String format) {
+		this(connectionCharset, format, Collections.EMPTY_LIST, null, null, null);
+	}
+
+	public GenericSQLCommand(final Charset encoding, final byte[] format) {
+		this(encoding, new FragmentTable(1), null, null, null);
+		this.commandFragments.add(new CommandFragment(encoding, ByteBuffer.wrap(format)));
+
+	}
+
+	private GenericSQLCommand(final SchemaContext sc, final String format, final List<OffsetEntry> entries, StatementType stmtType, Boolean isUpdate,
+			Boolean hasLimit) {
+		this(getCurrentSessionConnectionCharSet(sc), format, entries, stmtType, isUpdate, hasLimit);
+	}
+
+	private GenericSQLCommand(final Charset connectionCharset, final String format, final List<OffsetEntry> entries, StatementType stmtType, Boolean isUpdate,
+			Boolean hasLimit) {
+		this(connectionCharset, chopToFragments(connectionCharset, format, entries), stmtType, isUpdate, hasLimit);
+	}
+
+	private GenericSQLCommand(final Charset connectionCharset, final FragmentTable fragments, StatementType stmtType, Boolean isUpdate, Boolean hasLimit) {
+		this.encoding = connectionCharset;
+		this.commandFragments = fragments;
+		this.type = stmtType;
+		this.isUpdate = isUpdate;
+		this.hasLimit = hasLimit;
+	}
+
+	private static FragmentTable chopToFragments(final Charset encoding, final String value, final List<OffsetEntry> entries) {
+		final FragmentTable fragments = new FragmentTable((2 * entries.size()) + 1);
+		int lastEntryIndex = 0;
+		for (final OffsetEntry entry : entries) {
+			final int nextEntryIndex = entry.getCharacterOffset();
+			fragments.add(getFragment(encoding, value, lastEntryIndex, nextEntryIndex));
+			final String entryToken = entry.getToken();
+			fragments.add(entry, new CommandFragment(encoding, entryToken));
+			lastEntryIndex = nextEntryIndex + entryToken.length();
+		}
+		fragments.add(getFragment(encoding, value, lastEntryIndex, value.length()));
+
+		return fragments;
+	}
+
+	private static CommandFragment getFragment(final Charset encoding, final String value, final int startIndexInclusive, final int endIndexExclusive) {
+		final String fragmentText = value.substring(startIndexInclusive, endIndexExclusive);
+		if (!fragmentText.isEmpty()) {
+			return new CommandFragment(encoding, fragmentText);
+		}
+
+		return null;
+	}
+
 	/**
-	 * This involves slow byte decoding.
+	 * May trigger lazy decoding of all command fragments.
+	 * 
+	 * @return Decoded command String.
 	 */
-	private int emitTokenBytes(final byte[] token, final List<byte[]> buffer) {
-		buffer.add(token);
-		final String decoded = new String(token, this.encoding);
-		return decoded.length();
+	@Override
+	public String toString() {
+		return this.getDecoded();
 	}
 
-	private int emitTokenBytes(final Tokens token, final List<byte[]> buffer) {
-		final byte[] tokenBytes = token.getBytes(this.encoding);
-		buffer.add(tokenBytes);
-		return token.length();
+	/**
+	 * May trigger lazy decoding of all command fragments.
+	 * 
+	 * @return String formed by concatenating decoded values of all command
+	 *         fragments.
+	 * @deprecated This method copies all decoded bytes into a new String. Try
+	 *             to work with the command fragments directly ( @see public
+	 *             List<CommandFragment> viewCommandFragments() ) instead.
+	 */
+	@Deprecated
+	public String getDecoded() {
+		final StringBuilder decoded = new StringBuilder(this.commandFragments.getDecodedLength());
+		for (final CommandFragment cf : this.commandFragments.viewFragments()) {
+			decoded.append(cf.getDecoded());
+		}
+
+		return decoded.toString();
 	}
 
-	private int emitTokenBytes(final Name token, final List<byte[]> buffer) {
-		return emitTokenBytes(token.get(), buffer);
+	/**
+	 * May trigger lazy encoding of all command fragments.
+	 * 
+	 * @return ByteBuffer formed by concatenating encoded values of all command
+	 *         fragments.
+	 * @deprecated This method copies all encoded bytes into a new buffer. Try
+	 *             to work with the command fragments directly ( @see public
+	 *             List<CommandFragment> viewCommandFragments() ) instead.
+	 */
+	@Deprecated
+	public ByteBuffer getEncoded() {
+		final ByteBuffer encoded = ByteBuffer.allocate(this.commandFragments.getEncodedLength());
+		for (final CommandFragment cf : this.commandFragments.viewFragments()) {
+			encoded.put(cf.getEncoded());
+		}
+
+		return (ByteBuffer) encoded.rewind();
 	}
 
-	private int emitTokenBytes(final StringBuilder token, final List<byte[]> buffer) {
-		return emitTokenBytes(token.toString(), buffer);
+	/**
+	 * @return A read-only view of the fragments forming this command.
+	 */
+	public List<CommandFragment> viewCommandFragments() {
+		return this.commandFragments.viewFragments();
 	}
 
-	private int emitTokenBytes(final String token, final List<byte[]> buffer) {
-		final byte[] tokenBytes = token.getBytes(this.encoding);
-		buffer.add(tokenBytes);
-		return token.length();
+	/**
+	 * May trigger lazy decoding of all fragments.
+	 * 
+	 * @return The length of a String formed by concatenating decoded values
+	 *         of all command fragments.
+	 */
+	public int getDecodedLength() {
+		return this.commandFragments.getDecodedLength();
 	}
 
-	// TODO we really need a function specific class to handle resolve/display
+	/**
+	 * May trigger lazy encoding of all fragments.
+	 * 
+	 * @return The size of a buffer needed to accommodate encoded values of
+	 *         all command fragments.
+	 */
+	public int getEncodedLength() {
+		return this.commandFragments.getEncodedLength();
+	}
+
+	public SQLCommand getSQLCommand() {
+		return new SQLCommand(this);
+	}
+
+	public GenericSQLCommand append(final GenericSQLCommand other) {
+		// TODO: this may be relaxed
+		if (this.encoding != other.encoding) {
+			throw new PECodingException("Appended commands must use same encodings.");
+		}
+
+		this.commandFragments.addAll(other.commandFragments);
+
+		return this;
+	}
+
+	public GenericSQLCommand resolve(SchemaContext sc, String prettyIndent) {
+		return resolve(sc, false, prettyIndent);
+	}
 
 	/**
 	 * Here we resolve variable entries except late-resolving ones.
@@ -327,52 +572,38 @@ public class GenericSQLCommand {
 	 * @see public GenericSQLCommand getLateResolvedOnWorker(Worker)
 	 */
 	public GenericSQLCommand resolve(SchemaContext sc, boolean preserveParamMarkers, String indent) {
-		if (!this.hasLateResolution()) {
+		if (!this.commandFragments.hasIndexEntries()) {
 			return this;
 		}
 
-		final SortedMap<OffsetEntry, Integer> downstreamOffsetMapping = new TreeMap<OffsetEntry, Integer>();
-		final List<byte[]> sqlFragments = new ArrayList<byte[]>();
-		final Emitter emitter = 
-				((sc.getOptions() != null && sc.getOptions().isInfoSchemaView()) ? new MysqlEmitter() :        			
-					Singletons.require(HostService.class).getDBNative().getEmitter());
-		int currentStringOffset = 0;
-		int currentByteArrayOffset = 0;
-		for (final OffsetEntry oe : entryMap.keySet()) {
-			final int tokenBytesPosition = this.entryMap.get(oe);
-			final String token = oe.getToken();
-			final byte[] tokenBytes = token.getBytes(this.encoding);
-			currentStringOffset += oe.getCharacterOffset() - currentStringOffset;
-			sqlFragments.add(ArrayUtils.subarray(format, currentByteArrayOffset, tokenBytesPosition));
-			if (oe.getKind().isLate()) {
-				// Keep late resolving entries unresolved.
-				final int fragmentsLength = getTotalBytes(sqlFragments);
-				downstreamOffsetMapping.put(oe, fragmentsLength);
-				sqlFragments.add(tokenBytes);
-				currentStringOffset += token.length();
-			} else if (oe.getKind() == EntryKind.LITERAL) {
+		final Emitter emitter =
+				(((sc.getOptions() != null) && sc.getOptions().isInfoSchemaView()) ? new MysqlEmitter() :
+						Singletons.require(HostService.class).getDBNative().getEmitter());
+
+		final FragmentTable resolvedFragments = new FragmentTable(this.commandFragments);
+		for (final OffsetEntry oe : resolvedFragments.viewIndexEntries()) {
+			if (oe.getKind() == EntryKind.LITERAL) {
 				final LiteralOffsetEntry loe = (LiteralOffsetEntry) oe;
 				final StringBuilder buf = new StringBuilder();
 				emitter.emitLiteral(sc, loe.getLiteral(), buf);
-				currentStringOffset += emitTokenBytes(buf, sqlFragments);
+				resolvedFragments.replace(oe, new CommandFragment(this.encoding, buf));
 			} else if (oe.getKind() == EntryKind.PRETTY) {
-				final int totalBytes = getTotalBytes(sqlFragments);
 				if (indent != null) {
 					final PrettyOffsetEntry poe = (PrettyOffsetEntry) oe;
 					final StringBuilder buf = new StringBuilder();
-					if (totalBytes > 0) {
+					if (resolvedFragments.getFragmentPosition(oe) > 0) {
 						buf.append(PEConstants.LINE_SEPARATOR);
 					}
 					poe.addIndent(buf, indent);
-					currentStringOffset += emitTokenBytes(buf, sqlFragments);
+					resolvedFragments.replace(oe, new CommandFragment(this.encoding, buf));
 				} else {
-					if (totalBytes > 0) {
-						currentStringOffset += emitTokenBytes(Tokens.SPACE, sqlFragments);
+					if (resolvedFragments.getFragmentPosition(oe) > 0) {
+						resolvedFragments.replace(oe, new CommandFragment(this.encoding, Tokens.SPACE));
 					}
 				}
 			} else if (oe.getKind() == EntryKind.TEMPTABLE) {
 				final TempTableOffsetEntry ttoe = (TempTableOffsetEntry) oe;
-				currentStringOffset += emitTokenBytes(ttoe.getTempTable().getName(sc), sqlFragments);
+				resolvedFragments.replace(oe, new CommandFragment(this.encoding, ttoe.getTempTable().getName(sc)));
 			} else if (oe.getKind() == EntryKind.PARAMETER) {
 				final ParameterOffsetEntry poe = (ParameterOffsetEntry) oe;
 				if (!preserveParamMarkers) {
@@ -380,34 +611,35 @@ public class GenericSQLCommand {
 					final Object o = sc.getValueManager().getValue(sc, poe.getParameter());
 					if (o != null) {
 						if (o.getClass().isArray()) {
-							currentStringOffset += emitTokenBytes(Tokens.SINGLE_QUOTE, sqlFragments);
-							currentStringOffset += emitTokenBytes((byte[]) o, sqlFragments);
-							currentStringOffset += emitTokenBytes(Tokens.SINGLE_QUOTE, sqlFragments);
+							final byte[] quoteBytes = Tokens.SINGLE_QUOTE.getBytes(this.encoding); // TODO: encode using CharsetEncoder.
+							final byte[] parameterValueBytes = (byte[]) o;
+
+							final ByteBuffer encoded = ByteBuffer.allocate((2 * quoteBytes.length) + parameterValueBytes.length);
+							encoded.put(quoteBytes);
+							encoded.put(parameterValueBytes);
+							encoded.put(quoteBytes);
+							resolvedFragments.replace(oe, new CommandFragment(this.encoding, encoded));
 						} else {
-							currentStringOffset += emitTokenBytes(String.valueOf(o), sqlFragments);
+							resolvedFragments.replace(oe, new CommandFragment(this.encoding, String.valueOf(o)));
 						}
 					} else {
-						currentStringOffset += emitTokenBytes(Tokens.NULL, sqlFragments);
+						resolvedFragments.replace(oe, new CommandFragment(this.encoding, Tokens.NULL));
 					}
 				} else {
-					currentStringOffset += emitTokenBytes(Tokens.QUESTION_MARK, sqlFragments);
+					resolvedFragments.replace(oe, new CommandFragment(this.encoding, Tokens.QUESTION_MARK));
 				}
 			} else if (oe.getKind() == EntryKind.LATEVAR) {
 				final LateResolvingVariableOffsetEntry lrvoe = (LateResolvingVariableOffsetEntry) oe;
 				final Object value = lrvoe.expr.getValue(sc);
 				if (value != null) {
-					currentStringOffset += emitTokenBytes(PEStringUtils.singleQuote(value.toString()), sqlFragments);
+					resolvedFragments.replace(oe, new CommandFragment(this.encoding, PEStringUtils.singleQuote(value.toString())));
 				} else {
-					currentStringOffset += emitTokenBytes(Tokens.NULL, sqlFragments);
+					resolvedFragments.replace(oe, new CommandFragment(this.encoding, Tokens.NULL));
 				}
 			}
-			currentByteArrayOffset = tokenBytesPosition + tokenBytes.length;
 		}
-		sqlFragments.add(ArrayUtils.subarray(format, currentByteArrayOffset, format.length));
 
-		final byte[] formatBytes = concatSQLFragments(sqlFragments);
-		return new GenericSQLCommand(this.encoding, currentStringOffset, formatBytes, downstreamOffsetMapping, this.type, this.isUpdate,
-				this.hasLimit);
+		return new GenericSQLCommand(this.encoding, resolvedFragments, this.type, this.isUpdate, this.hasLimit);
 	}
 
 	/**
@@ -418,7 +650,7 @@ public class GenericSQLCommand {
 	 */
 	public void resolveAsTextLines(final SchemaContext sc, final boolean preserveParamMarkers, final String indent, final List<String> lines) {
 		final GenericSQLCommand resolved = resolve(sc, preserveParamMarkers, indent);
-		final String resolvedAsString = resolved.getUnresolved();
+		final String resolvedAsString = resolved.getDecoded();
 		lines.addAll(Arrays.asList(resolvedAsString.split(PEConstants.LINE_SEPARATOR)));
 	}
 
@@ -433,49 +665,24 @@ public class GenericSQLCommand {
 	}
 
 	private GenericSQLCommand resolveRawEntries(final Map<Integer, String> mapping) {
-		if (!this.hasLateResolution()) {
+		if (!this.commandFragments.hasIndexEntries()) {
 			return this;
 		}
 
-		final SortedMap<OffsetEntry, Integer> downstreamOffsetMapping = new TreeMap<OffsetEntry, Integer>();
-		final List<byte[]> sqlFragments = new ArrayList<byte[]>();
-		int currentStringOffset = 0;
-		int currentByteArrayOffset = 0;
-		for (final OffsetEntry oe : entryMap.keySet()) {
-			final int tokenBytesPosition = this.entryMap.get(oe);
-			final String token = oe.getToken();
-			final byte[] tokenBytes = token.getBytes(this.encoding);
-			currentStringOffset += oe.getCharacterOffset() - currentStringOffset;
-			sqlFragments.add(ArrayUtils.subarray(format, currentByteArrayOffset, tokenBytesPosition));
-			
+		final FragmentTable resolvedFragments = new FragmentTable(this.commandFragments);
+		for (final OffsetEntry oe : resolvedFragments.viewIndexEntries()) {
 			if (oe.getKind() == EntryKind.LITERAL) {
 				final LiteralOffsetEntry loe = (LiteralOffsetEntry) oe;
 				final ILiteralExpression ile = loe.getLiteral();
 				if (ile instanceof IDelegatingLiteralExpression) {
 					final IDelegatingLiteralExpression idle = (IDelegatingLiteralExpression) ile;
 					final String repl = mapping.get(idle.getPosition());
-					currentStringOffset += emitTokenBytes(repl, sqlFragments);
-				} else {
-					// Keep other entries for later resolution.
-					final int fragmentsLength = getTotalBytes(sqlFragments);
-					downstreamOffsetMapping.put(oe, fragmentsLength);
-					sqlFragments.add(tokenBytes);
-					currentStringOffset += token.length();
+					resolvedFragments.replace(oe, new CommandFragment(this.encoding, repl));
 				}
-			} else {
-				// Keep other entries for later resolution.
-				final int fragmentsLength = getTotalBytes(sqlFragments);
-				downstreamOffsetMapping.put(oe, fragmentsLength);
-				sqlFragments.add(tokenBytes);
-				currentStringOffset += token.length();
 			}
-			currentByteArrayOffset = tokenBytesPosition + tokenBytes.length;
 		}
-		sqlFragments.add(ArrayUtils.subarray(format, currentByteArrayOffset, format.length));
 
-		final byte[] formatBytes = concatSQLFragments(sqlFragments);
-		return new GenericSQLCommand(this.encoding, currentStringOffset, formatBytes, downstreamOffsetMapping, this.type, this.isUpdate,
-				this.hasLimit);
+		return new GenericSQLCommand(this.encoding, resolvedFragments, this.type, this.isUpdate, this.hasLimit);
 	}
 
 	/**
@@ -483,52 +690,36 @@ public class GenericSQLCommand {
 	 * execute on.
 	 */
 	public GenericSQLCommand resolveLateEntries(final Worker w) {
-		return new GenericSQLCommand(this.encoding, this.numCharacters, this.resolveAsBytesOnWorker(w));
-	}
-
-	private byte[] resolveAsBytesOnWorker(final Worker w) {
-		if (!this.hasLateResolution()) {
-			return format;
+		if (!this.commandFragments.hasIndexEntries()) {
+			return this;
 		}
 
-		// should be no downstream
-		final List<byte[]> sqlFragments = new ArrayList<byte[]>();
-		int currentByteArrayOffset = 0;
-		for (final OffsetEntry oe : entryMap.keySet()) {
-			if (oe.getKind() == EntryKind.LITERAL) {
-				continue;
-			}
-
-			final int tokenBytesPosition = this.entryMap.get(oe);
-			final String token = oe.getToken();
-			final byte[] tokenBytes = token.getBytes(this.encoding);
-			sqlFragments.add(ArrayUtils.subarray(format, currentByteArrayOffset, tokenBytesPosition));
-			currentByteArrayOffset = tokenBytesPosition + tokenBytes.length;
-			String actualValue;
-			if (oe.getKind() == EntryKind.RANDOM_SEED) {
-				final String seed = oe.getToken();
-				if (w.getWorkerSite() instanceof PersistentSite) {
-					/* The IF clause handles the case when seed = 0. */
-					actualValue = String.valueOf(w.getSiteIndex()).concat(" * (").concat(seed).concat(" + IF(").concat(seed).concat(", 0, 1))");
+		final FragmentTable resolvedFragments = new FragmentTable(this.commandFragments);
+		for (final OffsetEntry oe : resolvedFragments.viewIndexEntries()) {
+			if (oe.getKind().isLate()) {
+				final String token = oe.getToken();
+				if (oe.getKind() == EntryKind.RANDOM_SEED) {
+					if (w.getWorkerSite() instanceof PersistentSite) {
+						/* The IF clause handles the case when seed = 0. */
+						final String seedSql = String.valueOf(w.getSiteIndex()).concat(" * (").concat(token).concat(" + IF(").concat(token).concat(", 0, 1))");
+						resolvedFragments.replace(oe, new CommandFragment(this.encoding, seedSql));
+					} else {
+						resolvedFragments.replace(oe, new CommandFragment(this.encoding, token));
+					}
 				} else {
-					actualValue = seed;
+					resolvedFragments.replace(oe, new CommandFragment(this.encoding, w.getNameOnSite(token)));
 				}
-			} else {
-				actualValue = w.getNameOnSite(token);
 			}
-
-			sqlFragments.add(actualValue.getBytes(this.encoding));
 		}
-		sqlFragments.add(ArrayUtils.subarray(format, currentByteArrayOffset, format.length));
-		return concatSQLFragments(sqlFragments);
 
+		return new GenericSQLCommand(this.encoding, resolvedFragments, this.type, this.isUpdate, this.hasLimit);
 	}
 
 	public List<Object> getFinalParams(SchemaContext sc) {
 		// does not apply if params are not pushdown
 		if (sc.getValueManager().hasPassDownParams()) {
 			final List<Object> out = new ArrayList<Object>();
-			for (final OffsetEntry oe : entryMap.keySet()) {
+			for (final OffsetEntry oe : this.commandFragments.viewIndexEntries()) {
 				if (oe.getKind() == EntryKind.PARAMETER) {
 					final ParameterOffsetEntry poe = (ParameterOffsetEntry) oe;
 					out.add(sc.getValueManager().getValue(sc, poe.getParameter()));
@@ -540,39 +731,22 @@ public class GenericSQLCommand {
 	}
 
 	public Boolean isSelect() {
-		if (type == null) {
+		if (this.type == null) {
 			return null;
 		}
-		return ((type == StatementType.SELECT) || (type == StatementType.UNION));
+		return ((this.type == StatementType.SELECT) || (this.type == StatementType.UNION));
 	}
 
 	public Boolean isForUpdate() {
-		return isUpdate;
+		return this.isUpdate;
 	}
 
 	public Boolean isLimit() {
-		return hasLimit;
+		return this.hasLimit;
 	}
 
 	public StatementType getStatementType() {
-		return type;
-	}
-
-	private byte[] concatSQLFragments(List<byte[]> sqlFragments) {
-		final int totalBytes = getTotalBytes(sqlFragments);
-		final ByteBuf formattedSQL = Unpooled.buffer(totalBytes);
-		for (final byte[] fragment : sqlFragments) {
-			formattedSQL.writeBytes(fragment);
-		}
-		return formattedSQL.array();
-	}
-
-	private int getTotalBytes(List<byte[]> sqlFragments) {
-		int totalBytes = 0;
-		for (final byte[] fragment : sqlFragments) {
-			totalBytes += fragment.length;
-		}
-		return totalBytes;
+		return this.type;
 	}
 
 	public enum EntryKind {
@@ -586,63 +760,41 @@ public class GenericSQLCommand {
 
 		private final boolean late;
 
-		private EntryKind(boolean phase) {
-			late = phase;
+		private EntryKind(final boolean isLate) {
+			this.late = isLate;
 		}
 
 		public boolean isLate() {
-			return late;
+			return this.late;
 		}
 	}
 
-	/**
-	 * Entries are compared and sorted by their offsets.
-	 */
-	public static abstract class OffsetEntry implements Comparable<OffsetEntry> {
+	public static abstract class OffsetEntry {
 
 		protected int offset;
 		protected String token;
 
 		public OffsetEntry(int off, String tok) {
-			offset = off;
-			token = tok;
+			this.offset = off;
+			this.token = tok;
 		}
 
 		public int getCharacterOffset() {
-			return offset;
+			return this.offset;
 		}
 
 		public String getToken() {
-			return token;
-		}
-
-		@Override
-		public int hashCode() {
-			return Integer.valueOf(this.offset).hashCode();
-		}
-
-		@Override
-		public boolean equals(final Object other) {
-			if (this == other) {
-				return true;
-			}
-
-			if (other instanceof OffsetEntry) {
-				final OffsetEntry otherEntry = (OffsetEntry) other;
-				return this.offset == otherEntry.offset;
-			}
-
-			return false;
-		}
-
-		@Override
-		public int compareTo(final OffsetEntry other) {
-			return this.offset - other.offset;
+			return this.token;
 		}
 
 		public abstract EntryKind getKind();
 
-		public abstract OffsetEntry makeAdjusted(int newoff);
+		//		public abstract OffsetEntry makeAdjusted(int newoff);
+
+		@Override
+		public String toString() {
+			return this.getKind().toString().concat(" (").concat(this.getToken()).concat(")");
+		}
 	}
 
 	public static class LiteralOffsetEntry extends OffsetEntry {
@@ -651,7 +803,7 @@ public class GenericSQLCommand {
 
 		public LiteralOffsetEntry(int off, String tok, ILiteralExpression dle) {
 			super(off, tok);
-			literal = dle;
+			this.literal = dle;
 		}
 
 		@Override
@@ -659,13 +811,13 @@ public class GenericSQLCommand {
 			return EntryKind.LITERAL;
 		}
 
-		@Override
-		public OffsetEntry makeAdjusted(int newoff) {
-			return new LiteralOffsetEntry(newoff, getToken(), literal);
-		}
+		//		@Override
+		//		public OffsetEntry makeAdjusted(int newoff) {
+		//			return new LiteralOffsetEntry(newoff, getToken(), this.literal);
+		//		}
 
 		public ILiteralExpression getLiteral() {
-			return literal;
+			return this.literal;
 		}
 
 	}
@@ -680,7 +832,7 @@ public class GenericSQLCommand {
 		}
 
 		public void addIndent(StringBuilder buf, String multiple) {
-			for (int i = 0; i < indent; i++) {
+			for (int i = 0; i < this.indent; i++) {
 				buf.append(multiple);
 			}
 		}
@@ -690,10 +842,10 @@ public class GenericSQLCommand {
 			return EntryKind.PRETTY;
 		}
 
-		@Override
-		public OffsetEntry makeAdjusted(int newoff) {
-			return new PrettyOffsetEntry(newoff, indent);
-		}
+		//		@Override
+		//		public OffsetEntry makeAdjusted(int newoff) {
+		//			return new PrettyOffsetEntry(newoff, this.indent);
+		//		}
 
 	}
 
@@ -715,13 +867,13 @@ public class GenericSQLCommand {
 			return EntryKind.PARAMETER;
 		}
 
-		@Override
-		public OffsetEntry makeAdjusted(int newoff) {
-			return new ParameterOffsetEntry(newoff, getToken(), parameter);
-		}
+		//		@Override
+		//		public OffsetEntry makeAdjusted(int newoff) {
+		//			return new ParameterOffsetEntry(newoff, getToken(), this.parameter);
+		//		}
 
 		public IParameter getParameter() {
-			return parameter;
+			return this.parameter;
 		}
 
 	}
@@ -737,10 +889,10 @@ public class GenericSQLCommand {
 			return EntryKind.DBNAME;
 		}
 
-		@Override
-		public OffsetEntry makeAdjusted(int newoff) {
-			return new LateResolveEntry(newoff, getToken());
-		}
+		//		@Override
+		//		public OffsetEntry makeAdjusted(int newoff) {
+		//			return new LateResolveEntry(newoff, getToken());
+		//		}
 
 	}
 
@@ -750,7 +902,7 @@ public class GenericSQLCommand {
 
 		public TempTableOffsetEntry(int off, String tok, TempTable tt) {
 			super(off, tok);
-			temp = tt;
+			this.temp = tt;
 		}
 
 		@Override
@@ -758,13 +910,13 @@ public class GenericSQLCommand {
 			return EntryKind.TEMPTABLE;
 		}
 
-		@Override
-		public OffsetEntry makeAdjusted(int newoff) {
-			return new TempTableOffsetEntry(newoff, getToken(), temp);
-		}
+		//		@Override
+		//		public OffsetEntry makeAdjusted(int newoff) {
+		//			return new TempTableOffsetEntry(newoff, getToken(), this.temp);
+		//		}
 
 		public TempTable getTempTable() {
-			return temp;
+			return this.temp;
 		}
 
 	}
@@ -783,10 +935,10 @@ public class GenericSQLCommand {
 			return EntryKind.LATEVAR;
 		}
 
-		@Override
-		public OffsetEntry makeAdjusted(int newoff) {
-			return new LateResolvingVariableOffsetEntry(newoff, getToken(), expr);
-		}
+		//		@Override
+		//		public OffsetEntry makeAdjusted(int newoff) {
+		//			return new LateResolvingVariableOffsetEntry(newoff, getToken(), this.expr);
+		//		}
 
 	}
 
@@ -808,10 +960,10 @@ public class GenericSQLCommand {
 			return EntryKind.RANDOM_SEED;
 		}
 
-		@Override
-		public OffsetEntry makeAdjusted(int newoff) {
-			return new RandomSeedOffsetEntry(newoff, getToken(), this.expr);
-		}
+		//		@Override
+		//		public OffsetEntry makeAdjusted(int newoff) {
+		//			return new RandomSeedOffsetEntry(newoff, getToken(), this.expr);
+		//		}
 
 	}
 
@@ -824,63 +976,62 @@ public class GenericSQLCommand {
 		private StatementType type;
 
 		public Builder() {
-			entries = new ArrayList<OffsetEntry>();
-			type = null;
+			this.entries = new ArrayList<OffsetEntry>();
+			this.type = null;
 		}
 
 		public Builder withLiteral(int offset, String tok, DelegatingLiteralExpression dle) {
-			entries.add(new LiteralOffsetEntry(offset, tok, dle.getCacheExpression()));
+			this.entries.add(new LiteralOffsetEntry(offset, tok, dle.getCacheExpression()));
 			return this;
 		}
 
 		public Builder withParameter(int offset, String tok, IParameter p) {
-			entries.add(new ParameterOffsetEntry(offset, tok, (IParameter) p.getCacheExpression()));
+			this.entries.add(new ParameterOffsetEntry(offset, tok, (IParameter) p.getCacheExpression()));
 			return this;
 		}
 
 		public Builder withDBName(int offset, String tok) {
-			entries.add(new LateResolveEntry(offset, tok));
+			this.entries.add(new LateResolveEntry(offset, tok));
 			return this;
 		}
 
 		public Builder withTempTable(int offset, String tok, TempTable tt) {
-			entries.add(new TempTableOffsetEntry(offset, tok, tt));
+			this.entries.add(new TempTableOffsetEntry(offset, tok, tt));
 			return this;
 		}
 
 		public Builder withLateVariable(int offset, String tok, IConstantExpression ice) {
-			entries.add(new LateResolvingVariableOffsetEntry(offset, tok, ice));
+			this.entries.add(new LateResolvingVariableOffsetEntry(offset, tok, ice));
 			return this;
 		}
 
 		public Builder withPretty(int offset, int indent) {
-			entries.add(new PrettyOffsetEntry(offset, (short) indent));
+			this.entries.add(new PrettyOffsetEntry(offset, (short) indent));
 			return this;
 		}
 
 		public Builder withLimit() {
-			isLimit = true;
+			this.isLimit = true;
 			return this;
 		}
 
 		public Builder withForUpdate() {
-			isForUpdate = true;
+			this.isForUpdate = true;
 			return this;
 		}
 
 		public Builder withType(StatementType st) {
-			type = st;
+			this.type = st;
 			return this;
 		}
 
 		public Builder withRandomSeed(int offset, String tok, ExpressionNode expr) {
-			entries.add(new RandomSeedOffsetEntry(offset, tok, expr));
+			this.entries.add(new RandomSeedOffsetEntry(offset, tok, expr));
 			return this;
 		}
 
-		public GenericSQLCommand build(final SchemaContext sc, String format) throws PEException {
-			final OffsetEntry[] out = entries.toArray(new OffsetEntry[0]);
-			return new GenericSQLCommand(sc, format, out, this.type, this.isForUpdate, this.isLimit);
+		public GenericSQLCommand build(final SchemaContext sc, String format) {
+			return new GenericSQLCommand(sc, format, this.entries, this.type, this.isForUpdate, this.isLimit);
 		}
 	}
 }

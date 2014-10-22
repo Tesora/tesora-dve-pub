@@ -49,6 +49,12 @@ public abstract class SchemaMirrorTest extends SchemaTest {
 	protected TestResource checkResource;
 	protected TestResource nativeResource;
 
+	protected boolean useUTF8 = true;
+
+	public void setUseUTF8(boolean useUTF8) {
+		this.useUTF8 = useUTF8;
+	}
+
 	protected ProjectDDL getMultiDDL() {
 		return null;
 	}
@@ -73,22 +79,31 @@ public abstract class SchemaMirrorTest extends SchemaTest {
 		PortalDBHelperConnectionResource sysconn = (multiDDL == null ? null : new PortalDBHelperConnectionResource());
 		PortalDBHelperConnectionResource checkconn = (singleDDL == null ? null : new PortalDBHelperConnectionResource());
 		DBHelperConnectionResource nativeConn = (nativeDDL == null ? null : new DBHelperConnectionResource());
-		TestResource smr = (multiDDL == null ? null : new TestResource(sysconn,multiDDL));
-		TestResource cmr = (singleDDL == null ? null : new TestResource(checkconn,singleDDL));
-		TestResource nmr = (nativeDDL == null ? null : new TestResource(nativeConn,nativeDDL));
-		ArrayList<TestResource> trs = new ArrayList<TestResource>();
-		if (smr != null) trs.add(smr);
-		if (cmr != null) trs.add(cmr);
-		if (nmr != null) trs.add(nmr);
-		for(TestResource tr : trs)
-			tr.getDDL().create(tr);
-		for(TestResource tr : trs) {
-			for(MirrorTest mt : populate)
-				mt.execute(tr,null);
+		try {
+			TestResource smr = (multiDDL == null ? null : new TestResource(sysconn, multiDDL));
+			TestResource cmr = (singleDDL == null ? null : new TestResource(checkconn, singleDDL));
+			TestResource nmr = (nativeDDL == null ? null : new TestResource(nativeConn, nativeDDL));
+			ArrayList<TestResource> trs = new ArrayList<TestResource>();
+			if (smr != null)
+				trs.add(smr);
+			if (cmr != null)
+				trs.add(cmr);
+			if (nmr != null)
+				trs.add(nmr);
+			for (TestResource tr : trs)
+				tr.getDDL().create(tr);
+			for (TestResource tr : trs) {
+				for (MirrorTest mt : populate)
+					mt.execute(tr, null);
+			}
+		} finally {
+			if (sysconn != null)
+				sysconn.disconnect();
+			if (checkconn != null)
+				checkconn.disconnect();
+			if (nativeConn != null)
+				nativeConn.disconnect();
 		}
-		if (sysconn != null) sysconn.disconnect();
-		if (checkconn != null) checkconn.disconnect();
-		if (nativeConn != null) nativeConn.disconnect();
 	}
 	
 	@Before
@@ -122,9 +137,9 @@ public abstract class SchemaMirrorTest extends SchemaTest {
 	
 	protected ConnectionResource createConnection(ProjectDDL p) throws Throwable {
 		if (p == getNativeDDL()) 
-			return new DBHelperConnectionResource(); 
+			return new DBHelperConnectionResource(useUTF8);
 		else if (p == getMultiDDL() || p == getSingleDDL()) 
-			return new PortalDBHelperConnectionResource();
+			return new PortalDBHelperConnectionResource(useUTF8);
 		
 		throw new PEException("ProjectDDL of unknown type " + p.getClass());
 	}

@@ -87,7 +87,8 @@ public class CatalogVersions {
 		COLLATION_ID_TYPE(new InfoSchemaUpgradeVersion(43)),
 		INFOSCHEMA_CAPITALIZATION(new InfoSchemaUpgradeVersion(44)),
 		DIRECT_INFOSCHEMA(new DirectInfoSchema(45)),
-		TRIGGERS(new TriggersVersion(46));
+		TRIGGERS(new TriggersVersion(46)),
+		ADD_MISSING_COLLATIONS(new InfoSchemaUpgradeVersion(47));
 		
 		private final CatalogVersion upgradeModule; 
 		

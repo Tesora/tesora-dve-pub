@@ -60,7 +60,7 @@ public class OnPremiseSiteProviderTest extends PETest {
 		TestCatalogHelper.getTestCatalogProps(PETest.class);
 		TestCatalogHelper.createTestCatalog(PETest.class,2);
 
-		catalogUrl = PEUrl.stripUrlParameters(TestCatalogHelper.getInstance().getCatalogUrl());
+		catalogUrl = PEUrl.stripUrlParameters(TestCatalogHelper.getInstance().getCatalogBaseUrl());
 		catalogUser = TestCatalogHelper.getInstance().getCatalogUser();
 		catalogPassword = TestCatalogHelper.getInstance().getCatalogPassword();
 		

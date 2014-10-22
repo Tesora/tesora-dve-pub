@@ -66,48 +66,41 @@ public abstract class NativeCollationCatalog implements Serializable {
 
 	public abstract void load() throws PEException;
 
-	public NativeCollation findCollationByName(String collationName, boolean except) throws PEException {
-		NativeCollation t = collationsByName.get(collationName.toUpperCase(Locale.ENGLISH));
-
-		if (t == null && except)
-			throw new PEException("Unsupported COLLATION '" + collationName + "'");
-		return t;
-	}
-
-	public NativeCollation findNativeCollationById(int collationId) {
-		return collationsById.get(collationId);
+	public NativeCollation findCollationByName(String collationName) {
+		return collationsByName.get(collationName.toUpperCase(Locale.ENGLISH));
 	}
 	
-
-	public NativeCollation findDefaultCollationForCharSet(String charsetName, boolean except) throws PEException {
-		List<NativeCollation> collations = collationsByCharsetName.get(charsetName.toUpperCase(Locale.ENGLISH));
+	public NativeCollation findDefaultCollationForCharSet(String charsetName) {
+		final List<NativeCollation> collations = collationsByCharsetName.get(charsetName.toUpperCase(Locale.ENGLISH));
 		if (collations == null) {
-			if (except) {
-				throw new PEException("No collations found for character set '" + charsetName + "'");
-			}
 			return null;
 		}
 		
-		NativeCollation defaultCollation = (NativeCollation) CollectionUtils.find(collations,
+		final NativeCollation defaultCollation = (NativeCollation) CollectionUtils.find(collations,
 				new Predicate() {
 					@Override
 					public boolean evaluate(Object arg0) {
 						if (arg0 instanceof NativeCollation) {
-							NativeCollation nc = (NativeCollation)arg0;
+							final NativeCollation nc = (NativeCollation) arg0;
 							return nc.isDefault();
 						}
 						return false;
 					}
 				});
 		
-		if (defaultCollation == null && except) {
-			throw new PEException("No default collation found for character set '" + charsetName + "'");
+		if (defaultCollation == null) {
+			throw new PECodingException("No default collation found for character set '" + charsetName + "'");
 		}
+
 		return defaultCollation;
 	}
+
+	public NativeCollation findNativeCollationById(long collationId) {
+		return collationsById.get(collationId);
+	}
 	
-	public boolean isCompatibleCollation(String collation) throws PEException {
-		return (findCollationByName(collation, false) != null);
+	public boolean isCompatibleCollation(String collation) {
+		return (findCollationByName(collation) != null);
 	}
 	
 	public int size() {

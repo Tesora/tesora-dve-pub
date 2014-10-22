@@ -472,7 +472,7 @@ public class GenerationSitesTest extends SchemaTest {
 			for(int i = 1; i <= 5; i++) {
 				conn.execute(String.format("create persistent site smallsg%d url='%s' user='%s' password='%s'",
 						i,
-						TestCatalogHelper.getInstance().getCatalogUrl(),
+						TestCatalogHelper.getInstance().getCatalogBaseUrl(),
 						TestCatalogHelper.getInstance().getCatalogUser(),
 						TestCatalogHelper.getInstance().getCatalogPassword()));
 			}
