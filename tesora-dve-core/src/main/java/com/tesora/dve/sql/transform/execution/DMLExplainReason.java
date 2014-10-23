@@ -75,6 +75,8 @@ public enum DMLExplainReason {
 	ADHOC("ad hoc"),
 	SESSION_TOO_COMPLEX("too complex, must delegate"),
 	
+	TRIGGER_SRC_TABLE("trigger rows table"),
+	
 	EXPLAIN_NOPLAN("planning inhibited"),
 	RAWPLAN("raw plan");
 	

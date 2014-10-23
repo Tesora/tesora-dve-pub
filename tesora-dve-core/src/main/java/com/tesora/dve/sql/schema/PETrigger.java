@@ -38,7 +38,6 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	// also, triggers are loaded/unloaded with the table
 	private final PETable triggerTable;
 	private final TriggerEvent triggerType;
-	private Statement body;
 	private String bodySrc;
 	private String rawSQL;
 	private SchemaEdge<PEUser> definer;
@@ -55,8 +54,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 			boolean before, SQLMode sqlMode, String rawSQL) {
 		super(buildCacheKey(name,targetTable));
 		setName(name.getUnqualified());
-		this.body = body;
-		this.bodySrc = null;
+		this.bodySrc = body.getSQL(sc);
 		this.triggerTable = targetTable;
 		this.triggerType = triggerOn;
 		this.definer = StructuralUtils.buildEdge(sc,user,false);
@@ -84,13 +82,14 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	public PETable getTargetTable() {
 		return triggerTable;
 	}
+
+	public String getBodySource() {
+		return bodySrc;
+	}
 	
 	public Statement getBody(SchemaContext sc) {
-		if (body == null) {
-			Statement parsed = PEView.buildStatement(sc, triggerTable.getPEDatabase(sc), bodySrc, false, new ScopeInjector(triggerTable));
-			body = parsed;
-		}
-		return body;
+		Statement parsed = PEView.buildStatement(sc, triggerTable.getPEDatabase(sc), bodySrc, false, new ScopeInjector(triggerTable));
+		return parsed;
 	}
 	
 	public static PETrigger load(UserTrigger ut, SchemaContext sc, PETable onTable) {
@@ -150,7 +149,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	protected UserTrigger createEmptyNew(SchemaContext sc)
 			throws PEException {
 		return new UserTrigger(getName().get(),
-				(bodySrc != null ? bodySrc : body.getSQL(sc)),
+				bodySrc,
 				triggerTable.persistTree(sc),
 				triggerType.name(),
 				before ? "BEFORE" : "AFTER",

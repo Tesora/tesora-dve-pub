@@ -21,8 +21,13 @@ package com.tesora.dve.sql.statement.dml.compound;
  * #L%
  */
 
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
+import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 
 public abstract class CompoundStatement extends Statement {
 
@@ -37,6 +42,17 @@ public abstract class CompoundStatement extends Statement {
 	
 	public boolean isDML() {
 		return false;
+	}
+	
+	@Override
+	public final void plan(SchemaContext sc, ExecutionSequence es,
+			BehaviorConfiguration config) throws PEException {
+		throw new PEException("Illegal call to CompoundStatement.plan");
+	}
+
+	// compound stmts are planned as parts of other stuff (i.e. they are not top level stmts).
+	public FeatureStep plan(SchemaContext sc, BehaviorConfiguration config) throws PEException {
+		throw new PEException("Not yet implemented.  CompoundStatement.plan for " + getClass().getSimpleName());
 	}
 	
 }

@@ -25,8 +25,12 @@ package com.tesora.dve.sql.schema.cache;
 // but may change from execution to execution
 public enum ConstantType {
 
-	LITERAL,  // i.e. 1, 'foo'
-	PARAMETER, // originally '?', then gets bound upon execute
-	TRIGGER_COLUMN, // originally NEW.<col>, OLD.<col>, but bound at runtime
+	// i.e. 1, 'foo'
+	LITERAL,  
+	// originally '?', then gets bound upon execute
+	PARAMETER,
+	// originally a column reference or expression, this is a value that is bound
+	// at runtime (i.e. during execution in the engine)
+	RUNTIME, 
 	
 }

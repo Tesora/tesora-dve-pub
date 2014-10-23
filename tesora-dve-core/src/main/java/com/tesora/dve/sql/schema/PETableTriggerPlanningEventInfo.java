@@ -22,69 +22,69 @@ package com.tesora.dve.sql.schema;
  */
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.expression.TriggerTableKey;
+import com.tesora.dve.sql.node.LanguageNode;
+import com.tesora.dve.sql.node.Traversal;
+import com.tesora.dve.sql.node.expression.ColumnInstance;
+import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
+import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.node.expression.TriggerTableInstance;
+import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.transform.ColumnInstanceCollector;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 
 public class PETableTriggerPlanningEventInfo extends PETableTriggerEventInfo {
 
-	// the before/after columns are across both triggers
-	private ListSet<ColumnKey> beforeColumns;
-	private ListSet<ColumnKey> afterColumns;
 	// the key iteration order defines the temp table result set
 	private LinkedHashMap<ColumnKey,Integer> connValueOffsets;
 
+	// the before body, with trigger cols replaced by runtime constants
+	private Statement beforeBody;
+	// the feature step that represents the before body
+	private FeatureStep beforeStep;
+	// the after body, with trigger cols replaced by runtime constants
+	private Statement afterBody;
+	// the after step that represents the after body
+	private FeatureStep afterStep;
+	
 	public PETableTriggerPlanningEventInfo() {
 		super();
-		beforeColumns = null;
-		afterColumns = null;
 		connValueOffsets = null;
 	}
 
-	private void collectColumns(SchemaContext sc, PETrigger trig, ListSet<ColumnKey> befores, ListSet<ColumnKey> afters) {
-		Statement body = trig.getBody(sc);
-		ListSet<ColumnKey> referencedColumns = ColumnInstanceCollector.getColumnKeys(body);
-		for(ColumnKey ck : referencedColumns) {
-			TableKey tk = ck.getTableKey();
-			if (tk instanceof TriggerTableKey) {
-				TriggerTableKey ttk = (TriggerTableKey) tk;
-				if (ttk.isBefore())
-					befores.add(ck);
-				else
-					afters.add(ck);
-			}
-		}
-	}
-	
-	private LinkedHashMap<ColumnKey,Integer> buildOffsets(ListSet<ColumnKey> befores, ListSet<ColumnKey> afters) {
-		LinkedHashMap<ColumnKey,Integer> out = new LinkedHashMap<ColumnKey,Integer>();
-		int offset = -1;
-		for(ColumnKey ck : befores)
-			out.put(ck,++offset);
-		for(ColumnKey ck : afters)
-			out.put(ck, ++offset);
-		return out;
-	}
-
-	private void ensureRuntime(SchemaContext sc) {
+	private void ensureRuntime(SchemaContext sc) throws PEException {
 		if (connValueOffsets == null) {
-			ListSet<ColumnKey> befores = new ListSet<ColumnKey>();
-			ListSet<ColumnKey> afters = new ListSet<ColumnKey>();
-			for(PETrigger trig : get()) {
-				collectColumns(sc,trig,befores,afters);
+			TriggerColumnTraversal trav = new TriggerColumnTraversal();
+			Statement beforeStmt = null;
+			Statement afterStmt = null;
+			FeatureStep beforeStep = null;
+			FeatureStep afterStep = null;
+			if (getBefore() != null) {
+				beforeStmt = getBefore().getBody(sc);
+				trav.traverse(beforeStmt);
+				beforeStep = beforeStmt.plan(sc, sc.getBehaviorConfiguration());
 			}
-			LinkedHashMap<ColumnKey,Integer> offsets = buildOffsets(befores,afters);
+			if (getAfter() != null) {
+				afterStmt = getAfter().getBody(sc);
+				trav.traverse(afterStmt);
+				afterStep = afterStmt.plan(sc, sc.getBehaviorConfiguration());
+			}
 			if (connValueOffsets == null) {
 				synchronized(this) {
 					if (connValueOffsets == null) {
-						connValueOffsets = offsets;
-						beforeColumns = befores;
-						afterColumns = afters;
+						connValueOffsets = trav.getTriggerColumnOffsets();
+						beforeBody = beforeStmt;
+						afterBody = afterStmt;
+						this.beforeStep = beforeStep;
+						this.afterStep = afterStep;
 					}
 				}
 			}
@@ -92,11 +92,55 @@ public class PETableTriggerPlanningEventInfo extends PETableTriggerEventInfo {
 	}
 	
 	@Override
-	public Collection<ColumnKey> getTriggerBodyColumns(SchemaContext sc) {
+	public Collection<ColumnKey> getTriggerBodyColumns(SchemaContext sc) throws PEException {
 		ensureRuntime(sc);
 		return connValueOffsets.keySet();
 	}
 
+	@Override
+	public FeatureStep getBeforeStep(SchemaContext sc) throws PEException {
+		ensureRuntime(sc);
+		return beforeStep;
+	}
+
+	@Override
+	public FeatureStep getAfterStep(SchemaContext sc) throws PEException {
+		ensureRuntime(sc);
+		return afterStep;
+	}
+
 	
-	
+	private static class TriggerColumnTraversal extends Traversal {
+
+		LinkedHashMap<ColumnKey,Integer> triggerColumnOffsets;
+		
+		public TriggerColumnTraversal() {
+			super(Order.POSTORDER,ExecStyle.ONCE);
+			triggerColumnOffsets = new LinkedHashMap<ColumnKey,Integer>();
+		}
+		
+		public LinkedHashMap<ColumnKey,Integer> getTriggerColumnOffsets() {
+			return triggerColumnOffsets;
+		}
+		
+		@Override
+		public LanguageNode action(LanguageNode in) {
+			if (EngineConstant.COLUMN.has(in)) {
+				ColumnInstance ci = (ColumnInstance) in;
+				TableInstance ti = ci.getTableInstance();
+				if (ti instanceof TriggerTableInstance) {
+					ColumnKey ck = ci.getColumnKey();
+					Integer any = triggerColumnOffsets.get(ck);
+					if (any == null) {
+						any = triggerColumnOffsets.size();
+						triggerColumnOffsets.put(ck, any);
+					}
+					return new LateBindingConstantExpression(any.intValue());
+				}
+			}
+			return in;
+		}
+		
+	}
+		
 }

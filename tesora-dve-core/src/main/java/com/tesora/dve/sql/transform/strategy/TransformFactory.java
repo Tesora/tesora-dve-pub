@@ -29,6 +29,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.statement.dml.compound.CompoundStatement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.FeaturePlannerFilter;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
@@ -92,13 +93,18 @@ public abstract class TransformFactory implements FeaturePlanner {
 
 	public static void featurePlan(SchemaContext sc, DMLStatement stmt, ExecutionSequence sequence, BehaviorConfiguration config) throws PEException {
 		PlannerContext pc = new PlannerContext(sc,config);
-		FeatureStep fp = buildPlan(stmt,pc,DefaultFeaturePlannerFilter.INSTANCE);
-		if (fp == null)
-			throw new PEException("No applicable planning for '" + stmt.getSQL(sc) + "'");
-		fp = pc.getBehaviorConfiguration().getPostPlanningTransformer(pc, stmt).transform(pc, stmt, fp);
-		pc.getTempGroupManager().plan(sc);
-		maintainInvariants(sc,stmt,fp.getPlannedStatement());
+		FeatureStep fp = buildFeatureStep(pc,stmt);
 		fp.schedule(pc, sequence, new HashSet<FeatureStep>());
 	}
-
+	
+	public static FeatureStep buildFeatureStep(PlannerContext pc, DMLStatement stmt) throws PEException {
+		FeatureStep fp = buildPlan(stmt,pc,DefaultFeaturePlannerFilter.INSTANCE);
+		if (fp == null)
+			throw new PEException("No applicable planning for '" + stmt.getSQL(pc.getContext()) + "'");
+		fp = pc.getBehaviorConfiguration().getPostPlanningTransformer(pc, stmt).transform(pc, stmt, fp);
+		pc.getTempGroupManager().plan(pc.getContext());
+		maintainInvariants(pc.getContext(),stmt,fp.getPlannedStatement());
+		return fp;
+	}
+	
 }

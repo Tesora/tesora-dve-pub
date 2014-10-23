@@ -35,14 +35,15 @@ import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.UnaryProcedure;
 
 public class TriggerExecutionStep extends ExecutionStep {
 
 	// the temp table step
 	private RedistributionExecutionStep tempTable;
-	// column key to offset within the temp table mapping
-	private Map<ColumnKey,Integer> columnOffsets;
+	// the select I will execute to get the rows
+	private SelectStatement rowQuery;
 	// any before step
 	private ExecutionStep before;
 	// the actual step
@@ -54,14 +55,12 @@ public class TriggerExecutionStep extends ExecutionStep {
 			RedistributionExecutionStep srcTab,
 			ExecutionStep actual,
 			ExecutionStep before,
-			ExecutionStep after,
-			Map<ColumnKey,Integer> offsets) {
+			ExecutionStep after) {
 		super(db, storageGroup, ExecutionType.TRIGGER);
 		this.tempTable = srcTab;
 		this.actual = actual;
 		this.before = before;
 		this.after = after;
-		this.columnOffsets = offsets;
 	}
 
 	@Override

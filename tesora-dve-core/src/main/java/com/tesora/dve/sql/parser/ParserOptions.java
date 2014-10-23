@@ -32,7 +32,7 @@ public final class ParserOptions {
 		ALLOW_DUPLICATES, ALLOW_TENANT_COLUMN, TSCHEMA, PREPARE, OMIT_METADATA_INJECTION, ACTUAL_LITERALS,
 		RAW_PLAN_STEP, DISABLE_MT_LOOKUP_CHECKS, OMIT_TENANT_COLUMN_INJECTION,
 		INHIBIT_SINGLE_SITE_OPTIMIZATION, IGNORE_MISSING_USER, DO_NOT_LOCK, LOCK_OVERRIDE,
-		SESSION_REWRITE_FORCE_PUSHDOWN, INFOSCHEMA_VIEW, TRIGGER_COLUMNS
+		SESSION_REWRITE_FORCE_PUSHDOWN, INFOSCHEMA_VIEW
 	}
 	
 	public static final ParserOptions NONE = new ParserOptions();
@@ -173,10 +173,6 @@ public final class ParserOptions {
 		return addSetting(Option.INFOSCHEMA_VIEW, Boolean.TRUE);
 	}
 	
-	public ParserOptions setTriggerColumns() {
-		return addSetting(Option.TRIGGER_COLUMNS, Boolean.TRUE);
-	}
-	
 	public boolean isTraceParser() {
 		return hasSetting(Option.TRACEPARSER);
 	}
@@ -259,10 +255,6 @@ public final class ParserOptions {
 
 	public boolean isInfoSchemaView() {
 		return hasSetting(Option.INFOSCHEMA_VIEW);
-	}
-	
-	public boolean isTriggerColumns() {
-		return hasSetting(Option.TRIGGER_COLUMNS);
 	}
 	
 	public String toString() {

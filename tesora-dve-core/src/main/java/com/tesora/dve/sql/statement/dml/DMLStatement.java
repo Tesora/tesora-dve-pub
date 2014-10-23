@@ -65,7 +65,9 @@ import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
+import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.TransformFactory;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.ListSetMap;
 
@@ -224,15 +226,24 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 
 	public static final DMLExplainRecord distKeyExplain = DMLExplainReason.DISTRIBUTION_KEY_MATCHED.makeRecord(); 
 	
-	protected static void planViaTransforms(SchemaContext sc, DMLStatement dmls, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
-		if (dmls.hasTrigger(sc))
-			throw new PEException("No support for trigger execution");
+	protected static void planViaTransforms(final SchemaContext sc, final DMLStatement dmls, final ExecutionSequence es, final BehaviorConfiguration config) throws PEException {
 		// for now, we're going to say dml statements are cacheable - we'll override this later
 		// don't cache plans with parameters yet - won't work right for reuse
 		if (es.getPlan() != null && !(sc.getValueManager().hasPassDownParams() || dmls.getDerivedInfo().hasUserlandTemporaryTables())) 
 			es.getPlan().setCacheable(true);
+		invokePlanner(sc,dmls,new PlannerExecution() {
+
+			@Override
+			public void execute() throws Throwable {
+				TransformFactory.featurePlan(sc, dmls, es, config);				
+			}
+			
+		});
+	}
+	
+	protected static void invokePlanner(SchemaContext sc, DMLStatement dmls, PlannerExecution toInvoke) throws PEException {
 		try {
-			TransformFactory.featurePlan(sc, dmls, es, config);
+			toInvoke.execute();
 		} catch (Throwable t) {
 			if (t instanceof SchemaException) {
 				SchemaException se = (SchemaException) t;
@@ -250,8 +261,8 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 			} catch (Throwable it) {
 				throw new PEException(t);
 			}
-			throw new PEException(buf.toString(), t);
-		}		
+			throw new PEException(buf.toString(), t);			
+		}
 	}
 	
 	protected static void emitTables(SchemaContext sc, Collection<TableKey> tables, Set<PEAbstractTable<?>> tabs, StringBuilder buf) {
@@ -281,6 +292,22 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 		planViaTransforms(sc, this,es, config);
 	}
 		
+	@Override
+	public FeatureStep plan(final SchemaContext sc, final BehaviorConfiguration config) throws PEException {
+		final FeatureStep out[] = new FeatureStep[1];
+		final PlannerContext pc = new PlannerContext(sc,config);
+		invokePlanner(sc, this, new PlannerExecution() {
+
+			@Override
+			public void execute() throws Throwable {
+				// TODO Auto-generated method stub
+				out[0] = TransformFactory.buildFeatureStep(pc, DMLStatement.this);
+			}
+			
+		});
+		return out[0];
+	}
+	
 	public abstract DistKeyOpType getKeyOpType();
 
 	public abstract TriggerEvent getTriggerEvent();
@@ -291,5 +318,11 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 	@Override
 	public String toString() {
 		return System.identityHashCode(this) + "@ " + super.toString();
-	}	
+	}
+	
+	interface PlannerExecution {
+		
+		public void execute() throws Throwable;
+		
+	}
 }

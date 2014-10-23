@@ -70,6 +70,7 @@ import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PrepareExecutionStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryPredicate;
 
@@ -293,6 +294,11 @@ public abstract class Statement extends StatementNode {
 	
 	public abstract void plan(SchemaContext sc, ExecutionSequence es, BehaviorConfiguration config) throws PEException;
 
+	// alternate planning entry point.
+	public FeatureStep plan(SchemaContext sc, BehaviorConfiguration config) throws PEException {
+		throw new PEException("Illegal call to Statement.plan/2");
+	}
+	
 	public StatementType getStatementType() {
 		return StatementType.UNIMPORTANT;
 	}

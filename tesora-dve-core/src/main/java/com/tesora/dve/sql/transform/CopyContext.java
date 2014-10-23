@@ -37,7 +37,6 @@ import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
-import com.tesora.dve.sql.node.expression.TriggerColumnInstance;
 import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.schema.PEAbstractTable;
@@ -119,14 +118,6 @@ public class CopyContext extends VisitorContext {
 		put(orig.getTableInstance(), repl.getTableInstance());
 		put(orig.getColumnKey(), repl.getColumnKey());
 		return repl;
-	}
-	
-	public TriggerColumnInstance put(TriggerColumnInstance orig, TriggerColumnInstance repl) {
-		checkFixed(orig, repl);
-		// also put the tables
-		put(orig.getTableInstance(), repl.getTableInstance());
-		put(orig.getColumnKey(), repl.getColumnKey());
-		return repl;		
 	}
 	
 	public TableInstance put(TableInstance orig, TableInstance repl) {

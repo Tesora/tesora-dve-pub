@@ -159,6 +159,15 @@ public class ConnectionValues {
 		vals.set(index, newVal);
 	}
 	
+	public void setRuntimeConstants(List<Object> vals) {
+		constantValues.put(ConstantType.RUNTIME, new ResizableArray<Object>(vals));
+	}
+	
+	public Object getRuntimeConstant(int index) {
+		return constantValues.get(ConstantType.RUNTIME).get(index);
+	}
+	
+	
 	public Long getTenantID() {
 		return tenantID;
 	}

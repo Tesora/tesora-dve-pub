@@ -47,7 +47,6 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.NameInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
-import com.tesora.dve.sql.node.expression.TriggerColumnInstance;
 import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WildcardTable;
@@ -282,8 +281,6 @@ public class ScopeEntry implements Scope {
 		if (sc != null) {
 			if (sc.getOptions().isRawPlanStep() && ti.getTable() instanceof TempTable)
 				return new ColumnInstance(c,ti);
-			if (sc.getOptions().isTriggerColumns() && ti instanceof TriggerTableInstance)
-				return new TriggerColumnInstance(given,c,(TriggerTableInstance)ti);
 		}
 		return new ColumnInstance(given,c,ti);
 	}

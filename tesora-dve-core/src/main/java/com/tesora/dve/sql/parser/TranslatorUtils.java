@@ -4442,7 +4442,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		pushScope();
 		scope.insertTable(before);
 		scope.insertTable(after);
-		opts = opts.setTriggerColumns();
 		return tab;
 	}
 	

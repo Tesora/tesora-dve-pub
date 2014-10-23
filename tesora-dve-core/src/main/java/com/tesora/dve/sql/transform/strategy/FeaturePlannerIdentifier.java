@@ -56,5 +56,10 @@ public enum FeaturePlannerIdentifier {
 	DELETE_TRIGGER,
 	INSERT_INTO_SELECT_TRIGGER,
 	REPLACE_INTO_TRIGGER,
+	
+	// compound statement planners - they use the feature planner infrastructure
+	// but aren't actually feature planners
+	COMPOUND_STMT_LIST,
+	
 	ADHOC;
 }

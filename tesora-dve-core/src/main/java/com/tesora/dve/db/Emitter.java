@@ -2367,7 +2367,7 @@ public abstract class Emitter {
 		buf.append(" ").append(trigger.getEvent().name()).append(" ON ");
 		emitTable(sc,trigger.getTargetTable(),sc.getCurrentDatabase(false),buf);
 		buf.append(" FOR EACH ROW ");
-		emitStatement(sc,trigger.getBody(sc),buf);
+		buf.append(trigger.getBodySource());
 	}
 
 	

@@ -83,13 +83,6 @@ public class CaseStatement extends CompoundStatement {
 	}
 
 	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es,
-			BehaviorConfiguration config) throws PEException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
 	protected boolean schemaSelfEqual(LanguageNode other) {
 		// TODO Auto-generated method stub
 		return false;

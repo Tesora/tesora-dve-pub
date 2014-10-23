@@ -24,9 +24,11 @@ package com.tesora.dve.sql.schema;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ColumnKey;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 
 public class PETableTriggerEventInfo {
 
@@ -67,8 +69,15 @@ public class PETableTriggerEventInfo {
 		return out;
 	}
 	
-	public Collection<ColumnKey> getTriggerBodyColumns(SchemaContext sc) {
-		throw new SchemaException(Pass.PLANNER, "Invalid trigger planning");
+	public Collection<ColumnKey> getTriggerBodyColumns(SchemaContext sc) throws PEException {
+		throw new PEException("Invalid trigger planning");
 	}
 	
+	public FeatureStep getBeforeStep(SchemaContext sc) throws PEException {
+		throw new PEException("No before step present in DDL trigger info");
+	}
+	
+	public FeatureStep getAfterStep(SchemaContext sc) throws PEException {
+		throw new PEException("No before step present in DDL trigger info");
+	}
 }
