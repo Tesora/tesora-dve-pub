@@ -163,6 +163,19 @@ public class PrivateRange implements TemplateRangeItem {
 				}
 
 				/*
+				 * Use size for compatible types. Return the column vector with
+				 * larger
+				 * average type size.
+				 */
+				final double aAvgTypeSize = computeAverageTypeSizeForColumnVector(aColumns);
+				final double bAvgTypeSize = computeAverageTypeSizeForColumnVector(bColumns);
+				if (aAvgTypeSize > bAvgTypeSize) {
+					return 1;
+				} else if (aAvgTypeSize < bAvgTypeSize) {
+					return -1;
+				}
+
+				/*
 				 * Use the wider of the two column vectors.
 				 */
 				final int aSize = aColumns.size();
@@ -228,11 +241,11 @@ public class PrivateRange implements TemplateRangeItem {
 	}
 
 	public static PrivateRange fromWhereColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
-		return getValidRange(buildRangeFor(table, table.getIdentColumns(), new SingleColumnRanker(otherAvailableRanges, isSafeMode)));
+		return getValidRange(buildRangeFor(table, table.getIdentColumns(), new ColumnVectorRanker(otherAvailableRanges, isSafeMode)));
 	}
 
 	public static PrivateRange fromGroupByColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
-		return getValidRange(buildRangeFor(table, table.getGroupByColumns(), new SingleColumnRanker(otherAvailableRanges, isSafeMode)));
+		return getValidRange(buildRangeFor(table, table.getGroupByColumns(), new ColumnVectorRanker(otherAvailableRanges, isSafeMode)));
 	}
 
 	private static PrivateRange buildRangeFor(final TableStats table, final Map<TableColumn, Long> columnStats, final SingleColumnRanker ranker) {
@@ -288,6 +301,18 @@ public class PrivateRange implements TemplateRangeItem {
 		}
 
 		return bonusFactor;
+	}
+
+	private static double computeAverageTypeSizeForColumnVector(final Set<TableColumn> columns) {
+		double sum = 0.0;
+		for (final TableColumn column : columns) {
+			final Type type = column.getType();
+			if (type.isStringType() || type.isNumericType()) {
+				sum += type.getSize();
+			}
+		}
+
+		return (sum / columns.size());
 	}
 
 	private PrivateRange(final ColumnRanker<?> ranker) {

@@ -87,7 +87,7 @@ public class CorpusStats implements StatsVisitor {
 			final long bSize = b.getPredictedFutureSize(this.isRowWidthWeightingEnabled);
 			return Long.compare(aSize, bSize);
 		}
-	};
+	}
 
 	public static enum StatementType {
 		SELECT("SELECT"),
@@ -465,8 +465,8 @@ public class CorpusStats implements StatsVisitor {
 		private final String tableName;
 		private final QualifiedName fullName;
 		private final Map<StatementType, Long> statementStats = new HashMap<StatementType, Long>();
-		private final Map<TableColumn, Long> identColumnStats = new HashMap<TableColumn, Long>();
-		private final Map<TableColumn, Long> groupByColumnStats = new HashMap<TableColumn, Long>();
+		private final Map<Set<TableColumn>, Long> identColumnStats = new HashMap<Set<TableColumn>, Long>();
+		private final Map<Set<TableColumn>, Long> groupByColumnStats = new HashMap<Set<TableColumn>, Long>();
 		private final Map<TableColumn, Long> updateColumnStats = new HashMap<TableColumn, Long>();
 		private final Set<TableColumn> columns = new HashSet<TableColumn>();
 		private final Set<ForeignRelationship> forwardRelationships = new HashSet<ForeignRelationship>();
@@ -602,7 +602,7 @@ public class CorpusStats implements StatsVisitor {
 			return (reads > 0) ? ((double) writes / reads) : writes;
 		}
 
-		public Map<TableColumn, Long> getIdentColumns() {
+		public Map<Set<TableColumn>, Long> getIdentColumns() {
 			return Collections.unmodifiableMap(this.identColumnStats);
 		}
 
@@ -610,7 +610,7 @@ public class CorpusStats implements StatsVisitor {
 			return !this.identColumnStats.isEmpty();
 		}
 
-		public Map<TableColumn, Long> getGroupByColumns() {
+		public Map<Set<TableColumn>, Long> getGroupByColumns() {
 			return Collections.unmodifiableMap(this.groupByColumnStats);
 		}
 
@@ -709,14 +709,14 @@ public class CorpusStats implements StatsVisitor {
 			this.statementStats.put(type, count);
 		}
 
-		protected void bumpCount(final TableColumn identColumn, final int increment, final Map<TableColumn, Long> columnStats) {
-			Long count = columnStats.get(identColumn);
+		protected <T> void bumpCount(final T identColumnTuple, final int increment, final Map<T, Long> columnStats) {
+			Long count = columnStats.get(identColumnTuple);
 			if (count == null) {
 				count = new Long(increment);
 			} else {
 				count += increment;
 			}
-			columnStats.put(identColumn, count);
+			columnStats.put(identColumnTuple, count);
 		}
 
 		protected void setTableCardinality(final long cardinality) {
@@ -1056,7 +1056,14 @@ public class CorpusStats implements StatsVisitor {
 	@Override
 	public void onIdentColumn(Column<?> c, int freq) {
 		final TableStats table = getStats(c.getTable(), currentContext);
-		table.bumpCount(convertToPEColumn(c), freq, table.identColumnStats);
+		table.bumpCount(Collections.singleton(convertToPEColumn(c)), freq, table.identColumnStats);
+	}
+
+	@Override
+	public void onIdentColumnTuple(final Set<Column<?>> ct, int freq) {
+		// TODO
+		//		final TableStats table = getStats(c.getTable(), currentContext);
+		//		table.bumpCount(tableColumns, freq, table.identColumnStats);
 	}
 
 	@Override
@@ -1220,13 +1227,19 @@ public class CorpusStats implements StatsVisitor {
 	@Override
 	public void onUnion(int freq) {
 		// not implemented
-
 	}
 
 	@Override
 	public void onGroupBy(Column<?> c, int freq) {
 		final TableStats table = getStats(c.getTable(), currentContext);
-		table.bumpCount(convertToPEColumn(c), freq, table.groupByColumnStats);
+		table.bumpCount(Collections.singleton(convertToPEColumn(c)), freq, table.groupByColumnStats);
+	}
+
+	@Override
+	public void onGroupByColumnTuple(final Set<Column<?>> ct, int freq) {
+		// TODO
+		//		final TableStats table = getStats(c.getTable(), currentContext);
+		//		table.bumpCount(tableColumns, freq, table.groupByColumnStats);
 	}
 
 	@Override
@@ -1283,6 +1296,15 @@ public class CorpusStats implements StatsVisitor {
 			this.corpusStats.put(fullTableName, stats);
 		}
 		return stats;
+	}
+
+	private Set<TableColumn> convertAll(final Set<Column<?>> collection) {
+		final Set<TableColumn> converted = new LinkedHashSet<TableColumn>(collection.size());
+		for (final Column<?> column : collection) {
+			converted.add(convertToPEColumn(column));
+		}
+
+		return converted;
 	}
 
 	private TableColumn convertToPEColumn(final Column<?> c) {
