@@ -120,7 +120,7 @@
 			<dependency>
 				<artifactId>jdeb</artifactId>
 				<groupId>org.vafer</groupId>
-				<version>1.3</version>
+				<version>1.0.1</version>
 			</dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
