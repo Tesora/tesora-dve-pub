@@ -121,7 +121,7 @@ public class NestedQueryTransformTest extends TransformTest {
     }
 
 	@Test
-	public void testPE1476() throws Exception {
+	public void testPE1476() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table B (`id` int unsigned not null, `desc` varchar(50), flags int) broadcast distribute;",
 				"create table D (`id` int unsigned not null, `desc` varchar(50), flags int) range distribute on (`id`) using openrange");
@@ -140,7 +140,7 @@ public class NestedQueryTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testMultiModelNested() throws Exception {
+	public void testMultiModelNested() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table B (`id` int unsigned not null, `desc` varchar(50), flags int) broadcast distribute;",
 				"create table C (`id` int unsigned not null, `desc` varchar(50), flags int) random distribute;",

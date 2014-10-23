@@ -21,6 +21,7 @@ package com.tesora.dve.sql.infoschema.persist;
  * #L%
  */
 
+import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.SimplePersistedEntity;
 import com.tesora.dve.sql.schema.types.Type;
@@ -30,10 +31,7 @@ public class CatalogColumnEntity extends SimplePersistedEntity {
 	public CatalogColumnEntity(CatalogSchema cs, CatalogTableEntity cte) throws PEException {
 		super(cs.getColumn());
 		addRequires(cte);
-		preValue("has_default_value",0);
-		preValue("auto_generated",0);
-		preValue("default_value_is_constant",1);
-		preValue("on_update",0);
+		preValue("flags",0);
 		preValue("cdv",0);
 		preValue("hash_position",0);
 	}
@@ -42,8 +40,18 @@ public class CatalogColumnEntity extends SimplePersistedEntity {
 		preValue("name",n);
 	}
 	
+	public int getFlags() {
+		return (Integer)getValue("flags");
+	}
+
+	public void setFlags(int v) throws PEException {
+		preValue("flags",v);
+	}
+	
 	public void setNullable(boolean v) throws PEException {
-		preValue("nullable",(v ? 1 : 0));
+		preValue("flags",
+				(v ? ColumnAttributes.clear(getFlags(), ColumnAttributes.NOT_NULLABLE)
+				   : ColumnAttributes.set(getFlags(), ColumnAttributes.NOT_NULLABLE)));
 	}
 	
 	public void setPosition(int v) throws PEException {

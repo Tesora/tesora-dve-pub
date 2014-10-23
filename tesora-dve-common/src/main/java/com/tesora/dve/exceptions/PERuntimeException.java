@@ -21,14 +21,9 @@ package com.tesora.dve.exceptions;
  * #L%
  */
 
-import com.tesora.dve.common.PEContext;
-import com.tesora.dve.common.PEThreadContext;
-
-public class PERuntimeException extends RuntimeException implements PEContextAwareException {
+public class PERuntimeException extends RuntimeException {
 
 	private static final long serialVersionUID = 1L;
-
-	private PEContext context = PEThreadContext.copy();
 
 	public PERuntimeException() {
 		super();
@@ -48,11 +43,6 @@ public class PERuntimeException extends RuntimeException implements PEContextAwa
 
 	public PERuntimeException(Throwable cause) {
 		super(cause);
-	}
-
-	@Override
-	public PEContext getContext() {
-		return context;
 	}
 
 }

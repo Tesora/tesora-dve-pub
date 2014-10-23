@@ -23,9 +23,13 @@ package com.tesora.dve.sql;
 
 import java.io.Serializable;
 
-import com.tesora.dve.exceptions.PERuntimeException;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
+import com.tesora.dve.exceptions.PEMappedRuntimeException;
+import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.variables.KnownVariables;
 
-public class ParserException extends PERuntimeException {
+public class ParserException extends PEMappedRuntimeException {
 
 	// TODO: change to Component
 	public enum Pass implements Serializable {
@@ -47,34 +51,38 @@ public class ParserException extends PERuntimeException {
 	}
 	
 	private static final long serialVersionUID = 1L;
-	private final Pass phase;
+	
 	
 	protected ParserException() {
-		super();
-		phase = null;
+		super(new ErrorInfo(DVEErrors.INTERNAL,"(unknown error)"));
 	}
 	
 	public ParserException(Pass p) {
-		phase = p;
+		super(new ErrorInfo(DVEErrors.INTERNAL,"(unknown error)"));
 	}
 
 	public ParserException(Pass p, String message) {
-		super(message);
-		phase = p;
+		super(new ErrorInfo(DVEErrors.INTERNAL,message),message);
 	}
 
 	public ParserException(Pass p, Throwable cause) {
-		super(cause);
-		phase = p;
+		super(new ErrorInfo(DVEErrors.INTERNAL,cause.getMessage()),cause);
 	}
 
 	public ParserException(Pass p, String message, Throwable cause) {
-		super(message, cause);
-		phase = p;
+		super(new ErrorInfo(DVEErrors.INTERNAL, message),message, cause);
 	}
 
-	public Pass getPass() {
-		return phase;
+	public ParserException(ErrorInfo ei) {
+		super(ei);
 	}
-	
+
+	@Override
+	public boolean hasLocation() {
+		// ugh, what a freaking hack, but I don't want to add a callback everywhere
+		SchemaContext current = SchemaContext.threadContext.get();
+		return (current != null && current.getCatalog().isPersistent() &&
+				KnownVariables.ERROR_MIGRATOR.getGlobalValue(null));
+	}
+		
 }

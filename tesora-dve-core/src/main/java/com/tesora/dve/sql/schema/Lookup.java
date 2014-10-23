@@ -74,5 +74,9 @@ public class Lookup<T extends Object> extends AbstractLookup<T> {
 			return objects.get(n);
 		}
 	}
+
+	public Collection<Name> getKeys() {
+		return objects.keySet();
+	}
 	
 }

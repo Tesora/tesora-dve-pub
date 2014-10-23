@@ -72,10 +72,13 @@ public interface Type {
 
 	public abstract String getTypeName();
 
+	public abstract void persistTypeName(UserColumn uc);
+	
 	public abstract Integer getDataType();
 
 	public abstract boolean comparableForDistribution(Type t);
 
+	// simplified name
 	public abstract String getName();
 
 	public abstract boolean isUnknown();
@@ -115,5 +118,7 @@ public interface Type {
 	public abstract boolean isAcceptableRangeType();
 
 	public TextType toTextType();
+	
+	public int getColumnAttributesFlags();
 
 }

@@ -61,6 +61,15 @@ public enum EdgeName implements IEdgeName {
 	LIMIT_OFFSET("limit_offset"),
 	LIMIT_ROWCOUNT("limit_rowcount"),
 	
+	// compound statement edges
+	COMPOUND_STATEMENTS("compound_statements"),
+	CASE_STMT_TESTCLAUSE("case_stmt_test"),
+	CASE_STMT_ELSECLAUSE("case_stmt_else"),
+	CASE_STMT_WHENCLAUSE("case_stmt_when"),
+	
+	STMT_WHEN_TEST("stmt_when_test"),
+	STMT_WHEN_RESULT("stmt_when_result"),
+	
 	// this is for the insert tuples, and is used ONLY in the bad char parameterization.
 	// DO NOT USE for anything else.
 	INSERT_MULTIVALUE("donotselect");

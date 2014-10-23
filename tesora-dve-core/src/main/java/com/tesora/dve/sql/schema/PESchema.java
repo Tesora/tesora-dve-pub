@@ -31,8 +31,6 @@ import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheAwareLookup;
@@ -53,7 +51,7 @@ public class PESchema extends Persistable<PESchema, Map<String,UserTable>> imple
 		super(null);
 		this.pdb = StructuralUtils.buildEdge(pc,pdb,false);
 		setPersistent(pc,null, null);
-        lookup = Singletons.require(HostService.class).getDBNative().getEmitter().getTableLookup();
+        lookup = new CacheAwareLookup<PEAbstractTable<?>>(true, true); 
 		dirty = true;
 		loaded = true;
 	}
@@ -66,7 +64,7 @@ public class PESchema extends Persistable<PESchema, Map<String,UserTable>> imple
 	public PESchema(UserDatabase db, SchemaContext lc, PEDatabase pedb) {
 		super(null);
 		this.pdb = StructuralUtils.buildEdge(lc,pedb,true);
-        this.lookup = Singletons.require(HostService.class).getDBNative().getEmitter().getTableLookup();
+        this.lookup = new CacheAwareLookup<PEAbstractTable<?>>(true, true);
 		dirty = false;
 		loaded = false;
 	}

@@ -24,8 +24,11 @@ package com.tesora.dve.db;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
+import io.netty.channel.ChannelHandlerContext;
 
 public interface MysqlQueryResultConsumer {
+
+    void active(ChannelHandlerContext ctx);
 
 	boolean emptyResultSet(MyOKResponse ok)
 			throws PEException;

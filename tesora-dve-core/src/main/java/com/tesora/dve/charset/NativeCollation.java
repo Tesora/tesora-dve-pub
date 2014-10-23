@@ -26,15 +26,15 @@ import java.io.Serializable;
 public abstract class NativeCollation implements Serializable {
 	private static final long serialVersionUID = 1L;
 	
-	private int id;
+	private long collationId;
 	private String name;
 	private String characterSetName;
 	private boolean isDefault;
 	private boolean isCompiled;
 	private long sortLen;
 	
-	public NativeCollation(int id, String name, String characterSetName, boolean isDefault, boolean isCompiled, long sortLen) {
-		this.id = id;
+	public NativeCollation(long collationId, String name, String characterSetName, boolean isDefault, boolean isCompiled, long sortLen) {
+		this.collationId = collationId;
 		this.name = name;
 		this.characterSetName = characterSetName;
 		this.isDefault = isDefault;
@@ -42,12 +42,12 @@ public abstract class NativeCollation implements Serializable {
 		this.sortLen = sortLen;
 	}
 
-	public int getId() {
-		return id;
+	public long getId() {
+		return collationId;
 	}
 
-	public void setId(int id) {
-		this.id = id;
+	public void setId(long id) {
+		this.collationId = id;
 	}
 
 	public String getName() {

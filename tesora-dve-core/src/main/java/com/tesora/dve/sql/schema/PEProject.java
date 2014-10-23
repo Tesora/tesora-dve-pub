@@ -31,17 +31,14 @@ import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 
 public class PEProject extends Persistable<PEProject, Project> {
 
-	private PEPersistentGroup defaultStorageGroup;
-	
-	public PEProject(SchemaContext pc, Name n, PEPersistentGroup defStorage) {
+	public PEProject(SchemaContext pc, Name n) {
 		super(getProjectKey(n));
 		setName(n);
 		setPersistent(pc,null,null);
-		defaultStorageGroup = defStorage;
 	}
 	
 	public PEProject(SchemaContext pc, String n) {
-		this(pc, new UnqualifiedName(n), null);
+		this(pc, new UnqualifiedName(n));
 	}
 
 	public static PEProject load(Project p, SchemaContext lc) {
@@ -55,20 +52,10 @@ public class PEProject extends Persistable<PEProject, Project> {
 		super(getProjectKey(p.getName()));
 		lc.startLoading(this,p);
 		setName(new UnqualifiedName(p.getName()));
-		if (p.getDefaultStorageGroup() != null)
-			defaultStorageGroup = PEPersistentGroup.load(p.getDefaultStorageGroup(), lc);
 		setPersistent(lc,p,p.getId());
 		lc.finishedLoading(this, p);
 	}
-			
-	public void setDefaultStorageGroup(PEPersistentGroup pesg) {
-		defaultStorageGroup = pesg;
-	}
-	
-	public PEPersistentGroup getDefaultStorageGroup() {
-		return defaultStorageGroup;
-	}
- 	
+				
 	@Override
 	public boolean collectDifferences(SchemaContext sc, List<String> messages, Persistable<PEProject, Project> oth,
 			boolean first, @SuppressWarnings("rawtypes") Set<Persistable> visited) {
@@ -81,8 +68,6 @@ public class PEProject extends Persistable<PEProject, Project> {
 		visited.add(other);
 
 		if (maybeBuildDiffMessage(sc, messages, "name", getName(), other.getName(), first, visited))
-			return true;
-		if (maybeBuildDiffMessage(sc, messages, "default persistent group", getDefaultStorageGroup(), other.getDefaultStorageGroup(), first, visited))
 			return true;
 		return false;
 	}
@@ -123,8 +108,6 @@ public class PEProject extends Persistable<PEProject, Project> {
 
 	@Override
 	protected void populateNew(SchemaContext pc, Project p) throws PEException {
-		if (defaultStorageGroup != null) 
-			p.setDefaultStorageGroup(defaultStorageGroup.persistTree(pc));
 	}
 	
 	@Override

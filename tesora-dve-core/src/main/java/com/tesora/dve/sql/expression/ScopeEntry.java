@@ -21,6 +21,7 @@ package com.tesora.dve.sql.expression;
  * #L%
  */
 
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,8 +34,11 @@ import java.util.Set;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.MultiMap;
-import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.expression.Alias;
 import com.tesora.dve.sql.node.expression.AliasInstance;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -45,7 +49,10 @@ import com.tesora.dve.sql.node.expression.NameInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WildcardTable;
+import com.tesora.dve.sql.node.structural.JoinedTable;
+import com.tesora.dve.sql.parser.LexicalLocation;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.MultiMapLookup;
@@ -150,22 +157,43 @@ public class ScopeEntry implements Scope {
 	}
 	
 	// the errors we throw.
-	private static void objectNotFound(String what, Name origName) throws SchemaException {
-		throw new SchemaException(Pass.SECOND, "No such " + what + ": " + origName.getSQL());
-	}
-	
 	private void objectAmbiguous(String what, Name origName) throws SchemaException {
 		throw new SchemaException(Pass.SECOND, "Ambiguous " + what + " reference: " + origName.getSQL());
 	}
 	
-	private static final TableResolver resolver = new TableResolver().withMTChecks()
+	private void throwNonUniqueTableException(final Name ambiguousTableName) {
+		throw new SchemaException(new ErrorInfo(DVEErrors.NON_UNIQUE_TABLE, ambiguousTableName.getUnquotedName().get()));
+	}
+	
+	private static void tableNotFound(SchemaContext sc, Schema<?> schema, Name givenName) throws SchemaException {
+		ErrorInfo ei = null;
+		if (givenName.isQualified()) {
+			QualifiedName qn = (QualifiedName) givenName;
+			ei = new ErrorInfo(DVEErrors.TABLE_DNE,
+					qn.getNamespace().getUnquotedName().get(),
+					qn.getUnqualified().getUnquotedName().get());
+		} else {
+			UnqualifiedName db = schema.getSchemaName(sc);
+			ei = new ErrorInfo(DVEErrors.TABLE_DNE,
+					db.getUnquotedName().get(),
+					givenName.getUnquotedName().get());
+		}
+		throw new SchemaException(ei);
+	}
+	
+	private static void columnNotFound(Name columnName, LexicalLocation location) throws SchemaException {
+		throw new SchemaException(new ErrorInfo(DVEErrors.COLUMN_DNE,
+				columnName.getUnquotedName().get(),
+				location.getExternal()));
+	}
+	
+	public static final TableResolver resolver = new TableResolver().withMTChecks()
 			.withMissingTableFunction(new MissingTableFunction() {
 
 				@Override
 				public void onMissingTable(SchemaContext sc, Schema<?> schema,
 						Name name) {
-					UnqualifiedName db = schema.getSchemaName(sc);
-					objectNotFound("Table", new QualifiedName(db,name.getUnqualified())); 
+					tableNotFound(sc,schema,name);
 				}
 				
 			});
@@ -175,9 +203,14 @@ public class ScopeEntry implements Scope {
 	// is not unique, emit an error
 	@Override
 	public TableInstance buildTableInstance(Name inTableName, UnqualifiedName alias, Schema<?> inSchema, SchemaContext sc, LockInfo info) {
-		TableInstance raw = resolver.lookupTable(sc, inSchema, inTableName, info);
-		TableInstance ti = raw.adapt(inTableName.getUnqualified(), alias, (sc == null ? 0 : sc.getNextTable()),
-				(sc != null && sc.getOptions().isResolve()));
+		TableInstance ti = null;
+		if (sc.getCapability() == Capability.PARSING_ONLY) {
+			ti = new TableInstance(null,inTableName,alias,false);
+		} else {
+			TableInstance raw = resolver.lookupShowTable(sc, inSchema, inTableName, info);
+			ti = raw.adapt(inTableName.getUnqualified(), alias, (sc == null ? 0 : sc.getNextTable()),
+					(sc != null && sc.getOptions().isResolve()));			
+		}
 		insertTable(ti,alias,inTableName.getUnqualified());
 		return ti;
 	}
@@ -200,11 +233,11 @@ public class ScopeEntry implements Scope {
 	private void insertTable(TableInstance ti, Name alias, Name tableName) {
 		if (alias != null) {
 			if (tableNamespace.containsKey(alias)) 
-				objectAmbiguous("Table", alias);
+				throwNonUniqueTableException(alias);
 			tableNamespace.put(alias, ti);
 		} else {
 			if (tableNamespace.containsKey(tableName)) 
-				objectAmbiguous("Table", tableName);
+				throwNonUniqueTableException(tableName);
 			tableNamespace.put(tableName, ti);
 		}		
 	}
@@ -213,27 +246,27 @@ public class ScopeEntry implements Scope {
 	public void insertTable(TableInstance ti) {
 		if (ti.getAlias() != null) {
 			if (tableNamespace.containsKey(ti.getAlias())) 
-				objectAmbiguous("Table", ti.getAlias());
+				throwNonUniqueTableException(ti.getAlias());
 			tableNamespace.put(ti.getAlias(), ti);
 		} else {
 			if (tableNamespace.containsKey(ti.getTable().getName())) 
-				objectAmbiguous("Table", ti.getTable().getName());
+				throwNonUniqueTableException(ti.getTable().getName());
 			tableNamespace.put(ti.getTable().getName(), ti);
 		}
 	}
 	
 	@Override
-	public TableInstance lookupTableInstance(Name given, boolean required) {
+	public TableInstance lookupTableInstance(SchemaContext sc, Name given, boolean required) {
 		if (!given.isQualified()) {
 			Collection<TableInstance> sub = tableNamespace.get(given);
 			if (sub == null || sub.isEmpty()) {
 				if (required) {
-					objectNotFound("Table",given);
+					tableNotFound(sc,sc.getCurrentDatabase().getSchema(),given);
 				} else {
 					return null;
 				}
 			} else if (sub.size() > 1) {
-				objectAmbiguous("Table", given);
+				throwNonUniqueTableException(given);
 			} else {
 				return sub.iterator().next();
 			}
@@ -263,16 +296,16 @@ public class ScopeEntry implements Scope {
 			QualifiedName qn = (QualifiedName)given;
 			UnqualifiedName tableName = qn.getNamespace();
 			UnqualifiedName columnName = given.getUnqualified();
-			TableInstance ti = lookupTableInstance(tableName, false);
+			TableInstance ti = lookupTableInstance(sc, tableName, false);
 			if (ti == null) 
-				objectNotFound("Table", tableName);
+				columnNotFound(given,phase.getLocation());
 			@SuppressWarnings("null")
 			Column<?> c = ti.getTable().lookup(sc,given.getUnqualified());
 			if (columnName.isAsterisk()) {
 				return new WildcardTable(tableName, ti);
 			}
 			if (c == null) 
-				objectNotFound("Column", given);
+				columnNotFound(given,phase.getLocation());
 			return buildColumnInstance(sc,given,c,ti);
 		}
 		// if we're in a restricted namespace, try to build by derived first, then try by table
@@ -317,8 +350,8 @@ public class ScopeEntry implements Scope {
 		default:
 			throw new IllegalArgumentException("Invalid scope parse phase: " + phase);
 		}
-		if (any == null) 
-			objectNotFound("Column", given);
+		if (any == null)
+			columnNotFound(given,phase.getLocation());
 		return any;
 	}
 
@@ -390,7 +423,16 @@ public class ScopeEntry implements Scope {
 			Column<?> c = ti.getTable().lookup(sc,given);
 			if (c != null) {
 				if (candidate != null) {
-					// ambiguous
+					final LanguageNode parent = ti.getParent();
+					/*
+					 * MySQL now treats the common columns of NATURAL or USING
+					 * joins as a single column, so when a query refers to such
+					 * columns, the query compiler does not consider them as
+					 * ambiguous.
+					 */
+					if ((parent instanceof JoinedTable) && ((JoinedTable) parent).getJoinType().isNaturalJoin()) {
+						continue;
+					}
 					objectAmbiguous("Column", given);
 				} else {
 					candidate = new Pair<TableInstance, Column<?>>(ti, c);

@@ -30,6 +30,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
@@ -42,6 +43,9 @@ import org.apache.log4j.Logger;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.GroupConfig;
 import com.hazelcast.config.Join;
+import com.hazelcast.config.MapConfig;
+import com.hazelcast.config.MapConfig.StorageType;
+import com.hazelcast.config.MaxSizeConfig;
 import com.hazelcast.config.NetworkConfig;
 import com.hazelcast.core.Cluster;
 import com.hazelcast.core.Hazelcast;
@@ -59,6 +63,7 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 	public static final String TYPE = "hazelcast";
 	private static final int CLUSTER_PORT_DEFAULT = NetworkConfig.DEFAULT_PORT;
 	private static final String CLUSTER_PORT_PROPERTY = "cluster.port";
+	private static final String GLOBAL_SESS_VAR_MAP_NAME = "DVE.Global.Session.Variables";
 
 	static Logger logger = Logger.getLogger(HazelcastCoordinationServices.class);
 
@@ -271,6 +276,17 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 		}
 		join.getTcpIpConfig().setEnabled(true);
 
+		MapConfig mc = new MapConfig(GLOBAL_SESS_VAR_MAP_NAME);
+		mc.setStorageType(StorageType.HEAP);
+		mc.setTimeToLiveSeconds(0);
+		mc.setMaxIdleSeconds(0);
+		MaxSizeConfig msc = new MaxSizeConfig();
+		msc.setSize(0);
+		msc.setMaxSizePolicy(MaxSizeConfig.POLICY_CLUSTER_WIDE_MAP_SIZE);
+		mc.setMaxSizeConfig(msc);
+		
+		cfg.addMapConfig(mc);
+				
 		ourHazelcastInstance = Hazelcast.newHazelcastInstance(cfg);
 	}
 
@@ -406,6 +422,9 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 		return getOurHazelcastInstance().getIdGenerator(domain).newId();
 	}
 
+	private Map<String, String> getGlobalVariables() {
+		return getOurHazelcastInstance().getMap(GLOBAL_SESS_VAR_MAP_NAME);
+	}
 
 //	private void handleExternalServiceMemberRemovedEvent(InetSocketAddress inetSocketAddress) {
 //		String memberAddress = inetSocketAddress.getHostName();
@@ -448,4 +467,14 @@ public class HazelcastCoordinationServices extends HazelcastGroupMember implemen
 //			}
 //		}
 //	}
+
+	@Override
+	public String getGlobalVariable(String name) {
+		return getGlobalVariables().get(name);
+	}
+
+	@Override
+	public void setGlobalVariable(String name, String value) {
+		getGlobalVariables().put(name, value);
+	}
 }

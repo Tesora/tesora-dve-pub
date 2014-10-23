@@ -62,9 +62,11 @@ import com.tesora.dve.sql.schema.*;
 import com.tesora.dve.sql.schema.types.*;
 import com.tesora.dve.sql.schema.modifiers.*;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.MysqlSelectOption;
 import com.tesora.dve.sql.statement.session.*;
+import com.tesora.dve.sql.statement.dml.compound.*;
 import com.tesora.dve.worker.*;
 }
 
@@ -202,7 +204,7 @@ creatable_target returns [Statement s] options {k=1;}:
   { $s = utils.buildAlterTableStatement($altered_table.tk,utils.buildAddIndexAction(
       utils.buildKey(($f != null ? IndexType.FULLTEXT : $key_index_option.it), $indname.n, $key_list.l, $all_key_option_list.l)
       )); utils.popScope();}
-  | view_definition { $s = $view_definition.s; }
+  | view_or_trigger_definition { $s = $view_or_trigger_definition.s; }
   ;
 
 grantable_target returns [Statement s] options {k=1;}:
@@ -238,8 +240,8 @@ alterable_target returns [Statement s] options {k=1;}:
     (DEFAULT? (ch=create_db_charset_expr? co=create_db_collate_expr?) { $s = utils.buildAlterDatabaseStatement($dbn.n, $ch.n, $co.n); })
     | (templ=template_declaration_kern { $s = utils.buildAlterDatabaseStatement($dbn.n, $templ.p); })
   )
-  | (TABLE altered_table { ArrayList acts = new ArrayList(); } 
-      ((lata=alter_table_action { acts.addAll($lata.l); }) (Comma tata=alter_table_action { acts.addAll($tata.l); })*)
+  | (TABLE altered_table { ArrayList acts = new ArrayList(); Name tableName = $altered_table.tk.getTable().getName(); } 
+      ((lata=alter_table_action[tableName] { acts.addAll($lata.l); }) (Comma tata=alter_table_action[tableName] { acts.addAll($tata.l); })*)
       { $s = utils.buildAlterTableStatement($altered_table.tk, acts); utils.popScope(); })       
   ;
   
@@ -247,7 +249,7 @@ altered_table returns [TableKey tk] options {k=1;}:
   qualified_identifier { $tk = utils.lookupAlteredTable($qualified_identifier.n); }
   ;
 
-alter_table_action returns [List l] options {k=1;}:
+alter_table_action [Name tableName] returns [List l] options {k=1;}:
   (RENAME TO? ntn=qualified_identifier { $l = utils.buildRenameTableAction($ntn.n); })
   | (CONVERT TO
     ((charset_expr_tag cs=charset_type) (COLLATE cn=collate_type)?
@@ -263,7 +265,7 @@ alter_table_action returns [List l] options {k=1;}:
   | (DROP drop_target_action { $l = $drop_target_action.l; }) 
   | (DISABLE KEYS { $l = utils.buildDisableKeysAction(); })
   | (ENABLE KEYS { $l = utils.buildEnableKeysAction(); })
-  | (mysql_table_option { $l = utils.buildTableOptionAction($mysql_table_option.t); })
+  | (mysql_table_option[tableName] { $l = utils.buildTableOptionAction($mysql_table_option.t); })
   | (MODIFY COLUMN? mfs=field_specification add_col_first_or_after_spec? { $l = utils.buildModifyColumnAction($mfs.l, $add_col_first_or_after_spec.p); })
   | distribution_declaration_target { $l = utils.buildModifyDistributionAction($distribution_declaration_target.dv); }
   ;  
@@ -303,14 +305,14 @@ sql_schema_query_statement returns [Statement s] options {k=1;}:
 // [5] | <table_opts> select statement
 
 table_definition returns [Statement s] options {k=1;}:
-  (temptab=TEMPORARY { utils.notddl(); })? TABLE push_scope if_not_exists tn=qualified_identifier
+  (temptab=TEMPORARY { utils.notddl(); })? TABLE push_scope if_not_exists tn=qualified_identifier { Name tableName = $tn.n; }
   (
     // [2]
     ( LIKE npon=qualified_identifier 
       { $s = utils.buildCreateTable($tn.n, $npon.n, $if_not_exists.b); utils.popScope(); } )
     |
     // [5]
-    ( (cta_dto=db_table_options)? partition?
+    ( (cta_dto=db_table_options[tableName])? partition?
       (PERSISTENT GROUP ctasgn=unqualified_identifier)?
       ((ctadist=distribution_declaration) | (ctacont=container_discriminator))?
       AS? (ctasel=select_statement)
@@ -325,7 +327,7 @@ table_definition returns [Statement s] options {k=1;}:
             { $s = utils.buildCreateTable($tn.n, $pon.n, $if_not_exists.b); utils.popScope(); } )
           |
           // [1] & [4]
-          ( table_define_fields? Right_Paren (nt_dto=db_table_options)? partition? 
+          ( table_define_fields? Right_Paren (nt_dto=db_table_options[tableName])? partition? 
             (PERSISTENT GROUP sgn=unqualified_identifier)?
             ((ntdist=distribution_declaration) | (ntcont=container_discriminator))?
             (AS? ntsel=select_statement)?
@@ -480,11 +482,6 @@ builtin_type_value_keyword options {k=1;}:
   | BINARY | UNSIGNED | SERIAL | BOOLEAN
   ;  
 
-field_width returns [SizeTypeAttribute ts] options {k=1;}:
-  Left_Paren a=unsigned_integral_literal (Comma b=unsigned_integral_literal)? Right_Paren 
-  { $ts = utils.buildSizeTypeAttribute($a.expr,$b.expr); }
-  ;
-
 field_modifier returns [TypeModifier tm] options {k=1;}:
 //  simple_unqualified_identifier { $cm = utils.buildColumnModifier($simple_unqualified_identifier.n); }
 //  | 
@@ -497,15 +494,6 @@ field_modifier returns [TypeModifier tm] options {k=1;}:
   | BINARY { $tm = utils.buildTypeModifier(TypeModifierKind.BINARY); }
   ;
 
-convert_type_description returns [Type type] options {k=1;}:
-  (cst=(BINARY | CHAR | DECIMAL) field_width? { $type = utils.buildType(Collections.singletonList(bkn($cst)),$field_width.ts,null); })
-  | (cust=(DATE | DATETIME | TIME) { $type = utils.buildType(Collections.singletonList(bkn($cust)), null, null); })
-  | ((s=SIGNED | UNSIGNED) INTEGER?  
-    { ArrayList l = new ArrayList();
-      l.add($s == null ? utils.buildTypeModifier(TypeModifierKind.UNSIGNED) : utils.buildTypeModifier(TypeModifierKind.SIGNED));
-      $type = utils.buildType(Collections.singletonList(utils.buildName("INTEGER")),null, l); })
-  ; 
-
 field_attribute returns [ColumnModifier cm] options {k=1;}: 
   (field_attribute_no_default { $cm = $field_attribute_no_default.cm; } )
   | (field_default_value { $cm = utils.buildDefaultValue($field_default_value.expr); })
@@ -514,9 +502,10 @@ field_attribute returns [ColumnModifier cm] options {k=1;}:
 field_attribute_no_default returns [ColumnModifier cm] options {k=1;}: 
   ((n=NOT? NULL) { $cm = utils.buildColumnModifier($n != null ? ColumnModifierKind.NOT_NULLABLE : ColumnModifierKind.NULLABLE); }) 
   | (AUTOINCREMENT { $cm = utils.buildColumnModifier(ColumnModifierKind.AUTOINCREMENT); })
-  | (ON UPDATE CURRENT_TIMESTAMP { $cm = utils.buildOnUpdate(); })  
-  | (UNIQUE KEY { $cm = utils.buildInlineKeyModifier(ConstraintType.UNIQUE); })
-  | (pk=PRIMARY? KEY { $cm = utils.buildInlineKeyModifier($pk == null ? null : ConstraintType.PRIMARY); })
+  | (ON UPDATE CURRENT_TIMESTAMP { $cm = utils.buildOnUpdate(); })
+  | (PRIMARY KEY { $cm = utils.buildInlineKeyModifier(ConstraintType.PRIMARY); })  
+  | (UNIQUE { $cm = utils.buildInlineKeyModifier(ConstraintType.UNIQUE); })
+  | (KEY { $cm = utils.buildInlineKeyModifier(null); })
   ;
 
 field_default_value returns [ExpressionNode expr] options {k=1;}:
@@ -525,14 +514,14 @@ field_default_value returns [ExpressionNode expr] options {k=1;}:
     )
     ;
 
-db_table_options returns [List l] options {k=1;}:
+db_table_options [Name tableName] returns [List l] options {k=1;}:
   { $l = new ArrayList(); }
-  lto=mysql_table_option { $l.add($lto.t); } (Comma? tto=mysql_table_option { $l.add($tto.t);} )* 
+  lto=mysql_table_option[tableName] { $l.add($lto.t); } (Comma? tto=mysql_table_option[tableName] { $l.add($tto.t);} )* 
   ;
 
-mysql_table_option returns [TableModifier t] options {k=1;}:
+mysql_table_option [Name tableName] returns [TableModifier t] options {k=1;}:
   engine_modifier { $t = $engine_modifier.t; }
-  | (FIELD_COMMENT Equals_Operator? Character_String_Literal { $t = utils.buildCommentTableModifier($Character_String_Literal.text); })
+  | (FIELD_COMMENT Equals_Operator? Character_String_Literal { $t = utils.buildCommentTableModifier($tableName, $Character_String_Literal.text); })
   | (DEFAULT? 
     ((COLLATE Equals_Operator? cn=unqualified_identifier { $t = utils.buildCollationTableModifier($cn.n); })
     |(charset_expr_tag (cseq=Equals_Operator)? charset_type { $t = utils.buildCharsetTableModifier($charset_type.n); })
@@ -638,16 +627,43 @@ key_part_spec returns [PEKeyColumnBase c] options {k=1;}:
   { $c = utils.buildPEKeyColumn($unqualified_identifier.n, $unsigned_integral_literal.expr, $key_cardinality.expr); }
   ;
 
-view_definition returns [Statement s] options {k=1;}:
-  (OR (r=REPLACE))? algorithm_clause? definer_clause? security_clause? 
+// view and trigger are ambiguous in the first few tokens.  fun!
+view_or_trigger_definition returns [Statement s] options {k=1;}:
+  (OR (r=REPLACE))? algorithm_clause? definer_clause? security_clause?
+  (vdb=view_def_body | tdb=trigger_def_body)
+  { $s = utils.addViewTriggerFields(
+      ($vdb.s != null ? $vdb.s : $tdb.s),
+      $r != null, $algorithm_clause.a, $definer_clause.us, $security_clause.s); }
+  ;
+  
+view_def_body returns [Statement s] options {k=1;}:
   VIEW qualified_identifier (Left_Paren unqualified_identifier_list Right_Paren)? AS select_statement with_clause?
   (TABLE push_scope Left_Paren table_define_fields Right_Paren)?
-  { $s = utils.buildCreateViewStatement($qualified_identifier.n, $select_statement.s, 
-       $definer_clause.us, $unqualified_identifier_list.l, 
-       $r != null, $algorithm_clause.a, $security_clause.s, $with_clause.s, $table_define_fields.l); 
+  { $s = utils.buildCreateViewStatementKern($qualified_identifier.n, $select_statement.s, 
+       $unqualified_identifier_list.l, 
+       $with_clause.s, $table_define_fields.l); 
        if ($table_define_fields.l != null) utils.popScope(); }
   ;
   
+trigger_def_body returns [Statement s] options {k=1;}:
+  TRIGGER unqualified_identifier (b=BEFORE | AFTER) 
+  trigger_event ON push_trigger_table FOR EACH ROW
+  compound_or_single_statement
+  { $s = utils.buildCreateTrigger($unqualified_identifier.n,
+    $b != null,$trigger_event.te, $push_trigger_table.tk,
+    $compound_or_single_statement.s,$TRIGGER); }
+  ;
+
+push_trigger_table returns [PETable tk] options {k=1;}:
+  qualified_identifier { $tk = utils.pushTriggerTable($qualified_identifier.n); }
+  ;
+
+trigger_event returns [TriggerEvent te] options {k=1;}:
+  (INSERT { $te = TriggerEvent.INSERT; })
+  | (UPDATE { $te = TriggerEvent.UPDATE; })
+  | (DELETE { $te = TriggerEvent.DELETE; })
+  ;
+
 algorithm_clause returns [String a] options {k=1;}:
   ALGORITHM Equals_Operator algorithm_type { $a = $algorithm_type.t; }
   ;
@@ -800,7 +816,7 @@ sql_text_pstmt_prepare_statement returns [Statement s] options {k=1;}:
   
 sql_text_pstmt_execute_statement returns [Statement s] options {k=1;}:
   { ArrayList vars = new ArrayList(); }
-  EXECUTE unqualified_identifier (USING f=rhs_variable_ref { vars.add($f.v); } (Comma t=rhs_variable_ref { vars.add($t.v); })*)?
+  EXECUTE unqualified_identifier (USING f=rhs_variable_ref { vars.add($f.vi); } (Comma t=rhs_variable_ref { vars.add($t.vi); })*)?
   { $s = utils.buildExecutePreparedStatement($unqualified_identifier.n, vars); }
   ;
   
@@ -825,50 +841,54 @@ set_user_password returns [Statement s] options {k=1;}:
   { $s = utils.buildSetPasswordStatement($userid.us, $Character_String_Literal.text); }
   ;
 
-option_value returns [SetExpression sve] options {k=1;}:
-  (s=simple_unqualified_identifier^ | v=rhs_variable_ref) Equals_Operator c=set_expr_or_default
-  { ArrayList rhs = new ArrayList(); rhs.add($c.expr);
-    if ($v.v != null) $sve = utils.buildSetVariableExpression($v.v, rhs);
-    else $sve = utils.buildSetVariableExpression(utils.buildVariableInstance($s.n, VariableScope.VariableKind.SESSION, $s.tree), rhs);
-  }
-  | (vsk=variable_scope_kind id=keyword_simple_identifier1?)? ((TRANSACTION ISOLATION LEVEL il=isolation_level) | (Equals_Operator r=set_expr_or_default))
-  { if ($il.il != null) $sve = utils.buildSetTransactionIsolation($il.il, $vsk.n);
-    else if ($vsk.n == null)
-      error("Missing variable scope","");
-    else if ($id.n == null)
-      error("Missing variable","");
-    else 
-      $sve = utils.buildSetVariableExpression(utils.buildVariableInstance($id.n,$vsk.n,$id.tree), Collections.singletonList($r.expr));
-  }
-  | NAMES^ charset_type collate_spec? // -> ^(SET ^(SYS_VARIABLE { utils.buildIdentifier(this.adaptor, "NAMES") } SESSION) charset_type collate_spec?)
-  { ArrayList rhs = new ArrayList(); rhs.add(utils.buildIdentifierLiteral($charset_type.n)); if ($collate_spec.n != null) rhs.add(utils.buildIdentifierLiteral($collate_spec.n));
-    $sve = utils.buildSetVariableExpression(utils.buildVariableInstance(bkn($NAMES), VariableScope.VariableKind.SESSION, $NAMES.tree),rhs); }
-  | charset_expr_tag cst=charset_type // -> ^(SET ^(SYS_VARIABLE charset_expr_tag) charset_type)
-  { $sve = utils.buildSetVariableExpression(utils.buildVariableInstance($charset_expr_tag.n, VariableScope.VariableKind.SESSION, $charset_expr_tag.tree), 
-    Collections.singletonList(utils.buildIdentifierLiteral($cst.n))); }
-  // lhs_variable_ref Equals_Operator set_expr_or_default // -> ^(SET lhs_variable_ref set_expr_or_default)
-  // | variable_scope_kind? TRANSACTION ISOLATION isolation_level // -> ^(TRANSACTION ISOLATION isolation_level variable_scope_kind?)
-  ;
+// we support global variables now.  persistent values are modified via alter dve.
+// the syntax we seek to support is:
+// [1] (rhs_variable_ref Equals_Operator set_expr_or_default) // user variable
+// [2] ((GLOBAL | SESSION)? unqualified_identifier Equas_Operator set_expr_or_default) // session/global variable variant 1
+// [3] ((@@global. | @@session. | @@)unqualified_identifier Equals_Operator set_expr_or_default) // session/global variable variant 2
+// @@session.<name>, @@<name>, session <name>, local <name>, @@local.<name> all mean session vars 
 
-lhs_variable_ref returns [VariableInstance v] options {k=1;}:
-  variable_scope_kind^ unqualified_identifier {
-    List parts = new ArrayList(); parts.add($variable_scope_kind.n); parts.add($unqualified_identifier.n); 
-    $v = utils.buildVariableInstance(utils.buildQualifiedName(parts),(Name)null, $variable_scope_kind.tree); }  
-  | simple_unqualified_identifier^ { $v = utils.buildVariableInstance($simple_unqualified_identifier.n, VariableScope.VariableKind.SESSION, $simple_unqualified_identifier.tree); }
-  | rhs_variable_ref { $v = $rhs_variable_ref.v; }
+option_value returns [SetExpression sve] options {k=1;}:
+  // TRANSACTION is an unqualified_identifier, so we have a special rule just so we can catch that case
+  // handle the exceptions first
+  (NAMES^ charset_type collate_spec? 
+  { ArrayList rhs = new ArrayList(); rhs.add(utils.buildIdentifierLiteral($charset_type.n)); if ($collate_spec.n != null) rhs.add(utils.buildIdentifierLiteral($collate_spec.n));
+    $sve = utils.buildSetVariableExpression(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.SESSION),bkn($NAMES),$NAMES.tree),rhs); })
+  | 
+  (charset_expr_tag cst=charset_type 
+  { $sve = utils.buildSetVariableExpression(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.SESSION),$charset_expr_tag.n,$charset_expr_tag.tree), 
+    utils.buildIdentifierLiteral($cst.n)); })
+  |
+  // this branch handles everything of the form @... = foo
+  (rhs_variable_ref Equals_Operator c=set_expr_or_default
+   { $sve = utils.buildSetVariableExpression($rhs_variable_ref.vi,$c.expr); })
+  |
+  // handle (global|session) (transaction isolation_level .. | unqualified_identifier = expr)
+  (lvsk=variable_scope_kind 
+    (
+      (TRANSACTION ISOLATION LEVEL il=isolation_level 
+       { $sve = utils.buildSetTransactionIsolation($il.il, $lvsk.vsk); }) 
+      | 
+      (keyword_simple_identifier1 Equals_Operator nsve=set_expr_or_default 
+       { $sve = utils.buildSetVariableExpression(utils.buildLHSVariableInstance(utils.buildVariableScope($lvsk.vsk),$keyword_simple_identifier1.n, $keyword_simple_identifier1.tree),$nsve.expr);})
+    )
+  )
+  |
+  // handle (transaction isolation level) | 
+  (TRANSACTION ISOLATION LEVEL il=isolation_level { $sve = utils.buildSetTransactionIsolation($il.il, VariableScopeKind.SESSION); } )
+  |
+  // handle keyword_simple_identifier2 = expr
+  (keyword_simple_identifier2 Equals_Operator ssve=set_expr_or_default
+   { $sve = utils.buildSetVariableExpression(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.SESSION), $keyword_simple_identifier2.n, $keyword_simple_identifier2.tree),$ssve.expr); }
+  )
+   ;
+  
+lhs_variable_ref returns [VariableInstance vi] options {k=1;}:
+  (rhs_variable_ref { $vi = $rhs_variable_ref.vi; })
+  | (variable_scope_kind? unqualified_identifier
+     {$vi = utils.buildLHSVariableInstance(utils.buildVariableScope($variable_scope_kind.vsk),$unqualified_identifier.n,$unqualified_identifier.tree); })
   ;
   
-rhs_variable_ref returns [VariableInstance v] options {k=1;}:
-  f=AT_Sign^ ((t=AT_Sign s=qualified_identifier) | vn=unqualified_identifier)
-  { $v = utils.buildVariableInstance($s.n, $vn.n, $f.tree); }
-  ;
-
-variable_scope_kind returns [Name n] options {k=1;}:
-  SESSION { $n = bkn($SESSION); }
-  | GLOBAL { $n = bkn($GLOBAL); }
-  | DVE { $n = bkn($DVE); }
-  ;
-
 charset_type returns [Name n] options {k=1;}:
   unqualified_identifier { $n = $unqualified_identifier.n; }
   | BINARY { $n = bkn($BINARY); } 
@@ -1149,11 +1169,14 @@ pe_alter_target returns [Statement s] options {k=1;}:
     alter_persistent_sub1 { $s = $alter_persistent_sub1.s; } 
     | INSTANCE unqualified_identifier config_options { $s = utils.buildAlterPersistentInstanceStatement($unqualified_identifier.n, $config_options.l); }
   )
-  | DVE^ SET vn=unqualified_identifier Equals_Operator set_expr_or_default {
-    VariableScope vs = utils.buildVariableScope(utils.buildName($DVE.text),null);
-    VariableInstance vi = utils.buildVariableInstance($vn.n, vs,$DVE.tree);
-    $s = utils.buildAlterPersistentVariable(vi, $set_expr_or_default.expr);    
-  } 
+  | (DVE
+     ( 
+     (SET vn=unqualified_identifier Equals_Operator set_expr_or_default 
+     { $s = utils.buildAlterPersistentVariable(utils.buildLHSVariableInstance(utils.buildVariableScope(VariableScopeKind.PERSISTENT),$vn.n,$DVE.tree), $set_expr_or_default.expr); } )
+     |
+     (ADD VARIABLE nvn=unqualified_identifier config_options { $s = utils.buildAddVariable($nvn.n, $config_options.l); })
+     )
+    )
   | DYNAMIC SITE alter_dynamic_site_target { $s = $alter_dynamic_site_target.s; }
   | EXTERNAL SERVICE unqualified_identifier SET config_options { $s = utils.buildAlterExternalServiceStatement($unqualified_identifier.n, $config_options.l); }
   | TEMPLATE tempn=unqualified_identifier SET template_parameters
@@ -1211,15 +1234,15 @@ alter_dynamic_site_provider_target returns [Statement s] options {k=1;}:
   ln=unqualified_identifier ((SET vn=unqualified_identifier Equals_Operator set_expr_or_default) | config_options) 
   { if ($config_options.l != null) $s = utils.buildAlterDynamicSiteProviderStatement($ln.n,$config_options.l);
     else {
-    VariableScope vs = utils.buildVariableScope(VariableScope.VariableKind.SCOPED, "group_provider", $ln.n);
-    VariableInstance vi = utils.buildVariableInstance($vn.n,vs,null);
+    VariableScope vs = utils.buildVariableScope($ln.n);
+    VariableInstance vi = utils.buildLHSVariableInstance(vs,$vn.n,$vn.tree);
     $s = utils.buildAlterPersistentVariable(vi,$set_expr_or_default.expr);
     }
   }  
   ;
 
 alter_persistent_sub1 returns [Statement s] options {k=1;}:
-  (GROUP sg=unqualified_identifier ADD GENERATION sn=unqualified_identifier_list { $s = utils.buildAddPersistentSiteStatement($sg.n, $sn.l); })
+  (GROUP sg=unqualified_identifier ADD GENERATION sn=unqualified_identifier_list (WITH r=REBALANCE)? { $s = utils.buildAddPersistentSiteStatement($sg.n, $sn.l, $r != null); })
   |
   (SITE ssn=unqualified_identifier
     (
@@ -1270,12 +1293,13 @@ sql_schema_show_statement_target returns [Statement s] options {k=1;}:
   ) unqualified_identifier { $s = utils.buildShowSingularQuery($a.text, $unqualified_identifier.n); }
   | SCHEMA unqualified_identifier { $s = utils.buildShowSingularQuery("DATABASE",$unqualified_identifier.n); }
   | CREATE (
-  	(TABLE tui=qualified_identifier) { $s = utils.buildShowSingularQuery("CREATE TABLE",$tui.n); }
-  	| ((DATABASE | SCHEMA) if_not_exists dsui=unqualified_identifier) { $s = utils.buildShowCreateDatabaseQuery("CREATE DATABASE",$dsui.n, $if_not_exists.b); }
+  	((TABLE tui=qualified_identifier) { $s = utils.buildShowSingularQuery("CREATE TABLE",$tui.n); })
+  	| (((DATABASE | SCHEMA) if_not_exists dsui=unqualified_identifier) { $s = utils.buildShowCreateDatabaseQuery("CREATE DATABASE",$dsui.n, $if_not_exists.b); })
+  	| (TRIGGER tn=unqualified_identifier { $s = utils.buildShowSingularQuery("CREATE TRIGGER",$tn.n); })
   	)
   | EVENTS sql_schema_show_scoping? sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("EVENTS",$sql_schema_show_scoping.l,$sql_schema_like_or_where.pair); }
   | ENGINES sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("ENGINES",null,null); }
-  | TRIGGERS sql_schema_show_scoping? sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("TRIGGER",$sql_schema_show_scoping.l,$sql_schema_like_or_where.pair); }
+  | TRIGGERS sql_schema_show_scoping? sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("TRIGGERS",$sql_schema_show_scoping.l,$sql_schema_like_or_where.pair); }
   | TABLE lui=unqualified_identifier { utils.push_info_schema_scope("TABLE STATUS"); } sql_schema_show_scoping? tsw=sql_schema_like_or_where?
   { if ($lui.n.get().toUpperCase().equals("STATUS")) {
        $s = utils.buildShowPluralQuery("TABLE STATUS",$sql_schema_show_scoping.l, $tsw.pair);        
@@ -1313,7 +1337,7 @@ sql_schema_show_statement_target returns [Statement s] options {k=1;}:
     )
   | (w=WARNINGS | e=ERRORS) limit_specification? { $s = utils.buildShowErrorsOrWarnings($w.text == null ? $e.text : $w.text, $limit_specification.ls); }
   | COLLATION sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("COLLATION",null, $sql_schema_like_or_where.pair); } 
-  | EXTERNAL ((SERVICES { utils.push_info_schema_scope("EXTERNAL SERVICE");} esw=sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("EXTERNAL SERVICE", null, $esw.pair); })
+  | EXTERNAL ((SERVICES { utils.push_info_schema_scope("EXTERNAL SERVICES");} esw=sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("EXTERNAL SERVICES", null, $esw.pair); })
               | (SERVICE sn=unqualified_identifier { $s = utils.buildShowSingularQuery("EXTERNAL SERVICE", $sn.n); }))
   | (KEYS | INDEXES | INDEX ) { utils.push_info_schema_scope("KEY"); } sks=sql_schema_show_scoping? skw=sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("KEY", $sks.l, $skw.pair); }
   | ((CHARACTER SET) | CHARSET ) sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("CHARSET",null, $sql_schema_like_or_where.pair); } 
@@ -1325,7 +1349,7 @@ sql_schema_show_statement_target returns [Statement s] options {k=1;}:
   | SLAVE STATUS { $s = utils.buildShowPassthroughStatement("SLAVE STATUS"); }
   | GRANTS { $s = utils.buildShowPassthroughStatement("GRANTS"); }
   | CONTAINER unqualified_identifier  { $s = utils.buildShowSingularQuery("CONTAINER", $unqualified_identifier.n); } 
-  | CONTAINERS { utils.push_info_schema_scope("CONTAINER");} sql_schema_show_scoping? sql_schema_like_or_where?  { $s = utils.buildShowPluralQuery("CONTAINER", $sql_schema_show_scoping.l, $sql_schema_like_or_where.pair); }
+  | CONTAINERS { utils.push_info_schema_scope("CONTAINERS");} sql_schema_show_scoping? sql_schema_like_or_where?  { $s = utils.buildShowPluralQuery("CONTAINERS", $sql_schema_show_scoping.l, $sql_schema_like_or_where.pair); }
   | CONTAINER_TENANTS { utils.push_info_schema_scope("CONTAINER_TENANT"); } sql_schema_show_scoping? sql_schema_like_or_where? { $s = utils.buildShowPluralQuery("CONTAINER_TENANT", $sql_schema_show_scoping.l, $sql_schema_like_or_where.pair); }
   | PROCEDURE STATUS { utils.push_info_schema_scope("PROCEDURE STATUS"); } sql_schema_like_or_where?  { $s = utils.buildShowPluralQuery("PROCEDURE STATUS", null, $sql_schema_like_or_where.pair); }
   | FUNCTION STATUS { utils.push_info_schema_scope("FUNCTION STATUS"); } sql_schema_like_or_where?  { $s = utils.buildShowPluralQuery("FUNCTION STATUS", null, $sql_schema_like_or_where.pair); }
@@ -1339,15 +1363,18 @@ sql_schema_show_statement_target returns [Statement s] options {k=1;}:
 show_dynamic_site_provider_target returns [Statement s] options {k=1;}:
   (simple_unqualified_identifier config_options { $s = utils.buildShowDynamicSiteProvider($simple_unqualified_identifier.n, $config_options.l); }) 
   | (VARIABLES simple_unqualified_identifier? sql_schema_like_or_where? {
-    VariableScope vs = utils.buildVariableScope(VariableScope.VariableKind.SCOPED, "group_provider", $simple_unqualified_identifier.n);
+    VariableScope vs = utils.buildVariableScope($simple_unqualified_identifier.n);
     $s = utils.buildShowVariables(vs, $sql_schema_like_or_where.pair);
   }) 
   ;
 
 regular_variable_scope returns [VariableScope vs] options {k=1;}:
-  SESSION { $vs = utils.buildVariableScope(bkn($SESSION),null); }
-  | GLOBAL { $vs = utils.buildVariableScope(bkn($GLOBAL),null); }
-  | DVE simple_unqualified_identifier? { $vs = utils.buildVariableScope(bkn($DVE),$simple_unqualified_identifier.n); }
+  SESSION { $vs = utils.buildVariableScope(VariableScopeKind.SESSION); }
+  | GLOBAL { $vs = utils.buildVariableScope(VariableScopeKind.GLOBAL); }
+  | DVE simple_unqualified_identifier? {
+     if ($simple_unqualified_identifier.n == null) $vs = utils.buildVariableScope(VariableScopeKind.GLOBAL); 
+     else $vs = utils.buildVariableScope($simple_unqualified_identifier.n); 
+   }
   ;
 
 sql_schema_show_scoping returns [List l] options {k=1;}:

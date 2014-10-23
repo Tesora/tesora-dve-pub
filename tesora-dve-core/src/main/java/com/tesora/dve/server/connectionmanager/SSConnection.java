@@ -21,8 +21,9 @@ package com.tesora.dve.server.connectionmanager;
  * #L%
  */
 
+import io.netty.channel.Channel;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -34,17 +35,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.tesora.dve.db.mysql.common.MysqlHandshake;
-import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.common.RemoteException;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.DynamicPolicy;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.PersistentGroup;
@@ -52,7 +49,6 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.logutil.DisabledExecutionLogger;
 import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.comms.client.messages.BeginTransactionRequest;
@@ -69,7 +65,10 @@ import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.comms.client.messages.RollbackTransactionRequest;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
+import com.tesora.dve.db.mysql.common.MysqlHandshake;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
+import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.dbc.AddConnectParametersRequest;
 import com.tesora.dve.distribution.RangeDistributionModel;
 import com.tesora.dve.exceptions.PECodingException;
@@ -85,7 +84,6 @@ import com.tesora.dve.lockmanager.LockClient;
 import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.lockmanager.LockType;
 import com.tesora.dve.queryplan.QueryPlan;
-import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.server.connectionmanager.messages.AddConnectParametersExecutor;
 import com.tesora.dve.server.connectionmanager.messages.AgentExecutor;
 import com.tesora.dve.server.connectionmanager.messages.BeginTransactionRequestExecutor;
@@ -101,7 +99,7 @@ import com.tesora.dve.server.connectionmanager.messages.PreConnectRequestExecuto
 import com.tesora.dve.server.connectionmanager.messages.PurgeWorkerGoupCacheExecutor;
 import com.tesora.dve.server.connectionmanager.messages.RollbackTransactionRequestExecutor;
 import com.tesora.dve.server.connectionmanager.messages.SiteFailureExecutor;
-import com.tesora.dve.worker.agent.Envelope;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerCommitRequest;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
@@ -109,19 +107,22 @@ import com.tesora.dve.server.messaging.WorkerPrepareRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.server.messaging.WorkerRollbackRequest;
 import com.tesora.dve.server.transactionmanager.Transaction2PCTracker;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.ConnectionContext;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.StructuralUtils;
 import com.tesora.dve.sql.schema.cache.NonMTCachedPlan;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.mt.IPETenant;
-import com.tesora.dve.variable.SessionVariableHandler;
-import com.tesora.dve.variable.VariableInfo;
-import com.tesora.dve.variable.VariableValueStore;
-import com.tesora.dve.worker.agent.Agent;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.LocalVariableStore;
+import com.tesora.dve.variables.ServerGlobalVariableStore;
+import com.tesora.dve.variables.VariableHandler;
+import com.tesora.dve.variables.VariableManager;
+import com.tesora.dve.variables.VariableStoreSource;
+import com.tesora.dve.variables.VariableValueStore;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.StatementManager;
 import com.tesora.dve.worker.UserAuthentication;
@@ -130,8 +131,10 @@ import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
+import com.tesora.dve.worker.agent.Agent;
+import com.tesora.dve.worker.agent.Envelope;
 
-public class SSConnection extends Agent implements WorkerGroup.Manager, LockClient {
+public class SSConnection extends Agent implements WorkerGroup.Manager, LockClient, VariableStoreSource {
 
 	public static final String DYNAMIC_POLICY_VARIABLE_NAME = "dynamic_policy";
 	public static final String STORAGE_GROUP_VARIABLE_NAME = "storage_group";
@@ -139,6 +142,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public static final String USERLAND_TEMPORARY_TABLES_LOCK_NAME = "DVE.Userland.Temporary.Tables";
 	
 	static Logger logger = Logger.getLogger(SSConnection.class);
+	
+	// this is here solely to avoid doing lots of unnecessary work in the tests
+	static UpdatedGlobalVariablesCallback globalVariablesUpdated = new UpdatedGlobalVariablesCallback();
 
 	static final boolean transactionLoggingEnabled = !Boolean.getBoolean("SSConnection.suppressTransactionRecording");
 	
@@ -196,11 +202,13 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 	int transactionDepth = 0;
 	String currentTransId = null;
+	Boolean currentTransIsXA = null;
 	boolean autoCommitMode = true;
 	
 	long lastInsertedId = 0;
 	
-	VariableValueStore sessionVariables = new VariableValueStore("Session");
+	LocalVariableStore localSessionVariables = new LocalVariableStore();
+	
 	VariableValueStore userVariables = new VariableValueStore("User",false);
 
 	AcquiredLockSet txnLocks = new AcquiredLockSet();
@@ -224,9 +232,10 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	private int uniqueValue = 0;
 	private long lastMessageProcessedTime = System.currentTimeMillis();
 	private String cacheName = NonMTCachedPlan.GLOBAL_CACHE_NAME;
-	private String sessionVariableSetStatement;
 	private boolean executingInContext;
 	private ClientCapabilities clientCapabilities = new ClientCapabilities();
+    private Channel activeChannel;
+
 	
 	public SSConnection() throws PEException {
 		super("SSConnection");
@@ -278,7 +287,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 
 	private void initialiseSessionVariables() throws PEException {
-        sessionVariables.setAll(Singletons.require(HostService.class).getSessionConfigDefaults(this));
+		localSessionVariables = ServerGlobalVariableStore.INSTANCE.buildNewLocalStore(); 
 	}
 
 	// onMessage() and close() are synchronized as close() can be called
@@ -345,7 +354,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 				doPostReplyProcessing();
 			} finally {
-				PEThreadContext.popFrame();
 			}
 		}
 		return returnValue;		
@@ -361,14 +369,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 
 	private void pushDebugContext(final String requestId) {
-		PEThreadContext.pushFrame(this.toString())
-				.put("connectionId", Integer.toString(currentConnId))
-				.put("requestId", requestId);
-		if (transactionDepth > 0)
-			PEThreadContext.put("txnDepth", Integer.toString(transactionDepth));
-		if (currentTransId != null)
-			PEThreadContext.put("txn", currentTransId);
-		PEThreadContext.logDebug();
 	}
 
 	private void acquireGenerationLock() {
@@ -476,7 +476,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 	private void doSessionTimeoutCheck() {
 		try {
-			final long wait_timeout = Long.parseLong(getSessionVariable(SessionVariableHandler.WAIT_TIMEOUT));
+			final long wait_timeout = KnownVariables.WAIT_TIMEOUT.getSessionValue(this).longValue();
 			if (!executingInContext) {
 				Singletons.require(HostService.class).submit(new Callable<Void>() {
                     public Void call() throws Exception {
@@ -505,9 +505,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
                     }
                 });
 			}
-		} catch (PENotFoundException e) {
-			// Ignore - the wait_timeout variable won't be found if it takes more than the timeout interval
-			// for the ConnectRequest packet to be received
 		} catch (Exception e) {
 			logger.warn("Exception executing timeout check", e);
 		}
@@ -541,8 +538,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		tempCleanupRequired = required;
 	}
 
-	void doBeginTransaction() {
+	void doBeginTransaction(boolean xa) {
 		currentTransId = UUID.randomUUID().toString();
+		currentTransIsXA = xa;
 		setTempCleanupRequired(false);
 	}
 	
@@ -657,6 +655,9 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 			// to commit, we push on and commit the rest anyways, so just log exceptions and keep 
 			// processing the replies from the other sites.  If the site is brought back online and 
 			// made the master again, the "set master" functionality will recover the transaction.
+
+            //SMG:NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO!!!!!!!!!!!!!!!!!!
+
 			try {
 				f.get();
 			} catch (Throwable t) {
@@ -667,31 +668,13 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 				    logger.warn("Site failed during XA commit phase - exception ignored", t);
 			}
 		}
-		
-//		WorkerGroup.executeOnAllGroups(availableWG.values(), MappingSolution.AllWorkers, req, resultConsumer);
-//		int receiveCount = 0;
-//		for (WorkerGroup wg : availableWG.values()) {
-//			wg.sendToAllWorkers(this, req);
-//			receiveCount += wg.size();
-//		}
-//		while (receiveCount-- > 0) {
-//			// At this point we have recorded the transaction as committed.  If any of the sites fail
-//			// to commit, we push on and commit the rest anyways, so just log exceptions and keep 
-//			// processing the replies from the other sites.  If the site is brought back online and 
-//			// made the master again, the "set master" functionality will recover the transaction.
-//			try {
-//				receive();
-//			} catch (Throwable t) {
-//				logger.warn("Site failed during XA commit phase - exception ignored", t);
-//			}
-//		}
 
 		setTempCleanupRequired(true);
 	}
 
-	public void autoBeginTransaction() {
+	public void autoBeginTransaction(boolean xa) {
 		if (currentTransId == null)
-			doBeginTransaction();
+			doBeginTransaction(xa);
 	}
 
 	public void autoCommitTransaction() throws Throwable {
@@ -721,6 +704,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	void transactionCleanup() throws PEException {
 		transactionDepth = 0;
 		currentTransId = null;
+		currentTransIsXA = null;
 		activeWG.clear();
 //		clearWorkerGroups();
 		setTempCleanupRequired(true);
@@ -728,12 +712,12 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 	
 	public void userBeginTransaction() throws PEException {
-		userBeginTransaction(false);
+		userBeginTransaction(false,null);
 	}
 
-	public void userBeginTransaction(boolean withConsistentSnapshot) throws PEException {
+	public void userBeginTransaction(boolean withConsistentSnapshot, UserXid xaID) throws PEException {
 		if (transactionDepth++ == 0)
-			doBeginTransaction();
+			doBeginTransaction(xaID != null);
 		
 		if (withConsistentSnapshot) {
 
@@ -754,7 +738,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 				}
 				for (Map.Entry<PersistentGroup, UserTable> entry : tablesByGroupMap.entrySet()) {
 					final UserTable ut = entry.getValue();
-					SQLCommand sqlCommand = new SQLCommand("select * from " + dbNative.getNameForQuery(ut)  + " where 0=1");
+					SQLCommand sqlCommand = new SQLCommand(this, "select * from " + dbNative.getNameForQuery(ut) + " where 0=1");
 					WorkerGroup wg = getWorkerGroupAndPushContext(entry.getKey(),null);
 					try {
 						WorkerExecuteRequest req = 
@@ -952,7 +936,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		try {
 			returnWorkerGroup(wg);
 		} finally {
-			PEThreadContext.popFrame();
 		}
 	}
 
@@ -1031,7 +1014,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 	
 	public boolean hasActiveXATransaction() {
-		return hasActiveTransaction();
+		return currentTransIsXA == Boolean.TRUE;
 	}
 	
 	public SchemaContext getSchemaContext() {
@@ -1051,29 +1034,17 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		stmt.clearQueryPlan();
 	}
 
-	public Map<String, String> getSessionVariables() throws PEException {
-		HashMap<String, String> vMap = new HashMap<String, String>();
-		for (String name : sessionVariables.getNames())
-			vMap.put(name, getSessionVariable(name));
-		return Collections.unmodifiableMap(vMap);
-	}
-	
 	public void setSessionVariable(String variableName, String value) throws PEException {
-		synchronized (sessionVariables) {
-            SessionVariableHandler handler = Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo(variableName).getHandler();
-			handler.setValue(this, variableName, value);
-			handler.onValueChange(variableName, value);
-		}
-	}
-	
-	public String getSessionVariable(String variableName) throws PEException {
-        return Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo(variableName).getHandler().getValue(this, variableName);
-	}
+		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
 
-	public boolean hasSessionVariable(String variableName) throws PEException {
-        return Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo(variableName, false) != null;
+		VariableHandler<?> vh = vm.lookupMustExist(this,variableName);
+		vh.setSessionValue(this, value);
 	}
 	
+//	public String getSessionVariable(String variableName) throws PEException {
+//       return Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo(variableName).getHandler().getValue(this, variableName);
+//	}
+
 	public void setUserVariable(String variableName, String value) throws PENotFoundException {
 		userVariables.setValue(variableName, value);
 	}
@@ -1085,9 +1056,44 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public Map<String, String> getUserVariables() {
 		return userVariables.getVariableMap();
 	}
+
+	// specifically, any passthrough variables
+	public Map<String,String> getSessionVariables() {
+		return getSessionVariableStore().getView();
+	}
 	
-	public void updateWorkerState(String assignmentClause) throws PEException {
-		sendToAllGroups(new WorkerSetSessionVariableRequest(getNonTransactionalContext(), assignmentClause));
+    /**
+     * Ensures all the session variables set on the SSConnection are updated on the workers.
+     * Must be called after the variables are set, since this reads the current variable state.
+     * @throws PEException
+     */
+	public void updateWorkerState() throws PEException {
+        sendToAllGroups(new WorkerSetSessionVariableRequest(getNonTransactionalContext(), getSessionVariables(), new DefaultSetVariableBuilder()));
+	}
+		
+	/*
+	 * Make sure we send down passthrough global variable updates
+	 */
+	public void updateGlobalVariableState(String sql) throws PEException {
+		// blech, need to build the "all sites" storage group for this
+		globalVariablesUpdated.modify(sql);
+		PersistentGroup allSites = getCatalogDAO().buildAllSitesGroup();
+		WorkerExecuteRequest setSQL =
+				new WorkerExecuteRequest(getNonTransactionalContext(), new SQLCommand(this, sql));
+		WorkerGroup wg = null;
+		try {
+			wg = getWorkerGroup(allSites,null);
+			wg.submit(MappingSolution.AnyWorker, setSQL, DBEmptyTextResultConsumer.INSTANCE);
+		} finally {
+			returnWorkerGroup(wg);
+		}
+		
+	}
+	
+	public static void registerGlobalVariablesUpdater(UpdatedGlobalVariablesCallback x) {
+		globalVariablesUpdated = x;
+		if (globalVariablesUpdated == null)
+			globalVariablesUpdated = new UpdatedGlobalVariablesCallback();
 	}
 	
 	void sendToAllGroups(WorkerRequest req) throws PEException {
@@ -1103,10 +1109,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 //			receiveCount += wg.size();
 //		}
 //		consumeReplies(receiveCount);
-	}
-
-	public ResultCollector getSessionVariableAsResult(String variableName) throws PEException {
-        return Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo(variableName).getHandler().getValueAsResult(this, variableName);
 	}
 	
 	public PersistentGroup getCurrentPersistentGroup() throws PEException {
@@ -1144,17 +1146,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 
 	public long getUniqueValue() {
 		return ++uniqueValue ;
-	}
-
-	public void setSessionVariableValue(String name, String value) throws PENotFoundException {
-		synchronized (sessionVariables) {
-			sessionVariables.setValue(name, value);
-			sessionVariableSetStatement = null;
-		}
-	}
-
-	public String getSessionVariableValue(String name) throws PENotFoundException {
-		return sessionVariables.getValue(name);
 	}
 
 	public SSContext getTransactionalContext() {
@@ -1231,7 +1222,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 	
 	public ExecutionLogger getNewPlanLogger(QueryPlan qp) {
-		if (SchemaVariables.slowQueryLogEnabled(getConnectionContext())) {
+		if (KnownVariables.SLOW_QUERY_LOG.getValue(this).booleanValue()) {
 			slowQueryLogger = new SlowQueryLogger(this,qp);
 			return slowQueryLogger;
 		}
@@ -1258,24 +1249,8 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public String toString() {
 		return getName();
 	}
-
-	public String getSessionVariableSetStatement() throws PEException {
-		synchronized (sessionVariables) {
-			if (sessionVariableSetStatement == null) {
-				sessionVariableSetStatement = "SET ";
-				int clause = 0;
-                for (VariableInfo<SessionVariableHandler> vInfo : Singletons.require(HostService.class).getSessionConfigTemplate().getInfoValues()) {
-					String name = vInfo.getName();
-					String sessionContextSetting = vInfo.getHandler().getSessionAssignmentClause(name, vInfo.getHandler().getValue(this, name));
-					if (sessionContextSetting != null)
-						sessionVariableSetStatement += (clause++ > 0 ? "," : "") + sessionContextSetting;
-				}
-			}
-		}
-		return sessionVariableSetStatement;
-	}
 	
-	public MyPreparedStatement<String> getPreparedStatement(String key) {
+    public MyPreparedStatement<String> getPreparedStatement(String key) {
 		return pStmtMap.get(key);
 	}
 	
@@ -1307,6 +1282,29 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	public void setClientCapabilities(ClientCapabilities clientCaps) {
 		this.clientCapabilities = clientCaps;
 	}
+
+	@Override
+	public LocalVariableStore getSessionVariableStore() {
+		return localSessionVariables;
+	}
+
+	@Override
+	public ServerGlobalVariableStore getGlobalVariableStore() {
+		return ServerGlobalVariableStore.INSTANCE;
+	}
+
+	@Override
+	public VariableValueStore getUserVariableStore() {
+		return userVariables;
+	}
 		
+    public void injectChannel(Channel channel) {
+        this.activeChannel = channel;
+    }
+
+    public Channel getChannel(){
+        return this.activeChannel;
+    }
+
 }
 

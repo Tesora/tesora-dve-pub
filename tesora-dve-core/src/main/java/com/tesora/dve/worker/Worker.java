@@ -21,12 +21,11 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.worker.agent.Agent;
+import io.netty.channel.EventLoopGroup;
 import io.netty.util.concurrent.Future;
 
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang.ObjectUtils;
@@ -37,14 +36,19 @@ import com.tesora.dve.common.catalog.ISiteInstance;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.UserDatabase;
-import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
-import com.tesora.dve.resultset.collector.ResultChunkManager;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.worker.agent.Agent;
 
 /**
  * Worker is the agent that processes commands against the database. It
@@ -52,10 +56,10 @@ import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
  * Temp), though which database it is connected to can be changed by the
  * WorkerManager.
  */
-public abstract class Worker implements GenericSQLCommand.DBNameResolver {
+public abstract class Worker {
 	
 	public interface Factory {
-		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PEException;
+		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException;
 
 		public void onSiteFailure(StorageSite site) throws PEException;
 
@@ -72,6 +76,9 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 	
 	private static AtomicLong nextWorkerId = new AtomicLong();
 
+    EventLoopGroup previousEventLoop;
+    EventLoopGroup preferredEventLoop;
+
 	StorageSite site;
 	UserAuthentication userAuthentication;
 	AdditionalConnectionInfo additionalConnInfo;
@@ -84,7 +91,6 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 	WorkerConnection wConnection = null;
 	boolean connectionAllocated = false;
 
-	ResultChunkManager chunkMgr;
 	String currentDatabaseName = null;
 	String userVisibleDatabaseName;
 	Integer currentDatabaseID = null;
@@ -97,15 +103,27 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 
 	long lastAccessTime = System.currentTimeMillis();
 
-	Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site) throws PEException {
+    boolean bindingChangedSinceLastCatalogSet = false;
+
+	Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
 		this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
 		this.site = site;
 		this.userAuthentication = auth;
 		this.additionalConnInfo = additionalConnInfo;
+        this.previousEventLoop = null;
+        this.preferredEventLoop = preferredEventLoop;
 	}
 
-	public abstract WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth);
+	public abstract WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop);
 
+    public void bindToClientThread(EventLoopGroup eventLoop) throws PESQLException {
+        this.previousEventLoop = this.preferredEventLoop;
+        this.preferredEventLoop = eventLoop;
+        if (wConnection != null){
+            wConnection.bindToClientThread(eventLoop);
+            bindingChangedSinceLastCatalogSet = true;
+        }
+    }
 
 	void sendStatistics(WorkerRequest wReq, long execTime) throws PEException {
 		LogSiteStatisticRequest sNotice = wReq.getStatisticsNotice();
@@ -126,37 +144,57 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 //		}
 	}
 
-	private void closeWConnection() throws PESQLException {
+	private void closeWConnection() {
 		if (wConnection != null) {
 			try {
-				resetStatement();
+                PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
+				resetStatement(promise);
+                promise.sync();
 //				rollback(currentGlobalTransaction);
 				wConnection.close(lastException == null);
-			} catch (PEException e) {
-				wConnection.close(false);
-			} catch (SQLException e) {
-				wConnection.close(false);
-			}
+			} catch (Exception e) {
+                try {
+                    wConnection.close(false);
+                } catch (PESQLException e1) {
+                    logger.warn("Encountered problem resetting and closing connection "+wConnection, e);
+                }
+            }
 			wConnection = null;
 		}
 	}
 
-	public void resetStatement() throws SQLException {
-		if (!StringUtils.isEmpty(currentGlobalTransaction))
+	public void resetStatement(CompletionHandle<Boolean> promise) throws SQLException {
+
+        CompletionHandle<Boolean> resultTracker = new DelegatingCompletionHandle<Boolean>(promise){
+            @Override
+            public void success(Boolean returnValue) {
+                super.success(returnValue);
+            }
+
+            @Override
+            public void failure(Exception e) {
+                if (e instanceof SQLException)
+                    super.failure(e);
+
+                SQLException problem = new SQLException("Unable to reset worker connection", e);
+                problem.fillInStackTrace();
+                super.failure(problem);
+            }
+
+        };
+		if (!StringUtils.isEmpty(currentGlobalTransaction)) {
 			try {
-				rollback(currentGlobalTransaction);
+				rollback(currentGlobalTransaction, resultTracker);
 //				currentGlobalTransaction = null;
 			} catch (Exception e) {
-				throw new SQLException("Unable to reset worker connection", e);
-//				logger.warn(getName()
-//						+ " got exception on rollback during releaseWorkers() - exception ignored",
-//						e);
+				SQLException problem = new SQLException("Unable to reset worker connection", e);
+                problem.fillInStackTrace();
+                promise.failure(problem);
+                return;
 			}
-//		currentGlobalTransaction = null;
-		if (chunkMgr != null) {
-			chunkMgr.close();
-			chunkMgr = null;
-		}
+        } else {
+            promise.success(true);
+        }
 	}
 
 	public void setCurrentDatabase(PersistentDatabase currentDatabase) throws PEException {
@@ -164,23 +202,29 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 			// the physical db name might be the same, but we could have dropped the physical db in between
 			// check to make sure that the udb id has not changed
 			String newDatabaseName = currentDatabase.getNameOnSite(site);
-			if (!newDatabaseName.equals(currentDatabaseName) || (currentDatabaseID != null && currentDatabaseID.intValue() != currentDatabase.getId())) {
-				previousDatabaseID = currentDatabaseID;
+
+			if (bindingChangedSinceLastCatalogSet || !newDatabaseName.equals(currentDatabaseName) || (currentDatabaseID != null && currentDatabaseID.intValue() != currentDatabase.getId()) ) {
+                previousDatabaseID = currentDatabaseID;
 				currentDatabaseID = currentDatabase.getId();
 				currentDatabaseName = newDatabaseName;
 				userVisibleDatabaseName = currentDatabase.getUserVisibleName();
+                previousEventLoop = preferredEventLoop;
 				getConnection().setCatalog(currentDatabaseName);
+                bindingChangedSinceLastCatalogSet = false;
 			}
 		}
 	}
+
+    public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise) {
+        WorkerConnection connection = getConnection();
+        connection.updateSessionVariables(desiredVariables, setBuilder, promise);
+    }
 	
 	// used in late resolution support
-	@Override
 	public String getNameOnSite(String dbName) {
 		return UserDatabase.getNameOnSite(dbName, site);
 	}
 	
-	@Override
 	public int getSiteIndex() {
 		return site.getInstanceIdentifier().hashCode();
 	}
@@ -197,18 +241,10 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		if (wConnection == null) {
 			if (connectionAllocated)
 				throw new PECodingException("Worker connection reallocated");
-			wConnection = getConnection(site, additionalConnInfo, userAuthentication);
+			wConnection = getConnection(site, additionalConnInfo, userAuthentication, preferredEventLoop);
 			connectionAllocated = true;
 		}
 		return wConnection;
-	}
-
-	public void setChunkManager(ResultChunkManager mgr) {
-		chunkMgr = mgr;
-	}
-
-	public ResultChunkManager getChunkManager() {
-		return chunkMgr;
 	}
 
 	String getWorkerId() throws PEException {
@@ -227,7 +263,7 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		this.site = site2;
 	}
 
-	public DevXid getXid(String globalId) throws PEException {
+	public DevXid getXid(String globalId) {
 		return new DevXid(globalId, getName());
 	}
 
@@ -257,49 +293,98 @@ public abstract class Worker implements GenericSQLCommand.DBNameResolver {
 		}
 	}
 
-	public void prepare(String globalId) throws PEException {
+	public void prepare(String globalId, CompletionHandle<Boolean> promise) {
 		if (site.supportsTransactions()) {
 			if (!StringUtils.isEmpty(currentGlobalTransaction)) {
 				if (logger.isDebugEnabled())
 					logger.debug("Txn: "+getName()+".prepare("+globalId+")");
-				if (currentGlobalTransaction != globalId)
-					throw new PEException("Transaction id mismatch (expected "
+				if (currentGlobalTransaction != globalId) {
+					PEException problem = new PEException("Transaction id mismatch (expected "
 							+ currentGlobalTransaction + ", got " + globalId + ")");
-				endTrans(globalId);
-				getConnection().prepareXA(getXid(globalId));
+                    problem.fillInStackTrace();
+                    promise.failure(problem);
+                    return;
+                }
+                try {
+                    endTrans(globalId);
+                } catch (PEException e) {
+                    promise.failure(e);
+                    return;
+                }
+
+                getConnection().prepareXA(getXid(globalId), promise);
+                return;
 			}
 		}
+
+        promise.success(true);
 	}
 
-	public void commit(String globalId, boolean onePhase) throws PEException {
+	public void commit(String globalId, boolean onePhase, CompletionHandle<Boolean> promise) {
 		if (site.supportsTransactions()) {
 			if (!StringUtils.isEmpty(currentGlobalTransaction)) {
 				if (logger.isDebugEnabled())
 					logger.debug("Txn: "+getName()+".commit("+globalId+")");
-				if (currentGlobalTransaction != globalId)
-					throw new PEException("Transaction id mismatch (expected "
+				if (currentGlobalTransaction != globalId) {
+					PEException problem = new PEException("Transaction id mismatch (expected "
 							+ currentGlobalTransaction + ", got " + globalId + ")");
-				if (onePhase)
-					endTrans(globalId);
-				getConnection().commitXA(getXid(globalId), onePhase);
-				currentGlobalTransaction = null;
+                    problem.fillInStackTrace();
+                    promise.failure(problem);
+                    return;
+                }
+
+                try {
+
+                    if (onePhase)
+                        endTrans(globalId);
+
+                } catch (PEException e) {
+                    promise.failure(e);
+                    return;
+                }
+
+                CompletionHandle<Boolean> resultTracker = new DelegatingCompletionHandle<Boolean>(promise){
+                    @Override
+                    public void success(Boolean returnValue) {
+                        currentGlobalTransaction = null;
+                        super.success(returnValue);
+                    }
+
+                };
+
+                getConnection().commitXA(getXid(globalId), onePhase, resultTracker);
+                return;
 			}
 		}
+        promise.success(true);
 	}
 
-	public void rollback(String globalId) throws PEException {
+	public void rollback(String globalId, CompletionHandle<Boolean> promise) {
 		if (site.supportsTransactions()) {
 			if ( /* isModified() && */ !StringUtils.isEmpty(currentGlobalTransaction)) {
 				if (logger.isDebugEnabled())
 					logger.debug("Txn: "+getName()+".rollback("+globalId+")");
-				if (currentGlobalTransaction != globalId)
-					throw new PEException("Transaction id mismatch (expected "
+				if (currentGlobalTransaction != globalId){
+                    PEException problem = new PEException("Transaction id mismatch (expected "
 							+ currentGlobalTransaction + ", got " + globalId + ")");
-				endTrans(globalId);
-				currentGlobalTransaction = null;
-				getConnection().rollbackXA(getXid(globalId));
+                    problem.fillInStackTrace();
+                    promise.failure(problem);
+                    return;
+                }
+
+                try {
+                    endTrans(globalId);
+                } catch (PEException e) {
+                    promise.failure(e);
+                    return;
+                }
+
+                currentGlobalTransaction = null;
+				getConnection().rollbackXA(getXid(globalId), promise);
 			}
 		}
+
+        promise.success(true);
 	}
 
 	public void close() throws PEException {

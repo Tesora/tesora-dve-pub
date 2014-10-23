@@ -176,7 +176,5 @@ public class HandleFromClauseSubquery extends StrategyFactory {
 		}
 		
 	}
-
-
 	
 }

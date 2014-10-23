@@ -36,13 +36,16 @@ import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.common.catalog.ViewMode;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepAddGenerationOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
-import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -54,13 +57,15 @@ import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.PEView;
 import com.tesora.dve.sql.schema.PEViewTable;
+import com.tesora.dve.sql.schema.RangeDistribution;
+import com.tesora.dve.sql.schema.RangeDistributionVector;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
-import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.worker.WorkerGroup;
@@ -68,10 +73,12 @@ import com.tesora.dve.worker.WorkerGroup;
 public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup> {
 
 	protected List<PEStorageSite> sites;
+	protected final boolean rebalance;
 	
-	public AddStorageSiteStatement(PEPersistentGroup target, List<PEStorageSite> pess) {
+	public AddStorageSiteStatement(PEPersistentGroup target, List<PEStorageSite> pess, boolean rebalance) {
 		super(target, true);
 		sites = pess;
+		this.rebalance = rebalance;
 	}
 
 	public List<PEStorageSite> getStorageSites() {
@@ -86,9 +93,16 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 	}
 
 	@Override
+	public void normalize(SchemaContext sc) {
+		if (rebalance)
+			throw new SchemaException(Pass.PLANNER, "No runtime support for rebalance");
+		super.normalize(sc);
+	}
+	
+	@Override
 	protected ExecutionStep buildStep(SchemaContext sc) throws PEException {
 		return new ComplexDDLExecutionStep(null,getTarget(), getTarget(), Action.ALTER,
-				new AddStorageGenCallback((PEPersistentGroup)getTarget(),sites));
+				new AddStorageGenCallback((PEPersistentGroup)getTarget(),sites,rebalance));
 	}
 
 	@Override
@@ -102,12 +116,14 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 		private final List<PEStorageSite> theSites;
 		private QueryStepAddGenerationOperation op;
 		private final int versionAtPlanning;
+		private final boolean rebalancing;
 		
-		public AddStorageGenCallback(PEPersistentGroup group, List<PEStorageSite> sites) {
+		public AddStorageGenCallback(PEPersistentGroup group, List<PEStorageSite> sites, boolean rebalancing) {
 			theGroup = group;
 			theSites = sites;
 			versionAtPlanning = group.getVersion();
 			op = null;
+			this.rebalancing = rebalancing;
 		}
 		
 		@Override
@@ -165,17 +181,20 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 					}
 				}
 			}
+			
 			ListSet<PEDatabase> dbs = new ListSet<PEDatabase>();
 			dbs.addAll(views.keySet());
 			dbs.addAll(plain.keySet());
 			dbs.addAll(fks.keySet());
 			ListOfPairs<UserTable,SQLCommand> commands = new ListOfPairs<UserTable,SQLCommand>(allTabs.size());
 			ListSet<PEAbstractTable<?>> emitted = new ListSet<PEAbstractTable<?>>();
-			emitPlainTables(sc,plain,commands, emitted);
-			boolean ignoreFKs = emitForeignKeyTables(sc,fks,commands, emitted);
+			MultiMap<RangeDistribution,PETable> tablesByRange = new MultiMap<RangeDistribution,PETable>();
+			emitPlainTables(sc,plain,commands, emitted, tablesByRange);
+			boolean ignoreFKs = emitForeignKeyTables(sc,fks,commands, emitted, tablesByRange);
 			emitViews(sc,views,commands, emitted);
 			List<SQLCommand> users = new ArrayList<SQLCommand>();
 			emitUsers(sc,dbs, users);
+			List<AddStorageGenRangeInfo> rangeInfo = buildRangeInfo(sc,tablesByRange);
 			/*
 			for(Pair<UserTable,SQLCommand> p : commands) {
 				System.out.println(p.getFirst());
@@ -184,22 +203,32 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 			for(SQLCommand s : users) {
 				System.out.println(s.getRawSQL());
 			}
+			for(AddStorageGenRangeInfo info : rangeInfo) {
+				info.display(System.out);
+			}
 			*/
-			return new QueryStepAddGenerationOperation(pg,sites,null,commands,ignoreFKs,users);
+			return new QueryStepAddGenerationOperation(pg,sites,null,commands,ignoreFKs,users,rangeInfo);
 		}
 
 		private void emitPlainTables(SchemaContext sc, MultiMap<PEDatabase,PETable> tabs, ListOfPairs<UserTable,SQLCommand> commands,
-				ListSet<PEAbstractTable<?>> emitted) {
+				ListSet<PEAbstractTable<?>> emitted,
+				MultiMap<RangeDistribution,PETable> tablesByRange) {
 			for(PEDatabase ped : tabs.keySet()) {
 				Collection<PETable> sub = tabs.get(ped);
 				emitted.addAll(sub);
-				for(PETable pet : sub) 
+				for(PETable pet : sub) {
 					commands.add(pet.getPersistent(sc),getCommand(sc,new PECreateTableStatement(pet,false)));
+					if (pet.getDistributionVector(sc).isRange()) {
+						RangeDistributionVector rdv = (RangeDistributionVector) pet.getDistributionVector(sc);
+						tablesByRange.put(rdv.getRangeDistribution().getDistribution(sc),pet);
+					}
+				}
 			}
 		}
 		
 		private boolean emitForeignKeyTables(SchemaContext sc, MultiMap<PEDatabase,PETable> tabs, ListOfPairs<UserTable,SQLCommand> commands,
-				ListSet<PEAbstractTable<?>> emitted) {
+				ListSet<PEAbstractTable<?>> emitted,
+				MultiMap<RangeDistribution,PETable> tablesByRange) {
 			boolean ignore = false;
 			while(tabs.values().size() != 0) {
 				int before = tabs.values().size();
@@ -223,6 +252,10 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 						}
 						if (all) {
 							commands.add(pet.getPersistent(sc),getCommand(sc,new PECreateTableStatement(pet,false)));
+							if (pet.getDistributionVector(sc).isRange()) {
+								RangeDistributionVector rdv = (RangeDistributionVector) pet.getDistributionVector(sc);
+								tablesByRange.put(rdv.getRangeDistribution().getDistribution(sc),pet);
+							}
 							emitted.add(pet);
 							iter.remove();
 						}
@@ -250,7 +283,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 						PEView pev = pevt.getView(sc);
 						if (pev.getMode() == ViewMode.EMULATE) {
 							// add a table def
-							commands.add(pevt.getPersistent(sc),new SQLCommand(pevt.getDeclaration()));
+							commands.add(pevt.getPersistent(sc), new SQLCommand(sc, pevt.getDeclaration()));
 							iter.remove();
 							emitted.add(pevt);
 						} else {
@@ -284,7 +317,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 			
 		}
 
-		private void emitUsers(SchemaContext sc,ListSet<PEDatabase> dbs, List<SQLCommand> commands) {
+		private void emitUsers(SchemaContext sc, ListSet<PEDatabase> dbs, List<SQLCommand> commands) {
 			MultiMap<PEUser,PEPriviledge> privs = sc.findUsersForGenAdd();
 			for(PEUser peu : privs.keySet()) {
 				commands.add(getCommand(sc, new PECreateUserStatement(Collections.singletonList(peu),false)));
@@ -310,9 +343,18 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 			}
 		}
 
+		private List<AddStorageGenRangeInfo> buildRangeInfo(SchemaContext sc, MultiMap<RangeDistribution,PETable> tablesByRange) {
+			if (!rebalancing) return Collections.EMPTY_LIST;
+			List<AddStorageGenRangeInfo> out = new ArrayList<AddStorageGenRangeInfo>();
+			for(RangeDistribution rd : tablesByRange.keySet()) 
+				out.add(new AddStorageGenRangeInfo(sc,rd,(List<PETable>) tablesByRange.get(rd)));
+			return out;
+		}
+
 		
 		private SQLCommand getCommand(SchemaContext sc, Statement s) {
-			GenericSQLCommand gsql = s.getGenericSQL(sc, false, false);
+			EmitOptions opts = EmitOptions.NONE.addQualifiedTables();
+	        GenericSQLCommand gsql = s.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), opts);
 			return gsql.resolve(sc,null).getSQLCommand();			
 		}
 

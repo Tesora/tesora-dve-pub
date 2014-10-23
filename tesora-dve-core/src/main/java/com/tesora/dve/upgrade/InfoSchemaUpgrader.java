@@ -24,9 +24,11 @@ package com.tesora.dve.upgrade;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Properties;
 
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.exceptions.PEException;
@@ -44,7 +46,7 @@ public class InfoSchemaUpgrader {
 		int modelID = getID(helper,
 				"select id from distribution_model where name = '" + RandomDistributionModel.MODEL_NAME + "'");
 		clearCurrentInfoSchema(helper,groupID);
-		installNewInfoSchema(helper,groupID, modelID, dbn);
+		installNewInfoSchema(helper,groupID, modelID, dbn, null, null);
 	}
 	
 	public static int getInfoSchemaGroupID(DBHelper helper) throws PEException {
@@ -75,13 +77,14 @@ public class InfoSchemaUpgrader {
 			helper.executeQuery("delete uc from user_column uc inner join user_table ut on uc.user_table_id = ut.table_id where ut.persistent_group_id = " + groupid);
 			helper.executeQuery("delete from user_table where persistent_group_id = " + groupid);
 			helper.executeQuery("delete from user_database where default_group_id = " + groupid);
+			helper.executeQuery("drop table if exists collations");
 		} catch (SQLException sqle) {
 			throw new PEException("Unable to drop info schema",sqle);
 		}
 	}
 	
-	private static void installNewInfoSchema(DBHelper helper, int groupid, int modelid, DBNative dbn) throws PEException {
-		InformationSchemas is = InformationSchemas.build(dbn);
+	private static void installNewInfoSchema(DBHelper helper, int groupid, int modelid, DBNative dbn, CatalogDAO c, Properties catalogProps) throws PEException {
+		InformationSchemas is = InformationSchemas.build(dbn,c,catalogProps);
 		List<PersistedEntity> ents = is.buildEntities(groupid, modelid,
 				dbn.getDefaultServerCharacterSet(),
 				dbn.getDefaultServerCollation());

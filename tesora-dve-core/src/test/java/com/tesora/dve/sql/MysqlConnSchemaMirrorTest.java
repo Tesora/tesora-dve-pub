@@ -37,12 +37,12 @@ public class MysqlConnSchemaMirrorTest extends SchemaMirrorTest {
 	// For tests that are dependent on the MysqlConnectionResource implementation
 	@Override
 	protected ConnectionResource createConnection(ProjectDDL p)	throws Throwable {
-		ConnectionResource cr = null;
-		if (p == getNativeDDL()) 
-			return new DBHelperConnectionResource(useUTF8); 
-		if (p == getMultiDDL() || p == getSingleDDL())
-			cr = new MysqlConnectionResource();
+		if (p == getNativeDDL()) {
+			return new DBHelperConnectionResource(useUTF8);
+		} else if (p == getMultiDDL() || p == getSingleDDL()) {
+			return new MysqlConnectionResource(useUTF8);
+		}
 
-		return cr;
+		return null;
 	}
 }

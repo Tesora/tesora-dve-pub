@@ -22,8 +22,10 @@ package com.tesora.dve.sql;
  */
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Before;
@@ -37,6 +39,7 @@ import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProjectDDL;
+import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.TestResource;
 import com.tesora.dve.standalone.PETest;
 
@@ -45,6 +48,12 @@ public abstract class SchemaMirrorTest extends SchemaTest {
 	protected TestResource sysResource;
 	protected TestResource checkResource;
 	protected TestResource nativeResource;
+
+	protected boolean useUTF8 = true;
+
+	public void setUseUTF8(boolean useUTF8) {
+		this.useUTF8 = useUTF8;
+	}
 
 	protected ProjectDDL getMultiDDL() {
 		return null;
@@ -70,22 +79,31 @@ public abstract class SchemaMirrorTest extends SchemaTest {
 		PortalDBHelperConnectionResource sysconn = (multiDDL == null ? null : new PortalDBHelperConnectionResource());
 		PortalDBHelperConnectionResource checkconn = (singleDDL == null ? null : new PortalDBHelperConnectionResource());
 		DBHelperConnectionResource nativeConn = (nativeDDL == null ? null : new DBHelperConnectionResource());
-		TestResource smr = (multiDDL == null ? null : new TestResource(sysconn,multiDDL));
-		TestResource cmr = (singleDDL == null ? null : new TestResource(checkconn,singleDDL));
-		TestResource nmr = (nativeDDL == null ? null : new TestResource(nativeConn,nativeDDL));
-		ArrayList<TestResource> trs = new ArrayList<TestResource>();
-		if (smr != null) trs.add(smr);
-		if (cmr != null) trs.add(cmr);
-		if (nmr != null) trs.add(nmr);
-		for(TestResource tr : trs)
-			tr.getDDL().create(tr);
-		for(TestResource tr : trs) {
-			for(MirrorTest mt : populate)
-				mt.execute(tr,null);
+		try {
+			TestResource smr = (multiDDL == null ? null : new TestResource(sysconn, multiDDL));
+			TestResource cmr = (singleDDL == null ? null : new TestResource(checkconn, singleDDL));
+			TestResource nmr = (nativeDDL == null ? null : new TestResource(nativeConn, nativeDDL));
+			ArrayList<TestResource> trs = new ArrayList<TestResource>();
+			if (smr != null)
+				trs.add(smr);
+			if (cmr != null)
+				trs.add(cmr);
+			if (nmr != null)
+				trs.add(nmr);
+			for (TestResource tr : trs)
+				tr.getDDL().create(tr);
+			for (TestResource tr : trs) {
+				for (MirrorTest mt : populate)
+					mt.execute(tr, null);
+			}
+		} finally {
+			if (sysconn != null)
+				sysconn.disconnect();
+			if (checkconn != null)
+				checkconn.disconnect();
+			if (nativeConn != null)
+				nativeConn.disconnect();
 		}
-		if (sysconn != null) sysconn.disconnect();
-		if (checkconn != null) checkconn.disconnect();
-		if (nativeConn != null) nativeConn.disconnect();
 	}
 	
 	@Before
@@ -119,9 +137,9 @@ public abstract class SchemaMirrorTest extends SchemaTest {
 	
 	protected ConnectionResource createConnection(ProjectDDL p) throws Throwable {
 		if (p == getNativeDDL()) 
-			return new DBHelperConnectionResource(); 
+			return new DBHelperConnectionResource(useUTF8);
 		else if (p == getMultiDDL() || p == getSingleDDL()) 
-			return new PortalDBHelperConnectionResource();
+			return new PortalDBHelperConnectionResource(useUTF8);
 		
 		throw new PEException("ProjectDDL of unknown type " + p.getClass());
 	}
@@ -178,4 +196,89 @@ public abstract class SchemaMirrorTest extends SchemaTest {
 		runTest(tests, c, false);
 	}
 	
+	/**
+	 * Facilitates extended packet mirror testing by handling necessary variable
+	 * and setting updates.
+	 */
+	protected class ExtendedPacketTester {
+
+		private static final long VARIABLE_REFRESH_WAIT_TIME_SEC = 10;
+		private static final long DEFAULT_MAX_ALLOWED_PACKET_SIZE = 16777216;
+
+		private final long maxAllowedPacketSize;
+		private boolean useFormatedOutput = false;
+
+		private final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+
+		/**
+		 * @param maxAllowedPacketSize
+		 *            Value of 'max_allowed_packet' global variable used in the
+		 *            test.
+		 */
+		public ExtendedPacketTester(final long maxAllowedPacketSize) {
+			this.maxAllowedPacketSize = maxAllowedPacketSize;
+		}
+
+		/**
+		 * Execute the mirror tests.
+		 */
+		public void runTests() throws Throwable {
+			try {
+				resetMaxAllowedPacketVariable(this.maxAllowedPacketSize);
+				ResourceResponse.BLOB_COLUMN.useFormatedOutput(this.useFormatedOutput);
+
+				// Refresh the 'max_allowed_packet' variable.
+				disconnect();
+				TimeUnit.SECONDS.sleep(VARIABLE_REFRESH_WAIT_TIME_SEC); //TODO: hack to deal with race condition where fast disconnect/reconnect after a response still picks up old value. -sgossard
+				connect();
+
+				test();
+			} finally {
+				ResourceResponse.BLOB_COLUMN.useFormatedOutput(true);
+				resetMaxAllowedPacketVariable(DEFAULT_MAX_ALLOWED_PACKET_SIZE);
+			}
+		}
+
+		/**
+		 * Run mirror tests.
+		 */
+		protected void test() throws Throwable {
+			SchemaMirrorTest.this.runTest(this.tests);
+		}
+
+		/**
+		 * Add MirrorTest to the suite.
+		 */
+		public void add(final MirrorTest test) {
+			this.tests.add(test);
+		}
+
+		/**
+		 * Add MirrorTests to the suite.
+		 */
+		public void addAll(final Collection<MirrorTest> tests) {
+			this.tests.addAll(tests);
+		}
+
+		/**
+		 * Remove all MirrorTest currently in the suite.
+		 */
+		public void clear() {
+			this.tests.clear();
+		}
+
+		/**
+		 * Formatted output on large packets may lead to heap exhaustion in
+		 * StringBuilder.
+		 */
+		public void enableFormatedOutput() {
+			this.useFormatedOutput = true;
+		}
+
+		private void resetMaxAllowedPacketVariable(final long value) throws Throwable {
+			SchemaMirrorTest.this.runTest(new StatementMirrorProc("SET GLOBAL max_allowed_packet = " + String.valueOf(value)));
+		}
+
+	}
+
 }

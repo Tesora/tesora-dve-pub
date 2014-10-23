@@ -98,12 +98,16 @@ options
 
 // incomplete
 sql_data_statement returns [Statement s] options {k=1;}:
+  basic_sql_data_statement { $s = $basic_sql_data_statement.s; }
+  | load_data_infile_statement { $s = $load_data_infile_statement.s; }
+  ;
+
+basic_sql_data_statement returns [Statement s] options {k=1;}:
   select_statement { $s = $select_statement.s; }
   | insert_statement { $s = $insert_statement.s; }
   | update_statement { $s = $update_statement.s; }
   | delete_statement { $s = $delete_statement.s; }
   | truncate_statement { $s = $truncate_statement.s; }
-  | load_data_infile_statement { $s = $load_data_infile_statement.s; }
   ;
 
 select_statement returns [ProjectingStatement s] options{k=1;}:
@@ -275,8 +279,37 @@ limit_specification returns [LimitSpecification ls] options {k=1;}:
 limit_value returns [ExpressionNode expr] options {k=1;}:
   Question_Mark { $expr = utils.buildParameter($Question_Mark); }
   | unsigned_integral_literal { $expr = $unsigned_integral_literal.expr; }
-  | rhs_variable_ref { $expr = $rhs_variable_ref.v; }
+  | rhs_variable_ref { $expr = $rhs_variable_ref.vi; }
   ;
+
+rhs_variable_ref returns [VariableInstance vi] options {k=1;}:
+  (f=AT_Sign (t=AT_Sign (variable_scope_kind Period)?)? unqualified_identifier
+  { $vi = utils.buildRHSVariableInstance($f,$t,$variable_scope_kind.vsk, $unqualified_identifier.n, $unqualified_identifier.tree); })
+  ;
+
+variable_scope_kind returns [VariableScopeKind vsk] options {k=1;}:
+  (GLOBAL { $vsk = VariableScopeKind.GLOBAL; })
+  | (SESSION { $vsk = VariableScopeKind.SESSION; })
+  | (DVE { $vsk = VariableScopeKind.SCOPED; })
+  | (LOCAL { $vsk = VariableScopeKind.SESSION; })
+  ;
+  
+
+field_width returns [SizeTypeAttribute ts] options {k=1;}:
+  Left_Paren a=unsigned_integral_literal (Comma b=unsigned_integral_literal)? Right_Paren 
+  { $ts = utils.buildSizeTypeAttribute($a.expr,$b.expr); }
+  ;
+
+convert_type_description returns [Type type] options {k=1;}:
+  (cst=(BINARY | CHAR | DECIMAL) field_width? { $type = utils.buildType(Collections.singletonList(bkn($cst)),$field_width.ts,null); })
+  | (cust=(DATE | DATETIME | TIME) { $type = utils.buildType(Collections.singletonList(bkn($cust)), null, null); })
+  | ((s=SIGNED | UNSIGNED) INTEGER?  
+    { ArrayList l = new ArrayList();
+      l.add($s == null ? utils.buildTypeModifier(TypeModifierKind.UNSIGNED) : utils.buildTypeModifier(TypeModifierKind.SIGNED));
+      $type = utils.buildType(Collections.singletonList(utils.buildName("INTEGER")),null, l); })
+  ; 
+
+
 
 table_reference_list returns [List l] options {k=1;}:
   { $l = new ArrayList(); } 
@@ -333,8 +366,10 @@ joined_table returns [ExpressionNode expr] options {k=1;}:
   ;
 
 join_rhs returns [JoinedTable jt] options {k=1;}:
-  join_type? JOIN table_factor join_specification?
-  { $jt = utils.buildJoinedTable($table_factor.expr, $join_specification.expr, $join_type.js); }
+  (join_type? JOIN table_factor join_specification?
+  { $jt = utils.buildJoinedTable($table_factor.expr, $join_specification.expr, $join_type.js); })
+  | (NATURAL (outer_join_type OUTER?)? JOIN table_factor
+  { $jt = utils.buildJoinedTable($table_factor.expr, null, utils.buildJoinType($outer_join_type.text, $NATURAL.text, $OUTER.text)); })
   ;
 
 join_specification returns [JoinClauseType expr] options {k=1;}: 
@@ -343,8 +378,8 @@ join_specification returns [JoinClauseType expr] options {k=1;}:
   ;
   
 join_type returns [JoinSpecification js] options {k=1;}:
-  (ijt=(CROSS | INNER) { $js = utils.buildJoinType($ijt.text, null); })
-  | outer_join_type OUTER? { $js = utils.buildJoinType($outer_join_type.text, $OUTER.text); }
+  (ijt=(CROSS | INNER) { $js = utils.buildJoinType($ijt.text); })
+  | (outer_join_type OUTER? { $js = utils.buildJoinType($outer_join_type.text, null, $OUTER.text); })
   ;
 outer_join_type options {k=1;}: 
   LEFT | RIGHT | FULL
@@ -352,9 +387,14 @@ outer_join_type options {k=1;}:
 
 
 select_list returns [List l] options {k=1;}
-  @init{ $l = new ArrayList(); }
+  @init{ $l = new ArrayList(); Token lhs = input.LT(1); Token rhs = null; }
   :
-  (li=select_item { $l.add($li.expr); }(Comma ti=select_item { $l.add($ti.expr); })*)
+  (li=select_item { $l.add($li.expr); }
+   (Comma ti=select_item { rhs = $Comma; utils.updateSourcePosition($l.get($l.size() - 1), lhs, rhs); lhs = rhs; $l.add($ti.expr); })*
+  )
+  { rhs = input.LT(1);
+    utils.updateSourcePosition($l.get($l.size() - 1), lhs, rhs);
+  }
   ;
   
 select_item returns [ExpressionNode expr] options {k=1;}:
@@ -576,6 +616,39 @@ comment returns [String str] options {k=1;}:
   { $str = $Character_String_Literal.text; }
   ;
 
+compound_or_single_statement returns [Statement s] options {k=1;}:
+  ((sql_data_statement { $s = $sql_data_statement.s; })
+  | (compound_statement { $s = $compound_statement.s; }))
+  ;
+
+compound_statement returns [Statement s] options {k=1;}:
+  { List acc = new ArrayList(); }
+  BEGIN 
+  ( t=compound_statement_element { acc.add($t.s); } Semicolon)*
+  END
+  { $s = utils.buildCompoundStatement(acc); }
+  ;
+
+compound_statement_element returns [Statement s] options {k=1;}:
+  sql_data_statement { $s = $sql_data_statement.s; }
+  | case_statement { $s = $case_statement.s; }
+  ;
+
+case_statement returns [Statement s] options {k=1;}:
+  CASE value_expression case_stmt_when_clauses (ELSE compound_or_single_statement Semicolon)? END CASE
+  { $s = utils.buildCaseStatement($value_expression.expr, $case_stmt_when_clauses.l, $compound_or_single_statement.s); }
+  ; 
+
+case_stmt_when_clauses returns [List l] options {k=1;}:
+  { $l = new ArrayList(); }
+  (case_stmt_when_clause { $l.add($case_stmt_when_clause.swc); })+
+  ;
+  
+case_stmt_when_clause returns [StatementWhenClause swc] options {k=1;}:
+  WHEN s=value_expression THEN compound_or_single_statement Semicolon
+  { $swc = utils.buildStatementWhenClause($s.expr,$compound_or_single_statement.s); }
+  ; 
+
 
 value_expression returns [ExpressionNode expr] options {k=1;}
   @init { PrecedenceCollector acc = utils.buildPrecedenceCollector(this.adaptor); }
@@ -601,15 +674,22 @@ boolean_operator options {k=1;}:
   
 
 boolean_expr returns [ExpressionNode expr] options{k=1;}:
-  ln=NOT? predicate (i=IS in=NOT? is_parameters)?
-  { $expr = utils.buildBooleanExpr(this.adaptor, $ln, $predicate.expr, $i, $in, $is_parameters.l); }
+  ln=multi_not_expr? predicate (i=IS in=NOT? is_parameters)?
+  { $expr = utils.buildBooleanExpr(this.adaptor, $ln.t, $predicate.expr, $i, $in, $is_parameters.l); }
+  ;
+  
+multi_not_expr returns [Token t] options {k=1;}
+  @init { List l = new ArrayList(); }
+  :
+  (nl=NOT { l.add($nl); } (nr=NOT { l.add($nr); })*)
+  { $t = ((l.size() \% 2) == 0) ? null : $nl; }
   ;
 
 predicate returns [ExpressionNode expr] options {k=1;}:
   lhs=math_binop_expr
   (
     ((n=NOT)?
-     ((i=IN in_parameters)
+     ((i=IN in_parameters (op=relational_binop orhs=predicate)?)
      |(b=BETWEEN blhs=math_binop_expr AND brhs=predicate)
      |(l=LIKE like_parameters)
      |((bre=REGEXP | rl=RLIKE) string_literal)
@@ -704,7 +784,7 @@ negatable_basic_expr returns [ExpressionNode expr] options {k=1;}:
   | Question_Mark { $expr = utils.buildParameter($Question_Mark); }
   | (Left_Paren ((lav=value_expression { List values = new ArrayList(); values.add($lav.expr); } (Comma tav=value_expression { values.add($tav.expr); })* { $expr = utils.buildMultivalueExpression(values); }) | (nestable_select_statement { $expr = utils.buildSubquery($nestable_select_statement.s, null, null, false); })) Right_Paren)
   | case_expression { $expr = $case_expression.expr; }
-  | rhs_variable_ref { $expr = $rhs_variable_ref.v; }
+  | rhs_variable_ref { $expr = $rhs_variable_ref.vi; }
   | function_call_or_identifier { $expr = $function_call_or_identifier.expr; }
   | interval_expression { $expr = $interval_expression.expr; }
   ;
@@ -832,7 +912,7 @@ keyword_function_name returns [FunctionName fn] options {k=1;}:
   ;
   
 case_expression returns [ExpressionNode expr] options {k=1;}:
-  CASE^ (t=basic_expr)? simple_when_clause_list (ELSE e=value_expression)? END 
+  CASE^ (t=value_expression)? simple_when_clause_list (ELSE e=value_expression)? END 
   { $expr = utils.buildCaseExpression($t.expr, $e.expr, $simple_when_clause_list.l, $CASE.tree); }
   ;
   
@@ -958,35 +1038,28 @@ qualified_identifier_list returns [List l] options {k=1;}:
   qi=qualified_identifier { $l.add($qi.n); }( Comma fqi=qualified_identifier { $l.add($fqi.n); } )* 
   ;
 
-keyword_escape_identifier returns [Name n] options {k=1;}:
-  keyword_escape_identifier_value 
-  { $n = utils.buildIdentifier($keyword_escape_identifier_value.text, $keyword_escape_identifier_value.tree); }
+keyword_escape_identifier_value2 options {k=1;}:
+  TRANSACTION
   ;
-
-keyword_escape_identifier_value options {k=1;}:
-  TRANSACTION | keyword_escape_identifier_value1
-  ;
-
-keyword_escape_identifier1 returns [Name n] options {k=1;}:
-  keyword_escape_identifier_value1
-  { $n = utils.buildIdentifier($keyword_escape_identifier_value1.text, $keyword_escape_identifier_value1.tree); }
+  
+keyword_escape_identifier_value3 options {k=1;}:
+  NAMES | CHARSET | PASSWORD | DVE | GLOBAL | LOCAL | SESSION
   ;
 
 keyword_escape_identifier_value1 options {k=1;}:
-  TYPE | COUNT | TIMESTAMP | SESSION | FIELD_COMMENT | STATIC | DESC | ASC | VARIABLES
-  | TABLES | STATUS | ROLLBACK | SITE | COMMENT | GLOBAL | DVE | USER | COLUMNS | TENANT | EXTERNAL
+  TYPE | COUNT | TIMESTAMP | FIELD_COMMENT | STATIC | DESC | ASC | VARIABLES
+  | TABLES | STATUS | ROLLBACK | SITE | COMMENT | USER | COLUMNS | TENANT | EXTERNAL
   | NO | INSTANCE | LENGTH | SECOND | ENGINE | ENGINES | TIME | DATE | YEAR | MONTH | QUARTER | WEEK | CONTAINER
   | RANGE | CHARACTERS | LEVEL | DAYS | SERVICE | REF | BIN | START | ACTION | END | ABS | EXP | HOUR
   | SIGN | ANY | ARE | AT | BOOLEAN | CASCADED | CLOB | CLOSE | COMMIT | DAY | DYNAMIC | EXCEPT
-  | INTERSECT | ISOLATION | LOCAL | MERGE | MINUTE | MOD | NCHAR | NCLOB | NONE | OF | OLD | ONLY
+  | INTERSECT | ISOLATION | MERGE | MINUTE | MOD | NCHAR | NCLOB | NONE | OF | OLD | ONLY
   | ROWS | ROW | SCOPE | SOME | BEGIN | AUTO | COLLATION | COMMITTED | CONST | DEFINER | EXTERN | HOURS
-  | INCREMENT | INTERSECTION | INVOKER | KIND | LEN | NAMES | NULLABLE | PARTIAL | PRIOR | PRIVILEGES
+  | INCREMENT | INTERSECTION | INVOKER | KIND | LEN | NULLABLE | PARTIAL | PRIOR | PRIVILEGES
   | REPEATABLE | SECURITY | SERIALIZABLE | SETS | SIGNED | SIMPLE | SIZE  | TEMPORARY | UNCOMMITTED 
-  | VIEW | OFFSET  | DUPLICATE | CHARSET | FIELDS | TRIGGERS | PASSWORD | IDENTIFIED
+  | VIEW | OFFSET  | DUPLICATE | FIELDS | TRIGGERS | IDENTIFIED
   | PROCESSLIST | FLUSH | ENUM | ERRORS | WARNINGS | MICROSECOND | INDEXES | PLUGINS | LOGS | GRANTS
   | SLAVE | ENABLE | DISABLE | ALGORITHM | UNDEFINED | TEMPTABLE | CONSISTENT | SNAPSHOT
   | STORAGE | DISTRIBUTE | SERIAL | AVG | MAX | MIN | SUM | VALUES | OPTION | QUERY
-//  | PROJECT
   | JDBC | PERSISTENT | RANDOM | BROADCAST | GROUPS
   | SITES | RANGES | GENERATION | GENERATIONS | OPTIONAL | REQUIRED | STRICT | TEMPLATE | TEMPLATES | RELOAD | TEMP
   | TENANTS | SUSPEND | RESUME | MULTITENANT | PROVIDER | PROVIDERS | POLICY | POLICIES 
@@ -996,7 +1069,7 @@ keyword_escape_identifier_value1 options {k=1;}:
   | HASH | BTREE | RTREE | MEMORY | ROW_FORMAT | FIRST | AFTER | UUID | LAST_INSERT_ID | POOL
   | DATETIME | XML | SERVER | SERVERS | EVENTS | PLAN | PLANS | PARTITIONS | OR | ENABLED 
   | MODE | PREPARE | EXECUTE | DEALLOCATE | STATISTICS | CACHE | RECOVER | ONE | XA | CARDINALITY
-  | PHASE
+  | PHASE | VARIABLE
   
 // The keywords below do not work in DVE, however it's not just a simple case of making them identifiers,
 // so they are listed here for reference
@@ -1007,21 +1080,31 @@ keyword_escape_identifier_value1 options {k=1;}:
 //  | STDDEV | VARIANCE | GROUP_CONCAT | BIT_AND | BIT_OR | BIT_XOR | LOAD
   ;  
 
+// a simple identifier is all identifiers (no exclusions)
 keyword_simple_identifier returns [Name n] options {k=1;}:
-   keyword_escape_identifier { $n = $keyword_escape_identifier.n; } 
-   | Regular_Identifier { $n = utils.buildIdentifier($Regular_Identifier); }
-   ;
-
-keyword_simple_identifier1 returns [Name n] options {k=1;}:
-  keyword_escape_identifier1 { $n = $keyword_escape_identifier1.n; }
+    keyword_escape_identifier_value1 { $n = utils.buildIdentifier($keyword_escape_identifier_value1.text, $keyword_escape_identifier_value1.tree); }
+  | keyword_escape_identifier_value2 { $n = utils.buildIdentifier($keyword_escape_identifier_value2.text, $keyword_escape_identifier_value2.tree); }
+  | keyword_escape_identifier_value3 { $n = utils.buildIdentifier($keyword_escape_identifier_value3.text, $keyword_escape_identifier_value3.tree); }
   | Regular_Identifier { $n = utils.buildIdentifier($Regular_Identifier); }
   ;
 
+// simple identifier1 is all identifiers except transaction
+keyword_simple_identifier1 returns [Name n] options {k=1;}:
+    keyword_escape_identifier_value1 { $n = utils.buildIdentifier($keyword_escape_identifier_value1.text, $keyword_escape_identifier_value1.tree); }
+  | keyword_escape_identifier_value3 { $n = utils.buildIdentifier($keyword_escape_identifier_value3.text, $keyword_escape_identifier_value3.tree); }
+  | Regular_Identifier { $n = utils.buildIdentifier($Regular_Identifier); }
+  ;
+
+// simple identifier2 is all identifiers except transaction, charset, password, names, dve, global, session, local
+keyword_simple_identifier2 returns [Name n] options {k=1;}:
+    keyword_escape_identifier_value1 { $n = utils.buildIdentifier($keyword_escape_identifier_value1.text, $keyword_escape_identifier_value1.tree); }
+  | Regular_Identifier { $n = utils.buildIdentifier($Regular_Identifier); }
+  ;
+ 
 collation_identifier returns [Name n] options {k=1;}:
   unqualified_identifier { $n = $unqualified_identifier.n; }
   | Character_String_Literal { $n = utils.buildNameFromStringLiteral($Character_String_Literal.tree); }
   ;
-
   
 push_scope:
   { utils.pushScope(); }

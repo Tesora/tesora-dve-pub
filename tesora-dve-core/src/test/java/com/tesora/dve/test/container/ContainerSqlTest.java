@@ -42,7 +42,6 @@ import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.distribution.ContainerDistributionModel;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.template.TemplateBuilder;
@@ -152,9 +151,9 @@ public class ContainerSqlTest extends SchemaTest {
 	
 		conn.execute("use information_schema");
 		conn.assertResults("DESCRIBE CONTAINER",
-				br(nr,"container_name","varchar(255)", "NO", "", null, "", 
-				   nr,"base_table","int(11)", "YES", "", null, "",
-				   nr,"storage_group","int(11)", "NO", "", null, ""));
+				br(nr,"CONTAINER_NAME","varchar(255)", "NO", "", null, "", 
+				   nr,"BASE_TABLE","varchar(255)", "YES", "", null, "",
+				   nr,"STORAGE_GROUP","varchar(255)", "NO", "", null, ""));
 
 		// test if exists
 		conn.execute("CREATE CONTAINER IF NOT EXISTS " + container1 + " PERSISTENT GROUP " + testDDL.getPersistentGroup().getName() + " BROADCAST DISTRIBUTE");
@@ -191,9 +190,9 @@ public class ContainerSqlTest extends SchemaTest {
 
 		try {
 			conn.execute("CREATE CONTAINER " + container1 + " PERSISTENT GROUP " + testDDL.getPersistentGroup().getName() + " BROADCAST DISTRIBUTE");
-		} catch (PEException e) {
+		} catch (Throwable e) {
 			assertTrue("Expected create if not exists range to throw exception", 
-					StringUtils.equals("Unable to build plan - Container " + container1 + " already exists.",
+					StringUtils.equals("Container " + container1 + " already exists.",
 							e.getMessage()));
 		}
 
@@ -234,9 +233,9 @@ public class ContainerSqlTest extends SchemaTest {
 		conn.execute("CREATE RANGE IF NOT EXISTS cont_range1 (int) PERSISTENT GROUP " + testDDL.getPersistentGroup().getName());
 		try {
 			conn.execute("CREATE RANGE cont_range2 (int, varchar(10)) PERSISTENT GROUP " + testDDL.getPersistentGroup().getName());
-		} catch (PEException e) {
+		} catch (Throwable e) {
 			assertTrue("Expected create if not exists range to throw exception", 
-					StringUtils.equals("Unable to build plan - Range cont_range2 already exists.",
+					StringUtils.equals("Range cont_range2 already exists.",
 							e.getMessage()));
 		}
 		
@@ -259,10 +258,10 @@ public class ContainerSqlTest extends SchemaTest {
 		conn.assertResults("SHOW CONTAINER duk",
 				br());
 		conn.assertResults("SHOW CONTAINER cont1",
-				br(nr,"A","base",
-				   nr,"B","member",
-				   nr,"C","member",
-				   nr,"D","member"));
+				br(nr,"cont1","A","base",
+				   nr,"cont1","B","member",
+				   nr,"cont1","C","member",
+				   nr,"cont1","D","member"));
 	
 		// TODO
 		// add tests for the container vector stuff

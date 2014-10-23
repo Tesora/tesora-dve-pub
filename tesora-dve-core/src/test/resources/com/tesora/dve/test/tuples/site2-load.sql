@@ -18,16 +18,9 @@
 -- along with this program. If not, see <http://www.gnu.org/licenses/>.
 -- #L%
 ---
-drop database if exists site2_TestDB;
-create database site2_TestDB;
 use site2_TestDB;
 
-create table t1 (
-	a int,
-	b int,
-	c int,
-	d tinyint unsigned
-);
+truncate table t1;
 
 insert into t1
 values
@@ -37,12 +30,7 @@ values
 (2, 2, 2, 255),
 (2, 3, 2, 3);
 
-create table t2 (
-	a int,
-	b int,
-	p tinyint unsigned,
-	q int
-);
+truncate table t2;
 
 insert into t2
 values

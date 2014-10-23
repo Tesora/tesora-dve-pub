@@ -90,7 +90,6 @@ public class MysqlClientHandler extends ChannelInboundHandlerAdapter {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         if (outboundChannel != null) {
             closeOnFlush(outboundChannel);
-            outboundChannel.flush();
         }
     }
 

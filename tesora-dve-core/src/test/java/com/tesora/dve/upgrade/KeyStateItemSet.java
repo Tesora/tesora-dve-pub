@@ -75,5 +75,10 @@ public class KeyStateItemSet extends StateItemSet {
 
 		
 	}
+
+	@Override
+	public boolean isEmpty() {
+		return items.isEmpty();
+	}
 	
 }

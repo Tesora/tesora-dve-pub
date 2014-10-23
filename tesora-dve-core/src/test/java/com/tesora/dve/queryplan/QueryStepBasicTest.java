@@ -37,10 +37,6 @@ import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
 
-import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
@@ -65,9 +61,17 @@ import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.test.simplequery.SimpleQueryTest;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.AggregationGroup;
 import com.tesora.dve.worker.DynamicGroup;
 import com.tesora.dve.worker.MysqlTextResultCollector;
@@ -94,22 +98,26 @@ public class QueryStepBasicTest extends PETest {
 	@BeforeClass
 	public static void setup() throws Throwable {
 		Class<?> bootClass = PETest.class;
-		TestCatalogHelper.createTestCatalog(bootClass,2);
+		TestCatalogHelper.createTestCatalog(bootClass);
 		bootHost = BootstrapHost.startServices(bootClass);
-        populateMetadata(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.declareSchema(pcr,"range distribute on (id) using busted","create range busted(int) persistent group DefaultGroup");
+		pcr.disconnect();
 	}
 	
 	@Before
 	public void setupTest() throws PEException, SQLException {
 		conProxy = new SSConnectionProxy();
 		ssConnection = SSConnectionAccessor.getSSConnection(conProxy);
-		SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
+		SSConnectionAccessor.setCatalogDAO(ssConnection, getGlobalDAO());
 		ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
-		ssConnection.setPersistentDatabase(catalogDAO.findDatabase("TestDB"));
+		ssConnection.setPersistentDatabase(getGlobalDAO().findDatabase("TestDB"));
 		db = ssConnection.getPersistentDatabase();
 		sg = db.getDefaultStorageGroup();
 		sg.getStorageSites();
-		dynamicPolicy = ssConnection.getCatalogDAO().findDefaultProject().getDefaultPolicy();
+		dynamicPolicy = 
+				ssConnection.getCatalogDAO()
+				.findDynamicPolicy(KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(ssConnection.getCatalogDAO()).getValue());
         populateSites(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
 		++currentId;
 		plan = new QueryPlan();
@@ -137,7 +145,7 @@ public class QueryStepBasicTest extends PETest {
 	
 	@Test
 	public void emptyResultSet() throws Throwable {
-		QueryStepOperation step1op1 = new QueryStepSelectAllOperation(db, foo.getDistributionModel(),
+		QueryStepOperation step1op1 = new QueryStepSelectAllOperation(ssConnection, db, foo.getDistributionModel(),
 				"select * from foo where 0=1");
 		QueryStep step1 = new QueryStep(sg, step1op1);
 		plan.addStep(step1);
@@ -154,7 +162,7 @@ public class QueryStepBasicTest extends PETest {
 		KeyValue distValue = t.getDistValue(ssConnection.getCatalogDAO());
 		distValue.get("id").setValue(new Integer(currentId));
 
-		QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(db, distValue, "insert into foo values ("+currentId+", 'Hello')");
+		QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(ssConnection, db, distValue, "insert into foo values (" + currentId + ", 'Hello')");
 		QueryStep step1 = new QueryStep(sg, step1op1);
 		plan.addStep(step1);
 		logger.debug("Executing QueryPlan:\n"+plan.asXML());
@@ -170,9 +178,9 @@ public class QueryStepBasicTest extends PETest {
 		KeyValue distValue = t.getDistValue(ssConnection.getCatalogDAO());
 		distValue.get("id").setValue(new Integer(currentId));
 		
-		QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(db, distValue,
+		QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(ssConnection, db, distValue,
 				"insert into foo values ("+currentId+", 'setup')");
-		QueryStepOperation step1op2 = new QueryStepSelectAllOperation(db, foo.getDistributionModel(),
+		QueryStepOperation step1op2 = new QueryStepSelectAllOperation(ssConnection, db, foo.getDistributionModel(),
 				"select * from foo where id = "+currentId);
 		QueryStep step1 = new QueryStep(sg, step1op2).addSetupOperation(step1op1);
 		plan.addStep(step1);
@@ -191,9 +199,9 @@ public class QueryStepBasicTest extends PETest {
 		StorageGroup tempSG = new DynamicGroup(dynamicPolicy, StorageGroup.GroupScale.SMALL);
 		
 		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select * from bar where 0=1"), bar.getDistributionModel())
+				new SQLCommand(ssConnection, "select * from bar where 0=1"), bar.getDistributionModel())
 			.toTempTable(tempSG, db, tempName);
-		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(db, bar.getDistributionModel(),
+		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(ssConnection, db, bar.getDistributionModel(),
 				"select * from "+tempName+" where id > 1999");
 		QueryStep step1 = new QueryStep(sg, step1op1);
 		QueryStep step2 = new QueryStep(tempSG, step2op1).addDependencyStep(step1);
@@ -213,9 +221,9 @@ public class QueryStepBasicTest extends PETest {
 		StorageGroup tempSG = new AggregationGroup(dynamicPolicy);
 		
 		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select id c1, value c2 from bar"), bar.getDistributionModel())
+				new SQLCommand(ssConnection, "select id c1, value c2 from bar"), bar.getDistributionModel())
 			.toTempTable(tempSG, db, tempName);
-		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(db,
+		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(ssConnection, db,
 				StaticDistributionModel.SINGLETON,
 				"select c1, c2 from "+tempName+" where c1 > 1999");
 		QueryStep step1 = new QueryStep(sg, step1op1);
@@ -238,13 +246,13 @@ public class QueryStepBasicTest extends PETest {
 		String temp2Name = UserTable.getNewTempTableName();
 		
 		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select concat('a',id), concat(value,'a') from bar where id > 1999"), bar.getDistributionModel())
+				new SQLCommand(ssConnection, "select concat('a',id), concat(value,'a') from bar where id > 1999"), bar.getDistributionModel())
 			.toTempTable(sg, db, temp1Name)
 			.distributeOn(Arrays.asList(new String[]{"concat('a',id)"}));
 		QueryStepOperation step2op1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select `concat('a',id)` c1, `concat(value,'a')` c2 from " + temp1Name), StaticDistributionModel.SINGLETON)
+				new SQLCommand(ssConnection, "select `concat('a',id)` c1, `concat(value,'a')` c2 from " + temp1Name), StaticDistributionModel.SINGLETON)
 			.toTempTable(sg, db, temp2Name);
-		QueryStepOperation step3op1 = new QueryStepSelectAllOperation(db,
+		QueryStepOperation step3op1 = new QueryStepSelectAllOperation(ssConnection, db,
 				BroadcastDistributionModel.SINGLETON,
 				"select c1, c2 from "+temp2Name);
 		QueryStep step1 = new QueryStep(sg, step1op1);
@@ -267,9 +275,9 @@ public class QueryStepBasicTest extends PETest {
 		String tempName = UserTable.getNewTempTableName();
 		
 		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(db, 
-				new SQLCommand("select id c1, value c2 from bar"), bar.getDistributionModel())
+				new SQLCommand(ssConnection, "select id c1, value c2 from bar"), bar.getDistributionModel())
 			.toTempTable(sg, db, tempName);
-		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(db, foo.getDistributionModel(),
+		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(ssConnection, db, foo.getDistributionModel(),
 				"select * from "+tempName+" t, foo f where t.c1 = f.id");
 		QueryStep step1 = new QueryStep(sg, step1op1);
 		QueryStep step2 = new QueryStep(sg, step2op1).addDependencyStep(step1);
@@ -297,7 +305,8 @@ public class QueryStepBasicTest extends PETest {
 		assertEquals(3, ut.getUserColumns().size());
 
 		// Create table
-		QueryStepDDLOperation step1op1 = new QueryStepDDLOperation(db, new SQLCommand("create table foobar (col1 int, col2 varchar(10), col3 int)"),null);
+		QueryStepDDLOperation step1op1 = new QueryStepDDLOperation(db, new SQLCommand(ssConnection,
+				"create table foobar (col1 int, col2 varchar(10), col3 int)"), null);
 		step1op1.addCatalogUpdate(ut);
 		step1op1.addCatalogUpdate(c1);
 		step1op1.addCatalogUpdate(c2);
@@ -316,7 +325,8 @@ public class QueryStepBasicTest extends PETest {
 		QueryPlan insertPlan = new QueryPlan();
 		KeyValue distValue = ut.getDistValue(ssConnection.getCatalogDAO());
 		distValue.get("col1").setValue(new Integer(currentId));
-		QueryStepOperation step2op1 = new QueryStepInsertByKeyOperation(db, distValue, "insert into foobar values ("+currentId+", 'Hello', 1)");
+		QueryStepOperation step2op1 = new QueryStepInsertByKeyOperation(ssConnection, db, distValue, "insert into foobar values (" + currentId
+				+ ", 'Hello', 1)");
 		QueryStep step2 = new QueryStep(sg, step2op1);
 		insertPlan.addStep(step2);
 		logger.debug("Executing QueryPlan:\n"+insertPlan.asXML());
@@ -328,7 +338,7 @@ public class QueryStepBasicTest extends PETest {
 		
 		// retrieve the record
 		QueryPlan resultPlan = new QueryPlan();
-		QueryStepOperation step3op1 = new QueryStepSelectAllOperation(db, ut.getDistributionModel(),
+		QueryStepOperation step3op1 = new QueryStepSelectAllOperation(ssConnection, db, ut.getDistributionModel(),
 				"select * from foobar");
 		QueryStep step3 = new QueryStep(sg, step3op1);
 		resultPlan.addStep(step3);
@@ -363,7 +373,8 @@ public class QueryStepBasicTest extends PETest {
 		
 		ssConnection.userBeginTransaction();
 		try {
-			QueryStepDDLOperation step1op1 = new QueryStepDDLOperation(db, new SQLCommand("create table foobear (col1 int, col2 varchar(10), col3 int)"), null);
+			QueryStepDDLOperation step1op1 = new QueryStepDDLOperation(db, new SQLCommand(ssConnection,
+					"create table foobear (col1 int, col2 varchar(10), col3 int)"), null);
 			step1op1.addCatalogUpdate(ut);
 			step1op1.addCatalogUpdate(c1);
 
@@ -387,7 +398,7 @@ public class QueryStepBasicTest extends PETest {
 	public void updateRow() throws Throwable {
 		UserTable t = db.getTableByName("foo"); 
 		
-		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(db, t.getDistributionModel(), "update foo set value = 'bob' where id = 1");
+		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(ssConnection, db, t.getDistributionModel(), "update foo set value = 'bob' where id = 1");
 		QueryStep step1 = new QueryStep(sg, step1op1);
 		plan.addStep(step1);
 		logger.debug("Executing QueryPlan:\n"+plan.asXML());
@@ -401,7 +412,7 @@ public class QueryStepBasicTest extends PETest {
 	public void updateMultiRow() throws Throwable {
 		UserTable t = db.getTableByName("foo"); 
 		
-		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(db, t.getDistributionModel(), "update foo set value = 'bob' where id < 3");
+		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(ssConnection, db, t.getDistributionModel(), "update foo set value = 'bob' where id < 3");
 		QueryStep step1 = new QueryStep(sg, step1op1);
 		plan.addStep(step1);
 		logger.debug("Executing QueryPlan:\n"+plan.asXML());
@@ -436,7 +447,8 @@ public class QueryStepBasicTest extends PETest {
 		UserColumn c2 = catalogDAO.createUserColumn(ut, "col2", Types.VARCHAR, "VARCHAR", 10);
 		UserColumn c3 = catalogDAO.createUserColumn(ut, "col3", Types.INTEGER, "INT", 10);
 		newDB.addUserTable(ut);
-		QueryStepDDLOperation step1op2 = new QueryStepDDLOperation(newDB, new SQLCommand("create table foobar (col1 int, col2 varchar(10), col3 int)"), null);
+		QueryStepDDLOperation step1op2 = new QueryStepDDLOperation(newDB, new SQLCommand(ssConnection,
+				"create table foobar (col1 int, col2 varchar(10), col3 int)"), null);
 		step1op2.addCatalogUpdate(ut);
 		step1op2.addCatalogUpdate(c1);
 		step1op2.addCatalogUpdate(c2);

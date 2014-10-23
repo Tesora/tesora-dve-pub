@@ -1,5 +1,7 @@
 package com.tesora.dve.sql;
 
+import com.tesora.dve.errmap.ErrorInfo;
+
 /*
  * #%L
  * Tesora Inc.
@@ -45,5 +47,8 @@ public class SchemaException extends ParserException {
 		super(p, message, cause);
 	}
 
-	
+	public SchemaException(ErrorInfo ei) {
+		super(ei);
+	}
+		
 }

@@ -28,12 +28,6 @@ import java.util.Properties;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import com.tesora.dve.server.connectionmanager.BroadcastMessageAgent;
-import com.tesora.dve.server.connectionmanager.NotificationManager;
-import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
-import com.tesora.dve.server.global.BootstrapHostService;
-import com.tesora.dve.server.global.MySqlPortalService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -46,33 +40,40 @@ import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.ExternalService;
 import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.User;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.comms.client.messages.ConnectRequest;
 import com.tesora.dve.comms.client.messages.GlobalRecoveryRequest;
 import com.tesora.dve.db.mysql.portal.MySqlPortal;
 import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.distribution.RangeDistributionModel;
+import com.tesora.dve.errmap.ErrorMapper;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
 import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.locking.ClusterLock;
+import com.tesora.dve.server.connectionmanager.BroadcastMessageAgent;
+import com.tesora.dve.server.connectionmanager.NotificationManager;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.BootstrapHostService;
+import com.tesora.dve.server.global.MySqlPortalService;
 import com.tesora.dve.server.statistics.manager.StatisticsManager;
 import com.tesora.dve.server.transactionmanager.Transaction2PCTracker;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.siteprovider.SiteProviderContextInitialisation;
 import com.tesora.dve.siteprovider.SiteProviderPlugin.SiteProviderContext;
 import com.tesora.dve.siteprovider.SiteProviderPlugin.SiteProviderFactory;
 import com.tesora.dve.smqplugin.SimpleMQPlugin;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.schema.mt.TableGarbageCollector;
-import com.tesora.dve.variable.GlobalConfigVariableHandler;
-import com.tesora.dve.worker.agent.Agent;
-import com.tesora.dve.worker.SingleDirectConnection;
-import com.tesora.dve.worker.WorkerManager;
+import com.tesora.dve.sql.transexec.CatalogHelper;
+import com.tesora.dve.worker.DirectConnectionCache;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
+import com.tesora.dve.worker.WorkerManager;
+import com.tesora.dve.worker.agent.Agent;
 
 public class BootstrapHost extends Host implements BootstrapHostMBean, BootstrapHostService {
 
@@ -211,25 +212,42 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 		// Attempt to load the JDBC driver - fail early if it isn't available
 		DBHelper.loadDriver(props.getProperty(DBHelper.CONN_DRIVER_CLASS));
 
+		props.put(DBHelper.CONN_URL, CatalogHelper.buildCatalogBaseUrlFrom(props).toString());
 		props.put(DBHelper.CONN_DBNAME,  database);
 		DBHelper helper = new DBHelper(props);
+		int catalogAccessible = 1;
 		try {
 			// Check that we can connect to the database and that the catalog database exists
 			helper.connect();
 
 			// and also check that it is a valid catalog
-			helper.executeQuery("SELECT name FROM " + database + ".project");
+			helper.executeQuery("SELECT name FROM " + database + ".user_table");
 		} catch(Exception e) {
-			throw new Exception("A DVE catalog couldn't be found at '" + url + "' with name '" + database + "'");
+			String message = e.getMessage();
+			if (message != null && message.startsWith("Error using"))
+				catalogAccessible = -1;
+			else
+				catalogAccessible = 0;
+			if (catalogAccessible == 0)
+				throw new Exception("A DVE catalog couldn't be found at '" + url + "' with name '" + database + "' - use dve_config to set the connection credentials for the server (error was " + message + ")");
 		} finally  {
 			helper.disconnect();
 		}
-			
+		
+		if (catalogAccessible == -1) {
+			new CatalogHelper(bootstrapClass).createBootstrapCatalog();
+		}
+		
 		// Temporarily set the log level to info so that the below message will print and force the 
 		// header to print
 		Level logLevel = logger.getLevel();		// this is needed in case an explicit level is set on this category
 		Level effectiveLevel = logger.getEffectiveLevel();	// if an explicit level isn't set, this gets the level from the hierarchy
 		logger.setLevel(Level.INFO);
+		
+		if (catalogAccessible == -1) {
+			logger.info("INSTALLED BOOTSTRAP CATALOG " + database + " AT " + url);
+		}
+		
 		logger.info("Starting DVE server using:");
 		logger.info("... Catalog URL      : " + url);
 		logger.info("... Catalog database : " + database);
@@ -245,6 +263,8 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 		
 		SchemaSourceFactory.reset();
 
+		ErrorMapper.initialize();
+		
 		Agent.setPluginProvider(SimpleMQPlugin.class);
 		Agent.startServices(props);
 
@@ -280,7 +300,7 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 		SiteProviderFactory.closeSiteProviders();
 		ExternalServiceFactory.closeExternalServices();
 		GroupManager.shutdown();
-		SingleDirectConnection.clearConnectionCache();
+		DirectConnectionCache.clearConnectionCache();
 	}
 
     @Override
@@ -327,7 +347,7 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 				}
 			}
 
-			GlobalConfigVariableHandler.initializeGlobalVariables(getGlobalVariables(c));
+//			GlobalConfigVariableHandler.initializeGlobalVariables(getGlobalVariables(c));
 		} finally {
 			c.close();
 		}

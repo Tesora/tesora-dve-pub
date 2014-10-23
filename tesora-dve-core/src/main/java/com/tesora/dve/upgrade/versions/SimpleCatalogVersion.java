@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.exceptions.PEException;
 
 public abstract class SimpleCatalogVersion extends BasicCatalogVersion {
@@ -39,7 +40,7 @@ public abstract class SimpleCatalogVersion extends BasicCatalogVersion {
 	}
 	
 	@Override
-	public void upgrade(DBHelper helper) throws PEException {
+	public void upgrade(DBHelper helper, InformationCallback stdout) throws PEException {
 		for(String c : getUpgradeCommands(helper)) try {
 			helper.executeQuery(c);
 		} catch (SQLException sqle) {

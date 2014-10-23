@@ -38,17 +38,7 @@ import org.hibernate.annotations.ForeignKey;
 
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName = "project", views = {
-		@TableView(view = InfoView.SHOW, name = "project", pluralName = "projects", columnOrder = { "name",
-				"default_policy", "default_storage_group" }, extension = true, priviledged = true),
-		@TableView(view = InfoView.INFORMATION, name = "project", pluralName = "", columnOrder = { "name",
-				"default_policy", "default_storage_group" }, extension = true, priviledged = true) })
 @XmlRootElement
 @Entity
 @Table(name = "project")
@@ -64,16 +54,6 @@ public class Project implements CatalogEntity {
 	int id;
 
 	String name;
-
-	@ForeignKey(name="fk_project_def_sg")
-	@ManyToOne
-	@JoinColumn(name = "default_persistent_group_id")
-	PersistentGroup defaultStorageGroup;
-
-	@ForeignKey(name="fk_project_def_policy")
-	@ManyToOne
-	@JoinColumn(name = "default_policy_id")
-	DynamicPolicy defaultPolicy;
 
 	@ForeignKey(name="fk_project_root_user")
 	@ManyToOne
@@ -94,26 +74,12 @@ public class Project implements CatalogEntity {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName = "name", fieldName = "name", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = "name", orderBy = true, ident = true),
-			@ColumnView(view = InfoView.INFORMATION, name = "name", orderBy = true, ident = true) })
 	public String getName() {
 		return name;
 	}
 
 	public void setName(String name) {
 		this.name = name;
-	}
-
-	@InfoSchemaColumn(logicalName = "default_storage_group", fieldName = "defaultStorageGroup", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = "default_storage_group"),
-			@ColumnView(view = InfoView.INFORMATION, name = "default_storage_group") })
-	public PersistentGroup getDefaultStorageGroup() {
-		return defaultStorageGroup;
-	}
-
-	public void setDefaultStorageGroup(PersistentGroup sg) {
-		defaultStorageGroup = sg;
 	}
 
 	@Override
@@ -144,20 +110,6 @@ public class Project implements CatalogEntity {
 		return Collections.emptyList();
 	}
 
-	@InfoSchemaColumn(logicalName = "default_policy", fieldName = "defaultPolicy", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = "default_policy"),
-			@ColumnView(view = InfoView.INFORMATION, name = "default_policy") })
-	public DynamicPolicy getDefaultPolicy() {
-		return defaultPolicy;
-	}
-
-	public void setDefaultPolicy(DynamicPolicy dt) {
-		this.defaultPolicy = dt;
-	}
-	
-	@InfoSchemaColumn(logicalName = "root_user", fieldName = "rootUser", sqlType = java.sql.Types.VARCHAR, sqlWidth = 255, views = {
-			@ColumnView(view = InfoView.SHOW, name = "root_user"),
-			@ColumnView(view = InfoView.INFORMATION, name = "root_user") })
 	public User getRootUser() {
 		return rootUser;
 	}

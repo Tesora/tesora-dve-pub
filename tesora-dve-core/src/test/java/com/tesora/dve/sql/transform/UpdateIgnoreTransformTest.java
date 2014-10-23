@@ -49,7 +49,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	};
 	
 	@Test
-	public void testUpdateIgnoreBroadcast() throws Exception {
+	public void testUpdateIgnoreBroadcast() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -63,7 +63,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreRandom() throws Exception {
+	public void testUpdateIgnoreRandom() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -76,7 +76,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreStatic() throws Exception {
+	public void testUpdateIgnoreStatic() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -88,7 +88,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 								"SELECT `A`.`id` AS A1i0_4,`A`.`desc` AS A1d1_5,`A`.`flags` AS A1f2_6 FROM `A` WHERE `A`.`id` > 3 OR `A`.`id` = 1 FOR UPDATE",
 								group, "temp1", TransientExecutionEngine.AGGREGATION, BroadcastDistributionModel.MODEL_NAME, new String[] { "A1i0_4" }),
 						new FilterExpectedStep("LateBindingUpdateCounter", new UpdateExpectedStep(null,
-								"UPDATE IGNORE temp1 SET temp1.A1i0_4 = 1,temp1.A1d1_5 = 'Hello, World!',temp1.A1f2_6 = 0")),
+								"UPDATE IGNORE temp1 SET temp1.A1i0_4 = 1,temp1.A1d1_5 = 'Hello, World!',temp1.A1f2_6 = 0 WHERE temp1.A1i0_4 > 3")),
 						new DeleteExpectedStep(group,
 								"DELETE `A` FROM `A` WHERE `A`.`id` > 3 OR `A`.`id` = 1"),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
@@ -98,7 +98,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreStaticNonDvUpdate() throws Exception {
+	public void testUpdateIgnoreStaticNonDvUpdate() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -111,7 +111,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreRange() throws Exception {
+	public void testUpdateIgnoreRange() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -123,7 +123,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 						"SELECT `D`.`id` AS D1i0_4,`D`.`desc` AS D1d1_5,`D`.`flags` AS D1f2_6 FROM `D` WHERE `D`.`id` > 3 OR `D`.`id` = 1 FOR UPDATE",
 								group, "temp1", TransientExecutionEngine.AGGREGATION, BroadcastDistributionModel.MODEL_NAME, new String[] { "D1i0_4" }),
 						new FilterExpectedStep("LateBindingUpdateCounter", new UpdateExpectedStep(null,
-						"UPDATE IGNORE temp1 SET temp1.D1i0_4 = 1,temp1.D1d1_5 = 'Hello, World!',temp1.D1f2_6 = 0")),
+						"UPDATE IGNORE temp1 SET temp1.D1i0_4 = 1,temp1.D1d1_5 = 'Hello, World!',temp1.D1f2_6 = 0 WHERE temp1.D1i0_4 > 3")),
 						new DeleteExpectedStep(group,
 						"DELETE `D` FROM `D` WHERE `D`.`id` > 3 OR `D`.`id` = 1"),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
@@ -134,7 +134,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreRangeNonDvUpdate() throws Exception {
+	public void testUpdateIgnoreRangeNonDvUpdate() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -148,7 +148,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUpdateIgnoreRangePE771() throws Exception {
+	public void testUpdateIgnoreRangePE771() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI, schema);
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(
@@ -161,7 +161,7 @@ public class UpdateIgnoreTransformTest extends TransformTest {
 								"SELECT `pe771`.`id` AS p1i0_4,`pe771`.`code` AS p1c1_5,`pe771`.`name` AS p1n2_6 FROM `pe771` WHERE `pe771`.`id` < 3 OR `pe771`.`id` = 8 OR `pe771`.`name` = 'Sinisa' FOR UPDATE",
 								group, "temp1", TransientExecutionEngine.AGGREGATION, BroadcastDistributionModel.MODEL_NAME, new String[] { "p1i0_4" }),
 						new FilterExpectedStep("LateBindingUpdateCounter", new UpdateExpectedStep(null,
-								"UPDATE IGNORE temp1 SET temp1.p1i0_4 = 8,temp1.p1n2_6 = 'Sinisa'")),
+								"UPDATE IGNORE temp1 SET temp1.p1i0_4 = 8,temp1.p1n2_6 = 'Sinisa' WHERE temp1.p1i0_4 < 3")),
 						new DeleteExpectedStep(group,
 								"DELETE `pe771` FROM `pe771` WHERE `pe771`.`id` < 3 OR `pe771`.`id` = 8 OR `pe771`.`name` = 'Sinisa'"),
 						new ProjectingExpectedStep(ExecutionType.SELECT,

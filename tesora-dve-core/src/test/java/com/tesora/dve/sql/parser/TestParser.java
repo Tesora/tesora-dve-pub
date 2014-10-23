@@ -179,7 +179,7 @@ public abstract class TestParser {
 		private int consecutiveExceptions;
 		private FeatureVisitor features;
 		
-		public SimulatingInvoker(ParserOptions opts) throws Exception {
+		public SimulatingInvoker(ParserOptions opts) throws Throwable {
 			super(opts);
 			// TODO Auto-generated constructor stub
 			tee = new TransientExecutionEngine("foo");

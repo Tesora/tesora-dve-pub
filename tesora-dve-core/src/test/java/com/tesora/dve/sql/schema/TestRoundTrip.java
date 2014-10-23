@@ -35,6 +35,7 @@ import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.NativeTypeCatalog;
@@ -49,6 +50,7 @@ import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.variables.KnownVariables;
 
 // parse some decls, persist them to the db, and make sure we can get them back out again
 
@@ -68,11 +70,18 @@ public class TestRoundTrip extends PETest {
 		SchemaTest.setTemplateModeOptional();
 	}
 	
+	private static SchemaContext buildContext(CatalogDAO c) throws Exception {
+		SchemaContext pc = SchemaContext.createContext(c,
+				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
+		pc.getConnection().getVariableSource().getGlobalVariableStore().setValue(KnownVariables.TEMPLATE_MODE, TemplateMode.OPTIONAL);
+		return pc;
+	}
+	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void checkLoad(CatalogDAO catalog, Persistable obj, String defaultDatabase) throws Exception {
 		// this is all about loading, so force the global cache to be cleaned out
 		SchemaSourceFactory.reset();
-		SchemaContext pc = SchemaContext.createContext(catalog);
+		SchemaContext pc = buildContext(catalog);
 		if (defaultDatabase != null)
 			pc.setCurrentDatabase(pc.findDatabase(defaultDatabase));
 		Persistable loaded = obj.reload(pc);
@@ -111,14 +120,14 @@ public class TestRoundTrip extends PETest {
 		SchemaContext secondPC = null;
 		try {
 			catalog.begin();
-			SchemaContext firstPC = SchemaContext.createContext(catalog);
+			SchemaContext firstPC = buildContext(catalog);
 			if (defaultDatabase != null)
 				firstPC.setCurrentDatabase(firstPC.findDatabase(defaultDatabase));
 			firstTime = trip(firstPC,catalog, sql, defaultDatabase);
 			// don't persist yet
 			String gen = firstTime.getSQL(firstPC,true, false);
 			echo(gen);
-			secondPC = SchemaContext.createContext(catalog);
+			secondPC = buildContext(catalog);
 			if (defaultDatabase != null)
 				secondPC.setCurrentDatabase(secondPC.findDatabase(defaultDatabase));
 			secondTime = trip(secondPC, catalog, gen, defaultDatabase);
@@ -188,6 +197,7 @@ public class TestRoundTrip extends PETest {
 			Map.Entry<String, NativeType> me = iter.next();
 			NativeType nt = me.getValue();
 			if (nt.isUsedInCreate()) {
+				if (counter > 3) continue;
 				if (counter > 0)
 					buf.append(", ").append(PEConstants.LINE_SEPARATOR);
 				buf.append("`f").append(++counter).append("` ").append(nt.getTypeName());

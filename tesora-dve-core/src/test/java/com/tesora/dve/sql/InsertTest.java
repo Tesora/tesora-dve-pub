@@ -22,18 +22,15 @@ package com.tesora.dve.sql;
  */
 
 import static org.junit.Assert.fail;
-import io.netty.util.CharsetUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.google.common.primitives.Bytes;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.ConnectionResource;
@@ -616,44 +613,6 @@ public class InsertTest extends SchemaMirrorTest {
 			rootConnection.execute(buf.toString());
 		}
 	}
-	
-	@Test
-	public void testPE1149() throws Throwable {
-		final ProxyConnectionResource pcr = new ProxyConnectionResource();
-
-		try {
-			final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
-			tests.add(new StatementMirrorProc(
-					"CREATE TABLE `bug_repro_1149` (`user_session_id` varchar(32) NOT NULL,`detail` blob, PRIMARY KEY (`user_session_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8"));
-			final byte[] failingInput = { (byte) 255 };	// any value above 127 will fail
-			final List<Byte> binarySql = new ArrayList<Byte>();
-			binarySql.addAll(Bytes.asList("INSERT INTO `bug_repro_1149` VALUES ('somekey','".getBytes()));
-			binarySql.addAll(Bytes.asList(failingInput));
-			binarySql.addAll(Bytes.asList("')".getBytes()));
-			binaryTestHelper(pcr, binarySql, tests);
-			// The line below is commented out because we can't figure out why the values are different when the data in the database is the same
-//			tests.add(new StatementMirrorFun("SELECT * from `bug_repro_1149`"));
-	
-			runTest(tests);
-		} finally {
-			pcr.disconnect();
-		}
-	}
-	
-	private void binaryTestHelper(final ProxyConnectionResource pcr, List<Byte> binarySql, ArrayList<MirrorTest> tests) throws Throwable {
-		final byte[] backingBinaryArray = ArrayUtils.toPrimitive(binarySql.toArray(new Byte[] {}));
-		tests.add(new MirrorProc() {
-			@Override
-			public ResourceResponse execute(TestResource mr) throws Throwable {
-				if (mr.getDDL().isNative()) {
-					return mr.getConnection().execute(new String(backingBinaryArray, CharsetUtil.ISO_8859_1));
-				} else {
-					pcr.execute("use " + mr.getDDL().getDatabaseName());
-					return pcr.execute(null, backingBinaryArray);
-				}
-			}
-		});
-	}
 
 	@Test
 	public void testPE1222_PE1239() throws Throwable {
@@ -784,4 +743,75 @@ public class InsertTest extends SchemaMirrorTest {
 		}
 	}
 	
+	@Test
+	public void testPE1569() throws Throwable {
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc(
+				"CREATE TABLE `test` ("
+						+ "`cid` varchar(255),"
+						+ "`data` varchar(255) "
+						+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8"));
+
+		tests.add(new StatementMirrorProc("INSERT INTO test VALUES ('0', '000'); INSERT INTO test VALUES ('1', '111'); INSERT INTO test VALUES ('2', '222');"));
+		tests.add(new StatementMirrorFun("SELECT * FROM test ORDER BY cid;"));
+
+		tests.add(new StatementMirrorProc("SET AUTOCOMMIT = 0"));
+		tests.add(new StatementMirrorProc("INSERT INTO test VALUES ('4', '444'); COMMIT;"));
+		tests.add(new StatementMirrorProc("ROLLBACK"));
+		tests.add(new StatementMirrorFun("SELECT * FROM test ORDER BY cid"));
+
+		runTest(tests);
+	}
+
+	@Test
+	public void testPE1652() throws Throwable {
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1652"));
+		tests.add(new StatementMirrorProc(
+				"CREATE TABLE pe1652 ("
+						+ "c01 TINYINT,"
+						+ "c02 TINYINT UNSIGNED,"
+						+ "c03 SMALLINT,"
+						+ "c04 SMALLINT UNSIGNED,"
+						+ "c05 MEDIUMINT,"
+						+ "c06 MEDIUMINT UNSIGNED,"
+						+ "c07 INT,"
+						+ "c08 INT UNSIGNED,"
+						+ "c09 BIGINT,"
+						+ "c10 BIGINT UNSIGNED,"
+						+ "PRIMARY KEY(c01, c02, c03, c04, c05, c06, c07, c08, c09, c10))"));
+
+		tests.add(new StatementMirrorProc(
+				"INSERT INTO pe1652 VALUES (127, 255, 32767, 65535, 8388607, 16777215, 2147483647, 4294967295, 9223372036854775807, 18446744073709551615)"));
+		tests.add(new StatementMirrorFun("SELECT * FROM pe1652"));
+
+		runTest(tests);
+	}
+
+	@Test
+	public void testPE1655() throws Throwable {
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
+
+		tests.add(new StatementMirrorProc("SET NAMES utf8"));
+		tests.add(new StatementMirrorProc("SET character_set_database = utf8"));
+
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS `ｱｱｱ`"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS `あああ`"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS `龖龖龖`"));
+
+		tests.add(new StatementMirrorProc("CREATE TABLE `ｱｱｱ`(`ｷｷｷ` char(5)) DEFAULT CHARSET = utf8 engine=INNODB"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `あああ`(`ききき` char(5)) DEFAULT CHARSET = utf8 engine=INNODB"));
+		tests.add(new StatementMirrorProc("CREATE TABLE `龖龖龖`(`丂丂丂` char(5)) DEFAULT CHARSET = utf8 engine=INNODB"));
+
+		tests.add(new StatementMirrorProc("INSERT INTO `ｱｱｱ` VALUES ('ｱｱｱｱｱ'),('ｲｲｲｲｲ'),('ｳｳｳｳｳ')"));
+		tests.add(new StatementMirrorProc("INSERT INTO `あああ` VALUES ('あああああ'),('いいいいい'),('ううううう')"));
+		tests.add(new StatementMirrorProc("INSERT INTO `龖龖龖` VALUES ('丂丂丂丂丂'),('丄丄丄丄丄'),('丅丅丅丅丅')"));
+
+		tests.add(new StatementMirrorFun("SELECT * FROM `ｱｱｱ` ORDER BY `ｷｷｷ`"));
+		tests.add(new StatementMirrorFun("SELECT * FROM `あああ` ORDER BY `ききき`"));
+		tests.add(new StatementMirrorFun("SELECT * FROM `龖龖龖` ORDER BY `丂丂丂`"));
+
+		runTest(tests);
+	}
+
 }

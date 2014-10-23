@@ -22,6 +22,7 @@ package com.tesora.dve.upgrade.versions;
  */
 
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.Pair;
@@ -55,7 +56,7 @@ public class AddViewsVersion extends ComplexCatalogVersion {
 	};
 
 	@Override
-	public void upgrade(DBHelper helper) throws PEException {
+	public void upgrade(DBHelper helper, InformationCallback stdout) throws PEException {
 		execQuery(helper, before);
 		Pair<Long,Long> dbids = getSimpleBounds(helper,"user_database","user_database_id");
 		for(long i = dbids.getFirst(); i <= dbids.getSecond(); i++) {

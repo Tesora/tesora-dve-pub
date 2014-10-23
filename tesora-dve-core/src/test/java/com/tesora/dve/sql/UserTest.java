@@ -36,6 +36,7 @@ import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
+import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
@@ -56,12 +57,12 @@ public class UserTest extends SchemaTest {
 		PETest.bootHost = BootstrapHost.startServices(PETest.class);
 	}
 
-	protected ProxyConnectionResource conn;
+	protected PortalDBHelperConnectionResource conn;
 	protected DBHelperConnectionResource dbh;
 	
 	@Before
 	public void before() throws Throwable {
-		conn = new ProxyConnectionResource();
+		conn = new PortalDBHelperConnectionResource();
 		testDDL.create(conn);
 		dbh = new DBHelperConnectionResource();		
 	}

@@ -34,10 +34,10 @@ import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.show.ShowTableStatusInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -72,7 +72,7 @@ public class ShowTableStatusStatement extends DelegatingDDLStatement {
 	private ExpressionNode likeClause;
 	
 	public ShowTableStatusStatement(List<TableKey> tabs, ExpressionNode whereClause, 
-			PEPersistentGroup execGroup, ShowTableStatusInformationSchemaTable showTable) {
+			PEPersistentGroup execGroup, InformationSchemaTable showTable) {
 		super(execGroup, showTable);
 		tables = tabs;
 		originalWhereClause = whereClause;
@@ -81,7 +81,7 @@ public class ShowTableStatusStatement extends DelegatingDDLStatement {
 
 	
 	public ShowTableStatusStatement(ExpressionNode likeClause,
-			ShowTableStatusInformationSchemaTable showTable) {
+			InformationSchemaTable showTable) {
 		super(null,showTable);
 		this.likeClause = likeClause;
 	}
@@ -107,7 +107,7 @@ public class ShowTableStatusStatement extends DelegatingDDLStatement {
 		}
 		String origCommand = buildInitialShowStatusCommand();
 		if (onGroup.isSingleSiteGroup()) {
-			es.append(ProjectingExecutionStep.build(ondb,onGroup,origCommand));
+			es.append(ProjectingExecutionStep.build(pc, ondb, onGroup, origCommand));
 		} else {
 			//		System.out.println(origCommand);
 			TempGroupManager tgm = new TempGroupManager(); 

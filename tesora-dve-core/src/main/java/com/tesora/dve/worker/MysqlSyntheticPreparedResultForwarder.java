@@ -21,24 +21,15 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import io.netty.channel.Channel;
+import com.tesora.dve.concurrent.*;
+import com.tesora.dve.db.CommandChannel;
+import com.tesora.dve.db.mysql.*;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
-import com.tesora.dve.concurrent.PEFuture.Listener;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
-import com.tesora.dve.db.mysql.MysqlPrepareParallelConsumer;
-import com.tesora.dve.db.mysql.MysqlPrepareStatementDiscarder;
-import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
-import com.tesora.dve.db.mysql.MysqlStmtExecuteCommand;
-import com.tesora.dve.db.mysql.MysqlStmtPrepareCommand;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
@@ -57,27 +48,26 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 		throw new PEException("Cannot inject into " + this.getClass().getSimpleName());
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(final Channel channel, StorageSite site, final DBConnection.Monitor connectionMonitor, final SQLCommand sql, final PEPromise<Boolean> promise) {
+    @Override
+    public MysqlCommand writeCommandExecutor(final CommandChannel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
+        //TODO: this executor is weird.  It sends a prepare, collects the statement ID, sends an execute, then closes the prepared statement. -sgossard
 		final MysqlQueryResultConsumer resultForwarder = this;
 		final MysqlPrepareParallelConsumer prepareCollector = new MysqlPrepareStatementDiscarder();
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
-		preparePromise.addListener(new Listener<Boolean>() {
+		preparePromise.addListener(new CompletionTarget<Boolean>() {
 			@Override
-			public void onSuccess(Boolean returnValue) {
+			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = prepareCollector.getPreparedStatement();
-				channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), resultForwarder, promise));
+				channel.write(new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), resultForwarder, promise));
 //			System.out.println("selectCollector " + pstmt);
-				channel.write(new MysqlStmtCloseCommand(pstmt));
-				channel.flush();
+				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
 			}
 			@Override
-			public void onFailure(Exception e) {
+			public void failure(Exception e) {
 				promise.failure(e);
 			}
 		});
-		channel.write(new MysqlStmtPrepareCommand(sql.getSQL(), prepareCollector, preparePromise));
-		return promise;
+		return new MysqlStmtPrepareCommand(sql.getSQL(), prepareCollector, preparePromise);
 	}
 
 }

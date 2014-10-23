@@ -54,7 +54,7 @@ public abstract class NativeResultHandler implements Serializable {
 		return colStr;
 	}
 
-	public byte[] getObjectAsBytes(ColumnMetadata uc, Object obj) throws PEException {
+	public byte[] getObjectAsBytes(ColumnMetadata uc, Object obj) {
 		byte[] ret = null;
 		if (obj == null)
 			return null;
@@ -88,7 +88,7 @@ public abstract class NativeResultHandler implements Serializable {
 		} else if (obj instanceof Timestamp) {
 			ret = getTimestampAsBytes(uc, obj);
 		} else {
-			throw new PEException("Unhandled type " + obj.getClass().getName());
+			throw new IllegalArgumentException("Unhandled type " + obj.getClass().getName());
 		}
 
 		return ret;

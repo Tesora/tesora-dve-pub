@@ -36,5 +36,7 @@ public interface Table<T extends Column<?>> extends HasName, HasTable {
 
 	public boolean isInfoSchema();
 	
+	public boolean isTempTable();
+
 	public Database<?> getDatabase(SchemaContext sc);
 }

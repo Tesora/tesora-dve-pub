@@ -21,6 +21,7 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+import java.util.Collections;
 import java.util.List;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -32,6 +33,7 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
+import com.tesora.dve.sql.statement.ddl.AddStorageGenRangeInfo;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -50,21 +52,25 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	boolean mustIgnoreFKs;
 	// all the users and grants
 	List<SQLCommand> userDecls;
+	// if we're rebalancing this is nonempty
+	List<AddStorageGenRangeInfo> rebalanceInfo;
 	
 	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate) {
-		this(sg,sites,invalidate,null,false,null);
+		this(sg,sites,invalidate,null,false,null, Collections.<AddStorageGenRangeInfo> emptyList());
 	}
 	
 	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate,
 			ListOfPairs<UserTable,SQLCommand> tableDecls,
 			boolean ignoreFKs,
-			List<SQLCommand> userDecls) {
+			List<SQLCommand> userDecls,
+			List<AddStorageGenRangeInfo> rebalanceInfo) {
 		this.group = sg;
 		this.sites = sites;
 		this.record = invalidate;
 		this.tableDecls = tableDecls;
 		this.mustIgnoreFKs = ignoreFKs;
 		this.userDecls = userDecls;
+		this.rebalanceInfo = rebalanceInfo;
 	}
 
 	@Override
@@ -77,7 +83,7 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 				public CatalogEntity generate() throws Throwable {
 					StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
 					ssCon.getCatalogDAO().persistToCatalog(newGen);
-					group.addGeneration(ssCon, wg, newGen);
+					group.addGeneration(ssCon, wg, newGen, tableDecls, mustIgnoreFKs, userDecls, rebalanceInfo);
 					return newGen;
 				}
 			}.execute();

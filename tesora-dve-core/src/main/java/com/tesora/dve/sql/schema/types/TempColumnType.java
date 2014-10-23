@@ -148,6 +148,11 @@ public class TempColumnType implements Type {
 	}
 
 	@Override
+	public void persistTypeName(UserColumn uc) {
+		uc.setTypeName(getTypeName());
+	}
+	
+	@Override
 	public Integer getDataType() {
 		return actual.getDataType();
 	}
@@ -240,5 +245,10 @@ public class TempColumnType implements Type {
 	@Override
 	public TextType toTextType() {
 		return actual.toTextType();
+	}
+
+	@Override
+	public int getColumnAttributesFlags() {
+		return actual.getColumnAttributesFlags();
 	}
 }

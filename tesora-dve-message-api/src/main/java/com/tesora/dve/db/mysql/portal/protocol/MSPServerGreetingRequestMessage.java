@@ -27,15 +27,16 @@ import io.netty.channel.ChannelHandlerContext;
 
 import java.nio.ByteOrder;
 
-public class MSPServerGreetingRequestMessage extends BaseMSPMessage implements MSPUntypedMessage {
+public class MSPServerGreetingRequestMessage extends BaseMSPMessage {
+    public static final MSPServerGreetingRequestMessage PROTOTYPE = new MSPServerGreetingRequestMessage();
     public static final byte MYSQL_PROTOCOL_VERSION=10;
 
-    public MSPServerGreetingRequestMessage() {
+    protected MSPServerGreetingRequestMessage() {
         super();
     }
 
-    public MSPServerGreetingRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPServerGreetingRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     public static void write(ChannelHandlerContext ctx, int connectionId, String salt, int serverCapabilities, String serverVersion, byte serverCharSet, String pluginData) {
@@ -74,8 +75,7 @@ public class MSPServerGreetingRequestMessage extends BaseMSPMessage implements M
 
             out.setMedium(0, out.writerIndex()-4);
 
-            ctx.channel().write(out);
-            ctx.flush();
+            ctx.channel().writeAndFlush(out);
         } finally {
             serverCapabilitiesBuf.release();
         }
@@ -87,7 +87,9 @@ public class MSPServerGreetingRequestMessage extends BaseMSPMessage implements M
     }
 
     @Override
-    public MSPServerGreetingRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        return new MSPServerGreetingRequestMessage(sequenceID,source);
+    public MSPServerGreetingRequestMessage newPrototype(ByteBuf source) {
+        final byte messageType = source.readByte();
+        source = source.slice();
+        return new MSPServerGreetingRequestMessage(source);
     }
 }

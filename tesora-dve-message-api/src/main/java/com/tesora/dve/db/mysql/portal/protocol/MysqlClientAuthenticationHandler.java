@@ -141,12 +141,12 @@ public class MysqlClientAuthenticationHandler extends ByteToMessageDecoder {
                 handshake.setServerCharset((byte) mysqlCharsetID);
 
                 MSPAuthenticateV10MessageMessage.write(out, userName, userPassword, salt, charset, mysqlCharsetID, capabilitiesFlag);
-                ctx.write(out);
+                ctx.writeAndFlush(out);
 			} catch (Exception e) {
 				out.release();
                 log.debug("Couldn't write auth handshake to socket",e);
 			}
-			ctx.flush();
+
             enterState(AuthenticationState.AWAIT_ACKNOWLEGEMENT);
 		}
 	}

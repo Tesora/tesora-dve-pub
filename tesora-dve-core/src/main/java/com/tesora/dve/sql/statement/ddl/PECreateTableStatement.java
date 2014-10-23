@@ -66,7 +66,6 @@ import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
@@ -87,6 +86,7 @@ import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class PECreateTableStatement extends
@@ -170,7 +170,8 @@ public class PECreateTableStatement extends
 		protected abstract void end(SchemaContext sc, PETable pet);
 		
 		protected void computeDanglingFKs(SchemaContext sc, PETable newTab) {
-			boolean required = SchemaVariables.hasForeignKeyChecks(sc);
+			boolean required = 
+					KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(sc.getConnection().getVariableSource()).booleanValue();
 			UnqualifiedName dbName = newTab.getDatabase(sc).getName().getUnqualified();
 			UnqualifiedName tabName = newTab.getName().getUnqualified();
 			List<PETable> matching = sc.findTablesWithUnresolvedFKSTargeting(dbName, tabName);
@@ -353,7 +354,7 @@ public class PECreateTableStatement extends
 		// and then we do the create
 		es.append(new ComplexDDLExecutionStep(tab.getPEDatabase(pc),
 				tab.getStorageGroup(pc),null,Action.CREATE,
-				new CreateTableCallback(tab,alsoClear,modded)));		
+				new CreateTableCallback(pc, tab, alsoClear, modded)));
 	}
 	
 	protected void oneStepPlan(SchemaContext pc, ExecutionSequence es) throws PEException {		
@@ -628,7 +629,7 @@ public class PECreateTableStatement extends
 		private List<CatalogEntity> updates;
 		private SQLCommand sql;
 		
-		public CreateTableCallback(PETable translated, List<TableCacheKey> referring, List<TableCacheKey> modified) {
+		public CreateTableCallback(final SchemaContext pc, PETable translated, List<TableCacheKey> referring, List<TableCacheKey> modified) {
 			builtVersion = translated;
 			ListOfPairs<SchemaCacheKey<?>, InvalidationScope> invalidate = 
 					new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
@@ -638,7 +639,7 @@ public class PECreateTableStatement extends
 			for(TableCacheKey tck : referring)
 				invalidate.add(tck, InvalidationScope.LOCAL);
 			record = new CacheInvalidationRecord(invalidate);
-			sql = new SQLCommand(builtVersion.getDeclaration());
+			sql = new SQLCommand(pc, builtVersion.getDeclaration());
 		}
 		
 		@Override
@@ -681,7 +682,7 @@ public class PECreateTableStatement extends
 			} finally {
 				sc.endSaveContext();
 			}
-			sql = new SQLCommand(fresh.getDeclaration());
+			sql = new SQLCommand(conn, fresh.getDeclaration());
 		}
 
 		@Override

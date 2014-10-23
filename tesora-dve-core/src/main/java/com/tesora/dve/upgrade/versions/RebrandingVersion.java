@@ -29,6 +29,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.util.Pair;
 
@@ -41,7 +42,7 @@ public class RebrandingVersion extends ComplexCatalogVersion {
 	}
 
 	@Override
-	public void upgrade(DBHelper helper) throws PEException {
+	public void upgrade(DBHelper helper, InformationCallback ic) throws PEException {
 		try {
 			ResultSet rs = null;
 			try {

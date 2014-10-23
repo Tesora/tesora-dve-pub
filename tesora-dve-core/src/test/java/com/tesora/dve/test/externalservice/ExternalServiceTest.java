@@ -30,9 +30,6 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
-import org.apache.commons.lang.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -40,12 +37,15 @@ import org.junit.Test;
 
 import com.tesora.dve.common.catalog.ExternalService;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceContext;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
 import com.tesora.dve.externalservice.ExternalServicePlugin;
 import com.tesora.dve.groupmanager.GroupMembershipListener.MembershipEventType;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.schema.PEExternalService;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
@@ -164,7 +164,7 @@ public class ExternalServiceTest extends SchemaTest {
 		
 		// get datastore name first
 		String datastore = null;
-		ExternalService es = catalogDAO.findExternalService(testExternalServiceName);
+		ExternalService es = getGlobalDAO().findExternalService(testExternalServiceName);
 		if (es.usesDataStore()) {
 			datastore = es.getDataStoreName();
 		}
@@ -196,7 +196,7 @@ public class ExternalServiceTest extends SchemaTest {
 				br(nr,testESConfig,testESUser,Boolean.TRUE));
 		
 		// make sure datastore has been created
-		ExternalService es = catalogDAO.findExternalService(testExternalServiceName);
+		ExternalService es = getGlobalDAO().findExternalService(testExternalServiceName);
 		if (es.usesDataStore()) {
 			// if database does not exist we will throw
 			conn.execute("USE " + es.getDataStoreName());
@@ -211,24 +211,23 @@ public class ExternalServiceTest extends SchemaTest {
 				br(nr,testESConfig2,testESUser,Boolean.TRUE));
 	}
 
-	void verifyDrop(String datastore) throws Throwable {
+	void verifyDrop(final String datastore) throws Throwable {
 		dbh.assertResults("SELECT config, connect_user, uses_datastore FROM external_service WHERE name='" + testExternalServiceName + "'", 
 				br());
 
 		// make sure datastore has been dropped
 		if (datastore != null) {
-			try {
-				conn.execute("USE " + datastore);
-			} catch (SQLException e) {
-				// expected
-				String msg = e.getMessage();
-				assertTrue("Expecting parse error for non existent database in use",
-						StringUtils.startsWith(msg, "SchemaException: No such database:"));
-			}
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					conn.execute("USE " + datastore);
+				}
+			}.assertError(SQLException.class, MySQLErrors.unknownDatabaseFormatter,
+						"Unknown database '" + datastore + "'");
 		}
 		
 		// make sure service is gone
-		ExternalService es = catalogDAO.findExternalService(testExternalServiceName, false);
+		ExternalService es = getGlobalDAO().findExternalService(testExternalServiceName, false);
 		assertNull("External service must not be found.", es);
 		
 		// make sure service is deregistered

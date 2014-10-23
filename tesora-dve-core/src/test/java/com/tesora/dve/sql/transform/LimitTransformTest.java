@@ -51,7 +51,7 @@ public class LimitTransformTest extends TransformTest {
 	};
 	
 	@Test
-	public void simpleLimitTestA() throws Exception {
+	public void simpleLimitTestA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -69,7 +69,7 @@ public class LimitTransformTest extends TransformTest {
 	
 	@Ignore
 	@Test
-	public void testLimitOrderOptimizationA() throws Exception {
+	public void testLimitOrderOptimizationA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		stmtTest(db,
 				"select id from titles order by name limit 10",
@@ -78,7 +78,7 @@ public class LimitTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testPStmtA() throws Exception {
+	public void testPStmtA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, leftySchema);
 		prepareTest(db,
 				"select ? from laws limit 1",
@@ -91,7 +91,7 @@ public class LimitTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testPStmtB() throws Exception {
+	public void testPStmtB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		prepareTest(db,

@@ -36,7 +36,7 @@ public class CollationTableModifier extends TableModifier {
 	
 	@Override
 	public void emit(SchemaContext sc, Emitter emitter, StringBuilder buf) {
-		buf.append("DEFAULT COLLATE ").append(collation.getSQL());
+		buf.append("COLLATE=").append(collation.getSQL());
 	}
 
 	@Override

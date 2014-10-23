@@ -31,21 +31,10 @@ import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.Table;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName="persistent_template",
-views={@TableView(view=InfoView.SHOW, name="template", pluralName="templates", 
-		columnOrder={ShowSchema.Template.NAME, ShowSchema.Template.MATCH, ShowSchema.Template.COMMENT, ShowSchema.Template.BODY}, extension=true),
-       @TableView(view=InfoView.INFORMATION, name="templates", pluralName="", 
-       columnOrder={"name", "dbmatch", "definition", "template_comment"}, extension=true)})
 @Entity
 @Table(name="template")
 public class PersistentTemplate implements CatalogEntity, NamedCatalogEntity {
@@ -87,19 +76,11 @@ public class PersistentTemplate implements CatalogEntity, NamedCatalogEntity {
 		this.comment = comment;
 	}
 	
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Template.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
 	@Override
 	public String getName() {
 		return name;
 	}
 
-	@InfoSchemaColumn(logicalName="body",fieldName="definition",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Template.BODY,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="definition", orderBy=true, ident=true)})
 	public String getDefinition() {
 		return definition;
 	}
@@ -109,10 +90,6 @@ public class PersistentTemplate implements CatalogEntity, NamedCatalogEntity {
 	}
 
 	
-	@InfoSchemaColumn(logicalName="dbmatch",fieldName="dbmatch",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Template.MATCH),
-			       @ColumnView(view=InfoView.INFORMATION, name="dbmatch")})
 	public String getMatch() {
 		return dbmatch;
 	}
@@ -121,10 +98,6 @@ public class PersistentTemplate implements CatalogEntity, NamedCatalogEntity {
 		dbmatch = def;
 	}
 
-	@InfoSchemaColumn(logicalName="comment", fieldName="comment",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.Template.COMMENT),
-				   @ColumnView(view=InfoView.INFORMATION, name="template_comment")})
 	public String getComment() {
 		return comment;
 	}

@@ -25,16 +25,17 @@ package com.tesora.dve.sql.schema;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.codec.binary.Hex;
 
+import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.PECharsetUtils;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -48,10 +49,14 @@ import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.common.catalog.UserTrigger;
+import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.modifiers.AutoincTableModifier;
 import com.tesora.dve.sql.schema.modifiers.CharsetTableModifier;
@@ -59,15 +64,16 @@ import com.tesora.dve.sql.schema.modifiers.CollationTableModifier;
 import com.tesora.dve.sql.schema.modifiers.CommentTableModifier;
 import com.tesora.dve.sql.schema.modifiers.CreateOptionModifier;
 import com.tesora.dve.sql.schema.modifiers.EngineTableModifier;
-import com.tesora.dve.sql.schema.modifiers.EngineTableModifier.EngineTag;
 import com.tesora.dve.sql.schema.modifiers.RowFormatTableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifierTag;
 import com.tesora.dve.sql.schema.modifiers.TableModifiers;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
+import com.tesora.dve.sql.util.Cast;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryPredicate;
+import com.tesora.dve.variables.KnownVariables;
 
 public class PETable extends PEAbstractTable<PETable> implements HasComment { 
 		
@@ -79,6 +85,8 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	// tables which have fks which refer to this table.  used in fk action support.
 	private ListSet<SchemaCacheKey<PEAbstractTable<?>>> referring;
+	
+	private EnumMap<TriggerEvent,Triggers> triggers;
 	
 	// table options - this encompasses both those persisted separately and those not.
 	// for non-new tables (i.e. loaded) this contains the options separately persisted.
@@ -96,7 +104,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	// cache object; used to avoid some catalog access issues in the engine
 	// also used for cta support
 	protected CachedPETable cached;
-	
+		
 	public PETable(SchemaContext pc, Name name, 
 			List<TableComponent<?>> fieldsAndKeys, DistributionVector dv, List<TableModifier> modifier, 
 			PEPersistentGroup defStorage, PEDatabase db,
@@ -107,6 +115,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		this.referring = new ListSet<SchemaCacheKey<PEAbstractTable<?>>>();
 		this.keys = new ArrayList<PEKey>();
 		this.modifiers = new TableModifiers(modifier);
+		this.triggers = new EnumMap<TriggerEvent,Triggers>(TriggerEvent.class);
 		// do keys & columns first so that database can propagate charset/collation
 		initializeColumnsAndKeys(pc,fieldsAndKeys,db);
 		setDatabase(pc,db,false);
@@ -224,11 +233,29 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 			referring.add(PEAbstractTable.getTableKey(k.getTable()));
 		}
 		forceStorage(pc);
-	}		
+		// load the triggers here
+		this.triggers = new EnumMap<TriggerEvent,Triggers>(TriggerEvent.class);
+		if (!table.getTriggers().isEmpty()) {
+			for(UserTrigger ut : table.getTriggers()) {
+				PETrigger trig = PETrigger.load(ut, pc, this);
+				addTriggerInternal(trig);
+			}
+		}
 		
+	}		
+
+	private void addTriggerInternal(PETrigger trig) {
+		Triggers any = triggers.get(trig.getEvent());
+		if (any == null) {
+			any = new Triggers();
+			triggers.put(trig.getEvent(),any);
+		}
+		any.set(trig);		
+	}
+	
 	public void setDeclaration(SchemaContext sc, PETable basedOn) {
 		super.setDeclaration(sc,basedOn);
-        tableDefinition = Singletons.require(HostService.class).getDBNative().getEmitter().emitTableDefinition(sc,basedOn);
+        tableDefinition = new MysqlEmitter().emitTableDefinition(sc,basedOn); 
 	}
 	
 	public String getDefinition() {
@@ -341,6 +368,10 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return keys;
 	}
 
+	protected List<TableComponent<?>> getKeys() {
+		return Functional.apply(keys,new Cast<TableComponent<?>,PEKey>());
+	}
+	
 	
 	public PEKey lookupKey(SchemaContext sc, Name keyName) {
 		if (!loaded) return null;
@@ -362,7 +393,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	public PEKey addKey(SchemaContext sc, PEKey pek, boolean doSyntheticChecks, PEDatabase theDB) {
 		checkLoaded(sc);
 		PEKey newlyDropped = null;
-		boolean mtmode = theDB.getMTMode().isMT();
+		boolean mtmode = (theDB == null ? false : theDB.getMTMode().isMT());
 		if (pek.getConstraint() == ConstraintType.FOREIGN) {
 			if (!mtmode) {
 				PEForeignKey pefk = (PEForeignKey) pek;
@@ -522,7 +553,37 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	public void removeKey(SchemaContext sc, PEKey pek) {
 		checkLoaded(sc);
+		// also, at this point, clear the key flags on the columns
+		// but only if the column is now truly not a key
+		MultiMap<PEColumn,PEKey> colByKey = new MultiMap<PEColumn,PEKey>();
+		for(PEKey k : keys) {
+			if (k.isForeign()) continue; // doesn't matter
+			for(PEKeyColumnBase pekc : k.getKeyColumns()) {
+				colByKey.put(pekc.getColumn(), k);
+			}
+		}
+		for(PEColumn pec : colByKey.keySet()) {
+			Collection<PEKey> vals = colByKey.get(pec);
+			vals.remove(pek);
+			// now look at the remaining keys, and figure out the key parts
+			boolean isPrimary = false;
+			boolean isUnique = false;
+			boolean isKey = !vals.isEmpty();
+			for(PEKey ipek : vals) {
+				if (ipek.getConstraint() == ConstraintType.PRIMARY)
+					isPrimary = true;
+				if (ipek.getConstraint() == ConstraintType.UNIQUE)
+					isUnique = true;
+			}
+			if (!isPrimary)
+				pec.clearPrimaryKeyPart();
+			if (!isUnique)
+				pec.clearUniqueKeyPart();
+			if (!isKey)
+				pec.clearKeyPart();
+		}
 		keys.remove(pek);
+		
 	}
 	
 	public int getOffsetOf(SchemaContext sc, PEKey pek) {
@@ -586,6 +647,18 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	public ListSet<SchemaCacheKey<PEAbstractTable<?>>> getReferencingTables() {
 		return referring;
+	}
+	
+	public void addTrigger(SchemaContext sc, PETrigger trig) {
+		checkLoaded(sc);
+		addTriggerInternal(trig);
+	}
+	
+	public void removeTrigger(SchemaContext sc, PETrigger trig) {
+		checkLoaded(sc);
+		Triggers any = triggers.get(trig.getEvent());
+		if (any == null) return;
+		any.remove(trig);
 	}
 	
 	@Override
@@ -714,6 +787,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	protected void updateExisting(SchemaContext pc, UserTable ut) throws PEException {
 		super.updateExisting(pc,ut);
 		updateExistingKeys(pc,ut);
+		updateExistingTriggers(pc,ut);
 		
 		setModifiers(pc,ut);
 	}
@@ -793,6 +867,36 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		}
 	}
 
+	protected void updateExistingTriggers(SchemaContext sc, UserTable ut) throws PEException {
+		HashMap<String, UserTrigger> persistent = new HashMap<String,UserTrigger>();
+		HashMap<String, PETrigger> trans = new HashMap<String,PETrigger>();
+		for(Triggers trig : triggers.values()) {
+			for(PETrigger pet : trig.get()) {
+				trans.put(pet.getName().getUnqualified().getUnquotedName().get(),pet);
+			}
+		}
+		for(UserTrigger trig : ut.getTriggers()) 
+			persistent.put(trig.getName(),trig);
+		// anything that exists in persistent but not in trans has been deleted
+		// anything that exists in trans but not persistent has been added
+		Set<String> persTrigNames = persistent.keySet();
+		Set<String> transTrigNames = trans.keySet();
+		if (persTrigNames.equals(transTrigNames)) return; // nothing to do
+		if (persTrigNames.size() < transTrigNames.size()) {
+			// added
+			transTrigNames.removeAll(persTrigNames);
+			for(String s : transTrigNames) {
+				ut.getTriggers().add(trans.get(s).persistTree(sc));
+			}
+		} else {
+			// dropped
+			persTrigNames.removeAll(transTrigNames);
+			for(String s : persTrigNames) {
+				ut.getTriggers().remove(trans.get(s).persistTree(sc));
+			}
+		}
+	}
+	
 	
 	public boolean hasAutoInc() {
 		return (Boolean.TRUE.equals(hasAutoInc));
@@ -800,12 +904,8 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 
 	private void forceStorage(SchemaContext pc) {
 		EngineTableModifier etm = (EngineTableModifier) modifiers.getModifier(TableModifierTag.ENGINE);
-		if (etm == null) {
-			String engine = SchemaVariables.getStorageEngine(pc); 
-			if ( engine != null)
-				etm = new EngineTableModifier(EngineTag.findEngine(engine));
-			else
-				etm = new EngineTableModifier(EngineTableModifier.EngineTag.INNODB);
+		if (etm == null) { 
+			etm = new EngineTableModifier(KnownVariables.STORAGE_ENGINE.getSessionValue(pc.getConnection().getVariableSource())); 
 			modifiers.setModifier(etm);
 		}
 	}
@@ -835,6 +935,12 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 				// we don't store this in the declaration, but it is in the catalog
 				PEColumn ntc = c.getIn(sc, tschemaVersion);
 				ntc.makeBinaryText();
+			}
+			if (!c.hasDefault()) {
+				// make sure the rebuilt column has no default as well
+				PEColumn ntc = (PEColumn) c.getIn(sc, tschemaVersion);
+				if (ntc == null) continue;
+				ntc.setDefaultValue(null);
 			}
 		}
 		if (mtmode) {
@@ -1044,4 +1150,49 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return false;
 	}
 	
+	public boolean hasTrigger(SchemaContext sc, TriggerEvent et) {
+		if (triggers == null || triggers.isEmpty()) return false;
+		Triggers any = triggers.get(et);
+		return any != null;
+	}
+	
+	private static class Triggers {
+		
+		private PETrigger before;
+		private PETrigger after;
+		
+		public Triggers() {
+			before = null;
+			after = null;
+		}
+
+		public void set(PETrigger trig) {
+			if (trig.isBefore())
+				before = trig;
+			else
+				after = trig;
+		}
+		
+		public void remove(PETrigger trig) {
+			if (trig.isBefore())
+				before = null;
+			else
+				after = null;
+		}
+		
+		public PETrigger getBefore() {
+			return before;
+		}
+
+		public PETrigger getAfter() {
+			return after;
+		}
+
+		public Collection<PETrigger> get() {
+			ArrayList<PETrigger> out = new ArrayList<PETrigger>();
+			if (before != null) out.add(before);
+			if (after != null) out.add(after);
+			return out;
+		}
+	}
 }

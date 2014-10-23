@@ -23,6 +23,8 @@ package com.tesora.dve.mysqlapi.repl;
 
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.google.common.primitives.UnsignedLong;
 import com.tesora.dve.dbc.ServerDBConnection;
@@ -48,15 +50,20 @@ public class MyReplSessionVariableCache {
 	UnsignedLong seed1 = null;
 	UnsignedLong seed2 = null;
 	
+	// User variable
+	List<Pair<String, String>> userVariables = new ArrayList<Pair<String, String>>();
+	
 	public void setAllSessionVariableValues(ServerDBConnection conn) throws SQLException {
 		// don't set the variable directly use the new PE variable instead for IntVar event
 //		setIntVarVariable(conn);
 		setRandVariable(conn);
+		setUserVariable(conn);
 	}
 
 	public void clearAllSessionVariables() {
 		clearIntVarValue();
 		clearRandValue();
+		clearUserVariable();
 	}
 
 	public void setRotateLogValue(String masterLogFile) {
@@ -127,7 +134,28 @@ public class MyReplSessionVariableCache {
 		conn.executeUpdate(buildSetSessionStatement(RAND_SEED2_VAR, this.seed2));
 	}
 	
+	public void setUserVariable(Pair<String, String> userVariable) {
+		this.userVariables.add(userVariable);
+	}
+
+	public List<Pair<String, String>> getUserVariables() {
+		return this.userVariables;
+	}
+
+	public void clearUserVariable() {
+		this.userVariables.clear();
+	}
+
+	public void setUserVariable(ServerDBConnection conn) throws SQLException {
+		if (this.userVariables.size() == 0) return;
+		
+		for (Pair<String, String> userVariable : this.userVariables) {
+			conn.executeUpdate(buildSetSessionStatement("@" + userVariable.getFirst(), userVariable.getSecond()));
+		}
+	}
+
 	String buildSetSessionStatement(String variableName, Object variableValue) {
 		return "SET " + variableName + "=" + variableValue.toString();
 	}
+
 }

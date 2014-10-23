@@ -28,6 +28,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.siteprovider.SiteProviderPlugin.SiteProviderContext;
+import com.tesora.dve.variables.VariableHandler;
 
 public class SiteProviderContextInitialisation implements SiteProviderContext {
 	
@@ -42,12 +43,15 @@ public class SiteProviderContextInitialisation implements SiteProviderContext {
 
 	@Override
 	public void setGlobalVariable(String variableName, String value) throws PEException {
-        Singletons.require(HostService.class).setGlobalVariable(getCatalogDAO(), variableName, value);
+		VariableHandler<?> vh = Singletons.require(HostService.class).getVariableManager().lookupMustExist(null,variableName);
+		vh.setGlobalValue(null,value);
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	public String getGlobalVariable(String variableName) throws PEException {
-        return Singletons.require(HostService.class).getGlobalVariable(getCatalogDAO(), variableName);
+		VariableHandler vh = Singletons.require(HostService.class).getVariableManager().lookupMustExist(null,variableName);
+		return vh.toExternal(vh.getValue(null));
 	}
 
 	@Override

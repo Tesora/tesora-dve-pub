@@ -105,7 +105,6 @@ public abstract class InboundMysqlAuthenticationHandlerV10 extends ChannelInboun
     }
 
     void authenticateClient(ChannelHandlerContext ctx, MSPAuthenticateV10MessageMessage authMessage) throws PEException {
-        byte seqID = authMessage.getSequenceID();
 
         // Login in the SSConnection
         MyMessage mysqlResp;
@@ -113,18 +112,15 @@ public abstract class InboundMysqlAuthenticationHandlerV10 extends ChannelInboun
             mysqlResp = doAuthenticate(ctx, authMessage);
         } catch (PEException e) {
             mysqlResp = new MyErrorResponse(e.rootCause());
-            mysqlResp.setPacketNumber(seqID + 1);
         } catch (Throwable t) {
             mysqlResp = new MyErrorResponse(new Exception(t.getMessage()));
-            mysqlResp.setPacketNumber(seqID + 1);
         }
         if (mysqlResp instanceof MyOKResponse)
             currentAuthState = AuthState.AUTHENTICATED;
         else
             currentAuthState = AuthState.FAILED;
 
-        ctx.write(mysqlResp);
-        ctx.flush();
+        ctx.writeAndFlush(mysqlResp);
     }
 
     protected abstract MyMessage doAuthenticate(ChannelHandlerContext ctx, MSPAuthenticateV10MessageMessage authMessage) throws Throwable;

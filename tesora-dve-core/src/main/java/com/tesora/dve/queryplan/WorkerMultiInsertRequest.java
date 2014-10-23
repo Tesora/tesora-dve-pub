@@ -21,17 +21,16 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import java.sql.SQLException;
 import java.util.Collection;
-
-import javax.transaction.xa.XAException;
+import java.util.Iterator;
 
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
-import com.tesora.dve.comms.client.messages.ResponseMessage;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSContext;
@@ -53,20 +52,51 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
 	}
 
 	@Override
-	public ResponseMessage executeRequest(Worker w, DBResultConsumer resultConsumer) throws SQLException, PEException, XAException {
+	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> callersResults) {
+        try {
+            Collection<SQLCommand> cmds = mappedInserts.get(w.getWorkerSite());
 
-		Collection<SQLCommand> cmds = mappedInserts.get(w.getWorkerSite());
+            if ( cmds != null ) {
+                Iterator<SQLCommand> commandIterator = cmds.iterator();
+                executeNextInsert(w, resultConsumer, callersResults, commandIterator);
+            } else {
+                callersResults.success(true);
+            }
 
-		if ( cmds != null ) {
-			for (SQLCommand sqlCommand : cmds) {
-				executeStatement(w, sqlCommand, resultConsumer);
-			}
-		}
-		
-		return new ExecuteResponse(resultConsumer.hasResults(), resultConsumer.getUpdateCount(), null ).from(w.getAddress()).success();
+        } catch (Exception e){
+            callersResults.failure(e);
+        }
 	}
 
-	@Override
+    private void executeNextInsert(final Worker w, final DBResultConsumer resultConsumer, final CompletionHandle<Boolean> callersResults, final Iterator<SQLCommand> commandIterator) {
+        if (!commandIterator.hasNext()){
+            try {
+                new ExecuteResponse(resultConsumer.hasResults(), resultConsumer.getUpdateCount(), null ).from(w.getAddress()).success();
+                callersResults.success(true);
+            } catch (PEException e) {
+                callersResults.failure(e);
+            }
+            return;
+        }
+
+        SQLCommand sqlCommand = commandIterator.next();
+        PEDefaultPromise<Boolean> oneInsert = new PEDefaultPromise<Boolean>(){
+            @Override
+            public void success(Boolean returnValue) {
+                //this insert was OK, do the next one.
+                executeNextInsert(w,resultConsumer,callersResults,commandIterator);
+            }
+
+            @Override
+            public void failure(Exception t) {
+                callersResults.failure(t);
+            }
+        };
+
+        executeStatement(w, sqlCommand, resultConsumer, oneInsert);
+    }
+
+    @Override
 	public LogSiteStatisticRequest getStatisticsNotice() {
 		return new LogSiteStatisticRequest(OperationClass.EXECUTE);
 	}

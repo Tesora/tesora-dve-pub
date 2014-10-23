@@ -21,6 +21,8 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.expression.TableInstance;
@@ -82,7 +84,7 @@ public class TableResolver {
 			tableName = (UnqualifiedName) n;
 			db = sc.getCurrentDatabase(false);
 			if (db == null)
-				throw new SchemaException(Pass.SECOND, String.format(unqualifiedMissingDBFormat));
+				throw new SchemaException(new ErrorInfo(DVEErrors.NO_DATABASE_SELECTED));
 		}
 		if (onDatabase != null)
 			onDatabase.execute(db);
@@ -93,8 +95,7 @@ public class TableResolver {
 		return raw;
 	}
 	
-	public TableInstance lookupTable(SchemaContext sc, Schema<?> inSchema, Name n, LockInfo lockType) {
-		// only for show schema - so don't do the temporary table lookup
+	public TableInstance lookupShowTable(SchemaContext sc, Schema<?> inSchema, Name n, LockInfo lockType) {
 		Name tableName = n;
 		Schema<?> schema = inSchema;
 		if (tableName.isQualified()) {

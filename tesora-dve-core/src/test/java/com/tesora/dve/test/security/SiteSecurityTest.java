@@ -24,8 +24,6 @@ package com.tesora.dve.test.security;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -33,27 +31,49 @@ import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.PEUrl;
+import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.test.simplequery.SimpleQueryTest;
+import com.tesora.dve.variable.VariableConstants;
 
 public class SiteSecurityTest extends PETest {
 
 	static Properties props;
 
 	@BeforeClass
-	public static void setup() throws Exception {
+	public static void setup() throws Throwable {
 		Class<?> bootClass = PETest.class;
 
-		TestCatalogHelper.createTestCatalog(bootClass, 2, "root2", "password2");
+		SimpleQueryTest.cleanupSites(2, "TestDB");
+		TestCatalogHelper helper = null;
+		try {
+			helper = new TestCatalogHelper(bootClass);
+			helper.createTestCatalogWithDB(2, false, "root2", "password2");
+		} finally {
+			if (helper != null) {
+				helper.close();
+				helper = null;
+			}
+		}
 
 		bootHost = BootstrapHost.startServices(bootClass);
 
-        populateMetadata(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
-        populateSites(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
+		ProxyConnectionResource pcr = new ProxyConnectionResource("root2","password2");
+		
+		pcr.execute(String.format("alter dve set %s = '%s'",VariableConstants.TEMPLATE_MODE_NAME, TemplateMode.OPTIONAL));
+		pcr.execute("create database TestDB default character set utf8 default persistent group DefaultGroup");
 
+		pcr.execute("use TestDB");
+		pcr.execute("create table foo (id int, value varchar(20)) random distribute");
+		pcr.execute("create table bar (id int, value varchar(20)) random distribute");
+
+		pcr.disconnect();
+		pcr.close();
+		
 		props = PEFileUtils.loadPropertiesFile(SiteSecurityTest.class, PEConstants.CONFIG_FILE_NAME);
 
 		DBHelper dbHelper = new DBHelper(props.getProperty(PEConstants.PROP_JDBC_URL), "root2", "password2");

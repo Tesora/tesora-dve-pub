@@ -90,8 +90,11 @@ public class DBHelperConnectionResource extends JdbcConnectionResource {
 	}
 	
 	public void init() throws Throwable {
-		if ( useUTF8 )
-			this.addPostConnectCmd("SET NAMES UTF8");
+		if (useUTF8) {
+			addPostConnectCmd("SET NAMES utf8");
+		} else {
+			addPostConnectCmd("SET NAMES latin1");
+		}
 		
 		connected = false;
 		conn = new DBHelper(getPEUrl(), getUserid(), getPassword());
@@ -100,13 +103,20 @@ public class DBHelperConnectionResource extends JdbcConnectionResource {
 	
 	public void addJDBCOptions(JdbcConnectParams jdbcConnParams) throws Throwable {
 		Properties props = new Properties();
-		if ( useUTF8 ) {
-			props.setProperty("useUnicode","yes");
-			props.setProperty("characterEncoding","UTF8");
+		if (useUTF8) {
+			props.setProperty("useUnicode", "yes");
+			props.setProperty("characterEncoding", "utf8");
 		} else {
-			props.setProperty("characterEncoding","latin1");
+			props.setProperty("useUnicode", "no");
+			props.setProperty("characterEncoding", "latin1");
 		}
+
 		props.setProperty("zeroDateTimeBehavior", "round");
+		props.setProperty("allowMultiQueries", "true");
+
+		// Forces the driver to get actual charsets and collations from server each time connection establishes.
+		props.setProperty("detectCustomCollations", "true");
+
 		jdbcConnParams.setURLOptions(props);
 	}
 	

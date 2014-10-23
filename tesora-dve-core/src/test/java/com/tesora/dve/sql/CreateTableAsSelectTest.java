@@ -180,8 +180,8 @@ public class CreateTableAsSelectTest extends SchemaMirrorTest {
 				tests.add(new StatementMirrorProc(String.format("create table %s as select * from %s",targtabs[i],srctabs[i])));
 				tests.add(new ShowCreateTable(targtabs[i]));
 				tests.add(new StatementMirrorFun(String.format("select * from %s order by id",targtabs[i])));
-				tests.add(new StatementMirrorFun(false,true,"select table_name from information_schema.tables where table_schema = 'ctadb'"));
-				tests.add(new StatementMirrorFun(false,true,String.format("select column_name from information_schema.columns where table_name = '%s' and table_schema = 'ctadb'",targtabs[i])));
+				tests.add(new StatementMirrorFun(false,true,"select table_name from information_schema.tables where table_schema = 'ctadb' order by table_name"));
+				tests.add(new StatementMirrorFun(false,true,String.format("select column_name from information_schema.columns where table_name = '%s' and table_schema = 'ctadb' order by column_name",targtabs[i])));
 			}
 			runTest(tests);
 		} finally {

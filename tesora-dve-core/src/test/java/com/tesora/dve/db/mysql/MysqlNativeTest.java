@@ -26,10 +26,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Types;
 
 import org.apache.log4j.Logger;
@@ -37,19 +33,10 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tesora.dve.common.DBHelper;
-import com.tesora.dve.common.PEConstants;
-import com.tesora.dve.common.catalog.DistributionModel;
-import com.tesora.dve.common.catalog.PersistentGroup;
-import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
-import com.tesora.dve.common.catalog.UserColumn;
-import com.tesora.dve.common.catalog.UserDatabase;
-import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.libmy.TestColumnDef;
-import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.TestHost;
 import com.tesora.dve.server.global.HostService;
@@ -92,6 +79,7 @@ public class MysqlNativeTest {
         Singletons.require(HostService.class).getDBNative().findType("UNKNOWN TYPE");
 	}
 
+	/*
 	@Test
 	public void testCreateTable() throws PEException, SQLException {
 		DistributionModel dm = new BroadcastDistributionModel();
@@ -187,6 +175,7 @@ public class MysqlNativeTest {
 		stmt.close();
 		dbh.disconnect();
 	}
+	*/
 
 	@Test
 	public void testTypeLookup() throws PEException {

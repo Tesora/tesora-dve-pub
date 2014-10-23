@@ -38,7 +38,7 @@ public class MysqlNativeCollation extends NativeCollation {
 //		{"hp8_bin","hp8","72","","Yes","1"},
 //		{"koi8r_general_ci","koi8r","7","Yes","Yes","1"},
 //		{"koi8r_bin","koi8r","74","","Yes","1"},
-//		{"latin1_german1_ci","latin1","5","","Yes","1"},
+		new MysqlNativeCollation("latin1_german1_ci", "latin1", 5, false, true, 1), //{"latin1_german1_ci","latin1","5","","Yes","1"},
 		new MysqlNativeCollation("latin1_swedish_ci", "latin1", 8, true, true, 1),	//{"latin1_swedish_ci","latin1","8","Yes","Yes","1"},
 		new MysqlNativeCollation("latin1_danish_ci", "latin1", 15, false, true, 1), //{"latin1_danish_ci","latin1","15","","Yes","1"},
 		new MysqlNativeCollation("latin1_german2_ci", "latin1", 31, false, true, 2),//{"latin1_german2_ci","latin1","31","","Yes","2"},
@@ -142,6 +142,7 @@ public class MysqlNativeCollation extends NativeCollation {
 //		{"latin7_bin","latin7","79","","Yes","1"},
 		new MysqlNativeCollation("utf8mb4_general_ci", "utf8mb4", 45, true, true, 1),		//{"utf8mb4_general_ci","utf8mb4","45","Yes","Yes","1"},
 		new MysqlNativeCollation("utf8mb4_bin", "utf8mb4", 46, false, true, 1),				//{"utf8mb4_bin","utf8mb4","46","","Yes","1"},
+		new MysqlNativeCollation("utf8_general_mysql500_ci", "utf8", 223, false, true, 1),
 		new MysqlNativeCollation("utf8mb4_unicode_ci", "utf8mb4", 224, false, true, 8),		//{"utf8mb4_unicode_ci","utf8mb4","224","","Yes","8"},
 		new MysqlNativeCollation("utf8mb4_icelandic_ci", "utf8mb4", 225, false, true, 8),	//{"utf8mb4_icelandic_ci","utf8mb4","225","","Yes","8"},
 		new MysqlNativeCollation("utf8mb4_latvian_ci", "utf8mb4", 226, false, true, 8),		//{"utf8mb4_latvian_ci","utf8mb4","226","","Yes","8"},
@@ -226,9 +227,9 @@ public class MysqlNativeCollation extends NativeCollation {
 		};
 	
 
-	public MysqlNativeCollation(String name, String collation, int id,
+	public MysqlNativeCollation(String name, String collation, long collationId,
 			boolean isDefault, boolean isCompiled, long sortLen) {
-		super(id, name, collation, isDefault, isCompiled, sortLen);
+		super(collationId, name, collation, isDefault, isCompiled, sortLen);
 	}
 
 }

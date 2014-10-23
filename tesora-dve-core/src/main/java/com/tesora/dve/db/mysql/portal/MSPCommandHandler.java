@@ -40,9 +40,9 @@ import java.nio.charset.CharsetDecoder;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
+import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.PEThreadContext;
 import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -89,12 +89,13 @@ public class MSPCommandHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
+        if (!(msg instanceof MSPMessage)){
+            ctx.fireChannelRead(msg); //not for us, maybe someone further in the stack can handle it.
+            return;
+        }
+
         final SSConnection ssCon = ctx.channel().attr(ConnectionHandlerAdapter.SSCON_KEY).get();
         try {
-            if (!(msg instanceof MSPMessage)){
-                ctx.fireChannelRead(msg); //not for us, maybe someone further in the stack can handle it.
-                return;
-            }
 
             //we start the timer here, outside the submit/callable, so that we include any delay in submission/execution around the thread pool.
             final Timer frontendRequest = timingService.startSubTimer(TimingDesc.FRONTEND_ROUND_TRIP);
@@ -117,10 +118,10 @@ public class MSPCommandHandler extends ChannelInboundHandlerAdapter {
                                 } else {
                                     mspAction.execute(clientExecutorService, ctx, ssCon, mspMessage);
                                 }
-                                ctx.flush();
                             } catch (Throwable t) {
                                 ctx.fireExceptionCaught(t);
                             } finally {
+                                ReferenceCountUtil.release(mspMessage);//we processed the message, so we are responsible for cleaning it up.
                                 frontendRequest.end();
                                 timingService.detachTimerOnThread();
                             }
@@ -131,7 +132,6 @@ public class MSPCommandHandler extends ChannelInboundHandlerAdapter {
                 }
             });
         } finally {
-            PEThreadContext.clear();
         }
     }
 
@@ -151,10 +151,9 @@ public class MSPCommandHandler extends ChannelInboundHandlerAdapter {
     }
 
     static void executeLoadDataStatement(ExecutorService clientExecutorService, ChannelHandlerContext ctx, SSConnection ssCon,MSPComQueryRequestMessage queryMessage) throws PEException {
-        byte sequenceId = queryMessage.getSequenceID();
         byte[] query = queryMessage.getQueryBytes();
         NativeCharSet clientCharSet = MysqlNativeCharSet.UTF8;
-        MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(ctx, sequenceId);
+        MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(ctx);
         try {
             LoadDataRequestExecutor.execute(ctx, ssCon, resultConsumer, clientCharSet.getJavaCharset(), query);
             if (resultConsumer.getLoadDataInfileContext().isLocal()) {

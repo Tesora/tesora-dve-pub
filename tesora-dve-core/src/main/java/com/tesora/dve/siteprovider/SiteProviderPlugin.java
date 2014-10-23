@@ -35,8 +35,7 @@ import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.GetWorkerRequest;
-import com.tesora.dve.variable.ScopedVariableHandler;
-import com.tesora.dve.variable.VariableConfig;
+import com.tesora.dve.variables.ScopedVariables;
 import com.tesora.dve.worker.SiteManagerCommand;
 
 public interface SiteProviderPlugin {
@@ -113,7 +112,7 @@ public interface SiteProviderPlugin {
 
 	void initialize(SiteProviderContext ctxt, String name, boolean isEnabled, String config) throws PEException;
 
-	VariableConfig<ScopedVariableHandler> getVariableConfiguration() throws PEException;
+	ScopedVariables getVariableConfiguration() throws PEException;
 
 	boolean isEnabled();
 	void setEnabled(boolean isEnabled) throws PEException;

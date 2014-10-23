@@ -23,13 +23,14 @@ package com.tesora.dve.common;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.regex.Pattern;
 
 import org.junit.Test;
 
-import com.tesora.dve.common.PEStringUtils;
+import com.tesora.dve.exceptions.PECodingException;
 
 public class PEStringUtilsTest  extends PEBaseTest {
 
@@ -121,6 +122,51 @@ public class PEStringUtilsTest  extends PEBaseTest {
 			assertEquals("Should find the right 'boolean' for value '" + string + "'",
 					expected, PEStringUtils.toBoolean(string));
 		}
+	}
+
+	@Test
+	public void testTrimToInt() {
+		assertEquals("3.1415", PEStringUtils.trimToInt("3.1415"));
+		assertEquals("1.0050", PEStringUtils.trimToInt("1.0050"));
+		assertEquals("10", PEStringUtils.trimToInt("10.0"));
+		assertEquals("-1", PEStringUtils.trimToInt("-1.0"));
+		assertEquals("0", PEStringUtils.trimToInt("0.0"));
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				PEStringUtils.trimToInt("Hello, World!");
+			}
+		}.assertException(PECodingException.class, "The input must be a valid number but was: Hello, World!");
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				PEStringUtils.trimToInt(null);
+			}
+		}.assertException(PECodingException.class, "The input must be a valid number but was: null");
+	}
+
+	@Test
+	public void testDequote() {
+		assertNull(PEStringUtils.dequote(null));
+		assertEquals("", PEStringUtils.dequote(""));
+		assertEquals("Hello, World!", PEStringUtils.dequote("Hello, World!"));
+		assertEquals("Hello, World!", PEStringUtils.dequote("\"Hello, World!\""));
+		assertEquals("Hello, World!", PEStringUtils.dequote("'Hello, World!'"));
+		assertEquals("Hello, World!", PEStringUtils.dequote("`Hello, World!`"));
+		assertEquals("`Hello, World!`", PEStringUtils.dequote("'`Hello, World!`'"));
+		assertEquals("`'Hello, World!`'", PEStringUtils.dequote("`'Hello, World!`'"));
+	}
+
+	@Test
+	public void testSingleQuote() {
+		assertNull(PEStringUtils.singleQuote(null));
+		assertEquals("", PEStringUtils.singleQuote(""));
+		assertEquals("'Hello, World!'", PEStringUtils.singleQuote("Hello, World!"));
+		assertEquals("'Hello, World!'", PEStringUtils.singleQuote("'Hello, World!'"));
+		assertEquals("'`Hello, World!`'", PEStringUtils.singleQuote("`Hello, World!`"));
+		assertEquals("''Hello, World!`'", PEStringUtils.singleQuote("'Hello, World!`"));
 	}
 
 }

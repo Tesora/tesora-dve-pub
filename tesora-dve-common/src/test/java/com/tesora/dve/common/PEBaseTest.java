@@ -45,8 +45,18 @@ import com.tesora.dve.exceptions.PEException;
  * work directories.  Useful when no DVE specific infrastructure is required
  *
  */
-public abstract class PEBaseTest
-{	
+public abstract class PEBaseTest {
+	
+	protected static class LargeTestResourceNotAvailableException extends PEException {
+
+		private static final long serialVersionUID = -1629221497003489808L;
+
+		public LargeTestResourceNotAvailableException(final String m) {
+			super(m);
+		}
+		
+	}
+	
 	private static final String BT_PROPERTIES_FILENAME = "local.properties";
 	
 	protected static final String LARGE_RESOURCE_DIR_VAR = "parelastic.test.resourcedir";
@@ -90,15 +100,15 @@ public abstract class PEBaseTest
 		deleteWorkDirectoryAfterEachTest = false;
 	}
 	
-	protected static File getFileFromLargeFileRepository(final String fileName) throws PEException {
+	protected static File getFileFromLargeFileRepository(final String fileName) throws LargeTestResourceNotAvailableException {
 		final String largeFileRepositoryPath = System.getProperty(LARGE_RESOURCE_DIR_VAR);
 		if (largeFileRepositoryPath == null) {
-			throw new PEException("Environment variable '" + LARGE_RESOURCE_DIR_VAR + "' is undefined.");
+			throw new LargeTestResourceNotAvailableException("Environment variable '" + LARGE_RESOURCE_DIR_VAR + "' is undefined.");
 		}
 
 		final File returnFile = new File(new File(largeFileRepositoryPath), fileName);
 		if (!returnFile.canRead()) {
-			throw new PEException("The file '" + returnFile.getAbsolutePath() + "' is not accessible.");
+			throw new LargeTestResourceNotAvailableException("The file '" + returnFile.getAbsolutePath() + "' is not accessible.");
 		}
 
 		return returnFile;
@@ -147,6 +157,11 @@ public abstract class PEBaseTest
 		 *            exception type or hit the end.
 		 */
 		public void assertException(final Class<? extends Throwable> expectedExceptionClass, final String expectedExceptionMessage, final boolean traceCauseTree) {
+			getAssertException(expectedExceptionClass, expectedExceptionMessage, traceCauseTree);
+		}
+
+		protected <T extends Throwable> T getAssertException(final Class<T> expectedExceptionClass, final String expectedExceptionMessage,
+				final boolean traceCauseTree) {
 			try {
 				test();
 			} catch (Throwable e) {
@@ -165,15 +180,16 @@ public abstract class PEBaseTest
 					fail("An exception with wrong message ('" + e.getMessage() + "') was thrown.");
 					break;
 				case OK:
-					return;
+					return (T) e;
 				default:
 					break;
 				}
 			}
 
 			fail("Expected exception '" + expectedExceptionClass + "' was not thrown.");
+			return null;
 		}
-		
+
 		/**
 		 * The code to be tested.
 		 */
@@ -182,11 +198,7 @@ public abstract class PEBaseTest
 		private Event checkException(final Throwable e, final Class<? extends Throwable> expectedExceptionClass, final String expectedExceptionMessage) {
 			if (expectedExceptionClass.isAssignableFrom(e.getClass())) {
 				String msg = e.getMessage();
-				// strip PEContext, if any
-				int ix = (msg != null ? msg.indexOf(PEContext.LOG_PREFIX) : -1);
-				if (ix > 0) {
-					msg = msg.substring(0, ix).trim();
-				}
+
 				if ((expectedExceptionMessage != null) && !msg.equals(expectedExceptionMessage)) {
 					return Event.WRONG_MSG;
 				} else {
@@ -196,7 +208,6 @@ public abstract class PEBaseTest
 				return Event.WRONG_TYPE;
 			}
 		}
-
 	}
 	
 	/**

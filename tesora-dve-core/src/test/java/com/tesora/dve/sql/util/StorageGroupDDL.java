@@ -81,7 +81,7 @@ public class StorageGroupDDL extends TestDDL {
 			// create all the sites up front
 			buf.add("create persistent site "
 					+ sname 
-					+ " url='" + TestCatalogHelper.getInstance().getCatalogUrl()
+					+ " url='" + TestCatalogHelper.getInstance().getCatalogBaseUrl()
 					+ "' user='" + TestCatalogHelper.getInstance().getCatalogUser()
 					+ "' password='" + TestCatalogHelper.getInstance().getCatalogPassword()
 					+ "'");

@@ -30,6 +30,7 @@ import org.apache.commons.lang.BooleanUtils;
 import com.tesora.dve.charset.NativeCollation;
 import com.tesora.dve.charset.mysql.MysqlNativeCollationCatalog;
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.exceptions.PEException;
 
 public class AddCollation extends SimpleCatalogVersion {
@@ -47,8 +48,8 @@ public class AddCollation extends SimpleCatalogVersion {
 	}
 
 	@Override
-	public void upgrade(DBHelper helper) throws PEException {
-		super.upgrade(helper);
+	public void upgrade(DBHelper helper, InformationCallback stdout) throws PEException {
+		super.upgrade(helper, stdout);
 		
 		try {
 			List<Object> params = new ArrayList<Object>();
@@ -56,7 +57,7 @@ public class AddCollation extends SimpleCatalogVersion {
 			helper.prepare("insert into collations (id, name, character_set_name, is_default, is_compiled, sortlen) values (?,?,?,?,?,?)");
 			
 			for(String collationName : MysqlNativeCollationCatalog.DEFAULT_CATALOG.getCollationsCatalogEntriesByName()) {
-				NativeCollation nc = MysqlNativeCollationCatalog.DEFAULT_CATALOG.findCollationByName(collationName, true);
+				NativeCollation nc = MysqlNativeCollationCatalog.DEFAULT_CATALOG.findCollationByName(collationName);
 				params.clear();
 				params.add(nc.getId());
 				params.add(nc.getName());

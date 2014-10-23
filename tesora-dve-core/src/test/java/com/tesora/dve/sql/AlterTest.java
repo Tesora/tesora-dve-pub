@@ -22,6 +22,7 @@ package com.tesora.dve.sql;
  */
 
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -38,16 +39,19 @@ import org.junit.Test;
 
 import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.NativeCharSetCatalog;
+import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.schema.modifiers.TypeModifier;
 import com.tesora.dve.sql.schema.types.BasicType;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.template.TemplateBuilder;
@@ -60,7 +64,7 @@ import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
-import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 public class AlterTest extends SchemaTest {
 
@@ -74,7 +78,20 @@ public class AlterTest extends SchemaTest {
 	
 	@BeforeClass
 	public static void setup() throws Exception {
+		// pe855 also creates some databases, make sure they get cleaned up appropriately in setup
+		String[] pe855names = new String[] { "pe855db", "pe855temp1", "pe855temp2", "pe855temp3" }; 
 		PETest.projectSetup(checkDDL,oDDL);
+		
+		DBHelper dbh = buildHelper();
+		try {
+			for (String sdb : pe855names) {
+				for (String s : sg.getSetupDrops(sdb))
+					dbh.executeQuery(s);
+			}
+		} finally {
+			dbh.disconnect();
+		}
+		
 		PETest.bootHost = BootstrapHost.startServices(PETest.class);
 	}
 
@@ -109,13 +126,14 @@ public class AlterTest extends SchemaTest {
 	
 	@Test
 	public void testRename() throws Throwable {
-		// this should not work
-		try {
-			conn.execute("alter table altest rename to `baltest`");
-			fail("shouldn't be able to rename to existing table name");
-		} catch (PEException e) {
-			assertSchemaException(e, "Table `baltest` already exists");
-		}
+		// shouldn't be able to rename to existing table name
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("alter table altest rename to `baltest`");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+					"Internal error: Table `baltest` already exists");
 		conn.execute("alter table altest rename to `ralter`");
 		conn.assertResults("show tables like 'ralter'",br(nr,"ralter"));
 		conn.assertResults("show tables like 'altest'",br());
@@ -178,7 +196,7 @@ public class AlterTest extends SchemaTest {
 	public void testMultiAlter() throws Throwable {
 		conn.execute("alter table altest add `book` int not null default 15 comment 'this is a comment', add index `book_index` (`book`)");
 		conn.assertResults("show columns in altest like 'book'", 
-				br(nr,"book","int(11)","NO","","15",""));
+				br(nr,"book","int(11)","NO","MUL","15",""));
 		conn.assertResults("show keys in altest where Key_name like 'book_index'",
 				br(nr,"altest",I_ONE,"book_index",I_ONE,"book","A",getIgnore(),null,null,"","BTREE","",""));
 		String cts = getCreateTable("altest");
@@ -221,12 +239,12 @@ public class AlterTest extends SchemaTest {
 				+"add index ktsp (ktsp), " 
 				+"add index ktsf (ktsf)");
 		conn.assertResults("show columns in pe617 like 'kt%'",
-				br(nr,"kts","char(1)","YES","",null,"",
-				   nr,"ktsp","char(1)","YES","",null,"",
-				   nr,"ktsf","char(1)","YES","",null,""));
+				br(nr,"kts","char(1)","YES","MUL",null,"",
+				   nr,"ktsp","char(1)","YES","MUL",null,"",
+				   nr,"ktsf","char(1)","YES","MUL",null,""));
 		conn.assertResults("show keys in pe617 where Key_name like 'kt%'",
-				br(nr,"pe617",I_ONE,"kts",I_ONE,"kts","A",getIgnore(),null,null,"YES","BTREE","","",
-				   nr,"pe617",I_ONE,"ktsf",I_ONE,"ktsf","A",getIgnore(),null,null,"YES","BTREE","","",
+				br(nr,"pe617",I_ONE,"ktsf",I_ONE,"ktsf","A",getIgnore(),null,null,"YES","BTREE","","",
+				   nr,"pe617",I_ONE,"kts",I_ONE,"kts","A",getIgnore(),null,null,"YES","BTREE","","",
 				   nr,"pe617",I_ONE,"ktsp",I_ONE,"ktsp","A",getIgnore(),null,null,"YES","BTREE","",""));
 	}
 	
@@ -263,16 +281,20 @@ public class AlterTest extends SchemaTest {
 		conn.assertResults("select constraint_name, constraint_type from information_schema.table_constraints where table_schema = '" + checkDDL.getDatabaseName() + "' and table_name = 'matwo'",
 				br(nr,"PRIMARY","PRIMARY KEY"));
 		conn.execute("alter table matwo add key `added` (`id`)");
+//		System.out.println(conn.printResults("show keys in matwo"));
 		conn.assertResults("show keys in matwo",
-				br(nr,"matwo",I_ONE,"added",I_ONE,"id","A",getIgnore(),null,null,"","BTREE","","",
+				br(nr,"matwo",I_ZERO,"PRIMARY",I_ONE,"id","A",getIgnore(),null,null,"","BTREE","","",
 				   nr,"matwo",I_ONE,"id",I_ONE,"id","A",getIgnore(),null,null,"","BTREE","","",
 				   nr,"matwo",I_ONE,"id",new Integer(2),"entity_id","A",getIgnore(),null,null,"YES","BTREE","","",
-				   nr,"matwo",I_ZERO,"PRIMARY",I_ONE,"id","A",getIgnore(),null,null,"","BTREE","",""));
+				   nr,"matwo",I_ONE,"added",I_ONE,"id","A",getIgnore(),null,null,"","BTREE","",""
+				   ));
 		conn.execute("alter table matwo drop key `added`");
+//		System.out.println(conn.printResults("show keys in matwo"));
 		conn.assertResults("show keys in matwo",
-				br(nr,"matwo",I_ONE,"id",I_ONE,"id","A",getIgnore(),null,null,"","BTREE","","",
-				   nr,"matwo",I_ONE,"id",new Integer(2),"entity_id","A",getIgnore(),null,null,"YES","BTREE","","",
-				   nr,"matwo",I_ZERO,"PRIMARY",I_ONE,"id","A",getIgnore(),null,null,"","BTREE","",""));
+				br(nr,"matwo",I_ZERO,"PRIMARY",I_ONE,"id","A",getIgnore(),null,null,"","BTREE","","",
+				   nr,"matwo",I_ONE,"id",I_ONE,"id","A",getIgnore(),null,null,"","BTREE","","",
+				   nr,"matwo",I_ONE,"id",new Integer(2),"entity_id","A",getIgnore(),null,null,"YES","BTREE","",""
+				   ));
 	}
 
 	@Test
@@ -290,7 +312,7 @@ public class AlterTest extends SchemaTest {
 				   nr,"add_date",9
 				   ));
 		conn.execute("ALTER TABLE `pe710` ADD `subtitle` TEXT NULL AFTER `title`");
-		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe710'",
+		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe710' order by ordinal_position",
 				br(nr,"keyname",1,
 				   nr,"title",2,
 				   nr,"subtitle",3,
@@ -303,7 +325,7 @@ public class AlterTest extends SchemaTest {
 				   nr,"add_date",10
 				   ));
 		conn.execute("ALTER TABLE `pe710` ADD `first_col` INT NOT NULL FIRST");
-		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe710'",
+		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe710' order by ordinal_position",
 				br(nr,"first_col",1,
 				   nr,"keyname",2,
 				   nr,"title",3,
@@ -352,7 +374,7 @@ public class AlterTest extends SchemaTest {
 						nr,"st",15
 						));
 		conn.execute("ALTER TABLE `pe1335` ADD COLUMN `id` INT AUTO_INCREMENT PRIMARY KEY FIRST");
-		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe1335'",
+		conn.assertResults("select column_name, ordinal_position from information_schema.columns where table_name='pe1335' order by ordinal_position",
 				br(nr,"id",1,
 						nr,"idd",2,
 						nr,"lm",3,
@@ -388,27 +410,27 @@ public class AlterTest extends SchemaTest {
 	@Test
 	public void testPE1276() throws Throwable {
         final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
-		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8", true);
-		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII", true);
-		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1", true);
+		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8");
+		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII");
+		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1");
 
 		executeAlterCharsetCollateTest("pe1276_charset", ascii.getName(), null);
-		executeAlterCharsetCollateTest("pe1276_collate", null, Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
-		executeAlterCharsetCollateTest("pe1276_both", latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+		executeAlterCharsetCollateTest("pe1276_collate", null, Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
+		executeAlterCharsetCollateTest("pe1276_both", latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
-				executeAlterCharsetCollateTest("pe1276_ex1", utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+				executeAlterCharsetCollateTest("pe1276_ex1", utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
+		}.assertException(SchemaException.class, "COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				executeAlterCharsetCollateTest("pe1276_ex2", "big5", null);
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No collations found for character set 'big5'");
+		}.assertException(SchemaException.class, "Unsupported CHARACTER SET big5");
 
 		executeAlterCharsetCollateTest("pe1276_ex3", null, "utf8_unicode_ci");
 
@@ -417,7 +439,7 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				executeAlterCharsetCollateTest("pe1276_ex4", null, null);
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - Can't alter database 'pe1276_ex4'; syntax error");
+		}.assertException(SchemaException.class, "Can't alter database 'pe1276_ex4'; syntax error");
 	}
 
 	private void executeAlterCharsetCollateTest(final String dbName, final String charSetName, final String collationName) throws Throwable {
@@ -429,11 +451,11 @@ public class AlterTest extends SchemaTest {
 
 		NativeCharSet expectedCharSet = null;
 		if (charSetName != null) {
-			expectedCharSet = supportedCharsets.findCharSetByName(charSetName, false);
+			expectedCharSet = supportedCharsets.findCharSetByName(charSetName);
 			alterStmt.append(" CHARACTER SET ").append(charSetName);
 		} else {
 			if (collationName != null) {
-				expectedCharSet = supportedCharsets.findCharSetByCollation(collationName, false);
+				expectedCharSet = supportedCharsets.findCharSetByCollation(collationName);
 			}
 		}
 
@@ -443,7 +465,7 @@ public class AlterTest extends SchemaTest {
 			alterStmt.append(" COLLATE ").append(collationName);
 		} else {
 			if (expectedCharSet != null) {
-				expectedCollationName = Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(expectedCharSet.getName(), true).getName();
+				expectedCollationName = Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(expectedCharSet.getName()).getName();
 			}
 		}
 		
@@ -473,7 +495,7 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("alter table pe768_ex modify d INT NOT NULL first");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - Unknown column 'd' in 'pe768_ex'");
+		}.assertException(SchemaException.class, "Unknown column 'd' in 'pe768_ex'");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -487,7 +509,7 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("alter table pe768_ex change d e INT NOT NULL");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - Unknown column 'd' in 'pe768_ex'");
+		}.assertException(SchemaException.class, "Unknown column 'd' in 'pe768_ex'");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -514,14 +536,14 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("alter table pe1480_ex change c d INT, add e INT after d, change e f INT first");
 			}
-		}.assertException(PEException.class, "Unable to build plan - Unknown column 'e' in 'pe1480_ex'");
+		}.assertException(SchemaException.class, "Unknown column 'e' in 'pe1480_ex'");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				conn.execute("alter table pe1480_ex change c d INT, change d e INT");
 			}
-		}.assertException(PEException.class, "Unable to build plan - Unknown column 'd' in 'pe1480_ex'");
+		}.assertException(SchemaException.class, "Unknown column 'd' in 'pe1480_ex'");
 	}
 
 	@Test
@@ -542,12 +564,13 @@ public class AlterTest extends SchemaTest {
 			conn.execute(SchemaTest.buildAlterTemplateModeStmt(TemplateMode.REQUIRED));
 			conn.execute(SchemaTest.buildAlterTemplateModeStmt(TemplateMode.STRICT));
 
-			new ExpectedExceptionTester() {
+			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
-					conn.execute("alter dve set " + SchemaVariableConstants.TEMPLATE_MODE_NAME + " = 'non_existing_mode'");
+					conn.execute("alter dve set " + VariableConstants.TEMPLATE_MODE_NAME + " = 'non_existing_mode'");
 				}
-			}.assertException(PEException.class, "Invalid value for template_mode (allowed values are OPTIONAL, REQUIRED, STRICT)");
+			}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, VariableConstants.TEMPLATE_MODE_NAME, "non_existing_mode");
+
 		} finally {
 			conn.execute(SchemaTest.buildAlterTemplateModeStmt(TemplateMode.REQUIRED));
 		}
@@ -805,7 +828,466 @@ public class AlterTest extends SchemaTest {
 				br(nr, (!dvColumnNames.isEmpty()) ? StringUtils.join(dvColumnNames, ',') : null, tableModel.value()));
 	}
 
-	private static Type buildTypeFromNative(final MysqlType type) throws PEException {
-		return BasicType.buildType(new MysqlNativeType(type), 0, Collections.EMPTY_LIST).normalize();
+	private static Type buildTypeFromNative(final MysqlType type) {
+		return BasicType.buildType(new MysqlNativeType(type), 0, Collections.<TypeModifier> emptyList()).normalize();
+	}
+
+	@Test
+	public void testPE1404_PE1406() throws Throwable {
+		conn.execute("CREATE TABLE `pe1404` ( `id` int NOT NULL,  `data` int DEFAULT 1, PRIMARY KEY (`id`)) ENGINE=MyISAM /*#dve  BROADCAST DISTRIBUTE */");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `id` int(11) NOT NULL,\n  `data` int(11) DEFAULT '1',\n  PRIMARY KEY (`id`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","","1",""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","",""));
+
+		conn.execute("INSERT INTO `pe1404` (`id`) VALUES (1)");
+		conn.assertResults("SELECT `id`, `data` FROM `pe1404` ORDER BY `id`",
+				br(nr,1,1));
+		
+		// ALTER [COLUMN] col_name SET DEFAULT literal
+		conn.execute("ALTER TABLE `pe1404` ALTER COLUMN `data` SET DEFAULT 99");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `id` int(11) NOT NULL,\n  `data` int(11) DEFAULT '99',\n  PRIMARY KEY (`id`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","","99",""));
+
+		conn.execute("INSERT INTO `pe1404` (`id`) VALUES (2)");
+		conn.assertResults("SELECT `id`, `data` FROM `pe1404` ORDER BY `id`",
+				br(nr,1,1,
+				   nr,2,99));
+		
+		// ADD [COLUMN] col_name column_definition
+		conn.execute("ALTER TABLE `pe1404` ADD COLUMN `newcolumn` VARCHAR(255) NOT NULL");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `id` int(11) NOT NULL,\n  `data` int(11) DEFAULT '99',\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","","99","",
+				   nr,"newcolumn","varchar(255)","NO","",null,""));
+
+		// ADD [COLUMN] col_name column_definition FIRST
+		conn.execute("ALTER TABLE `pe1404` ADD COLUMN `firstcolumn` int FIRST");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `firstcolumn` int(11) DEFAULT NULL,\n  `id` int(11) NOT NULL,\n  `data` int(11) DEFAULT '99',\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"firstcolumn","int(11)","YES","",null,"",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","","99","",
+				   nr,"newcolumn","varchar(255)","NO","",null,""));
+		
+		// ADD [COLUMN] col_name column_definition AFTER col_name
+		conn.execute("ALTER TABLE `pe1404` ADD COLUMN `afterdata` varchar(10) NOT NULL AFTER `data`");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `firstcolumn` int(11) DEFAULT NULL,\n  `id` int(11) NOT NULL,\n  `data` int(11) DEFAULT '99',\n  `afterdata` varchar(10) NOT NULL,\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"firstcolumn","int(11)","YES","",null,"",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","","99","",
+				   nr,"afterdata","varchar(10)","NO","",null,"",
+				   nr,"newcolumn","varchar(255)","NO","",null,""));
+
+		// ADD {INDEX|KEY} [index_name] [index_type] (index_col_name,...) [index_option] ...
+		conn.execute("ALTER TABLE `pe1404` ADD INDEX `index2` (`afterdata`)");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `firstcolumn` int(11) DEFAULT NULL,\n  `id` int(11) NOT NULL,\n  `data` int(11) DEFAULT '99',\n  `afterdata` varchar(10) NOT NULL,\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`afterdata`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"firstcolumn","int(11)","YES","",null,"",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","","99","",
+				   nr,"afterdata","varchar(10)","NO","MUL",null,"",
+				   nr,"newcolumn","varchar(255)","NO","",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404",1,"index2",1,"afterdata","A",ignore,null,null,"","BTREE","",""
+				   ));
+		
+		// ADD FULLTEXT [INDEX|KEY] [index_name] (index_col_name,...) [index_option] ...
+		conn.execute("ALTER TABLE `pe1404` ADD FULLTEXT INDEX `fulltextindex` (`newcolumn`)");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `firstcolumn` int(11) DEFAULT NULL,\n  `id` int(11) NOT NULL,\n  `data` int(11) DEFAULT '99',\n  `afterdata` varchar(10) NOT NULL,\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`afterdata`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"firstcolumn","int(11)","YES","",null,"",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","","99","",
+				   nr,"afterdata","varchar(10)","NO","MUL",null,"",
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404",1,"index2",1,"afterdata","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"","FULLTEXT","",""
+				   
+				   ));
+
+		// ALTER [COLUMN] col_name DROP DEFAULT
+		conn.execute("ALTER TABLE `pe1404` ALTER COLUMN `data` DROP DEFAULT");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `firstcolumn` int(11) DEFAULT NULL,\n  `id` int(11) NOT NULL,\n  `data` int(11),\n  `afterdata` varchar(10) NOT NULL,\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`afterdata`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"firstcolumn","int(11)","YES","",null,"",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"afterdata","varchar(10)","NO","MUL",null,"",
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404",1,"index2",1,"afterdata","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"","FULLTEXT","",""
+				   ));
+
+		conn.execute("INSERT INTO `pe1404` (`id`) VALUES (3)");
+		conn.assertResults("SELECT `id`, `data` FROM `pe1404` ORDER BY `id`",
+				br(nr,1,1,
+				   nr,2,99,
+				   nr,3,null));
+
+		// CHANGE [COLUMN] old_col_name new_col_name column_definition
+		conn.execute("ALTER TABLE `pe1404` CHANGE COLUMN `firstcolumn` `oldfirstcolumn` int NOT NULL DEFAULT 5");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `oldfirstcolumn` int(11) NOT NULL DEFAULT '5',\n  `id` int(11) NOT NULL,\n  `data` int(11),\n  `afterdata` varchar(10) NOT NULL,\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`afterdata`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"oldfirstcolumn","int(11)","NO","","5","",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"afterdata","varchar(10)","NO","MUL",null,"",
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404",1,"index2",1,"afterdata","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"","FULLTEXT","",""
+				   ));
+		
+		// CHANGE [COLUMN] old_col_name new_col_name column_definition FIRST
+		conn.execute("ALTER TABLE `pe1404` CHANGE COLUMN `afterdata` `newfirstcolumn` int NOT NULL FIRST");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newfirstcolumn` int(11) NOT NULL,\n  `oldfirstcolumn` int(11) NOT NULL DEFAULT '5',\n  `id` int(11) NOT NULL,\n  `data` int(11),\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`newfirstcolumn`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"newfirstcolumn","int(11)","NO","",null,"",
+				   nr,"oldfirstcolumn","int(11)","NO","","5","",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"","FULLTEXT","",""
+				   ));
+		
+		// CHANGE [COLUMN] old_col_name new_col_name column_definition AFTER col_name
+		conn.execute("ALTER TABLE `pe1404` CHANGE COLUMN `oldfirstcolumn` `afterdata2` varchar(255) AFTER `data`");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newfirstcolumn` int(11) NOT NULL,\n  `id` int(11) NOT NULL,\n  `data` int(11),\n  `afterdata2` varchar(255) DEFAULT NULL,\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`newfirstcolumn`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"newfirstcolumn","int(11)","NO","MUL",null,"",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"afterdata2","varchar(255)","YES","",null,"",
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"","FULLTEXT","",""
+				   
+				   ));
+		
+		// MODIFY [COLUMN] col_name column_definition
+		conn.execute("ALTER TABLE `pe1404` MODIFY COLUMN `newfirstcolumn` varchar(255) DEFAULT 50");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newfirstcolumn` varchar(255) DEFAULT '50',\n  `id` int(11) NOT NULL,\n  `data` int(11),\n  `afterdata2` varchar(255) DEFAULT NULL,\n  `newcolumn` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`newfirstcolumn`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"newfirstcolumn","varchar(255)","YES","","50","",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"afterdata2","varchar(255)","YES","",null,"",
+				   nr,"newcolumn","varchar(255)","NO","MUL",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"YES","BTREE","","",
+						nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"","FULLTEXT","",""
+				   ));
+
+		// MODIFY [COLUMN] col_name column_definition FIRST
+		conn.execute("ALTER TABLE `pe1404` MODIFY COLUMN `newcolumn` VARCHAR(256) FIRST");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newcolumn` varchar(256) DEFAULT NULL,\n  `newfirstcolumn` varchar(255) DEFAULT '50',\n  `id` int(11) NOT NULL,\n  `data` int(11),\n  `afterdata2` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`newfirstcolumn`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"newcolumn","varchar(256)","YES","",null,"",
+				   nr,"newfirstcolumn","varchar(255)","YES","MUL","50","",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"afterdata2","varchar(255)","YES","",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"YES","BTREE","","",
+						nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"YES","FULLTEXT","",""
+				   ));
+
+		// MODIFY [COLUMN] col_name column_definition AFTER col_name
+		conn.execute("ALTER TABLE `pe1404` MODIFY COLUMN `newcolumn` VARCHAR(300) NOT NULL AFTER `id`");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newfirstcolumn` varchar(255) DEFAULT '50',\n  `id` int(11) NOT NULL,\n  `newcolumn` varchar(300) NOT NULL,\n  `data` int(11),\n  `afterdata2` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`newfirstcolumn`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"newfirstcolumn","varchar(255)","YES","MUL","50","",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"newcolumn","varchar(300)","NO","",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"afterdata2","varchar(255)","YES","",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"YES","BTREE","","",
+						nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"","FULLTEXT","",""
+				   ));
+
+		// DROP PRIMARY KEY
+		conn.execute("ALTER TABLE `pe1404` DROP PRIMARY KEY");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newfirstcolumn` varchar(255) DEFAULT '50',\n  `id` int(11) NOT NULL,\n  `newcolumn` varchar(300) NOT NULL,\n  `data` int(11),\n  `afterdata2` varchar(255) DEFAULT NULL,\n  KEY `index2` (`newfirstcolumn`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"newfirstcolumn","varchar(255)","YES","MUL","50","",
+				   nr,"id","int(11)","NO","",null,"",
+				   nr,"newcolumn","varchar(300)","NO","MUL",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"afterdata2","varchar(255)","YES","",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"YES","BTREE","","",
+						nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"","FULLTEXT","",""
+				   ));
+
+		// ADD [CONSTRAINT [symbol]] PRIMARY KEY [index_type] (index_col_name,...) [index_option] ...
+		conn.execute("ALTER TABLE `pe1404` ADD PRIMARY KEY (`id`)");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newfirstcolumn` varchar(255) DEFAULT '50',\n  `id` int(11) NOT NULL,\n  `newcolumn` varchar(300) NOT NULL,\n  `data` int(11),\n  `afterdata2` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`newfirstcolumn`),\n  FULLTEXT KEY `fulltextindex` (`newcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"newfirstcolumn","varchar(255)","YES","MUL","50","",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"newcolumn","varchar(300)","NO","MUL",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"afterdata2","varchar(255)","YES","",null,""));
+		//System.out.println(conn.printResults("show index from pe1404"));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"YES","BTREE","","",
+						nr,"pe1404",1,"fulltextindex",1,"newcolumn",null,ignore,null,null,"","FULLTEXT","","",
+						nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","",""
+				   ));
+
+		// DROP {INDEX|KEY} index_name
+		conn.execute("ALTER TABLE `pe1404` DROP INDEX `fulltextindex`");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newfirstcolumn` varchar(255) DEFAULT '50',\n  `id` int(11) NOT NULL,\n  `newcolumn` varchar(300) NOT NULL,\n  `data` int(11),\n  `afterdata2` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  KEY `index2` (`newfirstcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"newfirstcolumn","varchar(255)","YES","MUL","50","",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"newcolumn","varchar(300)","NO","",null,"",
+				   nr,"data","int(11)","YES","",null,"",
+				   nr,"afterdata2","varchar(255)","YES","",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"YES","BTREE","","",
+						nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","",""
+				   ));
+
+		// ADD [CONSTRAINT [symbol]] UNIQUE [INDEX|KEY] [index_name] [index_type] (index_col_name,...) [index_option] ...
+		conn.execute("ALTER TABLE `pe1404` ADD UNIQUE INDEX `index1` (`data`)");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `newfirstcolumn` varchar(255) DEFAULT '50',\n  `id` int(11) NOT NULL,\n  `newcolumn` varchar(300) NOT NULL,\n  `data` int(11),\n  `afterdata2` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`data`),\n  KEY `index2` (`newfirstcolumn`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"newfirstcolumn","varchar(255)","YES","MUL","50","",
+				   nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"newcolumn","varchar(300)","NO","",null,"",
+				   nr,"data","int(11)","YES","UNI",null,"",
+				   nr,"afterdata2","varchar(255)","YES","",null,""));
+
+		conn.assertResults("SHOW INDEX FROM `pe1404`",
+				br(nr,"pe1404",1,"index2",1,"newfirstcolumn","A",ignore,null,null,"YES","BTREE","","",
+					nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+					nr,"pe1404",0,"index1",1,"data","A",ignore,null,null,"YES","BTREE","",""
+				   ));
+
+		// DROP [COLUMN] col_name
+		conn.execute("ALTER TABLE `pe1404` DROP COLUMN `newfirstcolumn`");
+		conn.assertResults("SHOW CREATE TABLE `pe1404`",
+				br(nr,"pe1404","CREATE TABLE `pe1404` (\n  `id` int(11) NOT NULL,\n  `newcolumn` varchar(300) NOT NULL,\n  `data` int(11),\n  `afterdata2` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`data`)\n) ENGINE=MyISAM DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"newcolumn","varchar(300)","NO","",null,"",
+				   nr,"data","int(11)","YES","UNI",null,"",
+				   nr,"afterdata2","varchar(255)","YES","",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404`", 
+				br(nr,"pe1404",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+					nr,"pe1404",0,"index1",1,"data","A",ignore,null,null,"YES","BTREE","",""
+				   ));
+		
+		// check the FK
+		conn.execute("CREATE TABLE `pe1404_parent` ( `id` int NOT NULL, `alt_id` int NOT NULL, PRIMARY KEY (`id`), UNIQUE INDEX `index1` (alt_id)) /*#dve  BROADCAST DISTRIBUTE */");
+		conn.assertResults("SHOW CREATE TABLE `pe1404_parent`",
+				br(nr,"pe1404_parent","CREATE TABLE `pe1404_parent` (\n  `id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_parent`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_parent`", 
+				br(nr,"pe1404_parent",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+					nr,"pe1404_parent",0,"index1",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+
+		conn.execute("CREATE TABLE `pe1404_middle` ( `id` int NOT NULL,  `parent_id` int NOT NULL, `alt_id` int NOT NULL, PRIMARY KEY (`id`), UNIQUE INDEX `index1` (parent_id), UNIQUE INDEX `index2` (alt_id), FOREIGN KEY `middle_to_parent` (`parent_id`) REFERENCES `pe1404_parent` (`alt_id`)) /*#dve  BROADCAST DISTRIBUTE */");
+		conn.assertResults("SHOW CREATE TABLE `pe1404_middle`",
+				br(nr,"pe1404_middle","CREATE TABLE `pe1404_middle` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_middle_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_parent` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_middle`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"parent_id","int(11)","NO","UNI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_middle`", 
+				br(nr,"pe1404_middle",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404_middle",0,"index1",1,"parent_id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404_middle",0,"index2",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+
+		conn.execute("CREATE TABLE `pe1404_child` ( `id` int NOT NULL,  `parent_id` int NOT NULL, `alt_id` int NOT NULL, PRIMARY KEY (`id`), UNIQUE INDEX `index1` (parent_id), UNIQUE INDEX `index2` (alt_id)) /*#dve  BROADCAST DISTRIBUTE */");
+		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_child`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"parent_id","int(11)","NO","UNI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_child`", 
+				br(nr,"pe1404_child",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+					nr,"pe1404_child",0,"index1",1,"parent_id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404_child",0,"index2",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+		
+		// ADD [CONSTRAINT [symbol]] FOREIGN KEY [index_name] (index_col_name,...) reference_definition
+		conn.execute("ALTER TABLE `pe1404_child` ADD FOREIGN KEY `child_to_middle` (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)");
+		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_child`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"parent_id","int(11)","NO","UNI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_child`", 
+				br(nr,"pe1404_child",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404_child",0,"index1",1,"parent_id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404_child",0,"index2",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+		
+		// DROP FOREIGN KEY fk_symbol (foreign key constraint has to be dropped by constraint name and not the index name)
+		conn.execute("ALTER TABLE `pe1404_child` DROP FOREIGN KEY `pe1404_child_ibfk_1`");
+		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_child`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"parent_id","int(11)","NO","UNI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_child`", 
+				br(nr,"pe1404_child",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404_child",0,"index1",1,"parent_id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404_child",0,"index2",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+
+		// add the FK again
+		conn.execute("ALTER TABLE `pe1404_child` ADD FOREIGN KEY `child_to_middle` (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)");
+		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_child`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"parent_id","int(11)","NO","UNI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_child`", 
+				br(nr,"pe1404_child",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404_child",0,"index1",1,"parent_id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404_child",0,"index2",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+		
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("ALTER TABLE `pe1404_middle` DROP COLUMN `parent_id`");
+			}
+		}.assertException(SchemaException.class, "Cannot drop column 'parent_id' because it is part of foreign key 'middle_to_parent'", true);
+		conn.assertResults("SHOW CREATE TABLE `pe1404_middle`",
+				br(nr,"pe1404_middle","CREATE TABLE `pe1404_middle` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_middle_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_parent` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_middle`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"parent_id","int(11)","NO","UNI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_middle`", 
+				br(nr,"pe1404_middle",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404_middle",0,"index1",1,"parent_id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404_middle",0,"index2",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+
+		new ExpectedExceptionTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("ALTER TABLE `pe1404_middle` DROP COLUMN `alt_id`");
+			}
+		}.assertException(SchemaException.class, "Cannot drop column 'alt_id' because it is part of foreign key 'child_to_middle'", true);
+		conn.assertResults("SHOW CREATE TABLE `pe1404_middle`",
+				br(nr,"pe1404_middle","CREATE TABLE `pe1404_middle` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_middle_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_parent` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_middle`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"parent_id","int(11)","NO","UNI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_middle`", 
+				br(nr,"pe1404_middle",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404_middle",0,"index1",1,"parent_id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404_middle",0,"index2",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`),\n  UNIQUE KEY `index2` (`alt_id`),\n  CONSTRAINT `pe1404_child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `pe1404_middle` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_child`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"parent_id","int(11)","NO","UNI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_child`", 
+				br(nr,"pe1404_child",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404_child",0,"index1",1,"parent_id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404_child",0,"index2",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+
+		// drop a column of multipart key
+		conn.execute("ALTER TABLE `pe1404_child` DROP FOREIGN KEY `pe1404_child_ibfk_1`");
+		conn.execute("ALTER TABLE `pe1404_child` DROP INDEX `index1`");
+		conn.execute("ALTER TABLE `pe1404_child` DROP INDEX `index2`");
+		conn.execute("ALTER TABLE `pe1404_child` ADD UNIQUE INDEX `index1` (`parent_id`, `alt_id`)");
+		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `parent_id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`parent_id`,`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_child`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"parent_id","int(11)","NO","UNI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_child`", 
+				br(nr,"pe1404_child",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+						nr,"pe1404_child",0,"index1",1,"parent_id","A",ignore,null,null,"","BTREE","","",
+				   nr,"pe1404_child",0,"index1",2,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+
+		conn.execute("ALTER TABLE `pe1404_child` DROP COLUMN `parent_id`");
+		conn.assertResults("SHOW CREATE TABLE `pe1404_child`",
+				br(nr,"pe1404_child","CREATE TABLE `pe1404_child` (\n  `id` int(11) NOT NULL,\n  `alt_id` int(11) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `index1` (`alt_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  BROADCAST DISTRIBUTE */"));
+		conn.assertResults("DESCRIBE `pe1404_child`",
+				br(nr,"id","int(11)","NO","PRI",null,"",
+				   nr,"alt_id","int(11)","NO","UNI",null,""));
+		conn.assertResults("SHOW INDEX FROM `pe1404_child`", 
+				br(nr,"pe1404_child",0,"PRIMARY",1,"id","A",ignore,null,null,"","BTREE","","",
+					nr,"pe1404_child",0,"index1",1,"alt_id","A",ignore,null,null,"","BTREE","",""
+				   ));
+	}
+
+	@Test
+	public void testPE1632() throws Throwable {
+		conn.execute("DROP TABLE IF EXISTS pe1632;");
+		conn.execute("SET SQL_MODE='TRADITIONAL'");
+
+		// a field comment 1025 chars long
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("CREATE TABLE t1 (c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment', c2 INTEGER,"
+						+ "c3 INTEGER COMMENT '0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123',"
+						+ "c4 INTEGER, c5 INTEGER, c6 INTEGER, c7 INTEGER, INDEX i1 (c1) COMMENT 'i1 comment',INDEX i2(c2)) COMMENT='abc'");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.tooLongTableFieldCommentFormatter, "c3", 1024L);
 	}
 }

@@ -21,19 +21,14 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.concurrent.*;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import com.tesora.dve.exceptions.PESQLStateException;
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
-import com.tesora.dve.concurrent.PEFuture.Listener;
-import com.tesora.dve.db.DBConnection.Monitor;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer {
@@ -51,31 +46,27 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
         MyPrepareOKResponse copyPrepareOK = new MyPrepareOKResponse(preparedOK);//copy since we are mutating the id.
         int outboundID = Long.valueOf(outboundPStmt.getStmtId()).intValue();
         copyPrepareOK.setStmtId( outboundID );
-		outboundCtx.write(copyPrepareOK);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(copyPrepareOK);
 		outboundPStmt.setNumParams(getNumParams());
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(final Channel channel, StorageSite site, Monitor connectionMonitor, SQLCommand sql,
-			final PEPromise<Boolean> promise) {
+    @Override
+    public MysqlCommand  writeCommandExecutor(final CommandChannel channel, SQLCommand sql, final CompletionHandle<Boolean> promise) {
+        //TODO: this executor is weird.  It sends a prepare to a backend site, forwards the response to a frontend site (with a tweaked stmtID), and then closes the backend prepared statement. -sgossard
 		final MysqlPrepareStatementForwarder resultForwarder = this;
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
-		preparePromise.addListener(new Listener<Boolean>() {
+		preparePromise.addListener(new CompletionTarget<Boolean>() {
 			@Override
-			public void onSuccess(Boolean returnValue) {
+			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = resultForwarder.getPreparedStatement();
-				channel.write(new MysqlStmtCloseCommand(pstmt));
-				channel.flush();
-				promise.success(false);
+				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt,promise));
 			}
 			@Override
-			public void onFailure(Exception e) {
+			public void failure(Exception e) {
 				promise.failure(e);
 			}
 		});
-		super.writeCommandExecutor(channel, site, connectionMonitor, sql, preparePromise);
-		return promise;
+		return super.writeCommandExecutor(channel, sql, preparePromise);
 	}
 
 	@Override
@@ -85,8 +76,7 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 
 	@Override
 	public void consumeParamDefEOF(MyEOFPktResponse myEof) {
-		outboundCtx.write(myEof);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(myEof);
 	}
 
 	@Override
@@ -96,14 +86,12 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 
 	@Override
 	public void consumeColDefEOF(MyEOFPktResponse colEof) {
-		outboundCtx.write(colEof);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(colEof);
 	}
 
 	@Override
 	public void consumeError(MyErrorResponse error) {
-		outboundCtx.write(error);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(error);
 	}
 
 
@@ -117,9 +105,7 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
         }
 
 		MyMessage respMsg = new MyErrorResponse(e);
-		respMsg.setPacketNumber(1);
-		outboundCtx.write(respMsg);
-		outboundCtx.flush();
+		outboundCtx.writeAndFlush(respMsg);
 	}
 
 }

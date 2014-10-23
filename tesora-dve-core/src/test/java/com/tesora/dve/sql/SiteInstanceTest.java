@@ -278,6 +278,8 @@ public class SiteInstanceTest extends SchemaTest {
 		try {
 			conn.execute(query);
 			testFailed = false;
+		} catch (SchemaException e) {
+			// expected
 		} catch (PEException e) {
 			// expected
 		}

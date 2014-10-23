@@ -21,18 +21,17 @@ package com.tesora.dve.db;
  * #L%
  */
 
-import io.netty.channel.Channel;
+import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.DistributionModel;
+import com.tesora.dve.concurrent.*;
 
 import java.util.List;
 import java.util.concurrent.Future;
 
+import com.tesora.dve.db.mysql.MysqlCommand;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentTable;
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PECountdownPromise;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.db.mysql.MysqlForwardedExecuteCommand;
 import com.tesora.dve.db.mysql.RedistTupleBuilder;
 import com.tesora.dve.exceptions.PEException;
@@ -41,14 +40,16 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.WorkerGroup;
 
-public class RedistTupleUpdateConsumer implements DBResultConsumer {
+public class RedistTupleUpdateConsumer extends DBResultConsumer  {
 	
 	static final Logger logger = Logger.getLogger(RedistTupleUpdateConsumer.class);
 
 	RedistTupleBuilder forwardedResultHandler;
-	PEPromise<RedistTupleBuilder> readyPromise;
+    SynchronousCompletion<RedistTupleBuilder> readySynchronizer;
 
-	final Future<SQLCommand> insertStatementFuture;
+    final CatalogDAO catlogDAO;
+    final DistributionModel distModel;
+    final Future<SQLCommand> insertStatementFuture;
 	final SQLCommand insertOptions;
 	final WorkerGroup targetWG;
 	final PersistentTable targetTable;
@@ -57,9 +58,11 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
 	boolean insertIgnore = false;
 
 	
-	public RedistTupleUpdateConsumer(
-			Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions, 
+	public RedistTupleUpdateConsumer(CatalogDAO catalogDAO, DistributionModel distModel,
+                                     Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions,
 			PersistentTable targetTable, int maxTupleCount, int maxDataSize, WorkerGroup targetWG) {
+        this.catlogDAO = catalogDAO;
+        this.distModel = distModel;
 		this.insertOptions = insertOptions;
 		this.insertStatementFuture = insertStatementFuture;
 		this.targetTable = targetTable;
@@ -68,31 +71,30 @@ public class RedistTupleUpdateConsumer implements DBResultConsumer {
 		this.maxDataSize = maxDataSize;
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel,
-			StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
-		MysqlForwardedExecuteCommand execCommand = 
-				new MysqlForwardedExecuteCommand(forwardedResultHandler, promise, site);
-		channel.write(execCommand);
-		if (logger.isDebugEnabled())
-			logger.debug(channel + " <== " + execCommand);
-		return promise.success(false);
+    @Override
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		MysqlForwardedExecuteCommand execCommand =
+				new MysqlForwardedExecuteCommand(channel.getStorageSite(), forwardedResultHandler, promise);
+		return execCommand;
 	}
 	
 	public RedistTupleBuilder getExecutionHandler() throws Exception {
 		if (logger.isDebugEnabled())
-			logger.debug("About to call readyPromise.sync(): " + readyPromise);
-		return readyPromise.sync();
+			logger.debug("About to call readyPromise.sync(): " + readySynchronizer);
+		return readySynchronizer.sync();
 	}
 	
-	public PEFuture<RedistTupleBuilder> getHandlerFuture() {
-		return readyPromise;
+	public SynchronousCompletion<RedistTupleBuilder> getHandlerFuture() {
+		return readySynchronizer;
 	}
 
 	@Override
 	public void setSenderCount(int senderCount) {
-		readyPromise = new PECountdownPromise<RedistTupleBuilder>(senderCount); 
-		forwardedResultHandler = new RedistTupleBuilder(insertStatementFuture, insertOptions, targetTable, maxTupleCount, maxDataSize, readyPromise, targetWG);
+        PECountdownPromise<RedistTupleBuilder> countdownResult = new PECountdownPromise<RedistTupleBuilder>(senderCount);
+
+        readySynchronizer = countdownResult;
+
+        forwardedResultHandler = new RedistTupleBuilder(catlogDAO,distModel,insertStatementFuture, insertOptions, targetTable, maxTupleCount, maxDataSize, countdownResult, targetWG);
 		forwardedResultHandler.setInsertIgnore(insertIgnore);
 	}
 

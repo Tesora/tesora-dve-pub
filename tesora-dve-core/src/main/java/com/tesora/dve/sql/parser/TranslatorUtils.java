@@ -51,18 +51,23 @@ import com.tesora.dve.common.catalog.DynamicPolicy;
 import com.tesora.dve.common.catalog.ExternalService;
 import com.tesora.dve.common.catalog.FKMode;
 import com.tesora.dve.common.catalog.IndexType;
+import com.tesora.dve.common.catalog.Key;
+import com.tesora.dve.common.catalog.KeyColumn;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentTemplate;
-import com.tesora.dve.common.catalog.Project;
 import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
+import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.ValueConverter;
 import com.tesora.dve.distribution.DistributionRange;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockManager;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
@@ -82,12 +87,11 @@ import com.tesora.dve.sql.expression.ScopeParsePhase;
 import com.tesora.dve.sql.expression.ScopeStack;
 import com.tesora.dve.sql.expression.SetQuantifier;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.show.CreateDatabaseInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowColumnInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.ShowOptions;
-import com.tesora.dve.sql.infoschema.show.StatusInformationSchemaTable;
-import com.tesora.dve.sql.infoschema.show.VariablesInformationSchemaTable;
+import com.tesora.dve.sql.infoschema.InformationSchemaTable;
+import com.tesora.dve.sql.infoschema.ShowOptions;
+import com.tesora.dve.sql.infoschema.ShowSchemaBehavior;
+import com.tesora.dve.sql.infoschema.direct.DirectShowStatusInformation;
+import com.tesora.dve.sql.infoschema.direct.DirectShowVariablesTable;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.MigrationException;
@@ -118,6 +122,7 @@ import com.tesora.dve.sql.node.expression.StringLiteralAlias;
 import com.tesora.dve.sql.node.expression.Subquery;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TableJoin;
+import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.node.expression.ValueSource;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WhenClause;
@@ -130,6 +135,8 @@ import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.parser.ParserOptions.Option;
+import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.Comment;
 import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.ContainerDistributionVector;
@@ -148,6 +155,7 @@ import com.tesora.dve.sql.schema.LoadDataInfileModifier;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
+import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEContainer;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -162,30 +170,33 @@ import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEPolicy;
 import com.tesora.dve.sql.schema.PEPolicyClassConfig;
-import com.tesora.dve.sql.schema.PEProject;
 import com.tesora.dve.sql.schema.PEProvider;
 import com.tesora.dve.sql.schema.PERawPlan;
 import com.tesora.dve.sql.schema.PESiteInstance;
 import com.tesora.dve.sql.schema.PEStorageSite;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETemplate;
+import com.tesora.dve.sql.schema.PETrigger;
 import com.tesora.dve.sql.schema.PEUser;
+import com.tesora.dve.sql.schema.PEView;
+import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.PolicyClass;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.RangeDistribution;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.SizeTypeAttribute;
 import com.tesora.dve.sql.schema.SubqueryTable;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.TableComponent;
 import com.tesora.dve.sql.schema.TableResolver;
+import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.UnresolvedDistributionVector;
 import com.tesora.dve.sql.schema.UserScope;
 import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
@@ -216,6 +227,7 @@ import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementTraits;
+import com.tesora.dve.sql.statement.ddl.AddGlobalVariableStatement;
 import com.tesora.dve.sql.statement.ddl.AddStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseTemplateStatement;
@@ -238,6 +250,7 @@ import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableAsSelectStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
+import com.tesora.dve.sql.statement.ddl.PECreateTriggerStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateUserStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateViewStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropContainerStatement;
@@ -281,6 +294,9 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.TruncateStatement;
 import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
+import com.tesora.dve.sql.statement.dml.compound.CaseStatement;
+import com.tesora.dve.sql.statement.dml.compound.CompoundStatementList;
+import com.tesora.dve.sql.statement.dml.compound.StatementWhenClause;
 import com.tesora.dve.sql.statement.session.AnalyzeKeysStatement;
 import com.tesora.dve.sql.statement.session.AnalyzeTablesStatement;
 import com.tesora.dve.sql.statement.session.DeallocatePStmtStatement;
@@ -318,20 +334,22 @@ import com.tesora.dve.sql.statement.session.XARecoverTransactionStatement;
 import com.tesora.dve.sql.statement.session.XARollbackTransactionStatement;
 import com.tesora.dve.sql.template.TemplateManager;
 import com.tesora.dve.sql.transform.CopyVisitor;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PassThroughCommand.Command;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
+import com.tesora.dve.sql.transform.strategy.NaturalJoinRewriter;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryProcedure;
-import com.tesora.dve.variable.GlobalConfigVariableHandler;
-import com.tesora.dve.variable.VariableScopeKind;
+import com.tesora.dve.variable.VariableConstants;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.SiteManagerCommand;
 import com.tesora.dve.worker.WorkerGroup;
-import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 
 // holds the bridge methods from antlr tree nodes to our nodes
 public class TranslatorUtils extends Utils implements ValueSource {
@@ -378,24 +396,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		TableInstance ti = basicResolver.lookupTable(sc, fullName, lockInfo);
 		if (ti == null) return null;
 		return ti.getAbstractTable();
-		/*
-		final UnqualifiedName dbName = getDatabaseNameForTable(sc, fullName);
-		final UnqualifiedName tableName = fullName.getUnqualified();
-
-		if (dbName != null) {
-			final PEDatabase db = sc.findPEDatabase(dbName);
-			if (db != null) {
-				TableInstance ti = db.getSchema().buildInstance(sc, tableName, lockInfo);
-				if (ti == null)
-					return null;
-				return ti.getAbstractTable();
-			}
-
-			throw new SchemaException(Pass.FIRST, "No such database '" + dbName + "'.");
-		}
-
-		throw new SchemaException(Pass.FIRST, "No database selected for table '" + tableName + "'.");
-		*/
 	}
 
 	public static UnqualifiedName getDatabaseNameForTable(final SchemaContext sc, final Name tableName) {
@@ -411,6 +411,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public TranslatorUtils(ParserOptions opts, SchemaContext pc, InputState state) {
 		super(opts);
 		this.pc = pc;
+		if (this.pc == null)
+			throw new SchemaException(Pass.FIRST, "TranslatorUtils no longer accepts null SchemaContext");
 		this.opts = opts;
 		scope = new ScopeStack();
 		this.lockInfo = null;
@@ -430,6 +432,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public void setContext(SchemaContext sc) {
 		pc = sc;
+	}
+	
+	public String getInputSQL() {
+		return pc.getOrigStmt();
 	}
 	
 	public void pushScope() {
@@ -482,7 +488,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	// call this during parsing to indicate that we are handling ddl
 	public void ddl() {
-		if (pc != null) pc.forceMutableSource();
+		if (pc.getCapability() != Capability.PARSING_ONLY) pc.forceMutableSource();
 		if (opts == null || opts.getLockOverride() == null) 
 			lockInfo = new LockInfo(com.tesora.dve.lockmanager.LockType.EXCLUSIVE, "ddl");
 		else if (opts != null && opts.getLockOverride() != null) 
@@ -491,7 +497,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	// call this during parsing to indicate that we are not handling ddl - used during temp table operations
 	public void notddl() {
-		if (pc != null) pc.forceImmutableSource();
+		if (pc.getCapability() != Capability.PARSING_ONLY) pc.forceImmutableSource();
 		if (opts == null || opts.getLockOverride() == null) 
 			lockInfo = new LockInfo(com.tesora.dve.lockmanager.LockType.EXCLUSIVE, "ddl");
 		else if (opts != null && opts.getLockOverride() != null) 
@@ -499,12 +505,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	protected void forceUncacheable(ValueManager.CacheStatus status) {
-		if (pc != null)
+		if (pc.getCapability() != Capability.PARSING_ONLY)
 			pc.getValueManager().markUncacheable(status);
 	}
 	
 	public void assignPositions() {
-		if (pc == null) return;
+		if (pc.getCapability() == Capability.PARSING_ONLY) return;
 		if (!parameters.isEmpty()) {
 			TreeMap<SourceLocation, Parameter> map = new TreeMap<SourceLocation, Parameter>();
 			for(Parameter p : parameters)
@@ -518,7 +524,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				i++;
 			}
 		}
-		if (literals.size() > SchemaVariables.getLiteralsCutoff(pc)) {
+		if (literals.size() > KnownVariables.CACHED_PLAN_LITERALS_MAX.getValue(pc.getConnection().getVariableSource()).intValue()) { 
 			forceUncacheable(ValueManager.CacheStatus.NOCACHE_TOO_MANY_LITERALS);
 		} else {
 			TreeMap<SourceLocation, DelegatingLiteralExpression> map = new TreeMap<SourceLocation, DelegatingLiteralExpression>();
@@ -565,9 +571,30 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			else 
 				options.add((MysqlSelectOption) opt);
 		}
-		SelectStatement ss = new SelectStatement(tableRefs, projection,
+		SelectStatement ss = new SelectStatement(tableRefs, projection, 
 				whereClause, orderbys, limit, sq, options, groupbys,
 				havingExpr, locking, new AliasInformation(scope), SourceLocation.make(tree));
+
+		/*
+		 * The NATURAL [LEFT] JOIN are rewritten to an INNER JOIN or a LEFT JOIN
+		 * with a USING clause.
+		 * The rewrite must take place after ColumnInstance resolution (to
+		 * prevent premature failure on ambiguous column names), but before
+		 * USING-to-ON clause conversion and wildcard expansion which affect the
+		 * projection coalescing and ordering.
+		 */
+		if (tableRefs != null) {
+			for (final FromTableReference ftr : tableRefs) {
+				final TableInstance base = ftr.getBaseTable();
+				final ListSet<JoinedTable> naturalJoins = NaturalJoinRewriter.collectNaturalJoins(ftr.getTableJoins());
+				for (final JoinedTable join : naturalJoins) {
+					NaturalJoinRewriter.rewriteToInnerJoin(this.pc, base, join);
+				}
+
+				convertUsingColSpecToOnSpec(base, naturalJoins);
+			}
+		}
+
 		ss.getDerivedInfo().takeScope(scope);
 		Scope ps = scope.getParentScope();
 		if (ps != null)
@@ -608,18 +635,22 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		} else {
 			explicitDeletes = new ArrayList<TableInstance>();
 			for(Name r : explicitRefs) {
-				Name actual = r;
-				// if it has a trailing * strip that off
-				List<UnqualifiedName> parts = r.getParts();
-				if (parts.size() > 1 && parts.get(parts.size() - 1).isAsterisk()) {
-					ArrayList<UnqualifiedName> nparts = new ArrayList<UnqualifiedName>(parts);
-					nparts.remove(nparts.size() - 1);
-					if (nparts.size() == 1)
-						actual = nparts.get(0);
-					else
-						actual = new QualifiedName(nparts);
+				if (pc.getCapability() == Capability.PARSING_ONLY) {
+					explicitDeletes.add(new TableInstance(null,r,null,false));
+				} else {
+					Name actual = r;
+					// if it has a trailing * strip that off
+					List<UnqualifiedName> parts = r.getParts();
+					if (parts.size() > 1 && parts.get(parts.size() - 1).isAsterisk()) {
+						ArrayList<UnqualifiedName> nparts = new ArrayList<UnqualifiedName>(parts);
+						nparts.remove(nparts.size() - 1);
+						if (nparts.size() == 1)
+							actual = nparts.get(0);
+						else
+							actual = new QualifiedName(nparts);
+					}
+					explicitDeletes.add(scope.lookupTableInstance(pc, actual, true));
 				}
-				explicitDeletes.add(scope.lookupTableInstance(actual, true));
 			}
 		}
 		DeleteStatement ds = new DeleteStatement(explicitDeletes, tableRefs, whereClause,
@@ -741,7 +772,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public void reportContinuationOnDupKey() {
-		throw new ParserException(Pass.FIRST, "Statement is too large. Consider increasing the '" + GlobalConfigVariableHandler.LARGE_INSERT_THRESHOLD
+		throw new ParserException(Pass.FIRST, "Statement is too large. Consider increasing the '" + VariableConstants.LARGE_INSERT_THRESHOLD_NAME
 				+ "' value.", null);
 	}
 
@@ -1065,7 +1096,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			// was specified
 			if (dv == null && discriminator == null) {
 				newTab = buildTable(tableName, actualFieldsAndKeys, null, pesg, modifiers, ctaProjectionOffsets != null, temporary);
-				if (pc == null || (opts != null && opts.isOmitMetadataInjection())) {
+				if ((pc.getCapability() == Capability.PARSING_ONLY) || (opts != null && opts.isOmitMetadataInjection())) {
 					dv = new DistributionVector(pc, null, DistributionVector.Model.RANDOM);
 					newTab.setDistributionVector(pc,dv);				
 				} else
@@ -1113,7 +1144,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				pecs = new PECreateTableAsSelectStatement(newTab, ine, false, ctas, ctaProjectionOffsets);
 		}
 		Statement out = pecs;
-		if (pc != null && !pc.getOptions().isTSchema()) {
+		if (pc.getCapability() != Capability.PARSING_ONLY && !pc.getOptions().isTSchema()) {
 			// containers don't generally have a separate policy at creation time - check for it on
 			// the dist vect
 			if (pecs.getCreated().get().getDistributionVector(pc).isContainer()) {
@@ -1151,7 +1182,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				unknownTables.add(givenName);
 			} else {
 				if (tempTabs && !ti.getTableKey().isUserlandTemporaryTable())
-					throw new SchemaException(Pass.SECOND, "No such temporary table: '" + givenName + "'");
+					throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_TABLE,givenName.getUnquotedName().get()));
 				tblKeys.add(ti.getTableKey());
 			}
 		}
@@ -1195,18 +1226,21 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public Statement buildShowCreateDatabaseQuery(String onInfoSchemaTable,
 			Name objectName, Boolean ifNotExists) {
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);
-		return ((CreateDatabaseInformationSchemaTable)ist).buildUniqueStatement(pc, objectName, ifNotExists);
+		ShowOptions opts = new ShowOptions();
+		if (Boolean.TRUE.equals(ifNotExists))
+			opts = opts.withIfNotExists();
+		return ist.buildUniqueStatement(pc, objectName, opts);
 	}
 
 	public Statement buildUseDatabaseStatement(Name firstName) {
 		if (firstName == null)
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
-		if (pc == null)
+		if (pc.getCapability() == Capability.PARSING_ONLY)
 			return new SessionStatement("use " + firstName.getSQL()) {
 				@Override
 				public boolean isPassthrough() {
@@ -1274,7 +1308,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 		final Pair<String, String> charSetCollationPair = getCharSetCollationPair(charSetValue, collationValue);
 
-		if (pc == null) {
+		if (pc.getCapability() == Capability.PARSING_ONLY) {
 			PEDatabase pdb = new PEDatabase(null, dbName.getUnquotedName(), null, templateDecl, mm, fkMode, charSetCollationPair.getFirst(),
 					charSetCollationPair.getSecond());
 			PECreateStatement<PEDatabase, UserDatabase> cdb = new PECreateDatabaseStatement(
@@ -1321,7 +1355,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 
 		if ((mode != null) && !mode.requiresTemplate()) {
-			throw new SchemaException(Pass.SECOND, "Redundant template specification '" + templateName.getSQL() + "' for " + SchemaVariables.TEMPLATE_MODE_NAME
+			throw new SchemaException(Pass.SECOND, "Redundant template specification '" + templateName.getSQL() + "' for " + VariableConstants.TEMPLATE_MODE_NAME
 					+ " '" + mode.toString() + "'; syntax error");
 		}
 
@@ -1379,59 +1413,26 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 		
 		if ((charSetValue != null) && (collationValue == null)) {  // Use default for the charset.
-			NativeCollation nc = lookupDefaultCollationForCharsetInCatalog(charSetValue);
-			if (nc == null)
-				throw new SchemaException(Pass.FIRST, "Unable to build plan - Unsupported CHARACTER SET " + charSetValue);
+			final NativeCollation nc = getNativeCollationCatalog().findDefaultCollationForCharSet(charSetValue);
+			if (nc == null) {
+				throw new SchemaException(Pass.FIRST, "Unsupported CHARACTER SET " + charSetValue);
+			}
 			return new Pair<String, String>(charSetValue, nc.getName());
 		} else if ((charSetValue == null) && (collationValue != null)) {  // Use an appropriate charset.
-			try {
-				final NativeCharSet charSet = getNativeCharSetCatalog().findCharSetByCollation(collationValue, true);
-				return new Pair<String, String>(charSet.getName(), collationValue);
-			} catch (final PEException e) {
-				throw new SchemaException(Pass.FIRST, e.getMessage());
+			final NativeCharSet charSet = getNativeCharSetCatalog().findCharSetByCollation(collationValue);
+			if (charSet == null) {
+				throw new SchemaException(Pass.FIRST, "Unsupported COLLATION '" + collationValue + "'");
 			}
+			return new Pair<String, String>(charSet.getName(), collationValue);
 		} else { // Just check the values for mutual compatibility.
-			final NativeCharSet charSet = lookupCharsetInCatalog(charSetValue, getNativeCharSetCatalog());
-			if (charSet.isCompatibleWith(collationValue)) {
+			final NativeCharSet charSet = getNativeCharSetCatalog().findCharSetByName(charSetValue);
+			if (charSet == null) {
+				throw new SchemaException(Pass.FIRST, "Unsupported CHARACTER SET '" + charSetValue + "'");
+			} else if (charSet.isCompatibleWith(collationValue)) {
 				return new Pair<String, String>(charSetValue, collationValue);
 			}
 			throw new SchemaException(Pass.FIRST, "COLLATION '" + collationValue + "' is not valid for CHARACTER SET '" + charSetValue + "'");
 		}
-	}
-
-	private NativeCharSet lookupCharsetInCatalog(final String name, final NativeCharSetCatalog supportedCharSets) {
-		try {
-			return supportedCharSets.findCharSetByName(name, true);
-		} catch (final PEException e) {
-			throw new SchemaException(Pass.FIRST, e.getMessage());
-		}
-	}
-
-	private NativeCollation lookupDefaultCollationForCharsetInCatalog(final String charsetName) {
-		try {
-			return getNativeCollationCatalog().findDefaultCollationForCharSet(charsetName, true);
-		} catch (final PEException e) {
-			throw new SchemaException(Pass.FIRST, e.getMessage());
-		}
-	}
-
-	public Statement buildCreateProject(Name projName, Name defPersistentGroup) {
-		if ( projName == null ) {
-			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
-		}
-
-		Project any = pc.getCatalog().findProject(projName.get());
-		if (any != null)
-			throw new SchemaException(Pass.SECOND, "Project "
-					+ projName.getSQL() + " already exists");
-		PEPersistentGroup defPersistent = null;
-		if (defPersistentGroup != null) {
-			defPersistent = pc.findStorageGroup(defPersistentGroup);
-			if (defPersistent == null)
-				throw new SchemaException(Pass.SECOND,
-						"No such persistent group: " + defPersistentGroup.getSQL());
-		}
-		return new PECreateStatement<PEProject, Project>(new PEProject(pc,projName, defPersistent), true, "PROJECT", false);
 	}
 
 	public Statement buildCreatePersistentInstance(Name persistentInstanceName,
@@ -1738,11 +1739,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public BasicType buildType(List<Name> typeNames, SizeTypeAttribute sizing,
 			List<TypeModifier> modifiers) {
 		return BasicType.buildType(typeNames, Collections.singletonList(sizing),
-				(modifiers == null ? Collections.EMPTY_LIST : modifiers));
+				(modifiers == null ? Collections.EMPTY_LIST : modifiers),
+				pc.getTypes());
 	}
 
 	public BasicType buildEnum(boolean isSet, List<LiteralExpression> values, List<TypeModifier> modifiers) {
-		return DBEnumType.make(isSet, values, modifiers);
+		return DBEnumType.make(isSet, values, modifiers,pc.getTypes());
 	}
 
 	public TypeModifier buildTypeModifier(TypeModifierKind tmk) {
@@ -1756,10 +1758,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public List<TableComponent<?>> buildFieldDefinition(Name fieldName, Type type,
-			List<ColumnModifier> attrs, String commentText) {
+			List<ColumnModifier> attrs, String commentText) throws SchemaException {
 		Comment comment = null;
-		if (commentText != null)
-			comment = new Comment(PEStringUtils.dequote(commentText));
+		if (commentText != null) {
+			comment = buildTableFieldComment(fieldName, commentText);
+		}
 		List<ColumnKeyModifier> inlineKeys = new ArrayList<ColumnKeyModifier>();
 		for(Iterator<ColumnModifier> iter = attrs.iterator(); iter.hasNext();) {
 			ColumnModifier cm = iter.next();
@@ -1770,7 +1773,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 		List<TableComponent<?>> out = new ArrayList<TableComponent<?>>();
 		PEColumn nc = null;
-		if (pc == null
+		if (pc.getCapability() == Capability.PARSING_ONLY
 				|| !(pc.getPolicyContext().allowTenantColumnDeclaration() && TenantColumn.TENANT_COLUMN
 						.equals(fieldName.get())))
 			nc = scope.registerColumn(
@@ -1778,6 +1781,19 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		else
 			nc = scope.registerColumn(new TenantColumn(pc));
 		out.add(nc);
+		// collapse the case where we see UNIQUE, KEY
+		if (inlineKeys.size() > 1) {
+			int uniqued = -1;
+			int keyed = -1;
+			for(int i = 0; i < inlineKeys.size(); i++) {
+				if (inlineKeys.get(i).getConstraint() == ConstraintType.UNIQUE && uniqued == -1)
+					uniqued = i;
+				else if (inlineKeys.get(i).getConstraint() == null && keyed == -1)
+					keyed = i;
+			}
+			if (uniqued > -1 && keyed > uniqued)
+				inlineKeys.remove(keyed);
+		}
 		for(ColumnKeyModifier ckm : inlineKeys) {
 			// first build the key
 			@SuppressWarnings("unchecked")
@@ -1789,17 +1805,18 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return out;
 	}
 
-	public PEKey buildKey(IndexType type, Name name, List<PEKeyColumnBase> cols, List<Object> options) {
+	public PEKey buildKey(IndexType type, Name name, List<PEKeyColumnBase> cols, List<Object> options) throws SchemaException {
 		// unpack the options in case we have anything lurking
 		IndexType postSpecifiedType = null;
 		Comment anyComment = null;
 		for(Object o : options) {
-			if (o instanceof String)
-				anyComment = new Comment(PEStringUtils.dequote((String) o));
-			else if (o instanceof IndexType)
+			if (o instanceof String) {
+				anyComment = buildTableFieldComment(name, (String) o);
+			} else if (o instanceof IndexType) {
 				postSpecifiedType = (IndexType) o;
-			else
+			} else {
 				throw new SchemaException(Pass.SECOND, "Unknown key option: " + o);
+			}
 		}
 		IndexType actualType = type;
 		if (actualType == null) actualType = postSpecifiedType;
@@ -1833,7 +1850,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public PEKey buildForeignKey(Name name, List<PEKeyColumnBase> mycols, Name targetTableName, List<UnqualifiedName> targetColumns,
 			ForeignKeyAction deleteAction, ForeignKeyAction updateAction) {
 		// are unknown tables ok?
-		boolean required = (pc != null && SchemaVariables.hasForeignKeyChecks(pc));
+		boolean required = (pc.getCapability() != Capability.PARSING_ONLY && 
+				KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(pc.getConnection().getVariableSource()).booleanValue());
 		
 		// figure out whether the target table is known or not
 		PETable targetTab = null;
@@ -1847,13 +1865,13 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			if (db == null && required)
 				throw new SchemaException(Pass.FIRST, "No such database: " + ofdb);
 		} else {
-			if (pc != null) db = pc.getCurrentDatabase();
+			if (pc.getCapability() != Capability.PARSING_ONLY) db = pc.getCurrentDatabase();
 			if (db == null && required)
 				throw new SchemaException(Pass.FIRST, "No current database");
 			candidateName = (UnqualifiedName) targetTableName;
 		}
 		if (db != null) {
-			boolean mtchecks = (pc != null && !pc.getOptions().isDisableMTLookupChecks());
+			boolean mtchecks = (pc.getCapability() != Capability.PARSING_ONLY && !pc.getOptions().isDisableMTLookupChecks());
 			TableInstance ti = db.getSchema().buildInstance(pc, candidateName, lockInfo, mtchecks);
 			if (ti == null && required && mtchecks)
 				throw new SchemaException(Pass.FIRST, "No such table: " + targetTableName);
@@ -1866,7 +1884,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				fullyQualifiedTargetName = targetTableName;
 			else if (db != null)
 				fullyQualifiedTargetName = targetTableName.postfix(db.getName());
-			else if (pc == null)
+			else if (pc.getCapability() == Capability.PARSING_ONLY)
 				fullyQualifiedTargetName = targetTableName;
 			else
 				throw new SchemaException(Pass.FIRST, "No current database");
@@ -1913,7 +1931,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 		Database<?> cdb = null;
 		Name unqualifiedTableName = tableName;
-		if (pc != null) {
+		if (pc.getCapability() != Capability.PARSING_ONLY) {
 			cdb = pc.getCurrentDatabase(false);
 			if (cdb == null || tableName.isQualified()) {
 				if (cdb == null && !tableName.isQualified())
@@ -1949,7 +1967,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		else
 			newtab = new PETable(pc, unqualifiedTableName, fieldsAndKeys,
 				dv, modifiers, sg, (PEDatabase) cdb, TableState.SHARED);
-		if (pc != null) {
+		if (pc.getCapability() != Capability.PARSING_ONLY) {
 			pc.getPolicyContext().modifyTablePart(newtab);
 		}
 		newtab.setDeclaration(pc,newtab);
@@ -2000,11 +2018,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			tok = TokenTypes.Hex_String_Literal;
 		}
 		ExpressionNode ex = null;
-		if (opts.isActualLiterals() || (pc != null && pc.isMutableSource()))
-            ex = new ActualLiteralExpression(Singletons.require(HostService.class).getDBNative().getValueConverter().convertLiteral(t, tok),tok, SourceLocation.make(o),charsetHint);
+		if (opts.isActualLiterals() || (pc.getCapability() != Capability.PARSING_ONLY && pc.isMutableSource()))
+            ex = new ActualLiteralExpression(ValueConverter.INSTANCE.convertLiteral(t,tok),
+            		tok, SourceLocation.make(o),charsetHint);
 		else {
 			DelegatingLiteralExpression litex = new DelegatingLiteralExpression(tok, SourceLocation.make(o),this,literals.size(), charsetHint);
-            literals.add(litex, Singletons.require(HostService.class).getDBNative().getValueConverter().convertLiteral(t, tok));
+            literals.add(litex, ValueConverter.INSTANCE.convertLiteral(t,tok)); 
 			ex = litex;
 		}
 		return ex;
@@ -2025,10 +2044,11 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public ExpressionNode buildFunctionCall(FunctionName givenName,
 			List<ExpressionNode> params, SetQuantifier sq, Object tree) {
 		FunctionName unqualifiedName = givenName;
-		if (pc != null) {
+		if (pc.getCapability() != Capability.PARSING_ONLY) {
 			if (unqualifiedName.isPipes()) {
 				forceUncacheable(ValueManager.CacheStatus.NOCACHE_DYNAMIC_FUNCTION);
-				SQLMode mode = SchemaVariables.getSQLMode(pc);
+				SQLMode mode = 
+						KnownVariables.SQL_MODE.getSessionValue(pc.getConnection().getVariableSource()); 
 				if (mode.isPipesAsConcat()) {
 					// rewrite to use the concat function call
 					unqualifiedName = new FunctionName("CONCAT",-1,false);
@@ -2182,12 +2202,18 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				SourceLocation.make(tok));
 	}
 
-	public JoinSpecification buildJoinType(String primary, String outer) {
+	public JoinSpecification buildJoinType(String primary) {
+		return buildJoinType(primary, null, null);
+	}
+
+	public JoinSpecification buildJoinType(String primary, String natural, String outer) {
 		StringBuilder buf = new StringBuilder();
+		if (natural != null)
+			buf.append(natural).append(" ");
 		if (primary != null)
-			buf.append(primary);
+			buf.append(primary).append(" ");
 		if (outer != null)
-			buf.append(" ").append(outer);
+			buf.append(outer);
 		return JoinSpecification.makeJoinSpecification(buf.toString()
 				.toUpperCase());
 	}
@@ -2199,7 +2225,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public JoinedTable buildJoinedTable(ExpressionNode target,
 			JoinClauseType joinOn, JoinSpecification injoinType) {
 		// JOIN is INNER JOIN
-		JoinSpecification joinType = (injoinType == null ? buildJoinType("INNER",null) : injoinType);
+		JoinSpecification joinType = (injoinType == null ? buildJoinType("INNER") : injoinType);
 		return new JoinedTable(target, (joinOn == null ? null : joinOn.getNode()), joinType, (joinOn == null ? null : joinOn.getColumnIdentifiers()));
 	}
 
@@ -2210,10 +2236,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public FromTableReference buildFromTableReference(ExpressionNode factor,
 			List<JoinedTable> joins) {
 		
+		if (joins.isEmpty()) {
+			return new FromTableReference(factor);
+		}
+
 		convertUsingColSpecToOnSpec(factor, joins);
 		
-		if (joins.isEmpty())
-			return new FromTableReference(factor);
 		return new FromTableReference(new TableJoin(factor,joins));		
 	}
 
@@ -2221,7 +2249,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (!opts.isResolve()) return;
 		List<UnqualifiedName> visibleAliases = new LinkedList<UnqualifiedName>();
 		if (factor instanceof TableInstance)
-			visibleAliases.add(0, ((TableInstance)factor).getReferenceName(pc).getUnqualified());
+			visibleAliases.add(0, ((TableInstance) factor).getReferenceName(pc).getUnqualified());
 		for (JoinedTable jt : joins) {
 			List<Name> usingColSpec = jt.getUsingColSpec();
 			if (usingColSpec != null && usingColSpec.size() > 0 ) {
@@ -2393,80 +2421,62 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return buildFunctionCall(eqop, params, null, tree);
 	}
 
-	public VariableInstance buildVariableInstance(Name scopeName,
-			Name variableName, Object orig) {
-		if (scopeName == null)
-			return buildVariableInstance(variableName,
-					VariableScope.VariableKind.USER, orig);
-		else if (!scopeName.isQualified())
-			return buildVariableInstance(
-					scopeName,
-					buildVariableScope(VariableScope.VariableKind.SESSION,
-							null, null), orig);
-		else {
-			QualifiedName qn = (QualifiedName) scopeName;
-			VariableScope vs = buildVariableScope(qn, null);
-			return buildVariableInstance(qn.getUnqualified(), vs, orig);
-		}
+	public VariableInstance buildLHSVariableInstance(VariableScope vs, Name n, Object tree) {
+		return captureVariable(new VariableInstance(n.getUnqualified(), vs, SourceLocation.make(tree), false));
 	}
-
-	public VariableScope buildVariableScope(Name n, Name anyTrailingIdentifier) {
-		if ( n == null ) {
-			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
+	
+	public VariableInstance buildRHSVariableInstance(Object fat, Object sat, VariableScopeKind vsk, Name n, Object tree) {
+		VariableScopeKind kind = vsk;
+		if (kind == null) {
+			if (fat != null) {
+				if (sat != null) {
+					/*
+					 * MySQL returns the session value if it exists and the
+					 * global value otherwise.
+					 */
+					final String varName = n.getUnqualified().getUnquotedName().get();
+					final VariableHandler<?> exists =
+							Singletons.require(HostService.class).getVariableManager().lookup(varName);
+					if (exists != null) {
+						if (exists.getScopes().contains(VariableScopeKind.SESSION)) {
+							kind = VariableScopeKind.SESSION;
+						} else {
+							kind = VariableScopeKind.GLOBAL;
+						}
+					}
+				} else {
+					kind = VariableScopeKind.USER;
+				}
+			} else {
+				kind = VariableScopeKind.SESSION;
+			}
 		}
-
-		Name nmspc = n;
-		if (n.isQualified())
-			nmspc = ((QualifiedName) n).getNamespace();
-		VariableScope vs = null;
-		if ("SESSION".equals(nmspc.getCapitalized().get()))
-			vs = buildVariableScope(VariableScope.VariableKind.SESSION, null,
-					null);
-		else if ("GLOBAL".equals(nmspc.getCapitalized().get()))
-			vs = buildVariableScope(VariableScope.VariableKind.GLOBAL, null,
-					null);
-		else if ("DVE".equals(nmspc.getCapitalized().get()))
-			vs = buildVariableScope(VariableScope.VariableKind.SCOPED,
-					"dve", anyTrailingIdentifier);
-		else
-			throw new SchemaException(Pass.FIRST,
-					"Unknown variable scope reference: " + n.getSQL());
-		return vs;
+		return captureVariable(new VariableInstance(n.getUnqualified(), new VariableScope(kind), SourceLocation.make(tree), true));
 	}
-
-	public VariableInstance buildVariableInstance(Name varname,
-			VariableScope.VariableKind scopeKind, Object orig) {
-		VariableInstance vi = buildVariableInstance(varname, new VariableScope(
-				scopeKind), orig);
+	
+	private VariableInstance captureVariable(VariableInstance vi) {
 		if (!scope.isEmpty())
 			scope.getVariables().add(vi);
 		return vi;
 	}
-
-	public VariableInstance buildVariableInstance(Name varname,
-			VariableScope vs, Object orig) {
-		if ( varname == null ) {
-			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
-		}
-
-		return new VariableInstance((UnqualifiedName) varname, vs,
-				SourceLocation.make(orig));
+	
+	public VariableScope buildVariableScope(VariableScopeKind vsk) {
+		return new VariableScope(vsk);
 	}
-
-	public VariableScope buildVariableScope(
-			VariableScope.VariableKind scopeKind, String kindName,
-			Name scopeName) {
-		return new VariableScope(scopeKind, kindName,
-				(UnqualifiedName) scopeName);
+	
+	public VariableScope buildVariableScope(Name scoped) {
+		if (scoped == null)
+			return new VariableScope(VariableScopeKind.SCOPED);		
+		return new VariableScope(scoped.getUnquotedName().get());
 	}
-
+	
+	public SetExpression buildSetVariableExpression(VariableInstance v, ExpressionNode en) {
+		return buildSetVariableExpression(v,Collections.singletonList(en));
+	}
+	
 	public SetExpression buildSetVariableExpression(VariableInstance v,
 			List<ExpressionNode> l) {
-		if (v.getScope().getScopeKind().compareTo(VariableScopeKind.DVE) == 0) {
-			throw new SchemaException(Pass.FIRST,
-					"Unknown variable scope reference: " + v.getScope().getScopeKind().name().toLowerCase() + "." + v.getVariableName().getSQL());
-		}
-		
+
 		if (StringUtils.endsWithIgnoreCase(v.getVariableName().get(), "NAMES")) {
 			// validate NAME variable is one of our supported ones
 			// should only be one item in l
@@ -2476,13 +2486,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 					throw new SchemaException(Pass.FIRST, "Must specify a character set");
 				}
 				String value = (String)le.getValue(pc);
-				try {
-                    if (Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(value, false) == null) {
-						// character set not supported
-						throw new SchemaException(Pass.FIRST, "Cannot set an unsupported character set: " + value);
-					}
-				} catch (PEException e) {
-					throw new SchemaException(Pass.FIRST, "Unable to validate character set: " + value);
+				if (Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(value) == null) {
+					// character set not supported
+					throw new SchemaException(Pass.FIRST, "Cannot set an unsupported character set: " + value);
 				}
 			}
 		}
@@ -2494,12 +2500,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public SetExpression buildSetTransactionIsolation(
-			SetTransactionIsolationExpression.IsolationLevel il, Name scopeName) {
-		if ((scopeName != null) && (!scopeName.get().equalsIgnoreCase(VariableScope.VariableKind.SESSION.name()))) {
-			throw new SchemaException(Pass.SECOND, "No support for native global variables");
-		}
-
-		return new SetTransactionIsolationExpression(il, VariableScope.VariableKind.SESSION);
+			SetTransactionIsolationExpression.IsolationLevel il, VariableScopeKind scopeKind) {
+		return new SetTransactionIsolationExpression(il, scopeKind);
 	}
 
 	public SessionSetVariableStatement buildSessionSetVarStatement(
@@ -2514,7 +2516,17 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new SessionSetVariableStatement(sets);
 	}
 
-	public Comment buildComment(String c) {
+	public Statement buildAddVariable(Name newName, List<Pair<Name,LiteralExpression>> options) {
+		pc.getPolicyContext().checkRootPermission("create a new system variable");
+		String varName = newName.getUnqualified().getUnquotedName().get();
+		VariableHandler exists =
+				Singletons.require(HostService.class).getVariableManager().lookup(varName);
+		if (exists != null)
+			throw new SchemaException(Pass.SECOND,"Variable " + newName + " already exists");
+		return AddGlobalVariableStatement.decode(pc, varName, options);
+	}
+	
+	private Comment buildComment(String c) {
 		return new Comment(PEStringUtils.dequote(c));
 	}
 
@@ -2551,10 +2563,24 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new EngineTableModifier(actualTag);
 	}
 	
-	public TableModifier buildCommentTableModifier(String s) {
+	public TableModifier buildCommentTableModifier(final Name tableName, final String s) throws SchemaException {
+		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableCommentLength();
+		if (s.length() > maxAllowedLength) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.TOO_LONG_TABLE_COMMENT, tableName.getUnqualified().getUnquotedName().get(), maxAllowedLength));
+		}
+
 		return new CommentTableModifier(buildComment(s));
 	}
 	
+	public Comment buildTableFieldComment(final Name fieldName, final String s) throws SchemaException {
+		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableFieldCommentLength();
+		if (s.length() > maxAllowedLength) {
+			throw new SchemaException(new ErrorInfo(DVEErrors.TOO_LONG_TABLE_FIELD_COMMENT, fieldName.getUnquotedName().get(), maxAllowedLength));
+		}
+
+		return buildComment(s);
+	}
+
 	public TableModifier buildCollationTableModifier(Name collationName) {
 		return new CollationTableModifier(collationName.getUnqualified());
 	}
@@ -2613,8 +2639,18 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			ts.getDerivedInfo().takeScope(scope);
 			return ts;
 		}
-		
-		throw new SchemaException(Pass.FIRST, "'" + name.getSQL() + "' is not a base table");
+		UnqualifiedName encName = null;
+		UnqualifiedName tname = null;
+		if (name.isQualified()) {
+			QualifiedName qn = (QualifiedName) name;
+			encName = qn.getNamespace();
+			tname = qn.getUnqualified();
+		} else {
+			tname = (UnqualifiedName) name;
+			encName = pc.getCurrentDatabase().getName().getUnqualified();
+		}
+			
+		throw new SchemaException(new ErrorInfo(DVEErrors.TABLE_DNE,encName.getUnquotedName().get(),tname.getUnquotedName().get()));
 	}
 
 	public ExpressionNode buildSubquery(Statement in, Name alias, Object orig, boolean makeVirtualTable) {
@@ -2703,7 +2739,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return out;
 	}
 
-	public Statement buildAddPersistentSiteStatement(Name sgName, List<Name> siteNames) {
+	public Statement buildAddPersistentSiteStatement(Name sgName, List<Name> siteNames, boolean rebalance) {
 		pc.getPolicyContext().checkRootPermission("add a persistent site");
 		PEPersistentGroup pesg = pc.findStorageGroup(sgName);
 		if (pesg == null)
@@ -2717,34 +2753,41 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						+ n.getSQL());
 			sites.add(pess);
 		}
-		return new AddStorageSiteStatement(pesg, sites);
+		return new AddStorageSiteStatement(pesg, sites, rebalance);
 	}
 
 	public Statement buildShowSingularQuery(String onInfoSchemaTable,
 			Name objectName) {
-		if (pc != null && !pc.getCatalog().isPersistent())
+		if (pc.getCapability() == Capability.PARSING_ONLY && !pc.getCatalog().isPersistent())
 			return new EmptyStatement("no catalog queries with transient execution engine");
 
 		// TODO:
 		// handle !resolve
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);
-		return ist.buildUniqueStatement(pc, objectName);
+		return ist.buildUniqueStatement(pc, objectName, new ShowOptions());
 	}
 
 	public void push_info_schema_scope(Name n) {
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
-				.lookupShowTable((UnqualifiedName) n);
-		if (ist == null)
-			throw new SchemaException(Pass.SECOND, "No such table: "
-					+ n.getSQL());
-		pushScope();
-		// we put in an alias anyways
-		scope.buildTableInstance(ist.getName(), new UnqualifiedName("a"),
-				Singletons.require(HostService.class).getInformationSchema().getShowSchema(), pc, null);
+		// parsing only - just add the darn thing
+		if (pc.getCapability() == Capability.PARSING_ONLY) {
+			pushScope();
+			scope.buildTableInstance(n, new UnqualifiedName("a"), null, pc, null);
+		} else {
+			ShowSchemaBehavior sst = Singletons.require(HostService.class).getInformationSchema()
+					.lookupShowTable((UnqualifiedName) n);
+			if (sst == null)
+				throw new SchemaException(Pass.SECOND, "No such table: "					
+						+ n.getSQL());
+			InformationSchemaTable ist = (InformationSchemaTable) sst;
+			pushScope();
+			// we put in an alias anyways
+			scope.buildTableInstance(ist.getName(), new UnqualifiedName("a"),
+					Singletons.require(HostService.class).getInformationSchema().getShowSchema(), pc, null);
+		}
 	}
 
 	public void push_info_schema_scope(String s) {
@@ -2758,10 +2801,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public Statement buildShowPluralQuery(String onInfoSchemaTable,
 			List<Name> scoping, Pair<ExpressionNode, ExpressionNode> likeOrWhere, Token full) {
-		if (pc != null && !pc.getCatalog().isPersistent())
+		if (pc.getCapability() == Capability.PARSING_ONLY && !pc.getCatalog().isPersistent())
 			return new EmptyStatement("no catalog queries with transient execution engine");
 
-        ShowInformationSchemaTable ist = Singletons.require(HostService.class).getInformationSchema()
+        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
@@ -2772,7 +2815,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				.getSecond());
 		
 		ShowOptions so = new ShowOptions();
-		if (full != null) so.setFull();
+		if (full != null) so.withFull();
 		
 		// break up the scoping value into parts if qualified
 		List<Name> scopingParts = new ArrayList<Name>();
@@ -2904,7 +2947,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public UserScope findCurrentUser() {
-		if (pc == null) return null;
+		if (pc.getCapability() == Capability.PARSING_ONLY) return null;
 		return pc.getCurrentUser().get(pc).getUserScope();
 	}
 	
@@ -2919,7 +2962,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public Statement buildCreateUserStatement(List<PEUser> specs) {
 		pc.getPolicyContext().checkRootPermission("create a user");
 		// should check to see whether the users already exist
-		if (pc != null && pc.isPersistent()) {
+		if (pc.getCapability() != Capability.PARSING_ONLY && pc.isPersistent()) {
 			for (PEUser peu : specs) {
 				List<User> users = pc.getCatalog().findUsers(
 						peu.getUserScope().getUserName(),
@@ -2950,8 +2993,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				// just do an empty statement
 				return new EmptyStatement("drop nonexistent user");
 			}
-			throw new SchemaException(Pass.SECOND, "User " + us.getSQL()
-					+ " does not exist");
+			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_USER,us.getUserName(),us.getScope()));
 		}
 		return new PEDropUserStatement(peu);
 	}
@@ -2961,7 +3003,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public Statement buildAlterTableStatement(TableKey tab, List<AlterTableAction> actions) {
-		if (pc == null)
+		if (pc.getCapability() == Capability.PARSING_ONLY)
 			return new PEAlterTableStatement(pc, tab, actions);
 		PEAlterStatement<PETable> single = null;
 		AlterTableAction singleAction = null;
@@ -3043,7 +3085,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public List<AlterTableAction> buildAddIndexAction(PEKey newIndex) {
-		if (newIndex.isUnresolved())
+		if (pc.getCapability() != Capability.PARSING_ONLY && newIndex.isUnresolved())
 			throw new SchemaException(Pass.FIRST, "Invalid forward key during alter");
 		return wrapAlterAction(new AddIndexAction((PEKey)newIndex));
 	}
@@ -3060,7 +3102,44 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public List<AlterTableAction> buildDropColumnAction(Name columnName) {
-		return wrapAlterAction(new DropColumnAction(lookupAlteredColumn(columnName)));
+		List<AlterTableAction> actions = new ArrayList<AlterTableAction>();
+		PEColumn alteredCol = lookupAlteredColumn(columnName);
+
+		// cannot drop column if it is the target in an FK
+		if (pc.getCapability() == Capability.FULL) {
+			for (UserTable ut : pc.getCatalog().findTablesWithFKSReferencing(alteredCol.getTable().getPersistentID())) {
+				for(Key k : ut.getKeys()) {
+					if (k.isForeignKey() && StringUtils.equals(k.getReferencedTable().getName(), alteredCol.getTable().getName().get())) {
+						for(KeyColumn c : k.getColumns()) {
+							if (StringUtils.equals(c.getTargetColumnName(), alteredCol.getName().get())) {
+								throw new SchemaException(Pass.SECOND, "Cannot drop column '" + columnName.get() + "' because it is part of foreign key '" + k.getName() + "'");
+							}
+						}
+					}
+				}
+			}
+
+			for(PEKey key : alteredCol.getTable().getKeys(pc)) {
+				if (key.containsColumn(alteredCol)) {
+					if (key.isForeign()) {
+						throw new SchemaException(Pass.SECOND, "Cannot drop column '" + columnName.get() + "' because it is part of foreign key '" + key.getName().get() + "'");
+					}
+
+					actions.add(buildDropIndexAction(null, key.getName()).get(0));
+
+					if (key.getColumns(pc).size() > 1) {
+						// rebuild index if multicol
+						PEKey newPEKey = key.copy(pc, alteredCol.getTable().asTable());
+						newPEKey.removeColumn(alteredCol);
+
+						actions.add(buildAddIndexAction(newPEKey).get(0));
+					}
+				}
+			}
+		}
+		
+		actions.add(new DropColumnAction(alteredCol));
+		return actions;
 	}
 
 	public List<AlterTableAction> buildTableOptionAction(TableModifier tm) {
@@ -3113,13 +3192,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	@SuppressWarnings("unchecked")
 	private PEColumn lookupAlteredColumn(Name columnName) {
 		PEColumn c = null;
-		if (pc == null) {
-			c = PEColumn.buildColumn(pc, columnName, TempColumnType.TEMP_TYPE, Collections.EMPTY_LIST, null,null);
-		} else {
-			final Table<?> parentTable = scope.getAlteredTable();
-			c = (PEColumn) parentTable.lookup(pc, columnName);
-			if (c == null)
+		final Table<?> parentTable = scope.getAlteredTable();
+		c = (PEColumn) parentTable.lookup(pc, columnName);
+		if (c == null) {
+			if (pc.getCapability() == Capability.PARSING_ONLY) {
+				c = PEColumn.buildColumn(pc, columnName, TempColumnType.TEMP_TYPE, Collections.EMPTY_LIST, null,null);
+			} else {
 				throw new SchemaException(Pass.SECOND, "Unknown column '" + columnName + "' in '" + parentTable.getName().get() + "'");
+			}
+			
 		}
 		return c;
 	}
@@ -3132,7 +3213,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	@SuppressWarnings("unchecked")
 	private PEKey lookupAlteredKey(ConstraintType kt, Name keyName) {
 		PEKey k = null;
-		if (pc == null) {
+		if (pc.getCapability() == Capability.PARSING_ONLY) {
 			k = new PEKey(keyName, IndexType.BTREE, Collections.EMPTY_LIST, null);
 		} else {		
 			k = ((PETable)scope.getAlteredTable()).lookupKey(pc, keyName);
@@ -3145,7 +3226,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	@SuppressWarnings("unchecked")
 	public TableKey lookupAlteredTable(Name tabName) {
 		TableKey tab = null;
-		if (pc == null) {
+		if (pc.getCapability() == Capability.PARSING_ONLY) {
 			tab = TableKey.make(pc,new PETable(pc, tabName, Collections.EMPTY_LIST, null, null, null),0);
 		} else {
 			TableResolver resolver = new TableResolver().withMTChecks()
@@ -3224,7 +3305,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		} else if (args.size() == 1) {
 			return new RandFunctionCall(args.get(0));
 		} else {
-			throw new SchemaException(Pass.SECOND, "Incorrect parameter count in the call to native function 'RAND'");
+			throw new SchemaException(new ErrorInfo(DVEErrors.INCORRECT_PARAM_COUNT_FUNCTION_CALL,"RAND"));
 		}
 	}
 
@@ -3661,7 +3742,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			return new GrantScope();
 		// otherwise it's a db.* or db.table
 		// the grant scope might be a tenant
-		if (pc == null)
+		if (pc.getCapability() == Capability.PARSING_ONLY)
 			return new GrantScope(n);
 		PEDatabase peds = pc.findPEDatabase(n);
 		PETenant ten = null;
@@ -3682,7 +3763,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	 * @return
 	 */
 	public Statement buildGrant(GrantScope gs, PEUser user, String whatToGrant) {
-		if (pc == null) {
+		if (pc.getCapability() == Capability.PARSING_ONLY) {
 			return new GrantStatement(gs.buildPriviledge(pc,user));
 		}
 		pc.getPolicyContext().checkRootPermission("grant privileges");
@@ -3750,6 +3831,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public ExpressionNode maybeBuildExprAlias(ExpressionNode targ, Name alias, String stringAlias,
 			Object tree) {
+		SourceLocation sloc = SourceLocation.make(tree);
+		
 		if (alias == null && stringAlias == null)
 			return targ;
 
@@ -3808,14 +3891,14 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	@SuppressWarnings("unchecked")
 	public Statement buildShowStatus(Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
-        StatusInformationSchemaTable ist = (StatusInformationSchemaTable) Singletons.require(HostService.class).getInformationSchema().lookupShowTable(
-						new UnqualifiedName("status"));
+		DirectShowStatusInformation ist = (DirectShowStatusInformation) Singletons.require(HostService.class).getInformationSchema().lookupShowTable(
+				new UnqualifiedName("status"));
 
 		ExpressionNode likeExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getFirst());
 		ExpressionNode whereExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getSecond());
-		if (pc == null)
+		if (pc.getCapability() == Capability.PARSING_ONLY)
 			return new SchemaQueryStatement(false, "status", Collections.EMPTY_LIST, true, null);
 		return ist.buildShowPlural(pc, null, likeExpr, whereExpr, null);
 	}
@@ -3823,32 +3906,26 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	@SuppressWarnings("unchecked")
 	public Statement buildShowVariables(VariableScope ivs,
 			Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
-        VariablesInformationSchemaTable ist = (VariablesInformationSchemaTable) Singletons.require(HostService.class).
+        DirectShowVariablesTable ist = (DirectShowVariablesTable) Singletons.require(HostService.class).
 				getInformationSchema().lookupShowTable(
 						new UnqualifiedName("variables"));
 		VariableScope vs = ivs;
 		if (vs == null)
-			vs = new VariableScope(VariableScope.VariableKind.SESSION);
-		else if (VariableScope.VariableKind.GLOBAL.equals(vs.getKind())) {
-			// return dve scope
-			vs = buildVariableScope(buildName("DVE"), null);
-//			throw new SchemaException(Pass.SECOND,
-//					"No support for native global variables");
-		}
+			vs = new VariableScope(VariableScopeKind.SESSION);
 		ExpressionNode likeExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getFirst());
 		ExpressionNode whereExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getSecond());
-		if (pc == null)
+		if (pc.getCapability() == Capability.PARSING_ONLY)
 			return new SchemaQueryStatement(false, "variables", Collections.EMPTY_LIST, true, null);
 		return ist.buildShow(pc, vs, likeExpr, whereExpr);
 	}
 	
 	public Statement buildShowColumns(String onInfoSchemaTable,
 			List<Name> scoping, Pair<ExpressionNode, ExpressionNode> likeOrWhere, Token full) {
-		if (pc != null && !pc.getCatalog().isPersistent())
+		if (pc.getCapability() == Capability.PARSING_ONLY && !pc.getCatalog().isPersistent())
 			return new EmptyStatement("no catalog queries with transient execution engine");
-        ShowColumnInformationSchemaTable ist = (ShowColumnInformationSchemaTable) Singletons.require(HostService.class).getInformationSchema()
+		ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
 				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
@@ -3858,7 +3935,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		ExpressionNode whereExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getSecond());
 		ShowOptions so = new ShowOptions();
-		if (full != null) so.setFull();
+		if (full != null) so.withFull();
 		// break up the scoping value into parts if qualified
 		List<Name> scopingParts = new ArrayList<Name>();
 		for (Name name : scoping) {
@@ -4131,16 +4208,13 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new PEAlterRawPlanStatement(perp,fields[1],(fields[2] == null ? null : Boolean.valueOf(fields[2])),fields[0]);
 	}
 	
-	public Statement buildCreateViewStatement(Name viewName, ProjectingStatement viewDef, 
-			UserScope definer, List<UnqualifiedName> colNames,
-			boolean orReplace, String algo, String security, String checkOption,
-			List<TableComponent<?>> colDefs) {
-		return PECreateViewStatement.build(pc, viewName, viewDef, definer, colNames,
-				algo, security, checkOption, orReplace, colDefs);
+	public Statement buildCreateViewStatementKern(Name viewName, ProjectingStatement viewDef,
+			List<UnqualifiedName> columnNames, String checkOption, List<TableComponent<?>> colDefs) {
+		return PECreateViewStatement.build(pc,viewName,viewDef,columnNames,checkOption,colDefs);
 	}
 	
 	public Statement buildDropViewStatement(Name viewName, boolean ifExists) {
-		if (pc == null)
+		if (pc.getCapability() == Capability.PARSING_ONLY)
 			return new PEDropViewStatement(viewName, ifExists);
 		UnqualifiedName tableName = viewName.getUnqualified();
 		Database<?> ondb = findDatabase(viewName);
@@ -4237,4 +4311,124 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return supportedCollations;
 	}
 
+	public Statement buildCompoundStatement(List<Statement> stmts) {
+		return new CompoundStatementList(null,stmts);
+	}
+	
+	public Statement buildCreateTrigger(Name triggerName, boolean isBefore, TriggerEvent triggerType,
+			PETable targetTable, Statement body,Token triggerToken) {
+		PETrigger already = pc.findTrigger(PETrigger.buildCacheKey(triggerName.getUnquotedName().get(), (TableCacheKey) targetTable.getCacheKey()));
+		if (already != null)
+			// todo: come back and do the right err msg
+			throw new SchemaException(Pass.SECOND,"Trigger " + triggerName + " already exists");
+		
+    	String origStmt = getInputSQL();
+    	int l = triggerToken.getCharPositionInLine();
+    	String rawSQL = origStmt.substring(l);
+		
+		String charset =
+				KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(pc.getConnection().getVariableSource()).getName();
+		String collation = 
+				KnownVariables.COLLATION_CONNECTION.getSessionValue(pc.getConnection().getVariableSource());
+		String collationDB =
+				KnownVariables.COLLATION_DATABASE.getSessionValue(pc.getConnection().getVariableSource());
+		SQLMode sqlMode =
+				KnownVariables.SQL_MODE.getSessionValue(pc.getConnection().getVariableSource());
+		SQLMode globalMode =
+				KnownVariables.SQL_MODE.getGlobalValue(pc.getConnection().getVariableSource());
+		if (globalMode.equals(sqlMode))
+			sqlMode = null;
+		
+		PETrigger trig = new PETrigger(pc,triggerName,targetTable,body,triggerType,
+				null /* PEUser user */,
+				collation,
+				charset,
+				collationDB,
+				isBefore,
+				sqlMode,rawSQL);
+		popScope();
+		opts = opts.setResolve();
+
+		return new PECreateTriggerStatement(trig);
+	}
+	
+	public Statement addViewTriggerFields(Statement in, boolean createOrReplace, String algo, UserScope definer, String security) {
+		PECreateStatement pect = (PECreateStatement) in;
+		Persistable pt = pect.getCreated();
+		
+		PEUser user = null;
+		if (definer == null || pc.getOptions().isIgnoreMissingUser())
+			user = pc.getCurrentUser().get(pc);
+		else {
+			user = pc.findUser(definer.getUserName(), definer.getScope());
+			if (user == null)
+				// apparently it is legal to specify a user that doesn't exist.  in that case, just use the current user
+				user = pc.getCurrentUser().get(pc);
+				// throw new SchemaException(Pass.SECOND, "No such user: " + definer.getSQL());
+		}
+
+		
+		if (pt instanceof PEView) {
+			PECreateViewStatement cvs = (PECreateViewStatement) pect;
+			PEView pev = (PEView) pt;
+			pev.setUser(pc, user, false);
+			
+			PEDatabase theDB = cvs.getDatabase(pc);
+
+			PEAbstractTable<?> existing = pc.findTable(PEAbstractTable.getTableKey(theDB, pev.getName()));
+			if (existing != null && !createOrReplace) {
+				throw new SchemaException(Pass.SECOND, "View " + pev.getName() + " already exists");
+			}
+
+			if (createOrReplace) {
+				((PECreateViewStatement)pect).setCreateOrReplace();
+			}
+			
+			String algorithm = (algo == null ? "UNDEFINED" : algo);
+			String sec = (security == null ? "DEFINER" : security);
+
+			pev.setAlgorithm(algorithm);
+			pev.setSecurity(sec);
+			
+		} else {
+			PETrigger trig = (PETrigger) pt;
+			trig.setUser(pc,user);
+			if (createOrReplace || algo != null || security != null) {
+				// TODO:
+				// come back and put in the right error message
+				throw new SchemaException(Pass.FIRST, "Illegal syntax");
+			}
+		}
+		return pect;
+	}
+	
+	public PETable pushTriggerTable(Name n) {
+		TableInstance targTab = basicResolver.lookupTable(pc, n, lockInfo);
+		PETable theTable = targTab.getAbstractTable().asTable();
+		TriggerTableInstance before = new TriggerTableInstance(theTable,true);
+		TriggerTableInstance after = new TriggerTableInstance(theTable,false);
+		pushScope();
+		scope.insertTable(before);
+		scope.insertTable(after);
+		opts = opts.clearSetting(Option.RESOLVE);
+		return theTable;
+	}
+	
+	public PETable pushTriggerTable(PETable tab) {
+		TriggerTableInstance before = new TriggerTableInstance(tab,true);
+		TriggerTableInstance after = new TriggerTableInstance(tab,false);
+		pushScope();
+		scope.insertTable(before);
+		scope.insertTable(after);
+		return tab;
+	}
+	
+	public Statement buildCaseStatement(ExpressionNode testExpr, List<StatementWhenClause> whenClauses, Statement elseStatement) {
+		return new CaseStatement(null,testExpr, whenClauses, elseStatement);
+	}
+	
+	public StatementWhenClause buildStatementWhenClause(ExpressionNode testExpr, Statement result) {
+		return new StatementWhenClause(testExpr,result,null);
+		
+	}
 }

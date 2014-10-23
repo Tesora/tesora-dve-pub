@@ -24,13 +24,14 @@ package com.tesora.dve.db.mysql.portal.protocol;
 import io.netty.buffer.ByteBuf;
 
 public class MSPComFieldListRequestMessage extends BaseMSPMessage {
+    public static final MSPComFieldListRequestMessage PROTOTYPE = new MSPComFieldListRequestMessage();
 
-    public MSPComFieldListRequestMessage() {
+    protected MSPComFieldListRequestMessage() {
         super();
     }
 
-    public MSPComFieldListRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComFieldListRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -39,7 +40,8 @@ public class MSPComFieldListRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPComFieldListRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        return new MSPComFieldListRequestMessage(sequenceID,source);
+    public MSPComFieldListRequestMessage newPrototype(ByteBuf source) {
+        source = source.slice();
+        return new MSPComFieldListRequestMessage(source);
     }
 }

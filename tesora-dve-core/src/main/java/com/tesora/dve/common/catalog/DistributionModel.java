@@ -35,7 +35,6 @@ import javax.persistence.Inheritance;
 import javax.persistence.InheritanceType;
 import javax.persistence.Table;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.DBResultConsumer.RowCountAdjuster;
 import com.tesora.dve.distribution.IKeyValue;
@@ -44,11 +43,6 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
@@ -57,9 +51,6 @@ import com.tesora.dve.worker.WorkerGroup.MappingSolution;
  * Entity implementation class for Entity: DistributionModel
  *
  */
-@InfoSchemaTable(logicalName="distribution_model",
-		views={@TableView(view=InfoView.SHOW, name="model", pluralName="models", columnOrder={ShowSchema.DistributionModel.NAME}),
-		       @TableView(view=InfoView.INFORMATION, name="distribution_model", pluralName="", columnOrder={"name"})})
 @Entity
 @Table(name="distribution_model")
 @Inheritance(strategy=InheritanceType.SINGLE_TABLE)
@@ -121,44 +112,14 @@ public abstract class DistributionModel implements CatalogEntity {
 	}
 	
 	@Override
-	@InfoSchemaColumn(logicalName="id",fieldName="id",
-			sqlType=java.sql.Types.INTEGER,
-			views={})
 	public int getId() {
 		return this.id;
 	}
 	
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.DistributionModel.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
 	public String getName() {
 		return this.name;
 	}
 
-	/*
-	public void addUserTable( UserTable userTable )
-	{
-		boolean found = false;
-		for (UserTable t : userTables) {
-			if (t.equals(userTable)) {
-				found = true;
-				break;
-			}
-		}
-		if (!found)
-			userTables.add(userTable);
-	}
-	
-	public void removeUserTable(UserTable userTable) {
-		userTables.remove(userTable);
-	}
-
-	public final Set<UserTable> getUserTables() {
-		return userTables;
-	}
-	*/
-	
 	public boolean equals(DistributionModel other) {
 		return other != null && name.equals(other.name);
 	}

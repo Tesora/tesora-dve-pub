@@ -41,7 +41,7 @@ public class MyStatisticsResponse extends MyResponseMessage {
 	float queriesPerSecAvg = 0;
 	
 	@Override
-	public void marshallMessage(ByteBuf cb) throws PEException {
+    public void marshallMessage(ByteBuf cb) {
 		
 		StringBuffer message = new StringBuffer(110);
 		message.append("Uptime: ").append(uptime);

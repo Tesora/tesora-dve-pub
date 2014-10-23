@@ -21,12 +21,10 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.concurrent.Future;
 
-import com.tesora.dve.db.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -37,6 +35,9 @@ import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.MysqlStmtCloseDiscarder;
+import com.tesora.dve.db.RedistTupleUpdateConsumer;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.IKeyValue;
@@ -46,9 +47,12 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.AggregationGroup;
 import com.tesora.dve.worker.MysqlRedistTupleForwarder;
 import com.tesora.dve.worker.WorkerGroup;
@@ -233,7 +237,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			// redistribute it back in.
 			
 			CatalogDAO c = ssCon.getCatalogDAO();
-			StorageGroup cacheGroup = new AggregationGroup(c.findDefaultProject().getDefaultPolicy());
+			StorageGroup cacheGroup = new AggregationGroup(
+					c.findDynamicPolicy(KnownVariables.DYNAMIC_POLICY.getSessionValue(ssCon)));
 			WorkerGroup cacheWG = WorkerGroupFactory.newInstance(ssCon, cacheGroup, getContextDatabase());
 			
 			try {
@@ -246,7 +251,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 						tableHints, /* tempHints */ null, /* insertOptions */ null, /* allocatedWG */ null, /* cleanupWG */ null,
 						TempTableGenerator.DEFAULT_GENERATOR);
 				
-				SQLCommand tempQuery = new SQLCommand("select * from " + tempTable.getNameAsIdentifier());
+				SQLCommand tempQuery = new SQLCommand(ssCon, "select * from " + tempTable.getNameAsIdentifier());
 				doRedistribution(ssCon, resultConsumer, /* useSystemTempTable */ false, tempTableName,
 						cacheWG, targetUserDatabase, BroadcastDistributionModel.SINGLETON, tempQuery,
 						/* specifiedDistKeyValue */ null, /* distColumns */ null, distributeTempTableLike,
@@ -377,9 +382,9 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			// Use a thread to build the default insert statement (assuming we'll need it more often than not)
 			final PersistentTable tableForInsertStatement = givenTargetTable;
 			final int tableColumnCount = tableForInsertStatement.getNumberOfColumns(); 
-			final int maxColumnCount = Integer.parseInt(ssCon.getSessionVariable("redist_max_columns"));
+			final int maxColumnCount = KnownVariables.REDIST_MAX_COLUMNS.getGlobalValue(ssCon).intValue(); 
 			final int maxTupleCount = (maxColumnCount > tableColumnCount) ? (maxColumnCount / tableColumnCount) : 1;
-			final int maxDataSize = Integer.parseInt(ssCon.getSessionVariable("redist_max_size"));
+			final int maxDataSize = KnownVariables.REDIST_MAX_SIZE.getGlobalValue(ssCon).intValue(); 
 			//			Future<SQLCommand> insertStatementFuture = Host.submit(new Callable<SQLCommand>() {
 			//				public SQLCommand call() throws Exception {
 			//					return getTableInsertStatement(tableForInsertStatement, insertOptions, resultMetadata, maxTupleCount);
@@ -396,25 +401,28 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			//			targetWG.execute(MappingSolution.AllWorkers, redistInsertRequest, insertCollector);
 			////			System.out.println("insertCollector A " + insertCollector.getPreparedStatement());
 
+
+            // Start the redistribution
+            PersistentTable distributeTableLike = (givenDistributeTempTableLike == null ? givenTargetTable : givenDistributeTempTableLike);
+            KeyValue dv = null;
+            if (givenDistColumns == null)
+                dv = distributeTableLike.getDistValue(ssCon.getCatalogDAO());
+            else
+                dv = new KeyValue(distributeTableLike,distributeTableLike.getRangeID(c),givenDistColumns);
+
+            //TODO: the futures handshake between update consumer, forwarder, and tuple builder works, but is pretty messy. -sgossard
 			// Set up the update consumer on the target WG to accept updates
-			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
+			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(c,distributeTableLike.getDistributionModel(), insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
 			updateConsumer.setInsertIgnore(insertIgnore);
 			WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(givenTargetUserDatabase);
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: Setting up the update consumer on target group: " + emptyRequest);
 			targetWG.execute(MappingSolution.AllWorkers, emptyRequest, updateConsumer);
 
-			// Start the redistribution
-			PersistentTable distributeTableLike = (givenDistributeTempTableLike == null ? givenTargetTable : givenDistributeTempTableLike);
-			KeyValue dv = null;
-			if (givenDistColumns == null)
-				dv = distributeTableLike.getDistValue(ssCon.getCatalogDAO());
-			else 
-				dv = new KeyValue(distributeTableLike,distributeTableLike.getRangeID(c),givenDistColumns);
+
 			MysqlRedistTupleForwarder redistForwarder = 
 					new MysqlRedistTupleForwarder(
-							ssCon.getNonTransactionalContext(), c, targetWG,
-							distributeTableLike.getDistributionModel(), dv, givenTableHints,
+							dv, givenTableHints,
 							useResultSetAliases, selectCollector.getPreparedStatement(), updateConsumer.getHandlerFuture());
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: starting redistribution: " + redistForwarder);
@@ -478,7 +486,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		return givenTargetTable;
 	}
 
-	static public SQLCommand getTableInsertStatement(PersistentTable targetTable, SQLCommand insertOptions, ColumnSet targetTableColumns, int tupleCount, boolean ignore) throws NumberFormatException, PEException {
+	static public SQLCommand getTableInsertStatement(final Charset connectionCharset, PersistentTable targetTable, SQLCommand insertOptions,
+			ColumnSet targetTableColumns, int tupleCount, boolean ignore) throws NumberFormatException, PEException {
 		StringBuffer query = new StringBuffer("insert ");
 				if (ignore) query.append(" ignore ");
         query.append("into ")
@@ -497,7 +506,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		if (insertOptions != null) {
 			query.append(" ").append(insertOptions.getRawSQL());
 		}
-		SQLCommand out = new SQLCommand(query.toString());
+		SQLCommand out = new SQLCommand(connectionCharset, query.toString());
 		out.setWidth(targetTableColumns.size());
 		return out;
 	}

@@ -52,7 +52,7 @@ public class KeyTemplate extends ArrayList<UserColumn>{
 		return Functional.apply(this, new UnaryFunction<String, UserColumn>() {
 			@Override
 			public String evaluate(UserColumn object) {
-				return object.getNativeTypeName();
+				return object.getTypeName();
 			}
 		}).toString();
 	}

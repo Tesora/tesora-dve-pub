@@ -39,7 +39,7 @@ public class UnionTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUnionA() throws Exception {
+	public void testUnionA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table test (`id` int, `name` varchar(24), `age` int, `job` varchar(24) )");
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
@@ -66,7 +66,7 @@ public class UnionTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUnionB() throws Exception {
+	public void testUnionB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table test (`id` int, `name` varchar(24), `age` int, `job` varchar(24) )",
 				"create table best (`id` int, `name` varchar(24), `age` int, `job` varchar(24) )");
@@ -83,7 +83,7 @@ public class UnionTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testUnionC() throws Exception {
+	public void testUnionC() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table test (`id` int, `name` varchar(24)) broadcast distribute");
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);

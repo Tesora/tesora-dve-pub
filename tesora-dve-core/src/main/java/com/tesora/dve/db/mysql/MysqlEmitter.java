@@ -21,8 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import java.util.List;
-
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.sql.node.expression.CaseExpression;
@@ -30,11 +28,8 @@ import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.IndexHint;
 import com.tesora.dve.sql.node.expression.TableInstance;
-import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WhenClause;
-import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Comment;
-import com.tesora.dve.sql.schema.HasName;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
@@ -42,20 +37,13 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PEUser;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaLookup;
 import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.schema.VariableScope;
-import com.tesora.dve.sql.schema.cache.CacheAwareLookup;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.modifiers.TableModifierTag;
 import com.tesora.dve.sql.schema.modifiers.TableModifiers;
 import com.tesora.dve.sql.statement.ddl.PEDropStatement;
 import com.tesora.dve.sql.statement.ddl.SetPasswordStatement;
 import com.tesora.dve.sql.statement.session.LoadDataInfileStatement;
-import com.tesora.dve.sql.statement.session.SessionSetVariableStatement;
-import com.tesora.dve.sql.statement.session.SetExpression;
-import com.tesora.dve.sql.statement.session.SetTransactionIsolationExpression;
-import com.tesora.dve.sql.statement.session.SetVariableExpression;
 import com.tesora.dve.sql.util.BinaryProcedure;
 import com.tesora.dve.sql.util.Functional;
 
@@ -78,6 +66,11 @@ public class MysqlEmitter extends Emitter {
 	}
 	
 	@Override
+	public Emitter buildNew() {
+		return new MysqlEmitter();
+	}
+	
+	@Override
 	public void emitOperatorFunctionCall(SchemaContext sc, FunctionCall fc, StringBuilder buf, int pretty) {
 		if (fc.getFunctionName().getCapitalized().get().equals("LIKE")) {
 			// mysql has that weird escape syntax - do it here if there are three params
@@ -96,66 +89,12 @@ public class MysqlEmitter extends Emitter {
 		super.emitOperatorFunctionCall(sc,fc, buf, pretty);
 	}
 
-	@Override
-	public void emitSessionSetVariableStatement(final SchemaContext sc, 
-			SessionSetVariableStatement ssvs, StringBuilder buf, int indent) {
-		emitIndent(buf,indent,"SET ");
-		final MysqlEmitter me = this;
-		Functional.join(ssvs.getSetExpressions(), buf, ", ", new BinaryProcedure<SetExpression, StringBuilder>() {
-
-			@Override
-			public void execute(SetExpression aobj, StringBuilder bobj) {
-				me.emitSetExpression(sc, aobj, bobj, -1);
-			}
-			
-		});
-	}
-
-	public void emitSetExpression(SchemaContext sc, SetExpression se, StringBuilder buf, int pretty) {
-		if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION) {
-			emitSetTransactionIsolation((SetTransactionIsolationExpression)se, buf);
-		} else if (se.getKind() == SetExpression.Kind.VARIABLE) {
-			SetVariableExpression sve = (SetVariableExpression) se;
-			emitVariable(sve.getVariable(),buf);
-			buf.append(" ");
-			if (sve.getVariable().getVariableName().get().equalsIgnoreCase("names")) {
-				emitExpression(sc,sve.getValue().get(0),buf);
-				if (sve.getValue().size() > 1) {
-					buf.append(" COLLATE ");
-					emitExpression(sc,sve.getValue().get(1),buf);
-				}
-			} else {
-				emitExpressions(sc,sve.getValue(), buf, pretty);
-			}
-		}
-	}
-
-	// TODO: consider moving this back to base class
-	public void emitSetTransactionIsolation(SetTransactionIsolationExpression stie, StringBuilder buf) {
-		if (stie.getScope() != null)
-			buf.append(stie.getScope().getSQL()).append(" ");
-		buf.append("TRANSACTION ISOLATION ").append(stie.getLevel().getSQL());
-	}
 	
-	@Override
-	public void emitVariable(VariableInstance vi, StringBuilder buf) {
-		VariableScope vs = vi.getScope();
-		if (vs.getKind() == VariableScope.VariableKind.USER) {
-			buf.append("@").append(vi.getVariableName().getSQL());
-		} else {
-			String raw = vi.getVariableName().get().toUpperCase();
-			if ("NAMES".equals(raw)) {
-				// different, because Monty says so
-				buf.append(raw);
-			} else {
-				buf.append("@@").append(vs.getKind()).append(".").append(vi.getVariableName().getSQL());
-			}
-		}
-	}
 	
 	@Override
 	public void emitComment(Comment c, StringBuilder buf) {
-		if (c == null || getOptions() != null && getOptions().isTableDefinition()) return;
+		if (c == null || this.hasOptions() && getOptions().isTableDefinition())
+			return;
 		buf.append(" COMMENT '").append(c.getComment()).append("'");
 	}
 
@@ -164,7 +103,8 @@ public class MysqlEmitter extends Emitter {
 		for(TableModifierTag tmt : TableModifierTag.values()) {
 			TableModifier tm = mods.getModifier(tmt);
 			if (tm == null) continue;
-			if (tmt == TableModifierTag.AUTOINCREMENT && (getOptions() == null || !getOptions().isExternalTableDeclaration())) continue;
+			if (tmt == TableModifierTag.AUTOINCREMENT && (!this.hasOptions() || !getOptions().isExternalTableDeclaration()))
+				continue;
 			if (tmt == TableModifierTag.DEFAULT_COLLATION && tab != null && !tab.shouldEmitCollation(sc)) continue;
 			buf.append(" ");
 			tm.emit(sc,this,buf);
@@ -173,7 +113,7 @@ public class MysqlEmitter extends Emitter {
 
 	@Override
 	public void emitColumnInstance(SchemaContext sc, ColumnInstance cr, StringBuilder buf) {
-		if (getOptions() != null && getOptions().isResultSetMetadata()) {
+		if (this.hasOptions() && getOptions().isResultSetMetadata()) {
 			boolean useSpecified = (cr.getParent() instanceof FunctionCall || cr.getParent() instanceof WhenClause || cr.getParent() instanceof CaseExpression);
 			Name specified = cr.getSpecifiedAs();
 			if (useSpecified && specified != null)
@@ -187,9 +127,9 @@ public class MysqlEmitter extends Emitter {
 
 	
 	@Override
-	public void emitTableInstance(SchemaContext sc, TableInstance tr, StringBuilder buf, boolean includeAlias) {
-		super.emitTableInstance(sc, tr, buf, includeAlias);
-		if (includeAlias) {
+	public void emitTableInstance(SchemaContext sc, TableInstance tr, StringBuilder buf, TableInstanceContext context) {
+		super.emitTableInstance(sc, tr, buf, context);
+		if (context == TableInstanceContext.TABLE_FACTOR) {
 			if (tr.getHints() != null) {
 				for(IndexHint ih : tr.getHints()) {
 					emitHint(ih,buf);
@@ -221,22 +161,6 @@ public class MysqlEmitter extends Emitter {
 		}
 		buf.append(" ");
 	}
-	
-	@Override
-	public <T extends Column<?>> SchemaLookup<T> getColumnLookup(List<T> in) {
-		return new SchemaLookup<T>(in, false, false);
-	}
-
-	@Override
-	public <T extends HasName> CacheAwareLookup<T> getTableLookup() {
-		return new CacheAwareLookup<T>(true, true);
-	}
-
-	@Override
-	public <T extends HasName> CacheAwareLookup<T> getTenantTableLookup() {
-		return new CacheAwareLookup<T>(true, true);
-	}
-
 	
 	@Override
 	public <T> Lookup<T> getLookup() {

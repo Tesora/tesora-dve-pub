@@ -367,6 +367,8 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_bin"));
 		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_utf8"));
 		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS search_api_db_product_display_text"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_child"));
+		tests.add(new StatementMirrorProc("DROP TABLE IF EXISTS pe1511_parent"));
 
 		tests.add(new StatementMirrorProc("CREATE TABLE pe1511 (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci)"));
 		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_large (value1 VARCHAR(32000), value2 TEXT, value3 VARCHAR(1000), value4 VARCHAR(32000)) CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
@@ -380,6 +382,9 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 				+ "PRIMARY KEY (`item_id`, `field_name`, `word`),"
 				+ "INDEX `word_field` (`word`(20), `field_name`)"
 				+ ") ENGINE = InnoDB DEFAULT CHARACTER SET utf8"));
+		
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_parent (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci, KEY (value1)) /*#dve  BROADCAST DISTRIBUTE */"));
+		tests.add(new StatementMirrorProc("CREATE TABLE pe1511_child (value1 VARCHAR(256) CHARACTER SET latin1 COLLATE latin1_swedish_ci, value2 TEXT CHARACTER SET latin1 COLLATE latin1_swedish_ci, CONSTRAINT pe1511_child_fk FOREIGN KEY (value1) REFERENCES pe1511_parent (value1)) /*#dve  BROADCAST DISTRIBUTE */"));
 
 		tests.add(new StatementMirrorProc("ALTER TABLE pe1511 CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci"));
 		tests.addAll(buildAssertColumnTypeFun("pe1511", Arrays.asList("value1", "value2")));
@@ -407,6 +412,10 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 
 		tests.add(new StatementMirrorProc("ALTER TABLE search_api_db_product_display_text CONVERT TO CHARACTER SET 'utf8' COLLATE 'utf8_bin'"));
 		tests.addAll(buildAssertColumnTypeFun("search_api_db_product_display_text", Arrays.asList("item_id", "field_name", "word", "score")));
+
+		// Test with FKs.
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_parent CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
+		tests.add(new StatementMirrorProc("ALTER TABLE pe1511_child CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci"));
 
 		runTest(tests);
 	}
@@ -481,5 +490,40 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 				+ " WHERE (( (commerce_order.order_id = '0' ) )AND(( (commerce_line_item_field_data_commerce_line_items.type IN  ('product_discount', 'product')) )))AND (1 = 0) AND (1 = 0)"));
 
 		runTest(tests);
+	}
+	
+	@Test
+	public void testPE1584() throws Throwable {
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc("create table pe1584 (`a` int(11) default null) /*#dve random distribute */"));
+		tests.add(new StatementMirrorProc("insert into pe1584 values (1),(2)"));
+		tests.add(new StatementMirrorProc("start transaction"));
+		tests.add(new StatementMirrorFun("select * from pe1584 order by a for update"));
+		tests.add(new StatementMirrorProc("drop table pe1584"));
+		runTest(tests);
+	}
+
+	@Test
+	public void testPE1591() throws Throwable {
+		runTest(new StatementMirrorFun("select convert(@@version_compile_os using latin1) NOT IN (\"Win32\",\"Win64\",\"Windows\")"));
+	}
+
+	@Test
+	public void testPE1593() throws Throwable {
+		runTest(new StatementMirrorFun("select @@thread_handling"));
+	}
+
+	@Test
+	public void testPE1624() throws Throwable {
+		runTest(new StatementMirrorFun("select @non_existing_user_variable__"));
+
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc("drop table if exists pe1624"));
+		tests.add(new StatementMirrorProc("create table pe1624 (`a` int(11)) /*#dve random distribute */"));
+		tests.add(new StatementMirrorProc("insert into pe1624 values (@non_existing_user_variable__)"));
+		tests.add(new StatementMirrorFun("select * from pe1624"));
+		runTest(tests);
+
+		runTest(new StatementMirrorFun("select @utf8_message as \"\" union select repeat(CONVERT('-' using utf8),80);"));
 	}
 }

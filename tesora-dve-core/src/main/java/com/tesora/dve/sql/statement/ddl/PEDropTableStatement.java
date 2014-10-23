@@ -37,8 +37,8 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.Name;
@@ -49,7 +49,6 @@ import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
@@ -77,7 +76,7 @@ public class PEDropTableStatement extends
 	
 	public PEDropTableStatement(SchemaContext sc, List<TableKey> tks, List<Name> unknownTbls, Boolean ifExists, boolean temporary) {
 		super(PETable.class, ifExists, false,
-				(tks.isEmpty() ? unknownTbls.get(0) : tks.get(0).getAbstractTable().getName()),
+				(tks.isEmpty() ? unknownTbls.get(0) : tks.get(0).getAbstractTable().getName(sc)),
 						"TABLE");
 		this.tableKeys = new ArrayList<TableKey>(tks);
 		this.unknownTables = unknownTbls;
@@ -142,7 +141,7 @@ public class PEDropTableStatement extends
 			PETable tab = tk.getAbstractTable().asTable();
 			List<PEForeignKey> effectedForeignKeys = new ArrayList<PEForeignKey>();
 			if (!tk.isUserlandTemporaryTable())
-				checkForeignKeys(pc, tab, effectedForeignKeys, ignoreFKChecks);		
+				checkForeignKeys(pc, tab, effectedForeignKeys, ignoreFKChecks);
 			pc.beginSaveContext();
 			try {
 				if (tk.isUserlandTemporaryTable()) {
@@ -195,11 +194,8 @@ public class PEDropTableStatement extends
 	
 	protected static void checkForeignKeys(SchemaContext pc, PETable targetTable, 
 			List<PEForeignKey> updatedKeys, boolean ignoreFKChecks) {
-		boolean required = SchemaVariables.hasForeignKeyChecks(pc) && !ignoreFKChecks;
 		MultiMap<PETable, PEForeignKey> referencing = pc.findFKSReferencing(targetTable);
 		if (referencing.isEmpty()) return;
-		if (required) 
-			throw new SchemaException(Pass.PLANNER, "Unable to drop table " + targetTable.getName().getSQL() + " because referenced by foreign keys");
 		// otherwise we have to fix up the pertinent fks to use strings instead of fk refs
 		for(PEForeignKey pefk : referencing.values()) {
 			pefk.revertToForward(pc);

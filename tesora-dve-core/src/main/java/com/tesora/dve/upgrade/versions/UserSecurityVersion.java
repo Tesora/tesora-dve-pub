@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.common.PECryptoUtils;
 import com.tesora.dve.common.PEXmlUtils;
 import com.tesora.dve.exceptions.PEException;
@@ -53,7 +54,7 @@ public class UserSecurityVersion extends ComplexCatalogVersion {
 	}
 
 	@Override
-	public void upgrade(DBHelper helper) throws PEException {
+	public void upgrade(DBHelper helper, InformationCallback stdout) throws PEException {
 		execQuery(helper, before);
 
 		String user = helper.getUserName();

@@ -60,35 +60,37 @@ public abstract class NativeCharSetCatalog implements Serializable, JavaCharsetC
 
 	public abstract void load() throws PEException;
 
-	public NativeCharSet findCharSetByName(String charSetName, boolean except) throws PEException {
-		NativeCharSet t = charSetsByName.get(charSetName.toUpperCase(Locale.ENGLISH));
+	public NativeCharSet findCharSetByName(String charSetName) {
+		return charSetsByName.get(charSetName.toUpperCase(Locale.ENGLISH));
+	}
 
-		if (t == null && except)
-			throw new PEException("Unsupported CHARACTER SET '" + charSetName + "'");
-		return t;
+	public NativeCharSet findCharSetByCollation(final String collation) {
+		final NativeCollation nc = Singletons.require(HostService.class).getDBNative().getSupportedCollations().findCollationByName(collation);
+		if (nc == null) {
+			return null;
+		}
+		return findCharSetByName(nc.getCharacterSetName());
 	}
 	
-	public NativeCharSet findCharSetByDVEName(Charset dveCharSet, boolean except) throws PEException {
-		return findCharSetByDVEName(dveCharSet.name(), except);
-	}
-	
-	public NativeCharSet findCharSetByDVEName(String dveCharSetName, boolean except) throws PEException {
-		NativeCharSet t = charSetsByDVEName.get(dveCharSetName.toUpperCase(Locale.ENGLISH));
-
-		if (t == null && except)
-			throw new PEException("Unsupported CHARACTER SET '" + dveCharSetName + "'");
-		return t;
+	public NativeCharSet findCharSetByCollationId(final int collationId) {
+		final NativeCollation nc = Singletons.require(HostService.class).getDBNative().getSupportedCollations().findNativeCollationById(collationId);
+		if (nc == null) {
+			return null;
+		}
+		return findCharSetByName(nc.getCharacterSetName());
 	}
 
-	public NativeCharSet findCharSetByCollation(final String collation, boolean except) throws PEException {
-		NativeCollation nc = Singletons.require(HostService.class).getDBNative().getSupportedCollations().findCollationByName(collation, except);
-		
-		NativeCharSet t = findCharSetByName(nc.getCharacterSetName(), except);
-		
-		if (t == null && except)
-			throw new PEException("No supported CHARACTER SET found for COLLATION '" + collation + "'");
-		return t;
-	}
+	//	public NativeCharSet findCharSetByDVEName(Charset dveCharSet, boolean except) {
+	//		return findCharSetByDVEName(dveCharSet.name(), except);
+	//	}
+	//	
+	//	public NativeCharSet findCharSetByDVEName(String dveCharSetName, boolean except) {
+	//		NativeCharSet t = charSetsByDVEName.get(dveCharSetName.toUpperCase(Locale.ENGLISH));
+	//
+	//		if (t == null && except)
+	//			throw new PEException("Unsupported CHARACTER SET '" + dveCharSetName + "'");
+	//		return t;
+	//	}
 
 	public int size() {
 		return charSetsByName.size();
@@ -136,5 +138,9 @@ public abstract class NativeCharSetCatalog implements Serializable, JavaCharsetC
 
 	public NativeCharSet findNativeCharsetById(int clientCharsetId) {
 		return charSetsById.get(clientCharsetId);
+	}
+
+	public boolean isCompatibleCharacterSet(String charSet) {
+		return (findCharSetByName(charSet) != null);
 	}
 }

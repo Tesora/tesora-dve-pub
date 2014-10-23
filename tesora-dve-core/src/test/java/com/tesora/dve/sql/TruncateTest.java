@@ -31,6 +31,7 @@ import java.util.List;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.NativeDDL;
@@ -127,13 +128,14 @@ public class TruncateTest extends SchemaMirrorTest {
 			connection.execute(buildTableColumnInsert("t", "id", Arrays.asList(null, null, null)));
 			connection.execute("create view v as select * from t");
 
-			new ExpectedExceptionTester() {
+			new ExpectedSqlErrorTester() {
 				@Override
 				public void test() throws Throwable {
 					connection.execute("truncate table v");
 				}
-			}.assertException(SQLException.class, "SchemaException: 'v' is not a base table");
-
+			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
+						String.format("Table '%s.%s' doesn't exist", dbName, "v"));
+			
 			testTableTruncate(connection, dbName, "t", 3);
 		} finally {
 			connection.close();

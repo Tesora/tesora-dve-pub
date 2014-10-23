@@ -94,21 +94,35 @@ public class ShowTest extends SchemaTest {
 			boolean doSelect = Boolean.parseBoolean(rec[5]);
 			String selectWhere = rec[6];
 
-			doTest(name, columnName, doShow, showDb, showLikeWhere, doSelect, selectWhere,
+			doTest(name, columnName, doShow, showDb, showLikeWhere, doSelect, selectWhere, null,
 					new Object[][] { br(), br(), br(), br(), br() });
 		}
 	}
 
 	@Test
 	public void testPE970ShowEngines() throws Throwable {
-		Object[] innodbResult = br(nr, "InnoDB", "DEFAULT",
-				"Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES");
-		Object[] myisamResult = br(nr, "MyISAM", "YES", "MyISAM storage engine", "NO", "NO", "NO");
-		List<Object> results = new ArrayList<Object>(Arrays.asList(innodbResult));
-		results.addAll(Arrays.asList(myisamResult));
-		Object[] fullResult = results.toArray();
+		final Object[] innodbResult = br(nr, "InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES");
+		final Object[] myisamResult = br(nr, "MyISAM", "YES", "MyISAM storage engine", "NO", "NO", "NO");
+		final Object[] memoryResult = br(nr, "MEMORY", "YES", "Hash based, stored in memory, useful for temporary tables", "NO", "NO", "NO");
+		final Object[] archiveResult = br(nr, "ARCHIVE", "YES", "Archive storage engine", "NO", "NO", "NO");
+		final Object[] csvResult = br(nr, "CSV", "YES", "CSV storage engine", "NO", "NO", "NO");
+		final Object[] blackholeResult = br(nr, "BLACKHOLE", "NO", "/dev/null storage engine (anything you write to it disappears)", "NO", "NO", "NO");
+		final Object[] federatedResult = br(nr, "FEDERATED", "NO", "Federated MySQL storage engine", null, null, null);
+		final Object[] perfSchemaResult = br(nr, "PERFORMANCE_SCHEMA", "NO", "Performance Schema", "NO", "NO", "NO");
 
-		doTest("Engines", "Engine", true, null, null, true, "MyISAM",
+		final List<Object> results = new ArrayList<Object>();
+		results.addAll(Arrays.asList(archiveResult));
+		results.addAll(Arrays.asList(blackholeResult));
+		results.addAll(Arrays.asList(csvResult));
+		results.addAll(Arrays.asList(federatedResult));
+		results.addAll(Arrays.asList(innodbResult));
+		results.addAll(Arrays.asList(memoryResult));
+		results.addAll(Arrays.asList(myisamResult));
+		results.addAll(Arrays.asList(perfSchemaResult));
+
+		final Object[] fullResult = results.toArray();
+
+		doTest("Engines", "Engine", true, null, null, true, "MyISAM", "ENGINE",
 				new Object[][] { fullResult, fullResult, innodbResult, fullResult, myisamResult });
 	}
 
@@ -124,7 +138,7 @@ public class ShowTest extends SchemaTest {
 		results.addAll(Arrays.asList(utf8mb4Result));
 		Object[] fullResult = results.toArray();
 		
-		doTest("Charset", null, true, null, "latin1", false, null, 
+		doTest("Charset", null, true, null, "latin1", false, null, null,
 				new Object[][] { fullResult, null, latin1Result, null, null });
 	}
 	
@@ -142,7 +156,7 @@ public class ShowTest extends SchemaTest {
 	 * @throws Throwable
 	 */
 	private void doTest(String name, String columnName, boolean doShow, String showDb,
-			String showLikeWhere, boolean doSelect, String selectWhere,
+			String showLikeWhere, boolean doSelect, String selectWhere, String orderBySelect,
 			Object[][] resultSets) throws Throwable {
 		StringBuilder buf;
 
@@ -186,12 +200,16 @@ public class ShowTest extends SchemaTest {
 		if (doSelect) {
 			buf = new StringBuilder();
 			buf.append("SELECT * FROM INFORMATION_SCHEMA." + name);
+			if (orderBySelect != null)
+				buf.append(" order by ").append(orderBySelect);
 			conn.assertResults(buf.toString(), resultSets[3]);
 
 			if (selectWhere != null && !selectWhere.isEmpty()) {
 				buf = new StringBuilder();
 				buf.append("SELECT * FROM INFORMATION_SCHEMA." + name
 						+ " WHERE `" + columnName + "` LIKE '%" + selectWhere + "%'");
+				if (orderBySelect != null)
+					buf.append(" order by ").append(orderBySelect);
 				conn.assertResults(buf.toString(), resultSets[4]);
 
 				try {
@@ -218,10 +236,10 @@ public class ShowTest extends SchemaTest {
 				{sysgrp}
 		};
 		
-		doTest("generation sites", null, true, null, "SystemGroup", false, null, fullResult); 
+		doTest("generation sites", null, true, null, "SystemGroup", false, null, null, fullResult); 
 
 		Object[][] fullResult2 = {{gen1}};
-		doTest("generation sites where Site='show1'", null, true, null, null, false, null, fullResult2); 
+		doTest("generation sites where Site='show1'", null, true, null, null, false, null, null, fullResult2); 
 	}
 	
 	@Test
@@ -230,8 +248,8 @@ public class ShowTest extends SchemaTest {
 				br(nr, DB_NAME, null, TemplateMode.OPTIONAL.toString())
 		};
 
-		doTest("template on database " + DB_NAME, null, true, null, null, false, null, fullResult);
-		doTest("template on schema " + DB_NAME, null, true, null, null, false, null, fullResult);
+		doTest("template on database " + DB_NAME, null, true, null, null, false, null, null, fullResult);
+		doTest("template on schema " + DB_NAME, null, true, null, null, false, null, null, fullResult);
 	}
 
 }

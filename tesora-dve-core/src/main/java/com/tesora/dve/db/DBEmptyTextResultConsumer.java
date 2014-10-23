@@ -21,17 +21,15 @@ package com.tesora.dve.db;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.libmy.*;
-
-import io.netty.channel.Channel;
 
 import java.util.List;
 
+import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.db.mysql.MysqlExecuteCommand;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -40,11 +38,16 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class DBEmptyTextResultConsumer implements MysqlQueryResultConsumer, DBResultConsumer {
+public class DBEmptyTextResultConsumer extends DBResultConsumer implements MysqlQueryResultConsumer {
 	
 	static Logger logger = Logger.getLogger( DBEmptyTextResultConsumer.class );
 
 	public final static DBEmptyTextResultConsumer INSTANCE = new DBEmptyTextResultConsumer();
+
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //NOOP.
+    }
 
     public boolean emptyResultSet(MyOKResponse ok) {
         return ok.getAffectedRows() > 0;
@@ -121,11 +124,10 @@ public class DBEmptyTextResultConsumer implements MysqlQueryResultConsumer, DBRe
 	public void setNumRowsAffected(long rowcount) {
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
+    @Override
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled()) logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		channel.write(new MysqlExecuteCommand(sql, connectionMonitor, this, promise));
-		return promise;
+		return new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise);
 	}
 
 	@Override

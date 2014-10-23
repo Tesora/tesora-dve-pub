@@ -28,6 +28,8 @@ import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
@@ -63,6 +65,7 @@ import com.tesora.dve.sql.statement.session.UseTenantStatement;
 import com.tesora.dve.sql.template.TemplateManager;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.variables.KnownVariables;
 
 public class SchemaPolicyContext {
 
@@ -178,7 +181,7 @@ public class SchemaPolicyContext {
 			if (tenant != null)
 				return new UseTenantStatement(tenant,tenant.getDatabase(sc));
 		}
-		throw new SchemaException(Pass.SECOND,"No such database: " + dbName.getSQL());
+		throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_DATABASE,dbName.getUnquotedName().get()));
 	}
 	
 	public Statement buildCreateTenantStatement(PEDatabase peds, Name tenantName, String description) {
@@ -390,15 +393,16 @@ public class SchemaPolicyContext {
 			pesg = sc.findStorageGroup(defStorageGroup);
 			if (pesg == null)
 				throw new SchemaException(Pass.SECOND, "Persistent group " + defStorageGroup.getSQL() + " does not exist.");
-		} else if(SchemaVariables.getBalancePersisentGroups(sc)) {
+		} else if (KnownVariables.BALANCE_PERSISTENT_GROUPS.getValue(sc.getConnection().getVariableSource()).booleanValue()) {
 			// We need to dynamic pick a persistent group out of those configured
-			pesg = sc.findBalancedPersistentGroup(SchemaVariables.getBalancePersistentGroupsPrefix(sc));
+			pesg = sc.findBalancedPersistentGroup(
+					KnownVariables.BALANCE_PERSISTENT_GROUPS_PREFIX.getValue(sc.getConnection().getVariableSource()));
 			
 			if(pesg == null)
 				throw new SchemaException(Pass.SECOND, "Failed to find suitable persistent group for balanced database.");
 		} else {
 			// Use the default persistent group
-			pesg = sc.getDefaultProject().getDefaultStorageGroup();
+			pesg = sc.getPersistentGroup();
 			if (pesg == null) {
 				throw new SchemaException(Pass.SECOND, "Must specify persistent group.  No default persistent group set on project.");
 			}

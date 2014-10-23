@@ -504,6 +504,7 @@ Signed_Float
   ALGORITHM                   :   A L G O R I T H M;
   ANALYZE                     :   A N A L Y Z E;
   AUTOINCREMENT               :   A U T O Underscore I N C R E M E N T;
+  BEFORE                      :   B E F O R E;
   BINARY                      :   B I N A R Y;
   BIT_AND                     :   B I T Underscore A N D;
   BIT_OR                      :   B I T Underscore O R;
@@ -526,6 +527,7 @@ Signed_Float
   DISABLE                     :   D I S A B L E;
   DUAL                        :   D U A L;
   DUPLICATE                   :   D U P L I C A T E;
+  EACH                        :   E A C H;
   ENABLE                      :   E N A B L E;
   ENCLOSED                    :   E N C L O S E D;
   ENGINE                      :   E N G I N E;
@@ -672,6 +674,7 @@ Signed_Float
   RANDOM                      :   R A N D O M;
   RANGES                      :   R A N G E S;
   RAW                         :   R A W;
+  REBALANCE                   :   R E B A L A N C E;
   RELOAD                      :   R E L O A D;
   RELAXED                     :   R E L A X E D;
   REQUIRED                    :   R E Q U I R E D;
@@ -695,7 +698,7 @@ Signed_Float
   TENANT                      :   T E N A N T;
   TENANTS                     :   T E N A N T S;
   XML                         :   X M L;
-
+  VARIABLE                    :   V A R I A B L E;
 
 //  Punctuation and Arithmetic/Logical Operators
 
@@ -793,6 +796,16 @@ fragment
 Embedded_Space : ' ' | '\t';
 
 // Unicode Character Ranges
+//fragment
+//Valid_Quoted_Identifier_ASCII_Character_Range :   
+//    '\u0001' .. '\u0059'
+//    // excluding backquote (`)
+//    | '\u0061' .. '\u007F';
+    
+fragment
+Valid_Identifier_Extended_Character_Range :   
+    '\u0080' .. '\uFFFF';
+    
 fragment
 Unicode_Character_Without_Single_Quotes :   
     '\u0000' .. '\u0026'
@@ -954,24 +967,36 @@ String_Literal	:
 			}
 	);
 
-Regular_Identifier  : MySQL_Identifier;
+Regular_Identifier  :  MySQL_Identifier;
 
 fragment
-MySQL_Identifier  :  
-    Back_Quote MySQL_Quoted_Identifier_body Back_Quote
-    | MySQL_Identifier_body;
+MySQL_Identifier  :  Back_Quote MySQL_Quoted_Identifier_body Back_Quote | MySQL_Identifier_body;
 fragment
-MySQL_Identifier_body:
-    MySQL_Identifier_Start ( MySQL_Identifier_Part )*;
+MySQL_Identifier_body  :  MySQL_Identifier_Start ( MySQL_Identifier_Part )*;
 fragment
-MySQL_Quoted_Identifier_body:
-  Embedded_Space* MySQL_Identifier_Start ( Embedded_Space | MySQL_Quoted_Identifier_Part )*;
+MySQL_Quoted_Identifier_body  :  Embedded_Space* MySQL_Quoted_Identifier_Start ( Embedded_Space | MySQL_Quoted_Identifier_Part )*;
+fragment
+MySQL_Quoted_Identifier_Start  :  MySQL_Identifier_Start | Valid_Identifier_Extended_Character_Range;  
 fragment
 MySQL_Identifier_Start  :  Latin_Letter | Digit | Underscore;
 fragment
-MySQL_Quoted_Identifier_Part  :  MySQL_Identifier_Part | Hyphen;
+MySQL_Quoted_Identifier_Part  :  MySQL_Identifier_Part | Hyphen | Valid_Identifier_Extended_Character_Range;
 fragment
-MySQL_Identifier_Part : Latin_Letter | Digit | Underscore | Dollar_Sign;
+MySQL_Identifier_Part  :  Latin_Letter | Digit | Underscore | Dollar_Sign;
+
+// This compiles without errors and passes most of the tests,
+// but fails on 'InsertIntoSelect.testPE1330', 'RandomCustomerTest.testPE842'
+// and tests from 'com.tesora.dve.tools.aitemplatebuilder.BugTest'.
+// Not sure why it has to explicitly name 'Underscore',
+// but otherwise it does not parse names with '_'.
+// Note: Unquote 'Valid_Quoted_Identifier_ASCII_Character_Range' fragment.
+//fragment
+//MySQL_Quoted_Identifier_body  :  MySQL_Quoted_Identifier_Start ( MySQL_Quoted_Identifier_Part )*;
+//fragment
+//MySQL_Quoted_Identifier_Start  :  Valid_Quoted_Identifier_ASCII_Character_Range | Valid_Identifier_Extended_Character_Range | Underscore;  
+//fragment
+//MySQL_Quoted_Identifier_Part  :  Valid_Quoted_Identifier_ASCII_Character_Range | Hyphen | Valid_Identifier_Extended_Character_Range | Underscore;
+
 
 // W h i t e s p a c e   T o k e n s
 

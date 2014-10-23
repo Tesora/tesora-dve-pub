@@ -22,7 +22,6 @@ package com.tesora.dve.sql;
  */
 
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
@@ -30,6 +29,7 @@ import java.sql.SQLException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
@@ -61,11 +61,10 @@ public class TemporaryTableTest extends SchemaTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testCreation() throws Throwable {
-		DBHelperConnectionResource conn1 = null;
-		DBHelperConnectionResource conn2 = null;
+		final DBHelperConnectionResource conn1 = new PortalDBHelperConnectionResource();
+		final DBHelperConnectionResource conn2 = new PortalDBHelperConnectionResource();
 		
 		try {
-			conn1 = new PortalDBHelperConnectionResource();
 			conn1.execute("use " + sysDDL.getDatabaseName());
 			conn1.execute("start transaction");
 			conn1.execute("create temporary table foo (id int, fid int) broadcast distribute");
@@ -79,26 +78,29 @@ public class TemporaryTableTest extends SchemaTest {
 					   nr,3,3));
 			conn1.assertResults("select * from information_schema.global_temporary_tables", 
 					br(nr,"LocalhostCoordinationServices:1",3,"sysdb","foo","InnoDB"));
-			conn2 = new PortalDBHelperConnectionResource();
+
 			conn2.assertResults("select * from information_schema.temporary_tables",br());
 			conn2.assertResults("select * from information_schema.global_temporary_tables",
 					br(nr,"LocalhostCoordinationServices:1",3,"sysdb","foo","InnoDB"));
-			try {
-				conn2.execute("use " + sysDDL.getDatabaseName());
-				conn2.assertResults("show tables", br());
-				conn2.execute("select * from foo");
-			} catch (SQLException sqle) {
-				assertEquals(sqle.getMessage(), "SchemaException: No such Table: sysdb.foo");
-			}
+
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					conn2.execute("use " + sysDDL.getDatabaseName());
+					conn2.assertResults("show tables", br());
+					conn2.execute("select * from foo");
+
+				}
+			}.assertError(SQLException.class,
+						MySQLErrors.missingTableFormatter,
+						"Table 'sysdb.foo' doesn't exist");
 		} finally {
-			if (conn1 != null)
-				conn1.disconnect();
-			if (conn2 != null)
-				conn2.disconnect();
+			conn1.disconnect();
+			conn2.disconnect();
 		}
 		
 	}
-	
+		
 	@SuppressWarnings("resource")
 	@Test
 	public void testInfoSchema() throws Throwable {
@@ -139,11 +141,11 @@ public class TemporaryTableTest extends SchemaTest {
 					br(nr,"fid","int(11)","YES","UNI",null,""));
 			
 			conn1.assertResults("show keys in narrow",
-					br(nr,"narrow",1L,"PRIMARY",1,"id","A",-1,4,"","NO","BTREE","","",
-					   nr,"narrow",1L,"fid",1,"fid","A",-1,4,"","YES","BTREE","","",
-					   nr,"narrow",0L,"sid",1,"sid","A",-1,4,"","YES","BTREE","",""));
+					br(nr,"narrow",1,"PRIMARY",1,"id","A",-1,4,"","NO","BTREE","","",
+					   nr,"narrow",1,"fid",1,"fid","A",-1,4,"","YES","BTREE","","",
+					   nr,"narrow",0,"sid",1,"sid","A",-1,4,"","YES","BTREE","",""));
 			conn2.assertResults("show keys in narrow",
-					br(nr,"narrow",0L,"PRIMARY",1,"id","A",-1,null,null,"","BTREE","",""));
+					br(nr,"narrow",0,"PRIMARY",1,"id","A",-1L,null,null,"","BTREE","",""));
 			conn1.execute("drop table narrow");
 			conn1.execute("drop table narrow");
 		} finally {
@@ -191,11 +193,13 @@ public class TemporaryTableTest extends SchemaTest {
 					   nr,"sid","int(11)","YES","","'22'",""));
 			conn.execute("drop table targ");
 			conn.assertResults("select * from information_schema.temporary_tables",br());
-			try {
-				conn.execute("select * from targ");
-			} catch (SQLException sqle) {
-				assertEquals(sqle.getMessage(), "SchemaException: No such Table: sysdb.targ");
-			}
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					conn.execute("select * from targ");
+				}
+			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
+						"Table 'sysdb.targ' doesn't exist");
 		}
 	}
 	
@@ -209,7 +213,7 @@ public class TemporaryTableTest extends SchemaTest {
 			
 			Object[] pdesc = 
 					br(nr,"id","int(11)","NO","PRI",null,"auto_increment",
-					   nr,"booyeah","int(11)","YES","",null,"");
+					   nr,"booyeah","int(11)","YES","UNI",null,"");
 			Object[] tdesc =
 					br(nr,"id","int(11)","NO","PRI",null,"auto_increment",
 					   nr,"fid","int(11)","YES","",null,"");
@@ -218,12 +222,15 @@ public class TemporaryTableTest extends SchemaTest {
 			conn.execute(pdef);
 			conn.assertResults("describe targ",pdesc);
 			conn.assertResults("show tables",showTabs);
-			try {
-				conn.execute("drop temporary table targ"); // should fail - doesn't exist
-				fail("should fail - no temporary table");
-			} catch (SQLException sqle) {
-				assertEquals(sqle.getMessage(),"SchemaException: No such temporary table: 'targ'");
-			}
+
+			// should fail - no temporary table
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					conn.execute("drop temporary table targ"); // should fail - doesn't exist
+				}
+			}.assertError(SQLException.class, MySQLErrors.unknownTableFormatter,
+						"Unknown table 'targ'");
 			conn.execute("drop table targ"); // succeeds
 			conn.assertResults("show tables",br());
 			
@@ -434,7 +441,7 @@ public class TemporaryTableTest extends SchemaTest {
 						
 			conn1.assertResults("select count(*) from ctatarg",br(nr,2L));
 			
-			conn1.disconnect();
+			conn1.close();
 			conn1 = null;
 
 			conn2.execute("drop table ctasrca, ctasrcb");			
@@ -442,13 +449,13 @@ public class TemporaryTableTest extends SchemaTest {
 			conn2.assertResults(globalQuery, br());
 		} finally {
 			if (conn1 != null) try {
-				conn1.disconnect();
+				conn1.close();
 				conn1 = null;
 			} catch (Throwable t) {
 				// ignore
 			}
 			if (conn2 != null) try {
-				conn2.disconnect();
+				conn2.close();
 				conn2 = null;
 			} catch (Throwable t) {
 				// ignore

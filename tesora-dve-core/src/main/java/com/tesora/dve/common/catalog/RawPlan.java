@@ -35,26 +35,10 @@ import javax.persistence.Table;
 
 import org.hibernate.annotations.ForeignKey;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName="persistent_plan",
-views={@TableView(view=InfoView.SHOW, name="rawplan", pluralName="rawplans", 
-		columnOrder={ShowSchema.RawPlan.NAME, 
-				ShowSchema.RawPlan.DB, 
-				ShowSchema.RawPlan.ENABLED, 
-				ShowSchema.RawPlan.CACHE_KEY,
-				ShowSchema.RawPlan.COMMENT, 
-				ShowSchema.RawPlan.BODY}, extension=true),
-       @TableView(view=InfoView.INFORMATION, name="rawplans", pluralName="", 
-       columnOrder={"name", "plan_schema", "is_enabled", "cache_key", "plan_comment","definition"}, extension=true)})
 @Entity
 @Table(name="rawplan")
 public class RawPlan implements CatalogEntity, NamedCatalogEntity {
@@ -107,19 +91,11 @@ public class RawPlan implements CatalogEntity, NamedCatalogEntity {
 		this.cacheKey = shrunk;
 	}
 	
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.RawPlan.NAME,orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
 	@Override
 	public String getName() {
 		return name;
 	}
 
-	@InfoSchemaColumn(logicalName="body",fieldName="definition",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.RawPlan.BODY),
-			       @ColumnView(view=InfoView.INFORMATION, name="definition")})
 	public String getDefinition() {
 		return definition;
 	}
@@ -128,10 +104,6 @@ public class RawPlan implements CatalogEntity, NamedCatalogEntity {
 		definition = def;
 	}
 
-	@InfoSchemaColumn(logicalName="cachekey",fieldName="cacheKey",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.RawPlan.CACHE_KEY),
-			       @ColumnView(view=InfoView.INFORMATION, name="cache_key")})
 	public String getCacheKey() {
 		return cacheKey;
 	}
@@ -140,10 +112,6 @@ public class RawPlan implements CatalogEntity, NamedCatalogEntity {
 		cacheKey = def;
 	}
 
-	@InfoSchemaColumn(logicalName="comment", fieldName="comment",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name=ShowSchema.RawPlan.COMMENT),
-				   @ColumnView(view=InfoView.INFORMATION, name="plan_comment")})
 	public String getComment() {
 		return comment;
 	}
@@ -152,11 +120,6 @@ public class RawPlan implements CatalogEntity, NamedCatalogEntity {
 		comment = v;
 	}
 	
-	@InfoSchemaColumn(logicalName="database",fieldName="userDatabase",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.INFORMATION,name="plan_schema"),
-				   @ColumnView(view=InfoView.SHOW,name=ShowSchema.RawPlan.DB,visible=false,injected=true)},
-			injected=true)
 	public UserDatabase getDatabase() {
 		return userDatabase;
 	}
@@ -165,10 +128,6 @@ public class RawPlan implements CatalogEntity, NamedCatalogEntity {
 		userDatabase = database;
 	}
 	
-	@InfoSchemaColumn(logicalName="enabled", fieldName="enabled",
-			sqlType=java.sql.Types.VARCHAR,
-			views={@ColumnView(view=InfoView.SHOW,name=ShowSchema.RawPlan.ENABLED),
-				   @ColumnView(view=InfoView.INFORMATION,name="is_enabled")})
 	public boolean isEnabled() {
 		return (enabled == 1 ? true : false);
 	}

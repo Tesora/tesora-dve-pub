@@ -21,19 +21,17 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.libmy.*;
-
-import io.netty.channel.Channel;
 
 import java.util.List;
 
+import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.ResultChunkProvider;
@@ -51,7 +49,7 @@ import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlPreparedStmtExecuteCollector implements MysqlQueryResultConsumer, DBResultConsumer, ResultChunkProvider {
+public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implements MysqlQueryResultConsumer, ResultChunkProvider {
 	
 	static Logger logger = Logger.getLogger(MysqlPreparedStmtExecuteCollector.class);
 
@@ -81,11 +79,9 @@ public class MysqlPreparedStmtExecuteCollector implements MysqlQueryResultConsum
 		throw new PECodingException(this.getClass().getSimpleName()+".inject not supported");
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel,
-			StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
-		channel.write(new MysqlStmtExecuteCommand(sql, connectionMonitor, pstmt, sql.getParameters(), this, promise));
-		return promise;
+    @Override
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise);
 	}
 
 	@Override
@@ -118,6 +114,11 @@ public class MysqlPreparedStmtExecuteCollector implements MysqlQueryResultConsum
     public boolean emptyResultSet(MyOKResponse ok) {
         numRowsAffected = ok.getAffectedRows();
         return numRowsAffected > 0;
+    }
+
+    @Override
+    public void active(ChannelHandlerContext ctx) {
+        //NOOP.
     }
 
     @Override

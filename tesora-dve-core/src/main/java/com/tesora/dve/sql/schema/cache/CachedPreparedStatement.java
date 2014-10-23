@@ -66,7 +66,7 @@ public class CachedPreparedStatement implements CachedPlan {
 		thePlan.getValueManager().resetForNewPStmtExec(sc, params);
 		if (InvokeParser.isSqlLoggingEnabled()) {
 			GenericSQLCommand resolved = logFormat.resolve(sc, false, "  ");
-			InvokeParser.logSql(sc, resolved.getUnresolved());
+			InvokeParser.logSql(sc, resolved.getDecoded());
 		}
 		return thePlan;
 	}

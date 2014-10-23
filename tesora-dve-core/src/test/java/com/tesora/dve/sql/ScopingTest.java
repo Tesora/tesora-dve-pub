@@ -46,6 +46,7 @@ import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.sql.util.TestResource;
+import com.tesora.dve.variables.KnownVariables;
 
 public class ScopingTest extends SchemaMirrorTest {
 
@@ -104,7 +105,7 @@ public class ScopingTest extends SchemaMirrorTest {
 	@After
 	public void enablePlanCache() throws Throwable {
 		try (ProxyConnectionResource pcr = new ProxyConnectionResource()) {
-			pcr.execute("alter dve set " + CacheSegment.PLAN.getVariableName() + " = " + CacheSegment.PLAN.getDefaultValue());
+			pcr.execute("alter dve set " + CacheSegment.PLAN.getVariableName() + " = " + KnownVariables.DEFAULT_PLAN_CACHE_LIMIT);
 		}
 	}
 

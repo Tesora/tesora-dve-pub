@@ -21,6 +21,10 @@ package com.tesora.dve.sql.util;
  * #L%
  */
 
+import io.netty.channel.EventLoopGroup;
+import io.netty.util.CharsetUtil;
+
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -35,12 +39,12 @@ import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.GenericSQLCommand;
-import com.tesora.dve.db.MysqlStmtCloseDiscarder;
 import com.tesora.dve.db.mysql.MysqlConnection;
+import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
+import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
+import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
-import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
-import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
@@ -58,29 +62,47 @@ public class MysqlConnectionResource extends ConnectionResource {
 	private String userName;
 	private String password;
 	private boolean connected = false;
+	private final boolean useUTF8;
+	private Charset encoding;
 	
 	private MysqlConnection mysqlConn;
 
 	public MysqlConnectionResource() throws Throwable {
+		this(true);
+	}
+
+	public MysqlConnectionResource(final boolean useUTF8) throws Throwable {
 		super(null);
 		
+		this.useUTF8 = useUTF8;
+
 		Properties catalogProps = TestCatalogHelper.getTestCatalogProps(PETest.class);
 		String portalPort = catalogProps.getProperty(PEConstants.MYSQL_PORTAL_PORT_PROPERTY, PEConstants.MYSQL_PORTAL_DEFAULT_PORT);
 
 		PEUrl peurl = PEUrl.fromUrlString(catalogProps.getProperty(DBHelper.CONN_URL));
+		peurl.setQueryOptions(new Properties());
 		peurl.setPort(portalPort);
-		init(peurl.getURL(),catalogProps.getProperty(DBHelper.CONN_USER),catalogProps.getProperty(DBHelper.CONN_PASSWORD));
+		init(peurl.getURL(), catalogProps.getProperty(DBHelper.CONN_USER), catalogProps.getProperty(DBHelper.CONN_PASSWORD), useUTF8);
 	}
 
-	public MysqlConnectionResource(String url, String userName, String password) throws Throwable {
+	private MysqlConnectionResource(String url, String userName, String password, final boolean useUTF8) throws Throwable {
 		super(null);
-		init(url, userName, password);
+		this.useUTF8 = useUTF8;
+		init(url, userName, password, useUTF8);
 	}
 
-	private void init(String url, String userName, String password) throws Throwable {
+	private void init(String url, String userName, String password, boolean useUTF8) throws Throwable {
 		this.url = url;
 		this.userName = userName;
 		this.password = password;
+
+		if (useUTF8) {
+			this.encoding = CharsetUtil.UTF_8;
+			addPostConnectCmd("SET NAMES utf8");
+		} else {
+			this.encoding = CharsetUtil.ISO_8859_1;
+			addPostConnectCmd("SET NAMES latin1");
+		}
 	
 		mysqlConn = new MysqlConnection(new TestStorageSite());
 	
@@ -89,17 +111,19 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 	@Override
 	public ResourceResponse execute(LineInfo info, String stmt)	throws Throwable {
-		return execute(new SQLCommand(stmt));
+		return execute(new SQLCommand(this.encoding, stmt));
 	}
 
-	public ResourceResponse execute(LineInfo info, byte[] stmt)	throws Throwable {
-		return execute(new SQLCommand(new GenericSQLCommand(stmt)));
+	public ResourceResponse execute(LineInfo info, Charset encoding, byte[] stmt) throws Throwable {
+		return execute(new SQLCommand(new GenericSQLCommand(encoding, stmt)));
 	}
 
 	private ResourceResponse execute(SQLCommand sqlc) throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
 
-		mysqlConn.execute(sqlc, results, new PEDefaultPromise<Boolean>()).sync();
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+        results.dispatch(mysqlConn, sqlc, promise);
+        promise.sync();
 		
 		return new ProxyConnectionResourceResponse(results);
 	}
@@ -108,8 +132,10 @@ public class MysqlConnectionResource extends ConnectionResource {
 	public Object prepare(LineInfo info, String stmt) throws Throwable {
 
 		MysqlPrepareStatementCollector collector = new MysqlPrepareStatementCollector();
-		
-		mysqlConn.execute(new SQLCommand(stmt), collector, new PEDefaultPromise<Boolean>()).sync();
+
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+		collector.dispatch(mysqlConn, new SQLCommand(this.encoding, stmt), promise);
+        promise.sync();
 		return collector.getPreparedStatement();
 	}
 
@@ -121,8 +147,10 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 		MysqlPreparedStmtExecuteCollector collector = new MysqlPreparedStmtExecuteCollector(pstmt);
 		
-		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand("EXEC PREPARED"), parameters);
-		mysqlConn.execute(sqlc, collector, new PEDefaultPromise<Boolean>()).sync();
+		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand(this.encoding, "EXEC PREPARED"), parameters);
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
+        collector.dispatch(mysqlConn, sqlc, promise);
+        promise.sync();
 		
 		return new ProxyConnectionResourceResponse(collector);
 	}
@@ -130,11 +158,10 @@ public class MysqlConnectionResource extends ConnectionResource {
 	@Override
 	public void destroyPrepared(Object id) throws Throwable {
 		@SuppressWarnings("unchecked")
-		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id; 
-		MysqlStmtCloseDiscarder discarder = new MysqlStmtCloseDiscarder(pstmt);
-		
-		mysqlConn.execute(new SQLCommand(new GenericSQLCommand("CLOSE PREP STMT")), discarder);
-	}
+
+		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id;
+        mysqlConn.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
+    }
 
 	@Override
 	public ResourceResponse fetch(LineInfo info, String stmt) throws Throwable {
@@ -145,6 +172,8 @@ public class MysqlConnectionResource extends ConnectionResource {
 	public void connect() throws Throwable {
 		mysqlConn.connect(url, userName, password, ClientCapabilities.DEFAULT_PSITE_CAPABILITIES);
 		connected = true;
+
+		executePostConnectCmds();
 	}
 
 	@Override
@@ -170,7 +199,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 	@Override
 	public ConnectionResource getNewConnection() throws Throwable {
-		return new MysqlConnectionResource(this.url, this.userName, this.password);
+		return new MysqlConnectionResource(this.url, this.userName, this.password, this.useUTF8);
 	}
 
 	@Override
@@ -215,7 +244,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		}
 
 		@Override
-		public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo) throws PEException {
+		public Worker createWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, EventLoopGroup preferredEventLoop) throws PEException {
 			return null;
 		}
 

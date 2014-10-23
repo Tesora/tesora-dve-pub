@@ -24,20 +24,21 @@ package com.tesora.dve.db.mysql.portal.protocol;
 import io.netty.buffer.ByteBuf;
 
 public class MSPUnknown extends BaseMSPMessage {
+    public static final MSPUnknown PROTOTYPE = new MSPUnknown();
     byte messageType;
 
-    public MSPUnknown() {
+    protected MSPUnknown() {
         super();
         this.messageType = (byte)0xFF;
     }
 
-    public MSPUnknown(byte messageType, byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPUnknown(byte messageType, ByteBuf backing) {
+        super(backing);
         this.messageType = messageType;
     }
 
-    public MSPUnknown(byte sequenceID, ByteBuf backing) {
-        this((byte) 0xFF, sequenceID, backing);
+    public MSPUnknown(ByteBuf backing) {
+        this((byte) 0xFF, backing);
     }
 
     @Override
@@ -46,7 +47,8 @@ public class MSPUnknown extends BaseMSPMessage {
     }
 
     @Override
-    public MSPUnknown newPrototype(byte sequenceID, ByteBuf source) {
-        return new MSPUnknown(sequenceID,source);
+    public MSPUnknown newPrototype(ByteBuf source) {
+        source = source.slice();
+        return new MSPUnknown(source);
     }
 }

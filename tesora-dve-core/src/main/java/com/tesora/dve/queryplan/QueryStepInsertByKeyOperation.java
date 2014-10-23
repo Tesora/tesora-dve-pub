@@ -69,8 +69,8 @@ public class QueryStepInsertByKeyOperation extends QueryStepDMLOperation {
 	}
 
 	// compatibility ctor
-	public QueryStepInsertByKeyOperation(PersistentDatabase execCtxDB, IKeyValue distValue, String command) throws PEException {
-		this(execCtxDB, distValue, new SQLCommand(command));
+	public QueryStepInsertByKeyOperation(final SSConnection ssCon, PersistentDatabase execCtxDB, IKeyValue distValue, String command) throws PEException {
+		this(execCtxDB, distValue, new SQLCommand(ssCon, command));
 	}
 	
 	/**

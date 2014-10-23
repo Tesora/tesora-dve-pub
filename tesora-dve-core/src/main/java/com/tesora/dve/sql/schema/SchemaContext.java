@@ -32,8 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.antlr.runtime.TokenStream;
 
 import com.tesora.dve.common.MultiMap;
@@ -52,15 +50,20 @@ import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.NativeTypeCatalog;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.infomessage.ConnectionMessageManager;
 import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.lockmanager.LockType;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
+import com.tesora.dve.sql.schema.PETrigger.TriggerCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheType;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
@@ -70,11 +73,17 @@ import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.schema.mt.TableScope.ScopeCacheKey;
+import com.tesora.dve.sql.transexec.TransientGlobalVariableStore;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.GlobalVariableStore;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.LocalVariableStore;
+import com.tesora.dve.variables.VariableStoreSource;
+import com.tesora.dve.variables.VariableValueStore;
 import com.tesora.dve.worker.agent.Agent;
 
 public class SchemaContext {
@@ -100,6 +109,7 @@ public class SchemaContext {
 	private ParserOptions opts;
 	private SchemaEdge<PEProject> defaultProject = null;
 	private ConnectionContext connection = null;
+	private final Capability capability;
 	private boolean mutableSource;
 	private Boolean mutableSourceOverride;
 
@@ -117,6 +127,7 @@ public class SchemaContext {
 	private final TransientSessionState tss;
 	
 	private TokenStream tokens;
+	private String origStmt;
 	
 	private String description = null;
 	
@@ -129,20 +140,21 @@ public class SchemaContext {
 		if (conn == null)
 			throw new IllegalArgumentException("Wrong constructor for null connection");
 		ConnectionContext cc = buildConnectionContext(conn);
-		return new SchemaContext(new DAOContext(cc),cc);
+		return new SchemaContext(new DAOContext(cc),cc, 
+				Singletons.require(HostService.class).getDBNative().getTypeCatalog(),Capability.FULL);
 	}
 	
-	public static SchemaContext createContext(CatalogDAO dao) {
+	public static SchemaContext createContext(CatalogDAO dao, NativeTypeCatalog typeCatalog) {
 		ConnectionContext cc = new NullConnectionContext(dao);
-		return new SchemaContext(new DAOContext(cc),cc);
+		return new SchemaContext(new DAOContext(cc),cc, typeCatalog,Capability.TRANSIENT);
 	}
 	
 	public static SchemaContext createContext(SchemaContext other) {
-		return createContext(other.getCatalog(), other.getConnection());
+		return createContext(other.getCatalog(), other.getConnection(),other.getTypes(),other.getCapability());
 	}
 	
-	public static SchemaContext createContext(CatalogContext cntxt, ConnectionContext conn) {
-		return new SchemaContext(cntxt, conn);
+	public static SchemaContext createContext(CatalogContext cntxt, ConnectionContext conn, NativeTypeCatalog typeCatalog, Capability cap) {
+		return new SchemaContext(cntxt, conn,typeCatalog, cap);
 	}
 
 	public static Database<?> loadDB(SchemaContext pc, UserDatabase db) {
@@ -165,7 +177,7 @@ public class SchemaContext {
 	// used in container tenant support
 	public static SchemaContext makeMutableIndependentContext(SchemaContext basedOn) {
 		ConnectionContext cc = basedOn.getConnection().copy();
-		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), cc);
+		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), cc, basedOn.getTypes(), basedOn.getCapability());
 		out.forceMutableSource();
 		return out;
 	}
@@ -173,22 +185,23 @@ public class SchemaContext {
 	// used in raw plan support
 	public static SchemaContext makeImmutableIndependentContext(SchemaContext basedOn) {
 		ConnectionContext cc = basedOn.getConnection().copy();
-		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), basedOn.getConnection().copy());
+		SchemaContext out = new SchemaContext(basedOn.getCatalog().copy(cc), basedOn.getConnection().copy(), basedOn.getTypes(), basedOn.getCapability());
 		return out;
 	}
 	
 	@SuppressWarnings("unchecked")
-	private SchemaContext(CatalogContext cat, ConnectionContext conn) {
+	private SchemaContext(CatalogContext cat, ConnectionContext conn, NativeTypeCatalog typeCatalog, Capability cap) {
 		// always start out unmutable
 		mutableSource = false;
 		connection = conn;
 		catalog = cat;
+		capability = cap;
 		schemaSource = null;
 		setSource(buildSource());
 		defaultProject = StructuralUtils.buildEdge(this, null, false); 
 		cat.setContext(this);
 		conn.setSchemaContext(this);
-        types = Singletons.require(HostService.class).getDBNative().getTypeCatalog();
+        types = typeCatalog;
 		backing = new IdentityHashMap<Persistable<?,?>, Serializable>();
 		saveContext = null;
 		opts = null;
@@ -202,6 +215,11 @@ public class SchemaContext {
 	// a partial refresh - clear all expensive fields that won't be accessed later
 	public void cleanupPostPlanning() {
 		tokens = null;
+		origStmt = null;
+	}
+	
+	public Capability getCapability() {
+		return capability;
 	}
 	
 	public SchemaSource getSource() {
@@ -304,14 +322,23 @@ public class SchemaContext {
 		opts = po;
 	}
 
-	public void setTokenStream(TokenStream tns) {
+	public void setTokenStream(TokenStream tns, String sql) {
 		if (tns == null)
 			throw new SchemaException(Pass.FIRST, "Parser missing tokens");
 		tokens = tns;
+		origStmt = sql;
+	}
+	
+	public void clearOrigStmt() {
+		origStmt = null;
 	}
 	
 	public TokenStream getTokens() {
 		return tokens;
+	}
+	
+	public String getOrigStmt() {
+		return origStmt;
 	}
 	
 	public void setParameters(List<Object> params) {
@@ -353,7 +380,7 @@ public class SchemaContext {
 	
 	public Database<?> getCurrentDatabase(boolean mustExist, boolean domtchecks) {
 		if ((connection.getCurrentDatabase() == null || connection.getCurrentDatabase().get(this) == null) && mustExist) 
-			throw new SchemaException(Pass.SECOND,"Current database not set");
+			throw new SchemaException(new ErrorInfo(DVEErrors.NO_DATABASE_SELECTED));
 		if (connection.getCurrentDatabase() == null) return null;
 		if (!domtchecks) 
 			return connection.getCurrentDatabase().get(this);
@@ -421,7 +448,10 @@ public class SchemaContext {
 			if (peds != null)
 				return peds.getDefaultStorage(this);
 		}
-		return getDefaultProject().getDefaultStorageGroup();
+		String currentDefault = KnownVariables.PERSISTENT_GROUP.getGlobalValue(getConnection().getVariableSource());
+		if (currentDefault == null)
+			return null;
+		return findStorageGroup(new UnqualifiedName(currentDefault));
 	}
 	
 	public PEPersistentGroup getSessionStatementStorageGroup() throws PEException {
@@ -542,7 +572,9 @@ public class SchemaContext {
 	}
 	
 	public IDynamicPolicy getGroupPolicy() {
-		String defName = SchemaVariables.getDefaultPolicyName(this);
+		// q: should this be the global or the session value?
+		String defName =
+				KnownVariables.DYNAMIC_POLICY.getValue(getConnection().getVariableSource(),VariableScopeKind.SESSION);
 		if (defName == null) return null;
 		return (IDynamicPolicy)schemaSource.find(this, PEPolicy.getPolicyKey(defName));
 	}
@@ -610,6 +642,17 @@ public class SchemaContext {
 		});
 	}
 	
+	public PEDatabase getAnyNonSchemaDatabase() {
+		final List<UserDatabase> udbs = this.catalog.findAllUserDatabases();
+		for (final UserDatabase udb : udbs) {
+			if (!udb.getName().equalsIgnoreCase(PEConstants.INFORMATION_SCHEMA_DBNAME)) {
+				return PEDatabase.load(udb, this);
+			}
+		}
+
+		return null;
+	}
+
 	public PEPersistentGroup findBalancedPersistentGroup(String prefix) {
 		PersistentGroup uds = catalog.findBalancedPersistentGroup(prefix);
 		
@@ -662,6 +705,10 @@ public class SchemaContext {
 		return schemaSource.find(this, sck);
 	}
 		
+	public PETrigger findTrigger(TriggerCacheKey tck) {
+		return schemaSource.find(this,tck);
+	}
+	
 	public ListSet<TableScope> findScopesReferencing(PETable pet) {
 		List<TableVisibility> matching = catalog.findTenantsOf(pet.getPersistent(this));
 		ListSet<TableScope> out = new ListSet<TableScope>();
@@ -845,7 +892,7 @@ public class SchemaContext {
 	}
 
 	// used when we don't have a connection, either transient impl or SSCon
-	private static class NullConnectionContext implements ConnectionContext {
+	private static class NullConnectionContext implements ConnectionContext, VariableStoreSource {
 
 		private SchemaContext sc = null;
 		private SchemaEdge<PEUser> root = null;
@@ -854,8 +901,14 @@ public class SchemaContext {
 		
 		private final CatalogDAO dao;
 		
+		private LocalVariableStore sessionVariables;
+		private GlobalVariableStore globalVariables = new TransientGlobalVariableStore();
+		private VariableValueStore userVariables = new VariableValueStore("User",true);
+		
 		public NullConnectionContext(CatalogDAO c) {
 			dao = c;
+			Singletons.require(HostService.class).getVariableManager().initialiseTransient(globalVariables);
+			sessionVariables = globalVariables.buildNewLocalStore();
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -883,7 +936,7 @@ public class SchemaContext {
 		}
 
 		@Override
-		public String getVariableValue(VariableAccessor va) throws PEException {
+		public String getVariableValue(AbstractVariableAccessor va) throws PEException {
 			return null;
 		}
 
@@ -979,6 +1032,26 @@ public class SchemaContext {
 		@Override
 		public boolean isInXATxn() {
 			return false;
+		}
+
+		@Override
+		public VariableStoreSource getVariableSource() {
+			return this;
+		}
+
+		@Override
+		public LocalVariableStore getSessionVariableStore() {
+			return sessionVariables;
+		}
+
+		@Override
+		public GlobalVariableStore getGlobalVariableStore() {
+			return globalVariables;
+		}
+
+		@Override
+		public VariableValueStore getUserVariableStore() {
+			return userVariables;
 		}
 	}	
 }

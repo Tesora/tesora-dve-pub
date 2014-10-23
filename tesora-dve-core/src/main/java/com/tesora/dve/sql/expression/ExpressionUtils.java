@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.tesora.dve.db.mysql.MysqlNativeConstants;
+import com.tesora.dve.sql.node.expression.CastFunctionCall;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ConvertFunctionCall;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
@@ -39,7 +41,7 @@ import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
 
 public class ExpressionUtils {
-	
+
 	public static FunctionCall buildIn(ExpressionNode lhs, List<ExpressionNode> rhs) {
 		ArrayList<ExpressionNode> params = new ArrayList<ExpressionNode>();
 		params.add(lhs);
@@ -61,8 +63,10 @@ public class ExpressionUtils {
 
 	public static ExpressionNode safeBuildAnd(List<ExpressionNode> args) {
 		ExpressionNode out = buildAnd(args);
-		if (out == null)
-			out = args.get(0);
+		if (out == null) {
+			if (!args.isEmpty())
+				out = args.get(0);
+		}
 		return out;
 	}
 	
@@ -206,5 +210,9 @@ public class ExpressionUtils {
 		}
 		
 		return ci;
+	}
+
+	public static FunctionCall buildNullBinaryCast() {
+		return new CastFunctionCall(LiteralExpression.makeNullLiteral(), new UnqualifiedName("BINARY(" + MysqlNativeConstants.MAX_PACKET_SIZE + ")"));
 	}
 }

@@ -37,6 +37,7 @@ import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.sql.schema.modifiers.InsertModifier;
 import com.tesora.dve.sql.statement.session.TransactionStatement;
@@ -168,5 +169,9 @@ public abstract class InsertStatement extends UnaryTableDMLStatement {
 		insertModifier = im;
 	}
 	
+	@Override
+	public TriggerEvent getTriggerEvent() {
+		return TriggerEvent.INSERT;
+	}
 
 }

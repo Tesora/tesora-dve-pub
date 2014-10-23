@@ -27,6 +27,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.lang.StringEscapeUtils;
 
+import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -34,6 +35,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
@@ -49,9 +51,9 @@ import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.node.test.EngineToken;
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.DistributionVector;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -65,7 +67,7 @@ import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.NonDMLFeatureStep;
 import com.tesora.dve.sql.util.ListSet;
-import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
 
 /*
  * Applies when variables are present in the query.  If found, we sub in the current values of
@@ -106,8 +108,13 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 			if (vi.getScope().isUserScope() && DBNative.DVE_SITENAME_VAR.equals(vi.getVariableName().get().toLowerCase()))
 				continue;
 			final Edge<?, ExpressionNode> parentEdge = vi.getParentEdge();
-			final VariableAccessor va = vi.buildAccessor();
-			parentEdge.set(LiteralExpression.makeStringLiteral(sc.getConnection().getVariableValue(va)));
+			final AbstractVariableAccessor va = vi.buildAccessor(sc);
+			final String variableValue = sc.getConnection().getVariableValue(va);
+			if (variableValue != null) {
+				parentEdge.set(LiteralExpression.makeStringLiteral(PEStringUtils.dequote(variableValue)));
+			} else {
+				parentEdge.set(ExpressionUtils.buildNullBinaryCast());
+			}
 		}
 	}
 

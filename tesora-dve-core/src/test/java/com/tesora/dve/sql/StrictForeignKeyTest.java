@@ -25,7 +25,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,7 +34,7 @@ import org.apache.commons.lang.StringUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
@@ -101,7 +100,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 
 		@Override
 		public Class<?> getExceptionClass() {
-			return PEException.class;
+			return SchemaException.class;
 		}
 
 		@Override
@@ -231,8 +230,8 @@ public class StrictForeignKeyTest extends SchemaTest {
 		}
 	}
 
-	public static void testDropTargetTable(TestConnections conns) throws Throwable {
-		String[] rhsTabNames = new String[] {
+	public static void testDropTargetTable(final TestConnections conns) throws Throwable {
+		final String[] rhsTabNames = new String[] {
 				"RB",
 				"RRa"
 		};
@@ -272,12 +271,13 @@ public class StrictForeignKeyTest extends SchemaTest {
 		}
 		// first off - dropping any of the rhs tables should result in an error
 		for(int i = 0; i < rhsTabNames.length; i++) {
-			try {
-				conns.getTestConnection().execute("drop table " + rhsTabNames[i]);
-				fail("should not be able to drop ref'd table");
-			} catch (Throwable t) {
-				conns.assertSchemaException(t, "Unable to drop table `" + rhsTabNames[i] + "` because referenced by foreign keys");
-			}
+			final int nameIndex = i;
+			new ExpectedExceptionTester() {
+				@Override
+				public void test() throws Throwable {
+					conns.getTestConnection().execute("drop table " + rhsTabNames[nameIndex]);
+				}
+			}.assertException(PESQLStateException.class, "(1217: 23000) Cannot delete or update a parent row: a foreign key constraint fails", true);
 		}
 		Object[] cols = br(nr,"LB","fid","RB","id",
 				nr,"LRaRB","fid","RB","id",
@@ -642,7 +642,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 1");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate key name: sameindexname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate key name: sameindexname"));
 			}
 
 			try {
@@ -657,7 +657,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 2");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate key name: sameindexname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate key name: sameindexname"));
 			}
 
 			try {
@@ -670,7 +670,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 3");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate key name: sameindexname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate key name: sameindexname"));
 			}
 
 			try {
@@ -685,7 +685,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 4");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate foreign key name: sameconstraintname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate foreign key name: sameconstraintname"));
 			}
 
 			try {
@@ -700,7 +700,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 5");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate foreign key name: sameconstraintname"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate foreign key name: sameconstraintname"));
 			}
 
 			// this should succeed!
@@ -713,20 +713,52 @@ public class StrictForeignKeyTest extends SchemaTest {
 					"constraint sameconstraintname foreign key sameindexname (aid) references a (id), " +
 					"constraint sameconstraintname2 foreign key sameindexname (bid) references b (id) " +
 					") broadcast distribute");
+			// this is hilarious.  on native this is:
+			/*
+			 * mysql> select constraint_name, constraint_type from information_schema.table_constraints where table_schema = 'foo' and table_name = 'c' order by constraint_name, constraint_type;
++---------------------+-----------------+
+| constraint_name     | constraint_type |
++---------------------+-----------------+
+| PRIMARY             | PRIMARY KEY     |
+| sameconstraintname  | FOREIGN KEY     |
+| sameconstraintname2 | FOREIGN KEY     |
+| sameindexname3      | UNIQUE          |
+| sameindexname4      | UNIQUE          |
++---------------------+-----------------+
+5 rows in set (0.01 sec)
+
+			 */
 			conn.assertResults("select constraint_name, constraint_type from information_schema.table_constraints where table_schema = 'adb' and table_name = 'c' order by constraint_name, constraint_type", 
 					br(nr,"PRIMARY","PRIMARY KEY",
 					   nr,"sameconstraintname","FOREIGN KEY",
 					   nr,"sameconstraintname","UNIQUE",
 					   nr,"sameconstraintname","UNIQUE",
 					   nr,"sameconstraintname2","FOREIGN KEY"));
+/*
+ * continuing with the hilarity:
+ * 			mysql> show keys in c;
++-------+------------+---------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+| Table | Non_unique | Key_name            | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
++-------+------------+---------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+| c     |          0 | PRIMARY             |            1 | id          | A         |           0 |     NULL | NULL   |      | BTREE      |         |               |
+| c     |          0 | sameindexname3      |            1 | uid1        | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| c     |          0 | sameindexname4      |            1 | uid2        | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| c     |          1 | sameindexname       |            1 | kid1        | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| c     |          1 | sameindexname2      |            1 | kid2        | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| c     |          1 | sameconstraintname  |            1 | aid         | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| c     |          1 | sameconstraintname2 |            1 | bid         | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
++-------+------------+---------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+7 rows in set (0.00 sec)
+
+ */
 			conn.assertResults("show keys in c", 
-					br(nr,"c",1,"aid",1,"aid","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"c",1,"bid",1,"bid","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"c",0,"PRIMARY",1,"id","A",BigInteger.valueOf(-1),null,null,"","BTREE","","",
-					   nr,"c",1,"sameindexname",1,"kid1","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"c",1,"sameindexname2",1,"kid2","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"c",0,"sameindexname3",1,"uid1","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"c",0,"sameindexname4",1,"uid2","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","",""
+					br(nr,"c",0,"PRIMARY",1,"id","A",-1L,null,null,"","BTREE","","",
+						nr,"c",0,"sameindexname3",1,"uid1","A",-1L,null,null,"YES","BTREE","","",
+						nr,"c",0,"sameindexname4",1,"uid2","A",-1L,null,null,"YES","BTREE","","",
+					   nr,"c",1,"sameindexname",1,"kid1","A",-1L,null,null,"YES","BTREE","","",
+					   nr,"c",1,"sameindexname2",1,"kid2","A",-1L,null,null,"YES","BTREE","","",
+					   nr,"c",1,"aid",1,"aid","A",-1L,null,null,"YES","BTREE","","",
+					   nr,"c",1,"bid",1,"bid","A",-1L,null,null,"YES","BTREE","",""					   
 					   ));
 			
 			// make sure FK constraint names are unique across the database
@@ -742,7 +774,7 @@ public class StrictForeignKeyTest extends SchemaTest {
 						") broadcast distribute");
 				fail("Expected exception statement 6");
 			} catch (Exception e) {
-				assertTrue(StringUtils.containsIgnoreCase(e.getCause().getMessage(), "Duplicate foreign key name: sameconstraintname2"));
+				assertTrue(StringUtils.containsIgnoreCase(e.getMessage(), "Duplicate foreign key name: sameconstraintname2"));
 			}
 			
 			conn.execute("create table d (`id` int, `aid` int, `bid` int, `uid1` int, `uid2` int, `kid1` int, `kid2` int, " +
@@ -754,21 +786,51 @@ public class StrictForeignKeyTest extends SchemaTest {
 					"constraint sameconstraintname3 foreign key sameindexname (aid) references a (id), " +
 					"constraint sameconstraintname4 foreign key sameindexname (bid) references b (id) " +
 					") broadcast distribute");
+/*
+ * continuing the fun:
+ * mysql> select constraint_name, constraint_type from information_schema.table_constraints where table_Schema = 'foo' and table_name = 'd' order by constraint_name, constraint_type;
++---------------------+-----------------+
+| constraint_name     | constraint_type |
++---------------------+-----------------+
+| PRIMARY             | PRIMARY KEY     |
+| sameconstraintname3 | FOREIGN KEY     |
+| sameconstraintname4 | FOREIGN KEY     |
+| sameindexname3      | UNIQUE          |
+| sameindexname4      | UNIQUE          |
++---------------------+-----------------+
+5 rows in set (0.00 sec)			
+ */
 			conn.assertResults("select constraint_name, constraint_type from information_schema.table_constraints where table_schema = 'adb' and table_name = 'd' order by constraint_name, constraint_type", 
 					br(nr,"PRIMARY","PRIMARY KEY",
 					   nr,"sameconstraintname","UNIQUE",
 					   nr,"sameconstraintname","UNIQUE",
 					   nr,"sameconstraintname3","FOREIGN KEY",
 					   nr,"sameconstraintname4","FOREIGN KEY"));
+/* still incorrect:
+ * 	mysql> show keys in d;
++-------+------------+---------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+| Table | Non_unique | Key_name            | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |
++-------+------------+---------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+| d     |          0 | PRIMARY             |            1 | id          | A         |           0 |     NULL | NULL   |      | BTREE      |         |               |
+| d     |          0 | sameindexname3      |            1 | uid1        | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| d     |          0 | sameindexname4      |            1 | uid2        | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| d     |          1 | sameindexname       |            1 | kid1        | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| d     |          1 | sameindexname2      |            1 | kid2        | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| d     |          1 | sameconstraintname3 |            1 | aid         | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
+| d     |          1 | sameconstraintname4 |            1 | bid         | A         |           0 |     NULL | NULL   | YES  | BTREE      |         |               |
++-------+------------+---------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+
+7 rows in set (0.00 sec)
+		
+ */
 			conn.assertResults("show keys in d", 
-					br(nr,"d",1,"aid",1,"aid","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"d",1,"bid",1,"bid","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"d",0,"PRIMARY",1,"id","A",BigInteger.valueOf(-1),null,null,"","BTREE","","",
-					   nr,"d",1,"sameindexname",1,"kid1","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"d",1,"sameindexname2",1,"kid2","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"d",0,"sameindexname3",1,"uid1","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"d",0,"sameindexname4",1,"uid2","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","",""
-					   ));
+					br(nr,"d",0,"PRIMARY",1,"id","A",-1L,null,null,"","BTREE","","",
+							nr,"d",0,"sameindexname3",1,"uid1","A",-1L,null,null,"YES","BTREE","","",
+							nr,"d",0,"sameindexname4",1,"uid2","A",-1L,null,null,"YES","BTREE","","",
+							nr,"d",1,"sameindexname",1,"kid1","A",-1L,null,null,"YES","BTREE","","",
+							nr,"d",1,"sameindexname2",1,"kid2","A",-1L,null,null,"YES","BTREE","","",
+							nr,"d",1,"aid",1,"aid","A",-1L,null,null,"YES","BTREE","","",
+							nr,"d",1,"bid",1,"bid","A",-1L,null,null,"YES","BTREE","",""
+				   ));
 
 			// make sure the "standard" way still works
 			conn.execute("create table e (`id` int, `aid` int, `bid` int, `uid1` int, `uid2` int, `kid1` int, `kid2` int, " +
@@ -798,9 +860,9 @@ public class StrictForeignKeyTest extends SchemaTest {
 					br(nr,"FK_TG_FSICSSI","FOREIGN KEY",
 					   nr,"PRIMARY","PRIMARY KEY"));
 			conn.assertResults("show keys in tg", 
-					br(nr,"tg",1,"FK_TG_FCICEEI",1,"fci","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"tg",1,"FK_TG_FSICSSI",1,"fsi","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"tg",0,"PRIMARY",1,"tid","A",BigInteger.valueOf(-1),null,null,"","BTREE","",""
+					br(nr,"tg",0,"PRIMARY",1,"tid","A",-1L,null,null,"","BTREE","","",
+					nr,"tg",1,"FK_TG_FCICEEI",1,"fci","A",-1L,null,null,"YES","BTREE","","",
+					   nr,"tg",1,"FK_TG_FSICSSI",1,"fsi","A",-1L,null,null,"YES","BTREE","",""
 					   ));
 			
 			// make sure we can create the same table and constraint names in another database
@@ -820,8 +882,8 @@ public class StrictForeignKeyTest extends SchemaTest {
 					br(nr,"FK_TAG_FSICSSI","FOREIGN KEY",
 					   nr,"PRIMARY","PRIMARY KEY"));
 			conn.assertResults("show keys in tg", 
-					br(nr,"tg",1,"FK_TAG_FSICSSI",1,"fsi","A",BigInteger.valueOf(-1),null,null,"YES","BTREE","","",
-					   nr,"tg",0,"PRIMARY",1,"tid","A",BigInteger.valueOf(-1),null,null,"","BTREE","",""
+					br(nr,"tg",0,"PRIMARY",1,"tid","A",-1L,null,null,"","BTREE","","",
+							nr,"tg",1,"FK_TAG_FSICSSI",1,"fsi","A",-1L,null,null,"YES","BTREE","",""
 					   ));
 		} finally {
 			checkDDL.destroy(conn);
@@ -878,6 +940,9 @@ public class StrictForeignKeyTest extends SchemaTest {
 
 			conn.execute("drop table if exists " + cn + ".ref");
 			conn.execute("drop table if exists " + on + ".targ");
+		} catch (Throwable t) {
+			t.printStackTrace();
+			throw t;
 		} finally {
 			conn.execute("drop database " + on);
 			checkDDL.destroy(conn);

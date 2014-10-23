@@ -24,15 +24,16 @@ package com.tesora.dve.db.mysql.portal.protocol;
 import io.netty.buffer.ByteBuf;
 
 public class MSPComStmtCloseRequestMessage extends BaseMSPMessage<Long> {
+    public static final MSPComStmtCloseRequestMessage PROTOTYPE = new MSPComStmtCloseRequestMessage();
     static final int INDEX_OF_STATEMENTID = 0;
     public static final byte TYPE_IDENTIFIER = (byte) 0x19;
 
-    public MSPComStmtCloseRequestMessage() {
+    protected MSPComStmtCloseRequestMessage() {
         super();
     }
 
-    public MSPComStmtCloseRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComStmtCloseRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -41,8 +42,9 @@ public class MSPComStmtCloseRequestMessage extends BaseMSPMessage<Long> {
     }
 
     @Override
-    public MSPComStmtCloseRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        return new MSPComStmtCloseRequestMessage(sequenceID,source);
+    public MSPComStmtCloseRequestMessage newPrototype(ByteBuf source) {
+        source = source.slice();
+        return new MSPComStmtCloseRequestMessage(source);
     }
 
     public long getStatementID() {
@@ -55,17 +57,18 @@ public class MSPComStmtCloseRequestMessage extends BaseMSPMessage<Long> {
 
     @Override
     protected Long unmarshall(ByteBuf source) {
+        source.skipBytes(1);
         return source.getUnsignedInt(INDEX_OF_STATEMENTID);
     }
 
     @Override
     protected void marshall(Long statementID, ByteBuf destination) {
+        destination.writeByte(TYPE_IDENTIFIER);
         destination.writeInt(statementID.intValue());
     }
 
-    public static MSPComStmtCloseRequestMessage newMessage(byte sequenceID, int pstmtId) {
+    public static MSPComStmtCloseRequestMessage newMessage(int pstmtId) {
         MSPComStmtCloseRequestMessage closeReq = new MSPComStmtCloseRequestMessage();
-        closeReq.setSequenceID(sequenceID);
         closeReq.setStatementID(pstmtId);
         return closeReq;
     }

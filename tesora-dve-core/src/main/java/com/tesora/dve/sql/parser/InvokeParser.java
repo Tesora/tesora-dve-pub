@@ -41,9 +41,9 @@ import com.tesora.dve.sql.ParserException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.PlannerStatisticType;
 import com.tesora.dve.sql.PlannerStatistics;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.cache.CandidateCachedPlan;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils.PlanCacheCallback;
@@ -57,6 +57,7 @@ import com.tesora.dve.sql.statement.session.TransactionStatement;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.variables.KnownVariables;
 
 public class InvokeParser {
 
@@ -95,15 +96,20 @@ public class InvokeParser {
 	}
 
 	public static InputState buildInputState(String icmd, SchemaContext pc) {
-		long maxLen = (pc == null ? defaultLargeInsertThreshold : SchemaVariables.getLargeInsertThreshold(pc));
+		long maxLen =  
+			KnownVariables.LARGE_INSERT_CUTOFF.getValue(pc == null ? null : pc.getConnection().getVariableSource()).longValue();
 		if (icmd.length() > maxLen)
 			return new ContinuationInputState(icmd,maxLen);
 		return new InitialInputState(icmd);
 	}
 	
 	public static ParseResult parse(InputState icmd, ParserOptions opts, SchemaContext pc) throws ParserException {
+		return parse(icmd,opts,pc,TranslatorInitCallback.INSTANCE);
+	}
+	
+	public static ParseResult parse(InputState icmd, ParserOptions opts, SchemaContext pc, TranslatorInitCallback ticb) throws ParserException {
 		preparse(pc);
-		return parse(icmd, opts, pc, Collections.emptyList());
+		return parse(icmd, opts, pc, Collections.emptyList(),ticb);
 	}
 
 	private static void preparse(SchemaContext pc) throws ParserException {
@@ -114,7 +120,7 @@ public class InvokeParser {
 		}
 	}
 
-	private static ParseResult parse(InputState input, ParserOptions opts, SchemaContext pc, List<Object> parameters)
+	private static ParseResult parse(InputState input, ParserOptions opts, SchemaContext pc, List<Object> parameters, TranslatorInitCallback cb)
 			throws ParserException {
 		// debug log is set only for non tests
 		if (pc != null) {
@@ -127,7 +133,7 @@ public class InvokeParser {
 			result = parseFastInsert(pc, opts, input);
 		}
 		if (result == null)
-			result = parse(pc, opts, input);
+			result = parse(pc, opts, input, cb);
 		List<Statement> stmts = result.getSecond();
 		TranslatorUtils utils = result.getFirst();
 		if (stmts.isEmpty())
@@ -160,7 +166,7 @@ public class InvokeParser {
 		TranslatorUtils utils = new TranslatorUtils(opts, pc, icmd);
 		PE parser = buildParser(icmd, utils);
 		if (pc != null)
-			pc.setTokenStream(parser.getTokenStream());
+			pc.setTokenStream(parser.getTokenStream(),icmd.getCommand());
 		List<Statement> stmts = null;
 		List<List<ExpressionNode>> continuedInsert = null;
 		try {
@@ -175,6 +181,9 @@ public class InvokeParser {
 		} catch (Throwable t) {
 			// basically, just return null and try again
 			return null;
+		} finally {
+			if (pc != null)
+				pc.clearOrigStmt();
 		}
 		ParserException any = utils.buildError();
 		if (any != null)
@@ -201,12 +210,25 @@ public class InvokeParser {
 		}
 	}
 
+	public static ExpressionNode parseExpression(SchemaContext pc, String input) {
+		InputState icmd = buildInputState(input,pc);
+		ParserOptions opts = ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly().setActualLiterals();
+		TranslatorUtils utils = new TranslatorUtils(opts,pc,icmd);
+		PE parser = buildParser(icmd,utils);
+		try {
+			return parser.value_expression().expr;
+		} catch (Throwable t) {
+			throw new SchemaException(Pass.PLANNER, "Unable to parser expression '" + input + "'",t);
+		}
+	}
+	
 	@SuppressWarnings("unchecked")
-	private static Pair<TranslatorUtils, List<Statement>> parse(SchemaContext pc, ParserOptions opts, InputState input) {
+	private static Pair<TranslatorUtils, List<Statement>> parse(SchemaContext pc, ParserOptions opts, InputState input, TranslatorInitCallback cb) {
 		TranslatorUtils utils = new TranslatorUtils(opts, pc, input);
+		cb.onInit(utils);
 		PE parser = buildParser(input, utils);
 		if (pc != null)
-			pc.setTokenStream(parser.getTokenStream());
+			pc.setTokenStream(parser.getTokenStream(), input.getCommand());
 		List<Statement> stmts = null;
 		List<List<ExpressionNode>> continuedInsert = null;
 		try {
@@ -222,6 +244,10 @@ public class InvokeParser {
 			throw pe;
 		} catch (Throwable t) {
 			throw new ParserException(Pass.SECOND, "Unable to parse '" + input.describe() + "'", t);
+		} finally {
+			// clear the input string
+			if (pc != null)
+				pc.clearOrigStmt();
 		}
 		ParserException any = utils.buildError();
 		if (any != null)
@@ -242,7 +268,11 @@ public class InvokeParser {
 	}
 
 	public static List<Statement> parse(String line, SchemaContext pc, List<Object> params, ParserOptions options) throws ParserException {
-		return parse(buildInputState(line,pc), options, pc, params).getStatements();		
+		return parse(line,pc,params,options,TranslatorInitCallback.INSTANCE);
+	}
+	
+	public static List<Statement> parse(String line, SchemaContext pc, List<Object> params, ParserOptions options, TranslatorInitCallback ticb) throws ParserException {
+		return parse(buildInputState(line,pc), options, pc, params, ticb).getStatements();		
 	}
 	
 	public static List<Statement> parse(String line, SchemaContext pc, List<Object> params) throws ParserException {
@@ -301,7 +331,7 @@ public class InvokeParser {
 						"Unable to parameterize SQL statement to handle characters invalid for character set "
 								+ cs.name());
 			orig = StringUtils.strip(orig, new String(Character.toString(Character.MIN_VALUE)));
-			out.addAll(parse(buildInputState(orig,pc), options, pc, params).getStatements());
+			out.addAll(parse(buildInputState(orig,pc), options, pc, params, TranslatorInitCallback.INSTANCE).getStatements());
 		}
 		return new ParseResult(out,null);
 	}

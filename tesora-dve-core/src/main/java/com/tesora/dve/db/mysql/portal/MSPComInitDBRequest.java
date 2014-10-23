@@ -40,7 +40,6 @@ public class MSPComInitDBRequest extends MSPActionBase {
                         SSConnection ssCon, MSPMessage protocolMessage) throws PEException {
 
         MSPComInitDBRequestMessage initDBMessage = castProtocolMessage(MSPComInitDBRequestMessage.class,protocolMessage);
-        byte sequenceId = protocolMessage.getSequenceID();
 
 		MysqlNativeCharSet ncs = MysqlNativeCharSet.UTF8;
         Charset javaCharset = ncs.getJavaCharset();
@@ -48,7 +47,7 @@ public class MSPComInitDBRequest extends MSPActionBase {
         String database = initDBMessage.getInitialDatabase();
 		String query = "use " + database;
         //TODO: convert this to an ExecuteRequestExecutor.execute() call, rather than construct protocol objects and call the protocol handler directly.
-		MSPComQueryRequestMessage useRequest = MSPComQueryRequestMessage.newMessage(sequenceId,query, javaCharset);
+		MSPComQueryRequestMessage useRequest = MSPComQueryRequestMessage.newMessage(query, javaCharset);
 		MSPComQueryRequest.INSTANCE.execute(clientExecutorService, ctx, ssCon, useRequest);
 	}
 

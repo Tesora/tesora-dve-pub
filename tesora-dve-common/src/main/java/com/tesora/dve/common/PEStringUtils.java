@@ -29,12 +29,18 @@ import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
+
+import com.tesora.dve.exceptions.PECodingException;
 
 public final class PEStringUtils {
 
 	public static final String FILE_SEP = "/";
 	private static final String[] EMPTY_ARRAY = new String[] {};
 	private static final Pattern HEX_MATCH_REGEX = Pattern.compile("0[xX][0-9a-fA-F]+");
+	private static final String SINGLE_QUOTE = "'";
+	private static final String DOUBLE_QUOTE = "\"";
+	private static final String BACK_QUOTE = "`";
 	
 	private PEStringUtils() {
 	}
@@ -98,6 +104,26 @@ public final class PEStringUtils {
 		return values.toArray(EMPTY_ARRAY);
 	}
 
+	/**
+	 * Convert decimal values that can be represented as integers integral
+	 * strings.
+	 * 
+	 * @return trimToInt("3.1415") == "3.1415"
+	 *         trimToInt("10.0") == "10"
+	 */
+	public static String trimToInt(final String numeric) {
+		if (NumberUtils.isNumber(numeric)) {
+			final double doubleValue = Double.parseDouble(numeric);
+			if (MathUtils.isInteger(doubleValue)) {
+				return String.format("%d", (int) doubleValue);
+			}
+
+			return numeric;
+		}
+
+		throw new PECodingException("The input must be a valid number but was: " + numeric);
+	}
+
 	/*
 	 * Returns a prefix needing to be pre-pended to a key for calling
 	 * Properties.getProperty. Handles null prefix; will add the trailing "." if
@@ -156,14 +182,31 @@ public final class PEStringUtils {
 		return Pattern.compile(javaPattern.toString());
 	}
 
-	public static String dequote(String in) {
-		if (in.length() == 0) return in;
-		if (in.charAt(0) == '\'' && in.endsWith("'") ||
-				in.charAt(0) == '\"' && in.endsWith("\"") ||
-				in.charAt(0) == '`' && in.endsWith("`")) {
+	/**
+	 * Enclose the input string in single quotes if not already.
+	 */
+	public static String singleQuote(final String value) {
+		if ((value != null) && !value.isEmpty() && !isQuoted(value, SINGLE_QUOTE)) {
+			return SINGLE_QUOTE.concat(value).concat(SINGLE_QUOTE);
+		}
+
+		return value;
+	}
+
+	public static boolean isQuoted(final String value) {
+		return (isQuoted(value, SINGLE_QUOTE) || isQuoted(value, DOUBLE_QUOTE) || isQuoted(value, BACK_QUOTE));
+	}
+
+	private static boolean isQuoted(final String value, final String quote) {
+		return value.startsWith(quote) && value.endsWith(quote);
+	}
+
+	public static String dequote(final String in) {
+		if ((in != null) && !in.isEmpty() && isQuoted(in)) {
 			// strip off the quotes
 			return in.substring(1, in.length() - 1);
 		}
+
 		return in;
 	}
 

@@ -27,6 +27,7 @@ import org.junit.Test;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
+import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -63,7 +64,7 @@ public class MultitenantTransformTest extends TransformTest {
 	};
 
 	@Test
-	public void testA() throws Exception {
+	public void testA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		stmtTest(db,"select desc from A",
 				SelectStatement.class,
@@ -72,14 +73,14 @@ public class MultitenantTransformTest extends TransformTest {
 				));
 	}
 
-	private SchemaContext clearTenantID(SchemaContext db) throws Exception {
+	private SchemaContext clearTenantID(SchemaContext db) throws Throwable {
 		TransientExecutionEngine tee = (TransientExecutionEngine) db.getCatalog();
 		tee.parse(new String[] { "use " + PEConstants.LANDLORD_TENANT });
-		return SchemaContext.createContext(tee, tee);
+		return SchemaContext.createContext(tee, tee, db.getTypes(),Capability.TRANSIENT);
 	}
 	
 	@Test
-	public void testAW() throws Exception {
+	public void testAW() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		db = clearTenantID(db);
 		stmtTest(db,"select desc from A",
@@ -90,7 +91,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testB() throws Exception {
+	public void testB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		stmtTest(db,"select a.desc from A a where a.aid in (1,2,3)",
 				SelectStatement.class,
@@ -101,7 +102,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testBW() throws Exception {
+	public void testBW() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		db = clearTenantID(db);
 		stmtTest(db,"select a.desc from A a where a.aid in (1,2,3)",
@@ -113,7 +114,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testC() throws Exception {
+	public void testC() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		stmtTest(db,"select a.*, b.slug from A a, B b where a.aid = b.bid",
 				SelectStatement.class,
@@ -129,7 +130,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testD() throws Exception {
+	public void testD() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		stmtTest(db,"select a.*, b.slug from A a left outer join B b on a.aid = b.bid where a.slug like '%wonderment%'",
 				SelectStatement.class,
@@ -147,7 +148,7 @@ public class MultitenantTransformTest extends TransformTest {
 
 	@Ignore
 	@Test
-	public void testDW() throws Exception {
+	public void testDW() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		db = clearTenantID(db);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
@@ -175,7 +176,7 @@ public class MultitenantTransformTest extends TransformTest {
 
 	
 	@Test
-	public void testE() throws Exception {
+	public void testE() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"select a.*, c.slug from A a, C c where a.aid = c.cid",
@@ -200,7 +201,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testF() throws Exception {
+	public void testF() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		stmtTest(db,"select d.slug from D d where d.did = 4",
 				SelectStatement.class,
@@ -211,7 +212,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testG() throws Exception {
+	public void testG() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"select d.slug from `D` d where d.did in (5,6,7)",
@@ -224,7 +225,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testH() throws Exception {
+	public void testH() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"update D set slug = 'snail' where did in (5,6,7)",
@@ -236,7 +237,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testI() throws Exception {
+	public void testI() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"delete from D where did in (5,6,7)",
@@ -248,7 +249,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testJ() throws Exception {
+	public void testJ() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		PEStorageGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,"insert into C (`cid`, `desc`, `slug`) select b.bid as cid, b.desc as desc, b.slug as slug from B b where b.bid in (5,6,7)",
@@ -260,7 +261,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testK() throws Exception {
+	public void testK() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		// PEStorageGroup group = db.getCurrentDatabase().getDefaultStorage();
 		// PEStorageGroup temp = db.getCurrentDatabase().getTempStorage();
@@ -272,7 +273,7 @@ public class MultitenantTransformTest extends TransformTest {
 								null)));
 	}
 	@Test
-	public void testCount() throws Exception {
+	public void testCount() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		stmtTest(db,
 				"select count(*) from A",
@@ -284,7 +285,7 @@ public class MultitenantTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testCountW() throws Exception {
+	public void testCountW() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTIMT,schema);
 		PEStorageGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		db = clearTenantID(db);
@@ -303,9 +304,12 @@ public class MultitenantTransformTest extends TransformTest {
 	/**
 	 * Testing the parser only. As we currently do not support PARTITIONS and
 	 * NDB files, the queries return empty sets.
+	 * @throws Throwable 
 	 */
+	// maybe just toss this overboard?  we don't really have infoschema support for tschema anymore
+	@Ignore
 	@Test
-	public void testPE1153() throws Exception {
+	public void testPE1153() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTIMT, schema);
 
 		stmtTest(

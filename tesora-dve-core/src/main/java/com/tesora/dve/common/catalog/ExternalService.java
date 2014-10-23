@@ -32,27 +32,10 @@ import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.Table;
 
-import com.tesora.dve.common.ShowSchema;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.ColumnView;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
-import com.tesora.dve.sql.infoschema.annos.InfoView;
-import com.tesora.dve.sql.infoschema.annos.TableView;
 
-@InfoSchemaTable(logicalName="external_service",
- views = {
-		@TableView(view = InfoView.SHOW, name = "external service", pluralName = "external services", columnOrder = {
-				ShowSchema.ExternalService.NAME, 
-				ShowSchema.ExternalService.PLUGIN, 
-				ShowSchema.ExternalService.AUTO_START, 
-				ShowSchema.ExternalService.CONNECT_USER, 
-				ShowSchema.ExternalService.USES_DATASTORE,
-				ShowSchema.ExternalService.CONFIG }, extension = true, priviledged = true),
-		@TableView(view = InfoView.INFORMATION, name = "external_service", pluralName = "", columnOrder = {
-				"name", "plugin", "auto_start", "connect_user", "uses_datastore", "config" }, extension = true, priviledged = true) })
 @Entity
 @Table(name="external_service")
 public class ExternalService implements CatalogEntity {
@@ -108,10 +91,6 @@ public class ExternalService implements CatalogEntity {
 		return id;
 	}
 
-	@InfoSchemaColumn(logicalName="name",fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name="name",orderBy=true,ident=true),
-			       @ColumnView(view=InfoView.INFORMATION, name="name", orderBy=true, ident=true)})
 	public String getName() {
 		return name;
 	}
@@ -120,10 +99,6 @@ public class ExternalService implements CatalogEntity {
 		this.name = name;
 	}
 
-	@InfoSchemaColumn(logicalName="plugin",fieldName="plugin",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name="plugin"),
-			       @ColumnView(view=InfoView.INFORMATION, name="plugin")})
 	public String getPlugin() {
 		return plugin;
 	}
@@ -132,10 +107,6 @@ public class ExternalService implements CatalogEntity {
 		this.plugin = plugin;
 	}
 
-	@InfoSchemaColumn(logicalName="config",fieldName="config",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name="config"),
-			       @ColumnView(view=InfoView.INFORMATION, name="config")})
 	public String getConfig() {
 		return config;
 	}
@@ -144,10 +115,6 @@ public class ExternalService implements CatalogEntity {
 		this.config = config;
 	}
 
-	@InfoSchemaColumn(logicalName="connect user",fieldName="connectUser",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={@ColumnView(view=InfoView.SHOW, name="connect_user"),
-			       @ColumnView(view=InfoView.INFORMATION, name="connect_user")})
 	public String getConnectUser() {
 		return connectUser;
 	}
@@ -156,10 +123,6 @@ public class ExternalService implements CatalogEntity {
 		this.connectUser = connectUser;
 	}
 
-	@InfoSchemaColumn(logicalName="auto_start",fieldName="autoStart",
-			sqlType=java.sql.Types.VARCHAR,
-			views={@ColumnView(view=InfoView.SHOW, name="auto_start"),
-			       @ColumnView(view=InfoView.INFORMATION, name="auto_start")})
 	public Boolean isAutoStart() {
 		return autoStart;
 	}
@@ -168,10 +131,6 @@ public class ExternalService implements CatalogEntity {
 		this.autoStart = autoStart;
 	}
 
-	@InfoSchemaColumn(logicalName="uses_datastore",fieldName="usesDataStore",
-			sqlType=java.sql.Types.VARCHAR,
-			views={@ColumnView(view=InfoView.SHOW, name="uses_datastore"),
-			       @ColumnView(view=InfoView.INFORMATION, name="uses_datastore")})
 	public Boolean usesDataStore() {
 		return usesDataStore;
 	}

@@ -35,6 +35,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
@@ -52,9 +53,8 @@ import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
-import com.tesora.dve.variable.ScopedVariableHandler;
-import com.tesora.dve.variable.VariableConfig;
-import com.tesora.dve.variable.VariableInfo;
+import com.tesora.dve.variables.ScopedVariableHandler;
+import com.tesora.dve.variables.ScopedVariables;
 import com.tesora.dve.worker.SiteManagerCommand;
 
 public class GroupProviderDDLTest extends SchemaTest {
@@ -154,7 +154,7 @@ public class GroupProviderDDLTest extends SchemaTest {
 				new Object[] {});
 		conn.assertResults("show dynamic site providers", 
 				br( nr,OnPremiseSiteProvider.DEFAULT_NAME, OnPremiseSiteProvider.class.getCanonicalName(), "YES"));
-		String sl = TestCatalogHelper.getInstance().getCatalogUrl();
+		String sl = PEUrl.stripUrlParameters(TestCatalogHelper.getInstance().getCatalogBaseUrl());
 		String ops = "OnPremise";
 		String local = "LOCAL";
 		Integer negone = new Integer(-1);
@@ -283,75 +283,49 @@ public class GroupProviderDDLTest extends SchemaTest {
 		}
 
 		@Override
-		public VariableConfig<ScopedVariableHandler> getVariableConfiguration() {
-			VariableConfig<ScopedVariableHandler> out = new VariableConfig<ScopedVariableHandler>();
-			out.add(new GroupProviderDDLTestVariableInfo(this,"tic","tickleme"));
-			out.add(new GroupProviderDDLTestVariableInfo(this,"tac","tackleme"));
-			return out;
+		public ScopedVariables getVariableConfiguration() {
+			return new ScopedVariables(testProviderName,
+					new GroupProviderDDLTestVariableHandler("tic",this) {
+
+						@Override
+						public void setValue(String value) throws PEException {
+							me.tic = value;
+							thisTest.lastSetVariableName = getName();
+							thisTest.lastSetVariableValue = value;
+						}
+
+						@Override
+						public String getValue() throws PEException {
+							return me.tic;
+						}
+				
+					},
+					new GroupProviderDDLTestVariableHandler("tac",this) {
+
+						@Override
+						public void setValue(String value) throws PEException {
+							me.tac = value;
+							thisTest.lastSetVariableName = getName();
+							thisTest.lastSetVariableValue = value;
+						}
+
+						@Override
+						public String getValue() throws PEException {
+							return me.tac;
+						}
+						
+					});
+			
 		}
 		
-		private static class GroupProviderDDLTestVariableInfo extends VariableInfo<ScopedVariableHandler> {
-		
-			private String theName;
-			private String theDefaultValue;
-			private GroupProviderDDLTestVariableHandler theHandler;
+		public abstract class GroupProviderDDLTestVariableHandler extends ScopedVariableHandler {
 			
-			public GroupProviderDDLTestVariableInfo(GroupProviderDDLTestProvider prov, String varName, String varDef) {
-				theName = varName;
-				theDefaultValue = varDef;
-				theHandler = new GroupProviderDDLTestVariableHandler(prov);
-			}
+			protected GroupProviderDDLTestProvider me;
 			
-			@Override
-			public String getName() {
-				return theName;
-			}
-
-			@Override
-			public String getDefaultValue() {
-				return theDefaultValue;
-			}
-
-			@Override
-			public ScopedVariableHandler getHandler() {
-				return theHandler;
-			}
-
-		}
-		
-		public static class GroupProviderDDLTestVariableHandler extends ScopedVariableHandler {
-			
-			private GroupProviderDDLTestProvider me;
-			
-			public GroupProviderDDLTestVariableHandler(GroupProviderDDLTestProvider enc) {
+			public GroupProviderDDLTestVariableHandler(String name, GroupProviderDDLTestProvider enc) {
+				super(name);
 				me = enc;
 			}
-			
-			@Override
-			public void setValue(String scopeName, String name, String value)
-					throws PEException {
-				if ("tic".equals(name.trim().toLowerCase())) {
-					me.tic = value;
-				} else if ("tac".equals(name.trim().toLowerCase())) {
-					me.tac = value;
-				} else {
-					throw new IllegalArgumentException("No such variable: " + name);
-				}
-				thisTest.lastSetVariableName = name;
-				thisTest.lastSetVariableValue = value;
-			}
-
-			@Override
-			public String getValue(String scopeName, String name)
-					throws PEException {
-				if ("tic".equals(name.trim().toLowerCase()))
-					return me.tic;
-				else if ("tac".equals(name.trim().toLowerCase()))
-					return me.tac;
-				else
-					throw new IllegalArgumentException("No such variable: " + name);
-			}
-			
 		}
 
 		@Override

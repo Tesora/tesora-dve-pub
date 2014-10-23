@@ -66,7 +66,7 @@ public class UpdateTransformTest extends TransformTest {
 	};
 
 	@Test
-	public void testNonVectA() throws Exception {
+	public void testNonVectA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -80,7 +80,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testNonVectB() throws Exception {
+	public void testNonVectB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -93,7 +93,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testNonVectC() throws Exception {
+	public void testNonVectC() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -107,7 +107,7 @@ public class UpdateTransformTest extends TransformTest {
 
 	
 	@Test
-	public void testNonVectD() throws Exception {
+	public void testNonVectD() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -121,7 +121,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testSetVectA() throws Exception {
+	public void testSetVectA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -139,7 +139,8 @@ public class UpdateTransformTest extends TransformTest {
 						new FilterExpectedStep("LateBindingUpdateCounter", new UpdateExpectedStep(
 								TransientExecutionEngine.AGGREGATION,
 								"UPDATE temp1",
-								"SET temp1.A1i0_4 = 15"
+								"SET temp1.A1i0_4 = 15",
+								"WHERE temp1.A1d1_5 like '%wrong%'"
 								)
 						),
 						new DeleteExpectedStep(
@@ -159,7 +160,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testSetVectB() throws Exception {
+	public void testSetVectB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -172,7 +173,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testSetVectC() throws Exception {
+	public void testSetVectC() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -185,7 +186,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testSetVectD() throws Exception {
+	public void testSetVectD() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -203,7 +204,8 @@ public class UpdateTransformTest extends TransformTest {
 						new FilterExpectedStep("LateBindingUpdateCounter", new UpdateExpectedStep(
 								TransientExecutionEngine.AGGREGATION,
 								"UPDATE temp1",
-								"SET temp1.D1i0_4 = 15"
+								"SET temp1.D1i0_4 = 15",
+								"WHERE temp1.D1d1_5 like '%wrong%'"
 								)
 						),
 						new DeleteExpectedStep(
@@ -224,7 +226,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testUseVectD() throws Exception {
+	public void testUseVectD() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -238,7 +240,7 @@ public class UpdateTransformTest extends TransformTest {
 	
 	@Test
 	// Repro for PE-108
-	public void testPE108a() throws Exception {
+	public void testPE108a() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -252,7 +254,7 @@ public class UpdateTransformTest extends TransformTest {
 	
 	// Repro for PE-108
 	@Test
-	public void testPE108b() throws Exception {
+	public void testPE108b() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -265,7 +267,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testDatabase35580A() throws Exception {
+	public void testDatabase35580A() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -395,7 +397,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testUpdateDecomposition() throws Exception {
+	public void testUpdateDecomposition() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -408,7 +410,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 	
 		@Test
-	public void testPE1425Simple() throws Exception {
+	public void testPE1425Simple() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 
@@ -428,7 +430,8 @@ public class UpdateTransformTest extends TransformTest {
 					new FilterExpectedStep("LateBindingUpdateCounter",new UpdateExpectedStep(
 						TransientExecutionEngine.AGGREGATION,
 					  "UPDATE temp1",
-					  "SET temp1.D1i0_6 = temp1.func_9,temp1.D1f2_8 = temp1.D1f2_8"
+					  "SET temp1.D1i0_6 = temp1.func_9,temp1.D1f2_8 = temp1.D1f2_8",
+					  "WHERE temp1.D1i0_6 = -1"
 					)
 					),
 						new DeleteExpectedStep(
@@ -449,7 +452,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testPE1425Complex() throws Exception {
+	public void testPE1425Complex() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		
@@ -469,7 +472,8 @@ public class UpdateTransformTest extends TransformTest {
 					new FilterExpectedStep("LateBindingUpdateCounter",new UpdateExpectedStep(
 						TransientExecutionEngine.AGGREGATION,
 					  "UPDATE temp1",
-					  "SET temp1.D1i0_6 = temp1.func_9,temp1.D1f2_8 = temp1.D1f2_8"
+					  "SET temp1.D1i0_6 = temp1.func_9,temp1.D1f2_8 = temp1.D1f2_8",
+					  "WHERE temp1.D1i0_6 = -1"
 					)
 					),
 						new DeleteExpectedStep(
@@ -490,7 +494,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testPE1476() throws Exception {
+	public void testPE1476() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 
@@ -508,7 +512,7 @@ public class UpdateTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testMultiModelNested() throws Exception {
+	public void testMultiModelNested() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, schema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 

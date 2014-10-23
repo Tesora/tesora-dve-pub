@@ -26,16 +26,17 @@ import io.netty.buffer.ByteBuf;
 import java.nio.charset.Charset;
 
 public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
+    public static final MSPComPrepareStmtRequestMessage PROTOTYPE = new MSPComPrepareStmtRequestMessage();
     public static final byte TYPE_IDENTIFIER = (byte) 0x16;
 
     Charset decodingCharset;
 
-    public MSPComPrepareStmtRequestMessage() {
+    protected MSPComPrepareStmtRequestMessage() {
         super();
     }
 
-    public MSPComPrepareStmtRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComPrepareStmtRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -44,8 +45,9 @@ public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
     }
 
     @Override
-    public MSPComPrepareStmtRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        return new MSPComPrepareStmtRequestMessage(sequenceID,source);
+    public MSPComPrepareStmtRequestMessage newPrototype(ByteBuf source) {
+        source = source.slice();
+        return new MSPComPrepareStmtRequestMessage(source);
     }
 
     public Charset getDecodingCharset() {
@@ -66,21 +68,28 @@ public class MSPComPrepareStmtRequestMessage extends BaseMSPMessage<String> {
 
     @Override
     protected String unmarshall(ByteBuf source) {
+        source.skipBytes(1);//skip type field.
         return source.toString(decodingCharset);
     }
 
     @Override
     protected void marshall(String state, ByteBuf destination) {
+        destination.writeByte( getMysqlMessageType() );
         destination.writeBytes( decodingCharset.encode( state ));
     }
 
     public byte[] getPrepareBytes() {
-        return MysqlAPIUtils.unwrapOrCopyReadableBytes(readBuffer());
+        return MysqlAPIUtils.unwrapOrCopyReadableBytes(getRemainingBuf());
     }
 
-    public static MSPComPrepareStmtRequestMessage newMessage(byte sequenceID, String sql, Charset charset) {
+    private ByteBuf getRemainingBuf() {
+        ByteBuf readBuf = readBuffer();
+        ByteBuf remainingBuf = readBuf.slice(1,readBuf.readableBytes() - 1);//skip over type field.
+        return remainingBuf;
+    }
+
+    public static MSPComPrepareStmtRequestMessage newMessage(String sql, Charset charset) {
         MSPComPrepareStmtRequestMessage prepStmt = new MSPComPrepareStmtRequestMessage();
-        prepStmt.setSequenceID(sequenceID);
         prepStmt.setDecodingCharset(charset);
         prepStmt.setPrepareSQL(sql);
         return prepStmt;

@@ -21,17 +21,17 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.concurrent.PEPromise;
+import com.tesora.dve.concurrent.CompletionHandle;
 
 public abstract class MysqlConcurrentCommand extends MysqlCommand {
 
-	private PEPromise<Boolean> promise;
+	private CompletionHandle<Boolean> promise;
 
-	public MysqlConcurrentCommand(PEPromise<Boolean> promise) {
+	public MysqlConcurrentCommand(CompletionHandle<Boolean> promise) {
 		this.promise = promise;
 	}
 
-	public PEPromise<Boolean> getPromise() {
+	public CompletionHandle<Boolean> getCompletionHandle() {
 		return promise;
 	}
 }

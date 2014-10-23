@@ -21,23 +21,13 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
-import com.tesora.dve.clock.*;
-import com.tesora.dve.db.mysql.MyFieldType;
-import com.tesora.dve.db.mysql.MysqlNativeConstants;
-import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
-import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
-import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
-
-import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.db.mysql.MysqlMessage;
+import com.tesora.dve.mysqlapi.repl.messages.MyComBinLogDumpRequest;
+import com.tesora.dve.mysqlapi.repl.messages.MyComRegisterSlaveRequest;
+import com.tesora.dve.mysqlapi.repl.messages.MyReplEvent;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelDuplexHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
+import io.netty.channel.*;
 import io.netty.handler.codec.ByteToMessageDecoder;
-
-import org.apache.log4j.Logger;
 
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -45,12 +35,38 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.log4j.Logger;
+
+import com.tesora.dve.clock.NoopTimingService;
+import com.tesora.dve.clock.Timer;
+import com.tesora.dve.clock.TimingService;
+import com.tesora.dve.db.mysql.MyFieldType;
+import com.tesora.dve.db.mysql.MysqlNativeConstants;
+import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
+import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
+import com.tesora.dve.db.mysql.libmy.BufferedExecute;
+import com.tesora.dve.db.mysql.libmy.MyBinaryResultRow;
+import com.tesora.dve.db.mysql.libmy.MyColumnCount;
+import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
+import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
+import com.tesora.dve.db.mysql.libmy.MyFieldPktResponse;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.libmy.MyOKResponse;
+import com.tesora.dve.db.mysql.libmy.MyPrepareOKResponse;
+import com.tesora.dve.db.mysql.libmy.MyRawMessage;
+import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
+import com.tesora.dve.exceptions.PECodingException;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.singleton.Singletons;
+
 public class MyBackendDecoder extends ChannelDuplexHandler {
 	protected static final Logger logger = Logger.getLogger(MyBackendDecoder.class);
     protected static final ParseStrategy UNSOLICITED = new UnsolicitedMessageParser();
-	public static final int PACKET_HEADER_LEN = 4;
 
-    String socketDesc;
+    CachedAppendBuffer bufferCache = new CachedAppendBuffer();
+    Packet mspPacket;
+
+	String socketDesc;
 
     public interface CharsetDecodeHelper {
         long lookupMaxLength(byte mysqlCharsetID);
@@ -85,6 +101,19 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
     };
 
     @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        try{
+            super.channelInactive(ctx);
+        } finally {
+            bufferCache.releaseSlab();
+            if (mspPacket != null){
+                mspPacket.release();
+                mspPacket = null;
+            }
+        }
+    }
+
+    @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         decoder.channelRead(ctx, msg);
     }
@@ -112,6 +141,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             responseParseStrategy = new SimpleOKParser();
         } else if (msg instanceof MSPComPrepareStmtRequestMessage){
             responseParseStrategy = new PrepareResponseParser();
+        } else if (msg instanceof MyComRegisterSlaveRequest){
+            responseParseStrategy = new SimpleOKParser();
+        } else if (msg instanceof MyComBinLogDumpRequest) {
+            responseParseStrategy = new ReplDumpLogParser();
         } else {
             logger.warn(String.format("Unexpected message transmitted, %s",msg.getClass().getName()));
         }
@@ -125,7 +158,26 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 parserStack.add(responseParseStrategy);
             }
         }
-        super.write(ctx, msg, promise);
+
+        try {
+        if (msg instanceof MysqlMessage){
+            MysqlMessage mysql = (MysqlMessage)msg;
+            int sequenceStart = 0; //right now all outbound messages on the backend are full requests, and start a new sequence.
+            ByteBuf append = bufferCache.startAppend(ctx);
+
+            int nextSequence = Packet.encodeFullMessage(sequenceStart, mysql, append);
+
+            ByteBuf fullyEncodedSlice = bufferCache.sliceWritableData();
+
+            if (responseParseStrategy != null) //if a response is expected, save the sequence number the response should start with.
+                responseParseStrategy.setNextSequenceNumber(nextSequence);
+
+            super.write(ctx, fullyEncodedSlice,promise);
+        } else
+            super.write(ctx, msg, promise);
+        } catch (Exception e){
+            logger.warn("Problem during encoding of message." , e);
+        }
         backendEncoding.end(
             socketDesc,
             (msg == null ? "null" : msg.getClass().getName())
@@ -146,28 +198,35 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 	protected void decode0(ChannelHandlerContext ctx, ByteBuf in, List<Object> out, boolean lastPacket) throws Exception {
         if (logger.isDebugEnabled())
             logger.debug("processing packet, "+in);
+
         try {
-			ByteBuf leBuf = in.order(ByteOrder.LITTLE_ENDIAN);
-
-            //buffer enough to read the payload length out of the packet header.
-			if (leBuf.readableBytes() < 3)
-                return;
-
-            int payloadLen = leBuf.getUnsignedMedium(leBuf.readerIndex());
-
-            //buffer enough to read the header and the payload length.
-            if (leBuf.readableBytes() < PACKET_HEADER_LEN + payloadLen)
-                return;
-
             //get a contextual parser that decodes data based on what was previously transmitted, never null.
             ParseStrategy responseParser = lookupParser();
+            int expectedSequence = responseParser.nextSequenceNumber();
+
+            if (mspPacket == null)
+                mspPacket = new Packet(ctx.alloc(), expectedSequence, Packet.Modifier.HEAPCOPY_ON_READ, "backend");
+
+            if (!mspPacket.decodeMore(in)) //deals with framing and extended packets.
+                return;
+
+            //we got a packet, maybe extended.  update the next expected sequence (might be > +1, if extended)
+            responseParser.setNextSequenceNumber( mspPacket.getNextSequenceNumber() );
+
+            ByteBuf leHeader = mspPacket.unwrapHeader().order(ByteOrder.LITTLE_ENDIAN).retain();
+            ByteBuf lePayload = mspPacket.unwrapPayload().order(ByteOrder.LITTLE_ENDIAN).retain();//retain a separate reference to the payload.
+            mspPacket.release();
+            mspPacket = null;
+
+
+
 
             //ok, we aren't waiting for a packet anymore, end the wait timer, start the decode timer.
             responseParser.endAtomicWaitTimer();
-            Timer decodeTimer = responseParser.getParentTimer().newSubTimer(TimingDesc.BACKEND_DECODE);
+			Timer decodeTimer = responseParser.getNewSubTimer(TimingDesc.BACKEND_DECODE);
 
             //use the active response parser to decode the buffer into a protocol message.
-            MyMessage message = responseParser.parsePacket(ctx,PACKET_HEADER_LEN + payloadLen, leBuf);
+            MyMessage message = responseParser.parsePacket(ctx,leHeader,lePayload);
             decodeTimer.end(
                 socketDesc,
                 (message == null ? "null" : message.getClass().getName())
@@ -175,7 +234,9 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
             lookupParser();//check if we are done and pop the parser now, to reduce memory usage and get tighter timer measurements.
 
-            out.add(message);
+			if (message != null) {
+				out.add(message);
+			}
 
 		} catch (Exception e) {
             logger.warn(String.format("Unexpected problem parsing frame, closing %s :", socketDesc), e);
@@ -210,19 +271,23 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
     public static interface ParseStrategy {
         void setSocketDesc(String desc);
-        MyMessage parsePacket(ChannelHandlerContext ctx, int packetSize, ByteBuf leBuf) throws PEException;
+        MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException;
         boolean isDone();
         void setParentTimer(Timer parent);
         Timer getParentTimer();
+		Timer getNewSubTimer(Enum location);
 
         void startAtomicWaitTimer();
         void endAtomicWaitTimer();
+        void setNextSequenceNumber(int seq);
+        int nextSequenceNumber();
     }
 
     static abstract class BaseParseStrategy implements ParseStrategy {
         String socketDesc;
         Timer parent;
         AtomicReference<Timer> waitTimer = new AtomicReference<>(null);
+        int nextSeq;
 
         public void setSocketDesc(String desc){
             this.socketDesc = desc;
@@ -235,6 +300,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         public void setParentTimer(Timer parent) {
             this.parent = parent;
         }
+
+		public Timer getNewSubTimer(Enum location) {
+			return (this.parent != null) ? this.parent.newSubTimer(TimingDesc.BACKEND_DECODE) : null;
+		}
 
         @Override
         public void startAtomicWaitTimer() {
@@ -252,13 +321,23 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
                 );
         }
+
+        @Override
+        public void setNextSequenceNumber(int seq) {
+            this.nextSeq = seq;
+        }
+
+        public int nextSequenceNumber(){
+            return this.nextSeq;
+        }
     }
 
     static class UnsolicitedMessageParser extends BaseParseStrategy {
 
         @Override
-        public MyMessage parsePacket(ChannelHandlerContext ctx, int packetSize, ByteBuf leBuf) throws PEException {
-            throw new PEException(String.format("Unexpected data received on %s, buffer=%s", socketDesc, leBuf));
+        public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
+            String message = String.format("Unexpected data received on %s, header=%s, payload=%s", socketDesc, leHeader, lePayload);
+            throw new PEException(message);
         }
 
         @Override
@@ -272,10 +351,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         boolean parsedOne = false;
 
         @Override
-        public MyMessage parsePacket(ChannelHandlerContext ctx, int packetSize, ByteBuf leBuf) throws PEException {
+        public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
             parsedOne = true;
-            ByteBuf payload = leBuf.readSlice(packetSize).skipBytes(4).order(ByteOrder.LITTLE_ENDIAN);
-            byte statusByte = payload.getByte(4);//5th byte in the full packet
+            ByteBuf payload = lePayload;
+            byte statusByte = payload.getByte(0); //5th byte in the full packet
             MyMessage message;
             if (statusByte == 0){
                 message = new MyOKResponse();
@@ -284,6 +363,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 message = new MyErrorResponse();
                 message.unmarshallMessage(payload);
             }
+            message.setSequenceEnd(true);
             return message;
         }
 
@@ -293,10 +373,51 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         }
     }
 
+    static class ReplDumpLogParser extends BaseParseStrategy {
+        boolean errorOrEof = false;
+        @Override
+        public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
+
+            ByteBuf payload = lePayload;
+            byte statusByte = payload.getByte(0);//5th byte in the full packet
+            MyMessage message;
+            switch (statusByte){
+                case MyOKResponse.OKPKT_INDICATOR: //replication events use 0 to indicate a replication event, same as an OK packet.
+                    MyReplEvent repl = new MyReplEvent();
+                    lePayload.skipBytes(1);//TODO: MyReplEvent expects first byte of payload to already be consumed. -sgossard
+                    repl.unmarshallMessage(lePayload);
+                    message = repl;
+                    break;
+                case MyErrorResponse.ERRORPKT_FIELD_COUNT:
+                    errorOrEof = true;
+                    MyErrorResponse errorResponse = new MyErrorResponse();
+                    errorResponse.unmarshallMessage(lePayload);
+                    errorResponse.setSequenceEnd(true);
+                    message = errorResponse;
+                    break;
+                case MyEOFPktResponse.EOFPKK_FIELD_COUNT:
+                    errorOrEof = true;
+                    MyEOFPktResponse eofResponse = new MyEOFPktResponse();
+                    eofResponse.unmarshallMessage(lePayload);
+                    eofResponse.setSequenceEnd(true);
+                    message = eofResponse;
+                    break;
+                default:
+                    throw new PEException("Unexpected response while parsing replication dump log response, type ID was " + statusByte);
+            }
+            return message;
+        }
+
+        @Override
+        public boolean isDone() {
+            return errorOrEof;
+        }
+    }
+
     static class NoResponseParser extends BaseParseStrategy {
 
         @Override
-        public MyMessage parsePacket(ChannelHandlerContext ctx, int packetSize, ByteBuf leBuf) throws PEException {
+        public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
             throw new PECodingException("No response expected, shouldn't be parsing a packet here");
         }
 
@@ -336,7 +457,8 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
 
     static class ExecuteResponseParser extends BaseParseStrategy {
-        private CharsetDecodeHelper helper;
+
+		private CharsetDecodeHelper helper;
 
         enum ExecMode {PROTOCOL_BINARY, PROTOCOL_TEXT}
         enum ResponseState { AWAIT_FIELD_COUNT, AWAIT_FIELD, AWAIT_FIELD_EOF, AWAIT_ROW, DONE }
@@ -352,22 +474,21 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         }
 
         @Override
-        public MyMessage parsePacket(ChannelHandlerContext ctx, int packetSize, ByteBuf leBuf) throws PEException {
+        public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
             MyMessage message;
             try{
-                ByteBuf nextFrame = leBuf.readSlice(packetSize).order(ByteOrder.LITTLE_ENDIAN);
                 switch (bufferState) {
                     case AWAIT_ROW:
-                        message = parseAwaitRow(nextFrame);
+                    	message = parseAwaitRow(leHeader,lePayload);
                         break;
                     case AWAIT_FIELD_COUNT:
-                        message = parseFieldCount(nextFrame);
+                        message = parseFieldCount(leHeader,lePayload);
                         break;
                     case AWAIT_FIELD:
-                        message = parseAwaitField(nextFrame);
+                        message = parseAwaitField(leHeader,lePayload);
                         break;
                     case AWAIT_FIELD_EOF:
-                        message = parseAwaitFieldEOF(nextFrame);
+                        message = parseAwaitFieldEOF(leHeader,lePayload);
                         break;
                     default:
                         throw new PECodingException("Unrecognized buffer state " + bufferState + " occurred while processing packets in " + this.getClass().getName());
@@ -384,21 +505,21 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             return bufferState == ResponseState.DONE;
         }
 
-        public MyMessage parseAwaitFieldEOF(ByteBuf wholePacket) throws PEException {
+        public MyMessage parseAwaitFieldEOF(ByteBuf leHeader, ByteBuf lePayload) throws PEException {
             bufferState = ResponseState.AWAIT_ROW;
 
             //TODO: there is zero type inspection/verification on this packet, it just gets blindly discarded or forwarded.
             MyMessage message = new MyRawMessage();
-            message.unmarshallMessage(wholePacket.skipBytes(4));
+            message.unmarshallMessage(lePayload);
             return message;
         }
 
-        public MyMessage parseAwaitField(ByteBuf wholePacket) throws PEException {
+        public MyMessage parseAwaitField(ByteBuf leHeader, ByteBuf lePayload) throws PEException {
             if (--bufferFieldCount == 0)
                 bufferState = ResponseState.AWAIT_FIELD_EOF;
 
             MyFieldPktResponse columnDef = new MyFieldPktResponse();
-            columnDef.unmarshallMessage(wholePacket.skipBytes(4));
+            columnDef.unmarshallMessage(lePayload);
 
             try {
                 //peek at the column define so we know how to decode the value.
@@ -417,61 +538,60 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
 
 
-        public MyMessage parseFieldCount(ByteBuf wholePacket) {
+        public MyMessage parseFieldCount(ByteBuf leHeader, ByteBuf lePayload) {
             MyMessage message;
-            byte pktId = wholePacket.getByte(4);
+            byte pktId = lePayload.getByte(0);
             switch (pktId){
                 case MyOKResponse.OKPKT_INDICATOR:
                     bufferState = ResponseState.DONE;
-                    wholePacket.skipBytes(4);
                     MyOKResponse ok = new MyOKResponse();
-                    ok.unmarshallMessage(wholePacket);
+                    ok.unmarshallMessage(lePayload);
+                    ok.setSequenceEnd(true);
                     message = ok;
                     break;
                 case MyErrorResponse.ERRORPKT_FIELD_COUNT:
                     bufferState = ResponseState.DONE;
                     MyErrorResponse errorResponse = new MyErrorResponse();
-                    errorResponse.unmarshallMessage(wholePacket.skipBytes(4));
+                    errorResponse.unmarshallMessage(lePayload);
+                    errorResponse.setSequenceEnd(true);
                     message = errorResponse;
                     break;
                 case MyEOFPktResponse.EOFPKK_FIELD_COUNT:
                     throw new PECodingException("Cannot handle packet id EOFPKK_FIELD_COUNT in " + this.getClass().getName());
                 default:
                     bufferState = ResponseState.AWAIT_FIELD;
-                    wholePacket.skipBytes(4);
                     MyColumnCount count = new MyColumnCount();
-                    count.unmarshallMessage(wholePacket);
+                    count.unmarshallMessage(lePayload);
                     bufferFieldCount = count.getColumnCount();
                     message = count;
             }
             return message;
         }
 
-        public MyMessage parseAwaitRow(ByteBuf frame) throws PEException {
-            MyMessage message = null;
-            byte fifthByte = frame.getByte(4);
-            frame.skipBytes(4).order(ByteOrder.LITTLE_ENDIAN);
+		public MyMessage parseAwaitRow(ByteBuf leHeader, ByteBuf lePayload) throws PEException {
+            final byte messageType = lePayload.getByte(0);
 
-            if (fifthByte == MyEOFPktResponse.EOFPKK_FIELD_COUNT) {
-                bufferState = ResponseState.DONE;
-                MyEOFPktResponse eofPkt = new MyEOFPktResponse();
-                eofPkt.unmarshallMessage(frame);
-                message = eofPkt;
-            } else if (mode == ExecMode.PROTOCOL_BINARY) {
-                MyBinaryResultRow binRow = new MyBinaryResultRow(typeDecoders);
-                binRow.unmarshallMessage(frame);
-                message = binRow;
-            } else if (mode == ExecMode.PROTOCOL_TEXT){
-                MyTextResultRow textRow = new MyTextResultRow();
-                textRow.unmarshallMessage(frame);
-                message = textRow;
-            } else {
-                throw new PECodingException("Unexpected reponse parsing mode, "+mode);
-            }
+			MyMessage message = null;
+			if (messageType == MyEOFPktResponse.EOFPKK_FIELD_COUNT && lePayload.readableBytes() == 5) { //EOF payload is exactly 5 bytes and first byte is 0xfe
+				bufferState = ResponseState.DONE;
+				MyEOFPktResponse eofPkt = new MyEOFPktResponse();
+				eofPkt.unmarshallMessage(lePayload);
+                eofPkt.setSequenceEnd(true);
+				message = eofPkt;
+			} else if (mode == ExecMode.PROTOCOL_BINARY) {
+				MyBinaryResultRow binRow = new MyBinaryResultRow(typeDecoders);
+				binRow.unmarshallMessage(lePayload);
+				message = binRow;
+			} else if (mode == ExecMode.PROTOCOL_TEXT) {
+				MyTextResultRow textRow = new MyTextResultRow();
+				textRow.unmarshallMessage(lePayload);
+				message = textRow;
+			} else {
+				throw new PECodingException("Unexpected reponse parsing mode, " + mode);
+			}
 
-            return message;
-
-        }
+			return message;
+		}
     }
 
     static class PrepareResponseParser extends BaseParseStrategy {
@@ -481,46 +601,38 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         private int bufferNumParams;
 
         @Override
-        public MyMessage parsePacket(ChannelHandlerContext ctx, int packetSize, ByteBuf leBuf) throws PEException {
-            ByteBuf wholePacket = leBuf.readSlice(packetSize).order(ByteOrder.LITTLE_ENDIAN);
-            byte sequence = wholePacket.getByte(3);
-            byte pktId = wholePacket.getByte(4);
-            wholePacket.skipBytes(4);
+        public MyMessage parsePacket(ChannelHandlerContext ctx, ByteBuf leHeader, ByteBuf lePayload) throws PEException {
+            byte pktId = lePayload.getByte(0);
 
             MyMessage message;
             try {
                 switch (bufferState) {
                     case AWAIT_HEADER:
                         if (pktId == MyOKResponse.OKPKT_INDICATOR) {
-                            message = parseAwaitHeaderOK(wholePacket);
+                            message = parseAwaitHeaderOK(lePayload);
                         } else if (pktId == MyErrorResponse.ERRORPKT_FIELD_COUNT) {
-                            message = parseAwaitHeaderErr(wholePacket);
+                            message = parseAwaitHeaderErr(lePayload);
                         } else {
                             throw new PEException("Invalid packet from mysql (expected PrepareResponse header, got " + pktId +")");
                         }
                         break;
                     case AWAIT_PARAM_DEF:
-                        message = parseAwaitParam(wholePacket);
+                        message = parseAwaitParam(lePayload);
                         break;
                     case AWAIT_PARAM_DEF_EOF:
-                        message = parseAwaitParamEOF(wholePacket);
+                        message = parseAwaitParamEOF(lePayload);
                         break;
                     case AWAIT_COL_DEF:
-                        message = parseAwaitCol(wholePacket);
+                        message = parseAwaitCol(lePayload);
                         break;
                     case AWAIT_COL_DEF_EOF:
-                        message = parseAwaitColEOF(wholePacket);
+                        message = parseAwaitColEOF(lePayload);
                         break;
 
                     case DONE:
                     default:
                         logger.debug("Received a packet after we believe we are DONE, packet had fieldCount/ID type " + pktId);
                         throw new PECodingException("received packet, but already in DONE state.");
-                }
-
-
-                if (message != null){
-                    message.setPacketNumber(sequence);
                 }
 
                 return message;
@@ -542,6 +654,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             MyMessage message;
             message = new MyEOFPktResponse();
             message.unmarshallMessage(wholePacket);
+            message.setSequenceEnd(true);
             bufferState = ResponseState.DONE;
             return message;
         }
@@ -561,6 +674,8 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             message = new MyEOFPktResponse();
             message.unmarshallMessage(wholePacket);
             bufferState = (bufferNumColumns == 0) ? ResponseState.DONE : ResponseState.AWAIT_COL_DEF;
+            if (bufferState == ResponseState.DONE)
+                message.setSequenceEnd(true);
             return message;
         }
 
@@ -578,6 +693,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             MyMessage message;//an error packet
             message = new MyErrorResponse();
             message.unmarshallMessage(wholePacket);
+            message.setSequenceEnd(true);
             bufferState = ResponseState.DONE;
             return message;
         }
@@ -593,8 +709,10 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
                 bufferState = ResponseState.AWAIT_PARAM_DEF;
             else if (bufferNumColumns > 0)
                 bufferState = ResponseState.AWAIT_COL_DEF;
-            else
+            else {
+                message.setSequenceEnd(true);
                 bufferState = ResponseState.DONE;
+            }
             return message;
         }
 

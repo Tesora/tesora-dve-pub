@@ -141,8 +141,12 @@ public class PEForeignKey extends PEKey {
 	}
 	
 	public Name getTargetTableName(SchemaContext sc) {
+		return getTargetTableName(sc,false);
+	}
+	
+	public Name getTargetTableName(SchemaContext sc, boolean qualifiedName) {
 		if (targetTable != null) {
-			if (!targetTable.get(sc).getPEDatabase(sc).getCacheKey().equals(getTable(sc).getPEDatabase(sc).getCacheKey())) {
+			if (qualifiedName || !targetTable.get(sc).getPEDatabase(sc).getCacheKey().equals(getTable(sc).getPEDatabase(sc).getCacheKey())) {
 				// target table in different database - use fully qualified name
 				return targetTable.get(sc).getName().prefix(targetTable.get(sc).getPEDatabase(sc).getName());
 			}
@@ -151,7 +155,7 @@ public class PEForeignKey extends PEKey {
 		if (targetTableName.isQualified()) {
 			QualifiedName qn = (QualifiedName) targetTableName;
 			UnqualifiedName dbn = qn.getNamespace();
-			if (getTable(sc).getPEDatabase(sc).getName().equals(dbn))
+			if (!qualifiedName && getTable(sc).getPEDatabase(sc).getName().equals(dbn))
 				return targetTableName.getUnqualified();
 			return targetTableName;
 		}

@@ -24,6 +24,7 @@ package com.tesora.dve.upgrade.versions;
 import java.util.Arrays;
 
 import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.exceptions.PEException;
 
 public class MTForeignKeys extends ComplexCatalogVersion {
@@ -53,7 +54,7 @@ public class MTForeignKeys extends ComplexCatalogVersion {
 	};
 	
 	@Override
-	public void upgrade(DBHelper helper) throws PEException {
+	public void upgrade(DBHelper helper, InformationCallback ic) throws PEException {
 		clearInfoSchema(helper);
 
 		for(String s : beforeSQL)

@@ -33,6 +33,7 @@ import org.junit.Test;
 
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEFileUtils;
+import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.DynamicGroupClass;
@@ -47,6 +48,7 @@ import com.tesora.dve.server.connectionmanager.TestHost;
 import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
 import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.standalone.PETest;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.MasterMasterWorker;
 import com.tesora.dve.worker.SingleDirectWorker;
 
@@ -58,6 +60,7 @@ public class DVEConfigCLITest extends PETest {
 	static final String LOCAL = "LOCAL";
 
 	static String CATALOG_URL;
+	static String SITE_URL;
 
 	@BeforeClass
 	public static void setup() throws Exception {
@@ -67,7 +70,8 @@ public class DVEConfigCLITest extends PETest {
 		DVEConfigCLI pet = new DVEConfigCLI(null);
 		CatalogHelper helper = pet.getCatalogHelper();
 
-		CATALOG_URL = helper.getCatalogUrl();
+		CATALOG_URL = helper.getCatalogBaseUrl();
+		SITE_URL = PEUrl.stripUrlParameters(CATALOG_URL);
 	}
 
 	@AfterClass
@@ -92,7 +96,7 @@ public class DVEConfigCLITest extends PETest {
 
 		// We expect to have 5 sites we just created
 		for (int i = 1; i < sites.size(); i++) {
-			verifySingleSite(c, CatalogHelper.DEFAULT_SITE_PREFIX + i, CatalogHelper.DEFAULT_SITE_PREFIX + i);
+			verifySingleSite(c, CatalogHelper.DEFAULT_SITE_PREFIX + i, CatalogHelper.DEFAULT_SITE_PREFIX + i, CATALOG_URL);
 		}
 
 		// All of the persistent sites should be in the default persistent group
@@ -102,8 +106,8 @@ public class DVEConfigCLITest extends PETest {
 		Provider provider = verifyProvider(c, TEST_PROVIDER, 1);
 
 		// Verify default policy
-		DynamicPolicy policy = c.findDefaultProject().getDefaultPolicy();
-		assertEquals(DEFAULT_POLICY, policy.getName());
+		String defaultPolicyName = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c).getValue();
+		assertEquals(DEFAULT_POLICY, defaultPolicyName);
 
 		// Verify policy count
 		List<DynamicPolicy> policies = c.findAllDynamicPolicies();
@@ -113,7 +117,7 @@ public class DVEConfigCLITest extends PETest {
 		DynamicPolicy matchPolicy = new DynamicPolicy(DEFAULT_POLICY, true, provider.getName(), LOCAL, 1,
 				provider.getName(), LOCAL, 3, provider.getName(), LOCAL, 3, provider.getName(), LOCAL, 5);
 
-		verifyPolicy(policy, matchPolicy);
+		verifyPolicy(c.findDynamicPolicy(defaultPolicyName), matchPolicy);
 
 		c.close();
 		console.close();
@@ -141,7 +145,7 @@ public class DVEConfigCLITest extends PETest {
 
 		// We expect to have 3 sites we just created
 		for (int i = 1; i < sites.size(); i++) {
-			verifySingleSite(c, "site" + i, "inst" + i);
+			verifySingleSite(c, "site" + i, "inst" + i, SITE_URL);
 		}
 
 		// All of the persistent sites should be in the default persistent group
@@ -151,8 +155,8 @@ public class DVEConfigCLITest extends PETest {
 		Provider provider = verifyProvider(c, TEST_PROVIDER, 1);
 
 		// Verify default policy
-		DynamicPolicy policy = c.findDefaultProject().getDefaultPolicy();
-		assertEquals(TEST_POLICY, policy.getName());
+		String defaultPolicyName = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c).getValue();
+		assertEquals(TEST_POLICY, defaultPolicyName);
 
 		// Verify policy count
 		List<DynamicPolicy> policies = c.findAllDynamicPolicies();
@@ -161,7 +165,7 @@ public class DVEConfigCLITest extends PETest {
 		// Ignore the configuration of the provider for now
 		DynamicPolicy matchPolicy = new DynamicPolicy(TEST_POLICY, true, provider.getName(), "none", 1,
 				provider.getName(), "none", 1, provider.getName(), "none", 2, provider.getName(), "none", 3);
-		verifyPolicy(policy, matchPolicy);
+		verifyPolicy(c.findDynamicPolicy(defaultPolicyName), matchPolicy);
 
 		c.close();
 		console.close();
@@ -199,8 +203,8 @@ public class DVEConfigCLITest extends PETest {
 		Provider provider = verifyProvider(c, TEST_PROVIDER, 1);
 
 		// Verify default policy
-		DynamicPolicy policy = c.findDefaultProject().getDefaultPolicy();
-		assertEquals(TEST_POLICY, policy.getName());
+		String defaultPolicyName = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c).getValue();
+		assertEquals(TEST_POLICY, defaultPolicyName);
 
 		// Verify policy count
 		List<DynamicPolicy> policies = c.findAllDynamicPolicies();
@@ -208,7 +212,7 @@ public class DVEConfigCLITest extends PETest {
 
 		DynamicPolicy matchPolicy = new DynamicPolicy(TEST_POLICY, true, provider.getName(), "none", 1,
 				provider.getName(), "none", 1, provider.getName(), "none", 2, provider.getName(), "none", 3);
-		verifyPolicy(policy, matchPolicy);
+		verifyPolicy(c.findDynamicPolicy(defaultPolicyName), matchPolicy);
 
 		c.close();
 		console.close();
@@ -256,8 +260,9 @@ public class DVEConfigCLITest extends PETest {
 		
 		c = CatalogDAOFactory.newInstance();
 
-		policy = c.findDefaultProject().getDefaultPolicy();
-		assertEquals(policy.getName(), TEST_POLICY);
+		String defaultPolicyName = KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(c).getValue();
+		policy = c.findDynamicPolicy(defaultPolicyName);
+		assertEquals(defaultPolicyName, TEST_POLICY);
 		
 		c.close();
 
@@ -296,7 +301,7 @@ public class DVEConfigCLITest extends PETest {
 	 * "configure es <name> <filename>", "remove es <name>",
 	 */
 
-	private void verifySingleSite(CatalogDAO c, String siteName, String instName) throws PEException {
+	private void verifySingleSite(CatalogDAO c, String siteName, String instName, String siteUrl) throws PEException {
 		PersistentSite site = c.findPersistentSite(siteName);
 
 		assertTrue("Site " + siteName + " should exist", site != null);
@@ -308,7 +313,7 @@ public class DVEConfigCLITest extends PETest {
 		SiteInstance inst = instances.get(0);
 		assertEquals(instName, inst.getName());
 		String url = inst.getInstanceURL();
-		assertEquals(CATALOG_URL, url);
+		assertEquals(siteUrl, url);
 		assertTrue("Site should be enabled", inst.isEnabled() == true);
 		assertTrue("Site should be master", inst.isMaster() == true);
 
@@ -331,14 +336,14 @@ public class DVEConfigCLITest extends PETest {
 		SiteInstance inst1 = instances.get(0);
 		assertEquals(inst1Name, inst1.getName());
 		String url1 = inst1.getInstanceURL();
-		assertEquals(CATALOG_URL, url1);
+		assertEquals(SITE_URL, url1);
 		assertTrue("Site should be enabled", inst1.isEnabled() == true);
 		assertTrue("Site should be master", inst1.isMaster() == true);
 
 		SiteInstance inst2 = instances.get(1);
 		assertEquals(inst2Name, inst2.getName());
 		String url2 = inst2.getInstanceURL();
-		assertEquals(CATALOG_URL, url2);
+		assertEquals(SITE_URL, url2);
 		assertTrue("Site should be enabled", inst2.isEnabled() == true);
 		assertTrue("Site should be master", inst2.isMaster() == false);
 
@@ -350,10 +355,10 @@ public class DVEConfigCLITest extends PETest {
 
 	private void verifyGroup(CatalogDAO c, String name, int count) throws PEException {
 		// All of the persistent sites should be in the default persistent group
-		PersistentGroup group = c.findDefaultProject().getDefaultStorageGroup();
-		assertEquals(name, group.getName());
+		String defSGName = KnownVariables.PERSISTENT_GROUP.lookupPersistentConfig(c).getValue();
+		assertEquals(name, defSGName);
 
-		group = c.findPersistentGroup(name);
+		PersistentGroup group = c.findPersistentGroup(defSGName);
 		assertEquals(name, group.getName());
 
 		List<PersistentSite> groupSites = group.getStorageSites();

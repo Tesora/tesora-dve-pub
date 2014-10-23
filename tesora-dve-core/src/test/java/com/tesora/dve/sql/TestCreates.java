@@ -44,14 +44,16 @@ import com.tesora.dve.common.catalog.FKMode;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeTypeCatalog;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.ConnectionResource;
+import com.tesora.dve.sql.util.JdbcConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
+import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ProxyConnectionResourceResponse;
 import com.tesora.dve.sql.util.ResourceResponse;
@@ -116,11 +118,13 @@ public class TestCreates extends SchemaTest {
 		String cts = AlterTest.getCreateTable(rootConnection, "testB");
 		assertTrue("enum should appear in create table stmt",cts.indexOf("bridge") > -1);
 		rootConnection.assertResults("show columns in testB like 'fund%'",br(nr,"funding","enum('angel','bridge','A','B')","NO","","angel",""));
-		try {
-			rootConnection.execute("create table uncreatable (`id` int, `funding` enum ('bankrupt')) static distribute on (`funding`)");
-		} catch (PEException pe) {
-			assertSchemaException(pe,"Invalid distribution column type: enum('bankrupt')");
-		}
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				rootConnection.execute("create table uncreatable (`id` int, `funding` enum ('bankrupt')) static distribute on (`funding`)");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+					"Internal error: Invalid distribution column type: enum('bankrupt')");
 	}
 	
 	@Test
@@ -162,21 +166,53 @@ public class TestCreates extends SchemaTest {
 	}
 
 	@Test
-	public void testSetStorageEngine() throws Throwable {
-		rootConnection.execute("set storage_engine=MEMORY");
-		rootConnection.execute("create table sstest (`id` int, `hescores` varchar(32))");
-		String cts = AlterTest.getCreateTable(rootConnection, "sstest");
-		assertTrue("engine type should be memory",cts.indexOf("MEMORY") > -1);
-		rootConnection.assertResults("select engine from information_schema.tables where table_name = 'sstest' and table_schema = '" + testDDL.getDatabaseName() + "'",
-				br(nr,"MEMORY"));		
+	public void testStorageEngines() throws Throwable {
+		testCreateWithStorageEngine("MyISAM");
+		testCreateWithStorageEngine("InnoDB");
+		testCreateWithStorageEngine("MEMORY");
+		testCreateWithStorageEngine("ARCHIVE");
+		testCreateWithStorageEngine("CSV");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				testCreateWithStorageEngine("BLACKHOLE");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "storage_engine", "BLACKHOLE");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				testCreateWithStorageEngine("FEDERATED");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "storage_engine", "FEDERATED");
+	}
+
+	private void testCreateWithStorageEngine(final String engine) throws Throwable {
+		final String baseTableName = "storage_engine_test_" + engine;
+
+		rootConnection.execute("create table " + baseTableName + "_A (`id` int not null, `hescores` varchar(32) not null) ENGINE=" + engine);
+		rootConnection.execute("set storage_engine=" + engine);
+		rootConnection.execute("create table " + baseTableName + "_B (`id` int not null, `hescores` varchar(32) not null)");
+
+		assertStorageEngineForTable(engine, baseTableName + "_A");
+		assertStorageEngineForTable(engine, baseTableName + "_B");
+	}
+
+	private void assertStorageEngineForTable(final String engine, final String tableName) throws Throwable {
+		final String cts = AlterTest.getCreateTable(rootConnection, tableName);
+		assertTrue("Table '" + tableName + "' should have '" + engine + "' engine in definition: " + cts, cts.indexOf(engine) > -1);
+		rootConnection.assertResults(
+				"select engine from information_schema.tables where table_name = '" + tableName + "' and table_schema = '" + testDDL.getDatabaseName() + "'",
+				br(nr, engine));
 	}
 
 	@Test
 	public void testFulltextIndex() throws Throwable {
 		rootConnection.execute("create table ftitest (`id` int, `partay` text, `partee` text, fulltext index `dict` (`partay`, `partee`)) engine=myisam");
 		rootConnection.assertResults("show keys in ftitest",
-				br(nr,"ftitest",I_ONE,"dict",new Integer(1),"partay",null,getIgnore(),null,null,"YES","FULLTEXT","","",
-				   nr,"ftitest",I_ONE,"dict",new Integer(2),"partee",null,getIgnore(),null,null,"YES","FULLTEXT","",""));
+				br(nr,"ftitest",1,"dict",1,"partay",null,getIgnore(),null,null,"YES","FULLTEXT","","",
+				   nr,"ftitest",1,"dict",2,"partee",null,getIgnore(),null,null,"YES","FULLTEXT","",""));
 	}
 	
 	@Test
@@ -211,12 +247,15 @@ public class TestCreates extends SchemaTest {
 	public void testMultiDBCreate() throws Throwable {
 		ProxyConnectionResourceResponse rr = (ProxyConnectionResourceResponse) rootConnection.execute(testDDL.getCreateDatabaseStatement());
 		assertEquals("dup create should have 0 rows affected",rr.getNumRowsAffected(),0);
-		try {
-			rootConnection.execute("create database mtdb default persistent group pg using template " + TemplateMode.OPTIONAL);
-			fail("dup db should throw");
-		} catch (PEException pe) {
-			SchemaTest.assertSchemaException(pe, "Database mtdb already exists");
-		}
+
+		// dup db should throw
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				rootConnection.execute("create database mtdb default persistent group pg using template " + TemplateMode.OPTIONAL);
+			}
+		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+					"Internal error: Database mtdb already exists");
 	}
 
 	@Test
@@ -226,10 +265,10 @@ public class TestCreates extends SchemaTest {
         final String defaultCollation = Singletons.require(HostService.class).getDBNative().getDefaultServerCollation();
         final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
 
-		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8", true);
-		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII", true);
-		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1", true);
-		final NativeCharSet utf8mb4 = supportedCharsets.findCharSetByName("UTF8MB4", true);
+		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8");
+		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII");
+		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1");
+		final NativeCharSet utf8mb4 = supportedCharsets.findCharSetByName("UTF8MB4");
 		
 		String db = "onlypg";
 		StringBuilder createDBSql = new StringBuilder();
@@ -245,24 +284,24 @@ public class TestCreates extends SchemaTest {
 		createDBSql.append(db);
 		createDBSql.append(" character set = '" + utf8.getName() + "' ");
 		createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-		executeCreateDB(createDBSql.toString(), db, utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(utf8.getName(), true).getName());
+		executeCreateDB(createDBSql.toString(), db, utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(utf8.getName()).getName());
 
 		db = "collationonly";
 		createDBSql = new StringBuilder();
 		createDBSql.append("create database ");
 		createDBSql.append(db);
-		createDBSql.append(" collate " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+		createDBSql.append(" collate " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 		createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-		executeCreateDB(createDBSql.toString(), db, latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+		executeCreateDB(createDBSql.toString(), db, latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 
 		db = "charsetandcollation";
 		createDBSql = new StringBuilder();
 		createDBSql.append("create database ");
 		createDBSql.append(db);
 		createDBSql.append(" default character set '" + ascii.getName() + "' ");
-		createDBSql.append(" default collate = " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(ascii.getName(), true).getName());
+		createDBSql.append(" default collate = " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(ascii.getName()).getName());
 		createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-		executeCreateDB(createDBSql.toString(), db, ascii.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(ascii.getName(), true).getName());
+		executeCreateDB(createDBSql.toString(), db, ascii.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(ascii.getName()).getName());
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -272,11 +311,11 @@ public class TestCreates extends SchemaTest {
 				createDBSql.append("create database ");
 				createDBSql.append(db);
 				createDBSql.append(" default character set '" + utf8.getName() + "' ");
-				createDBSql.append(" default collate = " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+				createDBSql.append(" default collate = " + Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 				createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-				executeCreateDB(createDBSql.toString(), db, utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+				executeCreateDB(createDBSql.toString(), db, utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
+		}.assertException(SchemaException.class, "COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -289,7 +328,7 @@ public class TestCreates extends SchemaTest {
 				createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
 				executeCreateDB(createDBSql.toString(), db, "big5", "big5_chinese_ci");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No collations found for character set 'big5'");
+		}.assertException(SchemaException.class, "Unsupported CHARACTER SET big5");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -302,7 +341,7 @@ public class TestCreates extends SchemaTest {
 				createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
 				executeCreateDB(createDBSql.toString(), db, utf8.getName(), "utf8_junk_ci");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - Unsupported COLLATION 'utf8_junk_ci'");
+		}.assertException(SchemaException.class, "Unsupported COLLATION 'utf8_junk_ci'");
 		
 		db = "UTF8MB4_charset";
 		createDBSql = new StringBuilder();
@@ -310,7 +349,7 @@ public class TestCreates extends SchemaTest {
 		createDBSql.append(db);
 		createDBSql.append(" default character set '" + utf8mb4.getName() + "' ");
 		createDBSql.append(" default persistent group pg using template " + TemplateMode.OPTIONAL);
-		executeCreateDB(createDBSql.toString(), db, utf8mb4.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(utf8mb4.getName(), true).getName());
+		executeCreateDB(createDBSql.toString(), db, utf8mb4.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(utf8mb4.getName()).getName());
 	}
 
 	private void executeCreateDB(String createSql, String db,
@@ -344,7 +383,7 @@ public class TestCreates extends SchemaTest {
 		String cts = AlterTest.getCreateTable(rootConnection, "colpref");
 		assertTrue("should have prefix",cts.indexOf("`body`(200)") > -1);
 		rootConnection.assertResults("show keys in colpref",
-				br(nr,"colpref",I_ZERO,"body",I_ONE,"body","A",getIgnore(),new Integer(200),null,"YES","BTREE","",""));
+				br(nr,"colpref",0,"body",1,"body","A",getIgnore(),new Integer(200),null,"YES","BTREE","",""));
 	}
 
 	@Test
@@ -413,16 +452,16 @@ public class TestCreates extends SchemaTest {
 	public void testPE339() throws Throwable {
 		rootConnection.execute("create table pe339 (a int, unique (a), b int not null, unique(b), c int not null, index(c))");
 		rootConnection.assertResults("show keys in pe339",
-				br(nr,"pe339",I_ZERO,"a",I_ONE,"a","A",getIgnore(),null,null,"YES","BTREE","","",
-				   nr,"pe339",I_ZERO,"b",I_ONE,"b","A",getIgnore(),null,null,"","BTREE","","",
-				   nr,"pe339",I_ONE,"c",I_ONE,"c","A",getIgnore(),null,null,"","BTREE","",""));
+				br(nr,"pe339",0,"a",I_ONE,"a","A",getIgnore(),null,null,"YES","BTREE","","",
+				   nr,"pe339",0,"b",I_ONE,"b","A",getIgnore(),null,null,"","BTREE","","",
+				   nr,"pe339",1,"c",I_ONE,"c","A",getIgnore(),null,null,"","BTREE","",""));
 	}
 	
 	@Test
 	public void testPE329() throws Throwable {
 		rootConnection.execute("create table pe329 (a int not null, b int not null, primary key using BTREE (a))");
 		rootConnection.assertResults("show keys in pe329",
-				br(nr,"pe329",new Integer(0),"PRIMARY",new Integer(1),"a","A",getIgnore(),null, null, "", "BTREE", "", ""));
+				br(nr,"pe329",0,"PRIMARY",new Integer(1),"a","A",getIgnore(),null, null, "", "BTREE", "", ""));
 	}
 	
 	@Test
@@ -432,7 +471,7 @@ public class TestCreates extends SchemaTest {
 			rootConnection.execute("create table pe330 (c1 varchar(10) not null, index i1 (c1) comment 'c1')");
 			assertTrue("still has comment decl",AlterTest.getCreateTable(rootConnection,"pe330").indexOf("COMMENT 'c1'") > -1);
 			rootConnection.assertResults("show keys in pe330",
-					br(nr,"pe330",I_ONE,"i1",I_ONE,"c1","A",getIgnore(),null,null,"","BTREE","","c1"));
+					br(nr,"pe330",1,"i1",I_ONE,"c1","A",getIgnore(),null,null,"","BTREE","","c1"));
 		}
 	}
 	
@@ -524,18 +563,21 @@ public class TestCreates extends SchemaTest {
 	public void testPE214() throws Throwable {
 		rootConnection.execute("create table pe214a (a int primary key, b int unique key, c int key)");
 		rootConnection.assertResults("show keys in pe214a",
-				br(nr,"pe214a",I_ZERO,"b",I_ONE,"b","A",getIgnore(),null,null,"YES","BTREE","","",
-				   nr,"pe214a",I_ONE,"c",I_ONE,"c","A",getIgnore(),null,null,"YES","BTREE","","",
-				   nr,"pe214a",I_ZERO,"PRIMARY",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","",""));
+				br(nr,"pe214a",0,"PRIMARY",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","","",
+				   nr,"pe214a",0,"b",I_ONE,"b","A",getIgnore(),null,null,"YES","BTREE","","",
+				   nr,"pe214a",1,"c",I_ONE,"c","A",getIgnore(),null,null,"YES","BTREE","",""
+				   ));
 		rootConnection.execute("create table pe214b (a int unique key primary key)");
 		rootConnection.assertResults("show keys in pe214b",
-				br(nr,"pe214b",I_ZERO,"a",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","","",
-				   nr,"pe214b",I_ZERO,"PRIMARY",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","",""));
+				br(nr,"pe214b",0,"PRIMARY",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","","",
+				   nr,"pe214b",0,"a",I_ONE,"a","A",getIgnore(),null,null,"","BTREE","",""				   
+				   ));
 	}
 	
 	@Test
 	public void testPE742() throws Throwable {
-		rootConnection.execute("create table t1 (c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment', c2 INTEGER,c3 INTEGER COMMENT '012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789', c4 INTEGER, c5 INTEGER, c6 INTEGER, c7 INTEGER, INDEX i1 (c1),INDEX i2(c2)) COMMENT='abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd';");
+		rootConnection
+				.execute("create table pe742_t1 (c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment', c2 INTEGER,c3 INTEGER COMMENT '012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789', c4 INTEGER, c5 INTEGER, c6 INTEGER, c7 INTEGER, INDEX i1 (c1),INDEX i2(c2)) COMMENT='abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd';");
 	}
 	
 	@Test
@@ -935,8 +977,8 @@ public class TestCreates extends SchemaTest {
 			public void test() throws Throwable {
 				rootConnection.execute("create table pe432_db.pe432 (id int not null)");
 			}
-		}.assertException(PESQLException.class,
-				"Unable to build plan - com.tesora.dve.sql.SchemaException: No such range from template 'pe432_template' on storage group pg: pe432_range");
+		}.assertException(SchemaException.class,
+				"com.tesora.dve.sql.SchemaException: No such range from template 'pe432_template' on storage group pg: pe432_range");
 		} finally {
 			try {
 				rootConnection.execute("drop database if exists pe432_db");
@@ -963,7 +1005,7 @@ public class TestCreates extends SchemaTest {
 			public void test() throws Throwable {
 				rootConnection.execute("create table pe359 (n int not null, key(n)) delay_key_write = 1");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No support for DELAY_KEY_WRITE table option");
+		}.assertException(SchemaException.class, "No support for DELAY_KEY_WRITE table option");
 	}
 	
 	@Test
@@ -975,14 +1017,14 @@ public class TestCreates extends SchemaTest {
 			public void test() throws Throwable {
 				rootConnection.execute("CREATE TABLE pe743 (a ENUM(0xE4, '1', '2') not null default 5)");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No value at position 5 in the ENUM");
+		}.assertException(SchemaException.class, "No value at position 5 in the ENUM");
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
 				rootConnection.execute("CREATE TABLE pe743 (a SET(0xE4, '1', '2') not null default 5)");
 			}
-		}.assertException(PESQLException.class, "Unable to build plan - No value at position 5 in the SET");
+		}.assertException(SchemaException.class, "No value at position 5 in the SET");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -1007,23 +1049,96 @@ public class TestCreates extends SchemaTest {
 		rootConnection.execute("alter table dve1496 change `a` `a` varchar(255) character set utf8mb4 collate utf8mb4_unicode_ci DEFAULT NULL");
 	}
 
-	@Ignore
 	@Test
-	public void testPE736() throws Throwable {
-		rootConnection.execute("CREATE TABLE `t1` (`a` int(11) DEFAULT '10' )");
-		rootConnection.assertResults("show create table t1",
-				br(nr, "t1", "CREATE TABLE `t1` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+	public void testPE735_PE736_PE737() throws Throwable {
+		rootConnection.execute("CREATE TABLE `pe73567_t0` (b BIT DEFAULT 1, i INT DEFAULT NULL);");
+		rootConnection
+				.assertResults(
+						"show create table pe73567_t0",
+						br(nr, "pe73567_t0",
+								"CREATE TABLE `pe73567_t0` (\n  `b` bit(1) DEFAULT b'1',\n  `i` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
 
-		rootConnection.execute("CREATE TABLE `t2` (`a` int(11) DEFAULT 10 )");
-		rootConnection.assertResults("show create table t2",
-				br(nr, "t2", "CREATE TABLE `t2` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+		rootConnection.execute("CREATE TABLE `pe73567_t1` (`a` int(11) DEFAULT '10' )");
+		rootConnection.assertResults(
+				"show create table pe73567_t1",
+				br(nr, "pe73567_t1",
+						"CREATE TABLE `pe73567_t1` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
 
-		rootConnection.execute("CREATE TABLE `t3` (`a` double DEFAULT 10.0 )");
-		rootConnection.assertResults("show create table t3",
-				br(nr, "t3", "CREATE TABLE `t3` (\n  `a` double DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+		rootConnection.execute("CREATE TABLE `pe73567_t2` (`a` int(11) DEFAULT 10 )");
+		rootConnection.assertResults(
+				"show create table pe73567_t2",
+				br(nr, "pe73567_t2",
+						"CREATE TABLE `pe73567_t2` (\n  `a` int(11) DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
 
-		rootConnection.execute("CREATE TABLE `t4` (`a` double DEFAULT 10.5 )");
-		rootConnection.assertResults("show create table t4",
-				br(nr, "t4", "CREATE TABLE `t4` (\n  `a` double DEFAULT '10.5'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+		rootConnection.execute("CREATE TABLE `pe73567_t3` (`a` double DEFAULT 10.0 )");
+		rootConnection.assertResults(
+				"show create table pe73567_t3",
+				br(nr, "pe73567_t3",
+						"CREATE TABLE `pe73567_t3` (\n  `a` double DEFAULT '10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+
+		rootConnection.execute("CREATE TABLE `pe73567_t4` (`a` double DEFAULT 10.5 )");
+		rootConnection.assertResults(
+				"show create table pe73567_t4",
+				br(nr, "pe73567_t4",
+						"CREATE TABLE `pe73567_t4` (\n  `a` double DEFAULT '10.5'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 /*#dve  RANDOM DISTRIBUTE */"));
+
+		rootConnection.execute("CREATE TABLE `pe73567_t5` (`a` varchar(14) DEFAULT 'Hello, World!' ) DEFAULT CHARSET=latin1 DEFAULT COLLATE=latin1_swedish_ci");
+		rootConnection
+				.assertResults(
+						"show create table pe73567_t5",
+						br(nr,
+								"pe73567_t5",
+								"CREATE TABLE `pe73567_t5` (\n  `a` varchar(14) DEFAULT 'Hello, World!'\n) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci /*#dve  RANDOM DISTRIBUTE */"));
+	}
+	
+	@Test
+	public void testDVE1592() throws Throwable {
+		rootConnection.execute("create table dve1592 (id int primary key, fid int unique, sid int key)");
+		rootConnection.assertResults("show keys in dve1592",
+				br(nr,"dve1592",0,"PRIMARY",1,"id",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore,
+				   nr,"dve1592",0,"fid",1,"fid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore,				   
+				   nr,"dve1592",1,"sid",1,"sid",ignore,ignore,ignore,ignore,ignore,ignore,ignore,ignore
+				   ));
+	}
+	
+	@Test
+	public void testPE1632() throws Throwable {
+		rootConnection.execute("DROP TABLE IF EXISTS pe1632;");
+		rootConnection.execute("SET SQL_MODE='TRADITIONAL'");
+		
+		// a table comment 2049 chars long
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				rootConnection.execute("CREATE TABLE t1 (c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment', c2 INTEGER,c3 INTEGER COMMENT '012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789', c4 INTEGER, c5 INTEGER, c6 INTEGER, c7 INTEGER, INDEX i1 (c1) COMMENT 'i1 comment',INDEX i2(c2)"
+								+ ") COMMENT='abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcd'");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.tooLongTableCommentFormatter, "t1", 2048L);
+	}
+
+	@Test
+	public void testPE1651() throws Throwable {
+		try (final JdbcConnectionResource rc = new PortalDBHelperConnectionResource()) {
+			rc.connect();
+
+			rc.execute("SET NAMES utf8");
+			rc.execute("SET character_set_database = utf8");
+
+			rc.execute("DROP DATABASE IF EXISTS `ﾆﾎﾝｺﾞ`");
+			rc.execute("DROP DATABASE IF EXISTS `日本語`");
+			rc.execute("DROP DATABASE IF EXISTS `龔龖龗`");
+
+			rc.execute("CREATE DATABASE `ﾆﾎﾝｺﾞ` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + " USING TEMPLATE OPTIONAL");
+			rc.execute("CREATE DATABASE `日本語` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + "  USING TEMPLATE OPTIONAL");
+			rc.execute("CREATE DATABASE `龔龖龗` DEFAULT PERSISTENT GROUP " + sgDDL.getName() + "  USING TEMPLATE OPTIONAL");
+
+			rc.execute("USE `ﾆﾎﾝｺﾞ`");
+			rc.execute("USE `日本語`");
+			rc.execute("USE `龔龖龗`");
+
+			rc.execute("DROP DATABASE `ﾆﾎﾝｺﾞ`");
+			rc.execute("DROP DATABASE `日本語`");
+			rc.execute("DROP DATABASE `龔龖龗`");
+		}
 	}
 }

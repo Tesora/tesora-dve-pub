@@ -54,7 +54,7 @@ public class MysqlNativeCollationCatalog extends NativeCollationCatalog {
 				for(Collations collation : collations) {
 					addCollation(new MysqlNativeCollation(collation.getName(),
 							collation.getCharacterSetName(),
-							collation.getId(),
+							collation.getCollationId(),
 							collation.getIsDefault(),
 							collation.getIsCompiled(), 
 							collation.getSortlen()));

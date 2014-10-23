@@ -23,10 +23,16 @@ package com.tesora.dve.sql;
 
 import io.netty.util.CharsetUtil;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
-import org.apache.commons.lang.ArrayUtils;
+import javax.sql.rowset.serial.SerialBlob;
+import javax.sql.rowset.serial.SerialException;
+
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -42,7 +48,7 @@ import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.sql.util.TestResource;
 
 public class InsertMysqlConnTest extends MysqlConnSchemaMirrorTest {
-	private static final int SITES = 5;
+	private static final int SITES = 3;
 
 	private static final ProjectDDL sysDDL = new PEDDL("sysdb",
 				new StorageGroupDDL("sys",SITES,"sysg"),
@@ -78,70 +84,51 @@ public class InsertMysqlConnTest extends MysqlConnSchemaMirrorTest {
 		return out;
 	}
 	
-	/**
-	 * Reproduce PE-969
-	 */
 	@Test
 	public void testPE969() throws Throwable {
-		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		final byte[] failingInput = { 75, -108, -84, 9 };
+
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
 		tests.add(new StatementMirrorProc(
 				"CREATE TABLE `bug_repro_969` (`message_id` int(11) unsigned NOT NULL AUTO_INCREMENT,`ip` varbinary(16) DEFAULT NULL,PRIMARY KEY (`message_id`)) ENGINE=InnoDB AUTO_INCREMENT=1262 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci"));
-		final byte[] failingInput = { 75, -108, -84, 9 };
-		final List<Byte> binarySql = new ArrayList<Byte>();
-		binarySql.addAll(Bytes.asList("INSERT INTO `bug_repro_969` VALUES (1234,'".getBytes()));
-		binarySql.addAll(Bytes.asList(failingInput));
-		binarySql.addAll(Bytes.asList("'),(1235,NULL)".getBytes()));
-		binaryTestHelper(binarySql, tests);
-
-		// the byte array gets mangled on the way in for native.
-		// native shows 'KÂ”Â¬' on disk, but pe shows 'K”¬' - notice the two extra A characters
-		// this is likely due to the encoding issues
+		binaryTestHelper("INSERT INTO `bug_repro_969` (`ip`) VALUES (?)",
+				Collections.singletonList(new SerialBlob(failingInput)),
+				CharsetUtil.ISO_8859_1,
+				tests);
 		tests.add(new StatementMirrorFun("SELECT binary ip FROM `bug_repro_969` order by message_id"));
 		runTest(tests);
 	}
 
-	/**
-	 * Reproduce PE-1149
-	 */
 	@Test
 	public void testPE1149() throws Throwable {
-		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
-		tests.add(new StatementMirrorProc(
-				"CREATE TABLE `bug_repro_1149` (`user_session_id` varchar(32) NOT NULL,`detail` blob, PRIMARY KEY (`user_session_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8"));
 		final byte[] failingInput = { (byte) 255 }; // any value above 127 will fail
-		final List<Byte> binarySql = new ArrayList<Byte>();
-		binarySql.addAll(Bytes
-				.asList("INSERT INTO `bug_repro_1149` VALUES ('somekey','"
-						.getBytes()));
-		binarySql.addAll(Bytes.asList(failingInput));
-		binarySql.addAll(Bytes.asList("'),('anotherkey','hi')".getBytes()));
-		binaryTestHelper(binarySql, tests);
 
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
+		tests.add(new StatementMirrorProc(
+				"CREATE TABLE `bug_repro_1149` (`user_session_id` INT NOT NULL AUTO_INCREMENT,`detail` blob, PRIMARY KEY (`user_session_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8"));
+		binaryTestHelper("INSERT INTO `bug_repro_1149` (`detail`) VALUES (?),('hi')",
+				Collections.singletonList(new SerialBlob(failingInput)),
+				CharsetUtil.ISO_8859_1,
+				tests);
+		tests.add(new StatementMirrorFun("SELECT * from `bug_repro_1149` ORDER BY `user_session_id`"));
 		runTest(tests);
 	}
 
-	/*
-	 * Reproduce PE-1327
-	 */
 	@Test
 	public void testPE1327() throws Throwable {
-	final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+		final byte[] failingInput = { (byte) 0xBE, (byte) 0x0E, (byte) 0x30, (byte) 0x5c, (byte) 0x5c };
+
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
 		tests.add(new StatementMirrorProc("CREATE TABLE `ecb` (`bip` int(10) unsigned NOT NULL AUTO_INCREMENT, " 
 										+ "`start` varbinary(16) NOT NULL, " 
 										+ "`stop` varbinary(16) NOT NULL, "
 										+ "PRIMARY KEY (`bip`) "
 										+ ") ENGINE=InnoDB AUTO_INCREMENT=80 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci"));
-		final byte[] failingInput = { (byte) 0xBE, (byte) 0x0E, (byte) 0x30, (byte) 0x5c, (byte) 0x5c };
-		final List<Byte> binarySql = new ArrayList<Byte>();
-		binarySql.addAll(Bytes.asList("INSERT INTO `ecb` VALUES (24,'".getBytes()));
-		binarySql.addAll(Bytes.asList(failingInput));
-		binarySql.addAll(Bytes.asList("','".getBytes()));
-		binarySql.addAll(Bytes.asList(failingInput));
-		binarySql.addAll(Bytes.asList("')".getBytes()));
-		binaryTestHelper(binarySql, tests);
-
+		binaryTestHelper("INSERT INTO `ecb` (`start`, `stop`) VALUES (?, ?)",
+				Arrays.asList(new SerialBlob(failingInput), new SerialBlob(failingInput)),
+				CharsetUtil.ISO_8859_1,
+				tests);
 		tests.add(new StatementMirrorFun("SELECT start FROM `ecb`"));
-
 		runTest(tests);
 	}
 
@@ -149,38 +136,75 @@ public class InsertMysqlConnTest extends MysqlConnSchemaMirrorTest {
 	public void testPE1482() throws Throwable {
 		final byte[] failingInput = { (byte)0x80, 0x5c, 0x72, 0x5c, 0x6e, 0x5c, 0x74, 0x5c, 0x62, 0x5c, 0x5a, 0x5c, 0x27, 0x5c, 0x22 }; // out of range char, \r, \n, \t, \b, \Z, \', \" 
 
-		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
-		
+		final List<MirrorTest> tests = new ArrayList<MirrorTest>();
 		tests.add(new StatementMirrorProc("CREATE TABLE `dgid` (`id` bigint(20) NOT NULL AUTO_INCREMENT, `p12Key` mediumblob NOT NULL, `email` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,PRIMARY KEY (`id`)) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci"));
-		
-		final List<Byte> binarySql = new ArrayList<Byte>();
-		binarySql.addAll(Bytes.asList("INSERT INTO `dgid` VALUES (1,'".getBytes()));
-		binarySql.addAll(Bytes.asList(failingInput));
-		binarySql.addAll(Bytes.asList("','')".getBytes()));
-		binaryTestHelper(binarySql, tests);
+		binaryTestHelper("INSERT INTO `dgid` (`p12Key`, `email`) VALUES (?, '')",
+				Arrays.asList(new SerialBlob(failingInput)),
+				CharsetUtil.ISO_8859_1,
+				tests);
 
 		tests.add(new StatementMirrorFun("SELECT p12Key FROM `dgid`"));
-
 		runTest(tests);
 	}
 
-	private void binaryTestHelper(List<Byte> binarySql,
-			ArrayList<MirrorTest> tests) {
-		final byte[] backingBinaryArray = ArrayUtils.toPrimitive(binarySql
-				.toArray(new Byte[] {}));
+	private void binaryTestHelper(final String genericSql, final List<SerialBlob> params, final Charset encoding, final List<MirrorTest> tests)
+			throws SerialException {
+		final List<Byte> binarySql = new ArrayList<Byte>();
+		final StringBuilder textSql = new StringBuilder();
+		final Iterator<SerialBlob> param = params.iterator();
+		int lastParamPos = -1;
+		while (param.hasNext()) {
+			final SerialBlob paramBytes = param.next();
+			final int nextParamPos = genericSql.indexOf("?", lastParamPos + 1);
+			final String textSqlFragment = getSqlFragment(genericSql, lastParamPos, nextParamPos);
+			
+			emitSqlFragment(textSqlFragment, textSql, binarySql, encoding);
+			emitSqlFragment("'", textSql, binarySql, encoding);
+
+			final byte[] rawParamBytes = paramBytes.getBytes(1, (int) paramBytes.length());
+			emitSqlFragment(rawParamBytes, textSql, binarySql, encoding);
+
+			emitSqlFragment("'", textSql, binarySql, encoding);
+			
+			lastParamPos = nextParamPos;
+		}
+		emitSqlFragment(getSqlFragment(genericSql, lastParamPos, -1), textSql, binarySql, encoding);
+
+		testWithDecodedStmt(textSql.toString(), tests);
+		testWithEncodedStmt(textSql.toString(), Bytes.toArray(binarySql), encoding, tests);
+	}
+	
+	private static String getSqlFragment(final String genericSql, final int startIndexInclusive, final int endIndexExclusive) {
+		return genericSql.substring(startIndexInclusive + 1, (endIndexExclusive > 0) ? endIndexExclusive : genericSql.length());
+	}
+
+	private static void emitSqlFragment(final String fragment, final StringBuilder textContainer, final List<Byte> binaryContainer, final Charset encoding) {
+		textContainer.append(fragment);
+		binaryContainer.addAll(Bytes.asList(fragment.getBytes(encoding)));
+	}
+
+	private static void emitSqlFragment(final byte[] fragment, final StringBuilder textContainer, final List<Byte> binaryContainer, final Charset encoding) {
+		textContainer.append(new String(fragment, encoding));
+		binaryContainer.addAll(Bytes.asList(fragment));
+	}
+
+	private void testWithEncodedStmt(final String textSql, final byte[] binarySql, final Charset encoding,
+			final List<MirrorTest> tests) {
 		tests.add(new MirrorProc() {
 			@Override
 			public ResourceResponse execute(TestResource mr) throws Throwable {
 				if (mr.getDDL().isNative()) {
-					return mr.getConnection().execute(
-							new String(backingBinaryArray,
-									CharsetUtil.ISO_8859_1));
+					return mr.getConnection().execute(textSql);
 				}
 
-				MysqlConnectionResource pcr = (MysqlConnectionResource) mr.getConnection();
-				return pcr.execute(null, backingBinaryArray);
+				final MysqlConnectionResource pcr = (MysqlConnectionResource) mr.getConnection();
+				return pcr.execute(null, encoding, binarySql);
 			}
 		});
+	}
+
+	private void testWithDecodedStmt(final String stmt, final List<MirrorTest> tests) {
+		tests.add(new StatementMirrorProc(stmt));
 	}
 
 }

@@ -22,11 +22,8 @@ package com.tesora.dve.sql.transform;
  */
 
 
-import static org.junit.Assert.fail;
-
-import org.junit.Ignore;
-import org.junit.Test;
-
+import org.testng.annotations.Test;
+import org.testng.Assert;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
@@ -62,7 +59,7 @@ public class AggregationTransformTest extends TransformTest {
 	};
 	
 	@Test
-	public void simpleMultiMaxTest() throws Exception {
+	public void simpleMultiMaxTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -79,7 +76,7 @@ public class AggregationTransformTest extends TransformTest {
 	
 	
 	@Test
-	public void simpleMultiMinTest() throws Exception {
+	public void simpleMultiMinTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -97,7 +94,7 @@ public class AggregationTransformTest extends TransformTest {
 	
 	
 	@Test
-	public void simpleMultiCountTest() throws Exception {
+	public void simpleMultiCountTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -115,7 +112,7 @@ public class AggregationTransformTest extends TransformTest {
 
 	
 	@Test
-	public void simpleMultiSumTest() throws Exception {
+	public void simpleMultiSumTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -133,7 +130,7 @@ public class AggregationTransformTest extends TransformTest {
 
 	
 	@Test
-	public void simpleMultiAvgTest() throws Exception {
+	public void simpleMultiAvgTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -151,7 +148,7 @@ public class AggregationTransformTest extends TransformTest {
 
 	
 	@Test
-	public void simpleSingleSumTest() throws Exception {
+	public void simpleSingleSumTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		stmtTest(db,
 				"select sum(version) from laws where id = 15",
@@ -164,7 +161,7 @@ public class AggregationTransformTest extends TransformTest {
 
 	
 	@Test
-	public void simpleSingleCountTest() throws Exception {
+	public void simpleSingleCountTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		stmtTest(db,
 				"select count(*) from laws where id = 15",
@@ -177,7 +174,7 @@ public class AggregationTransformTest extends TransformTest {
 
 	
 	@Test
-	public void simpleSingleMaxTest() throws Exception {
+	public void simpleSingleMaxTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		stmtTest(db,
 				"select max(version) from laws where id = 15",
@@ -191,7 +188,7 @@ public class AggregationTransformTest extends TransformTest {
 	
 	
 	@Test
-	public void simpleSingleAvgTest() throws Exception {
+	public void simpleSingleAvgTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		stmtTest(db,
 				"select avg(version) from laws where id = 15",
@@ -203,9 +200,8 @@ public class AggregationTransformTest extends TransformTest {
 	}
 	
 	
-	@Ignore
 	@Test 
-	public void testPE396A() throws Exception {
+	public void testPE396A() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -222,7 +218,7 @@ public class AggregationTransformTest extends TransformTest {
 	
 	
 	@Test
-	public void testComplexMultiTest() throws Exception {
+	public void testComplexMultiTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -245,7 +241,7 @@ public class AggregationTransformTest extends TransformTest {
 
 	
 	@Test
-	public void testRedistA() throws Exception {
+	public void testRedistA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -260,9 +256,8 @@ public class AggregationTransformTest extends TransformTest {
 								null)));
 	}
 	
-	@Ignore
 	@Test
-	public void testPE396B() throws Exception {
+	public void testPE396B() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -278,9 +273,8 @@ public class AggregationTransformTest extends TransformTest {
 					));
 	}
 
-	@Ignore
 	@Test
-	public void testPE396C() throws Exception {
+	public void testPE396C() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		stmtTest(db,
 				"select avg(version) + state_id, law from laws l group by id",
@@ -293,7 +287,7 @@ public class AggregationTransformTest extends TransformTest {
 
 	// take the new plan here too
 	@Test
-	public void testAggTestNonGrandAggFunsE() throws Exception {
+	public void testAggTestNonGrandAggFunsE() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,aggTestSchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -323,7 +317,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testAggTestDistinctGrandAggA() throws Exception {
+	public void testAggTestDistinctGrandAggA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,aggTestSchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -350,7 +344,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testAggTestGrandAggA() throws Exception {
+	public void testAggTestGrandAggA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,aggTestSchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -366,7 +360,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testAggTestEntityApi45355() throws Exception {
+	public void testAggTestEntityApi45355() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,aggTestSchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -395,7 +389,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testHavingA() throws Exception {
+	public void testHavingA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,aggTestSchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -420,7 +414,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testHavingB() throws Exception {
+	public void testHavingB() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,aggTestSchema);		
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -445,7 +439,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testHavingC() throws Exception {
+	public void testHavingC() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,aggTestSchema);		
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
@@ -475,7 +469,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 
 	@Test
-	public void testPE169Random() throws Exception {
+	public void testPE169Random() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table sbtest (id int, primary key (id) ) random distribute");
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
@@ -496,7 +490,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testPE169BCast() throws Exception {
+	public void testPE169BCast() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 			"create table sbtest (id int, primary key (id) ) broadcast distribute");
 		stmtTest(db,
@@ -510,7 +504,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testPE169Static() throws Exception {
+	public void testPE169Static() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 		"create table sbtest (id int, primary key (id) ) static distribute on (`id`)");
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
@@ -532,7 +526,7 @@ public class AggregationTransformTest extends TransformTest {
 	}
 	
 	@Test
-	public void testPE169Range() throws Exception {
+	public void testPE169Range() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 			"create table sbtest (id int, primary key (id) ) range distribute on (`id`) using openrange");
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
@@ -549,7 +543,6 @@ public class AggregationTransformTest extends TransformTest {
 					));
 	}
 	
-	@Ignore
 	@Test
 	public void testPE287() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
@@ -577,7 +570,6 @@ public class AggregationTransformTest extends TransformTest {
 					));
 	}
 
-	@Ignore
 	@Test
 	public void testPE396D() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
@@ -681,7 +673,7 @@ public class AggregationTransformTest extends TransformTest {
 						"select " + f + "(version) from laws group by id",
 						SelectStatement.class,
 						null);
-				fail("Did not fail on unsupported agg fun " + f);
+				Assert.fail("Did not fail on unsupported agg fun " + f);
 			} catch (Throwable t) {
 				SchemaTest.assertSchemaException(t, "Unsupported aggregation function: " + f);
 			}
@@ -790,7 +782,6 @@ public class AggregationTransformTest extends TransformTest {
 				null);
 	}
 
-	@Ignore
 	@Test
 	public void testPE1309() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,

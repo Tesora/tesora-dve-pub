@@ -56,13 +56,13 @@ public class PrepareExecutionStep extends DirectExecutionStep {
 
 	@Override
 	public String getSQL(SchemaContext sc, EmitOptions opts) {
-		return sql.resolve(sc,true,null).getUnresolved();
+		return sql.resolve(sc,true,null).getDecoded();
 	}
 
 	@Override
 	public void displaySQL(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
 		ArrayList<String> sub = new ArrayList<String>();
-		sql.display(sc, true, "  ", sub);
+		sql.resolveAsTextLines(sc, true, "  ", sub);
 		for(String s : sub) {
 			buf.add(indent + "    " + s);
 		}

@@ -24,6 +24,8 @@ package com.tesora.dve.dbc;
 
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
+
 import io.netty.channel.ChannelHandlerContext;
 
 import java.sql.ResultSet;
@@ -39,6 +41,7 @@ import com.tesora.dve.db.DBMetadata;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlLoadDataInfileRequestCollector;
 import com.tesora.dve.db.mysql.PEMysqlErrorException;
+import com.tesora.dve.errmap.ErrorMapper;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.messages.AddConnectParametersExecutor;
@@ -158,6 +161,8 @@ public class ServerDBConnection {
 			}
 			
 			return ret;
+		} catch (SchemaException se) {
+			throw ErrorMapper.makeException(se);
 		} catch (Throwable t) {
 			throw new SQLException(t);
 		} finally {
@@ -177,6 +182,8 @@ public class ServerDBConnection {
 				return null;
 			}
 		});
+		if (t instanceof SchemaException) 
+			throw (SchemaException)t;
 		if (t != null && t.getCause() != null) {
 			throw new PEException(t);
 		}
@@ -185,7 +192,7 @@ public class ServerDBConnection {
 	public void executeLoadDataRequest(
 			ChannelHandlerContext channelHandlerContext,
 			byte[] query) throws SQLException {
-		MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(channelHandlerContext, (byte)0);
+		MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(channelHandlerContext);
 		try {
 			loadDataRequestExecuteInContext(channelHandlerContext, resultConsumer, query);
 			if (resultConsumer.getFileName() == null) {

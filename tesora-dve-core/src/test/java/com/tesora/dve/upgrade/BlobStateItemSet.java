@@ -67,4 +67,9 @@ public class BlobStateItemSet extends StateItemSet {
 		}		
 	}
 
+	@Override
+	public boolean isEmpty() {
+		return blobs.isEmpty();
+	}
+
 }

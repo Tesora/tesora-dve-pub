@@ -41,8 +41,8 @@ import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
+import com.tesora.dve.variables.KnownVariables;
 
 public abstract class DirectExecutionStep extends ExecutionStep {
 
@@ -100,7 +100,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	
 	@Override
 	public String getSQL(SchemaContext sc, EmitOptions opts) {
-		return sql.resolve(sc, (opts == null ? null : opts.getMultilinePretty())).getUnresolved();
+		return sql.resolve(sc, (opts == null ? null : opts.getMultilinePretty())).getDecoded();
 	}
 
 	public SQLCommand getCommand(SchemaContext sc) {
@@ -136,7 +136,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	@Override
 	public void displaySQL(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
 		ArrayList<String> sub = new ArrayList<String>();
-		sql.display(sc, false, "  ", sub);
+		sql.resolveAsTextLines(sc, false, "  ", sub);
 		for(String s : sub) {
 			buf.add(indent + "    " + s);
 		}
@@ -217,7 +217,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	}
 	
 	public StepExecutionStatistics getStepStatistics(SchemaContext sc) {
-		if (SchemaVariables.getStepwiseStatistics(sc.getConnection()))
+		if (KnownVariables.STEPWISE_STATISTICS.getValue(sc.getConnection().getVariableSource()).booleanValue())
 			return stats;
 		return null;
 	}

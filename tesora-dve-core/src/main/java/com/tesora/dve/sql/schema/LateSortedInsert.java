@@ -30,16 +30,17 @@ import java.util.Map;
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.db.Emitter;
-import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.Emitter.EmitOptions;
+import com.tesora.dve.db.Emitter.EmitterInvoker;
+import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
-import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.sql.statement.dml.InsertIntoValuesStatement;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
@@ -47,37 +48,23 @@ import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 public class LateSortedInsert {
 
+	final InsertIntoValuesStatement stmt;
 	final ListOfPairs<List<ExpressionNode>,DistributionKey> parts;
 	
-	final String prefix;
-	final String suffix;
-	
-	final PETable intoTable;
-	
-	final DistKeyOpType keyOpType;
-	
-	final PEStorageGroup group;
-	
-	public LateSortedInsert(PETable intoTab, ListOfPairs<List<ExpressionNode>,DistributionKey> parts, 
-			String prefix, String suffix, DistKeyOpType keyOpType,
-			PEStorageGroup onGroup) {
-		this.prefix = prefix;
+	public LateSortedInsert(final InsertIntoValuesStatement stmt, final ListOfPairs<List<ExpressionNode>, DistributionKey> parts) {
+		this.stmt = stmt;
 		this.parts = parts;
-		this.intoTable = intoTab;
-		this.suffix = suffix;
-		this.keyOpType = keyOpType;
-		this.group = onGroup;
 	}
 	
 	public List<JustInTimeInsert> resolve(SchemaContext sc) throws PEException {
 		// sort by persistent site
-		DistributionVector dv = intoTable.getDistributionVector(sc);
+		DistributionVector dv = this.stmt.getTable().getDistributionVector(sc);
 		LinkedHashMap<MappingSolution, DistributionKey> repKeys = new LinkedHashMap<MappingSolution, DistributionKey>();
 		MultiMap<MappingSolution, List<ExpressionNode>> bySite = new MultiMap<MappingSolution, List<ExpressionNode>>();
-		for(Pair<List<ExpressionNode>, DistributionKey> p : parts) {
+		for (Pair<List<ExpressionNode>, DistributionKey> p : this.parts) {
 			DistributionKey dk = p.getSecond();
 			MappingSolution ms = 
-					sc.getCatalog().mapKey(sc,dk.getDetachedKey(sc), dk.getModel(sc), keyOpType, group);
+					sc.getCatalog().mapKey(sc, dk.getDetachedKey(sc), dk.getModel(sc), this.stmt.getKeyOpType(), this.stmt.getSingleGroup(sc));
 
 			if (MappingSolution.AllWorkers == ms) {
 				throw new SchemaException(Pass.PLANNER, "Unable to sort inserts, key for model " + dk.getModel(sc) + " apparently not deterministic");
@@ -99,35 +86,62 @@ public class LateSortedInsert {
 			}
 			Collection<List<ExpressionNode>> values = bySite.get(onSite);
 			List<List<ExpressionNode>> asList = Functional.toList(values);
-            Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
-			StringBuilder buf = new StringBuilder();
-			buf.append(prefix);
-			SQLCommand sqlc = null;
-			// we must always use generic sql - whether we have parameters or not,
-			// so that we can handle special characters correctly.
-			EmitOptions opts = EmitOptions.GENERIC_SQL;
-			emitter.setOptions(opts);
-			emitter.startGenericCommand();
-			try {
-				emitter.pushContext(sc.getTokens());
-				emitter.emitInsertValues(sc, asList, buf);		
-			} finally {
-				emitter.popContext();
-			}
-			if (suffix != null)
-				buf.append(suffix);
-			GenericSQLCommand gsql = emitter.buildGenericCommand(buf.toString());
-			if (sc.getValueManager().hasPassDownParams()) {
-				if ((sc.getOptions() != null && sc.getOptions().isPrepare()))
-					sqlc = new SQLCommand(gsql.resolve(sc,null));
-				else {
-					sqlc = new SQLCommand(gsql.resolve(sc,null),gsql.getFinalParams(sc));
-				}				
-			} else {
-				sqlc = new SQLCommand(gsql.resolve(sc,null));
-			}
-			out.add(new JustInTimeInsert(sqlc,asList.size(),dk));
+			emitJITInsert(sc, out, dk, asList);
 		}
+
 		return out;
-	}	
+	}
+	
+	private void emitJITInsert(final SchemaContext sc, final List<JustInTimeInsert> out, final DistributionKey dk, final List<List<ExpressionNode>> asList) throws PEException {
+		Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+		final GenericSQLCommand prefix = new EmitterInvoker(emitter) {
+			@Override
+			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
+				getEmitter().emitInsertPrefix(sc, LateSortedInsert.this.stmt, buf);
+			}
+		}.buildGenericCommand(sc);
+
+		final GenericSQLCommand suffix = new EmitterInvoker(emitter) {
+			@Override
+			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
+				getEmitter().emitInsertSuffix(sc, LateSortedInsert.this.stmt, buf);
+			}
+		}.buildGenericCommand(sc);
+		
+		final EmitterInvoker valueEmitter = new EmitterInvoker(emitter) {
+			@Override
+			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
+				getEmitter().emitInsertValues(sc, asList, buf);
+			}
+		};
+
+		// we must always use generic sql - whether we have parameters or not,
+		// so that we can handle special characters correctly.
+		valueEmitter.getEmitter().setOptions(EmitOptions.GENERIC_SQL);
+		valueEmitter.getEmitter().startGenericCommand();
+		valueEmitter.getEmitter().pushContext(sc.getTokens());
+		try {
+			final GenericSQLCommand valuesClause = valueEmitter.buildGenericCommand(sc).resolve(sc, null);
+
+			final SQLCommand sqlc = reconstructSQLCommand(sc, prefix, valuesClause, suffix);
+
+			out.add(new JustInTimeInsert(sqlc, asList.size(), dk));
+		} finally {
+			valueEmitter.getEmitter().popContext();
+		}
+	}
+
+	private SQLCommand reconstructSQLCommand(final SchemaContext sc, final GenericSQLCommand prefix, final GenericSQLCommand valuesClause,
+			final GenericSQLCommand suffix) {
+		final GenericSQLCommand gsql = prefix.append(valuesClause).append(suffix);
+		if (sc.getValueManager().hasPassDownParams()) {
+			if ((sc.getOptions() != null && sc.getOptions().isPrepare())) {
+				return new SQLCommand(gsql);
+			}
+
+			return new SQLCommand(gsql, gsql.getFinalParams(sc));
+		}
+
+		return new SQLCommand(gsql);
+	}
 }

@@ -21,13 +21,11 @@ package com.tesora.dve.db;
  * #L%
  */
 
-import io.netty.channel.Channel;
+import com.tesora.dve.concurrent.CompletionHandle;
 
 import java.util.List;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
@@ -36,7 +34,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlStmtCloseDiscarder implements DBResultConsumer {
+public class MysqlStmtCloseDiscarder extends DBResultConsumer  {
 	
 	final MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt;
 
@@ -77,11 +75,9 @@ public class MysqlStmtCloseDiscarder implements DBResultConsumer {
 	public void setNumRowsAffected(long rowcount) {
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel,
-			StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
-		channel.write(new MysqlStmtCloseCommand(pstmt));
-		return promise.success(false);
+    @Override
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		return new MysqlStmtCloseCommand(pstmt,promise);
 	}
 
 	@Override

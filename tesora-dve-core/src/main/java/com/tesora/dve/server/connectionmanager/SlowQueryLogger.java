@@ -28,10 +28,13 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.common.logutil.StructuredExecutionLogger;
 import com.tesora.dve.queryplan.QueryPlan;
-import com.tesora.dve.sql.schema.SchemaVariables;
+import com.tesora.dve.sql.schema.VariableScopeKind;
+import com.tesora.dve.variables.KnownVariables;
 
 public class SlowQueryLogger extends StructuredExecutionLogger {
 
+	private static final long NANOS_PER_SECOND = 1000000000;
+	
 	private static final Logger slowQueryLogger = Logger.getLogger("slow_query.logger");
 
 	public static void enableSlowQueryLogger(final boolean value) {
@@ -65,8 +68,10 @@ public class SlowQueryLogger extends StructuredExecutionLogger {
 	}
 	
 	private void log() {
-		final long planThreshold = SchemaVariables.getLongQueryTimeNanos(null);
-		final long stepThreshold = SchemaVariables.getLongPlanStepTimeNanos(null);
+		final long planThreshold = 
+				Math.round(KnownVariables.LONG_QUERY_TIME.getValue(ofConnection,VariableScopeKind.SESSION).doubleValue() * NANOS_PER_SECOND);
+		final long stepThreshold = 
+				Math.round(KnownVariables.LONG_PLAN_STEP_TIME.getValue(ofConnection).doubleValue() * NANOS_PER_SECOND);
 		boolean write = false;
 		if (planThreshold > 0 && getDelta() > planThreshold) {
 			write = true;

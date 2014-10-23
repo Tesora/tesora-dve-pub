@@ -39,7 +39,7 @@ public class MysqlPrepareStatementCollector extends MysqlPrepareParallelConsumer
     List<MyFieldPktResponse> savedParamDefs = new ArrayList<>();
 	ColumnSet paramColumns;
 	ColumnSet resultColumns;
-
+	
 	@Override
 	void consumeHeader(MyPrepareOKResponse prepareOK) {
 		paramColumns = null;//defer building this until it is asked for.

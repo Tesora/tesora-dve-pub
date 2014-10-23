@@ -53,6 +53,7 @@ import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.common.catalog.UserView;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.distribution.IKeyValue;
@@ -400,11 +401,6 @@ public class DAOContext implements CatalogContext {
 	@Override
 	public List<Provider> findAllProviders() {
 		return getDAO().findAllProviders();
-	}
-
-	@Override
-	public DynamicPolicy getDynamicGroupPolicy() {
-		return getDefaultProject().getDefaultPolicy();
 	}
 
 	@Override
@@ -789,5 +785,14 @@ public class DAOContext implements CatalogContext {
 	public List<TemporaryTable> findUserlandTemporaryTable(Integer connID,
 			String dbName, String tabName) {
 		return getDAO().findLocalUserlandTemporaryTables(connID,dbName,tabName);
+	}
+
+	@Override
+	public UserTrigger findTrigger(String name, String dbName) {
+		try {
+			return getDAO().findTrigger(name, dbName);
+		} catch (PEException pe) {
+			throw new RuntimeException("Unable to find trigger",pe);
+		}
 	}
 }

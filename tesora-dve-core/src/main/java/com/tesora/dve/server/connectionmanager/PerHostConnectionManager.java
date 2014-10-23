@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.comms.client.messages.ClientMessage;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.worker.agent.Agent;
 import com.tesora.dve.worker.StatementManager;
+import com.tesora.dve.worker.agent.Agent;
 
 public enum PerHostConnectionManager {
 	
@@ -49,7 +49,7 @@ public enum PerHostConnectionManager {
 	ConcurrentMap<Integer, ConnectionInfo> connectionInfoMap = new ConcurrentHashMap<Integer, ConnectionInfo>();
 	
 	void registerConnection(int connectionId, SSConnection ssCon) {
-		connectionIdMap.put(connectionId, ssCon);
+        connectionIdMap.put(connectionId, ssCon);
 		connectionInfoMap.put(connectionId, new ConnectionInfo(connectionId, "user"));
 		incrementCounters();
 	}
@@ -162,6 +162,10 @@ public enum PerHostConnectionManager {
 		return connectionIdMap.size();
 	}
 
+	public SSConnection lookupConnection(final Integer connectionId) {
+		return connectionIdMap.get(connectionId);
+	}
+
 	public long getTotalConnections() {
 		return totalConnections.get();
 	}
@@ -191,7 +195,7 @@ public enum PerHostConnectionManager {
 	}
 
 	public void registerSiteConnection(int connId, StorageSite site, int siteConnId) {
-		if (connectionInfoMap.containsKey(connId)) {
+        if (connectionInfoMap.containsKey(connId)) {
 			ConnectionInfo connectionInfo = connectionInfoMap.get(connId);
 			connectionInfo.registerSiteConnection(site, siteConnId);
 		}

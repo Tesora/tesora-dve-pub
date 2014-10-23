@@ -42,13 +42,13 @@ import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.ConstraintCollector;
 import com.tesora.dve.sql.transform.constraints.PlanningConstraint;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.variables.KnownVariables;
 
 // we define a bunch of basic terms here:
 // the cardinality (card) of an index is the number of unique values in it.
@@ -119,7 +119,8 @@ public final class Costing {
 		
 		// use the server setting.  note that if the server setting is for costing, but no cards are present
 		// we'll fall back to structure
-		if (hasCardInfo && SchemaVariables.getCostBasedPlanning(sc.getConnection())) 
+		if (hasCardInfo && 
+				KnownVariables.COST_BASED_PLANNING.getValue(sc.getConnection().getVariableSource()).booleanValue())
 			return dataStrategy;
 		return structureStrategy;
 	}

@@ -36,15 +36,15 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
+import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
@@ -66,7 +66,6 @@ import com.tesora.dve.sql.schema.PEView;
 import com.tesora.dve.sql.schema.PEViewTable;
 import com.tesora.dve.sql.schema.RangeDistributionVector;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.TableComponent;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.UserScope;
@@ -78,13 +77,14 @@ import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
-import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
@@ -99,7 +99,7 @@ public class PECreateViewStatement extends
 	
 	private final PEViewTable tschema;
 	
-	private final boolean orReplace;
+	private boolean orReplace;
 	
 	protected PECreateViewStatement(PEView newView, boolean createOrReplace, PEDatabase ofDB, PEStorageGroup ofGroup, 
 			List<UnqualifiedName> colNames) {
@@ -124,15 +124,30 @@ public class PECreateViewStatement extends
 		return orReplace;
 	}
 	
+	public void setCreateOrReplace() {
+		orReplace = true;
+	}
+	
 	// tschema ONLY
 	public PEViewTable getViewTable() {
 		return tschema;
 	}
 	
+	public static PECreateViewStatement build(SchemaContext pc,Name viewName,ProjectingStatement viewDef,
+			List<UnqualifiedName> columnNames,String checkOption,
+			List<TableComponent<?>> colDefs) {
+		return build(pc,viewName,viewDef,null,columnNames,null,null,checkOption,false,colDefs,true);
+	}
+
+	
 	public static PECreateViewStatement build(SchemaContext sc, Name name, ProjectingStatement definition, 
-			UserScope definer, List<UnqualifiedName> givenNames,
-			String algo, String security, String checkOption, 
-			boolean replaceIfExists, List<TableComponent<?>> tschemaColDefs) {
+			UserScope definer, 
+			List<UnqualifiedName> givenNames,
+			String algo, String security, 
+			String checkOption, 
+			boolean replaceIfExists, 
+			List<TableComponent<?>> tschemaColDefs,
+			boolean kern) {
 		// we only build a minimal view here - for instance we're going to remove most of the column related info
 		PEStorageGroup theGroup = null;
 		try {
@@ -143,26 +158,30 @@ public class PECreateViewStatement extends
 		PEDatabase theDB = (PEDatabase) definition.getDatabase(sc);
 		
 		PEUser user = null;
-		if (definer == null || sc.getOptions().isIgnoreMissingUser())
-			user = sc.getCurrentUser().get(sc);
-		else {
-			user = sc.findUser(definer.getUserName(), definer.getScope());
-			if (user == null)
-				throw new SchemaException(Pass.SECOND, "No such user: " + definer.getSQL());
+		if (!kern) {
+			if (definer == null || sc.getOptions().isIgnoreMissingUser())
+				user = sc.getCurrentUser().get(sc);
+			else {
+				user = sc.findUser(definer.getUserName(), definer.getScope());
+				if (user == null)
+					throw new SchemaException(Pass.SECOND, "No such user: " + definer.getSQL());
+			}
 		}
 		
 		PEAbstractTable<?> existing = sc.findTable(PEAbstractTable.getTableKey(theDB, name));
 		if (existing != null) {
 			if (existing.isTable()) {
 				throw new SchemaException(Pass.SECOND, "Table " + name + " already exists");
-			} else if (!replaceIfExists) {
+			} else if (!kern && !replaceIfExists) {
 				throw new SchemaException(Pass.SECOND, "View " + name + " already exists");
 			}
 		}
 		
 		// figure out the collation and charset
-		String charset = SchemaVariables.getCharacterSetClient(sc);
-		String collation = SchemaVariables.getCollationConnection(sc);
+		String charset =
+				KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(sc.getConnection().getVariableSource()).getName();
+		String collation = 
+				KnownVariables.COLLATION_CONNECTION.getSessionValue(sc.getConnection().getVariableSource());
 
 		ProjectingStatement copy = CopyVisitor.copy(definition);
 		
@@ -184,24 +203,28 @@ public class PECreateViewStatement extends
 
 		// we can push the view down if processing it only requires one step - so figure that out now
 		ViewMode vm = null;
-		ParserOptions pm = sc.getOptions();
-		try {
-			ParserOptions npm = pm.setInhibitSingleSiteOptimization();
-			sc.setOptions(npm);
-			ExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
-			if (ep.getSequence().getSteps().size() > 1)
-				vm = ViewMode.EMULATE;
-			else
-				vm = ViewMode.ACTUAL;
-		} catch (PEException pe) {
-			throw new SchemaException(Pass.PLANNER, "Unable to compute view definition plan",pe);
-		} finally {
-			sc.setOptions(pm);
+		if (sc.getOptions().isInfoSchemaView())
+			vm = ViewMode.EMULATE;
+		else {
+			ParserOptions pm = sc.getOptions();
+			try {
+				ParserOptions npm = pm.setInhibitSingleSiteOptimization();
+				sc.setOptions(npm);
+				ExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
+				if (ep.getSequence().getSteps().size() > 1)
+					vm = ViewMode.EMULATE;
+				else
+					vm = ViewMode.ACTUAL;
+			} catch (PEException pe) {
+				throw new SchemaException(Pass.PLANNER, "Unable to compute view definition plan",pe);
+			} finally {
+				sc.setOptions(pm);
+			}
 		}
 				
 		String checkMode = (checkOption == null ? "NONE" : checkOption);
-		String algorithm = (algo == null ? "UNDEFINED" : algo);
-		String sec = (security == null ? "DEFINER" : security);
+		String algorithm = (kern ? null : (algo == null ? "UNDEFINED" : algo));
+		String sec = (kern ? null : (security == null ? "DEFINER" : security));
 		
 		PEView nv = new PEView(sc,name.getUnqualified(),theDB,user,definition, 
 				new UnqualifiedName(charset), new UnqualifiedName(collation), vm, checkMode, algorithm, sec);
@@ -217,7 +240,7 @@ public class PECreateViewStatement extends
 					if (pec.getName().equals(columnNames.get(i))) {
 						// ok
 					} else {
-						throw new SchemaException(Pass.SECOND, "Invalid tschema table def - mismatched names");
+						throw new SchemaException(Pass.SECOND, "Invalid tschema table def - mismatched names.  Expected " + columnNames.get(i) + " but found " + pec.getName());
 					}
 				} else {
 					throw new SchemaException(Pass.SECOND, "Invalid tschema table def - keys not allowed");
@@ -389,7 +412,11 @@ public class PECreateViewStatement extends
 				for(int i = 0; i < columnNames.size(); i++) {
 					UserColumn uc = new UserColumn(cmd.get(i));
 					uc.setName(columnNames.get(i).getUnquotedName().get());
-					columns.add(PEColumn.build(context, uc));
+					PEColumn pec = PEColumn.build(context,uc);
+					pec.clearPrimaryKeyPart();
+					pec.clearUniqueKeyPart();
+					pec.clearKeyPart();
+					columns.add(pec);
 				}
 				
 				backingTable = new PEViewTable(context, nascentDefinition.getName(),columns,
@@ -400,7 +427,7 @@ public class PECreateViewStatement extends
 						nascentDefinition);
 				backingTable.setDeclaration(context, backingTable);
 				if (nascentDefinition.getMode() == ViewMode.EMULATE) {
-					emulatedDefinition = new SQLCommand(backingTable.getDeclaration());
+					emulatedDefinition = new SQLCommand(conn, backingTable.getDeclaration());
 				}
 			}			
 		}

@@ -65,7 +65,7 @@ public abstract class TestTypes extends TransientSchemaTest {
 	public abstract List<NativeType> getNativeTypes();
 	
 	@Test
-	public void testTypes() throws Exception {
+	public void testTypes() throws Throwable {
 		for(NativeType nt : getNativeTypes()) {
 			if (nt.isUsedInCreate()) {
 				// timestamp has weird rules, for instance it's not by default nullable - you have to explicitly
@@ -81,7 +81,7 @@ public abstract class TestTypes extends TransientSchemaTest {
 				// build the create table statement
 				String tableDecl = buildTableDeclaration(cases);
 				PECreateStatement<?,?> cts = 
-					(PECreateStatement<?,?>)(InvokeParser.parse(InvokeParser.buildInputState(tableDecl,null), ParserOptions.TEST, pc).getStatements().get(0));
+					(PECreateStatement<?,?>)(InvokeParser.parse(InvokeParser.buildInputState(tableDecl,pc), ParserOptions.TEST, pc).getStatements().get(0));
 				PETable t = (PETable)cts.getCreated().get();
 				for(TypeComboMixedCase tcmc : cases) {
 					tcmc.match(pc,t);

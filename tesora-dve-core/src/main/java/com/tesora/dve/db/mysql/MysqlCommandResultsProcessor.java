@@ -28,7 +28,7 @@ import com.tesora.dve.exceptions.PEException;
 
 public interface MysqlCommandResultsProcessor {
 
-    boolean isDone(ChannelHandlerContext ctx);
+    void active(ChannelHandlerContext ctx);
 
 	boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
 

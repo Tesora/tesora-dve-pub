@@ -24,9 +24,10 @@ package com.tesora.dve.charset;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import org.apache.commons.lang.StringUtils;
 
 public abstract class NativeCharSet implements Serializable {
 	private static final long serialVersionUID = 1L;
@@ -86,12 +87,13 @@ public abstract class NativeCharSet implements Serializable {
 	}
 
 	public boolean isCompatibleWith(final String collation) {
-		String charsetName = null;
-		try {
-			charsetName = Singletons.require(HostService.class).getDBNative().getSupportedCharSets().findCharSetByCollation(collation, false).getName();
-		} catch(Exception e) {
-			// to prevent adding the throw clause to method definition
-		}
+		final String charsetName = Singletons.require(HostService.class).getDBNative().getSupportedCharSets().findCharSetByCollation(collation)
+				.getName();
 		return StringUtils.equalsIgnoreCase(name, charsetName);
+	}
+
+	@Override
+	public String toString() {
+		return this.name;
 	}
 }

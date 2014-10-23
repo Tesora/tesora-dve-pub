@@ -320,7 +320,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			}
 
 			public FilterExecutionStep getCollectorExecutionStep(final SchemaContext sc) throws PEException {
-				return new FilterExecutionStep(ProjectingExecutionStep.build(null, this.forTable.getStorageGroup(sc), this.buildSQL()), this);
+				return new FilterExecutionStep(ProjectingExecutionStep.build(sc, null, this.forTable.getStorageGroup(sc), this.buildSQL()), this);
 			}
 
 			private String buildSQL() {
@@ -329,10 +329,11 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 
 			@Override
 			public void filter(SSConnection ssCon, ColumnSet columnSet, List<ArrayList<String>> rowData, DBResultConsumer results) throws Throwable {
+				SchemaContext sc = SchemaContext.createContext(ssCon);
 				for (final List<String> row : rowData) {
 					final String columnName = row.get(0);
 					final ParserOptions options = ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly().setActualLiterals();
-					final Type columnType = InvokeParser.parseType(null, options, row.get(1));
+					final Type columnType = InvokeParser.parseType(sc, options, row.get(1));
 					this.columnMetadata.put(columnName, columnType);
 				}
 			}
@@ -376,6 +377,10 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 					sampleTargetModifiers.add(entry);
 				}
 			}
+
+			/* FKs would not resolve on the sample site. */
+			sampleTarget.removeForeignKeys(sc);
+
 			final List<TableComponent<?>> sampleTargetFieldsAndKeys = ListUtils.union(sampleTarget.getColumns(sc), sampleTarget.getKeys(sc));
 			final QualifiedName sampleTargetName = new QualifiedName(
 					sampleTargetDatabase.getName().getUnqualified(),

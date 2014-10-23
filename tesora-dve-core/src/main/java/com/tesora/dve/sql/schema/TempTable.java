@@ -68,7 +68,8 @@ import com.tesora.dve.sql.util.ListSet;
 public final class TempTable extends PETable {
     static final TempColumnType NULL_COLUMN_TYPE = new TempColumnType(
             BasicType.buildType("SMALLINT", 0,
-                    Collections.singletonList(new TypeModifier(TypeModifierKind.UNSIGNED))).normalize()
+                    Collections.singletonList(new TypeModifier(TypeModifierKind.UNSIGNED)),
+                    Singletons.require(HostService.class).getDBNative().getTypeCatalog()).normalize()
     );
 
 	// the select this was based on
@@ -456,7 +457,7 @@ public final class TempTable extends PETable {
 	@Override
 	protected UserTable createEmptyNew(SchemaContext pc) throws PEException {
 		String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, this);
-		UserDatabase pdb = getPEDatabase(pc).persistTree(pc); 
+		UserDatabase pdb = (getPEDatabase(pc) != null ? getPEDatabase(pc).persistTree(pc) : null);
 		DistributionModel dm = getDistributionVector(pc).persistTree(pc);
 		UserTable ut = pc.getCatalog().createTempTable(pdb, persistName, dm);
 		pc.getSaveContext().add(this,ut);

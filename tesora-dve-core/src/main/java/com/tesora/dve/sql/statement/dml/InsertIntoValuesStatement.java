@@ -32,11 +32,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.TransformException;
-import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
@@ -61,7 +59,6 @@ import com.tesora.dve.sql.schema.LateSortedInsert;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.SchemaVariables;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.session.TransactionStatement;
@@ -75,7 +72,8 @@ import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.UnaryFunction;
-import com.tesora.dve.variable.VariableAccessor;
+import com.tesora.dve.variables.AbstractVariableAccessor;
+import com.tesora.dve.variables.KnownVariables;
 
 public class InsertIntoValuesStatement extends InsertStatement {
 
@@ -191,7 +189,8 @@ public class InsertIntoValuesStatement extends InsertStatement {
 			// new tenant - but in order to do that we need the rest of the tuple
 			// fortunately for us the tenant column should be specified last
 			
-			SQLMode sqlMode = SchemaVariables.getSQLMode(sc);
+			SQLMode sqlMode = 
+					KnownVariables.SQL_MODE.getSessionValue(sc.getConnection().getVariableSource()); 
 
 			// we used to turn off caching here, but it turns out there is no need
 			// strict_trans_tables, strict_all_tables:
@@ -244,9 +243,9 @@ public class InsertIntoValuesStatement extends InsertStatement {
 						if (current instanceof VariableInstance) {
 							cacheable = false;
 							VariableInstance vi = (VariableInstance) current;
-							VariableAccessor va = vi.buildAccessor();
+							AbstractVariableAccessor va = vi.buildAccessor(sc);
 							try {
-								String value = sc.getConnection().getVariableValue(va); 
+								String value = va.getValue(sc.getConnection().getVariableSource()); 
 								actual = LiteralExpression.makeStringLiteral(value);
 							} catch (PEException pe) {
 								throw new SchemaException(Pass.SECOND, "Unable to sub in value for variable " + vi);
@@ -277,6 +276,8 @@ public class InsertIntoValuesStatement extends InsertStatement {
 	protected void planInternal(SchemaContext pc, ExecutionSequence ges) throws PEException {
 		if (intoTable.get().getTable().isInfoSchema()) 
 			throw new PEException("Cannot insert into info schema table " + intoTable.get().getTable().getName());
+		if (hasTrigger(pc))
+			throw new PEException("No support for trigger execution");
 		normalize(pc);
 		if (ges.getPlan() != null) {
 			if (Boolean.FALSE.equals(cacheable)) ges.getPlan().setCacheable(false);
@@ -316,7 +317,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 			// the id value is so we can set the last inserted id right
 			@SuppressWarnings("unchecked")
 			DistributionKey dk = new DistributionKey(tk, Collections.EMPTY_LIST, null);
-			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), getStorageGroup(pc), this,
+			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), tk.getAbstractTable().getStorageGroup(pc), this,
 					intoTI.getAbstractTable().asTable(),dk,adjustUpdateCount(getValues().size())),
 					requiresReferenceTimestamp);
 		} else if (dv.getDistributedWhollyOnTenantColumn(pc) != null 
@@ -327,7 +328,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 			ListOfPairs<PEColumn,ConstantExpression> values = new ListOfPairs<PEColumn,ConstantExpression>();
 			values.add(tenantColumn,pc.getPolicyContext().getTenantIDLiteral(true));
 			DistributionKey dk = new DistributionKey(tk, Collections.singletonList(tenantColumn), values);
-			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), getStorageGroup(pc), this,
+			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), tk.getAbstractTable().getStorageGroup(pc), this,
 					intoTI.getAbstractTable().asTable(),dk,adjustUpdateCount(getValues().size())),
 					requiresReferenceTimestamp);
 		} else {
@@ -335,22 +336,17 @@ public class InsertIntoValuesStatement extends InsertStatement {
 
 			if (intoTI.getAbstractTable().getStorageGroup(pc).isSingleSiteGroup() || parts.size() == 1) {
 				// push the whole thing down, and just use the first dist key
-				appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), getStorageGroup(pc), this,
+				appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), tk.getAbstractTable().getStorageGroup(pc), this,
 					intoTI.getAbstractTable().asTable(),parts.get(0).getSecond(),adjustUpdateCount(getValues().size())),
 					requiresReferenceTimestamp);
 				
 			} else {
-				StringBuilder prefixBuf = new StringBuilder();
-				StringBuilder suffixBuf = new StringBuilder();
-                Singletons.require(HostService.class).getDBNative().getEmitter().emitInsertPrefix(pc, this, prefixBuf);
-                Singletons.require(HostService.class).getDBNative().getEmitter().emitInsertSuffix(pc, this, suffixBuf);
-				
-				LateSortedInsert lsi = new LateSortedInsert(intoTI.getAbstractTable().asTable(),parts,prefixBuf.toString(),suffixBuf.toString(),getKeyOpType(),getSingleGroup(pc));
+				final LateSortedInsert lsi = new LateSortedInsert(this, parts);
 				pc.getValueManager().registerLateSortedInsert(lsi);
 				if (!pc.getOptions().isPrepare())
 					pc.getValueManager().handleLateSortedInsert(pc);
 				appendStep(es, LateSortingInsertExecutionStep.build(pc, getDatabase(pc), 
-						getSingleGroup(pc), intoTI.getAbstractTable().asTable(), (onDuplicateKey.size()>0 || ignore)),requiresReferenceTimestamp);
+						tk.getAbstractTable().getStorageGroup(pc), intoTI.getAbstractTable().asTable(), (onDuplicateKey.size()>0 || ignore)),requiresReferenceTimestamp);
 			}
 		}
 		if (txnFlag != null) {

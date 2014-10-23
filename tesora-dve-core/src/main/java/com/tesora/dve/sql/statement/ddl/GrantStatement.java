@@ -37,9 +37,9 @@ import com.tesora.dve.sql.schema.Persistable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
-import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.util.Functional;
 
 public class GrantStatement extends DDLStatement {
@@ -113,7 +113,7 @@ public class GrantStatement extends DDLStatement {
             Singletons.require(HostService.class).getDBNative().getEmitter().emitGrantStatement(this, buf);
 			sql = buf.toString();
 		}
-		return new SimpleDDLExecutionStep(getDatabase(pc), getStorageGroup(pc), getRoot(), getAction(), new SQLCommand(sql),
+		return new SimpleDDLExecutionStep(getDatabase(pc), getStorageGroup(pc), getRoot(), getAction(), new SQLCommand(pc, sql),
 				getDeleteObjects(pc), getCatalogObjects(pc), getInvalidationRecord(pc));
 	}
 

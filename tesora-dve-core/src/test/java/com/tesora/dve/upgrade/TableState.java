@@ -69,4 +69,12 @@ public class TableState {
 		return Functional.join(messages, System.getProperty("line.separator"));
 	}
 		
+	public boolean isEmpty() {
+		for(StateItemSet sis : features) {
+			if (!sis.isEmpty())
+				return false;
+		}
+		return true;
+	}
+	
 }

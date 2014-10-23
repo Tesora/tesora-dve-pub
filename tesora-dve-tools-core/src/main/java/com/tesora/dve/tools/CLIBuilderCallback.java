@@ -1,5 +1,7 @@
 package com.tesora.dve.tools;
 
+import com.tesora.dve.common.InformationCallback;
+
 /*
  * #%L
  * Tesora Inc.
@@ -21,13 +23,6 @@ package com.tesora.dve.tools;
  * #L%
  */
 
-public interface CLIBuilderCallback {
+public interface CLIBuilderCallback extends InformationCallback {
 
-	public abstract void printlnIndent(String message);
-
-	public abstract void printlnDots(String message);
-
-	public abstract void println(String message);
-
-	public abstract void println();
 }

@@ -21,23 +21,20 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import io.netty.channel.Channel;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.db.DBConnection.Monitor;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public class MysqlKillResultDiscarder implements DBResultConsumer {
+public class MysqlKillResultDiscarder extends DBResultConsumer {
 
 	static Logger logger = Logger.getLogger(MysqlKillResultDiscarder.class);
 
@@ -78,13 +75,11 @@ public class MysqlKillResultDiscarder implements DBResultConsumer {
 		// no op
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel, StorageSite site, Monitor connectionMonitor,
-			SQLCommand sql, PEPromise<Boolean> promise) {
+    @Override
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled())
 			logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		channel.write(new MysqlExecuteCommand(sql, connectionMonitor, null, promise));
-		return promise;
+		return new MysqlExecuteCommand(sql, channel.getMonitor(), null, promise);
 	}
 
 	@Override

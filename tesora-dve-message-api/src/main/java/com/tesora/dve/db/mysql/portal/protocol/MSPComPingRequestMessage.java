@@ -24,13 +24,14 @@ package com.tesora.dve.db.mysql.portal.protocol;
 import io.netty.buffer.ByteBuf;
 
 public class MSPComPingRequestMessage extends BaseMSPMessage {
+    public static final MSPComPingRequestMessage PROTOTYPE = new MSPComPingRequestMessage();
 
-    public MSPComPingRequestMessage() {
+    protected MSPComPingRequestMessage() {
         super();
     }
 
-    public MSPComPingRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComPingRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -39,7 +40,8 @@ public class MSPComPingRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPComPingRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        return new MSPComPingRequestMessage(sequenceID,source);
+    public MSPComPingRequestMessage newPrototype(ByteBuf source) {
+        source = source.slice();
+        return new MSPComPingRequestMessage(source);
     }
 }

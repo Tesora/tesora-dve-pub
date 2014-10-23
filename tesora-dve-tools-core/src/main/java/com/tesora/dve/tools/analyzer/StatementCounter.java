@@ -21,6 +21,7 @@ package com.tesora.dve.tools.analyzer;
  * #L%
  */
 
+
 import static com.tesora.dve.tools.analyzer.StatementCounter.DMLCounters.DELETE;
 import static com.tesora.dve.tools.analyzer.StatementCounter.DMLCounters.INSERT_INTO_SELECT;
 import static com.tesora.dve.tools.analyzer.StatementCounter.DMLCounters.INSERT_INTO_VALUES;
@@ -53,10 +54,14 @@ import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.PEXmlUtils;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
+import com.tesora.dve.errmap.ErrorMapper;
+import com.tesora.dve.errmap.FormattedErrorInfo;
+import com.tesora.dve.exceptions.HasErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.parser.CandidateParser;
+import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserInvoker;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ValueManager;
@@ -132,9 +137,11 @@ public class StatementCounter extends Analyzer {
 
 	private final BufferedWriter errorLog;
 	private final PrintStream outputStream;
+	
+	private final boolean stackTraces;
 
 	public StatementCounter(AnalyzerOptions opts, File corpusFile, File checkpointFile, int checkpointInterval,
-			File errorFileName, PrintStream outputStream) throws Exception {
+			File errorFileName, PrintStream outputStream) throws Throwable {
 		super(opts);
 
 		emitOptions = EmitOptions.NONE.analyzerLiteralsAsParameters();
@@ -148,6 +155,7 @@ public class StatementCounter extends Analyzer {
 		this.checkpointInterval = checkpointInterval;
 		this.errorLog = new BufferedWriter(new FileWriter(errorFileName));
 		this.outputStream = outputStream;
+		this.stackTraces = getOptions().isVerboseErrors();
 	}
 
 	@Override
@@ -307,10 +315,11 @@ public class StatementCounter extends Analyzer {
 							logError(sql, sp, "Mismatched literal size; parse="
 									+ valueManager.getNumberOfLiterals() + "/shrink="
 									+ litCount + " , reason=" + reason
-									, false);
+									,
+									null, false);
 						}
 					} else {
-						logError(sql, sp, "Unable to shrink", false);
+						logError(sql, sp, "Unable to shrink", null, false);
 					}
 				}
 				final Database<?> db = dmls.getDatabase(tee.getPersistenceContext());
@@ -372,7 +381,7 @@ public class StatementCounter extends Analyzer {
 	@Override
 	public void onException(String sql, SourcePosition sp, Throwable t) {
 		saveIntermediateCheckpoint();
-		logError(sql, sp, t.getMessage(), true);
+		logError(sql, sp, t.getMessage(), t, true);
 	}
 
 	@Override
@@ -388,12 +397,15 @@ public class StatementCounter extends Analyzer {
 		}
 	}
 
+	static final String invokerClass = InvokeParser.class.getName();
+	static final String invokerMethod = "parse";
+	
 	/**
 	 * This is a simple format:
 	 * sql: <the sql>
 	 * error | warn: <the message>
 	 */
-	private void logError(String sql, SourcePosition sp, String message, boolean error) {
+	private void logError(String sql, SourcePosition sp, String message, Throwable cause, boolean error) {
 		if (error) {
 			globalCounters.increment(GlobalCounters.ERRORS);
 		} else {
@@ -403,12 +415,27 @@ public class StatementCounter extends Analyzer {
 		try {
 			final String type = error ? "error" : "warn";
 			final String line = "(line=" + sp.getPosition() + ")";
+			
+			if (message == null && cause instanceof HasErrorInfo) {
+				FormattedErrorInfo formatted = ErrorMapper.makeResponse((HasErrorInfo)cause);
+				if (formatted != null)
+					message = formatted.getErrorMessage();
+			}
+			
 			errorLog.write("---- " + type + " " + line + " ---------------");
 			errorLog.newLine();
 			errorLog.write("msg: " + message);
 			errorLog.newLine();
 			errorLog.write("sql: " + sql);
 			errorLog.newLine();
+			if (error && stackTraces && cause != null) {
+				for(StackTraceElement ste : cause.getStackTrace()) {
+					errorLog.write("trace: " + ste);
+					errorLog.newLine();
+					if (invokerClass.equals(ste.getClassName()))
+						break;
+				}
+			}
 		} catch (final Throwable ct) {
 			logger.error("Unable to write error log record", ct);
 		}

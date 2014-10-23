@@ -43,10 +43,7 @@ import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaColumn;
-import com.tesora.dve.sql.infoschema.annos.InfoSchemaTable;
 
-@InfoSchemaTable(logicalName="key",views={})
 @Entity
 @Table(name = "user_key")
 public class Key implements CatalogEntity {
@@ -169,16 +166,10 @@ public class Key implements CatalogEntity {
 		this.position = position;
 	}
 	
-	@InfoSchemaColumn(logicalName="type", fieldName="type",
-			sqlType=java.sql.Types.VARCHAR,
-			views={})
 	public IndexType getType() {
 		return type;
 	}
 	
-	@InfoSchemaColumn(logicalName="name", fieldName="name",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getName() {
 		return name;
 	}
@@ -197,9 +188,6 @@ public class Key implements CatalogEntity {
 		kc.setKey(null);
 	}
 	
-	@InfoSchemaColumn(logicalName="containing_table", fieldName="userTable",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public UserTable getTable() {
 		return userTable;
 	}
@@ -223,23 +211,14 @@ public class Key implements CatalogEntity {
 		}
 	}
 	
-	@InfoSchemaColumn(logicalName="referenced_table", fieldName="referencedTable",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})	
 	public UserTable getReferencedTable() {
 		return referencedTable;
 	}
 	
-	@InfoSchemaColumn(logicalName="forward_ref_table_name", fieldName="referencedTableName",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})		
 	public String getReferencedTableName() {
 		return referencedTableName;
 	}
 
-	@InfoSchemaColumn(logicalName="forward_ref_schema_name", fieldName="referencedSchemaName",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})		
 	public String getReferencedSchemaName() {
 		return referencedSchemaName;
 	}
@@ -251,23 +230,14 @@ public class Key implements CatalogEntity {
 		fkUpdateAction = spec;
 	}
 	
-	@InfoSchemaColumn(logicalName="fk_delete_action", fieldName="fkDeleteAction",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getFKDeleteAction() {
 		return fkDeleteAction;
 	}
 
-	@InfoSchemaColumn(logicalName="fk_update_action", fieldName="fkUpdateAction",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getFKUpdateAction() {
 		return fkUpdateAction;
 	}
 	
-	@InfoSchemaColumn(logicalName="id",fieldName="id",
-			sqlType=java.sql.Types.INTEGER,
-			views={})	
 	@Override
 	public int getId() {
 		return id;
@@ -312,9 +282,6 @@ public class Key implements CatalogEntity {
 		return false;
 	}
 
-	@InfoSchemaColumn(logicalName="constraint", fieldName="constraint",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})	
 	public ConstraintType getConstraint() {
 		return constraint;
 	}
@@ -323,9 +290,6 @@ public class Key implements CatalogEntity {
 		constraint = ct;
 	}
 
-	@InfoSchemaColumn(logicalName="symbol", fieldName="constraintName",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})
 	public String getSymbol() {
 		return constraintName;
 	}
@@ -343,9 +307,6 @@ public class Key implements CatalogEntity {
 	}
 	
 
-	@InfoSchemaColumn(logicalName="comment", fieldName="comment",
-			sqlType=java.sql.Types.VARCHAR,sqlWidth=255,
-			views={})	
 	public String getComment() {
 		return comment;
 	}
@@ -385,9 +346,6 @@ public class Key implements CatalogEntity {
 		return (hidden == 1);
 	}
 	
-	@InfoSchemaColumn(logicalName="synthetic",fieldName="synthetic",
-			sqlType=java.sql.Types.INTEGER,
-			views={})	
 	public int getSynthetic() {
 		return synthetic;
 	}

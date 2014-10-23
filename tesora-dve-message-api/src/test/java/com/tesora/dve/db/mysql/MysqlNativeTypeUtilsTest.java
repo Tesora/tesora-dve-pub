@@ -59,7 +59,7 @@ public class MysqlNativeTypeUtilsTest extends PEBaseTest {
 				ColumnMetadata cm = new ColumnMetadata();
 				assertFalse(mysqlType.toString() + " should return false",
 						MysqlNativeTypeUtils.isUnsigned(cm, new MysqlNativeType(MysqlType.INT)));
-				cm.setNativeTypeModifiers(MysqlNativeType.MODIFIER_UNSIGNED);
+				cm.setUnsigned(true);
 				assertTrue(mysqlType.toString() + " should return true",
 						MysqlNativeTypeUtils.isUnsigned(cm, new MysqlNativeType(MysqlType.INT)));
 			}
@@ -73,9 +73,9 @@ public class MysqlNativeTypeUtilsTest extends PEBaseTest {
 		assertFalse("Null cm should return false", MysqlNativeTypeUtils.isUnsigned(null));
 		ColumnMetadata cm = new ColumnMetadata();
 		assertFalse("Empty cm should return false", MysqlNativeTypeUtils.isUnsigned(cm));
-		cm.setNativeTypeModifiers("bogus");
-		assertFalse("Unrelated modifier should return false", MysqlNativeTypeUtils.isUnsigned(cm));
-		cm.setNativeTypeModifiers(MysqlNativeType.MODIFIER_UNSIGNED);
+//		cm.setTypeSuffix("bogus");
+//		assertFalse("Unrelated modifier should return false", MysqlNativeTypeUtils.isUnsigned(cm));
+		cm.setUnsigned(true);
 		assertTrue("Unsigned modifier should return true", MysqlNativeTypeUtils.isUnsigned(cm));
 	}
 

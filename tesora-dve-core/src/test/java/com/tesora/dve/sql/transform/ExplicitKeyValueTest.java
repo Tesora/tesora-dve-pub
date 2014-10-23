@@ -63,7 +63,7 @@ public class ExplicitKeyValueTest extends TransformTest {
 		"create table metatag_config (`id` integer unsigned not null, `instance` varchar(50), `height` varchar(50)) static distribute on (`id`);"
 		};
 	
-	private void testOneKey(String[] schema, String sql, Map<String,Object> fakeKey, Class<?> statementClass, ExecutionType type) throws Exception {
+	private void testOneKey(String[] schema, String sql, Map<String,Object> fakeKey, Class<?> statementClass, ExecutionType type) throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		List<Statement> stmts = parse(db, sql);
 		assertEquals(stmts.size(), 1);
@@ -73,7 +73,7 @@ public class ExplicitKeyValueTest extends TransformTest {
 		List<HasPlanning> steps = ep.getSequence().getSteps();
 		assertEquals(steps.size(), 1);
 		DirectExecutionStep firstStep = (DirectExecutionStep) steps.get(0);
-		echo(firstStep.getSQL(db,"  ").resolve(db,"  ").getUnresolved());
+		echo(firstStep.getSQL(db,"  ").resolve(db,"  ").getDecoded());
 		assertEquals(type,firstStep.getExecutionType());
 		if (fakeKey != null) {
 			IKeyValue kv = firstStep.getDistributionKey().getDetachedKey(db);
@@ -83,12 +83,12 @@ public class ExplicitKeyValueTest extends TransformTest {
 		}		
 	}
 	
-	private void testOneKey(String sql, Map<String,Object> fakeKey, Class<?> statementClass, ExecutionType type) throws Exception {
+	private void testOneKey(String sql, Map<String,Object> fakeKey, Class<?> statementClass, ExecutionType type) throws Throwable {
 		testOneKey(schema, sql, fakeKey, statementClass, type);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private void testMultiKey(String[] schema, String sql, Map[] infakes, Class<?> statementClass, ExecutionType type) throws Exception {
+	private void testMultiKey(String[] schema, String sql, Map[] infakes, Class<?> statementClass, ExecutionType type) throws Throwable {
 		Map<String,Object>[] fakes = (Map<String,Object>[])infakes;
 		HashSet<Map<String, Object>> fakeSet = new HashSet<Map<String, Object>>();
 		if (fakes != null)
@@ -119,7 +119,7 @@ public class ExplicitKeyValueTest extends TransformTest {
 	}
 	
 	@SuppressWarnings("rawtypes")
-	private void testMultiKey(String sql, Map[] infakes, Class<?> statementClass, ExecutionType type) throws Exception {
+	private void testMultiKey(String sql, Map[] infakes, Class<?> statementClass, ExecutionType type) throws Throwable {
 		testMultiKey(schema, sql, infakes, statementClass, type);
 	}
 
@@ -128,61 +128,61 @@ public class ExplicitKeyValueTest extends TransformTest {
 	// update A set payload = 'frob' where id = 15
 	// delete from A where id = 15
 	
-	private void testOneKey(String tabName, String suffix, Map<String, Object> fakeKey) throws Exception {
+	private void testOneKey(String tabName, String suffix, Map<String, Object> fakeKey) throws Throwable {
 		testOneKey("select * from " + tabName + " " + suffix, fakeKey, SelectStatement.class, ExecutionType.SELECT);
 		testOneKey("update " + tabName + " set payload = 'frob' " + suffix, fakeKey, UpdateStatement.class, ExecutionType.UPDATE);
 		testOneKey("delete from " + tabName + " " + suffix, fakeKey, DeleteStatement.class, ExecutionType.DELETE);
 	}
 	
 	@Test
-	public void testSelectOneKeySimpleA() throws Exception {
+	public void testSelectOneKeySimpleA() throws Throwable {
 		testOneKey("A","where id = 15", buildFakeKey(new Object[] { "id", new Long(15) }));
 	}
 
 	@Test
-	public void testSelectOneKeySimpleB() throws Exception {
+	public void testSelectOneKeySimpleB() throws Throwable {
 		testOneKey("A","where 15 = id", buildFakeKey(new Object[] { "id", new Long(15) }));
 	}
 
 	
 	@Test
-	public void testSelectOneKeyComplexA() throws Exception {
+	public void testSelectOneKeyComplexA() throws Throwable {
 		testOneKey("B","where pa = 2 and pb = 4 and pc = 6",
 				buildFakeKey(new Object[] { "pa", new Long(2), "pb", new Long(4), "pc", new Long(6) }));
 	}
 
 	@Test
-	public void testSelectOneKeyComplexB() throws Exception {
+	public void testSelectOneKeyComplexB() throws Throwable {
 		testOneKey("B","where (pa = 2 and pb = 4) and pc = 6",
 				buildFakeKey(new Object[] { "pa", new Long(2), "pb", new Long(4), "pc", new Long(6) }));
 	}
 
 	@Test
-	public void testSelectOneKeyComplexC() throws Exception {
+	public void testSelectOneKeyComplexC() throws Throwable {
 		testOneKey("B","where 2 = pa and (pb = 4 and pc = 6)",
 				buildFakeKey(new Object[] { "pa", new Long(2), "pb", new Long(4), "pc", new Long(6) }));
 	}
 
 	@Test
-	public void testSelectOneKeyComplexD() throws Exception {
+	public void testSelectOneKeyComplexD() throws Throwable {
 		testOneKey("B","where 2 = pa and (pb = 4 and pc = 6) and payload = 'foo'",
 				buildFakeKey(new Object[] { "pa", new Long(2), "pb", new Long(4), "pc", new Long(6) }));
 	}
 
 	@Test
-	public void testSelectOneKeyComplexE() throws Exception {
+	public void testSelectOneKeyComplexE() throws Throwable {
 		testOneKey("B","where 2 = pa and (pb = 4 and pc = 6) or payload = 'foo'",
 				null);
 	}
 
 	@Test
-	public void testSelectOneKeyComplexF() throws Exception {
+	public void testSelectOneKeyComplexF() throws Throwable {
 		testOneKey("B","where 2 = pa and (pb = 4 or pc = 6) and payload = 'foo'",
 				null);
 	}
 
 	@SuppressWarnings("rawtypes")
-	private void testMultiKey(String tab, String suffix, Map[] keys) throws Exception {
+	private void testMultiKey(String tab, String suffix, Map[] keys) throws Throwable {
 		testMultiKey("select * from " + tab + " " + suffix, keys, SelectStatement.class, ExecutionType.SELECT);
 		testMultiKey("update " + tab + " set payload = 'frob' " + suffix, keys, 
 				UpdateStatement.class, ExecutionType.UPDATE);
@@ -191,7 +191,7 @@ public class ExplicitKeyValueTest extends TransformTest {
 	}
 	
 	@Test
-	public void testSelectMultiKeySimpleA() throws Exception {
+	public void testSelectMultiKeySimpleA() throws Throwable {
 		testMultiKey("A","where id in (1,3)",
 				new Map[] {
 					buildFakeKey(new Object[] { "id", new Long(1) })
@@ -199,7 +199,7 @@ public class ExplicitKeyValueTest extends TransformTest {
 	}
 
 	@Test
-	public void selectMultiKeySimpleB() throws Exception {
+	public void selectMultiKeySimpleB() throws Throwable {
 		testMultiKey("A", "where id = 1 or id = 3",
 				new Map[] {
 				buildFakeKey(new Object[] { "id", new Long(1) })
@@ -207,7 +207,7 @@ public class ExplicitKeyValueTest extends TransformTest {
 	}
 
 	@Test
-	public void testSelectMultiKeySimpleC() throws Exception {
+	public void testSelectMultiKeySimpleC() throws Throwable {
 		testMultiKey("A","where (id = 1 or id = 3) and payload = 'gobbledy'",
 				new Map[] {
 				buildFakeKey(new Object[] { "id", new Long(1) })
@@ -215,14 +215,14 @@ public class ExplicitKeyValueTest extends TransformTest {
 	}
 	
 	@Test
-	public void testSelectMultiKeySimpleD() throws Exception {
+	public void testSelectMultiKeySimpleD() throws Throwable {
 		testMultiKey("A","where (id = 1 or id = 2) or payload = 'gobbledy'",
 				null);
 	}
 
 	
 	@Test
-	public void selectMultiKeyComplexA() throws Exception {
+	public void selectMultiKeyComplexA() throws Throwable {
 		testMultiKey("B","where (pa = 1 and pb = 2 and pc = 3) or (pa = 1 and pb = 2 and pc = 5)",
 				new Map[] {
 				buildFakeKey(new Object[] { "pa", new Long(1), "pb", new Long(2), "pc", new Long(3) })
@@ -230,25 +230,25 @@ public class ExplicitKeyValueTest extends TransformTest {
 	}
 	
 	@Test
-	public void selectOneKeySimpleC() throws Exception {
+	public void selectOneKeySimpleC() throws Throwable {
 		testOneKey("A","where id = 15 and payload = 'whodunnit'",
 				buildFakeKey(new Object[] { "id", new Long(15) }));
 	}
 
 	@Test
-	public void selectOneKeySimpleD() throws Exception {
+	public void selectOneKeySimpleD() throws Throwable {
 		testOneKey("A", "where id = 15 or payload = 'whodunnit'",
 				null);
 	}
 	
 	@Test
-	public void selectInSimpleA() throws Exception {
+	public void selectInSimpleA() throws Throwable {
 		testOneKey("select t__0.* from A t__0 where (payload in ('global:frontpage', 'global'))", null, SelectStatement.class, ExecutionType.SELECT);
 		testOneKey("select t__0.* from metatag_config t__0 where (instance in ('global:frontpage', 'global'))", null, SelectStatement.class, ExecutionType.SELECT);
 	}
 	
 	@Test
-	public void testPE282_CASE_with_IF() throws Exception {
+	public void testPE282_CASE_with_IF() throws Throwable {
 		String[] schema = new String[] {
 			"CREATE TABLE table1 (col1 int unsigned not null default '0', col2 int unsigned not null default '0', col3 longtext, primary key (col1), key (col2));",
 			"CREATE TABLE table2 (col1 int unsigned not null default '0', col2 int unsigned not null default '0', col4 int unsigned not null default '0', primary key (col4,col2), key (col1), key (col2));"		

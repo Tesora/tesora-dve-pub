@@ -52,7 +52,7 @@ public class QueryStepDropTempTableOperation extends QueryStepOperation {
 	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		WorkerRequest req = 
-				new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(tableName,false)).
+				new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, tableName, false)).
 				onDatabase(database);
 		wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 	}

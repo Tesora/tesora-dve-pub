@@ -21,28 +21,25 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
-import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 
+import com.tesora.dve.db.mysql.common.MysqlAPIUtils;
+
 public class MSPComQueryRequestMessage extends BaseMSPMessage {
-    private static final int MAX_MYSQL_PAYLOAD_SIZE = 0xFFFFFF; //16777215=(2 raised to the 24th, minus 1).
+    public static final MSPComQueryRequestMessage PROTOTYPE = new MSPComQueryRequestMessage();
     public static final byte TYPE_IDENTIFIER = (byte) 0x03;
 
-    public boolean alreadySequenced = false;
-
-    public MSPComQueryRequestMessage() {
+    protected MSPComQueryRequestMessage() {
         super();
     }
 
-    public MSPComQueryRequestMessage(byte sequenceID, byte[] heapData) {
-        super(sequenceID, heapData);
-    }
-
-    public MSPComQueryRequestMessage(byte sequenceID, ByteBuf backing) {
-        super(sequenceID, backing);
+    protected MSPComQueryRequestMessage(ByteBuf backing) {
+        super(backing);
     }
 
     @Override
@@ -51,40 +48,38 @@ public class MSPComQueryRequestMessage extends BaseMSPMessage {
     }
 
     @Override
-    public MSPComQueryRequestMessage newPrototype(byte sequenceID, ByteBuf source) {
-        return new MSPComQueryRequestMessage(sequenceID,source);
+    public MSPComQueryRequestMessage newPrototype(ByteBuf source) {
+        source = source.slice();
+        return new MSPComQueryRequestMessage(source);
     }
 
     public byte[] getQueryBytes() {
-        return MysqlAPIUtils.unwrapOrCopyReadableBytes(readBuffer());
+        return MysqlAPIUtils.unwrapOrCopyReadableBytes(getRemainingBuf());
     }
 
     public ByteBuf getQueryNative(){
-        return readBuffer().slice();
+        return getRemainingBuf();
     }
 
-    public static MSPComQueryRequestMessage newMessage(byte sequenceID, String query, Charset encoding){
-        ByteBuf buf = Unpooled.buffer().order(ByteOrder.LITTLE_ENDIAN);
-        buf.writeBytes(query.getBytes(encoding));
-        return new MSPComQueryRequestMessage(sequenceID,buf);
+    private ByteBuf getRemainingBuf() {
+        ByteBuf readBuf = readBuffer();
+        ByteBuf remainingBuf = readBuf.slice(1,readBuf.readableBytes() - 1);//skip over type field.
+        return remainingBuf;
     }
 
-    @Override
-    public void writeTo(ByteBuf destination) {
-        ByteBuf sliceContents = readBuffer().slice().order(ByteOrder.LITTLE_ENDIAN);
-        int sequenceIter = this.getSequenceID();
-        int sendingPayloadSize;
-        boolean fullPacket = false;
-        do {
-            int initialSize = sliceContents.readableBytes();
-            int maxSlice = sequenceIter == 0 ? MAX_MYSQL_PAYLOAD_SIZE - 1 : MAX_MYSQL_PAYLOAD_SIZE;
-            sendingPayloadSize = Math.min(maxSlice, initialSize);//will send a zero payload packet if packet is exact multiple of MAX_MYSQL_PAYLOAD_SIZE.
-            fullPacket = (sendingPayloadSize == maxSlice);
-            ByteBuf nextChunk = sliceContents.readSlice(sendingPayloadSize);
-            MSPComQueryRequestMessage queryMsg = new MSPComQueryRequestMessage((byte)sequenceIter,nextChunk);
-            queryMsg.defaultWriteTo(destination, sequenceIter != 0);
-            sequenceIter++;
-        } while (sliceContents.readableBytes() > 0 || fullPacket);
+    public static MSPComQueryRequestMessage newMessage(String query, Charset encoding){
+        return newMessage(query.getBytes(encoding) );
+    }
+
+	public static MSPComQueryRequestMessage newMessage(ByteBuffer rawQuery) {
+		return newMessage(rawQuery.array());
+	}
+
+    public static MSPComQueryRequestMessage newMessage(byte[] rawQuery){
+        ByteBuf buf = Unpooled.buffer().order(ByteOrder.LITTLE_ENDIAN).ensureWritable(rawQuery.length + 1);
+        buf.writeByte(TYPE_IDENTIFIER);
+        buf.writeBytes(rawQuery);
+        return new MSPComQueryRequestMessage(buf);
     }
 
 }

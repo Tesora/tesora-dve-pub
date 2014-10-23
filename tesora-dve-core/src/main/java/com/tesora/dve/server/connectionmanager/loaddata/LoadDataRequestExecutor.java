@@ -22,8 +22,6 @@ package com.tesora.dve.server.connectionmanager.loaddata;
  */
 
 import com.tesora.dve.server.connectionmanager.messages.PrepareRequestExecutor;
-import com.tesora.dve.singleton.Singletons;
-
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
 
@@ -46,9 +44,7 @@ import com.tesora.dve.common.PECharsetUtils;
 import com.tesora.dve.db.mysql.MysqlLoadDataInfileRequestCollector;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementDiscarder;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
-import com.tesora.dve.server.connectionmanager.loaddata.MSPLoadDataDecoder ;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.schema.Name;
@@ -58,7 +54,7 @@ import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.session.LoadDataInfileStatement;
-import com.tesora.dve.variable.ClientCharSetSessionVariableHandler;
+import com.tesora.dve.variables.KnownVariables;
 
 public class LoadDataRequestExecutor {
 
@@ -71,8 +67,7 @@ public class LoadDataRequestExecutor {
 		// parse the query
 		Charset charSet = cs;
 		if (charSet == null) {
-			charSet = Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(
-					connMgr.getSessionVariable(ClientCharSetSessionVariableHandler.VARIABLE_NAME), true).getJavaCharset();
+			charSet =  KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr).getJavaCharset();
 		}
 		String query = PECharsetUtils.getString(message, charSet, true);
 		if (logger.isDebugEnabled()) {
@@ -159,14 +154,15 @@ public class LoadDataRequestExecutor {
 		if (connMgr.getReplicationOptions().connectionFromReplicationSlave()) {
 			return;
 		}
-		
-		// if local flag is not set then the file is on the machine PE is on so make sure we can read it
+
+        //It's counter intuitive, but local means the file is local to the calling client (IE, mysqlimport), not local the database (mysqld, dve).
 		if (stmt.isLocal()) {
-			// check the client capabiilities flag to see if local is supported by the client
+			// check the client capabilities flag to see if it supports loading client local files.
 			if (!connMgr.getClientCapabilities().allowLocalInfile()) {
 				throw new PEException("The client does not support the LOCAL option.");
 			}
 		} else {
+            //check if the sepcified filename exists on this server.
 			try {
 				Path p1 = Paths.get(stmt.getFileName());
 				boolean exists = Files.exists(p1);
@@ -206,7 +202,7 @@ public class LoadDataRequestExecutor {
 				throw new PEException(io);
 			}
 			
-			resultConsumer.getCtx().write(MSPLoadDataDecoder.createLoadDataEOFMsg(resultConsumer.getLoadDataInfileContext(), Byte.valueOf("0")));
+			resultConsumer.getCtx().write(MSPLoadDataDecoder.createLoadDataEOFMsg(resultConsumer.getLoadDataInfileContext()));
 		}
 	}
 	

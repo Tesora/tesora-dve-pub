@@ -44,9 +44,8 @@ import com.tesora.dve.siteprovider.DynamicSiteInfo;
 import com.tesora.dve.siteprovider.DynamicSiteStatus;
 import com.tesora.dve.siteprovider.onpremise.jaxb.OnPremiseSiteProviderConfig;
 import com.tesora.dve.siteprovider.onpremise.jaxb.PoolConfig;
-import com.tesora.dve.variable.ScopedVariableHandler;
-import com.tesora.dve.variable.VariableConfig;
-import com.tesora.dve.variable.VariableValueConverter;
+import com.tesora.dve.variables.ScopedVariables;
+import com.tesora.dve.variables.VariableValueConverter;
 import com.tesora.dve.worker.SiteManagerCommand;
 
 public class OnPremiseSiteProvider extends AbstractSiteProvider {
@@ -601,7 +600,7 @@ public class OnPremiseSiteProvider extends AbstractSiteProvider {
 	}
 
 	@Override
-	public VariableConfig<ScopedVariableHandler> getVariableConfiguration() {
-		return new VariableConfig<ScopedVariableHandler>();
+	public ScopedVariables getVariableConfiguration() {
+		return null;
 	}
 }

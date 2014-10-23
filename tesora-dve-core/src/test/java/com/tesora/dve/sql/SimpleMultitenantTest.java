@@ -43,14 +43,17 @@ import org.junit.Test;
 
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TableVisibility;
 import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -62,7 +65,7 @@ import com.tesora.dve.sql.schema.mt.AdaptiveMultitenantSchemaPolicyContext;
 import com.tesora.dve.sql.schema.mt.TenantColumn;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
-import com.tesora.dve.variable.SchemaVariableConstants;
+import com.tesora.dve.variable.VariableConstants;
 
 public class SimpleMultitenantTest extends MultitenantTest {
 
@@ -75,7 +78,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			fail("shouldn't be able to create tenants when not in multitenant mode");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: No multitenant database found");
+					"Internal error: No multitenant database found");
 		}
 		// create the database - for this test we use relaxed
 		rootConnection.execute(testDDL.withMTMode(MultitenantMode.ADAPTIVE).getCreateDatabaseStatement());
@@ -89,14 +92,14 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			fail("tenant shouldn't be able to create tenants");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: You do not have permission to create a tenant");
+					"Internal error: You do not have permission to create a tenant");
 		}
 		try {
 			tenantConnection.execute("show tenants");
 			fail("tenant shouldn't be able to show tenants");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: You do not have permission to show tenants");
+					"Internal error: You do not have permission to show tenants");
 		}
 		// create the second tenant now via the create database statement
 		createTenant(1);
@@ -112,7 +115,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			fail("suspended tenant shouldn't be able to do squat");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: Your account has been disabled");
+					"Internal error: Your account has been disabled");
 		}
 		rootConnection.execute("resume tenant " + tenantNames[0]);
 		rootConnection.assertResults("show tenants", 
@@ -136,7 +139,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			fail("should be unable to drop a multitenant database without using drop multitenant database");
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: Illegal drop database statement.  Use DROP MULTITENANT DATABASE to drop a multitenant database");
+					"Internal error: Illegal drop database statement.  Use DROP MULTITENANT DATABASE to drop a multitenant database");
 		}
 	}
 
@@ -177,7 +180,8 @@ public class SimpleMultitenantTest extends MultitenantTest {
 		CatalogDAO cat = CatalogDAOFactory.newInstance();
 		// find the db with name
 		UserDatabase edb = cat.findDatabase("mtdb");
-		SchemaContext sc = SchemaContext.createContext(cat);
+		SchemaContext sc = SchemaContext.createContext(cat,
+				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
 		sc.setOptions(ParserOptions.NONE);
 		PEDatabase ped = sc.findPEDatabase(new UnqualifiedName("mtdb"));
 		sc.setCurrentDatabase(ped);
@@ -238,18 +242,22 @@ public class SimpleMultitenantTest extends MultitenantTest {
 		}
 		becomeL();
 		ResourceResponse rr = rootConnection.fetch("show tables like '%block%'");
-		String tn = (String) rr.getResults().get(0).getResultColumn(1).getColumnValue();
+		final String tn = (String) rr.getResults().get(0).getResultColumn(1).getColumnValue();
 		rootConnection.assertResults("select * from " + tn + " order by ___mtid",
 				br(nr,new Integer(1),"b","b","b",getIgnore(),
 				   nr,new Integer(1),"a","a","a",getIgnore(),
 				   nr,new Integer(1),"a","a","a",getIgnore()));
-		try {
-			// make sure that if you do an insert as the null tenant, you have to specify everything
-			rootConnection.execute("insert into " + tn + " (`module`, `delta`, `theme`) values ('c','c','c')");
-			fail("should not be able to insert in null tenant mode if mtid not specified");
-		} catch (Exception e) {
-			assertException(e, SQLException.class, "SchemaException: No database selected");
-		}
+
+		// should not be able to insert in null tenant mode if mtid not specified
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				// make sure that if you do an insert as the null tenant, you have to specify everything
+				rootConnection.execute("insert into " + tn + " (`module`, `delta`, `theme`) values ('c','c','c')");
+			}
+		}.assertError(SQLException.class,
+					MySQLErrors.missingDatabaseFormatter,
+					"No database selected");
 	}
 
 	@Test
@@ -257,7 +265,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 		setContext("testScoping");
 		// also have to create a second user
 		rootConnection.execute(testDDL.getCreateDatabaseStatement());
-		rootConnection.execute("alter dve set " + SchemaVariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1001");
+		rootConnection.execute("alter dve set " + VariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1001");
 		rootConnection.execute("use mtdb");
 		createTenant(0);
 		createTenant(1);
@@ -270,13 +278,16 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			// verify that the backing table exists and is shared
 			rootConnection.assertResults(String.format(visibilitySQL,tenantNames[i]),
 					br(nr,"SHARED","adblock"));
-			try {
-				tenantConnection.execute("select * from block");
-				fail("tenant connection should not be able to see block");
-			} catch (Exception e) {
-				assertException(e, SQLException.class,
-						"SchemaException: No such Table: mtdb.block");
-			}
+
+			// tenant connection should not be able to see block
+			new ExpectedSqlErrorTester() {
+				@Override
+				public void test() throws Throwable {
+					tenantConnection.execute("select * from block");
+				}
+			}.assertError(SQLException.class,
+						MySQLErrors.missingTableFormatter,
+						"Table 'mtdb.block' doesn't exist");
 			tenantConnection.execute(block_table_decl);
 			// verify that the backing table exists and is shared
 			rootConnection.assertResults(String.format(visibilitySQL,tenantNames[i]),
@@ -317,8 +328,8 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			tenantConnection.execute("create table adblock (`bid` int(11) not null auto_increment, `blech` varchar(32) not null)");
 			tenantConnection.assertResults("show tables like 'block'", one);
 			tenantConnection.assertResults("show tables like 'adblock'",br(nr,"adblock"));
-			tenantConnection.assertResults("show tables", br(nr,"block",nr,"adblock"));
-			tenantConnection.assertResults("show tables like '%blo%'", br(nr,"block",nr,"adblock"));
+			tenantConnection.assertResults("show tables", br(nr,"adblock",nr,"block"));
+			tenantConnection.assertResults("show tables like '%blo%'", br(nr,"adblock",nr,"block"));
 			tenantConnection.assertResults("show tables like '%ad%'", br(nr,"adblock"));
 			Object[] fullBlockCols = 
 				br(nr,"bid",getIgnore(),getIgnore(),getIgnore(),getIgnore(),getIgnore(),
@@ -415,7 +426,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 	public void testMTAdaptive() throws Throwable {
 		setContext("testMTAdaptive");
 		rootConnection.execute(testDDL.withMTMode(MultitenantMode.ADAPTIVE).getCreateDatabaseStatement());
-		rootConnection.execute("alter dve set " + SchemaVariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1001");
+		rootConnection.execute("alter dve set " + VariableConstants.TABLE_GARBAGE_COLLECTOR_INTERVAL_NAME + " = 1001");
 		
 		createTenant(0);
 		createTenant(1);
@@ -514,7 +525,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 			tenantConnection.execute(declAprime);
 		} catch (Exception e) {
 			assertException(e, SQLException.class,
-					"SchemaException: Invalid redeclaration of table: table definitions differ");
+					"Internal error: Invalid redeclaration of table: table definitions differ");
 		}
 		tenantConnection.execute("drop table tmtAA");
 		tenantConnection.assertResults("show tables",br(nr,"tmtBB"));
@@ -581,10 +592,10 @@ public class SimpleMultitenantTest extends MultitenantTest {
 		tenantConnection.execute("use " + tenantNames[1]);
 		tenantConnection.execute("drop table st1");
 		rootConnection.assertResults("select count(*) from " + mangledNames.get("st1"),br(nr,new Long(7)));
-		tenantConnection.assertResults("show tables",br(nr,"st2",nr,"st3",nr,"pt1"));
+		tenantConnection.assertResults("show tables",br(nr,"pt1",nr,"st2",nr,"st3"));
 		becomeLT();
 		tenantConnection.execute("drop table st2");
-		tenantConnection.assertResults("show tables",br(nr,"st3",nr,"pt1"));
+		tenantConnection.assertResults("show tables",br(nr,"pt1",nr,"st3"));
 		becomeL();
 		rootConnection.execute("drop database " + tenantNames[1]);
 		rootConnection.assertResults("select count(*) from " + mangledNames.get("st1"),br(nr,new Long(7)));

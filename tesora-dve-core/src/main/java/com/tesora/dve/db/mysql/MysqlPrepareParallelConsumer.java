@@ -21,19 +21,16 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
 
 import com.tesora.dve.exceptions.PESQLStateException;
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -41,7 +38,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
-public abstract class MysqlPrepareParallelConsumer implements DBResultConsumer {
+public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
 
 	boolean successful = false;
 	
@@ -52,14 +49,11 @@ public abstract class MysqlPrepareParallelConsumer implements DBResultConsumer {
 	private short warnings = 0;
 	private int numCols = 0;
 	private ChannelHandlerContext ctxToConsume = null;
-	private boolean executeImmediately = false;
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
+    @Override
+    public MysqlCommand  writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		MysqlCommand cmd = new MysqlStmtPrepareCommand(sql.getSQL(), this, promise);
-		cmd.setExecuteImmediately(executeImmediately);
-		channel.write(cmd);
-		return promise;
+		return cmd;
 	}
 
 	public void header(ChannelHandlerContext ctx, MyPrepareOKResponse prepareOK) {
@@ -175,14 +169,6 @@ public abstract class MysqlPrepareParallelConsumer implements DBResultConsumer {
 
 	public MyPreparedStatement<MysqlGroupedPreparedStatementId> getPreparedStatement() {
 		return pstmt;
-	}
-
-	public boolean isExecuteImmediately() {
-		return executeImmediately;
-	}
-
-	public void setExecuteImmediately(boolean executeImmediately) {
-		this.executeImmediately = executeImmediately;
 	}
 
 }

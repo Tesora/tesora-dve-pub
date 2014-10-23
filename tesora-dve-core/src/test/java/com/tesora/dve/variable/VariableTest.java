@@ -21,17 +21,13 @@ package com.tesora.dve.variable;
  * #L%
  */
 
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
 
-import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.connectionmanager.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
@@ -44,7 +40,9 @@ import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PEMappedException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.queryplan.QueryPlan;
 import com.tesora.dve.queryplan.QueryStep;
@@ -53,8 +51,21 @@ import com.tesora.dve.queryplan.QueryStepGetSessionVariableOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSetScopedVariableOperation;
+import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.schema.VariableScope;
+import com.tesora.dve.sql.schema.VariableScopeKind;
+import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.test.simplequery.SimpleQueryTest;
+import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.variables.VariableHandler;
+import com.tesora.dve.variables.VariableManager;
 import com.tesora.dve.worker.MysqlTextResultChunkProvider;
 import com.tesora.dve.worker.UserCredentials;
 
@@ -74,10 +85,12 @@ public class VariableTest extends PETest {
 	QueryPlan plan;
 
 	@BeforeClass
-	public static void setup() throws Exception {
-		TestCatalogHelper.createTestCatalog(PETest.class, 2);
+	public static void setup() throws Throwable {
+		TestCatalogHelper.createTestCatalog(PETest.class);
 		bootHost = BootstrapHost.startServices(PETest.class);
-        populateMetadata(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
+		ProxyConnectionResource pcr = new ProxyConnectionResource();
+		SimpleQueryTest.declareSchema(pcr);
+		pcr.disconnect();
 	}
 
 	public VariableTest() {
@@ -108,77 +121,73 @@ public class VariableTest extends PETest {
 
 	@Test
 	public void globalVariableTest() throws PEException {
-        HostService hostService = Singletons.require(HostService.class);
-
-		String val = hostService.getGlobalVariable(catalogDAO, "slow_query_log");
-		assertEquals("0", val);
-		hostService.setGlobalVariable(catalogDAO, "slow_query_log", "yes");
-		val = hostService.getGlobalVariable(catalogDAO, "slow_query_log");
-		assertEquals("yes", val);
+		assertEquals(Boolean.FALSE, KnownVariables.SLOW_QUERY_LOG.getValue(null));
+		KnownVariables.SLOW_QUERY_LOG.setGlobalValue(ssConnection,"yes");
+		assertEquals(Boolean.TRUE, KnownVariables.SLOW_QUERY_LOG.getValue(null));
 	}
 
-	@Test(expected = PENotFoundException.class)
+	@Test(expected = PEMappedException.class)
 	public void globalVariableNotExistsTest() throws PEException {
-        Singletons.require(HostService.class).getGlobalVariable(catalogDAO, "no-such-variable");
+		Singletons.require(HostService.class).getVariableManager().lookupMustExist(null,"no-such-variable");
 	}
 
 	@Test
 	public void getVersionCommentTest() throws PEException {
         assertEquals(Singletons.require(HostService.class).getDveServerVersionComment(),
-				Singletons.require(HostService.class).getGlobalVariable(catalogDAO, "version_comment"));
+        		KnownVariables.VERSION_COMMENT.getGlobalValue(null));
 	}
 
 	@Test
 	public void getVersionTest() throws PEException {
         assertEquals(Singletons.require(HostService.class).getDveServerVersion(),
-				Singletons.require(HostService.class).getGlobalVariable(catalogDAO, "version"));
+        		KnownVariables.VERSION.getGlobalValue(null));
 	}
 
-	@Test(expected = PENotFoundException.class)
+	@Test(expected = PEException.class)
 	public void setVersionCommentTest() throws PEException {
-        Singletons.require(HostService.class).setGlobalVariable(catalogDAO, "version_comment", "hello");
+		KnownVariables.VERSION_COMMENT.setGlobalValue(ssConnection,"hello");
 	}
 
 	@Test
 	public void globalVariableQSOTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.DVE, null, "sql_logging", "yes"),
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.GLOBAL), "sql_logging", "yes"),
 				results);
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetGlobalVariableOperation("sql_logging"), results);
+		executeQuery(new QueryStepGetGlobalVariableOperation(KnownVariables.SQL_LOGGING), results);
 		assertTrue(results.hasResults());
-		assertEquals("yes", results.getSingleColumnValue(1, 1));
+		assertEquals("YES", results.getSingleColumnValue(1, 1));
 	}
 
 	@Test
 	public void sessionVariableQSOTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "character_set_client",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "character_set_client",
 				"latin1"), results);
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation("character_set_client"), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.CHARACTER_SET_CLIENT), results);
 		assertTrue(results.hasResults());
 		assertEquals("latin1", results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "character_set_client",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "character_set_client",
 				"utf8"), results);
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation("character_set_client"), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.CHARACTER_SET_CLIENT), results);
 		assertTrue(results.hasResults());
 		assertEquals("utf8", results.getSingleColumnValue(1, 1));
 	}
 
-	@Test(expected = PENotFoundException.class)
+	@Test(expected = PEMappedException.class)
 	public void sessionVariableNotExistsTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "invalid-session-name",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "invalid-session-name",
 				"value1"), results);
 		assertFalse(results.hasResults());
 	}
@@ -186,12 +195,12 @@ public class VariableTest extends PETest {
 	@Test
 	public void setPolicyTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "dynamic_policy",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "dynamic_policy",
 				"OnPremisePolicy"), results);
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation("dynamic_policy"), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.DYNAMIC_POLICY), results);
 		assertTrue(results.hasResults());
 		assertEquals("OnPremisePolicy", results.getSingleColumnValue(1, 1));
 	}
@@ -199,7 +208,7 @@ public class VariableTest extends PETest {
 	@Test(expected = PENotFoundException.class)
 	public void setPolicyFailTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null, "dynamic_policy",
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION), "dynamic_policy",
 				"value1"), results);
 		assertFalse(results.hasResults());
 	}
@@ -207,12 +216,12 @@ public class VariableTest extends PETest {
 	@Test
 	public void setStorageGroupTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null,
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
 				PERSISTENT_GROUP_VARIABLE, PEConstants.DEFAULT_GROUP_NAME), results);
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(PERSISTENT_GROUP_VARIABLE), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.PERSISTENT_GROUP), results);
 		assertTrue(results.hasResults());
 		assertEquals(PEConstants.DEFAULT_GROUP_NAME, results.getSingleColumnValue(1, 1));
 	}
@@ -220,7 +229,7 @@ public class VariableTest extends PETest {
 	@Test(expected = PENotFoundException.class)
 	public void setStorageGroupFailTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null,
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
 				PERSISTENT_GROUP_VARIABLE, "value1"), results);
 		assertFalse(results.hasResults());
 	}
@@ -228,66 +237,68 @@ public class VariableTest extends PETest {
 	@Test
 	public void getVariableUpperCaseTest() throws Throwable {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation("Persistent_Group"), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.PERSISTENT_GROUP), results);
 		assertTrue(results.hasResults());
 		assertEquals(1, results.getNumRowsAffected());
 	}
 
 	@Test
 	public void clientCharSet() throws Throwable {
-		String origCharSet = ssConnection.getSessionVariable(ClientCharSetSessionVariableHandler.VARIABLE_NAME);
+		String origCharSet =
+				KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(ssConnection).getName();
 		String newCharset = "utf8";
 		if (!origCharSet.toLowerCase().equals("utf8"))
 			newCharset = "latin1";
 
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null,
-				ClientCharSetSessionVariableHandler.VARIABLE_NAME, newCharset), results);
+		executeQuery(new QueryStepSetScopedVariableOperation(new VariableScope(VariableScopeKind.SESSION),
+				VariableConstants.CHARACTER_SET_CLIENT_NAME, newCharset), results);
 		assertFalse(results.hasResults());
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(ClientCharSetSessionVariableHandler.VARIABLE_NAME), results);
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.CHARACTER_SET_CLIENT), results);
 		assertTrue(results.hasResults());
 		assertEquals(newCharset, results.getSingleColumnValue(1, 1));
 	}
 
 	@Test
 	public void setValidCollation() throws Throwable {
-		String origCollation = ssConnection.getSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME);
+		String origCollation = 
+				KnownVariables.COLLATION_CONNECTION.getSessionValue(ssConnection);
 
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(CollationSessionVariableHandler.VARIABLE_NAME),
-				results);
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.COLLATION_CONNECTION), results);
 		assertTrue(results.hasResults());
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
 
 		String utfCollation = "utf8_unicode_ci";
-		ssConnection.setSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME, utfCollation);
-		assertEquals(utfCollation, ssConnection.getSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME));
+		ssConnection.setSessionVariable(VariableConstants.COLLATION_CONNECTION_NAME, utfCollation);
+		assertEquals(utfCollation,
+				KnownVariables.COLLATION_CONNECTION.getSessionValue(ssConnection));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(CollationSessionVariableHandler.VARIABLE_NAME),
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.COLLATION_CONNECTION),
 				results);
 		assertTrue(results.hasResults());
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSelectAllOperation(db, BroadcastDistributionModel.SINGLETON,
+		executeQuery(new QueryStepSelectAllOperation(ssConnection, db, BroadcastDistributionModel.SINGLETON,
 				"select @@session.collation_connection"), results);
 		assertTrue(results.hasResults());
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
 
-		ssConnection.setSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME, origCollation);
-		assertEquals(origCollation, ssConnection.getSessionVariable(CollationSessionVariableHandler.VARIABLE_NAME));
+		ssConnection.setSessionVariable(VariableConstants.COLLATION_CONNECTION_NAME, origCollation);
+		assertEquals(origCollation, 
+				KnownVariables.COLLATION_CONNECTION.getSessionValue(ssConnection));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepGetSessionVariableOperation(CollationSessionVariableHandler.VARIABLE_NAME),
-				results);
+		executeQuery(new QueryStepGetSessionVariableOperation(KnownVariables.COLLATION_CONNECTION), results);
 		assertTrue(results.hasResults());
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSelectAllOperation(db, BroadcastDistributionModel.SINGLETON,
+		executeQuery(new QueryStepSelectAllOperation(ssConnection, db, BroadcastDistributionModel.SINGLETON,
 				"select @@session.collation_connection"), results);
 		assertTrue(results.hasResults());
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
@@ -295,121 +306,123 @@ public class VariableTest extends PETest {
 
 	@Test
 	public void setInvalidCollation() throws Throwable {
-		QueryStepOperation step1op1 = new QueryStepSetScopedVariableOperation(VariableScopeKind.SESSION, null,
-				CollationSessionVariableHandler.VARIABLE_NAME, "latin1_junk_ci");
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		try {
-			plan.addStep(step1).executeStep(ssConnection, new MysqlTextResultChunkProvider());
-			fail("Expected exception not thrown");
-		} catch (PEException e) {
-            String receivedMessage = e.getMessage();
-            assertTrue("received incorrect error message: "+receivedMessage, receivedMessage.contains("not a supported collation"));
-		} catch (Throwable t) {
-			fail("Wrong exception thrown");
-		}
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				KnownVariables.COLLATION_CONNECTION.setSessionValue(ssConnection, "latin1_junk_ci");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.unknownCollationFormatter, "latin1_junk_ci");
 	}
 
 	/** PE-1154 */
 	@Test
 	public void setLongQueryTime() throws Throwable {
-		assertEquals("10.0", ssConnection.getSessionVariable("long_query_time"));
-		ssConnection.setSessionVariable("long_query_time", "25.5");
-		assertEquals("25.5", ssConnection.getSessionVariable("long_query_time"));
+		assertEquals(new Double(10.0), KnownVariables.LONG_QUERY_TIME.getGlobalValue(ssConnection));
+		KnownVariables.LONG_QUERY_TIME.setGlobalValue(ssConnection,"25.5");
+		assertEquals(new Double(25.5), KnownVariables.LONG_QUERY_TIME.getGlobalValue(ssConnection));
 	}
 
 	/** PE-1156 */
+	@SuppressWarnings("unchecked")
 	@Test
 	public void setGroupConcatMaxLen() throws Throwable {
-		assertEquals("1024", ssConnection.getSessionVariable("group_concat_max_len"));
-		ssConnection.setSessionVariable("group_concat_max_len", "5");
-		assertEquals("5", ssConnection.getSessionVariable("group_concat_max_len"));
+		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		VariableHandler<Long> var = (VariableHandler<Long>) vm.lookupMustExist(null,"group_concat_max_len"); 
+		assertEquals(new Long(1024), var.getSessionValue(ssConnection));
+		var.setSessionValue(ssConnection, "5");
+		assertEquals(new Long(5), var.getSessionValue(ssConnection)); 
 	}
 
 	/** PE-1128 */
 	@Test
 	public void setAutocommit() throws Throwable {
-		final String variableName = "autocommit";
-
-		assertEquals("1", ssConnection.getSessionVariable(variableName));
-		ssConnection.setSessionVariable(variableName, "0");
-		assertEquals("0", ssConnection.getSessionVariable(variableName));
-		ssConnection.setSessionVariable(variableName, "ON");
-		assertEquals("ON", ssConnection.getSessionVariable(variableName));
-		ssConnection.setSessionVariable(variableName, "OFF");
-		assertEquals("OFF", ssConnection.getSessionVariable(variableName));
-
-		final String expectedErrorMessage = "Invalid value given for the AUTOCOMMIT variable.";
-		new ExpectedExceptionTester() {
+		assertEquals(Boolean.TRUE, KnownVariables.AUTOCOMMIT.getSessionValue(ssConnection));
+		KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "0");
+		assertEquals(Boolean.FALSE, KnownVariables.AUTOCOMMIT.getSessionValue(ssConnection));
+		KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "ON");
+		assertEquals(Boolean.TRUE, KnownVariables.AUTOCOMMIT.getSessionValue(ssConnection));
+		KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "OFF");
+		assertEquals(Boolean.FALSE, KnownVariables.AUTOCOMMIT.getSessionValue(ssConnection));
+				
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-				ssConnection.setSessionVariable(variableName, null);
+				KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, null);
 			}
-		}.assertException(PEException.class, expectedErrorMessage);
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "autocommit", "NULL");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-				ssConnection.setSessionVariable(variableName, "");
+				KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "");
 			}
-		}.assertException(PEException.class, expectedErrorMessage);
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "autocommit", "");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-				ssConnection.setSessionVariable(variableName, "2");
+				KnownVariables.AUTOCOMMIT.setSessionValue(ssConnection, "2");
 			}
-		}.assertException(PEException.class, expectedErrorMessage);
+		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "autocommit", "2");
 	}
 
 	@Test
 	public void setTimeZone() throws Throwable {
 		// make sure the default values are properly set
-        String peTimeZoneDefault = Singletons.require(HostService.class).getGlobalVariable(catalogDAO, "default_time_zone");
+		// now that we support scopes - we should toss over default_time_zone in favor of time_zone with a global scope
+		
+		String peTimeZoneDefault = KnownVariables.TIME_ZONE.getGlobalValue(ssConnection);		
 		assertEquals("+00:00", peTimeZoneDefault);
-		assertEquals("+00:00", ssConnection.getSessionVariable("time_zone"));
+		assertEquals("+00:00", KnownVariables.TIME_ZONE.getSessionValue(ssConnection)); 
 
 		// change the session variable
-		ssConnection.setSessionVariable("time_zone", "+05:00");
-		assertEquals("+05:00", ssConnection.getSessionVariable("time_zone"));
+		KnownVariables.TIME_ZONE.setSessionValue(ssConnection, "+05:00");
+		assertEquals("+05:00", KnownVariables.TIME_ZONE.getSessionValue(ssConnection));
 
 		// change the default PE time zone
-        Singletons.require(HostService.class).setGlobalVariable(catalogDAO, "default_time_zone", "-09:00");
+		KnownVariables.TIME_ZONE.setGlobalValue(ssConnection,"-09:00");
 		// new connection should have new default
 		SSConnectionProxy conProxy = new SSConnectionProxy();
 		try {
 			SSConnection ssConnection = SSConnectionAccessor.getSSConnection(conProxy);
 			SSConnectionAccessor.setCatalogDAO(ssConnection, catalogDAO);
 			ssConnection.startConnection(new UserCredentials(bootHost.getProperties()));
-			assertEquals("-09:00", ssConnection.getSessionVariable("time_zone"));
+			assertEquals("-09:00",  KnownVariables.TIME_ZONE.getSessionValue(ssConnection));
 		} finally {
 			conProxy.close();
 		}
 	}
 
+	/*
 	@Test
 	public void getLiteralSessionVariableTest() throws PEException {
-        assertEquals("YES", Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo("have_innodb").getHandler()
-				.getValue(ssConnection, "have_innodb"));
+		throw new PEException("fill me in");
+//        assertEquals("YES", Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo("have_innodb").getHandler()
+//				.getValue(ssConnection, "have_innodb"));
 	}
 
 	@Test(expected = PEException.class)
 	public void setLiteralSessionVariableFailTest() throws Throwable {
-        Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo("have_innodb").getHandler()
-				.setValue(ssConnection, "have_innodb", "NO");
+		throw new Throwable ("fill me in");
+//        Singletons.require(HostService.class).getSessionConfigTemplate().getVariableInfo("have_innodb").getHandler()
+//				.setValue(ssConnection, "have_innodb", "NO");
 	}
+*/
 
 	@Test
 	public void setGroupServiceVariableTest() throws PEException {
-        HostService hostService = Singletons.require(HostService.class);
-		hostService.setGlobalVariable(catalogDAO, "group_service", "HaZeLCaST");
-		assertEquals("HaZeLCaST", hostService.getGlobalVariable(catalogDAO, "group_service"));
-		hostService.setGlobalVariable(catalogDAO, "group_service", "Localhost");
-		assertEquals("Localhost", hostService.getGlobalVariable(catalogDAO, "group_service"));
+//        HostService hostService = Singletons.require(HostService.class);
+		KnownVariables.GROUP_SERVICE.setPersistentValue(ssConnection, "HaZeLCaST");
+		assertEquals("HaZeLCaST",
+				KnownVariables.GROUP_SERVICE.getValue(null));
+		KnownVariables.GROUP_SERVICE.setPersistentValue(ssConnection, "Localhost");
+		assertEquals("Localhost", 
+				KnownVariables.GROUP_SERVICE.getValue(null));
 	}
 
 	@Test(expected = PEException.class)
 	public void setGroupServiceVariableFailTest() throws PEException {
-        Singletons.require(HostService.class).setGlobalVariable(catalogDAO, "group_service", "InvalidValue");
+		KnownVariables.GROUP_SERVICE.setPersistentValue(ssConnection, "InvalidValue");
 
 	}
 

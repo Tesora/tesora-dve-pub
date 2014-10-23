@@ -29,6 +29,8 @@ import com.tesora.dve.sql.node.SingleEdge;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.PEAbstractTable;
+import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.TriggerEvent;
 
 public abstract class UnaryTableDMLStatement extends DMLStatement {
 
@@ -47,4 +49,13 @@ public abstract class UnaryTableDMLStatement extends DMLStatement {
 		return Collections.singletonList(intoTable.get());
 	}
 		
+	@Override
+	public boolean hasTrigger(SchemaContext sc) {
+		TriggerEvent event = getTriggerEvent();
+		if (event == null) return false;
+		if (getTable().isView()) return false;
+		if (getTable().isVirtualTable()) return false;
+		return getTable().asTable().hasTrigger(sc, event);
+	}
+	
 }

@@ -80,7 +80,7 @@ public abstract class Analyzer {
 
 	protected DbAnalyzerReport parentReport;
 
-	public Analyzer(AnalyzerOptions opts) throws Exception {
+	public Analyzer(AnalyzerOptions opts) throws Throwable {
 		if (opts == null) {
 			throw new IllegalArgumentException();
 		}
@@ -283,7 +283,7 @@ public abstract class Analyzer {
 		return new SourcePosition(li);
 	}
 
-	private TransientExecutionEngine buildExecutionEngine(final int numPersistentSites) throws Exception {
+	private TransientExecutionEngine buildExecutionEngine(final int numPersistentSites) throws Throwable {
 		final TransientExecutionEngine engine = new TransientExecutionEngine("atemp");
 
 		final List<String> persistentSiteNames = new ArrayList<String>();

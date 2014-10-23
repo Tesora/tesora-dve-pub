@@ -21,20 +21,17 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
+import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.exceptions.PECodingException;
-
-import io.netty.channel.Channel;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.PEFuture;
-import com.tesora.dve.concurrent.PEPromise;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.MysqlExecuteCommand;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
@@ -180,10 +177,9 @@ public class MysqlTextResultCollector extends MysqlParallelResultConsumer {
 //		}
 	}
 
-	@Override
-	public PEFuture<Boolean> writeCommandExecutor(Channel channel, StorageSite site, DBConnection.Monitor connectionMonitor, SQLCommand sql, PEPromise<Boolean> promise) {
-		channel.write(new MysqlExecuteCommand(sql, connectionMonitor, this, promise));
-		return promise;
+    @Override
+    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+		return new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise);
 	}
 
 	public ColumnSet getColumnSet() {

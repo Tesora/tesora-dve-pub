@@ -28,33 +28,27 @@ import java.nio.ByteOrder;
 public abstract class BaseMSPMessage<S> implements MSPMessage {
     public static final int INITIAL_CAPACITY = 256;
 
-    byte sequenceID;
     private S state;
     private ByteBuf buffer;
 
     public BaseMSPMessage(){
-        this.sequenceID = 0;
         this.state = null;
         this.buffer = null;
     }
 
-    public BaseMSPMessage(byte sequence, S state){
-        this.sequenceID = sequence;
+    public BaseMSPMessage(S state){
         this.set(state);
     }
 
-    public BaseMSPMessage(byte sequence, byte[] heapData){
-        this.sequenceID = sequence;
+    public BaseMSPMessage(byte[] heapData){
         this.set(Unpooled.wrappedBuffer(heapData));
     }
 
-    public BaseMSPMessage(byte sequence, ByteBuf buffer){
-        this.sequenceID = sequence;
+    public BaseMSPMessage(ByteBuf buffer){
         this.set(buffer);
     }
 
-    public BaseMSPMessage(byte sequence, S state, ByteBuf buffer){
-        this.sequenceID = sequence;
+    public BaseMSPMessage(S state, ByteBuf buffer){
         this.set(state,buffer);
     }
 
@@ -62,7 +56,7 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
     public abstract byte getMysqlMessageType();
 
     @Override
-    public abstract MSPMessage newPrototype(byte sequenceID, ByteBuf source);
+    public abstract MSPMessage newPrototype(ByteBuf source);
 
     protected S unmarshall(ByteBuf source) {
         throw new UnsupportedOperationException();
@@ -72,20 +66,9 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
         throw new UnsupportedOperationException();
     }
 
-    public void writeTo(ByteBuf destination){
-        defaultWriteTo(destination, false);
-    }
-
-    protected void defaultWriteTo(ByteBuf destination, boolean supressType) {
-        ByteBuf leBuf = destination.order(ByteOrder.LITTLE_ENDIAN);
-        int payloadSizeIndex = leBuf.writerIndex();
-        leBuf.writeMedium(0);
-        leBuf.writeByte(this.getSequenceID());
-        int payloadStart = leBuf.writerIndex();
-        if (!supressType && !(this instanceof MSPUntypedMessage))
-            leBuf.writeByte(this.getMysqlMessageType());
-        leBuf.writeBytes(this.readBuffer().slice());
-        leBuf.setMedium(payloadSizeIndex, leBuf.writerIndex() - payloadStart);//patch up the length field.
+    public void marshallPayload(ByteBuf destination){
+        ByteBuf sliceContents = readBuffer().slice();
+        destination.writeBytes(sliceContents);
     }
 
     protected S readState() {
@@ -113,24 +96,6 @@ public abstract class BaseMSPMessage<S> implements MSPMessage {
         }
 
         throw new IllegalStateException(String.format("Cannot access buffer of %s, no fields or buffer provided.",this.getClass().getSimpleName()));
-    }
-
-    @Override
-    public byte getSequenceID() {
-        return sequenceID;
-    }
-
-    @Override
-    public void setSequenceID(byte newSeq){
-        this.sequenceID = newSeq;
-    }
-
-    @Override
-    public ByteBuf unwrap() {
-        if (buffer != null)
-            return buffer;
-        else
-            return Unpooled.EMPTY_BUFFER;
     }
 
     public String toString(){

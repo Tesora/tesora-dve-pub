@@ -48,14 +48,14 @@ public class SessionExecutionStep extends ExecutionStep {
 		this.sql = sql;
 	}
 
-	protected SQLCommand getSQLCommand() {
-		return new SQLCommand(sql);
+	protected SQLCommand getSQLCommand(final SchemaContext sc) {
+		return new SQLCommand(sc, sql);
 	}
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
-		addStep(sc,qsteps,new QueryStepSelectAllOperation(getPersistentDatabase(), distributionModel, getSQLCommand()));
+		addStep(sc, qsteps, new QueryStepSelectAllOperation(getPersistentDatabase(), distributionModel, getSQLCommand(sc)));
 	}
 
 	@Override

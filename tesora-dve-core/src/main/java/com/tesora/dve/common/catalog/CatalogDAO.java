@@ -24,6 +24,7 @@ package com.tesora.dve.common.catalog;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -55,8 +56,8 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.groupmanager.GroupManager;
+import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.sql.util.Functional;
-import com.tesora.dve.variable.GlobalConfig;
 
 public class CatalogDAO {
 	private static Logger logger = Logger.getLogger(CatalogDAO.class);
@@ -374,15 +375,6 @@ public class CatalogDAO {
 		return extServ;
 	}
 
-	public GlobalConfig createConfig(final String variable, final String defaultValue) throws Throwable {
-		return (GlobalConfig) new EntityGenerator() {
-			@Override
-			public CatalogEntity generate() throws Throwable {
-				return new GlobalConfig(variable, defaultValue);
-			}
-		}.execute();
-	}
-
 	// -----------------------------------------------------------------
 	// FIND Methods
 	// 
@@ -403,10 +395,6 @@ public class CatalogDAO {
 		return findAllByClass(PersistentSite.class);
 	}
 	
-	public List<GlobalConfig> findAllConfig() {
-		return findAllByClass(GlobalConfig.class);
-	}
-	
 	public PersistentGroup findDefaultPersistentGroup() throws PEException {
 		return findByName(PersistentGroup.class, "Default", true);
 	}
@@ -424,15 +412,19 @@ public class CatalogDAO {
 				projectName, except);
 	}
 
-	public GlobalConfig findConfig(String variableName) throws PENotFoundException {
-		return findConfig(variableName, true);
+	public VariableConfig findVariableConfig(String variableName) throws PENotFoundException {
+		return findVariableConfig(variableName, true);
 	}
-
-	public GlobalConfig findConfig(String variableName, boolean except) throws PENotFoundException {
-		return (GlobalConfig) CatalogDAOFactory.INSTANCE.getLookupCache(GlobalConfig.class, "name").findByValue(this,
+	
+	public VariableConfig findVariableConfig(String variableName, boolean except) throws PENotFoundException {
+		return (VariableConfig) CatalogDAOFactory.INSTANCE.getLookupCache(VariableConfig.class, "name").findByValue(this,
 				variableName, except);
 	}
-
+	
+	public List<VariableConfig> findAllVariableConfigs() {
+		return findAllByClass(VariableConfig.class);
+	}
+	
 	public UserDatabase findDatabase(String databaseName) throws PEException {
 		return findDatabase(databaseName, true);
 	}
@@ -453,6 +445,18 @@ public class CatalogDAO {
 		return findPersistentSite(siteName, true);
 	}
 
+	public PersistentGroup buildAllSitesGroup() throws PEException {
+		List<PersistentSite> sites = findAllPersistentSites();
+		final LinkedHashMap<String,PersistentSite> uniqueURLS = new LinkedHashMap<String,PersistentSite>();
+		for(PersistentSite ps : sites) {
+			String key = ps.getMasterUrl();
+			PersistentSite already = uniqueURLS.get(key);
+			if (already == null) 
+				uniqueURLS.put(key,ps);
+		}
+		return new PersistentGroup(uniqueURLS.values());
+	}
+	
 	@SuppressWarnings("unchecked")
 	public static <T> T onlyOne(List<T> results, String what, String searchedOn, boolean except)
 			throws PENotFoundException {
@@ -1162,6 +1166,14 @@ public class CatalogDAO {
 		return onlyOne(keys, "Specific key", dbName + "." + encTabName + "/" + keyName, false);
 	}
 	
+	public UserTrigger findTrigger(String name, String dbName) throws PEException {
+		Query query = em.get().createQuery("from UserTrigger ut where ut.name = :name and ut.table.userDatabase.name = :dbname");
+		query.setParameter("name",name);
+		query.setParameter("dbname",dbName);
+		List<UserTrigger> trigs = query.getResultList();
+		return onlyOne(trigs, "Triggers", dbName + "." + name,false);
+	}
+	
 	public void deleteAllServerRegistration() {
 		Query q = em.get().createQuery("delete from ServerRegistration");
 		q.executeUpdate();
@@ -1205,22 +1217,23 @@ public class CatalogDAO {
 		}
 		
 		private static Properties fixProperties(Properties p) throws PEException {
-			String url = p.getProperty(DBHelper.CONN_URL);
+			final String url = p.getProperty(DBHelper.CONN_URL);
 			
 			// In production we don't have a default value for the catalog URL
 			if(StringUtils.isEmpty(url)) 
 				throw new PEException("Value for " + DBHelper.CONN_URL + " not specified in properties");
 
-			Properties props = new Properties(p);
+			final Properties props = new Properties(p);
 			props.putAll(p);
 			
-			PEUrl peUrl = PEUrl.fromUrlString(url);
+			final PEUrl peUrl = CatalogHelper.buildCatalogBaseUrlFrom(url);
 			
-			String dbName = props.getProperty(DBHelper.CONN_DBNAME);
+			final String dbName = props.getProperty(DBHelper.CONN_DBNAME);
 			props.remove(DBHelper.CONN_DBNAME);
 			peUrl.setPath(dbName);
 			props.setProperty(DBHelper.CONN_URL, peUrl.getURL());
 			props.remove("hibernate.hbm2ddl.auto");
+
 			return props;
 		}
 		
