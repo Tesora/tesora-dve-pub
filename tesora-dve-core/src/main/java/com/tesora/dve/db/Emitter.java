@@ -1623,7 +1623,7 @@ public abstract class Emitter {
 			PEAbstractTable<?> pet = (PEAbstractTable<?>) tab;
 			Database<?> curDb = sc.getCurrentDatabase(false);
 			Database<?> tblDb = pet.getDatabase(sc);
-			if (context != TableInstanceContext.COLUMN) {
+			if (context == TableInstanceContext.TABLE_FACTOR) {
 				if ((curDb == null && tblDb != null) || 
 						((curDb != null && tblDb != null) && (curDb.getId() != tblDb.getId()))) {
 					if (getOptions() == null || !getOptions().isCatalog()) { 
