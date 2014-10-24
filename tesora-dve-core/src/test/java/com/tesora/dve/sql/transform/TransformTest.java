@@ -863,6 +863,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		public void verify(SchemaContext sc, ExecutionStep es) {
 			super.verify(sc, es);
 			TriggerExecutionStep trigStep = (TriggerExecutionStep) es;
+			assertEquals(rowQuery,trigStep.getRowQuery().getSQL(sc));
 			actual.verify(sc, trigStep.getActualStep());
 			verifyTriggerBody(sc,"before",before,trigStep.getBeforeStep());
 			verifyTriggerBody(sc,"after",after,trigStep.getAfterStep());

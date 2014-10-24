@@ -24,6 +24,7 @@ package com.tesora.dve.server.messaging;
 import io.netty.util.CharsetUtil;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.db.GenericSQLCommand.CommandFragment;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
@@ -95,25 +97,31 @@ public class SQLCommand implements Serializable {
 	}
 
 	public String getRawSQL() {
-		return sql.getUnresolved();
+		return sql.getDecoded();
 	}
 
 	public String getSQL() {
-		if (sql.hasLateResolution()) {
-			throw new IllegalStateException("Per site resolution required but no worker available");
-		}
-		return sql.getUnresolved();
+		return sql.getDecoded();
 	}
 
-	public byte[] getSQLAsBytes() {
-		if (sql.hasLateResolution()) {
-			throw new IllegalStateException("Per site resolution required but no worker available");
-		}
-		return sql.getUnresolvedAsBytes();
+	public ByteBuffer getBytes() {
+		return sql.getEncoded();
+	}
+
+	public List<CommandFragment> viewCommandFragments() {
+		return sql.viewCommandFragments();
+	}
+
+	public int getDecodedLength() {
+		return sql.getDecodedLength();
+	}
+
+	public int getEncodedLength() {
+		return sql.getEncodedLength();
 	}
 
 	public boolean isEmpty() {
-		return (sql == null) || sql.getUnresolved().isEmpty();
+		return (sql == null) || sql.viewCommandFragments().isEmpty();
 	}
 
 	public boolean isPreparedStatement() {
@@ -143,7 +151,7 @@ public class SQLCommand implements Serializable {
 
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName() + "(" + thisId + "): " + " \"" + sql.getUnresolved() + "\": " + parameters;
+		return this.getClass().getSimpleName() + "(" + thisId + "): " + " \"" + sql.getDecoded() + "\": " + parameters;
 	}
 
 	public ProjectionInfo getProjection() {
@@ -160,7 +168,7 @@ public class SQLCommand implements Serializable {
 
 	public boolean isSelectStatement() {
 		if (sql.isSelect() == null) {
-			return IS_SELECT_STATEMENT.matcher(sql.getUnresolved()).matches();
+			return IS_SELECT_STATEMENT.matcher(sql.getDecoded()).matches();
 		} else {
 			return sql.isSelect().booleanValue();
 		}
@@ -168,7 +176,7 @@ public class SQLCommand implements Serializable {
 
 	public boolean hasLimitClause() {
 		if (sql.isLimit() == null) {
-			return HAS_LIMIT_CLAUSE.matcher(sql.getUnresolved()).matches();
+			return HAS_LIMIT_CLAUSE.matcher(sql.getDecoded()).matches();
 		} else {
 			return sql.isLimit().booleanValue();
 		}

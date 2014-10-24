@@ -70,7 +70,7 @@ public class DVEConfigCLITest extends PETest {
 		DVEConfigCLI pet = new DVEConfigCLI(null);
 		CatalogHelper helper = pet.getCatalogHelper();
 
-		CATALOG_URL = helper.getCatalogUrl();
+		CATALOG_URL = helper.getCatalogBaseUrl();
 		SITE_URL = PEUrl.stripUrlParameters(CATALOG_URL);
 	}
 

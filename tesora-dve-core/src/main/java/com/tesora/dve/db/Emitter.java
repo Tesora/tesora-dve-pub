@@ -259,11 +259,7 @@ public abstract class Emitter {
 	}
 	
 	public GenericSQLCommand buildGenericCommand(final SchemaContext sc, String format) {
-		try {
-			return builder.build(sc, format);
-		} catch (final PEException e) {
-			throw new SchemaException(Pass.EMITTER, e);
-		}
+		return builder.build(sc, format);
 	}
 	
 	public abstract Emitter buildNew();
@@ -1660,7 +1656,7 @@ public abstract class Emitter {
 			PEAbstractTable<?> pet = (PEAbstractTable<?>) tab;
 			Database<?> curDb = sc.getCurrentDatabase(false);
 			Database<?> tblDb = pet.getDatabase(sc);
-			if (context != TableInstanceContext.COLUMN) {
+			if (context == TableInstanceContext.TABLE_FACTOR) {
 				if ((curDb == null && tblDb != null) || 
 						((curDb != null && tblDb != null) && (curDb.getId() != tblDb.getId()))) {
 					if (getOptions() == null || !getOptions().isCatalog()) { 

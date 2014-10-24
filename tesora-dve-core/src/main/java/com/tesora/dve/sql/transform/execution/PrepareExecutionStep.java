@@ -56,7 +56,7 @@ public class PrepareExecutionStep extends DirectExecutionStep {
 
 	@Override
 	public String getSQL(SchemaContext sc, EmitOptions opts) {
-		return sql.resolve(sc,true,null).getUnresolved();
+		return sql.resolve(sc,true,null).getDecoded();
 	}
 
 	@Override

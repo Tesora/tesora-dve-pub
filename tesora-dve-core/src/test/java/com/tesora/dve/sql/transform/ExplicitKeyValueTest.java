@@ -73,7 +73,7 @@ public class ExplicitKeyValueTest extends TransformTest {
 		List<HasPlanning> steps = ep.getSequence().getSteps();
 		assertEquals(steps.size(), 1);
 		DirectExecutionStep firstStep = (DirectExecutionStep) steps.get(0);
-		echo(firstStep.getSQL(db,"  ").resolve(db,"  ").getUnresolved());
+		echo(firstStep.getSQL(db,"  ").resolve(db,"  ").getDecoded());
 		assertEquals(type,firstStep.getExecutionType());
 		if (fakeKey != null) {
 			IKeyValue kv = firstStep.getDistributionKey().getDetachedKey(db);

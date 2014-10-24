@@ -25,6 +25,7 @@ import java.util.EnumSet;
 import java.util.Locale;
 
 import com.tesora.dve.charset.NativeCharSet;
+import com.tesora.dve.charset.NativeCollation;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
 import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
 import com.tesora.dve.clock.TimingServiceConfiguration;
@@ -34,6 +35,9 @@ import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.mysql.MySQLTransactionIsolation;
+import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.ErrorInfo;
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.server.connectionmanager.ConnectionSemaphore;
@@ -43,6 +47,7 @@ import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.global.MySqlPortalService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.TimestampVariableUtils;
 import com.tesora.dve.sql.schema.SQLMode;
@@ -374,13 +379,76 @@ public class KnownVariables implements VariableConstants {
 					},
 					bothScope,
 					"utf8_general_ci",
-					emulated);
+					emulated) {
+		
+		@Override
+		public void setGlobalValue(VariableStoreSource conn, String value) throws PEException {
+			final NativeCharSet parentCharSet =
+					Singletons.require(HostService.class).getDBNative().getSupportedCharSets().findCharSetByCollation(PEStringUtils.dequote(value));
+			if (parentCharSet != null) {
+				super.setGlobalValue(conn, value);
+				final String parentCharSetValue = parentCharSet.getName();
+				if (!parentCharSetValue.equals(CHARACTER_SET_CONNECTION.getGlobalValue(conn))) {
+					CHARACTER_SET_CONNECTION.setGlobalValue(conn, parentCharSetValue);
+				}
+			} else {
+				throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_COLLATION, value));
+			}
+		}
+
+		@Override
+		public void setSessionValue(VariableStoreSource conn, String value) throws PEException {
+			final NativeCharSet parentCharSet =
+					Singletons.require(HostService.class).getDBNative().getSupportedCharSets().findCharSetByCollation(PEStringUtils.dequote(value));
+			if (parentCharSet != null) {
+				super.setSessionValue(conn, value);
+				final String parentCharSetValue = parentCharSet.getName();
+				if (!parentCharSetValue.equals(CHARACTER_SET_CONNECTION.getSessionValue(conn))) {
+					CHARACTER_SET_CONNECTION.setSessionValue(conn, parentCharSetValue);
+				}
+			} else {
+				throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_COLLATION, value));
+			}
+		}
+	};
 	public static final VariableHandler<String> CHARACTER_SET_CONNECTION =
 			new VariableHandler<String>("character_set_connection",
 			stringConverter,
 			bothScope,
 			"utf8",
-			emulated);
+			emulated) {
+		
+		@Override
+		public void setGlobalValue(VariableStoreSource conn, String value) throws PEException {
+			final NativeCollation defaultCollation =
+					Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(PEStringUtils.dequote(value));
+			if (defaultCollation != null) {
+				super.setGlobalValue(conn, value);
+				final String defaultCollationValue = defaultCollation.getName();
+				if (!defaultCollationValue.equals(COLLATION_CONNECTION.getGlobalValue(conn))) {
+					COLLATION_CONNECTION.setGlobalValue(conn, defaultCollationValue);
+				}
+			} else {
+				throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_CHARACTER_SET, value));
+			}
+		}
+
+		@Override
+		public void setSessionValue(VariableStoreSource conn, String value) throws PEException {
+			final NativeCollation defaultCollation =
+					Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(PEStringUtils.dequote(value));
+			if (defaultCollation != null) {
+				super.setSessionValue(conn, value);
+				final String defaultCollationValue = defaultCollation.getName();
+				if (!defaultCollationValue.equals(COLLATION_CONNECTION.getSessionValue(conn))) {
+					COLLATION_CONNECTION.setSessionValue(conn, defaultCollationValue);
+				}
+			} else {
+				throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_CHARACTER_SET, value));
+			}
+		}
+		
+	};
 	public static final VariableHandler<String> CHARACTER_SET_RESULTS =
 			new VariableHandler<String>("character_set_results",
 			stringConverter,
@@ -394,11 +462,11 @@ public class KnownVariables implements VariableConstants {
 						@Override
 						public NativeCharSet convertToInternal(String varName,
 								String in) throws PEException {
-							try {
-								return MysqlNativeCharSetCatalog.DEFAULT_CATALOG.findCharSetByName(in, true);
-							} catch (PEException e) {
+							final NativeCharSet charSet = MysqlNativeCharSetCatalog.DEFAULT_CATALOG.findCharSetByName(in);
+							if (charSet == null) {
 								throw new PEException(String.format("Unsupported charset for '%s': %s", varName, in));
 							}
+							return charSet;
 						}
 
 						@Override

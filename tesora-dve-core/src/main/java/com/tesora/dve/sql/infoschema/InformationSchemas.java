@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
+import com.tesora.dve.charset.mysql.MysqlNativeCollation;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -40,6 +41,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.persist.PersistedEntity;
 import com.tesora.dve.sql.infoschema.direct.DirectSchemaBuilder;
+import com.tesora.dve.sql.infoschema.persist.CatalogCollationEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
@@ -90,6 +92,9 @@ public final class InformationSchemas {
 	public List<PersistedEntity> buildEntities(int groupid, int modelid, String charSet, String collation) throws PEException {
 		CatalogSchema cs = new CatalogSchema();
 		ArrayList<PersistedEntity> acc = new ArrayList<PersistedEntity>();
+		for (final MysqlNativeCollation entry : MysqlNativeCollation.supportedCollations) {
+			acc.add(new CatalogCollationEntity(cs, entry));
+		}
 		infoSchema.buildEntities(cs,groupid, modelid, charSet, collation, acc);
 		show.buildEntities(cs, groupid, modelid, charSet, collation, acc);
 		mysql.buildEntities(cs, groupid, modelid, charSet, collation, acc);

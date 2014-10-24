@@ -103,7 +103,7 @@ public abstract class Statement extends StatementNode {
 	
 	public String getSQL(SchemaContext sc, Emitter emitter, EmitOptions opts, boolean preserveParamMarkers) {
 		GenericSQLCommand gsql = getGenericSQL(sc,emitter,opts);
-		return gsql.resolve(sc, preserveParamMarkers, (opts == null ? null : opts.getMultilinePretty())).getUnresolved(); 
+		return gsql.resolve(sc, preserveParamMarkers, (opts == null ? null : opts.getMultilinePretty())).getDecoded(); 
 	}
 	
 	public String getSQL(SchemaContext sc, boolean withExtensions, boolean preserveParamMarkers) {

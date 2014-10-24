@@ -21,10 +21,6 @@ package com.tesora.dve.sql;
  * #L%
  */
 
-
-
-
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -70,7 +66,6 @@ import com.tesora.dve.variable.VariableConstants;
 
 /**
  * Class for tests requiring a complete DVE system up and running, not just the engine. 
- * 
  */
 public class SchemaTest extends PETest {
 	

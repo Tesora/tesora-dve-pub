@@ -38,6 +38,10 @@ public class PortalDBHelperConnectionResource extends
 		super();
 	}
 
+	public PortalDBHelperConnectionResource(final boolean useUTF8) throws Throwable {
+		super(useUTF8);
+	}
+
 	public PortalDBHelperConnectionResource(Properties urlConnectOptions) throws Throwable {
 		super(urlConnectOptions);
 	}
@@ -57,6 +61,7 @@ public class PortalDBHelperConnectionResource extends
 		String portalPort = catalogProps.getProperty(PEConstants.MYSQL_PORTAL_PORT_PROPERTY, PEConstants.MYSQL_PORTAL_DEFAULT_PORT);
 
 		PEUrl peurl = PEUrl.fromUrlString(catalogProps.getProperty(DBHelper.CONN_URL));
+		peurl.setQueryOptions(new Properties());
 		peurl.setPort(portalPort);
 		JdbcConnectParams jcp = new JdbcConnectParams(peurl.getURL(),
 				catalogProps.getProperty(DBHelper.CONN_USER),

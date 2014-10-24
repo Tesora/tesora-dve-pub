@@ -136,6 +136,7 @@ import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.parser.ParserOptions.Option;
+import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.Comment;
 import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.ContainerDistributionVector;
@@ -144,7 +145,6 @@ import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.ExplainOptions.ExplainOption;
-import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.FloatSizeTypeAttribute;
 import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.FunctionName;
@@ -1413,39 +1413,25 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		}
 		
 		if ((charSetValue != null) && (collationValue == null)) {  // Use default for the charset.
-			NativeCollation nc = lookupDefaultCollationForCharsetInCatalog(charSetValue);
-			if (nc == null)
-				throw new SchemaException(Pass.FIRST, "Unable to build plan - Unsupported CHARACTER SET " + charSetValue);
+			final NativeCollation nc = getNativeCollationCatalog().findDefaultCollationForCharSet(charSetValue);
+			if (nc == null) {
+				throw new SchemaException(Pass.FIRST, "Unsupported CHARACTER SET " + charSetValue);
+			}
 			return new Pair<String, String>(charSetValue, nc.getName());
 		} else if ((charSetValue == null) && (collationValue != null)) {  // Use an appropriate charset.
-			try {
-				final NativeCharSet charSet = getNativeCharSetCatalog().findCharSetByCollation(collationValue, true);
-				return new Pair<String, String>(charSet.getName(), collationValue);
-			} catch (final PEException e) {
-				throw new SchemaException(Pass.FIRST, e.getMessage());
+			final NativeCharSet charSet = getNativeCharSetCatalog().findCharSetByCollation(collationValue);
+			if (charSet == null) {
+				throw new SchemaException(Pass.FIRST, "Unsupported COLLATION '" + collationValue + "'");
 			}
+			return new Pair<String, String>(charSet.getName(), collationValue);
 		} else { // Just check the values for mutual compatibility.
-			final NativeCharSet charSet = lookupCharsetInCatalog(charSetValue, getNativeCharSetCatalog());
-			if (charSet.isCompatibleWith(collationValue)) {
+			final NativeCharSet charSet = getNativeCharSetCatalog().findCharSetByName(charSetValue);
+			if (charSet == null) {
+				throw new SchemaException(Pass.FIRST, "Unsupported CHARACTER SET '" + charSetValue + "'");
+			} else if (charSet.isCompatibleWith(collationValue)) {
 				return new Pair<String, String>(charSetValue, collationValue);
 			}
 			throw new SchemaException(Pass.FIRST, "COLLATION '" + collationValue + "' is not valid for CHARACTER SET '" + charSetValue + "'");
-		}
-	}
-
-	private NativeCharSet lookupCharsetInCatalog(final String name, final NativeCharSetCatalog supportedCharSets) {
-		try {
-			return supportedCharSets.findCharSetByName(name, true);
-		} catch (final PEException e) {
-			throw new SchemaException(Pass.FIRST, e.getMessage());
-		}
-	}
-
-	private NativeCollation lookupDefaultCollationForCharsetInCatalog(final String charsetName) {
-		try {
-			return getNativeCollationCatalog().findDefaultCollationForCharSet(charsetName, true);
-		} catch (final PEException e) {
-			throw new SchemaException(Pass.FIRST, e.getMessage());
 		}
 	}
 
@@ -2500,13 +2486,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 					throw new SchemaException(Pass.FIRST, "Must specify a character set");
 				}
 				String value = (String)le.getValue(pc);
-				try {
-                    if (Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(value, false) == null) {
-						// character set not supported
-						throw new SchemaException(Pass.FIRST, "Cannot set an unsupported character set: " + value);
-					}
-				} catch (PEException e) {
-					throw new SchemaException(Pass.FIRST, "Unable to validate character set: " + value);
+				if (Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(value) == null) {
+					// character set not supported
+					throw new SchemaException(Pass.FIRST, "Cannot set an unsupported character set: " + value);
 				}
 			}
 		}

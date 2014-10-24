@@ -100,7 +100,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	
 	@Override
 	public String getSQL(SchemaContext sc, EmitOptions opts) {
-		return sql.resolve(sc, (opts == null ? null : opts.getMultilinePretty())).getUnresolved();
+		return sql.resolve(sc, (opts == null ? null : opts.getMultilinePretty())).getDecoded();
 	}
 
 	public SQLCommand getCommand(SchemaContext sc) {

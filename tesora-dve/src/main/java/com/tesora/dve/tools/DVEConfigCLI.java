@@ -322,7 +322,7 @@ public class DVEConfigCLI extends CLIBuilder {
 
 		catHelper.createLocalhostCatalog("OnPremise", PEConstants.DEFAULT_GROUP_NAME, persistent, dynamic);
 
-		printlnDots("DVE catalog created at '" + catHelper.getCatalogDBUrl() + "'");
+		printlnDots("DVE catalog created at '" + catHelper.getCatalogDatabaseUrl() + "'");
 	}
 
 	public void cmd_setup_catalog(Scanner scanner) throws PEException {
@@ -374,7 +374,7 @@ public class DVEConfigCLI extends CLIBuilder {
 
 		catHelper.createStandardCatalog(sites, groups, defaultGroup, dynamic, policy);
 
-		printlnDots("DVE catalog created at '" + catHelper.getCatalogDBUrl() + "'");
+		printlnDots("DVE catalog created at '" + catHelper.getCatalogDatabaseUrl() + "'");
 	}
 
 	private List<PersistentSite> createPersistentSites(PersistentConfig config) throws PEException {
