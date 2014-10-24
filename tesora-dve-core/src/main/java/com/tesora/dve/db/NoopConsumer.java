@@ -22,29 +22,16 @@ package com.tesora.dve.db;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.mysql.*;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
-import java.util.List;
 
 /**
  *
  */
-public class CommandChannelCollector extends DBResultConsumer {
-    RedistTupleBuilder builder;
-
-    public CommandChannelCollector(RedistTupleBuilder builder) {
-        this.builder = builder;
-    }
-
+public class NoopConsumer extends DBResultConsumer {
+    public static final NoopConsumer SINGLETON = new NoopConsumer();
     @Override
     public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-        //NOTE: this DBResultConsumer / visitor is unusual because it doesn't issue any queries on the visited channel(s).
-        //TODO: consider allowing callers to get the worker/channels directly and avoid this weird workaround. -sgossard
-
-        builder.addSite(channel);
+        //this command does nothing, but can be useful for making workergroup/workers set the current database and setting session parameters.
         promise.success(true);
         return Bundle.NO_COMM;
     }

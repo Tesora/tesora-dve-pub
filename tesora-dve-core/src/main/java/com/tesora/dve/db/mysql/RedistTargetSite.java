@@ -35,16 +35,26 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.ReferenceCountUtil;
 import org.apache.log4j.Logger;
 
-import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
 *
 */
-class RedistTargetSite implements AutoCloseable {
+public class RedistTargetSite implements AutoCloseable {
     static Logger logger = Logger.getLogger(RedistTargetSite.class);
 
-    private RedistTupleBuilder builder;
+    public interface InsertWatcher {
+        void insertOK(RedistTargetSite site, MyOKResponse okPacket);
+        void insertFailed(RedistTargetSite site, MyErrorResponse errorPacket);
+        void insertFailed(RedistTargetSite site, Exception e);
+    }
+
+    public interface SourceControl {
+        void pauseSourceStreams();
+        void resumeSourceStreams();
+    }
+
+    private InsertWatcher watcher;
 
     private CommandChannel channel;
     private int pstmtId = -1;
@@ -60,44 +70,49 @@ class RedistTargetSite implements AutoCloseable {
 
     private InsertPolicy policy;
     private final int maximumRowsToBuffer;
+    private final long maximumBytesToBuffer;
     private final int columnsPerTuple;
 
     public interface InsertPolicy {
         int getMaximumRowsToBuffer();
+        long getMaximumBytesToBuffer();
         int getColumnsPerTuple();
-        ColumnSet getRowsetMetadata();
         SQLCommand buildInsertStatement(int tupleCount) throws PEException;
     }
 
-    public RedistTargetSite(RedistTupleBuilder builder, CommandChannel channel, InsertPolicy policy) {
-        this.builder = builder;
+    public RedistTargetSite(InsertWatcher watcher, CommandChannel channel, InsertPolicy policy) {
+        this.watcher = watcher;
         this.channel = channel;
         this.policy = policy;
 
         this.maximumRowsToBuffer = policy.getMaximumRowsToBuffer();
+        this.maximumBytesToBuffer = policy.getMaximumBytesToBuffer();
         this.columnsPerTuple = policy.getColumnsPerTuple();
     }
 
-    public void append(MyBinaryResultRow binRow, int rowsToFlushCount, int bytesToFlushCount, long[] autoIncUsed) {
-        this.bufferedExecute.add(binRow, autoIncUsed);
+    public boolean append(MyBinaryResultRow binRow) {
+        return append(binRow, 1,binRow.sizeInBytes());
+    }
+
+    public boolean append(MyBinaryResultRow binRow, int rowsToFlushCount, int bytesToFlushCount) {
+        this.bufferedExecute.add(binRow);
         this.queuedRowSetCount.incrementAndGet();
         this.totalQueuedBytes += bytesToFlushCount;
         this.totalQueuedRows += rowsToFlushCount;
-    }
 
-    public void handleAck(MyMessage message) {
-        if (message instanceof MyOKResponse){
-            this.pendingStatementCount.decrementAndGet();
-        } else if (message instanceof MyErrorResponse){
-            this.pendingStatementCount.decrementAndGet();
+        boolean needsFlush = this.getTotalQueuedRows() >= maximumRowsToBuffer || this.getTotalQueuedBytes() >= maximumBytesToBuffer;
+        if (needsFlush) {
+            this.flush();
+            return true;
         } else {
-            //?
+            return false;
         }
     }
 
     public void flush() {
         final BufferedExecute buffersToFlush = this.bufferedExecute;
         if (!buffersToFlush.isEmpty()) {
+
             final int rowsToFlush = this.totalQueuedRows;
             this.pendingFlush = this.bufferedExecute;
             this.bufferedExecute = new BufferedExecute();
@@ -166,7 +181,6 @@ class RedistTargetSite implements AutoCloseable {
 
                         @Override
                         void consumeError(MyErrorResponse error) throws PESQLStateException {
-                            super.consumeError(error);
                             prepareFailed(error);
                         }
                     };
@@ -202,11 +216,9 @@ class RedistTargetSite implements AutoCloseable {
 
         buffersToFlush.setStmtID(currentStatementID);
         buffersToFlush.setNeedsNewParams(true); //TODO:this field can be managed by BufferedExecute. -gossard
-        buffersToFlush.setRowSetMetadata(policy.getRowsetMetadata());
         buffersToFlush.setColumnsPerTuple(columnsPerTuple);
 
         int rowsWritten = buffersToFlush.size();
-
         this.channel.writeAndFlush(buffersToFlush, constructInsertHandler());
         this.pendingFlush = null;
         this.queuedRowSetCount.getAndAdd(-rowsWritten);
@@ -223,7 +235,17 @@ class RedistTargetSite implements AutoCloseable {
 
             @Override
             public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-                return builder.processTargetPacket(RedistTargetSite.this,message);
+                if (message instanceof MyOKResponse){
+                    RedistTargetSite.this.pendingStatementCount.decrementAndGet();
+                    watcher.insertOK(RedistTargetSite.this,(MyOKResponse)message);
+                } else if (message instanceof MyErrorResponse){
+                    RedistTargetSite.this.pendingStatementCount.decrementAndGet();
+                    watcher.insertFailed(RedistTargetSite.this, (MyErrorResponse) message);
+                } else {
+                    Exception weirdPacket = new PEException("Received unexpected packet," + (message == null? "null" : message.getClass().getSimpleName()));
+                    watcher.insertFailed(RedistTargetSite.this, weirdPacket);
+                }
+                return false;
             }
 
             @Override
@@ -232,7 +254,7 @@ class RedistTargetSite implements AutoCloseable {
 
             @Override
             public void failure(Exception e) {
-                builder.failure(e);
+                watcher.insertFailed(RedistTargetSite.this, e);
             }
 
             @Override
@@ -284,8 +306,7 @@ class RedistTargetSite implements AutoCloseable {
 
     protected void prepareFailed(MyErrorResponse error){
         this.waitingForPrepare = false;
-        //TODO: need a better way to propigate this backwards. -gossard
-        logger.error("prepare failed, error=" + error);
+        watcher.insertFailed(this,error);
     }
 
 }

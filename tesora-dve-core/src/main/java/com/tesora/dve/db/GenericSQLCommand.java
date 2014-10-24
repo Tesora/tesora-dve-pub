@@ -216,6 +216,10 @@ public class GenericSQLCommand {
 		this.hasLimit = hasLimit;
 	}
 
+    public Charset getEncoding(){
+        return encoding;
+    }
+
 	public String getUnresolved() {
 		return new String(getUnresolvedAsBytes(), this.encoding);
 	}

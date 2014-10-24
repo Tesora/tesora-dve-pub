@@ -48,36 +48,36 @@ public class MyBinaryResultRowTest {
         bitmap.setBit(2);//one based indexing, so second field is null
         rawRow.writeBytes(bitmap.getBitmapArray());
 
-        List<DataTypeValueFunc> fieldConvertors = new ArrayList<>();
+        List<DecodedMeta> fieldConvertors = new ArrayList<>();
 
         {
             DataTypeValueFunc mysqlTypeFunc = DBTypeBasedUtils.getMysqlTypeFunc(MyFieldType.FIELD_TYPE_LONG);
             mysqlTypeFunc.writeObject(rawRow, 45);
-            fieldConvertors.add(mysqlTypeFunc);
+            fieldConvertors.add(new DecodedMeta(mysqlTypeFunc));
         }
 
         {
             DataTypeValueFunc mysqlTypeFunc = DBTypeBasedUtils.getMysqlTypeFunc(MyFieldType.FIELD_TYPE_LONG);
             //nothing in packet, this was null.
-            fieldConvertors.add(mysqlTypeFunc);
+            fieldConvertors.add(new DecodedMeta(mysqlTypeFunc));
         }
 
         {
             DataTypeValueFunc mysqlTypeFunc = DBTypeBasedUtils.getMysqlTypeFunc(MyFieldType.FIELD_TYPE_VARCHAR);
             mysqlTypeFunc.writeObject(rawRow, "one");
-            fieldConvertors.add(mysqlTypeFunc);
+            fieldConvertors.add(new DecodedMeta(mysqlTypeFunc));
         }
 
         {
             DataTypeValueFunc mysqlTypeFunc = DBTypeBasedUtils.getMysqlTypeFunc(MyFieldType.FIELD_TYPE_VARCHAR);
             mysqlTypeFunc.writeObject(rawRow, "two");
-            fieldConvertors.add(mysqlTypeFunc);
+            fieldConvertors.add(new DecodedMeta(mysqlTypeFunc));
         }
 
         {
             DataTypeValueFunc mysqlTypeFunc = DBTypeBasedUtils.getMysqlTypeFunc(MyFieldType.FIELD_TYPE_VARCHAR);
             mysqlTypeFunc.writeObject(rawRow, "three");
-            fieldConvertors.add(mysqlTypeFunc);
+            fieldConvertors.add(new DecodedMeta(mysqlTypeFunc));
         }
 
         origRow = new MyBinaryResultRow(fieldConvertors);

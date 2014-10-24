@@ -24,7 +24,8 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.concurrent.*;
-import com.tesora.dve.db.CommandChannel;
+import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
+import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
 import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.KeyValue;
@@ -34,44 +35,29 @@ import com.tesora.dve.worker.MysqlRedistTupleForwarder;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.common.PECollectionUtils;
 import com.tesora.dve.common.catalog.PersistentTable;
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
-public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
+public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, RedistTargetSite.InsertWatcher, RedistTargetSite.SourceControl {
     static final Logger logger = Logger.getLogger(RedistTupleBuilder.class);
     static final String SIMPLE_CLASSNAME = RedistTupleBuilder.class.getSimpleName();
 
 	static private AtomicInteger nextId = new AtomicInteger();
 	private int thisId = nextId.incrementAndGet();
 
+    RedistTargetSet targetSet;
 
-
-    Map<StorageSite, RedistTargetSite> siteCtxBySite = new HashMap<>();
-
-    IdentityHashMap<RedistTargetSite,RedistTargetSite> blockedTargetSites = new IdentityHashMap<>();
     IdentityHashMap<ChannelHandlerContext,ChannelHandlerContext> sourceSites = new IdentityHashMap<>();
-
-	int updatedRowsCount = 0;
 
 	final PEDefaultPromise<Integer> completionPromise = new PEDefaultPromise<>();
 
@@ -80,7 +66,6 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
 	boolean lastPacketSent = false;
     boolean failedRedist = false;
 
-	final Future<SQLCommand> insertStatementFuture;
 	final PersistentTable targetTable;
 	final WorkerGroup targetWG;
     final CatalogDAO catalogDAO;
@@ -95,17 +80,18 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
     MysqlRedistTupleForwarder.MaximumAutoIncr maxAutoIncr = null;
 	private ColumnSet rowSetMetadata;
 
-	public RedistTupleBuilder(CatalogDAO catalogDAO, DistributionModel distModel, Future<SQLCommand> insertStatementFuture, SQLCommand insertOptions,
+	public RedistTupleBuilder(CatalogDAO catalogDAO, DistributionModel distModel, SQLCommand insertOptions,
                               PersistentTable targetTable, int maximumRowCount, int maxDataSize,
-                              WorkerGroup targetWG) {
+                              WorkerGroup targetWG) throws PEException {
         this.distModel = distModel;
         this.catalogDAO = catalogDAO;
 		this.insertOptions = insertOptions;
-		this.insertStatementFuture = insertStatementFuture;
 		this.targetTable = targetTable;
 		this.targetWG = targetWG;
 		this.maximumRowCount = maximumRowCount;
 		this.maxDataSize = maxDataSize;
+
+        this.targetSet = new RedistTargetSet(targetWG,this,this,this);
 	}
 
 
@@ -133,95 +119,46 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
             maxAutoIncr = new MysqlRedistTupleForwarder.MaximumAutoIncr();
 
         MappingSolution mappingSolution;
-        if ( BroadcastDistributionModel.SINGLETON.equals(distModel) && !tableHints.isUsingAutoIncColumn()) {
+        if (BroadcastDistributionModel.SINGLETON.equals(distModel) && !tableHints.isUsingAutoIncColumn()) {
+            //broadcast and not using an autoinc.
             mappingSolution = MappingSolution.AllWorkersSerialized;
         } else {
-            long nextAutoIncr = tableHints.tableHasAutoIncs() ? autoIncrBlocks[0] : 0;
+            //either using an autoinc, or not broadcast.
 
             KeyValue dv = new KeyValue(distValue);
 
-            //picks apart the row, looking at the distribution keys and autoinc fields.
+            //picks apart the row, looking for distribution keys or autoinc fields.
             for (int i = 0; i < columnInspectorList.size(); ++i) {
                 MysqlRedistTupleForwarder.ColumnValueInspector dvm = columnInspectorList.get(i);
                 dvm.inspectValue(binRow, i, dv, maxAutoIncr);
             }
 
             mappingSolution = distModel.mapKeyForInsert(catalogDAO, targetWG.getGroup(), dv);
-
-            autoIncrBlocks = tableHints.tableHasAutoIncs() ? new long[] {nextAutoIncr++} : null;
         }
 
-        boolean flushedInserts = false;
+
         //********************
-        long[] autoIncrBlocks1 = autoIncrBlocks;
-        Collection<RedistTargetSite> allTargetSites = chooseTargetSites(mappingSolution);
-
-        boolean shouldCopyAutoIncs = (allTargetSites.size() > 1);
-        for (RedistTargetSite siteCtx : allTargetSites){
-            if (shouldCopyAutoIncs)
-                autoIncrBlocks1 = (autoIncrBlocks1 == null) ? null : new long[]{autoIncrBlocks1[0]};
-            try {
-
-                int rowsToFlushCount = 1;
-                int bytesToFlushCount = binRow.sizeInBytes();
-
-
-                boolean needsFlush = (siteCtx.getTotalQueuedRows() + rowsToFlushCount >= maximumRowCount) || siteCtx.getTotalQueuedBytes() + bytesToFlushCount >= maxDataSize;
-
-                long[] autoIncUsed = autoIncrBlocks1;
-                if (needsFlush && autoIncrBlocks1 != null) {
-                    autoIncUsed = new long[] { autoIncrBlocks1[0] };
-                    autoIncrBlocks1[0] += rowsToFlushCount;
-                }
-
-                siteCtx.append(binRow, rowsToFlushCount, bytesToFlushCount, autoIncUsed);
-
-                if (siteCtx.getTotalQueuedRows() >= maximumRowCount || siteCtx.getTotalQueuedBytes() >= maxDataSize){
-                    flushedInserts = true;
-                    siteCtx.flush();
-                    if (! siteCtx.willAcceptMoreRows() ){
-                        blockedTargetSites.put(siteCtx,siteCtx);
-                    }
-                }
-
-            } finally {
-    //			siteCtx.siteCtxLock.unlock();
-            }
+        Long actualAutoInc = autoIncrBlocks == null ? null : autoIncrBlocks[0];
+        if (actualAutoInc != null) {
+            //we have an autoinc, append it to the binrow
+            DecodedMeta autoIncFunc = new DecodedMeta(DBTypeBasedUtils.getMysqlTypeFunc(MyFieldType.FIELD_TYPE_LONGLONG));
+            binRow = binRow.append(autoIncFunc, actualAutoInc);
         }
+        boolean triggeredFlush = targetSet.sendInsert(mappingSolution, binRow);
         //********************
-
-        if (!blockedTargetSites.isEmpty()){
-            pauseSourceStreams();
-        }
 
         //TODO: this should really be called BEFORE flushes, to ensure we don't lose a tracked autoinc on a failure. -sgossard
-        if (flushedInserts)
+        if (triggeredFlush)
             updateAutoIncIfNeeded();
     }
 
     private void updateAutoIncIfNeeded() {
         if (maxAutoIncr != null && maxAutoIncr.isSet() && tableHints.isUsingAutoIncColumn()){
-            //TODO: this call saves the maximum autoinc via hibernate, and will stall the netty thread.  sgossard
+            //TODO: this call records the maximum autoinc via hibernate, and could stall the netty thread.  sgossard
             tableHints.recordMaximalAutoInc(catalogDAO, maxAutoIncr.getMaxValue());
             maxAutoIncr = null;
         }
     }
-
-    private Collection<RedistTargetSite> chooseTargetSites(MappingSolution mappingSolution) throws PEException {
-        Collection<RedistTargetSite> allTargetSites;
-        if (mappingSolution == MappingSolution.AllWorkers || mappingSolution == MappingSolution.AllWorkersSerialized) {
-            //this is broadcast, we send to all workers.
-            allTargetSites = siteCtxBySite.values();
-        } else if (mappingSolution == MappingSolution.AnyWorker || mappingSolution == MappingSolution.AnyWorkerSerialized) {
-            //this is random, we send to any of the workers.
-            allTargetSites = Collections.singleton(PECollectionUtils.selectRandom(siteCtxBySite.values()));
-        } else {
-            //this is range, we send to a specific worker based on the previously computed distribution vector of the row
-            allTargetSites = Collections.singleton(siteCtxBySite.get(targetWG.resolveSite(mappingSolution.getSite())));
-        }
-        return allTargetSites;
-    }
-
 
     public void setProcessingComplete() throws PEException {
         //Called when upstream forwarder has seen stream EOFs from all source streams, so all rows have been forwarded.
@@ -230,7 +167,10 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
         resumeSourceStreams();
 
         lastPacketSent = true;
-        flushTargetSites();
+
+        updateAutoIncIfNeeded();
+
+        targetSet.flush();
 
         testRedistributionComplete();
     }
@@ -238,12 +178,6 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
     public void failure(Exception e) {
         failedRedist = true;
         completionPromise.failure(e);
-    }
-
-    public void addSite(CommandChannel channel) {
-        StorageSite site = channel.getStorageSite();
-        RedistTargetSite siteCtx = new RedistTargetSite(this, channel, this);
-        siteCtxBySite.put(site, siteCtx);
     }
 
     public int getUpdateCount() throws Exception {
@@ -258,35 +192,22 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
     }
 
     @Override
+    public long getMaximumBytesToBuffer(){
+        return maxDataSize;
+    }
+
+    @Override
     public int getColumnsPerTuple() {
         return targetTable.getNumberOfColumns();
     }
 
-    @Override
-    public ColumnSet getRowsetMetadata() {
-        return rowSetMetadata;
-    }
-
 	public SQLCommand buildInsertStatement(int tupleCount) throws PEException {
-        SQLCommand insertCommand;
-        if (tupleCount == maximumRowCount && insertStatementFuture != null) {
-            try {
-                //TODO: this delayed building is suspect, we don't want to block a netty thread, and it ignores the tuple count. -sgossard
-                insertCommand = insertStatementFuture.get();
-            } catch (ExecutionException ee) {
-                throw new PEException("Exception encountered syncing to redist insert statement", ee);
-            } catch (InterruptedException ie) {
-                throw new PEException("Sync to redist insert statement interrupted", ie);
-            }
-        } else {
-			insertCommand = QueryStepMultiTupleRedistOperation.getTableInsertStatement(
+        return QueryStepMultiTupleRedistOperation.getTableInsertStatement(
 					/*
 					 * PerHostConnectionManager.INSTANCE.lookupConnection(targetWG
 					 * .getCommectionId())
 					 */CharsetUtil.UTF_8, targetTable, insertOptions, rowSetMetadata, tupleCount,
 					insertIgnore);
-        }
-        return insertCommand;
     }
 
 
@@ -317,14 +238,16 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
         }
     }
 
-    protected void pauseSourceStreams(){
+    @Override
+    public void pauseSourceStreams(){
         sourcePaused = true;
         for (ChannelHandlerContext ctx : sourceSites.keySet()){
             StreamValve.pipelinePause(ctx.pipeline());
         }
     }
 
-    protected void resumeSourceStreams(){
+    @Override
+    public void resumeSourceStreams(){
         if (sourcePaused){
             sourcePaused = false;
             for (ChannelHandlerContext ctx : sourceSites.keySet()){
@@ -334,79 +257,32 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
     }
 
 
-    public boolean processTargetPacket(RedistTargetSite siteCtx, MyMessage message) {
-
-        if (!isProcessingComplete(siteCtx)) {
-            try {
-                if (message instanceof MyOKResponse) {
-                    if (!isProcessingComplete(siteCtx) && !completionPromise.isFulfilled()) { // skip if previous exception
-                        int rowCount = (int) ((MyOKResponse)message).getAffectedRows();
-                        updatedRowsCount+= rowCount;
-                    }
-                } else {
-                    MyErrorResponse err = (MyErrorResponse)message;
-                    failure(err.asException());
-                }
-            } finally {
-                siteCtx.handleAck(message);
-                checkIfSitesAreUnblocked();
-            }
-        }
-
+    @Override
+    public void insertOK(RedistTargetSite siteCtx, MyOKResponse okPacket) {
         testRedistributionComplete();
-
-        return isProcessingComplete(siteCtx);
     }
 
-    private void checkIfSitesAreUnblocked(){
-        Iterator<RedistTargetSite> blockedSites = blockedTargetSites.keySet().iterator();
-        while (blockedSites.hasNext()){
-            RedistTargetSite site = blockedSites.next();
-            if (site.willAcceptMoreRows())
-                blockedSites.remove();
-        }
-        if (blockedTargetSites.isEmpty()) {
-            resumeSourceStreams();
-        }
+    @Override
+    public void insertFailed(RedistTargetSite site, MyErrorResponse errorPacket) {
+        this.failure( errorPacket.asException() );
     }
 
-    private boolean isProcessingComplete(RedistTargetSite siteCtx) {
-        boolean done = lastPacketSent && !siteCtx.hasPendingRows();
-        return done;
-	}
-	
-
-
-    private void closeTargetSites() {
-
-        for (RedistTargetSite siteCtx : siteCtxBySite.values()) {
-            siteCtx.close();
-        }
+    @Override
+    public void insertFailed(RedistTargetSite site, Exception e) {
+        this.failure( e );
     }
 
-    private void flushTargetSites() {
-
-        updateAutoIncIfNeeded();
-
-        for (RedistTargetSite siteContext : siteCtxBySite.values()) {
-            siteContext.flush();
-        }
-    }
 
     private void testRedistributionComplete() {
-        boolean isProcessingComplete = lastPacketSent;
-		for (RedistTargetSite siteCtx : siteCtxBySite.values()) {
-			if ( siteCtx.hasPendingRows() ) {
-				isProcessingComplete = false;
-				break;
-			}
-		}
+        boolean anySiteHasPending = targetSet.hasPendingRows();
 
+        boolean isProcessingComplete = lastPacketSent && !anySiteHasPending;
 		if (isProcessingComplete) {
+            int updatedRowsCount = (int) targetSet.getUpdatedRowCount();
 			if (logger.isDebugEnabled())
 				logger.debug("redist # "+thisId+" , redistribution of " + targetTable.displayName() + " complete - " + updatedRowsCount + " rows updated");
             try{
-                closeTargetSites();
+                targetSet.close();
                 completionPromise.trySuccess(updatedRowsCount);
             } catch (Exception e){
                 completionPromise.failure(e);
@@ -414,6 +290,5 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy {
 
 		}
 	}
-
 
 }

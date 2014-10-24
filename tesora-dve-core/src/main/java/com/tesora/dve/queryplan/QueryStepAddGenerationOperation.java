@@ -24,11 +24,7 @@ package com.tesora.dve.queryplan;
 import java.util.Collections;
 import java.util.List;
 
-import com.tesora.dve.common.catalog.CatalogEntity;
-import com.tesora.dve.common.catalog.PersistentGroup;
-import com.tesora.dve.common.catalog.PersistentSite;
-import com.tesora.dve.common.catalog.StorageGroupGeneration;
-import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.common.catalog.*;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -78,13 +74,17 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 		try {
 			if (record != null)
 				QueryPlanner.invalidateCache(record);
-			ssCon.getCatalogDAO().new EntityGenerator() {
+            final CatalogDAO catalogDAO = ssCon.getCatalogDAO();
+            catalogDAO.new EntityGenerator() {
 				@Override
 				public CatalogEntity generate() throws Throwable {
-					StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
-					ssCon.getCatalogDAO().persistToCatalog(newGen);
-					group.addGeneration(ssCon, wg, newGen, tableDecls, mustIgnoreFKs, userDecls, rebalanceInfo);
-					return newGen;
+                    //NOTE: this catalog entry is for the latest storage generation.
+                    StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
+                    if (rebalanceInfo == null)
+					    catalogDAO.persistToCatalog(newGen);
+                    //NOTE: this call is responsible for scanning the dist-key ranges and setting up any catalog entries for older generations.
+                    group.addGeneration(ssCon, wg, newGen, tableDecls, mustIgnoreFKs, userDecls, rebalanceInfo);
+					return rebalanceInfo == null ? newGen : null;
 				}
 			}.execute();
 		} finally {

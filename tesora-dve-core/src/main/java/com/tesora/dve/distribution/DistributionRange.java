@@ -41,6 +41,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.OrderBy;
 import javax.persistence.Table;
 
+import com.tesora.dve.worker.WorkerGroup;
 import org.hibernate.annotations.ForeignKey;
 
 import org.apache.commons.lang.StringUtils;
@@ -121,13 +122,17 @@ public class DistributionRange implements CatalogEntity {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Mapping key " + key.toString() + " to generation " + groupGen.getVersion() + " using range " + this + " which has " + rangeGenerations.size() + " generations and is rep'd by object " + System.identityHashCode(this));
 		}
-		
-		List<PersistentSite> siteList = groupGen.getStorageSites();
-		int selectedMember = Math.abs(key.hashCode()) % siteList.size();
-		return new MappingSolution(siteList.get(selectedMember));
+
+        return getMappingInGeneration(key, groupGen);
 	}
 
-	private void setComparatorClass(IKeyValue key) {
+    public MappingSolution getMappingInGeneration(IKeyValue key, StorageGroupGeneration groupGen) {
+        List<PersistentSite> siteList = groupGen.getStorageSites();
+        int selectedMember = Math.abs(key.hashCode()) % siteList.size();
+        return new MappingSolution(siteList.get(selectedMember));
+    }
+
+    private void setComparatorClass(IKeyValue key) {
 		Map<String, String> typesNeedingComparator = getSignatureComparatorMap(signature);
 		
 		if (typesNeedingComparator.size() > 0) {

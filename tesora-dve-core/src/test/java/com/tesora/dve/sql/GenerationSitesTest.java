@@ -387,15 +387,20 @@ public class GenerationSitesTest extends SchemaTest {
 	}
 	
 	// mostly about examining the metadata associated with rebalancing
-	@Ignore
 	@Test
 	public void test_pe495Alt() throws Throwable {
 		conn.execute("create range vrange (varchar) persistent group " + testDDL.getPersistentGroup().getName());
 	
-		conn.execute("create table vt1 (a varchar(32), b varchar(32), c int, primary key(a)) range distribute on (b) using vrange");
-		
-		conn.execute("insert into vt1 values ('one','one',1), ('two','two',2)");
-		conn.execute(testDDL.getPersistentGroup().getAddGenerations());
+		conn.execute("create table vt1 (a varchar(32), b varchar(32), c int, primary key(a)) range distribute on (a) using vrange");
+        conn.execute("create table vt2 (a varchar(32), b varchar(32), c int, primary key(a)) range distribute on (b) using vrange");
+
+        for (int i=0;i< 1000;i++){
+            conn.execute("insert into vt1 values ('key"+i+"','one"+i+"',"+i+")");
+            conn.execute("insert into vt2 values ('two"+i+"','key"+i+"',"+i+")");
+        }
+
+		conn.execute(testDDL.getPersistentGroup().getAddGenerations() + " WITH REBALANCE");
+
 	}
 	
 	@Test

@@ -27,10 +27,7 @@ import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.mysql.DelegatingResultsProcessor;
-import com.tesora.dve.db.mysql.MysqlMessage;
-import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
-import com.tesora.dve.db.mysql.SharedEventLoopHolder;
+import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.worker.agent.Agent;
@@ -541,5 +538,9 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
         }
     }
 
+
+    public CommandChannel getDirectChannel() throws PESQLException {
+        return this.dircon_getConnection();
+    }
 
 }

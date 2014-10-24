@@ -913,7 +913,8 @@ public class CatalogDAO {
 		@Override
 		public CatalogEntity update() throws Throwable {
 			CatalogEntity entity = generate();
-			persistToCatalog(entity);
+            if (entity != null)
+			    persistToCatalog(entity);
 			return entity;
 		}
 	}

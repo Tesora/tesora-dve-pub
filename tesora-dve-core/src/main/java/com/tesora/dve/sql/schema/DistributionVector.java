@@ -32,10 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.tesora.dve.common.catalog.CatalogEntity;
-import com.tesora.dve.common.catalog.DistributionModel;
-import com.tesora.dve.common.catalog.PersistentGroup;
-import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.common.catalog.*;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.distribution.ContainerDistributionModel;
@@ -366,9 +363,14 @@ public class DistributionVector extends Persistable<DistributionVector, Distribu
 	
 	public KeyValue buildEmptyKeyValue(SchemaContext pc) {
 		// only for models that don't use columns
-		if (usesColumns(pc))
-			return null;
-		return new KeyValue(ofTable.getPersistent(pc), getRangeID(pc));
+		if (usesColumns(pc)) {
+            KeyValue kv = new KeyValue(ofTable.getPersistent(pc), getRangeID(pc));
+            KeyTemplate template = buildKeyTemplate(pc);
+            for (UserColumn col : template)
+                kv.addColumnTemplate(col);
+            return kv;
+        } else
+            return new KeyValue(ofTable.getPersistent(pc), getRangeID(pc));
 	}
 	
 	public List<PEColumn> getDistributionTemplate(SchemaContext sc) {

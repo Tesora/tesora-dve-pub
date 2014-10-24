@@ -37,15 +37,18 @@ public class MyBinaryResultRow extends MyResponseMessage {
     static final Logger log = LoggerFactory.getLogger(MyBinaryResultRow.class);
 
     //TODO: need to figure out a way to reduce downstream need to collect rowset headers. introduce flags and allow autoinc modifications? -sgossard
-    List<DataTypeValueFunc> fieldConverters;
-    ByteBuf[] fieldSlices;
+    List<DecodedMeta> fieldConverters;
+    List<ByteBuf> fieldSlices;
 
-    public MyBinaryResultRow(List<DataTypeValueFunc> fieldConverters) {
+    public MyBinaryResultRow(List<DecodedMeta> fieldConverters) {
         this.fieldConverters = fieldConverters;
-        this.fieldSlices = new ByteBuf[fieldConverters.size()];
+        this.fieldSlices = new ArrayList<ByteBuf>();
+        for (int i=0; i< fieldConverters.size();i++){
+            this.fieldSlices.add(null);
+        }
     }
 
-    protected MyBinaryResultRow(List<DataTypeValueFunc> fieldConverters, ByteBuf[] fieldSlices) {
+    protected MyBinaryResultRow(List<DecodedMeta> fieldConverters, List<ByteBuf> fieldSlices) {
         this.fieldConverters = fieldConverters;
         this.fieldSlices = fieldSlices;
     }
@@ -53,6 +56,22 @@ public class MyBinaryResultRow extends MyResponseMessage {
     @Override
     public MyMessageType getMessageType() {
         throw new PECodingException(MyBinaryResultRow.class.getSimpleName());
+    }
+
+    public MyBinaryResultRow append(DecodedMeta valueFunc, Object value){
+        ByteBuf valueBuf = Unpooled.buffer().order(ByteOrder.LITTLE_ENDIAN);
+        valueFunc.writeObject(valueBuf,value);
+        return this.append(valueFunc,valueBuf);
+    }
+
+    public MyBinaryResultRow append(DecodedMeta valueFunc, ByteBuf fieldSlice){
+        List<DecodedMeta> copyOfFuncs = new ArrayList<>(this.fieldConverters);
+        copyOfFuncs.add(valueFunc);
+
+        List<ByteBuf> newFields = new ArrayList<>(this.fieldSlices);
+        newFields.add(fieldSlice);
+
+        return new MyBinaryResultRow(copyOfFuncs,newFields);
     }
 
     @Override
@@ -64,9 +83,9 @@ public class MyBinaryResultRow extends MyResponseMessage {
     }
 
     private byte[] constructNullMap() {
-        MyNullBitmap constructBitMap = new MyNullBitmap(fieldSlices.length, MyNullBitmap.BitmapType.RESULT_ROW);
-        for (int i=0;i<fieldSlices.length;i++){
-            if (fieldSlices[i] == null)
+        MyNullBitmap constructBitMap = new MyNullBitmap(fieldSlices.size(), MyNullBitmap.BitmapType.RESULT_ROW);
+        for (int i=0;i<fieldSlices.size();i++){
+            if (fieldSlices.get(i) == null)
                 constructBitMap.setBit(i + 1);
         }
         return constructBitMap.getBitmapArray();
@@ -74,8 +93,8 @@ public class MyBinaryResultRow extends MyResponseMessage {
 
 
     public void marshallRawValues(ByteBuf cb) {
-        for (int i=0;i<fieldSlices.length;i++){
-            ByteBuf fieldSlice = fieldSlices[i];
+        for (int i=0;i<fieldSlices.size();i++){
+            ByteBuf fieldSlice = fieldSlices.get(i);
             if (fieldSlice != null)
                 cb.writeBytes(fieldSlice.slice());
         }
@@ -95,7 +114,7 @@ public class MyBinaryResultRow extends MyResponseMessage {
         ByteBuf values = cb;
 
         for (int i=0;i < expectedFieldCount;i++){
-            ByteBuf existing = fieldSlices[i];
+            ByteBuf existing = fieldSlices.get(i);
             ByteBuf nextSlice = null;
             int startIndex = values.readerIndex();
             if ( ! resultBitmap.getBit(i + 1) ) {
@@ -106,7 +125,7 @@ public class MyBinaryResultRow extends MyResponseMessage {
 
             if (existing != null)
                 existing.release();
-            fieldSlices[i] = nextSlice;
+            fieldSlices.set(i,nextSlice);
         }
         if (cb.readableBytes() > 0) {
             log.warn("Decoded binary row had {} leftover bytes, re-encoding may fail.",cb.readableBytes());
@@ -117,19 +136,19 @@ public class MyBinaryResultRow extends MyResponseMessage {
     public MyBinaryResultRow projection(int[] desiredFields){
         int expectedFieldCount = desiredFields.length;
 
-        ByteBuf[] newSlices = new ByteBuf[expectedFieldCount];
-        ArrayList<DataTypeValueFunc> newConverters = new ArrayList<>(expectedFieldCount);
+        ArrayList<ByteBuf> newSlices = new ArrayList<>(expectedFieldCount);
+        ArrayList<DecodedMeta> newConverters = new ArrayList<>(expectedFieldCount);
 
         for (int targetIndex=0;targetIndex<expectedFieldCount;targetIndex++){
             int sourceIndex = desiredFields[targetIndex];
             newConverters.add(fieldConverters.get(sourceIndex));//use the source index, not the target index..
-            if (fieldSlices[sourceIndex] == null) {
-                newSlices[targetIndex] = null;
+            if (fieldSlices.get(sourceIndex) == null) {
+                newSlices.add(null);
             } else {
-                ByteBuf fieldSlice = fieldSlices[sourceIndex];
+                ByteBuf fieldSlice = fieldSlices.get(sourceIndex);
                 ByteBuf copySlice = Unpooled.buffer(fieldSlice.readableBytes()).order(ByteOrder.LITTLE_ENDIAN);
                 copySlice.writeBytes(fieldSlice.slice());
-                newSlices[targetIndex] = copySlice;
+                newSlices.add(copySlice);
             }
         }
 
@@ -137,11 +156,15 @@ public class MyBinaryResultRow extends MyResponseMessage {
     }
 
     public int size(){
-        return fieldSlices.length;
+        return fieldSlices.size();
+    }
+
+    public DecodedMeta getValueFunction(int itemNumber){
+        return fieldConverters.get(itemNumber);
     }
 
     public ByteBuf getSlice(int itemNumber) {
-        ByteBuf field = fieldSlices[itemNumber];
+        ByteBuf field = fieldSlices.get(itemNumber);
         if (field == null)
             return null;
         else
@@ -149,7 +172,7 @@ public class MyBinaryResultRow extends MyResponseMessage {
     }
 
     public boolean isNull(int itemNumber){
-        return fieldSlices[itemNumber] == null;
+        return fieldSlices.get(itemNumber) == null;
     }
 
     public Object getValue(int itemNumber) throws PEException {
@@ -163,9 +186,9 @@ public class MyBinaryResultRow extends MyResponseMessage {
     public int sizeInBytes() {
         int totalSize = super.MESSAGE_HEADER_LENGTH;
         totalSize+= 1;
-        totalSize+= MyNullBitmap.computeSize(fieldSlices.length, MyNullBitmap.BitmapType.RESULT_ROW);
-        for (int i=0;i<fieldSlices.length;i++){
-            ByteBuf fieldSlice = fieldSlices[i];
+        totalSize+= MyNullBitmap.computeSize(fieldSlices.size(), MyNullBitmap.BitmapType.RESULT_ROW);
+        for (int i=0;i<fieldSlices.size();i++){
+            ByteBuf fieldSlice = fieldSlices.get(i);
             if (fieldSlice != null)
                 totalSize+= fieldSlice.readableBytes();
         }

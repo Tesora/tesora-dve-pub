@@ -38,16 +38,28 @@ import com.tesora.dve.server.messaging.SQLCommand;
 public class MysqlStmtCloseDiscarder extends DBResultConsumer  {
 	
 	final MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt;
+    final Long pstmtID;
 
 	public MysqlStmtCloseDiscarder(
 			MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt) {
 		super();
 		this.pstmt = pstmt;
+        this.pstmtID = null;
 	}
+
+    public MysqlStmtCloseDiscarder(long pstmtID) {
+        super();
+        this.pstmt = null;
+        this.pstmtID = pstmtID;
+    }
 
     @Override
     public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-        int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
+        int preparedID;
+        if (pstmt != null)
+            preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
+        else
+            preparedID = (int)pstmtID.longValue();
         MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
         return new Bundle(message, new MysqlStmtCloseCommand(preparedID, promise) );
 	}

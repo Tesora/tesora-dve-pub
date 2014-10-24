@@ -84,6 +84,10 @@ public class SQLCommand implements Serializable {
 		this(new GenericSQLCommand(connectionCharset, regularStatement));
 	}
 
+    public Charset getEncoding(){
+        return sql.getEncoding();
+    }
+
 	public SQLCommand withProjection(ProjectionInfo projection) {
 		this.projection = projection;
 		return this;

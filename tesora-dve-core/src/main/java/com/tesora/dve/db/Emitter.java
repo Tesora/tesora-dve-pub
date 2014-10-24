@@ -1850,7 +1850,8 @@ public abstract class Emitter {
 			if (tk.isUserlandTemporaryTable()) {
 				tabName = new QualifiedName(tk.getAbstractTable().getDatabaseName(sc).getUnqualified(),tk.getAbstractTable().getName().getUnqualified());
 			} else {
-				tabName = tk.getAbstractTable().getName();
+                //SMG:
+				tabName = tk.getAbstractTable().getName(sc);
 			}
 			emitTable(sc,tabName,buf);
 		}		

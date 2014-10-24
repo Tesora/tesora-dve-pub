@@ -269,7 +269,7 @@ public class WorkerGroup {
 //		return responses;
 //	}
 
-	private Collection<Worker> getTargetWorkers(MappingSolution mappingSolution) throws PEException {
+	public Collection<Worker> getTargetWorkers(MappingSolution mappingSolution) throws PEException {
 		Collection<Worker> targetWorkers;
 		if (mappingSolution == MappingSolution.AllWorkers || mappingSolution == MappingSolution.AllWorkersSerialized) {
 			targetWorkers = workerMap.values();

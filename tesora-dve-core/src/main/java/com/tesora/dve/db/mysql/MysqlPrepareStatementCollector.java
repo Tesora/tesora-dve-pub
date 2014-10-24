@@ -37,16 +37,22 @@ public class MysqlPrepareStatementCollector extends MysqlPrepareParallelConsumer
 	private static final Logger logger = Logger.getLogger(MysqlPrepareStatementCollector.class);
 
     List<MyFieldPktResponse> savedParamDefs = new ArrayList<>();
+    long stmtID;
 	ColumnSet paramColumns;
 	ColumnSet resultColumns;
 	
 	@Override
 	void consumeHeader(MyPrepareOKResponse prepareOK) {
+        this.stmtID = prepareOK.getStmtId();
 		paramColumns = null;//defer building this until it is asked for.
 		pstmt.setNumParams(getNumParams());
 		resultColumns = new ColumnSet();
 		pstmt.setNumColumns(getNumCols());
 	}
+
+    public long getStmtID(){
+        return stmtID;
+    }
 
 	@Override
 	void consumeParamDef(MyFieldPktResponse columnDef) throws PEException {

@@ -22,11 +22,7 @@ package com.tesora.dve.common.catalog;
  */
 
 import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -41,13 +37,13 @@ import javax.persistence.Table;
 import com.tesora.dve.common.PECollectionUtils;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
-import com.tesora.dve.distribution.BroadcastDistributionModel;
-import com.tesora.dve.distribution.PELockedException;
-import com.tesora.dve.distribution.RandomDistributionModel;
+import com.tesora.dve.db.DBEmptyTextResultConsumer;
+import com.tesora.dve.distribution.*;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.PurgeWorkerGroupCaches;
+import com.tesora.dve.queryplan.QueryStepRebalance;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -75,7 +71,7 @@ import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
  * The <b>StorageGroup</b> may be persisted in the catalog,
  * or it may be a non-persistent <b>StorageGroup</b>, for example when
  * selecting a subset of a <b>StorageGroup</b> to map data to as an 
- * intermediate step in a {@link QueryPlan}.
+ * intermediate step in a {@link com.tesora.dve.queryplan.QueryPlan}.
  *
  */
 @Entity
@@ -294,13 +290,30 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 			}
 		}
 		generations.add(newGen);
+        //NOTE: At this point:
+        //    all databases and tables have been created on the new sites.
+        //    any broadcast tables have been copied to new sites.
+        //    the previous gen's range min/max have been computed, and added to the catalog
+        //    a storage gen entry for the new default generation has been added.
+
+        if (! rebalanceInfo.isEmpty() ) {
+            //SMG:
+            System.out.printf("SMG: triggered rebalance of persistent group %s\n", this.getName());
+            QueryStepRebalance rangeRebalance = new QueryStepRebalance(this,rebalanceInfo);
+            rangeRebalance.execute(ssCon, wg, DBEmptyTextResultConsumer.INSTANCE);
+        } else {
+            System.out.printf("SMG: skipped rebalance of persistent group %s\n", this.getName());
+        }
+
+        //TODO: remove anything tied to the old generations
+
 		wg.markForPurge();
 		onUpdate();
 		WorkerGroupFactory.clearGroupFromCache(ssCon, this);
 		ssCon.clearWorkerGroupCache(this);
 	}
 
-	public void addAllSites(Collection<PersistentSite> sites) throws PELockedException {
+    public void addAllSites(Collection<PersistentSite> sites) throws PELockedException {
 		getLastGen().add(sites);
 	}
 
