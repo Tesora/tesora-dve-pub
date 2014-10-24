@@ -29,7 +29,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
-import com.tesora.dve.sql.statement.dml.compound.CompoundStatement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.FeaturePlannerFilter;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;

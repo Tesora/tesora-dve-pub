@@ -22,13 +22,8 @@ package com.tesora.dve.sql.transform.strategy.triggers;
  */
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
-import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
-import com.tesora.dve.sql.statement.dml.InsertIntoSelectStatement;
 import com.tesora.dve.sql.statement.dml.InsertStatement;
-import com.tesora.dve.sql.statement.dml.ReplaceIntoSelectStatement;
 import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;

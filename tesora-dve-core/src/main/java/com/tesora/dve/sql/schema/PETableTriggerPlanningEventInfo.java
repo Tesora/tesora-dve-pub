@@ -22,13 +22,10 @@ package com.tesora.dve.sql.schema;
  */
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.expression.ColumnKey;
-import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.expression.TriggerTableKey;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -37,9 +34,7 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.statement.Statement;
-import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
-import com.tesora.dve.sql.util.ListSet;
 
 public class PETableTriggerPlanningEventInfo extends PETableTriggerEventInfo {
 

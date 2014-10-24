@@ -25,8 +25,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 

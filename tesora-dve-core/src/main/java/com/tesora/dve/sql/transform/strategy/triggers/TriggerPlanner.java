@@ -21,19 +21,43 @@ package com.tesora.dve.sql.transform.strategy.triggers;
  * #L%
  */
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.node.expression.ColumnInstance;
+import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.node.expression.FunctionCall;
+import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
+import com.tesora.dve.sql.schema.FunctionName;
+import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
+import com.tesora.dve.sql.schema.TempTableCreateOptions;
 import com.tesora.dve.sql.schema.TriggerEvent;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.InsertStatement;
-import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
+import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
+import com.tesora.dve.sql.transform.execution.DMLExplainReason;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.TriggerExecutionStep;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.TransformFactory;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.MultiFeatureStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.RedistributionFlags;
 import com.tesora.dve.sql.util.ListSet;
 
 public abstract class TriggerPlanner extends TransformFactory {
@@ -65,6 +89,90 @@ public abstract class TriggerPlanner extends TransformFactory {
 		if (triggerInfo == null)
 			return null;
 		return failSupport();
+	}
+
+	protected ExpressionNode buildUniqueWhereClause(TableKey targetTable, Map<PEColumn,Integer> uniqueKeyOffsets) {
+		List<ExpressionNode> eqs = new ArrayList<ExpressionNode>();
+		for(Map.Entry<PEColumn,Integer> me : uniqueKeyOffsets.entrySet()) {
+			eqs.add(new FunctionCall(FunctionName.makeEquals(),
+					new ColumnInstance(me.getKey(),targetTable.toInstance()),
+					new LateBindingConstantExpression(me.getValue())));
+		}
+		return ExpressionUtils.safeBuildAnd(eqs);
+	}
+	
+	protected TriggerFeatureStep commonPlanning(PlannerContext context, TableKey targetTable, SelectStatement srcSelect, DMLStatement uniqueStatement,
+			PETableTriggerPlanningEventInfo triggerInfo) throws PEException {
+		
+		ProjectingFeatureStep srcStep =
+				(ProjectingFeatureStep) buildPlan(srcSelect, 
+						context.withTransform(getFeaturePlannerID()),
+						DefaultFeaturePlannerFilter.INSTANCE);
+		
+		RedistFeatureStep rowsTable =
+				srcStep.redist(context, this,
+						new TempTableCreateOptions(Model.BROADCAST,
+								context.getTempGroupManager().getGroup(true)),
+						new RedistributionFlags(),
+						DMLExplainReason.TRIGGER_SRC_TABLE.makeRecord());
+		
+		SelectStatement rows = rowsTable.buildNewSelect(context);
+		
+		FeatureStep targetStep = 
+				buildPlan(uniqueStatement,context.withTransform(getFeaturePlannerID()),
+						DefaultFeaturePlannerFilter.INSTANCE);
+		
+		return new TriggerFeatureStep(this,targetTable.getAbstractTable().asTable(),
+				rowsTable,rows,targetStep,
+				triggerInfo.getBeforeStep(context.getContext()),
+				triggerInfo.getAfterStep(context.getContext()));
+	}
+	
+	protected static class TriggerFeatureStep extends MultiFeatureStep {
+
+		private final RedistFeatureStep rowsTable;
+		private final FeatureStep actual;
+		private final FeatureStep before;
+		private final FeatureStep after;
+		private final SelectStatement rowQuery;
+		private final PETable onTable;
+		
+		public TriggerFeatureStep(FeaturePlanner planner, PETable actualTable, RedistFeatureStep rowsTable, SelectStatement rowQuery,
+				FeatureStep actual, FeatureStep before, FeatureStep after) {
+			super(planner);
+			this.rowsTable = rowsTable;
+			this.actual = actual;
+			this.before = before;
+			this.after = after;
+			this.rowQuery = rowQuery;
+			this.onTable = actualTable;
+			// make sure the traversal still works
+			addChild(rowsTable);
+			addChild(actual);
+			if (before != null)
+				addChild(before);
+			if (after != null)
+				addChild(after);
+			withDefangInvariants();
+		}
+
+		@Override
+		public void schedule(PlannerContext sc, ExecutionSequence es, Set<FeatureStep> scheduled) throws PEException {
+			rowsTable.schedule(sc, es, scheduled);
+			TriggerExecutionStep step = new TriggerExecutionStep(onTable.getPEDatabase(sc.getContext()),
+					onTable.getStorageGroup(sc.getContext()),
+					buildSubSequence(sc,actual,es.getPlan()),
+					(before == null ? null : buildSubSequence(sc,before,es.getPlan())),
+					(after == null ? null : buildSubSequence(sc,after,es.getPlan())),
+					rowQuery);
+			es.append(step);
+		}
+		
+		private ExecutionSequence buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
+			ExecutionSequence sub = new ExecutionSequence(parentPlan);
+			step.schedule(pc,sub,new HashSet<FeatureStep>());
+			return sub;
+		}
 	}
 	
 }

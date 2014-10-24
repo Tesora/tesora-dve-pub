@@ -24,7 +24,6 @@ package com.tesora.dve.sql.statement.dml.compound;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -33,8 +32,6 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;
-import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
-import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 
 public class StatementWhenClause extends CompoundStatement {
 

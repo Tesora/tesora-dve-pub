@@ -34,7 +34,6 @@ import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
-import com.tesora.dve.sql.parser.TranslatorInitCallback;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.statement.Statement;
@@ -143,7 +142,7 @@ public class PEView extends Persistable<PEView,UserView> {
 		ProjectingStatement out = null;
 		if (sc.isMutableSource() || viewDefinition == null) {
 			out = (ProjectingStatement)buildStatement(sc,
-					(viewTab == null ? null : viewTab.getPEDatabase(sc)),rawSQL, lockTables, TranslatorInitCallback.INSTANCE);
+					(viewTab == null ? null : viewTab.getPEDatabase(sc)),rawSQL, lockTables);
 			if (merge == null)
 				merge = computeMergeFlag(out);
 		}
@@ -153,7 +152,7 @@ public class PEView extends Persistable<PEView,UserView> {
 		return viewDefinition;
 	}
 
-	public static Statement buildStatement(SchemaContext context, PEDatabase ondb, String raw, boolean locking, TranslatorInitCallback ticb) {
+	private Statement buildStatement(SchemaContext context, PEDatabase ondb, String raw, boolean locking) {
 		SchemaContext sc = context;
 		if (!sc.isMutableSource()) 
 			sc = SchemaContext.makeImmutableIndependentContext(context);
@@ -173,7 +172,7 @@ public class PEView extends Persistable<PEView,UserView> {
 			myOpts = myOpts.setIgnoreLocking();
 		Statement out = null;
 		try {
-			out = InvokeParser.parse(raw, sc, Collections.emptyList(),myOpts, ticb).get(0);
+			out = InvokeParser.parse(raw, sc, Collections.emptyList(),myOpts).get(0);
 		} finally {
 			sc.setOptions(originalOptions);
 			sc.setCurrentDatabase(cdb);

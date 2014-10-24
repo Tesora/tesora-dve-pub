@@ -104,12 +104,12 @@ public class InvokeParser {
 	}
 	
 	public static ParseResult parse(InputState icmd, ParserOptions opts, SchemaContext pc) throws ParserException {
-		return parse(icmd,opts,pc,TranslatorInitCallback.INSTANCE);
+		return parse(icmd,DEFAULT_PARSER_RULE,opts,pc,TranslatorInitCallback.INSTANCE);
 	}
 	
-	public static ParseResult parse(InputState icmd, ParserOptions opts, SchemaContext pc, TranslatorInitCallback ticb) throws ParserException {
+	public static ParseResult parse(InputState icmd, ParserEntryPoint entryPoint, ParserOptions opts, SchemaContext pc, TranslatorInitCallback ticb) throws ParserException {
 		preparse(pc);
-		return parse(icmd, opts, pc, Collections.emptyList(),ticb);
+		return parse(icmd, entryPoint, opts, pc, Collections.emptyList(),ticb);
 	}
 
 	private static void preparse(SchemaContext pc) throws ParserException {
@@ -120,7 +120,7 @@ public class InvokeParser {
 		}
 	}
 
-	private static ParseResult parse(InputState input, ParserOptions opts, SchemaContext pc, List<Object> parameters, TranslatorInitCallback cb)
+	private static ParseResult parse(InputState input, ParserEntryPoint entry, ParserOptions opts, SchemaContext pc, List<Object> parameters, TranslatorInitCallback cb)
 			throws ParserException {
 		// debug log is set only for non tests
 		if (pc != null) {
@@ -133,7 +133,7 @@ public class InvokeParser {
 			result = parseFastInsert(pc, opts, input);
 		}
 		if (result == null)
-			result = parse(pc, opts, input, cb);
+			result = parse(pc, entry, opts, input, cb);
 		List<Statement> stmts = result.getSecond();
 		TranslatorUtils utils = result.getFirst();
 		if (stmts.isEmpty())
@@ -223,7 +223,7 @@ public class InvokeParser {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static Pair<TranslatorUtils, List<Statement>> parse(SchemaContext pc, ParserOptions opts, InputState input, TranslatorInitCallback cb) {
+	private static Pair<TranslatorUtils, List<Statement>> parse(SchemaContext pc, ParserEntryPoint entry, ParserOptions opts, InputState input, TranslatorInitCallback cb) {
 		TranslatorUtils utils = new TranslatorUtils(opts, pc, input);
 		cb.onInit(utils);
 		PE parser = buildParser(input, utils);
@@ -233,7 +233,8 @@ public class InvokeParser {
 		List<List<ExpressionNode>> continuedInsert = null;
 		try {
 			if (input.getCurrentPosition() == 0) {
-				stmts = parser.sql_statements().stmts;
+				stmts = entry.invoke(parser);
+//				stmts = parser.sql_statements().stmts;
 			} else {
 				continuedInsert = parser.continuation_insert_value_list().l;
 				utils.popScope();
@@ -261,8 +262,8 @@ public class InvokeParser {
 			}	
 		}
 		return new Pair<TranslatorUtils, List<Statement>>(utils, stmts);
-	}
-
+	}	
+	
 	public static List<Statement> parse(String line, SchemaContext pc) throws ParserException {
 		return parse(line, pc, Collections.emptyList());
 	}
@@ -271,8 +272,16 @@ public class InvokeParser {
 		return parse(line,pc,params,options,TranslatorInitCallback.INSTANCE);
 	}
 	
+	public static List<Statement> parseTriggerBody(String body, SchemaContext pc, ParserOptions options, TranslatorInitCallback ticb) throws ParserException {
+		return parse(body,pc,Collections.emptyList(),TRIGGER_PARSER_RULE, options,ticb);
+	}
+	
 	public static List<Statement> parse(String line, SchemaContext pc, List<Object> params, ParserOptions options, TranslatorInitCallback ticb) throws ParserException {
-		return parse(buildInputState(line,pc), options, pc, params, ticb).getStatements();		
+		return parse(line, pc, params, DEFAULT_PARSER_RULE, options, ticb);
+	}
+	
+	public static List<Statement> parse(String line, SchemaContext pc, List<Object> params, ParserEntryPoint entry, ParserOptions opts, TranslatorInitCallback ticb) throws ParserException {
+		return parse(buildInputState(line,pc), entry, opts, pc, params, ticb).getStatements();
 	}
 	
 	public static List<Statement> parse(String line, SchemaContext pc, List<Object> params) throws ParserException {
@@ -331,7 +340,7 @@ public class InvokeParser {
 						"Unable to parameterize SQL statement to handle characters invalid for character set "
 								+ cs.name());
 			orig = StringUtils.strip(orig, new String(Character.toString(Character.MIN_VALUE)));
-			out.addAll(parse(buildInputState(orig,pc), options, pc, params, TranslatorInitCallback.INSTANCE).getStatements());
+			out.addAll(parse(buildInputState(orig,pc), DEFAULT_PARSER_RULE, options, pc, params, TranslatorInitCallback.INSTANCE).getStatements());
 		}
 		return new ParseResult(out,null);
 	}
@@ -534,5 +543,27 @@ public class InvokeParser {
 		
 	};
 	
+	interface ParserEntryPoint {
+		
+		List<Statement> invoke(PE parser) throws Throwable;
+		
+	}
 
+	private static final ParserEntryPoint DEFAULT_PARSER_RULE = new ParserEntryPoint() {
+		
+		@Override
+		public List<Statement> invoke(PE parser) throws Throwable {
+			return parser.sql_statements().stmts;
+		}
+		
+	};
+	
+	private static final ParserEntryPoint TRIGGER_PARSER_RULE = new ParserEntryPoint() {
+
+		@Override
+		public List<Statement> invoke(PE parser) throws Throwable {
+			return Collections.singletonList(parser.compound_or_single_statement().s);
+		}
+		
+	};
 }

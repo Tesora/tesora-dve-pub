@@ -47,7 +47,6 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.NameInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
-import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WildcardTable;
 import com.tesora.dve.sql.node.structural.JoinedTable;

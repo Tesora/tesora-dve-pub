@@ -28,53 +28,32 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ColumnKey;
-import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.expression.TriggerTableKey;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
-import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.structural.FromTableReference;
-import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
-import com.tesora.dve.sql.node.test.EngineConstant;
-import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEKey;
-import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
-import com.tesora.dve.sql.schema.TempTableCreateOptions;
 import com.tesora.dve.sql.schema.TriggerEvent;
-import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
-import com.tesora.dve.sql.statement.dml.DMLStatementUtils;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
-import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.SchemaMapper;
-import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
-import com.tesora.dve.sql.transform.execution.DMLExplainReason;
-import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
-import com.tesora.dve.sql.transform.strategy.TransformFactory;
 import com.tesora.dve.sql.transform.strategy.UpdateRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
-import com.tesora.dve.sql.transform.strategy.featureplan.MultiFeatureStep;
-import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
-import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;
-import com.tesora.dve.sql.transform.strategy.featureplan.RedistributionFlags;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.Pair;
@@ -86,7 +65,7 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 			throws PEException {
 		UpdateStatement us = (UpdateStatement) stmt;
 		ListOfPairs<ColumnKey,ExpressionNode> updateExprs = UpdateRewriteTransformFactory.getUpdateExpressions(us);
-		TableKey updateTable = UpdateRewriteTransformFactory.getUpdateTables(updateExprs);
+		final TableKey updateTable = UpdateRewriteTransformFactory.getUpdateTables(updateExprs);
 		PETableTriggerPlanningEventInfo triggerInfo = getTriggerInfo(context,updateTable, TriggerEvent.UPDATE);
 		if (triggerInfo == null)
 			return null;
@@ -95,45 +74,9 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 		LinkedHashMap<PEColumn,Integer> uniqueKeyOffsets = new LinkedHashMap<PEColumn,Integer>();
 		
 		SelectStatement srcSelect = buildTempTableSelect(context,us,updateTable,triggerInfo,updateExprOffsets, uniqueKeyOffsets);
-		
-		ProjectingFeatureStep srcStep = 
-				(ProjectingFeatureStep) buildPlan(srcSelect, context.withTransform(getFeaturePlannerID()), DefaultFeaturePlannerFilter.INSTANCE);
-
-		final RedistFeatureStep rowsTable = 
-				srcStep.redist(context, this,
-						new TempTableCreateOptions(Model.BROADCAST,
-								context.getTempGroupManager().getGroup(true)),
-						new RedistributionFlags(), 
-						DMLExplainReason.TRIGGER_SRC_TABLE.makeRecord());
-
-		// we need a feature step to get the rows results
-		SelectStatement rows = rowsTable.buildNewSelect(context);
-		
 		UpdateStatement uniqueKeyUpdate = buildUniqueKeyUpdate(context, updateTable, updateExprOffsets, uniqueKeyOffsets);
-		
-		final FeatureStep rowUpdate = 
-				buildPlan(uniqueKeyUpdate, context.withTransform(getFeaturePlannerID()), DefaultFeaturePlannerFilter.INSTANCE);
-		
-		final FeatureStep beforeStep = triggerInfo.getBeforeStep(context.getContext());
-		final FeatureStep afterStep = triggerInfo.getAfterStep(context.getContext());
-		
-		MultiFeatureStep out = new MultiFeatureStep(this)  {
-			
-			@Override
-			public void schedule(PlannerContext sc, ExecutionSequence es, Set<FeatureStep> scheduled) throws PEException {
-				
-				throw new PEException("help");
-			}
-			
-		};
-		out.addChild(rowsTable);
-		out.addChild(rowUpdate);
-		if (beforeStep != null)
-			out.addChild(beforeStep);
-		if (afterStep != null)
-			out.addChild(afterStep);
-		
-		return out;
+
+        return commonPlanning(context,updateTable,srcSelect,uniqueKeyUpdate,triggerInfo);		
 	}
 
 	@Override
@@ -231,18 +174,11 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 			updateExprs.add(eq);
 		}
 
-		List<ExpressionNode> eqs = new ArrayList<ExpressionNode>();
-		for(Map.Entry<PEColumn,Integer> me : uniqueKeyOffsets.entrySet()) {
-			FunctionCall eq = new FunctionCall(FunctionName.makeEquals(),
-					new ColumnInstance(me.getKey(),updatedTable.toInstance()),
-					new LateBindingConstantExpression(me.getValue()));
-			eqs.add(eq);
-		}
 		FromTableReference ftr = new FromTableReference(updatedTable.toInstance());
 		UpdateStatement out = new UpdateStatement(Collections.singletonList(ftr),
 				updateExprs,
-				ExpressionUtils.safeBuildAnd(eqs),
-				Collections.EMPTY_LIST,
+				buildUniqueWhereClause(updatedTable,uniqueKeyOffsets),
+				Collections.<SortingSpecification> emptyList(),
 				null,
 				new AliasInformation(),
 				null);

@@ -115,6 +115,7 @@ import com.tesora.dve.sql.statement.ddl.PECreateDatabaseStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTenantTableStatement;
+import com.tesora.dve.sql.statement.ddl.PECreateTriggerStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateViewStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropStatement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
@@ -319,6 +320,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		boolean tenantCreate = pecs instanceof PECreateTenantTableStatement;
 		boolean tableCreate = pecs instanceof PECreateTableStatement;
 		boolean viewCreate = pecs instanceof PECreateViewStatement;
+		boolean trigCreate = pecs instanceof PECreateTriggerStatement;
 		Set<PEForeignKey> postPass = null;
 		if (tableCreate) {
 			pecs.normalize(tpc);
@@ -342,7 +344,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 			Persistable<?,?> t = nm.getKey();
 			CatalogEntity cat = nm.getValue();
 			if (cat instanceof UserColumn || cat instanceof DistributionModel || (cat instanceof UserTable && !tenantCreate)
-					|| cat instanceof Key || cat instanceof KeyColumn)
+					|| cat instanceof Key || cat instanceof KeyColumn || cat instanceof UserTrigger)
 				continue;
 			if (tenantCreate && (cat instanceof UserTable)) {
 				// we dynamically create the table scope via reloading callback - not available via static computation.

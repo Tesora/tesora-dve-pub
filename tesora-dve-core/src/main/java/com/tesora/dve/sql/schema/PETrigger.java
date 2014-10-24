@@ -24,6 +24,8 @@ package com.tesora.dve.sql.schema;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.parser.InvokeParser;
+import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.parser.TranslatorInitCallback;
 import com.tesora.dve.sql.parser.TranslatorUtils;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
@@ -87,9 +89,30 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 		return bodySrc;
 	}
 	
-	public Statement getBody(SchemaContext sc) {
-		Statement parsed = PEView.buildStatement(sc, triggerTable.getPEDatabase(sc), bodySrc, false, new ScopeInjector(triggerTable));
-		return parsed;
+	public Statement getBody(SchemaContext context) {		
+		SchemaContext sc = context;
+		if (!sc.isMutableSource()) 
+			sc = SchemaContext.makeImmutableIndependentContext(context);
+		PEDatabase cdb = sc.getCurrentPEDatabase(false);
+		sc.setCurrentDatabase(triggerTable.getPEDatabase(sc));
+		// reparse to get the right schema objects, and force all literals to be actual literals
+		ParserOptions originalOptions = sc.getOptions();
+
+		ParserOptions myOpts = originalOptions;
+		if (myOpts == null)
+			myOpts = context.getOptions();
+		if (myOpts == null)
+			myOpts = ParserOptions.NONE;
+		myOpts = myOpts.setActualLiterals().setResolve();
+		myOpts = myOpts.setIgnoreLocking();
+		Statement out = null;
+		try {
+			out = InvokeParser.parseTriggerBody(bodySrc, sc, myOpts, new ScopeInjector(triggerTable)).get(0);
+		} finally {
+			sc.setOptions(originalOptions);
+			sc.setCurrentDatabase(cdb);
+		}
+		return out;
 	}
 	
 	public static PETrigger load(UserTrigger ut, SchemaContext sc, PETable onTable) {

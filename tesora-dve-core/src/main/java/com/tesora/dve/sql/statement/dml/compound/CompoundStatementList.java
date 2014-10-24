@@ -21,7 +21,6 @@ package com.tesora.dve.sql.statement.dml.compound;
  * #L%
  */
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -35,7 +34,6 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
-import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
@@ -105,6 +103,9 @@ public class CompoundStatementList extends CompoundStatement implements FeatureP
 				throw new PEException("No support for DDL in compound statements");
 			}
 		}
+		// the multifeature step does not have invariants to check
+		// however we will still traverse the children
+		out.withDefangInvariants();
 		return out;
 	}
 
