@@ -424,8 +424,10 @@ public class QueryStepShardMovement extends QueryStepOperation {
 
         @Override
         public void end(ChannelHandlerContext ctx) {
-            System.out.printf("SMG: received last source row.");
+            System.out.printf("SMG: received last source row.\n");
             receivedLastRow = true;
+            targets.flush();
+            deleteTarget.flush();
             checkFinished();
         }
 
