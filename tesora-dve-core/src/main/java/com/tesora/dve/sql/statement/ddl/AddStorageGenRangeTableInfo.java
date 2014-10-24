@@ -155,6 +155,7 @@ public abstract class AddStorageGenRangeTableInfo extends RebalanceInfo {
 			
 		});
 		final InsertIntoValuesStatement iivs = new InsertIntoValuesStatement(ti,columns,Collections.<List<ExpressionNode>> emptyList(),Collections.<ExpressionNode> emptyList(),new AliasInformation(),null);
+        iivs.setIgnore(true);
 		return getInsertPrefix(iivs);
 	}
 	

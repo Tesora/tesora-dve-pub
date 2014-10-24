@@ -314,8 +314,6 @@ public class QueryStepShardMovement extends QueryStepOperation {
                     String valueBubbleString = valueBubble.toString();
 
                     String initialInsertPrefix = sourceTableInfo.getSideInsertPrefix().getRawSQL();
-                    //SMG: need to deal with INSERT IGNORE
-                    initialInsertPrefix = initialInsertPrefix.replace("INSERT ","INSERT IGNORE ");
                     StringBuilder insertStatement = new StringBuilder(initialInsertPrefix);
                     insertStatement.append(" VALUES ");
                     insertStatement.append(valueBubbleString);
