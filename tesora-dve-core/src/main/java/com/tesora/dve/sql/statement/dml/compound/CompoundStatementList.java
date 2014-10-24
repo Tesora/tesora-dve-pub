@@ -29,15 +29,18 @@ import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.MultiEdge;
-import com.tesora.dve.sql.node.expression.CaseExpression;
-import com.tesora.dve.sql.node.expression.WhenClause;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
-import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
+import com.tesora.dve.sql.transform.strategy.PlannerContext;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.MultiFeatureStep;
 
-public class CompoundStatementList extends CompoundStatement {
+public class CompoundStatementList extends CompoundStatement implements FeaturePlanner {
 
 	private final UnqualifiedName label;
 
@@ -65,12 +68,6 @@ public class CompoundStatementList extends CompoundStatement {
 		
 	}
 
-	@Override
-	public void plan(SchemaContext sc, ExecutionSequence es,
-			BehaviorConfiguration config) throws PEException {
-		// TODO Auto-generated method stub
-		
-	}
 
 	@Override
 	protected boolean schemaSelfEqual(LanguageNode other) {
@@ -87,5 +84,52 @@ public class CompoundStatementList extends CompoundStatement {
 	@Override
 	public <T extends Edge<?,?>> List<T> getEdges() {
 		return (List<T>) Collections.singletonList(stmts);
+	}
+
+	@Override
+	public FeatureStep plan(SchemaContext sc, BehaviorConfiguration config)
+			throws PEException {
+		MultiFeatureStep out = new MultiFeatureStep(this) {
+			
+		};
+		for(Statement s : stmts) {
+			if (s.isCompound()) {
+				CompoundStatement cs = (CompoundStatement) s;
+				out.addChild(cs.plan(sc, config));
+			} else if (s.isDML()) {
+				DMLStatement dmls = (DMLStatement) s;
+				out.addChild(dmls.plan(sc,config));
+			} else if (s.isDDL()) {
+				throw new PEException("No support for DDL in compound statements");
+			}
+		}
+		// the multifeature step does not have invariants to check
+		// however we will still traverse the children
+		out.withDefangInvariants();
+		return out;
+	}
+
+	@Override
+	public boolean emitting() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void emit(String what) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public FeatureStep plan(DMLStatement stmt, PlannerContext context)
+			throws PEException {
+		throw new PEException("Illegal call to CompoundStatement.plan");
+	}
+
+	@Override
+	public FeaturePlannerIdentifier getFeaturePlannerID() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

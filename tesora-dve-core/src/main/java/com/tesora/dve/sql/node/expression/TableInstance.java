@@ -114,7 +114,7 @@ public class TableInstance extends ExpressionNode {
 		return cc.put(this, out);
 	}
 
-	private TableInstance withHints(TableInstance copy) {
+	protected <T extends TableInstance> T withHints(T copy) {
 		copy.setHints(getHints());
 		return copy;
 	}

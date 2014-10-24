@@ -21,82 +21,75 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
-
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
-import com.tesora.dve.sql.schema.cache.IParameter;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.transform.CopyContext;
 
-public class Parameter extends ConstantExpression implements IParameter {
+public class LateBindingConstantExpression extends ConstantExpression {
 
-	protected int position;
+	private final int position;
 	
-	public Parameter(SourceLocation sloc) {
-		super(sloc);
-	}
-
-	protected Parameter(Parameter p) {
-		super(p);
-		this.position = p.position;
+	public LateBindingConstantExpression(int position) {
+		super((SourceLocation)null);
+		this.position = position;
 	}
 	
-	@Override
-	public Object getValue(SchemaContext sc) {
-		return sc.getValueManager().getValue(sc, this);
+	public LateBindingConstantExpression(LateBindingConstantExpression o) {
+		super(o);
+		this.position = o.position;
 	}
-	
-	@Override
-	public Object convert(SchemaContext sc, Type type) {
-        return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(getValue(sc), type);
-	}
-	
-	@Override
-	protected LanguageNode copySelf(CopyContext cc) {
-		return new Parameter(this);
-	}
-	
-	@Override
-	protected boolean schemaSelfEqual(LanguageNode other) {
-		Parameter op = (Parameter) other;
-		return position == op.position;
-	}
-
-	@Override
-	protected int selfHashCode() {
-		return position;
-	}
-	
-
 	
 	@Override
 	public int getPosition() {
 		return position;
 	}
-	
-	public void setPosition(int p) {
-		position = p;
-	}
 
 	@Override
-	public NameAlias buildAlias(SchemaContext sc) {
-		return new NameAlias(new UnqualifiedName("param"));
+	public ConstantType getConstantType() {
+		return ConstantType.RUNTIME;
 	}
 
 	@Override
 	public IConstantExpression getCacheExpression() {
-		return new CachedParameterExpression(position);
+		// we can be our own cache expression since we are really just an offset
+		return this;
 	}
 
 	@Override
-	public ConstantType getConstantType() {
-		return ConstantType.PARAMETER;
+	public Object getValue(SchemaContext sc) {
+		return sc._getValues().getRuntimeConstant(position);
+	}
+
+	@Override
+	public Object convert(SchemaContext sc, Type type) {
+		Object val = getValue(sc);
+		if (val == null) return null;
+        return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(val, type);
+	}
+
+	@Override
+	protected LanguageNode copySelf(CopyContext cc) {
+		return new LateBindingConstantExpression(this);
+	}
+
+	@Override
+	protected boolean schemaSelfEqual(LanguageNode other) {
+		if (other instanceof LateBindingConstantExpression) {
+			LateBindingConstantExpression o = (LateBindingConstantExpression) other;
+			return position == o.position;
+		}
+		return false;
+	}
+
+	@Override
+	protected int selfHashCode() {
+		return position;
 	}
 
 }

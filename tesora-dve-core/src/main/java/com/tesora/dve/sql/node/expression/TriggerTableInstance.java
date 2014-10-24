@@ -21,8 +21,12 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
+import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.expression.TriggerTableKey;
+import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.transform.CopyContext;
 
 public class TriggerTableInstance extends TableInstance {
 
@@ -31,13 +35,30 @@ public class TriggerTableInstance extends TableInstance {
 	
 	private final boolean before;
 	
-	public TriggerTableInstance(Table<?> schemaTable, boolean before) {
-		super(schemaTable, schemaTable.getName(), before ? NEW : OLD, false);
+	public TriggerTableInstance(Table<?> schemaTable, long node, boolean before) {
+		super(schemaTable, schemaTable.getName(), before ? NEW : OLD, node, false);
 		this.before = before;
 	}
 
 	public boolean isBefore() {
 		return this.before;
 	}
+	
+	
+	@Override
+	protected LanguageNode copySelf(CopyContext cc) {
+		if (cc == null)
+			return withHints(new TriggerTableInstance(schemaTable,node,before));
+		TriggerTableInstance out = (TriggerTableInstance) cc.getTableInstance(this);
+		if (out != null) return out;
+		out = withHints(new TriggerTableInstance(schemaTable, node, before));
+		return cc.put(this, out);
+	}
+
+
+	public TableKey getTableKey() {
+		return new TriggerTableKey(this);
+	}
+
 	
 }

@@ -165,7 +165,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					"collations",
 					// ah, let the stupid mysqlisms begin
 					"select c.name as `COLLATION_NAME`, c.character_set_name as `CHARACTER_SET_NAME`, "
-					+"cast((c.id+1)-1 as signed integer) as `ID`, "
+					+forceLong("c.id") + " as `ID`, "
 					+"case c.is_default when 1 then 'Yes' else '' end as `IS_DEFAULT`, "
 					+"case c.is_compiled when 1 then 'Yes' else 'No' end as `IS_COMPILED`, "
 					+"c.sortlen as `SORTLEN` "
@@ -1148,7 +1148,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					"triggers",
 					"select 'def' as `TRIGGER_CATALOG`, ud.name as `TRIGGER_SCHEMA`, t.trigger_name as `TRIGGER_NAME`, "
 					+"t.trigger_event as `EVENT_MANIPULATION`, 'def' as `EVENT_OBJECT_CATALOG`, ud.name as `EVENT_OBJECT_SCHEMA`, "
-					+"ut.name as `EVENT_OBJECT_TABLE`, 0 as `ACTION_ORDER`, NULL as `ACTION_CONDITION`, "
+					+"ut.name as `EVENT_OBJECT_TABLE`, " + forceLong("0") + " as `ACTION_ORDER`, NULL as `ACTION_CONDITION`, "
 					+"t.trigger_body as `ACTION_STATEMENT`, 'ROW' as `ACTION_ORIENTATION`, t.trigger_time as `ACTION_TIMING`, "
 					+"NULL as `ACTION_REFERENCE_OLD_TABLE`, NULL as `ACTION_REFERENCE_NEW_TABLE`, "
 					+"'OLD' as `ACTION_REFERENCE_OLD_ROW`, 'NEW' as `ACTION_REFERENCE_NEW_ROW`, NULL as `CREATED`, "
@@ -1322,6 +1322,10 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 	
 	private static String buildDefiner(String userTable) {
 		return String.format("concat(%s.name,'@',%s.accessSpec)",userTable,userTable);
+	}
+	
+	private static String forceLong(String colName) {
+		return String.format("cast((%s + 1)-1 as unsigned integer)",colName);
 	}
 	
 	private static DirectColumnGenerator c(String name, String decl) {

@@ -77,11 +77,6 @@ public class DelegatingLiteralExpression extends LiteralExpression implements ID
 	}
 
 	@Override
-	public boolean isParameter() {
-		return false;
-	}
-	
-	@Override
 	public ILiteralExpression getCacheExpression() {
 		if (source == null)
 			return new CachedDelegatingLiteralExpression(getValueType(), position, getCharsetHint());

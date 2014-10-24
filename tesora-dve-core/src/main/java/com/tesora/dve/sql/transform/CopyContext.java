@@ -37,6 +37,7 @@ import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
@@ -125,6 +126,12 @@ public class CopyContext extends VisitorContext {
 		return repl;
 	}
 
+	public TriggerTableInstance put(TriggerTableInstance orig, TriggerTableInstance repl) {
+		checkFixed(orig, repl);
+		put(orig.getTableKey(), repl.getTableKey());
+		return repl;		
+	}
+	
 	public ExpressionAlias putExpressionAlias(ExpressionAlias orig, ExpressionAlias repl) {
 		checkFixed(orig, repl);
 		exprAliases.put(orig, repl);

@@ -73,7 +73,7 @@ public class MSPComStmtExecuteRequest extends MSPActionBase {
 			executeMessage.readParameterMetadata(pStmt);
 
 			// Execute the statement with the last parameters
-			List<String> params = new ArrayList<String>(pStmt.getNumParams());
+			List<Object> params = new ArrayList<Object>(pStmt.getNumParams());
 			for (MyParameter mp : pStmt.getParameters())
 				params.add((mp.getValue() == null ? null : mp.getValueForQuery()));
             readMetaTimer.end();

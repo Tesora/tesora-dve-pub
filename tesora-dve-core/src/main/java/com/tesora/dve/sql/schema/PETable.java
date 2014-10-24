@@ -86,7 +86,8 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	// tables which have fks which refer to this table.  used in fk action support.
 	private ListSet<SchemaCacheKey<PEAbstractTable<?>>> referring;
 	
-	private EnumMap<TriggerEvent,Triggers> triggers;
+	// when this is persistently loaded the trigger info is the planning version
+	private EnumMap<TriggerEvent,PETableTriggerEventInfo> triggers;
 	
 	// table options - this encompasses both those persisted separately and those not.
 	// for non-new tables (i.e. loaded) this contains the options separately persisted.
@@ -115,7 +116,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		this.referring = new ListSet<SchemaCacheKey<PEAbstractTable<?>>>();
 		this.keys = new ArrayList<PEKey>();
 		this.modifiers = new TableModifiers(modifier);
-		this.triggers = new EnumMap<TriggerEvent,Triggers>(TriggerEvent.class);
+		this.triggers = new EnumMap<TriggerEvent,PETableTriggerEventInfo>(TriggerEvent.class);
 		// do keys & columns first so that database can propagate charset/collation
 		initializeColumnsAndKeys(pc,fieldsAndKeys,db);
 		setDatabase(pc,db,false);
@@ -234,20 +235,20 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		}
 		forceStorage(pc);
 		// load the triggers here
-		this.triggers = new EnumMap<TriggerEvent,Triggers>(TriggerEvent.class);
+		this.triggers = new EnumMap<TriggerEvent,PETableTriggerEventInfo>(TriggerEvent.class);
 		if (!table.getTriggers().isEmpty()) {
 			for(UserTrigger ut : table.getTriggers()) {
 				PETrigger trig = PETrigger.load(ut, pc, this);
-				addTriggerInternal(trig);
+				addTriggerInternal(trig,true);
 			}
 		}
 		
 	}		
 
-	private void addTriggerInternal(PETrigger trig) {
-		Triggers any = triggers.get(trig.getEvent());
+	private void addTriggerInternal(PETrigger trig,boolean persistent) {
+		PETableTriggerEventInfo any = triggers.get(trig.getEvent());
 		if (any == null) {
-			any = new Triggers();
+			any = (persistent ? new PETableTriggerPlanningEventInfo() : new PETableTriggerEventInfo());
 			triggers.put(trig.getEvent(),any);
 		}
 		any.set(trig);		
@@ -651,12 +652,12 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	public void addTrigger(SchemaContext sc, PETrigger trig) {
 		checkLoaded(sc);
-		addTriggerInternal(trig);
+		addTriggerInternal(trig, false);
 	}
 	
 	public void removeTrigger(SchemaContext sc, PETrigger trig) {
 		checkLoaded(sc);
-		Triggers any = triggers.get(trig.getEvent());
+		PETableTriggerEventInfo any = triggers.get(trig.getEvent());
 		if (any == null) return;
 		any.remove(trig);
 	}
@@ -870,7 +871,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	protected void updateExistingTriggers(SchemaContext sc, UserTable ut) throws PEException {
 		HashMap<String, UserTrigger> persistent = new HashMap<String,UserTrigger>();
 		HashMap<String, PETrigger> trans = new HashMap<String,PETrigger>();
-		for(Triggers trig : triggers.values()) {
+		for(PETableTriggerEventInfo trig : triggers.values()) {
 			for(PETrigger pet : trig.get()) {
 				trans.put(pet.getName().getUnqualified().getUnquotedName().get(),pet);
 			}
@@ -1151,48 +1152,12 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	}
 	
 	public boolean hasTrigger(SchemaContext sc, TriggerEvent et) {
-		if (triggers == null || triggers.isEmpty()) return false;
-		Triggers any = triggers.get(et);
-		return any != null;
+		return getTriggers(sc,et) != null;
+	}
+
+	public PETableTriggerEventInfo getTriggers(SchemaContext sc, TriggerEvent et) {
+		if (triggers == null || triggers.isEmpty()) return null;
+		return triggers.get(et);
 	}
 	
-	private static class Triggers {
-		
-		private PETrigger before;
-		private PETrigger after;
-		
-		public Triggers() {
-			before = null;
-			after = null;
-		}
-
-		public void set(PETrigger trig) {
-			if (trig.isBefore())
-				before = trig;
-			else
-				after = trig;
-		}
-		
-		public void remove(PETrigger trig) {
-			if (trig.isBefore())
-				before = null;
-			else
-				after = null;
-		}
-		
-		public PETrigger getBefore() {
-			return before;
-		}
-
-		public PETrigger getAfter() {
-			return after;
-		}
-
-		public Collection<PETrigger> get() {
-			ArrayList<PETrigger> out = new ArrayList<PETrigger>();
-			if (before != null) out.add(before);
-			if (after != null) out.add(after);
-			return out;
-		}
-	}
 }

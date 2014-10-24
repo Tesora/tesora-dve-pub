@@ -83,7 +83,7 @@ public class TriggerDDLTest extends SchemaTest {
 						"utf8","utf8_general_ci","utf8_general_ci"));
 //		System.out.println(conn.printResults("select * from information_schema.triggers where trigger_schema = 'adb'"));
 		conn.assertResults("select * from information_schema.triggers where trigger_schema = 'adb'",
-				br(nr,"def","adb","btrig","INSERT","def","adb","B",0,null,
+				br(nr,"def","adb","btrig","INSERT","def","adb","B",0L,null,
 						"INSERT INTO A (event) VALUES ('insert')",
 						"ROW","AFTER",null,null,"OLD","NEW",null,
 						"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci"));

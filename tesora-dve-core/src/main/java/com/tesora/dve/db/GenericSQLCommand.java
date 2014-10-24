@@ -41,6 +41,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.expression.DelegatingLiteralExpression;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.TempTable;
@@ -587,6 +588,11 @@ public class GenericSQLCommand {
 				final StringBuilder buf = new StringBuilder();
 				emitter.emitLiteral(sc, loe.getLiteral(), buf);
 				resolvedFragments.replace(oe, new CommandFragment(this.encoding, buf));
+			} else if (oe.getKind() == EntryKind.LATE_CONSTANT) {
+				final LateBindingConstantOffsetEntry lbcoe = (LateBindingConstantOffsetEntry) oe;
+				final StringBuilder buf = new StringBuilder();
+				emitter.emitLateBindingConstantExpression(sc, lbcoe.getExpression(), buf);
+				resolvedFragments.replace(oe, new CommandFragment(this.encoding, buf));
 			} else if (oe.getKind() == EntryKind.PRETTY) {
 				if (indent != null) {
 					final PrettyOffsetEntry poe = (PrettyOffsetEntry) oe;
@@ -756,7 +762,8 @@ public class GenericSQLCommand {
 		PARAMETER(false),
 		LATEVAR(false),
 		PRETTY(false),
-		RANDOM_SEED(true);
+		RANDOM_SEED(true),
+		LATE_CONSTANT(false);
 
 		private final boolean late;
 
@@ -967,6 +974,26 @@ public class GenericSQLCommand {
 
 	}
 
+	public static class LateBindingConstantOffsetEntry extends LateResolveEntry {
+		
+		private final LateBindingConstantExpression expr;
+		
+		public LateBindingConstantOffsetEntry(int offset, String token, LateBindingConstantExpression expr) {
+			super(offset,token);
+			this.expr = expr;
+		}
+		
+		public LateBindingConstantExpression getExpression() {
+			return this.expr;
+		}
+		
+		@Override
+		public EntryKind getKind() {
+			return EntryKind.LATE_CONSTANT;
+		}
+
+	}
+	
 	// helper class
 	public static class Builder {
 
@@ -1027,6 +1054,11 @@ public class GenericSQLCommand {
 
 		public Builder withRandomSeed(int offset, String tok, ExpressionNode expr) {
 			this.entries.add(new RandomSeedOffsetEntry(offset, tok, expr));
+			return this;
+		}
+
+		public Builder withLateConstant(int offset, String tok, LateBindingConstantExpression expr) {
+			entries.add(new LateBindingConstantOffsetEntry(offset,tok,expr));
 			return this;
 		}
 

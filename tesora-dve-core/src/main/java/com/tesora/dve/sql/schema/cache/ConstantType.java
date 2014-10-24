@@ -21,16 +21,16 @@ package com.tesora.dve.sql.schema.cache;
  * #L%
  */
 
-import com.tesora.dve.sql.schema.SchemaContext;
+// kinds of constants - values that are constant for planning purposes
+// but may change from execution to execution
+public enum ConstantType {
 
-public interface IConstantExpression {
-
-	public Object getValue(SchemaContext sc);
-
-	public int getPosition();
-
-	public ConstantType getConstantType();
-	
-	public IConstantExpression getCacheExpression();
+	// i.e. 1, 'foo'
+	LITERAL,  
+	// originally '?', then gets bound upon execute
+	PARAMETER,
+	// originally a column reference or expression, this is a value that is bound
+	// at runtime (i.e. during execution in the engine)
+	RUNTIME, 
 	
 }

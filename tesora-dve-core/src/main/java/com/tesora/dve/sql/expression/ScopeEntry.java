@@ -277,10 +277,11 @@ public class ScopeEntry implements Scope {
 	}
 
 	private ColumnInstance buildColumnInstance(SchemaContext sc, Name given, Column<?> c, TableInstance ti) {
-		if (sc != null && sc.getOptions().isRawPlanStep() && ti.getTable() instanceof TempTable)
-			return new ColumnInstance(c,ti);
-		else
-			return new ColumnInstance(given,c,ti);
+		if (sc != null) {
+			if (sc.getOptions().isRawPlanStep() && ti.getTable() instanceof TempTable)
+				return new ColumnInstance(c,ti);
+		}
+		return new ColumnInstance(given,c,ti);
 	}
 	
 	@Override

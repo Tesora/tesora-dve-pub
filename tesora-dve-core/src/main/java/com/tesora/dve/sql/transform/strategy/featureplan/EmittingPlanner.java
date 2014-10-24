@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.schema.cache;
+package com.tesora.dve.sql.transform.strategy.featureplan;
 
 /*
  * #%L
@@ -21,16 +21,10 @@ package com.tesora.dve.sql.schema.cache;
  * #L%
  */
 
-import com.tesora.dve.sql.schema.SchemaContext;
+public interface EmittingPlanner {
 
-public interface IConstantExpression {
-
-	public Object getValue(SchemaContext sc);
-
-	public int getPosition();
-
-	public ConstantType getConstantType();
+	public boolean emitting();
 	
-	public IConstantExpression getCacheExpression();
-	
+	public void emit(String what);
+
 }

@@ -77,6 +77,7 @@ import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep;
 import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
+import com.tesora.dve.sql.transform.execution.TriggerExecutionStep;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionSequence;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep.VariableValueSource;
@@ -181,7 +182,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		PreparePlanningResult ppr = 
 				(PreparePlanningResult) InvokeParser.preparePlan(db, new InitialInputState(in), 
 				ParserOptions.NONE.setDebugLog(true).setResolve().setPrepare().setActualLiterals(), "42");
-		List<String> fakeParams = new ArrayList<String>();
+		List<Object> fakeParams = new ArrayList<Object>();
 		for(int i = 0; i < numParams; i++)
 			fakeParams.add("fp" + i);
 		ExecutionPlan ep = ppr.getCachedPlan().rebuildPlan(db, fakeParams);
@@ -277,7 +278,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			}
 			buf.append(prefix).append(")");
 		} else if (hp instanceof AbstractProjectingExecutionStep) {
-			AbstractProjectingExecutionStep aes = (ProjectingExecutionStep) hp;
+			AbstractProjectingExecutionStep aes =  (AbstractProjectingExecutionStep) hp;
 			buf.append(prefix).append("new ProjectingExpectedStep(");
 			if (aes.getExecutionType() == ExecutionType.SELECT) {
 				buf.append("ExecutionType.SELECT,").append(PEConstants.LINE_SEPARATOR);
@@ -367,6 +368,20 @@ public abstract class TransformTest extends TransientSchemaTest {
 			FilterExecutionStep fes = (FilterExecutionStep) hp;
 			buf.append("new FilterExpectedStep(\"").append(fes.getFilter().describe()).append("\",");
 			printExecutionStepVerify(pc,fes.getSource(),0,false,buf);
+			buf.append(")");
+		} else if (hp instanceof TriggerExecutionStep) {
+			TriggerExecutionStep tes = (TriggerExecutionStep) hp;
+			buf.append(prefix).append("new TriggerExpectedStep(group,").append(PEConstants.LINE_SEPARATOR);
+			buf.append(prefix).append("  \"").append(tes.getRowQuery().getSQL(pc)).append("\",").append(PEConstants.LINE_SEPARATOR);
+			printExecutionStepVerify(pc,tes.getActualStep(),nesting+1,true,buf);
+			if (tes.getBeforeStep() == null)
+				buf.append(prefix).append("  null,").append(PEConstants.LINE_SEPARATOR);
+			else
+				printExecutionStepVerify(pc,tes.getBeforeStep(),nesting+1,true,buf);
+			if (tes.getActualStep() == null)
+				buf.append(prefix).append("  null").append(PEConstants.LINE_SEPARATOR);
+			else
+				printExecutionStepVerify(pc,tes.getAfterStep(),nesting+1,false,buf);
 			buf.append(")");
 		} else {
 			throw new IllegalArgumentException("Unsupported step kind for emit verify check: " + hp.getClass().getName());
@@ -728,7 +743,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 	
 	public static class DeleteExpectedStep extends DirectExpectedStep {
 
-		public DeleteExpectedStep(PEPersistentGroup sourceGroup, String... sql) {
+		public DeleteExpectedStep(PEStorageGroup sourceGroup, String... sql) {
 			super(DeleteExecutionStep.class, sourceGroup, sql);
 		}
 	}
@@ -820,6 +835,58 @@ public abstract class TransformTest extends TransientSchemaTest {
 			ExecutionStep haveSrc = fes.getSource();
 			source.verify(db, haveSrc);
 		}
+	}
+	
+	public static class TriggerExpectedStep extends ExpectedStep {
+
+		private final ExpectedStep actual;
+		private final ExpectedStep before;
+		private final ExpectedStep after;
+		private final String rowQuery;
+		
+		public TriggerExpectedStep(PEStorageGroup sourceGroup, String rowQuery, ExpectedStep actual, ExpectedStep before, ExpectedStep after) {
+			super(TriggerExecutionStep.class, sourceGroup, (String)null);
+			this.rowQuery = rowQuery;
+			this.actual = actual;
+			this.before = before;
+			this.after = after;
+		}
+		
+		protected String buildAssertTag(String what) {
+			return "trigger: " + what;
+		}
+
+		// no sql
+		protected void verifySQL(SchemaContext sc, ExecutionStep es) {
+		}
+
+		public void verify(SchemaContext sc, ExecutionStep es) {
+			super.verify(sc, es);
+			TriggerExecutionStep trigStep = (TriggerExecutionStep) es;
+			assertEquals(rowQuery,trigStep.getRowQuery().getSQL(sc));
+			actual.verify(sc, trigStep.getActualStep());
+			verifyTriggerBody(sc,"before",before,trigStep.getBeforeStep());
+			verifyTriggerBody(sc,"after",after,trigStep.getAfterStep());
+		}
+		
+		private void verifyTriggerBody(SchemaContext sc, String which, ExpectedStep expected, ExecutionStep actual) {
+			if (expected == null && actual != null)
+				fail("Found " + which + " step, but none expected");
+			else if (actual == null && expected != null)
+				fail("Missing " + which + " step");
+			else if (actual != null && expected != null)
+				expected.verify(sc, actual);
+		}
+
+		public void accumulateExecutionOrder(List<ExpectedStep> acc) {
+			if (before != null)
+				before.accumulateExecutionOrder(acc);
+			actual.accumulateExecutionOrder(acc);
+			if (after != null)
+				after.accumulateExecutionOrder(acc);
+		}
+
+		
 	}
 	
 	// shortcuts for building expected steps

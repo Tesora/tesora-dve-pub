@@ -25,6 +25,7 @@ package com.tesora.dve.sql.expression;
 import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.sql.node.expression.MTTableInstance;
 import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.schema.AutoIncrement;
 import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.HasTable;
@@ -61,13 +62,15 @@ public class TableKey extends RewriteKey implements AutoIncrement {
 	}
 	
 	public static TableKey make(TableInstance ti) {
+		if (ti instanceof TriggerTableInstance)
+			return new TriggerTableKey((TriggerTableInstance)ti);
 		if (ti instanceof MTTableInstance)
 			return new MTTableKey((MTTableInstance)ti);
-		else if (ti.getTable() instanceof ComplexPETable) {
+		if (ti.getTable() instanceof ComplexPETable) {
 			ComplexPETable ctab = (ComplexPETable) ti.getTable();
 			if (ctab.isUserlandTemporaryTable())
 				return new TemporaryTableKey(ti);
-		}
+		} 
 		return new TableKey(ti);
 	}
 	

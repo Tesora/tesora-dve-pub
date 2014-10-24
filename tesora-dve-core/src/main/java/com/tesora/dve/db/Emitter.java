@@ -67,6 +67,7 @@ import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.GroupConcatCall;
 import com.tesora.dve.sql.node.expression.IdentifierLiteralExpression;
 import com.tesora.dve.sql.node.expression.IntervalExpression;
+import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
 import com.tesora.dve.sql.node.expression.LateResolvingVariableExpression;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.NameInstance;
@@ -1224,6 +1225,8 @@ public abstract class Emitter {
 			emitIntervalExpression(sc, (IntervalExpression)e, buf, indent);
 		} else if (e instanceof LateResolvingVariableExpression) {
 			emitLateResolvingVariableExpression(sc, (LateResolvingVariableExpression)e, buf);
+		} else if (e instanceof LateBindingConstantExpression) {
+			emitLateBindingConstantExpression(sc, (LateBindingConstantExpression)e, buf);
 		} else {
 			error("Unsupported expression for emit: " + e.getClass().getName());
 		}
@@ -1515,6 +1518,31 @@ public abstract class Emitter {
 		buf.append(ile.getValue(sc));
 	}
 	
+	public void emitLateBindingConstantExpression(SchemaContext sc, LateBindingConstantExpression expr, StringBuilder buf) {
+		boolean emitValue = this.hasOptions() && getOptions().isResolveLateConstants();
+		boolean gsql = this.hasOptions() && getOptions().isGenericSQL();
+		
+		int offset = -1;
+		String tok;
+		if (emitValue) {
+			Object v = expr.getValue(sc);
+			if (v instanceof String) {
+				tok = (String) v;
+			} else if (v instanceof Date) {
+					tok = FastDateFormat.getInstance(MysqlNativeConstants.MYSQL_TIMESTAMP_FORMAT).format((Date) v);
+			} else {
+				tok = String.valueOf(v);
+			}
+		} else {
+			if (gsql)
+				offset = buf.length();
+			tok = "_lbc" + expr.getPosition();
+		}
+		buf.append(tok);
+		if (gsql && !emitValue)
+			builder.withLateConstant(offset, tok, expr);
+	}
+	
 	public void emitVariable(VariableInstance vi, StringBuilder buf) {
 		VariableScope vs = vi.getScope();
 		if (vs.getKind() == VariableScopeKind.USER) {
@@ -1616,6 +1644,11 @@ public abstract class Emitter {
 		Table<?> tab = tr.getTable();
 		if (tab == null) {
 			buf.append(tr.getSpecifiedAs(sc).getSQL());			
+			if (context == TableInstanceContext.COLUMN || context == TableInstanceContext.NAKED) {
+				// no as foo clause
+			} else if (tr.getAlias() != null) {
+				buf.append(" AS ").append(tr.getAlias().getSQL());
+			}
 		} else if (tab instanceof PEAbstractTable) {
 			// for temp tables: we never include the alias
 			// if the current db is different than the owning db, use a qualified name if not as a colum
@@ -1623,7 +1656,7 @@ public abstract class Emitter {
 			PEAbstractTable<?> pet = (PEAbstractTable<?>) tab;
 			Database<?> curDb = sc.getCurrentDatabase(false);
 			Database<?> tblDb = pet.getDatabase(sc);
-			if (context != TableInstanceContext.COLUMN) {
+			if (context == TableInstanceContext.TABLE_FACTOR) {
 				if ((curDb == null && tblDb != null) || 
 						((curDb != null && tblDb != null) && (curDb.getId() != tblDb.getId()))) {
 					if (getOptions() == null || !getOptions().isCatalog()) { 
@@ -2363,7 +2396,7 @@ public abstract class Emitter {
 		buf.append(" ").append(trigger.getEvent().name()).append(" ON ");
 		emitTable(sc,trigger.getTargetTable(),sc.getCurrentDatabase(false),buf);
 		buf.append(" FOR EACH ROW ");
-		emitStatement(sc,trigger.getBody(sc),buf);
+		buf.append(trigger.getBodySource());
 	}
 
 	
@@ -2550,6 +2583,14 @@ public abstract class Emitter {
 		public boolean isCatalog() {
 			return hasSetting(EmitOption.CATALOG);
 		}
+		
+		public EmitOptions addResolveLateConstants() {
+			return this.add(EmitOption.RESOLVE_LATE_CONSTANTS,Boolean.TRUE);
+		}
+		
+		public boolean isResolveLateConstants() {
+			return hasSetting(EmitOption.RESOLVE_LATE_CONSTANTS);
+		}
 	}
 	
 	public enum EmitOption {
@@ -2578,7 +2619,9 @@ public abstract class Emitter {
 		// we are querying the catalog directly, do not emit db entries
 		CATALOG,
 		// if set, then all table refs should be fully qualified - used in storage gen add
-		QUALIFIED_TABLES
+		QUALIFIED_TABLES,
+		// trigger support - if set then late constants should resolve, otherwise they should not
+		RESOLVE_LATE_CONSTANTS
 	}
 	
 	public static class EmitContext {

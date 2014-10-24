@@ -31,6 +31,7 @@ import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
 import com.tesora.dve.sql.schema.types.Type;
 
@@ -58,6 +59,12 @@ public abstract class LiteralExpression extends ConstantExpression implements IL
 	public UnqualifiedName getCharsetHint() {
 		return charsetHint;
 	}
+	
+	@Override
+	public ConstantType getConstantType() {
+		return ConstantType.LITERAL;
+	}
+
 	
 	@Override
 	public boolean isNullLiteral() {

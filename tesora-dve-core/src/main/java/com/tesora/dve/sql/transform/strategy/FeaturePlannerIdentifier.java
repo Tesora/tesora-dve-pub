@@ -52,5 +52,14 @@ public enum FeaturePlannerIdentifier {
 	JOIN_SIMPLIFICATION,
 	VIEW,
 	TRUNCATE_MT_TABLE,
+	UPDATE_TRIGGER,
+	DELETE_TRIGGER,
+	INSERT_INTO_SELECT_TRIGGER,
+	REPLACE_INTO_TRIGGER,
+	
+	// compound statement planners - they use the feature planner infrastructure
+	// but aren't actually feature planners
+	COMPOUND_STMT_LIST,
+	
 	ADHOC;
 }

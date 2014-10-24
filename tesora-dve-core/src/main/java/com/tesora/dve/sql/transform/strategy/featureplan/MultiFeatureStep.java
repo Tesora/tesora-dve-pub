@@ -27,6 +27,7 @@ import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 
+// container for other feature steps
 public class MultiFeatureStep extends FeatureStep {
 
 	public MultiFeatureStep(FeaturePlanner planner) {

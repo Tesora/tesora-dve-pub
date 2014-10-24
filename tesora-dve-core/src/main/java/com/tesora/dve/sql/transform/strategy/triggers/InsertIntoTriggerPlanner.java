@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.node.expression;
+package com.tesora.dve.sql.transform.strategy.triggers;
 
 /*
  * #%L
@@ -21,37 +21,24 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
-import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.cache.ConstantType;
-import com.tesora.dve.sql.schema.cache.IConstantExpression;
-import com.tesora.dve.sql.schema.cache.IParameter;
+import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.statement.dml.DMLStatement;
+import com.tesora.dve.sql.statement.dml.InsertStatement;
+import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
+import com.tesora.dve.sql.transform.strategy.PlannerContext;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 
-public class CachedParameterExpression implements IParameter {
+public class InsertIntoTriggerPlanner extends TriggerPlanner {
 
-	private int position;
-	
-	public CachedParameterExpression(int pos) {
-		position = pos;
+	@Override
+	public FeatureStep plan(DMLStatement stmt, PlannerContext context)
+			throws PEException {
+		return handleInsertStatement(context,(InsertStatement)stmt);
 	}
 
 	@Override
-	public Object getValue(SchemaContext sc) {
-		return sc.getValueManager().getValue(sc, this);
+	public FeaturePlannerIdentifier getFeaturePlannerID() {
+		return FeaturePlannerIdentifier.INSERT_INTO_SELECT_TRIGGER;
 	}
 
-	@Override
-	public int getPosition() {
-		return position;
-	}
-
-	@Override
-	public IConstantExpression getCacheExpression() {
-		return this;
-	}
-
-	@Override
-	public ConstantType getConstantType() {
-		return ConstantType.LITERAL;
-	}
-	
 }

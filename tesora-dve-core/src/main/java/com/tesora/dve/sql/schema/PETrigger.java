@@ -24,6 +24,8 @@ package com.tesora.dve.sql.schema;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.parser.InvokeParser;
+import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.parser.TranslatorInitCallback;
 import com.tesora.dve.sql.parser.TranslatorUtils;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
@@ -31,7 +33,6 @@ import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.statement.Statement;
-import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 
 public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 
@@ -39,7 +40,6 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	// also, triggers are loaded/unloaded with the table
 	private final PETable triggerTable;
 	private final TriggerEvent triggerType;
-	private Statement body;
 	private String bodySrc;
 	private String rawSQL;
 	private SchemaEdge<PEUser> definer;
@@ -56,8 +56,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 			boolean before, SQLMode sqlMode, String rawSQL) {
 		super(buildCacheKey(name,targetTable));
 		setName(name.getUnqualified());
-		this.body = body;
-		this.bodySrc = null;
+		this.bodySrc = body.getSQL(sc);
 		this.triggerTable = targetTable;
 		this.triggerType = triggerOn;
 		this.definer = StructuralUtils.buildEdge(sc,user,false);
@@ -85,13 +84,35 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	public PETable getTargetTable() {
 		return triggerTable;
 	}
+
+	public String getBodySource() {
+		return bodySrc;
+	}
 	
-	public Statement getBody(SchemaContext sc) {
-		if (body == null) {
-			Statement parsed = PEView.buildStatement(sc, triggerTable.getPEDatabase(sc), bodySrc, false, new ScopeInjector(triggerTable));
-			body = parsed;
+	public Statement getBody(SchemaContext context) {		
+		SchemaContext sc = context;
+		if (!sc.isMutableSource()) 
+			sc = SchemaContext.makeImmutableIndependentContext(context);
+		PEDatabase cdb = sc.getCurrentPEDatabase(false);
+		sc.setCurrentDatabase(triggerTable.getPEDatabase(sc));
+		// reparse to get the right schema objects, and force all literals to be actual literals
+		ParserOptions originalOptions = sc.getOptions();
+
+		ParserOptions myOpts = originalOptions;
+		if (myOpts == null)
+			myOpts = context.getOptions();
+		if (myOpts == null)
+			myOpts = ParserOptions.NONE;
+		myOpts = myOpts.setActualLiterals().setResolve();
+		myOpts = myOpts.setIgnoreLocking();
+		Statement out = null;
+		try {
+			out = InvokeParser.parseTriggerBody(bodySrc, sc, myOpts, new ScopeInjector(triggerTable)).get(0);
+		} finally {
+			sc.setOptions(originalOptions);
+			sc.setCurrentDatabase(cdb);
 		}
-		return body;
+		return out;
 	}
 	
 	public static PETrigger load(UserTrigger ut, SchemaContext sc, PETable onTable) {
@@ -151,7 +172,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	protected UserTrigger createEmptyNew(SchemaContext sc)
 			throws PEException {
 		return new UserTrigger(getName().get(),
-				(bodySrc != null ? bodySrc : body.getSQL(sc)),
+				bodySrc,
 				triggerTable.persistTree(sc),
 				triggerType.name(),
 				before ? "BEFORE" : "AFTER",

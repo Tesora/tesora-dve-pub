@@ -244,7 +244,7 @@ public class ValueManager implements ValueSource {
 		return getValues(sc).getLastInsertId();
 	}
 
-	public void resetForNewPStmtExec(SchemaContext sc, List<?> params) throws PEException {
+	public void resetForNewPStmtExec(SchemaContext sc, List<Object> params) throws PEException {
 		ConnectionValues cv = basicReset(sc);
 		cv.setParameters(params);		
 		cv.handleAutoincrementValues(sc);

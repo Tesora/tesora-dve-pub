@@ -27,6 +27,7 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.transform.CopyContext;
@@ -49,11 +50,6 @@ public class LateResolvingVariableExpression extends ConstantExpression {
 	public int getPosition() {
 		// doesn't have a position, because it doesn't exist until very late
 		return -1;
-	}
-
-	@Override
-	public boolean isParameter() {
-		return false;
 	}
 
 	@Override
@@ -88,6 +84,11 @@ public class LateResolvingVariableExpression extends ConstantExpression {
 	@Override
 	protected int selfHashCode() {
 		throw new SchemaException(Pass.PLANNER, "Illegal use of schemaHashCode");
+	}
+
+	@Override
+	public ConstantType getConstantType() {
+		return ConstantType.LITERAL;
 	}
 
 }
