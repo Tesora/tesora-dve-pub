@@ -140,6 +140,10 @@ public class StatementAnalysis<T extends DMLStatement> {
 		for (final Column<?> p : identCols) {
 			sv.onIdentColumn(p, frequency);
 		}
+		
+		if (!identCols.isEmpty()) {
+			sv.onIdentColumnTuple(identCols, frequency);
+		}
 	}
 
 	private final String nl = System.getProperty("line.separator");

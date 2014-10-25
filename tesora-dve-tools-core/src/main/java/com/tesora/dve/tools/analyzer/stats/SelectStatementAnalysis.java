@@ -23,6 +23,7 @@ package com.tesora.dve.tools.analyzer.stats;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -38,6 +39,7 @@ import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
+import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -85,6 +87,7 @@ public class SelectStatementAnalysis extends StatementAnalysis<SelectStatement> 
 		}
 
 		/* On Group By edge. */
+		final Set<Column<?>> groupByTuple = new LinkedHashSet<Column<?>>();
 		for (final SortingSpecification ss : getStatement().getGroupBysEdge()) {
 			if (ss.getTarget() instanceof AliasInstance) {
 				final AliasInstance ai = (AliasInstance) ss.getTarget();
@@ -92,12 +95,20 @@ public class SelectStatementAnalysis extends StatementAnalysis<SelectStatement> 
 				final ExpressionNode actual = ExpressionUtils.getTarget(ea);
 				if (actual instanceof ColumnInstance) {
 					final ColumnInstance ci = (ColumnInstance) actual;
-					sv.onGroupBy(ci.getColumn(), frequency);
+					final Column<?> c = ci.getColumn();
+					groupByTuple.add(c);
+					sv.onGroupBy(c, frequency);
 				}
 			} else if (ss.getTarget() instanceof ColumnInstance) {
 				final ColumnInstance ci = (ColumnInstance) ss.getTarget();
-				sv.onGroupBy(ci.getColumn(), frequency);
+				final Column<?> c = ci.getColumn();
+				groupByTuple.add(c);
+				sv.onGroupBy(c, frequency);
 			}
+		}
+		
+		if (!groupByTuple.isEmpty()) {
+			sv.onGroupByColumnTuple(groupByTuple, frequency);
 		}
 
 		/*

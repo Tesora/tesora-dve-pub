@@ -240,8 +240,25 @@ public class PrivateRange implements TemplateRangeItem {
 		return getValidRange(buildRangeFor(table, outerJoinColumns, new ColumnVectorRanker(otherAvailableRanges, isSafeMode)));
 	}
 
-	public static PrivateRange fromWhereColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
-		return getValidRange(buildRangeFor(table, table.getIdentColumns(), new ColumnVectorRanker(otherAvailableRanges, isSafeMode)));
+	public static PrivateRange fromWhereColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode,
+			final boolean useIdentTuples) {
+		return getValidRange(buildRangeFor(table, getIdentTuplesFromTable(table, useIdentTuples), new ColumnVectorRanker(otherAvailableRanges, isSafeMode)));
+	}
+
+	private static Map<Set<TableColumn>, Long> getIdentTuplesFromTable(final TableStats table, final boolean useIdentTuples) {
+		if (useIdentTuples) {
+			return table.getIdentColumns();
+		}
+
+		final Map<Set<TableColumn>, Long> singletons = new HashMap<Set<TableColumn>, Long>();
+		for (final Map.Entry<Set<TableColumn>, Long> tupleEntry : table.getIdentColumns().entrySet()) {
+			final Long tupleFrequency = tupleEntry.getValue();
+			for (final TableColumn tupleColumn : tupleEntry.getKey()) {
+				singletons.put(Collections.singleton(tupleColumn), tupleFrequency);
+			}
+		}
+
+		return singletons;
 	}
 
 	public static PrivateRange fromGroupByColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {

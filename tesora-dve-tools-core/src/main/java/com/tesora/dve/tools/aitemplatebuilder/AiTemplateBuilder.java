@@ -652,6 +652,7 @@ public final class AiTemplateBuilder {
 	private boolean enableWildcards;
 	private boolean isVerbose;
 	private boolean enableFksAsJoins;
+	private boolean enableIdentTuples;
 	private TemplateModelItem fallbackModel;
 
 	public AiTemplateBuilder(final CorpusStats schemaStats, final Template base, final TemplateModelItem fallbackModel, final PrintStream outputStream)
@@ -682,6 +683,10 @@ public final class AiTemplateBuilder {
 
 	public void setForeignKeysAsJoins(final boolean enableFksAsJoins) {
 		this.enableFksAsJoins = enableFksAsJoins;
+	}
+	
+	public void setUseIdentTuples(final boolean enableIdentTuples) {
+		this.enableIdentTuples = enableIdentTuples;
 	}
 
 	public void setFallbackModel(final TemplateModelItem model) {
@@ -1103,7 +1108,7 @@ public final class AiTemplateBuilder {
 					if (newRange == null) {
 						if (table.hasIdentColumns() || table.hasGroupByColumns()) {
 							newRange = PrivateRange.fromWhereColumns(table, topRangeToRangeTopRanges,
-									isSafeMode);
+									isSafeMode, this.enableIdentTuples);
 							if (newRange == null) {
 								newRange = PrivateRange.fromGroupByColumns(table, topRangeToRangeTopRanges, isSafeMode);
 							}

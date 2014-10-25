@@ -1291,7 +1291,8 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 			final AiTemplateBuilder templateBuilder = new AiTemplateBuilder(corpusStats, baseTemplate, fallbackModel, this.getPrintStream());
 			templateBuilder.setWildcardsEnabled(this.options.isTemplateWildcardsEnabled());
 			templateBuilder.setVerbose(this.options.isVerboseGeneratorEnabled());
-			templateBuilder.setVerbose(this.options.isForeignKeysAsJoinsEnabled());
+			templateBuilder.setForeignKeysAsJoins(this.options.isForeignKeysAsJoinsEnabled());
+			templateBuilder.setUseIdentTuples(this.options.isIdentTuplesEnabled());
 
 			reloadTemplates(templateBuilder.buildBroadcastCutoffTemplates(databases, broadcastCardinalityCutoff, isRowWidthWeightingEnabled));
 
@@ -1336,7 +1337,8 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 			final AiTemplateBuilder ai = new AiTemplateBuilder(corpusStats, baseTemplate, fallbackModel, this.getPrintStream());
 			ai.setWildcardsEnabled(this.options.isTemplateWildcardsEnabled());
 			ai.setVerbose(this.options.isVerboseGeneratorEnabled());
-			ai.setVerbose(this.options.isForeignKeysAsJoinsEnabled());
+			ai.setForeignKeysAsJoins(this.options.isForeignKeysAsJoinsEnabled());
+			ai.setUseIdentTuples(this.options.isIdentTuplesEnabled());
 			final List<Template> builtTemplates = ai.buildTemplates(this.databases, broadcastCardinalityCutoff, followForeignKeys, isSafeMode,
 					isRowWidthWeightingEnabled);
 
