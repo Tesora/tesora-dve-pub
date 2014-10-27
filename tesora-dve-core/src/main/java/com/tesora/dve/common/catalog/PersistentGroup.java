@@ -303,6 +303,10 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 		ssCon.clearWorkerGroupCache(this);
 	}
 
+	public void removeGeneration(StorageGroupGeneration sgg) {
+		generations.remove(sgg);
+	}
+	
     public void addAllSites(Collection<PersistentSite> sites) throws PELockedException {
 		getLastGen().add(sites);
 	}

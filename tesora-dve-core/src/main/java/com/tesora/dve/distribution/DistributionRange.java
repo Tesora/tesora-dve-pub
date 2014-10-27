@@ -174,6 +174,13 @@ public class DistributionRange implements CatalogEntity {
 		return theKeyRange;
 	}
 
+	public GenerationKeyRange removeRangeForGeneration(StorageGroupGeneration newGen) {
+		GenerationKeyRange kr = getRangeForGeneration(newGen);
+		if (kr == null) return null;
+		rangeGenerations.remove(kr);
+		return kr;
+	}
+	
 	@Override
 	public ColumnSet getShowColumnSet(CatalogQueryOptions cqo) {
 		if (showColumnSet == null) {

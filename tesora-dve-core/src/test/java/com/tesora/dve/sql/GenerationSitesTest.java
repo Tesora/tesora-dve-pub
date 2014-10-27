@@ -421,7 +421,11 @@ public class GenerationSitesTest extends SchemaTest {
         	conn.execute(String.format(vt2,args));
         }
 
+        System.out.println(conn.printResults("select * from information_schema.storage_generation"));
+        
 		conn.execute(testDDL.getPersistentGroup().getAddGenerations() + " WITH REBALANCE");
+
+        System.out.println(conn.printResults("select * from information_schema.storage_generation"));
 
 	}
 	

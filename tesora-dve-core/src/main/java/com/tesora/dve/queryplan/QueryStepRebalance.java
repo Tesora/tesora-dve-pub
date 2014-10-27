@@ -124,10 +124,13 @@ public class QueryStepRebalance extends QueryStepOperation {
                 }
 
                 //TODO:update catalog entries, commit XA, invalidate any key range related caching.
-                GenerationKeyRange keyBoundary  = range.getRangeForGeneration(oldGen);
+                GenerationKeyRange keyBoundary  = range.removeRangeForGeneration(oldGen);
+                ssCon.getCatalogDAO().persistToCatalog(range);
                 ssCon.getCatalogDAO().remove(keyBoundary);
             }
             //OK, we've processed everything in this old generation.
+            group.removeGeneration(oldGen);
+            ssCon.getCatalogDAO().persistToCatalog(group);
             ssCon.getCatalogDAO().remove(oldGen);
 
         }
