@@ -21,7 +21,6 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import java.util.Collections;
 import java.util.List;
 
 import com.tesora.dve.common.catalog.*;
@@ -29,7 +28,6 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
-import com.tesora.dve.sql.statement.ddl.AddStorageGenRangeInfo;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -48,25 +46,21 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	boolean mustIgnoreFKs;
 	// all the users and grants
 	List<SQLCommand> userDecls;
-	// if we're rebalancing this is nonempty
-	List<AddStorageGenRangeInfo> rebalanceInfo;
 	
 	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate) {
-		this(sg,sites,invalidate,null,false,null, Collections.<AddStorageGenRangeInfo> emptyList());
+		this(sg,sites,invalidate,null,false,null);
 	}
 	
 	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate,
 			ListOfPairs<UserTable,SQLCommand> tableDecls,
 			boolean ignoreFKs,
-			List<SQLCommand> userDecls,
-			List<AddStorageGenRangeInfo> rebalanceInfo) {
+			List<SQLCommand> userDecls) {
 		this.group = sg;
 		this.sites = sites;
 		this.record = invalidate;
 		this.tableDecls = tableDecls;
 		this.mustIgnoreFKs = ignoreFKs;
 		this.userDecls = userDecls;
-		this.rebalanceInfo = rebalanceInfo;
 	}
 
 	@Override
@@ -80,11 +74,9 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 				public CatalogEntity generate() throws Throwable {
                     //NOTE: this catalog entry is for the latest storage generation.
                     StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
-                    if (rebalanceInfo == null)
-					    catalogDAO.persistToCatalog(newGen);
                     //NOTE: this call is responsible for scanning the dist-key ranges and setting up any catalog entries for older generations.
-                    group.addGeneration(ssCon, wg, newGen, tableDecls, mustIgnoreFKs, userDecls, rebalanceInfo);
-					return rebalanceInfo == null ? newGen : null;
+                    group.addGeneration(ssCon, wg, newGen, tableDecls, mustIgnoreFKs, userDecls);
+                    return newGen;
 				}
 			}.execute();
 		} finally {

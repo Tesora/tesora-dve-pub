@@ -21,19 +21,16 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.*;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.distribution.GenerationKeyRange;
-import com.tesora.dve.distribution.RangeTableRelationship;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.RangeDistribution;
 import com.tesora.dve.sql.statement.ddl.AddStorageGenRangeInfo;
+import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.WorkerGroup;
 
 import java.util.*;
@@ -44,15 +41,26 @@ import java.util.*;
 public class QueryStepRebalance extends QueryStepOperation {
     PersistentGroup group;
     List<AddStorageGenRangeInfo> rebalanceInfo;
-
-    public QueryStepRebalance(PersistentGroup group, List<AddStorageGenRangeInfo> rebalanceInfo) {
+    boolean ignoreFKs;
+    
+    public QueryStepRebalance(PersistentGroup group, List<AddStorageGenRangeInfo> rebalanceInfo, boolean ignoreFKs) {
         this.group = group;
         this.rebalanceInfo = rebalanceInfo;
+        this.ignoreFKs = ignoreFKs;
     }
 
     @Override
     public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-        this.migrateAllGenerationsToCurrent(ssCon, wg);
+		boolean fkVal = KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(ssCon);
+    	try {
+    		if (ignoreFKs) 
+    			ssCon.setSessionVariable("foreign_key_checks", "0");
+
+    		this.migrateAllGenerationsToCurrent(ssCon, wg);
+    	} finally {
+    		if (ignoreFKs)
+    			ssCon.setSessionVariable("foreign_key_checks", (fkVal ? "1" : "0"));
+    	}
     }
 
     private void migrateAllGenerationsToCurrent(SSConnection ssCon, WorkerGroup wg) throws PEException {

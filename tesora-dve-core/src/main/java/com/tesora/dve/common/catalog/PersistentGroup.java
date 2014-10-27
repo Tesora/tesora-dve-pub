@@ -251,8 +251,7 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 	}
 
 	public void addGeneration(SSConnection ssCon, WorkerGroup wg, StorageGroupGeneration newGen,
-			ListOfPairs<UserTable,SQLCommand> tableDecls, boolean ignoreFKs, List<SQLCommand> userDecls,
-			List<AddStorageGenRangeInfo> rebalanceInfo) throws Throwable {
+			ListOfPairs<UserTable,SQLCommand> tableDecls, boolean ignoreFKs, List<SQLCommand> userDecls) throws Throwable {
 		if (false == this.equals(wg.getGroup()))
 			throw new PEException("WorkerGroup does not match StorageGroup");
 		if (generations.size() > 0)
@@ -295,15 +294,6 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
         //    any broadcast tables have been copied to new sites.
         //    the previous gen's range min/max have been computed, and added to the catalog
         //    a storage gen entry for the new default generation has been added.
-
-        if (! rebalanceInfo.isEmpty() ) {
-            //SMG:
-            System.out.printf("SMG: triggered rebalance of persistent group %s\n", this.getName());
-            QueryStepRebalance rangeRebalance = new QueryStepRebalance(this,rebalanceInfo);
-            rangeRebalance.execute(ssCon, wg, DBEmptyTextResultConsumer.INSTANCE);
-        } else {
-            System.out.printf("SMG: skipped rebalance of persistent group %s\n", this.getName());
-        }
 
         //TODO: remove anything tied to the old generations
 
