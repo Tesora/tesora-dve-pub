@@ -24,12 +24,13 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
+import com.tesora.dve.db.mysql.portal.protocol.CanFlowControl;
+import com.tesora.dve.db.mysql.portal.protocol.FlowControl;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLStateException;
-import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.messaging.SQLCommand;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.ReferenceCountUtil;
@@ -40,7 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
 *
 */
-public class RedistTargetSite implements AutoCloseable {
+public class RedistTargetSite implements AutoCloseable, CanFlowControl {
     static Logger logger = Logger.getLogger(RedistTargetSite.class);
 
     public interface InsertWatcher {
@@ -49,16 +50,11 @@ public class RedistTargetSite implements AutoCloseable {
         void insertFailed(RedistTargetSite site, Exception e);
     }
 
-    public interface SourceControl {
-        void pauseSourceStreams();
-        void resumeSourceStreams();
-    }
-
     private InsertWatcher watcher;
+    private FlowControl flowControl;
 
     private CommandChannel channel;
     private int pstmtId = -1;
-    private boolean waitingForPrepare = false;
     private BufferedExecute bufferedExecute = new BufferedExecute();
 
     private BufferedExecute pendingFlush = null;
@@ -88,6 +84,10 @@ public class RedistTargetSite implements AutoCloseable {
         this.maximumRowsToBuffer = policy.getMaximumRowsToBuffer();
         this.maximumBytesToBuffer = policy.getMaximumBytesToBuffer();
         this.columnsPerTuple = policy.getColumnsPerTuple();
+    }
+
+    public void setUpstreamControl(FlowControl flowControl) {
+        this.flowControl = flowControl;
     }
 
     public boolean append(MyBinaryResultRow binRow) {
@@ -187,10 +187,9 @@ public class RedistTargetSite implements AutoCloseable {
                     MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(insertCommand.getSQL(), this.channel.lookupCurrentConnectionCharset());
                     MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
 
-                    this.waitingForPrepare = true; //we flip this back when the prepare response comes back in.
+                    shouldPauseInput();
 
                     //sends the prepare with the callback that will issue the execute.
-//                    this.ctx.channel().writeAndFlush(prepareCmd);
                     this.channel.writeAndFlush(message,prepareCmd);
                 } else {
                     //we have a valid statementID, so do the work now.
@@ -204,9 +203,12 @@ public class RedistTargetSite implements AutoCloseable {
         }
     }
 
-    public boolean willAcceptMoreRows(){
-        boolean channelBackedUp = (channel.isOpen() && !channel.isWritable());
-        return !waitingForPrepare && !channelBackedUp;
+    private void shouldPauseInput() {
+        flowControl.pauseSourceStreams();
+    }
+
+    private void shouldResumeInput(){
+        flowControl.resumeSourceStreams();
     }
 
     private void executePendingInsert() {
@@ -217,12 +219,11 @@ public class RedistTargetSite implements AutoCloseable {
         buffersToFlush.setStmtID(currentStatementID);
         buffersToFlush.setNeedsNewParams(true); //TODO:this field can be managed by BufferedExecute. -gossard
         buffersToFlush.setColumnsPerTuple(columnsPerTuple);
-
         int rowsWritten = buffersToFlush.size();
         this.channel.writeAndFlush(buffersToFlush, constructInsertHandler());
         this.pendingFlush = null;
         this.queuedRowSetCount.getAndAdd(-rowsWritten);
-
+        shouldResumeInput();
         // ********************
 
     }
@@ -254,6 +255,7 @@ public class RedistTargetSite implements AutoCloseable {
 
             @Override
             public void failure(Exception e) {
+                shouldResumeInput();
                 watcher.insertFailed(RedistTargetSite.this, e);
             }
 
@@ -299,14 +301,14 @@ public class RedistTargetSite implements AutoCloseable {
     }
 
     protected void prepareFinished(long stmtID, int tupleCount){
-        this.waitingForPrepare = false;
         this.pstmtId = (int)stmtID;
         this.pstmtTupleCount = tupleCount;
+        shouldResumeInput();
     }
 
     protected void prepareFailed(MyErrorResponse error){
-        this.waitingForPrepare = false;
-        watcher.insertFailed(this,error);
+        watcher.insertFailed(this, error);
+        shouldResumeInput();
     }
 
 }

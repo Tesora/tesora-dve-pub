@@ -394,7 +394,7 @@ public class GenerationSitesTest extends SchemaTest {
 		conn.execute("create table vt1 (a varchar(32), b varchar(32), c int, primary key(a)) range distribute on (a) using vrange");
         conn.execute("create table vt2 (a varchar(32), b varchar(32), c int, primary key(a)) range distribute on (b) using vrange");
 
-        for (int i=0;i< 1000;i++){
+        for (int i=0;i< 10000;i++){
             conn.execute("insert into vt1 values ('key"+i+"','one"+i+"',"+i+")");
             conn.execute("insert into vt2 values ('two"+i+"','key"+i+"',"+i+")");
         }

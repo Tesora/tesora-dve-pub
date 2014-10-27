@@ -27,8 +27,10 @@ import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.MyBinaryResultRow;
 import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.db.mysql.libmy.MyOKResponse;
+import com.tesora.dve.db.mysql.portal.protocol.CanFlowControl;
+import com.tesora.dve.db.mysql.portal.protocol.DownstreamFlowControlSet;
+import com.tesora.dve.db.mysql.portal.protocol.FlowControl;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.Worker;
 import com.tesora.dve.worker.WorkerGroup;
@@ -38,81 +40,49 @@ import java.util.*;
 /**
  *
  */
-public class RedistTargetSet implements RedistTargetSite.InsertWatcher, RedistTargetSite.InsertPolicy {
+public class RedistTargetSet implements RedistTargetSite.InsertWatcher, RedistTargetSite.InsertPolicy, CanFlowControl {
 
     final WorkerGroup targetWG;
     final RedistTargetSite.InsertWatcher watcher;
     RedistTargetSite.InsertPolicy policy;
-    final RedistTargetSite.SourceControl sourceControl;
 
     final Map<StorageSite, RedistTargetSite> siteCtxBySite = new HashMap<>();
-    final IdentityHashMap<RedistTargetSite,RedistTargetSite> blockedTargetSites = new IdentityHashMap<>();
+    final DownstreamFlowControlSet siteFlowControl = new DownstreamFlowControlSet();
 
     boolean alreadyFailed = false;
-    long insertedRows = 0;
-    boolean isSourcePaused = false;
+    boolean alreadyClosed = false;
 
-    public RedistTargetSet(WorkerGroup targetWG, RedistTargetSite.InsertWatcher watcher, RedistTargetSite.InsertPolicy policy, RedistTargetSite.SourceControl sourceControl) throws PEException {
+    long insertedRows = 0;
+
+    public RedistTargetSet(WorkerGroup targetWG, RedistTargetSite.InsertWatcher watcher, RedistTargetSite.InsertPolicy policy, FlowControl sourceControl) throws PEException {
         this.targetWG = targetWG;
         this.watcher = watcher;
         this.policy = policy;
-        this.sourceControl = sourceControl;
+        siteFlowControl.setUpstreamControl(sourceControl);
 
         Collection<Worker> targetWorkers = targetWG.getTargetWorkers(WorkerGroup.MappingSolution.AllWorkers);
         for (Worker targetWorker : targetWorkers){
             CommandChannel directChannel = targetWorker.getDirectChannel();
             StorageSite site = directChannel.getStorageSite();
+
             RedistTargetSite siteCtx = new RedistTargetSite(this, directChannel, this);
+            siteFlowControl.register(siteCtx);
             siteCtxBySite.put(site, siteCtx);
         }
     }
 
+
     public boolean sendInsert(WorkerGroup.MappingSolution mappingSolution, MyBinaryResultRow binRow) throws PEException {
-        if (alreadyFailed)
+        if (alreadyFailed || alreadyClosed)
             return false;
 
         Collection<RedistTargetSite> allTargetSites = chooseTargetSites(mappingSolution);
         boolean flushedOne = false;
-        for (RedistTargetSite siteCtx : allTargetSites){
+        for (RedistTargetSite siteCtx : allTargetSites) {
             flushedOne = flushedOne || siteCtx.append(binRow);
-
-            if (!siteCtx.willAcceptMoreRows() ){
-                blockedTargetSites.put(siteCtx,siteCtx);
-            }
-
         }
-        if (!blockedTargetSites.isEmpty()){
-            pauseSourceStreams();
-        }
+
         return flushedOne;
-    }
-
-    private void checkIfSitesAreUnblocked(){
-        Iterator<RedistTargetSite> blockedSites = blockedTargetSites.keySet().iterator();
-        while (blockedSites.hasNext()){
-            RedistTargetSite site = blockedSites.next();
-            if (site.willAcceptMoreRows())
-                blockedSites.remove();
-        }
-        if (blockedTargetSites.isEmpty()) {
-            resumeSourceStreams();
-        }
-    }
-
-    private void pauseSourceStreams(){
-//        if (!isSourcePaused) {
-            sourceControl.pauseSourceStreams();
-            //SMG:
-//            isSourcePaused = true;
-//        }
-    }
-
-    private void resumeSourceStreams(){
-//        if (isSourcePaused) {
-            sourceControl.resumeSourceStreams();
-        //SMG:
-//            isSourcePaused = false;
-//        }
     }
 
     private Collection<RedistTargetSite> chooseTargetSites(WorkerGroup.MappingSolution mappingSolution) throws PEException {
@@ -133,7 +103,9 @@ public class RedistTargetSet implements RedistTargetSite.InsertWatcher, RedistTa
     public void close() {
         for (RedistTargetSite siteCtx : siteCtxBySite.values()) {
             siteCtx.close();
+            siteFlowControl.unregister(siteCtx);
         }
+        alreadyClosed = true;
     }
 
     public void flush() {
@@ -175,7 +147,7 @@ public class RedistTargetSet implements RedistTargetSite.InsertWatcher, RedistTa
 
     @Override
     public void insertOK(RedistTargetSite siteCtx, MyOKResponse okPacket) {
-        if (alreadyFailed)
+        if (alreadyFailed || alreadyClosed)
             return;
 
         long affectedRows = okPacket.getAffectedRows();
@@ -183,7 +155,6 @@ public class RedistTargetSet implements RedistTargetSite.InsertWatcher, RedistTa
             int rowCount = (int) affectedRows;
             insertedRows += rowCount;
         } finally {
-            checkIfSitesAreUnblocked();
             watcher.insertOK(siteCtx,okPacket);
         }
     }
@@ -203,4 +174,13 @@ public class RedistTargetSet implements RedistTargetSite.InsertWatcher, RedistTa
     public long getUpdatedRowCount() {
         return insertedRows;
     }
+
+    @Override
+    public void setUpstreamControl(FlowControl control) {
+        if (control == this || control == siteFlowControl)
+            throw new IllegalArgumentException();
+
+        siteFlowControl.setUpstreamControl(control);
+    }
+
 }

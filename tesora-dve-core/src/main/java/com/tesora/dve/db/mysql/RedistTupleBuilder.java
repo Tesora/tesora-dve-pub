@@ -25,8 +25,8 @@ import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.concurrent.*;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
-import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
-import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
+import com.tesora.dve.db.mysql.portal.protocol.FlowControl;
+import com.tesora.dve.db.mysql.portal.protocol.ValveFlowControlSet;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
@@ -48,7 +48,7 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
-public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, RedistTargetSite.InsertWatcher, RedistTargetSite.SourceControl {
+public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, RedistTargetSite.InsertWatcher, FlowControl {
     static final Logger logger = Logger.getLogger(RedistTupleBuilder.class);
     static final String SIMPLE_CLASSNAME = RedistTupleBuilder.class.getSimpleName();
 
@@ -57,11 +57,9 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, Redist
 
     RedistTargetSet targetSet;
 
-    IdentityHashMap<ChannelHandlerContext,ChannelHandlerContext> sourceSites = new IdentityHashMap<>();
+    ValveFlowControlSet upstreamSet = new ValveFlowControlSet();
 
 	final PEDefaultPromise<Integer> completionPromise = new PEDefaultPromise<>();
-
-    boolean sourcePaused = false;
 
 	boolean lastPacketSent = false;
     boolean failedRedist = false;
@@ -227,33 +225,18 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, Redist
 
 
     public void sourceActive(ChannelHandlerContext ctx){
-        //this is called by MysqlRedistTupleForwarder instances that are processing the source queries when they are in position to receive response packets.
-        if (sourceSites.get(ctx) == null){
-            sourceSites.put(ctx,ctx);
-
-            //new site, pause it if we are paused.
-            if (sourcePaused) {
-                StreamValve.pipelinePause(ctx.pipeline());
-            }
-        }
+        upstreamSet.register(ctx);
     }
 
     @Override
     public void pauseSourceStreams(){
-        sourcePaused = true;
-        for (ChannelHandlerContext ctx : sourceSites.keySet()){
-            StreamValve.pipelinePause(ctx.pipeline());
-        }
+        if (!(lastPacketSent || failedRedist) ) //don't pause source sockets if we are finished.
+            upstreamSet.pauseSourceStreams();
     }
 
     @Override
     public void resumeSourceStreams(){
-        if (sourcePaused){
-            sourcePaused = false;
-            for (ChannelHandlerContext ctx : sourceSites.keySet()){
-                StreamValve.pipelineResume(ctx.pipeline());
-            }
-        }
+        upstreamSet.resumeSourceStreams();
     }
 
 

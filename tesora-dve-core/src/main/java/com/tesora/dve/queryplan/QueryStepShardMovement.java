@@ -27,8 +27,7 @@ import com.tesora.dve.concurrent.CompletionTarget;
 import com.tesora.dve.db.*;
 import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.libmy.*;
-import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtExecuteRequestMessage;
-import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
+import com.tesora.dve.db.mysql.portal.protocol.*;
 import com.tesora.dve.distribution.*;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
@@ -230,7 +229,7 @@ public class QueryStepShardMovement extends QueryStepOperation {
         }
     }
 
-    public class RebalanceRowProcessor implements MysqlCommandResultsProcessor, RedistTargetSite.InsertWatcher, RedistTargetSite.InsertPolicy, RedistTargetSite.SourceControl {
+    public class RebalanceRowProcessor implements MysqlCommandResultsProcessor, RedistTargetSite.InsertWatcher, RedistTargetSite.InsertPolicy, FlowControl {
 
         ColumnSet columns;
         boolean finished = false;
@@ -242,13 +241,15 @@ public class QueryStepShardMovement extends QueryStepOperation {
         Map<StorageSite, Long> rowCounts = new LinkedHashMap<>();
         RedistTargetSet targets;
         RedistTargetSite deleteTarget;
+        DownstreamFlowControlSet downstreamFlowControlSet = new DownstreamFlowControlSet();//pauses rebalance if targets or side tables need paused.
+        ValveFlowControlSet upstreamFlowControlSet = new ValveFlowControlSet();
+
         AddStorageGenRangeTableInfo sourceTableInfo;
 
         KeyValue distKey;
         int[] positionForDistKeyPart;
         CommandChannel deleteChannel;
         CompletionTarget<Boolean> promise;
-        ChannelHandlerContext sourceContext;
 
         public RebalanceRowProcessor(ColumnSet columns, SQLCommand srcInsertPrefix, KeyValue distKey, int[] positionForDistKeyPart, CommandChannel deleteChannel, WorkerGroup targetWG, AddStorageGenRangeTableInfo sourceTableInfo, CompletionTarget<Boolean> promise) throws PEException {
             this.columns = columns;
@@ -259,8 +260,13 @@ public class QueryStepShardMovement extends QueryStepOperation {
             this.sourceTableInfo = sourceTableInfo;
             this.promise = promise;
 
-            targets = new RedistTargetSet(targetWG,this,this,this);
+            targets = new RedistTargetSet(targetWG,this,this, FlowControl.NOOP);
             deleteTarget = buildDeleteTarget(deleteChannel);
+
+            downstreamFlowControlSet.setUpstreamControl(this);//intercept FC calls here.
+            downstreamFlowControlSet.register(targets);
+            downstreamFlowControlSet.register(deleteTarget);
+
 
             //set initial row counts for all target sites (and also the source site).
             rowCounts.put(oldSite,0L);
@@ -306,6 +312,7 @@ public class QueryStepShardMovement extends QueryStepOperation {
 
                 @Override
                 public SQLCommand buildInsertStatement(int tupleCount) throws PEException {
+                    System.out.printf("Building side table insert, tuple count=%s\n",tupleCount);
                     StringBuilder valueBubble = new StringBuilder("(?");
                     for (int i=1;i<sourceTableInfo.getDistKeyOffsets().length;i++){
                         valueBubble.append(",?");
@@ -340,7 +347,7 @@ public class QueryStepShardMovement extends QueryStepOperation {
 
         @Override
         public void active(ChannelHandlerContext ctx) {
-            this.sourceContext = ctx;
+            upstreamFlowControlSet.register(ctx);
         }
 
         @Override
@@ -395,9 +402,15 @@ public class QueryStepShardMovement extends QueryStepOperation {
                 if (nowFinished) {
                     finished = true;
                     promise.success(true);
-                    resumeSourceStreams();
+                    clearAndUnhookFlowControl();
                 }
             }
+        }
+
+        private void clearAndUnhookFlowControl() {
+            downstreamFlowControlSet.setUpstreamControl(FlowControl.NOOP);
+            upstreamFlowControlSet.resumeSourceStreams();
+            upstreamFlowControlSet.clear();
         }
 
         private void incrementRows(StorageSite chosenSite) {
@@ -416,7 +429,7 @@ public class QueryStepShardMovement extends QueryStepOperation {
             if (!finished) {
                 finished = true;
                 promise.failure(e);
-                resumeSourceStreams();
+                clearAndUnhookFlowControl();
             }
         }
 
@@ -490,18 +503,14 @@ public class QueryStepShardMovement extends QueryStepOperation {
 
         @Override
         public void pauseSourceStreams() {
-            System.out.printf("SMG: pause source streams\n");
-            if (sourceContext != null) {
-                StreamValve.pipelinePause(sourceContext.pipeline());
-            }
+            System.out.printf("SMG: pausing source streams\n");
+            upstreamFlowControlSet.pauseSourceStreams();
         }
 
         @Override
         public void resumeSourceStreams() {
-            System.out.printf("SMG: resume source streams\n");
-            if (sourceContext != null) {
-                StreamValve.pipelineResume(sourceContext.pipeline());
-            }
+            System.out.printf("SMG: resuming source streams\n");
+            upstreamFlowControlSet.resumeSourceStreams();
         }
     }
 }
