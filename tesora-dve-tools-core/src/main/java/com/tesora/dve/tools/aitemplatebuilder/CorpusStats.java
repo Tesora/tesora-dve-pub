@@ -473,7 +473,10 @@ public class CorpusStats implements StatsVisitor {
 		private final String tableName;
 		private final QualifiedName fullName;
 		private final Map<StatementType, Long> statementStats = new HashMap<StatementType, Long>();
-		private final Map<Set<TableColumn>, Long> identColumnStats = new HashMap<Set<TableColumn>, Long>();
+
+		private final Map<Set<TableColumn>, Long> identColumnTuplesStats = new HashMap<Set<TableColumn>, Long>();
+		private final Map<TableColumn, Long> identColumnSinglesStats = new HashMap<TableColumn, Long>();
+
 		private final Map<Set<TableColumn>, Long> groupByColumnStats = new HashMap<Set<TableColumn>, Long>();
 		private final Map<TableColumn, Long> updateColumnStats = new HashMap<TableColumn, Long>();
 		private final Set<TableColumn> columns = new HashSet<TableColumn>();
@@ -610,12 +613,16 @@ public class CorpusStats implements StatsVisitor {
 			return (reads > 0) ? ((double) writes / reads) : writes;
 		}
 
-		public Map<Set<TableColumn>, Long> getIdentColumns() {
-			return Collections.unmodifiableMap(this.identColumnStats);
+		public Map<TableColumn, Long> getIdentColumnSingles() {
+			return Collections.unmodifiableMap(this.identColumnSinglesStats);
+		}
+
+		public Map<Set<TableColumn>, Long> getIdentColumnTuples() {
+			return Collections.unmodifiableMap(this.identColumnTuplesStats);
 		}
 
 		public boolean hasIdentColumns() {
-			return !this.identColumnStats.isEmpty();
+			return !this.identColumnSinglesStats.isEmpty();
 		}
 
 		public Map<Set<TableColumn>, Long> getGroupByColumns() {
@@ -715,16 +722,6 @@ public class CorpusStats implements StatsVisitor {
 				count += increment;
 			}
 			this.statementStats.put(type, count);
-		}
-
-		protected <T> void bumpCount(final T identColumnTuple, final int increment, final Map<T, Long> columnStats) {
-			Long count = columnStats.get(identColumnTuple);
-			if (count == null) {
-				count = new Long(increment);
-			} else {
-				count += increment;
-			}
-			columnStats.put(identColumnTuple, count);
 		}
 
 		protected void setTableCardinality(final long cardinality) {
@@ -999,6 +996,16 @@ public class CorpusStats implements StatsVisitor {
 	private static final Set<EngineToken> ACCEPTED_JOIN_ON_OPERATORS = Collections.singleton(EngineConstant.EQUALS);
 	private static final Set<EngineToken> ACCEPTED_WHERE_OPERATORS = Sets.newHashSet(EngineConstant.EQUALS, EngineConstant.IN);
 
+	public static <T> void bumpCount(final T identColumnTuple, final int increment, final Map<T, Long> columnStats) {
+		Long count = columnStats.get(identColumnTuple);
+		if (count == null) {
+			count = new Long(increment);
+		} else {
+			count += increment;
+		}
+		columnStats.put(identColumnTuple, count);
+	}
+
 	private final String corpusName;
 	private final int corpusScaleFactor;
 	private final SortedMap<QualifiedName, TableStats> corpusStats = new TreeMap<QualifiedName, TableStats>(new Comparator<QualifiedName>() {
@@ -1068,7 +1075,8 @@ public class CorpusStats implements StatsVisitor {
 
 	@Override
 	public void onIdentColumn(Column<?> c, int freq) {
-		// not implemented
+		final TableStats table = getStats(c.getTable(), this.currentContext);
+		bumpCount(convertToPEColumn(c), freq, table.identColumnSinglesStats);
 	}
 
 	/**
@@ -1089,9 +1097,9 @@ public class CorpusStats implements StatsVisitor {
 					putTupleColumn(convertToPEColumn(instance), tuplesByTable);
 				}
 			}
-			
+
 			for (final TableStats table : tuplesByTable.keySet()) {
-				table.bumpCount(tuplesByTable.get(table), freq, table.identColumnStats);
+				bumpCount(tuplesByTable.get(table), freq, table.identColumnTuplesStats);
 			}
 		}
 	}
@@ -1147,15 +1155,15 @@ public class CorpusStats implements StatsVisitor {
 	 * Build all combinations of colocatable join column pairs.
 	 * 
 	 * a) t1 JOIN t3 ON t1.a = t2.a AND t1.b = t2.b
-	 *    't1' and 't2' can be colocated in a single range on both column pairs 'a'
-	 *    and 'b'.
+	 * 't1' and 't2' can be colocated in a single range on both column pairs 'a'
+	 * and 'b'.
 	 * 
 	 * b) t1 JOIN t3 ON t1.a = t2.a OR t1.b = t2.b
-	 *    't1' and 't2' cannot be colocated on both column pairs 'a' and 'b'.
-	 *    The above join can however be handled as two independent joins:
-	 *    "t1 JOIN t3 ON t1.a = t2.a" and "t1 JOIN t3 ON t1.b = t2.b"
-	 *    Ranging 't1' and 't2' on one of the two column pairs ('a' or 'b') may
-	 *    benefit the planner/optimizer.
+	 * 't1' and 't2' cannot be colocated on both column pairs 'a' and 'b'.
+	 * The above join can however be handled as two independent joins:
+	 * "t1 JOIN t3 ON t1.a = t2.a" and "t1 JOIN t3 ON t1.b = t2.b"
+	 * Ranging 't1' and 't2' on one of the two column pairs ('a' or 'b') may
+	 * benefit the planner/optimizer.
 	 * 
 	 * This method builds all independently colocatable column groups based on
 	 * the rules above.
@@ -1175,13 +1183,13 @@ public class CorpusStats implements StatsVisitor {
 			}
 
 			final List<ExpressionNode> pars = func.getParameters();
-			
+
 			// Only binary functions - not foo(column).
 			if (pars.size() == 2) {
 				final Set<Set<ExpressionNode>> left = decomposeIntoIndependentConditions(pars.get(0), acceptedOperators);
 				final Set<Set<ExpressionNode>> right = decomposeIntoIndependentConditions(pars.get(1), acceptedOperators);
 				final Set<Set<ExpressionNode>> decomposed = new LinkedHashSet<Set<ExpressionNode>>();
-	
+
 				if (EngineConstant.FUNCTION.has(func, EngineConstant.OR)) {
 					decomposed.addAll(left);
 					decomposed.addAll(right);
@@ -1195,7 +1203,7 @@ public class CorpusStats implements StatsVisitor {
 						}
 					}
 				}
-	
+
 				return decomposed;
 			}
 		}
@@ -1247,7 +1255,7 @@ public class CorpusStats implements StatsVisitor {
 	@Override
 	public void onUpdate(PEColumn c, int freq) {
 		final TableStats table = getStats(c.getTable(), currentContext);
-		table.bumpCount(convertToPEColumn(c), freq, table.updateColumnStats);
+		bumpCount(convertToPEColumn(c), freq, table.updateColumnStats);
 	}
 
 	@Override
@@ -1306,9 +1314,9 @@ public class CorpusStats implements StatsVisitor {
 		for (final TableColumn column : convertAll(ct)) {
 			putTupleColumn(column, tuplesByTable);
 		}
-		
+
 		for (final TableStats table : tuplesByTable.keySet()) {
-			table.bumpCount(tuplesByTable.get(table), freq, table.groupByColumnStats);
+			bumpCount(tuplesByTable.get(table), freq, table.groupByColumnStats);
 		}
 	}
 

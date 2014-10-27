@@ -50,82 +50,6 @@ public class PrivateRange implements TemplateRangeItem {
 		public Set<TableColumn> findRangeColumns(final Map<T, Long> columnStats);
 	}
 
-	private static final class SingleColumnRanker implements ColumnRanker<TableColumn> {
-
-		private final Set<TemplateRangeItem> otherAvailableRanges;
-		private final boolean isSafeMode;
-
-		public SingleColumnRanker(final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
-			this.otherAvailableRanges = otherAvailableRanges;
-			this.isSafeMode = isSafeMode;
-		}
-
-		@Override
-		public int compare(Entry<TableColumn, Long> a, Entry<TableColumn, Long> b) {
-			final Double aFreq = getBonusFrequency(a, isSafeMode);
-			final Double bFreq = getBonusFrequency(b, isSafeMode);
-			final int frequencyDifference = aFreq.compareTo(bFreq); // Compare on frequencies.
-
-			/* Break the tie. */
-			if (frequencyDifference == 0) {
-				final TableColumn aColumn = a.getKey();
-				final TableColumn bColumn = b.getKey();
-
-				/*
-				 * Search the existing ranges for columns of the same name
-				 * and type and return the most frequent one.
-				 */
-				int aCount = 0;
-				int bCount = 0;
-				for (final TemplateRangeItem range : this.otherAvailableRanges) {
-					if (range.hasCommonColumn(toSingletonSet(aColumn))) {
-						++aCount;
-					}
-					if (range.hasCommonColumn(toSingletonSet(bColumn))) {
-						++bCount;
-					}
-				}
-
-				final int occurancyDifference = aCount - bCount;
-				if (occurancyDifference != 0) {
-					return occurancyDifference;
-				}
-
-				/*
-				 * Use size for compatible types. Return the column with larger
-				 * type.
-				 */
-				final Type aType = aColumn.getType();
-				final Type bType = bColumn.getType();
-				if ((aType.isStringType() && bType.isStringType())
-						|| (aType.isNumericType() && bType.isNumericType())) {
-
-					final int sizeDifference = aType.getSize() - bType.getSize();
-					if (sizeDifference != 0) {
-						return sizeDifference;
-					}
-				}
-
-				/* Enough! Get the first in the alphabet. */
-				final String aName = aColumn.getName().getUnquotedName().get();
-				final String bName = bColumn.getName().getUnquotedName().get();
-				return bName.compareTo(aName);
-			}
-
-			return frequencyDifference;
-		}
-
-		@Override
-		public boolean isSafeMode() {
-			return this.isSafeMode;
-		}
-
-		@Override
-		public Set<TableColumn> findRangeColumns(Map<TableColumn, Long> columnStats) {
-			return (!columnStats.isEmpty()) ? toSingletonSet(Collections.max(columnStats.entrySet(), this).getKey()) : Collections.EMPTY_SET;
-		}
-	}
-
 	private static final class ColumnVectorRanker implements ColumnRanker<Set<TableColumn>> {
 
 		private final Set<TemplateRangeItem> otherAvailableRanges;
@@ -205,19 +129,15 @@ public class PrivateRange implements TemplateRangeItem {
 		}
 	}
 
-	private static Set<TableColumn> toSingletonSet(final TableColumn column) {
-		return Collections.<TableColumn> singleton(column);
-	}
-
 	private final ColumnRanker<?> columnRanker;
 	private SingletonMap table;
 
 	public static PrivateRange fromAllColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
-		final Map<TableColumn, Long> tableColumns = new HashMap<TableColumn, Long>();
+		final Map<Set<TableColumn>, Long> tableColumns = new HashMap<Set<TableColumn>, Long>();
 		for (final TableColumn column : table.getTableColumns()) {
-			tableColumns.put(column, 1l);
+			tableColumns.put(Collections.singleton(column), 1l);
 		}
-		return getValidRange(buildRangeFor(table, tableColumns, new SingleColumnRanker(otherAvailableRanges, isSafeMode)));
+		return getValidRange(buildRangeFor(table, tableColumns, new ColumnVectorRanker(otherAvailableRanges, isSafeMode)));
 	}
 
 	public static PrivateRange fromOuterJoinColumns(final TableStats table, final Set<JoinStats> joins, final Set<TemplateRangeItem> otherAvailableRanges,
@@ -247,15 +167,25 @@ public class PrivateRange implements TemplateRangeItem {
 
 	private static Map<Set<TableColumn>, Long> getIdentTuplesFromTable(final TableStats table, final boolean useIdentTuples) {
 		if (useIdentTuples) {
-			return table.getIdentColumns();
+			return table.getIdentColumnTuples();
 		}
 
-		final Map<Set<TableColumn>, Long> singletons = new HashMap<Set<TableColumn>, Long>();
-		for (final Map.Entry<Set<TableColumn>, Long> tupleEntry : table.getIdentColumns().entrySet()) {
-			final Long tupleFrequency = tupleEntry.getValue();
-			for (final TableColumn tupleColumn : tupleEntry.getKey()) {
-				singletons.put(Collections.singleton(tupleColumn), tupleFrequency);
-			}
+		// This double counts columns that appear in multiple independent tuples.
+		// final Map<Set<TableColumn>, Long> singletons = new HashMap<Set<TableColumn>, Long>();
+		// for (final Map.Entry<Set<TableColumn>, Long> tupleEntry : table.getIdentColumnTuples().entrySet()) {
+		// 	final Long tupleFrequency = tupleEntry.getValue();
+		// 	for (final TableColumn tupleColumn : tupleEntry.getKey()) {
+		// 		CorpusStats.bumpCount(Collections.singleton(tupleColumn), tupleFrequency.intValue(), singletons);
+		// 	}
+		// }
+
+		return copySinglesToSingletons(table.getIdentColumnSingles());
+	}
+
+	private static <T, C extends Number> Map<Set<T>, C> copySinglesToSingletons(final Map<T, C> singles) {
+		final Map<Set<T>, C> singletons = new HashMap<Set<T>, C>();
+		for (final Map.Entry<T, C> single : singles.entrySet()) {
+			singletons.put(Collections.singleton(single.getKey()), single.getValue());
 		}
 
 		return singletons;
@@ -263,12 +193,6 @@ public class PrivateRange implements TemplateRangeItem {
 
 	public static PrivateRange fromGroupByColumns(final TableStats table, final Set<TemplateRangeItem> otherAvailableRanges, final boolean isSafeMode) {
 		return getValidRange(buildRangeFor(table, table.getGroupByColumns(), new ColumnVectorRanker(otherAvailableRanges, isSafeMode)));
-	}
-
-	private static PrivateRange buildRangeFor(final TableStats table, final Map<TableColumn, Long> columnStats, final SingleColumnRanker ranker) {
-		final PrivateRange range = new PrivateRange(ranker);
-		range.addTable(table, ranker.findRangeColumns(columnStats));
-		return range;
 	}
 
 	private static PrivateRange buildRangeFor(final TableStats table, final Map<Set<TableColumn>, Long> columnStats, final ColumnVectorRanker ranker) {
@@ -288,15 +212,6 @@ public class PrivateRange implements TemplateRangeItem {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Get bonus frequency for a given column.
-	 */
-	private static Double getBonusFrequency(final Entry<TableColumn, Long> columnStats, final boolean isSafeMode) {
-		final float bonus = computeBonusFactor(Collections.singleton(columnStats.getKey()), isSafeMode);
-		final long frequency = columnStats.getValue();
-		return new Double(bonus * frequency);
 	}
 
 	private static Double getBonusFrequencyForColumnVector(final Entry<Set<TableColumn>, Long> columnStats, final boolean isSafeMode) {

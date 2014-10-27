@@ -684,7 +684,7 @@ public final class AiTemplateBuilder {
 	public void setForeignKeysAsJoins(final boolean enableFksAsJoins) {
 		this.enableFksAsJoins = enableFksAsJoins;
 	}
-	
+
 	public void setUseIdentTuples(final boolean enableIdentTuples) {
 		this.enableIdentTuples = enableIdentTuples;
 	}
