@@ -21,12 +21,27 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
+import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.common.logutil.LogSubject;
+import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.messaging.GetWorkerRequest;
+import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.worker.WorkerGroup;
+import com.tesora.dve.worker.WorkerManager;
 
 /**
  * Baseclass of <b>QueryStep</b> operations, which include, but are not limited to 
@@ -37,6 +52,73 @@ import com.tesora.dve.worker.WorkerGroup;
  */
 public abstract class QueryStepOperation implements LogSubject {
 
+    static final Logger logger = Logger.getLogger(QueryStepOperation.class);
+	
+	protected final List<QueryStepOperation> reqs;
+	protected final StorageGroup sg;
+	
+	public QueryStepOperation(StorageGroup sg) throws PEException {
+		if (sg == null)
+			throw new PEException("Invalid QSO construction: null storage group");
+		this.sg = sg;
+		this.reqs = new ArrayList<QueryStepOperation>();
+	}
+	
+	public void addRequirement(QueryStepOperation qso) {
+		if (qso == this)
+			throw new IllegalArgumentException("Invalid required step: self");
+		reqs.add(qso);
+	}
+
+	public void execute(SSConnection ssCon, DBResultConsumer resultConsumer) throws Throwable {
+		executeRequirements(ssCon);
+		executeOperation(ssCon,resultConsumer);
+	}
+	
+	final void executeRequirements(SSConnection ssCon) throws Throwable {
+		for(QueryStepOperation qso : reqs)
+			qso.execute(ssCon, DBEmptyTextResultConsumer.INSTANCE);
+	}
+
+	void executeOperation(SSConnection ssCon, DBResultConsumer resultConsumer) throws Throwable {
+		try {
+			ExecutionLogger beforeLogger = ssCon.getExecutionLogger().getNewLogger("BeforeStepExec");
+			WorkerGroup wg = null;
+			if (requiresImplicitCommit())
+				ssCon.implicitCommit();
+			if (requiresWorkers()) {
+				if (sg == nullStorageGroup)
+					throw new PEException("No storage group specified but one required");
+				wg = ssCon.getWorkerGroupAndPushContext(sg,getContextDatabase());
+			}
+			ExecutionLogger slowQueryLogger = null;
+			try {
+				beforeLogger.end();
+				if (logger.isDebugEnabled())
+					logger.debug("QueryStep executes " + toString());
+				slowQueryLogger = ssCon.getExecutionLogger().getNewLogger(this); 
+
+				executeSelf(ssCon, wg, resultConsumer);
+			} finally {
+				ExecutionLogger afterLogger = null;
+				try {
+					slowQueryLogger.end();
+					afterLogger = ssCon.getExecutionLogger().getNewLogger("AfterStepExec");
+				} finally {
+					try {
+						if (wg != null)
+							ssCon.returnWorkerGroupAndPopContext(wg);
+					} finally {
+						if (afterLogger != null)
+							afterLogger.end();
+					}
+				}
+			}
+		} finally {
+		}
+	}
+
+	
 	/**
 	 * Called by <b>QueryStep</b> to execute the operation.  Any results
 	 * of the operation will be returned in an instance of {@link ResultCollector}.
@@ -49,11 +131,30 @@ public abstract class QueryStepOperation implements LogSubject {
 	 * @throws PEException
 	 * @throws Throwable 
 	 */
-	public abstract void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable;
+	public abstract void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable;
 	
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return true;
 	}
+	
+	boolean requiresTransaction() {
+		if (requiresTransactionSelf())
+			return true;
+		return Functional.any(reqs, new UnaryPredicate<QueryStepOperation>() {
+
+			@Override
+			public boolean test(QueryStepOperation object) {
+				return object.requiresTransactionSelf();
+			}
+			
+		});
+	}
+
+	public boolean hasRequirements() {
+		return !reqs.isEmpty();
+	}
+
+	
 	
 	/**
 	 * Does this query step require workers?  Default is true.  Some DDL operations are catalog-only, and
@@ -80,4 +181,53 @@ public abstract class QueryStepOperation implements LogSubject {
 		return null;
 	}
 	
+	public final StorageGroup getStorageGroup() {
+		return sg;
+	}
+	
+	
+	protected static final StorageGroup nullStorageGroup = new StorageGroup() {
+
+		@Override
+		public String getName() {
+			fail();
+			return null;
+		}
+
+		@Override
+		public int sizeForProvisioning() throws PEException {
+			fail();
+			return 0;
+		}
+
+		@Override
+		public void provisionGetWorkerRequest(GetWorkerRequest getWorkerRequest)
+				throws PEException {
+			fail();
+		}
+
+		@Override
+		public void returnWorkerSites(WorkerManager workerManager,
+				Collection<? extends StorageSite> groupSites)
+				throws PEException {
+			fail();
+		}
+
+		@Override
+		public boolean isTemporaryGroup() {
+			fail();
+			return false;
+		}
+
+		@Override
+		public int getId() {
+			fail();
+			return 0;
+		}
+
+		private void fail() throws IllegalStateException {
+			throw new IllegalStateException("Use of null storage group");
+		}
+		
+	};
 }

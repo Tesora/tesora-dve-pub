@@ -22,6 +22,7 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -38,8 +39,8 @@ public class QueryStepGroupProviderDDLOperation extends QueryStepDDLOperation {
 	protected SiteManagerCommand smc;
 	protected SiteProviderPlugin target;
 
-	public QueryStepGroupProviderDDLOperation(SiteManagerCommand smc) {
-		super(null, SQLCommand.EMPTY,null);
+	public QueryStepGroupProviderDDLOperation(StorageGroup sg, SiteManagerCommand smc) throws PEException {
+		super(sg, null, SQLCommand.EMPTY,null);
 		this.smc = smc;
 		// delay creation until we prepare
 		this.target = null;

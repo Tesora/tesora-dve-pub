@@ -26,7 +26,7 @@ import java.util.List;
 
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateSequenceOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -43,10 +43,10 @@ public class UpdateExecutionSequence extends ExecutionSequence {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		if (steps.isEmpty()) return;
-		ArrayList<QueryStep> mine = new ArrayList<QueryStep>();
+		ArrayList<QueryStepOperation> mine = new ArrayList<QueryStepOperation>();
 		// can only be used if they all use the same storage group
 		StorageGroup sg = null;
 		for(HasPlanning hp : steps) {
@@ -59,11 +59,11 @@ public class UpdateExecutionSequence extends ExecutionSequence {
 			}
 			hp.schedule(opts, mine, projection, sc);
 		}
-		QueryStepUpdateSequenceOperation uo = new QueryStepUpdateSequenceOperation();
-		for(QueryStep qs : mine) {
-			uo.addOperation(qs.getOperation());
+		QueryStepUpdateSequenceOperation uo = new QueryStepUpdateSequenceOperation(sg);
+		for(QueryStepOperation qs : mine) {
+			uo.addOperation(qs);
 		}
-		qsteps.add(new QueryStep(sg, uo));
+		qsteps.add(uo);
 	}
 
 

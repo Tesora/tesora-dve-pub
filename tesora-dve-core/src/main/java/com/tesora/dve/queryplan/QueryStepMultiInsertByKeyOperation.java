@@ -29,6 +29,7 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.IKeyValue;
@@ -45,8 +46,8 @@ public class QueryStepMultiInsertByKeyOperation extends QueryStepDMLOperation {
 
 	List<Pair<IKeyValue, SQLCommand>> insertList = new ArrayList<Pair<IKeyValue, SQLCommand>>();
 	
-	public QueryStepMultiInsertByKeyOperation(PersistentDatabase execCtxDBName) {
-		super(execCtxDBName);
+	public QueryStepMultiInsertByKeyOperation(StorageGroup sg, PersistentDatabase execCtxDBName) throws PEException {
+		super(sg, execCtxDBName);
 	}
 	
 	public void addStatement(IKeyValue key, SQLCommand sql) throws PEException {
@@ -57,7 +58,7 @@ public class QueryStepMultiInsertByKeyOperation extends QueryStepDMLOperation {
 	}
 
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 
 		MultiMap<StorageSite, SQLCommand> mappedInserts = new MultiMap<StorageSite, SQLCommand>();
 

@@ -21,8 +21,7 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import javax.xml.bind.annotation.XmlType;
-
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -34,11 +33,14 @@ import com.tesora.dve.worker.WorkerGroup;
  * rolls back a transaction.
  *
  */
-@XmlType(name="QueryStepBeginTransactionOperation")
 public class QueryStepRollbackTransactionOperation extends QueryStepOperation {
 
 	@SuppressWarnings("unused")
 	private UserXid xaXid;
+
+	public QueryStepRollbackTransactionOperation(StorageGroup sg) throws PEException {
+		super(sg);
+	}
 	
 	public QueryStepRollbackTransactionOperation withXAXid(UserXid id) {
 		this.xaXid = id;
@@ -47,7 +49,7 @@ public class QueryStepRollbackTransactionOperation extends QueryStepOperation {
 	
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		ssCon.userRollbackTransaction();
 		resultConsumer.rollback();
 	}

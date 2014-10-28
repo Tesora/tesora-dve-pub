@@ -28,8 +28,6 @@ import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.Emitter.EmitOptions;
-import com.tesora.dve.queryplan.QueryStep;
-import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ExplainOptions;
@@ -75,10 +73,6 @@ public abstract class ExecutionStep implements HasPlanning {
 		return sg;
 	}
 	
-	protected void addStep(SchemaContext sc, List<QueryStep> steps, QueryStepOperation qso) {
-		steps.add(new QueryStep(getStorageGroup(sc), qso));
-	}
-
 	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
 		
 	}

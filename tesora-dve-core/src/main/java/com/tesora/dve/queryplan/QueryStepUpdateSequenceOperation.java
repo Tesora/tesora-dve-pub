@@ -24,7 +24,9 @@ package com.tesora.dve.queryplan;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryPredicate;
@@ -34,8 +36,8 @@ public class QueryStepUpdateSequenceOperation extends QueryStepOperation {
 
 	private List<QueryStepOperation> ops = new ArrayList<QueryStepOperation>();
 	
-	public QueryStepUpdateSequenceOperation() {
-		super();
+	public QueryStepUpdateSequenceOperation(StorageGroup sg) throws PEException {
+		super(sg);
 	}
 	
 	public void addOperation(QueryStepOperation qso) {
@@ -43,19 +45,19 @@ public class QueryStepUpdateSequenceOperation extends QueryStepOperation {
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		resultConsumer.setSenderCount(ops.size());
 		for (QueryStepOperation qso : ops)
-			qso.execute(ssCon, wg, resultConsumer);
+			qso.executeSelf(ssCon, wg, resultConsumer);
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return Functional.any(ops, new UnaryPredicate<QueryStepOperation>() {
 
 			@Override
 			public boolean test(QueryStepOperation object) {
-				return object.requiresTransaction();
+				return object.requiresTransactionSelf();
 			}
 			
 		});

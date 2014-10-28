@@ -41,13 +41,14 @@ public class QueryStepShowCatalogEntityOperation extends QueryStepOperation {
 	List<CatalogEntity> catalogEntity;
 	CatalogQueryOptions queryOpts;
 	
-	public QueryStepShowCatalogEntityOperation( List<CatalogEntity> ce, CatalogQueryOptions opts ) {
+	public QueryStepShowCatalogEntityOperation(List<CatalogEntity> ce, CatalogQueryOptions opts ) throws PEException {
+		super(nullStorageGroup);
 		this.catalogEntity = ce;
 		this.queryOpts = opts;
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		if ( catalogEntity.size() > 0 ) {
 			ResultChunk rc = new ResultChunk();
 			for ( CatalogEntity ce : catalogEntity ) {
@@ -67,7 +68,7 @@ public class QueryStepShowCatalogEntityOperation extends QueryStepOperation {
 
 	
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

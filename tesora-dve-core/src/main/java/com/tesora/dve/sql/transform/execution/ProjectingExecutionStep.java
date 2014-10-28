@@ -25,13 +25,14 @@ package com.tesora.dve.sql.transform.execution;
 
 import java.util.List;
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepDMLOperation;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepResultsOperation;
 import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.queryplan.QueryStepSelectByKeyOperation;
@@ -96,23 +97,24 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		QueryStepDMLOperation qso = null;
 		long inMem = getInMemLimit(sc);
 		IKeyValue ikv = getKeyValue(sc);
 		SQLCommand sqlCommand = getCommand(sc).withProjection((projectionOverride == null ? projection : projectionOverride)).withReferenceTime(getReferenceTimestamp(sc));
 		QueryStepResultsOperation qsro = null;
+		StorageGroup sg = getStorageGroup(sc);
 		if (ikv != null) {
-			qsro = new QueryStepSelectByKeyOperation(getPersistentDatabase(), ikv, sqlCommand);
+			qsro = new QueryStepSelectByKeyOperation(sg, getPersistentDatabase(), ikv, sqlCommand);
 		} else {
-			qsro = new QueryStepSelectAllOperation(getPersistentDatabase(), StaticDistributionModel.SINGLETON, sqlCommand);
+			qsro = new QueryStepSelectAllOperation(sg, getPersistentDatabase(), StaticDistributionModel.SINGLETON, sqlCommand);
 		}
 		if (inMem > -1)
 			qsro.setResultsLimit(inMem);
 		qso = qsro;
 		qso.setStatistics(getStepStatistics(sc));
-		addStep(sc,qsteps,qso);
+		qsteps.add(qso);
 	}
 	
 	@Override

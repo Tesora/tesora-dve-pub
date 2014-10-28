@@ -33,7 +33,7 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
@@ -74,8 +74,8 @@ public class ExecutionPlan implements HasPlanning {
 		originalStatementType = stmtType;
 	}
 	
-	public List<QueryStep> schedule(ExecutionPlanOptions opts, SSConnection connection, SchemaContext sc) throws PEException {
-		List<QueryStep> buf = new ArrayList<QueryStep>();
+	public List<QueryStepOperation> schedule(ExecutionPlanOptions opts, SSConnection connection, SchemaContext sc) throws PEException {
+		List<QueryStepOperation> buf = new ArrayList<QueryStepOperation>();
 		schedule(opts, buf,projection,sc);
 		Long lastInsertId = steps.getlastInsertId(values,sc);
 		if (lastInsertId != null)
@@ -181,17 +181,18 @@ public class ExecutionPlan implements HasPlanning {
 
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
-		ArrayList<QueryStep> buf = new ArrayList<QueryStep>();
+		ArrayList<QueryStepOperation> buf = new ArrayList<QueryStepOperation>();
 		steps.schedule(opts, buf,projection, sc);
 		if (buf.isEmpty()) return;
+
 		// the plan is represented by a tree - of which the sequence is the root.
 		// convert the tree such that the last execution step is the single query step
 		// and all others are dependent steps.
-		QueryStep end = buf.remove(buf.size() - 1);
-		for(QueryStep qs : buf) {
-			end.addDependencyStep(qs);
+		QueryStepOperation end = buf.remove(buf.size() - 1);
+		for(QueryStepOperation qs : buf) {
+			end.addRequirement(qs);
 		}
 		qsteps.add(end);
 	}

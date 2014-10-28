@@ -26,8 +26,8 @@ package com.tesora.dve.sql.transform.execution;
 import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepInsertByKeyOperation;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.Database;
@@ -67,14 +67,14 @@ public final class InsertExecutionStep extends DirectExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		SQLCommand sqlCommand = getCommand(sc).withReferenceTime(getReferenceTimestamp(sc));
 		QueryStepInsertByKeyOperation qso = 
-				new QueryStepInsertByKeyOperation(getPersistentDatabase(), 
+				new QueryStepInsertByKeyOperation(getStorageGroup(sc),getPersistentDatabase(), 
 						getKeyValue(sc), 
 						sqlCommand);
 		qso.setStatistics(getStepStatistics(sc));
-		addStep(sc,qsteps, qso);		
+		qsteps.add(qso);
 	}
 }

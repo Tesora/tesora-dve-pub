@@ -28,8 +28,8 @@ import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.CatalogQueryOptions;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepAdhocResultSetOperation;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepShowCatalogEntityOperation;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
@@ -62,16 +62,16 @@ public class DDLQueryExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		if (populatedResults != null) {
-			addStep(sc,qsteps,new QueryStepAdhocResultSetOperation(populatedResults));
+			qsteps.add(new QueryStepAdhocResultSetOperation(populatedResults));
 			return;
 		} else {
 
 			boolean extensions =
 					KnownVariables.SHOW_METADATA_EXTENSIONS.getValue(sc.getConnection().getVariableSource()).booleanValue();
-			addStep(sc,qsteps,new QueryStepShowCatalogEntityOperation(queriedEntities, new CatalogQueryOptions(extensions, pluralForm, tenant)));
+			qsteps.add(new QueryStepShowCatalogEntityOperation(queriedEntities, new CatalogQueryOptions(extensions, pluralForm, tenant)));
 		}
 	}
 

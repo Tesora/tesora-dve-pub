@@ -28,7 +28,6 @@ import java.util.Set;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepFilterOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepFilterOperation.OperationFilter;
@@ -53,20 +52,19 @@ public class FilterExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc) throws PEException {
-		ArrayList<QueryStep> sub = new ArrayList<QueryStep>();
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc) throws PEException {
+		ArrayList<QueryStepOperation> sub = new ArrayList<QueryStepOperation>();
 		source.schedule(opts, sub,projection,sc);
 		for(int i = 0; i < sub.size() - 1; i++) {
-			addStep(sc, qsteps, sub.get(i).getOperation());
+			qsteps.add(sub.get(i));
 		}
-		QueryStep last = sub.get(sub.size() - 1);
-		QueryStepOperation qso = last.getOperation();
+		QueryStepOperation qso = sub.get(sub.size() - 1);
 		OperationFilter actual = filter;
 		if (filter instanceof LateBindingOperationFilter) {
 			LateBindingOperationFilter lbof = (LateBindingOperationFilter) filter;
 			actual = lbof.adapt(opts, qso);
 		}
-		addStep(sc, qsteps, new QueryStepFilterOperation(qso,actual));
+		qsteps.add(new QueryStepFilterOperation(qso,actual));
 	}
 
 	@Override

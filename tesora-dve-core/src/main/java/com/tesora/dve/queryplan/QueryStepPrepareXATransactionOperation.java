@@ -21,7 +21,9 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.UserXid;
 import com.tesora.dve.worker.WorkerGroup;
@@ -30,13 +32,13 @@ public class QueryStepPrepareXATransactionOperation extends QueryStepOperation {
 
 	UserXid xaXid;
 	
-	public QueryStepPrepareXATransactionOperation(UserXid xid) {
-		super();
+	public QueryStepPrepareXATransactionOperation(StorageGroup sg, UserXid xid) throws PEException {
+		super(sg);
 		xaXid = xid;
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg,
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg,
 			DBResultConsumer resultConsumer) throws Throwable {
 		// TODO Auto-generated method stub
 		// does nothing for now

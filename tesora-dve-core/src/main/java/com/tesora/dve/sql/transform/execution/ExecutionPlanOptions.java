@@ -34,4 +34,5 @@ public class ExecutionPlanOptions {
 	public RuntimeUpdateCounter getRuntimeUpdateCounter() {
 		return this.runtimeUpdateCounter;
 	}
+	
 }

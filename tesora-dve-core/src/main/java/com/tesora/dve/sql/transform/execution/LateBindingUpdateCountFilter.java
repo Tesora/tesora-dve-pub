@@ -107,6 +107,10 @@ public abstract class LateBindingUpdateCountFilter extends LateBindingOperationF
 		public String describe() {
 			return "RuntimeUpdateCounter";
 		}
+		
+		public String toString() {
+			return "RuntimeUpdateCounter{" + getValue() + "}";
+		}
 	}
 
 	public OperationFilter adapt(ExecutionPlanOptions opts, QueryStepOperation bindTo) throws PEException {

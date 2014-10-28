@@ -45,7 +45,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.queryplan.QueryPlan;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepGetGlobalVariableOperation;
 import com.tesora.dve.queryplan.QueryStepGetSessionVariableOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
@@ -111,8 +110,6 @@ public class VariableTest extends PETest {
 
 	@After
 	public void testCleanup() throws PEException {
-		if(plan != null)
-			plan.close();
 		plan = null;
 		if(conProxy != null)
 			conProxy.close();
@@ -283,7 +280,7 @@ public class VariableTest extends PETest {
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSelectAllOperation(ssConnection, db, BroadcastDistributionModel.SINGLETON,
+		executeQuery(new QueryStepSelectAllOperation(sg,ssConnection, db, BroadcastDistributionModel.SINGLETON,
 				"select @@session.collation_connection"), results);
 		assertTrue(results.hasResults());
 		assertEquals(utfCollation, results.getSingleColumnValue(1, 1));
@@ -298,7 +295,7 @@ public class VariableTest extends PETest {
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
 
 		results = new MysqlTextResultChunkProvider();
-		executeQuery(new QueryStepSelectAllOperation(ssConnection, db, BroadcastDistributionModel.SINGLETON,
+		executeQuery(new QueryStepSelectAllOperation(sg,ssConnection, db, BroadcastDistributionModel.SINGLETON,
 				"select @@session.collation_connection"), results);
 		assertTrue(results.hasResults());
 		assertEquals(origCollation, results.getSingleColumnValue(1, 1));
@@ -428,10 +425,8 @@ public class VariableTest extends PETest {
 
 	private void executeQuery(QueryStepOperation qso, DBResultConsumer results) throws Throwable {
 		QueryPlan qp = new QueryPlan();
-		QueryStep step1 = new QueryStep(sg, qso);
-		qp.addStep(step1);
+		qp.addStep(qso);
 		qp.executeStep(ssConnection, results);
-		qp.close();
 	}
 
 }

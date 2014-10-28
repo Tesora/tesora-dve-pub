@@ -25,6 +25,7 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
@@ -43,7 +44,8 @@ public class QueryStepDropDatabaseOperation extends QueryStepOperation {
 	UserDatabase database;
 	CacheInvalidationRecord record;
 	
-	public QueryStepDropDatabaseOperation(UserDatabase execCtxDBName, CacheInvalidationRecord cir) {
+	public QueryStepDropDatabaseOperation(StorageGroup sg, UserDatabase execCtxDBName, CacheInvalidationRecord cir) throws PEException {
+		super(sg);
 		this.database = execCtxDBName;
 		this.record = cir;
 	}
@@ -53,7 +55,7 @@ public class QueryStepDropDatabaseOperation extends QueryStepOperation {
 	 * @throws Throwable 
 	 */
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 
 		if (ssCon.hasActiveTransaction())
 			throw new PEException("Cannot execute DDL within active transaction: DROP DATABASE " + database.getName());
@@ -119,7 +121,7 @@ public class QueryStepDropDatabaseOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

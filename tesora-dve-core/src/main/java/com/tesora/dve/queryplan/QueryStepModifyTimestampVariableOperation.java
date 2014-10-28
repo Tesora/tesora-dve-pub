@@ -1,5 +1,8 @@
 package com.tesora.dve.queryplan;
 
+import com.tesora.dve.common.catalog.StorageGroup;
+import com.tesora.dve.exceptions.PEException;
+
 /*
  * #%L
  * Tesora Inc.
@@ -26,6 +29,10 @@ public abstract class QueryStepModifyTimestampVariableOperation extends
 
 	long timestampVariableValue = 0;
 
+	public QueryStepModifyTimestampVariableOperation(StorageGroup sg) throws PEException {
+		super(sg);
+	}
+	
 	public long getTimestampVariableValue() {
 		return timestampVariableValue;
 	}

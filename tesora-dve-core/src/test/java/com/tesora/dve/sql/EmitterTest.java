@@ -21,10 +21,7 @@ package com.tesora.dve.sql;
  * #L%
  */
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -43,9 +40,7 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.structural.FromTableReference;
 import com.tesora.dve.sql.node.structural.JoinSpecification;
 import com.tesora.dve.sql.node.structural.JoinedTable;
-import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.schema.FunctionName;
-import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
@@ -54,7 +49,6 @@ import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
 import com.tesora.dve.sql.util.NativeDDL;
-import com.tesora.dve.sql.util.NativeDatabaseDDL;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;

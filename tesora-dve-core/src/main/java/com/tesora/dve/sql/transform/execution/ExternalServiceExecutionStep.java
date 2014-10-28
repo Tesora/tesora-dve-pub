@@ -45,7 +45,7 @@ public class ExternalServiceExecutionStep extends SimpleDDLExecutionStep {
 
 	@Override
 	protected QueryStepDDLOperation buildOperation(SchemaContext sc) throws PEException {
-		return new QueryStepExternalServiceOperation(getPersistentDatabase(), sql,
+		return new QueryStepExternalServiceOperation(getStorageGroup(sc),getPersistentDatabase(), sql,
 				action, (PEExternalService) rootEntity);
 	}
 

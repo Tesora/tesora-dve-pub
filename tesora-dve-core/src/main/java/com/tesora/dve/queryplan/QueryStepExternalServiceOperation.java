@@ -23,6 +23,7 @@ package com.tesora.dve.queryplan;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
@@ -38,9 +39,9 @@ public class QueryStepExternalServiceOperation extends QueryStepDDLOperation {
 	Action action;
 	PEExternalService rootEntity;
 
-	public QueryStepExternalServiceOperation(PersistentDatabase execCtxDBName,
-			SQLCommand command, Action action, PEExternalService rootEntity2) {
-		super(execCtxDBName, command,null);
+	public QueryStepExternalServiceOperation(StorageGroup sg, PersistentDatabase execCtxDBName,
+			SQLCommand command, Action action, PEExternalService rootEntity2) throws PEException {
+		super(sg, execCtxDBName, command,null);
 
 		this.action = action;
 		this.rootEntity = rootEntity2;
@@ -79,10 +80,10 @@ public class QueryStepExternalServiceOperation extends QueryStepDDLOperation {
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		// call base first to get the external service into the catalog
-		super.execute(ssCon, wg, resultConsumer);
+		super.executeSelf(ssCon, wg, resultConsumer);
 
 		// we do this here instead of prepareAction because we need the service
 		// to be committed (by super.execute) to the catalog before registering 

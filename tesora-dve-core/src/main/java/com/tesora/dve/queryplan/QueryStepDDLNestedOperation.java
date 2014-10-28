@@ -23,6 +23,7 @@ package com.tesora.dve.queryplan;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -33,8 +34,8 @@ public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
 
 	protected NestedOperationDDLCallback nestedOp;
 	
-	public QueryStepDDLNestedOperation(PersistentDatabase execCtxDBName, NestedOperationDDLCallback cb) {
-		super(execCtxDBName);
+	public QueryStepDDLNestedOperation(StorageGroup sg, PersistentDatabase execCtxDBName, NestedOperationDDLCallback cb) throws PEException {
+		super(sg, execCtxDBName);
 		nestedOp = cb;
 		setEntities(cb);
 	}

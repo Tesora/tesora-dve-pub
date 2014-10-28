@@ -30,6 +30,7 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
@@ -50,7 +51,8 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 	protected DDLCallback entities;
 	protected Boolean commitOverride = null;
 	
-	public QueryStepDDLGeneralOperation(PersistentDatabase execCtxDBName) {
+	public QueryStepDDLGeneralOperation(StorageGroup sg, PersistentDatabase execCtxDBName) throws PEException {
+		super((sg == null ? nullStorageGroup : sg));
 		this.database = execCtxDBName;
 	}
 
@@ -94,7 +96,7 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 	 * @throws Throwable 
 	 */
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 
 		if (ssCon.hasActiveTransaction())
 			throw new PEException("Cannot execute DDL within active transaction: " + entities.getCommand(ssCon.getCatalogDAO()));
@@ -231,7 +233,7 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 	

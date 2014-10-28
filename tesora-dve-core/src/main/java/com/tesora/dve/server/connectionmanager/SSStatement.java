@@ -60,9 +60,6 @@ public class SSStatement {
 	}
 
 	public void clearQueryPlan() throws PEException {
-		if (queryPlan != null) {
-			queryPlan.close();
-			queryPlan = null;
-		}
+		queryPlan = null;
 	}
 }

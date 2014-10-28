@@ -27,6 +27,7 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.Priviledge;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
@@ -46,13 +47,14 @@ public class QueryStepGrantPrivilegesOperation extends QueryStepOperation {
 	private Priviledge priv;
 	private CacheInvalidationRecord invalidationRecord;
 	
-	public QueryStepGrantPrivilegesOperation(Priviledge p, CacheInvalidationRecord cir) {
+	public QueryStepGrantPrivilegesOperation(StorageGroup sg, Priviledge p, CacheInvalidationRecord cir) throws PEException {
+		super(sg);
 		this.priv = p;
 		this.invalidationRecord = cir;
 	}
 
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		// this op is only called for non-global privileges, so figure out which database it's on
 		
@@ -101,7 +103,7 @@ public class QueryStepGrantPrivilegesOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

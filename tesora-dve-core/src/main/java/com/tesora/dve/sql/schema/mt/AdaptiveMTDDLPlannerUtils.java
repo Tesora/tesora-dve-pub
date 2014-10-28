@@ -42,7 +42,6 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepOperation;
@@ -508,9 +507,9 @@ public final class AdaptiveMTDDLPlannerUtils {
 
 	public interface ChangeSource extends LazyAllocatedTable {
 		
-		public List<QueryStep> getDDLSteps();
+		public List<QueryStepOperation> getDDLSteps();
 		
-		public List<QueryStep>  getDMLSteps();
+		public List<QueryStepOperation>  getDMLSteps();
 		
 		public void beforeTxn(SSConnection ssConn);
 		
@@ -524,7 +523,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 		
 		public boolean requiresWorkers();
 		
-		public QueryStep getCanonicalResultStep();
+		public QueryStepOperation getCanonicalResultStep();
 
 	}
 	
@@ -536,9 +535,9 @@ public final class AdaptiveMTDDLPlannerUtils {
 		protected List<CatalogEntity> updates;
 		protected List<CatalogEntity> deletes;
 		
-		protected List<QueryStep> steps;
+		protected List<QueryStepOperation> steps;
 		
-		protected QueryStep canonicalResultStep;
+		protected QueryStepOperation canonicalResultStep;
 		
 		protected CacheInvalidationRecord record;
 		
@@ -583,14 +582,14 @@ public final class AdaptiveMTDDLPlannerUtils {
 			for(ChangeSource cs : changes)
 				nodupes.addAll(cs.getDeletes());
 			deletes = Functional.toList(nodupes);
-			steps = new ArrayList<QueryStep>();
+			steps = new ArrayList<QueryStepOperation>();
 			for(ChangeSource cs : changes) 
 				accumulateSteps(cs,cs.getDDLSteps());
 			for(ChangeSource cs : changes) 
 				accumulateSteps(cs,cs.getDMLSteps());
 		}
 
-		private void accumulateSteps(ChangeSource cs, List<QueryStep> t) {
+		private void accumulateSteps(ChangeSource cs, List<QueryStepOperation> t) {
 			if (cs.getCanonicalResultStep() != null)
 				canonicalResultStep = cs.getCanonicalResultStep();
 			steps.addAll(t);
@@ -649,10 +648,9 @@ public final class AdaptiveMTDDLPlannerUtils {
 		@Override
 		public void executeNested(SSConnection conn, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
-			for(QueryStep qs : steps) {
-				QueryStepOperation qso = qs.getOperation();
-				boolean care = (qs == canonicalResultStep || (canonicalResultStep == null && qs == steps.get(steps.size() - 1)));
-				qso.execute(conn, wg, (care ? resultConsumer : DBEmptyTextResultConsumer.INSTANCE));
+			for(QueryStepOperation qso : steps) {
+				boolean care = (qso == canonicalResultStep || (canonicalResultStep == null && qso == steps.get(steps.size() - 1)));
+				qso.executeSelf(conn, wg, (care ? resultConsumer : DBEmptyTextResultConsumer.INSTANCE));
 			}
 		}
 
@@ -680,10 +678,10 @@ public final class AdaptiveMTDDLPlannerUtils {
 		private final TableCacheKey srcTable;
 		private final LazyAllocatedTable targetTable; 
 		private final List<CatalogEntity> updates;
-		private final List<QueryStep> steps;
+		private final List<QueryStepOperation> steps;
 		private final CacheInvalidationRecord record;
 		private final boolean isCanonical;
-		private QueryStep canonicalStep;
+		private QueryStepOperation canonicalStep;
 		
 		public TableFlip(TableScope theScope, TableCacheKey theSrcTab, LazyAllocatedTable theTargetTab,
 				boolean canonicalResults,
@@ -692,7 +690,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			this.srcTable = theSrcTab;
 			this.targetTable = theTargetTab;
 			this.updates = new ArrayList<CatalogEntity>();
-			this.steps = new ArrayList<QueryStep>();
+			this.steps = new ArrayList<QueryStepOperation>();
 			this.record = cacheClear;
 			this.isCanonical = canonicalResults;
 		}
@@ -704,12 +702,12 @@ public final class AdaptiveMTDDLPlannerUtils {
 		
 
 		@Override
-		public List<QueryStep> getDDLSteps() {
+		public List<QueryStepOperation> getDDLSteps() {
 			return Collections.emptyList();
 		}
 
 		@Override
-		public List<QueryStep> getDMLSteps() {
+		public List<QueryStepOperation> getDMLSteps() {
 			return steps;
 		}
 
@@ -734,7 +732,7 @@ public final class AdaptiveMTDDLPlannerUtils {
             Singletons.require(HostService.class).onGarbageEvent();
 		}
 
-		private List<QueryStep> buildSteps(SchemaContext sc, TableScope scope, PETable currentTable, PETable newTable) throws PEException {
+		private List<QueryStepOperation> buildSteps(SchemaContext sc, TableScope scope, PETable currentTable, PETable newTable) throws PEException {
 			ExecutionSequence es = new ExecutionSequence(null);
 			
 			Map<PEColumn, PEColumn> columnMap = buildForwarding(sc, currentTable,newTable);
@@ -760,7 +758,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			DeleteStatement ds = AdaptiveMultitenantSchemaPolicyContext.buildTenantDeleteFromTableStatement(sc, currentTable, scope);
 			ds.plan(sc,es, sc.getBehaviorConfiguration());
 			
-			List<QueryStep> allsteps = new ArrayList<QueryStep>();
+			List<QueryStepOperation> allsteps = new ArrayList<QueryStepOperation>();
 			es.schedule(null, allsteps, null, sc);
 			if (isCanonical)
 				canonicalStep = allsteps.get(0);
@@ -868,7 +866,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public QueryStep getCanonicalResultStep() {
+		public QueryStepOperation getCanonicalResultStep() {
 			return canonicalStep;
 		}
 
@@ -902,12 +900,12 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 		
 		@Override
-		public List<QueryStep> getDDLSteps() {
+		public List<QueryStepOperation> getDDLSteps() {
 			return Collections.emptyList();
 		}
 
 		@Override
-		public List<QueryStep> getDMLSteps() {
+		public List<QueryStepOperation> getDMLSteps() {
 			return Collections.emptyList();
 		}
 
@@ -960,7 +958,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public QueryStep getCanonicalResultStep() {
+		public QueryStepOperation getCanonicalResultStep() {
 			return null;
 		}
 
@@ -980,13 +978,13 @@ public final class AdaptiveMTDDLPlannerUtils {
 
 		private final ScopeCacheKey toDrop;
 		private final List<CatalogEntity> drops;
-		private final List<QueryStep> dml;
+		private final List<QueryStepOperation> dml;
 		private final CacheInvalidationRecord record;
 		
 		public DropTenantScope(ScopeCacheKey scope) {
 			toDrop = scope;
 			drops = new ArrayList<CatalogEntity>();
-			dml = new ArrayList<QueryStep>();
+			dml = new ArrayList<QueryStepOperation>();
 			record = new CacheInvalidationRecord(scope.getTenantCacheKey(),InvalidationScope.CASCADE);
 		}
 		
@@ -996,12 +994,12 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public List<QueryStep> getDDLSteps() {
+		public List<QueryStepOperation> getDDLSteps() {
 			return Collections.emptyList();
 		}
 
 		@Override
-		public List<QueryStep> getDMLSteps() {
+		public List<QueryStepOperation> getDMLSteps() {
 			return dml;
 		}
 
@@ -1051,7 +1049,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public QueryStep getCanonicalResultStep() {
+		public QueryStepOperation getCanonicalResultStep() {
 			return null;
 		}
 
@@ -1074,7 +1072,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 		private final TableCacheKey currentTable;
 		private final UnqualifiedName constraintName;
 		private final List<CatalogEntity> updates;
-		private final List<QueryStep> steps;
+		private final List<QueryStepOperation> steps;
 		private final CacheInvalidationRecord record;
 		
 		public UpdateForeignKeyTargetTable(TableCacheKey enclosing, UnqualifiedName constraintName, 
@@ -1093,7 +1091,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			this.newTargetTable = theNewTarget;
 			this.revertToForward = revertToForward;
 			this.updates = new ArrayList<CatalogEntity>();
-			this.steps = new ArrayList<QueryStep>();
+			this.steps = new ArrayList<QueryStepOperation>();
 			this.record = record;
 			this.currentTable = enclosing;
 			this.constraintName = constraintName;
@@ -1106,12 +1104,12 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public List<QueryStep> getDDLSteps() {
+		public List<QueryStepOperation> getDDLSteps() {
 			return steps;
 		}
 
 		@Override
-		public List<QueryStep> getDMLSteps() {
+		public List<QueryStepOperation> getDMLSteps() {
 			return Collections.emptyList();
 		}
 
@@ -1218,7 +1216,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public QueryStep getCanonicalResultStep() {
+		public QueryStepOperation getCanonicalResultStep() {
 			return null;
 		}
 
@@ -1242,17 +1240,17 @@ public final class AdaptiveMTDDLPlannerUtils {
 		private final LazyAllocatedTable target;
 		private final List<CatalogEntity> updates;
 		private final List<CatalogEntity> deletes;
-		private final List<QueryStep> ddl;
+		private final List<QueryStepOperation> ddl;
 		private PETable finalDefinition;
 		private final boolean isCanonical;
-		private QueryStep canonicalStep;
+		private QueryStepOperation canonicalStep;
 		
 		public ExecuteAlters(PEAlterTableStatement src, boolean canonical, LazyAllocatedTable target) {
 			this.original = src;
 			this.target = target;
 			this.updates = new ArrayList<CatalogEntity>();
 			this.deletes = new ArrayList<CatalogEntity>();
-			this.ddl = new ArrayList<QueryStep>();
+			this.ddl = new ArrayList<QueryStepOperation>();
 			this.isCanonical = canonical;
 		}
 		
@@ -1262,12 +1260,12 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public List<QueryStep> getDDLSteps() {
+		public List<QueryStepOperation> getDDLSteps() {
 			return ddl;
 		}
 
 		@Override
-		public List<QueryStep> getDMLSteps() {
+		public List<QueryStepOperation> getDMLSteps() {
 			return Collections.emptyList();
 		}
 
@@ -1322,7 +1320,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public QueryStep getCanonicalResultStep() {
+		public QueryStepOperation getCanonicalResultStep() {
 			return canonicalStep;
 		}
 
