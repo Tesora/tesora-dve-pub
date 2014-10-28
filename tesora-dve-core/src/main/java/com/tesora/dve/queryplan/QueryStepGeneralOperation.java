@@ -21,7 +21,9 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -31,24 +33,24 @@ public class QueryStepGeneralOperation extends QueryStepOperation {
 	private boolean requiresWorkers;
 	private boolean requiresTxn;
 		
-	public QueryStepGeneralOperation(AdhocOperation adhoc, boolean requiresTxn, boolean requiresWorkers) {
-		super();
+	public QueryStepGeneralOperation(StorageGroup sg, AdhocOperation adhoc, boolean requiresTxn, boolean requiresWorkers) throws PEException {
+		super((sg == null ? nullStorageGroup : sg));
 		target = adhoc;
 		this.requiresWorkers = requiresWorkers;
 		this.requiresTxn = requiresTxn;
 	}
 	
-	public QueryStepGeneralOperation(AdhocOperation adhoc) {
-		this(adhoc, false, false);
+	public QueryStepGeneralOperation(StorageGroup sg, AdhocOperation adhoc) throws PEException {
+		this(sg, adhoc, false, false);
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		target.execute(ssCon, wg, resultConsumer);
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return requiresTxn;
 	}
 	

@@ -37,7 +37,6 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.mysql.MySQLTransactionIsolation;
 import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
-import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.server.connectionmanager.ConnectionSemaphore;

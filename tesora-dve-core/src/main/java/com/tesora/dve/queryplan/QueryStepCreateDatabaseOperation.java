@@ -24,6 +24,7 @@ package com.tesora.dve.queryplan;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
@@ -41,7 +42,8 @@ public class QueryStepCreateDatabaseOperation extends QueryStepOperation {
 	UserDatabase newDatabase;
 	CacheInvalidationRecord invalidate;
 	
-	public QueryStepCreateDatabaseOperation(UserDatabase db, CacheInvalidationRecord cir) {
+	public QueryStepCreateDatabaseOperation(StorageGroup sg, UserDatabase db, CacheInvalidationRecord cir) throws PEException {
+		super(sg);
 		this.newDatabase = db;
 		invalidate = cir;
 	}
@@ -51,7 +53,7 @@ public class QueryStepCreateDatabaseOperation extends QueryStepOperation {
 	 * @throws Throwable 
 	 */
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		if (ssCon.hasActiveTransaction())
 			throw new PEException("Cannot execute DDL within active transaction: CREATE DATABASE " + newDatabase.getName());
 		
@@ -83,7 +85,7 @@ public class QueryStepCreateDatabaseOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

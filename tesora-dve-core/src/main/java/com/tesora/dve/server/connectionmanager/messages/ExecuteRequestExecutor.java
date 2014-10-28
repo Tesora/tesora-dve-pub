@@ -57,18 +57,14 @@ public class ExecuteRequestExecutor {
 			else
 				results = QueryPlanner.computeQueryPlan(continuationState, ssCon);
 			QueryPlan plan = results.getFirst();
-			try {
-				continuationState = results.getSecond();
-				if (!plan.getSteps().isEmpty()) {
-					ExecutionLogger slowLogger = ssCon.getNewPlanLogger(plan);
-					try {
-						plan.executeStep(ssCon, resultConsumer);
-					} finally {
-						slowLogger.end();
-					}
+			continuationState = results.getSecond();
+			if (!plan.isEmpty()) {
+				ExecutionLogger slowLogger = ssCon.getNewPlanLogger(plan);
+				try {
+					plan.executeStep(ssCon, resultConsumer);
+				} finally {
+					slowLogger.end();
 				}
-			} finally {
-				plan.close();
 			}
 
 			if (logger.isDebugEnabled())

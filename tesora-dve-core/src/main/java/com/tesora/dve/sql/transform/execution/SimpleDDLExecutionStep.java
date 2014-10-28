@@ -24,15 +24,16 @@ package com.tesora.dve.sql.transform.execution;
 import java.util.List;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepAlterDatabaseOperation;
 import com.tesora.dve.queryplan.QueryStepCreateDatabaseOperation;
 import com.tesora.dve.queryplan.QueryStepCreateUserOperation;
 import com.tesora.dve.queryplan.QueryStepDDLOperation;
 import com.tesora.dve.queryplan.QueryStepDropDatabaseOperation;
 import com.tesora.dve.queryplan.QueryStepGrantPrivilegesOperation;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -80,34 +81,35 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 	}
 	
 	protected QueryStepDDLOperation buildOperation(SchemaContext sc) throws PEException {
-		QueryStepDDLOperation qso = new QueryStepDDLOperation(getPersistentDatabase(), sql,getCacheInvalidation(sc));
+		QueryStepDDLOperation qso = new QueryStepDDLOperation(getStorageGroup(sc), getPersistentDatabase(), sql,getCacheInvalidation(sc));
 		if (getCommitOverride() != null)
 			return (QueryStepDDLOperation) qso.withCommitOverride(getCommitOverride());
 		return qso;
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
+		StorageGroup sg = getStorageGroup(sc);
 		if (rootEntity instanceof PEDatabase) {
 			PEDatabase db = (PEDatabase)rootEntity;
 			CacheInvalidationRecord invalidate = new CacheInvalidationRecord(db.getCacheKey(),
 					(((action == Action.DROP) || (action == Action.ALTER)) ? InvalidationScope.CASCADE : InvalidationScope.LOCAL));
 			if (action == Action.CREATE) {
-				addStep(sc,qsteps,new QueryStepCreateDatabaseOperation(db.getPersistent(sc),invalidate));
+				qsteps.add(new QueryStepCreateDatabaseOperation(sg, db.getPersistent(sc),invalidate));
 				return;
 			} else if (action == Action.DROP) {
-				addStep(sc,qsteps,new QueryStepDropDatabaseOperation(db.getPersistent(sc),invalidate));
+				qsteps.add(new QueryStepDropDatabaseOperation(sg, db.getPersistent(sc),invalidate));
 				return;
 			} else if (action == Action.ALTER) {
-				addStep(sc, qsteps, new QueryStepAlterDatabaseOperation(db.getPersistent(sc), invalidate));
+				qsteps.add(new QueryStepAlterDatabaseOperation(sg, db.getPersistent(sc), invalidate));
 				return;
 			}
 		} else if (rootEntity instanceof PEUser) {
 			PEUser peu = (PEUser) rootEntity;
 			CacheInvalidationRecord invalidate = new CacheInvalidationRecord(peu.getCacheKey(),InvalidationScope.LOCAL);
 			if (action == Action.CREATE) {
-				addStep(sc,qsteps,new QueryStepCreateUserOperation(peu.getPersistent(sc),invalidate));
+				qsteps.add(new QueryStepCreateUserOperation(sg, peu.getPersistent(sc),invalidate));
 				return;
 			}
 		} else if (rootEntity instanceof PEPriviledge) {
@@ -116,7 +118,7 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 				// if the priviledge is a global priviledge, we can just do a regular ddl operation
 				// but if it is for a specific database/tenant, we have to do a grant priv operation
 				if (!priv.isGlobal())
-					addStep(sc,qsteps,new QueryStepGrantPrivilegesOperation(priv.getPersistent(sc),getCacheInvalidation(sc)));
+					qsteps.add(new QueryStepGrantPrivilegesOperation(sg, priv.getPersistent(sc),getCacheInvalidation(sc)));
 			}
 		}
 		QueryStepDDLOperation qso = buildOperation(sc);
@@ -126,7 +128,7 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 		for(CatalogEntity ce : getDeletes()) {
 			qso.addCatalogDeletion(ce);
 		}
-		addStep(sc,qsteps,qso);
+		qsteps.add(qso);
 	}
 		
 	@Override

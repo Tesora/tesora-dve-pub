@@ -164,7 +164,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 		// we know we can emit all of [1] right away
 		// we have to build a dep tree for [2] - we can figure out here if it's cyclical
 		// we have to build a dep tree for [3]
-		private QueryStepAddGenerationOperation buildOperation(SchemaContext sc, PersistentGroup pg, List<PersistentSite> sites) {
+		private QueryStepAddGenerationOperation buildOperation(SchemaContext sc, PersistentGroup pg, List<PersistentSite> sites) throws PEException {
 			MultiMap<PEDatabase,PETable> plain = new MultiMap<PEDatabase,PETable>();
 			MultiMap<PEDatabase,PETable> fks = new MultiMap<PEDatabase,PETable>();
 			MultiMap<PEDatabase,PEViewTable> views = new MultiMap<PEDatabase,PEViewTable>();
@@ -387,7 +387,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 		public void executeNested(SSConnection conn, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
 			if (op == null) return;
-			op.execute(conn, wg, resultConsumer);
+			op.executeSelf(conn, wg, resultConsumer);
 		}
 		
 	}

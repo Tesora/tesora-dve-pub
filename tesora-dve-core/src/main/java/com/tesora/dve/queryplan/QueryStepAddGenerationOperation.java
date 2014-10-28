@@ -30,6 +30,7 @@ import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageGroupGeneration;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
@@ -55,7 +56,7 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	// if we're rebalancing this is nonempty
 	List<AddStorageGenRangeInfo> rebalanceInfo;
 	
-	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate) {
+	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate) throws PEException {
 		this(sg,sites,invalidate,null,false,null, Collections.<AddStorageGenRangeInfo> emptyList());
 	}
 	
@@ -63,7 +64,8 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 			ListOfPairs<UserTable,SQLCommand> tableDecls,
 			boolean ignoreFKs,
 			List<SQLCommand> userDecls,
-			List<AddStorageGenRangeInfo> rebalanceInfo) {
+			List<AddStorageGenRangeInfo> rebalanceInfo) throws PEException {
+		super(sg);
 		this.group = sg;
 		this.sites = sites;
 		this.record = invalidate;
@@ -74,7 +76,7 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public void execute(final SSConnection ssCon, final WorkerGroup wg,	DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(final SSConnection ssCon, final WorkerGroup wg,	DBResultConsumer resultConsumer) throws Throwable {
 		try {
 			if (record != null)
 				QueryPlanner.invalidateCache(record);
@@ -94,7 +96,7 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

@@ -517,9 +517,9 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 				// nothing to do
 			} else {
 				QueryStepDDLOperation qso =
-						new QueryStepDDLOperation(getDatabase(), (command == null ? new SQLCommand(ssCon,getCreateTableStmt()) : command), null);
+						new QueryStepDDLOperation(newSG, getDatabase(), (command == null ? new SQLCommand(ssCon,getCreateTableStmt()) : command), null);
 
-				qso.execute(ssCon, newWG, DBEmptyTextResultConsumer.INSTANCE);
+				qso.executeSelf(ssCon, newWG, DBEmptyTextResultConsumer.INSTANCE);
 			}
 
 			if (getView() == null)

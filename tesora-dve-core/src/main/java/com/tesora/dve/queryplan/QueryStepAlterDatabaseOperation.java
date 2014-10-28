@@ -22,6 +22,7 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
@@ -37,13 +38,14 @@ public class QueryStepAlterDatabaseOperation extends QueryStepOperation {
 	private final UserDatabase alteredDatabase;
 	private final CacheInvalidationRecord invalidationRecord;
 
-	public QueryStepAlterDatabaseOperation(final UserDatabase alteredDatabase, final CacheInvalidationRecord invalidationRecord) {
+	public QueryStepAlterDatabaseOperation(StorageGroup sg, final UserDatabase alteredDatabase, final CacheInvalidationRecord invalidationRecord) throws PEException {
+		super(sg);
 		this.alteredDatabase = alteredDatabase;
 		this.invalidationRecord = invalidationRecord;
 	}
 
 	@Override
-	public void execute(final SSConnection ssCon, final WorkerGroup wg, final DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(final SSConnection ssCon, final WorkerGroup wg, final DBResultConsumer resultConsumer) throws Throwable {
 		if (ssCon.hasActiveTransaction()) {
 			throw new PEException("Cannot execute DDL within active transaction: ALTER DATABASE " + this.alteredDatabase.getName());
 		}
@@ -74,7 +76,7 @@ public class QueryStepAlterDatabaseOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

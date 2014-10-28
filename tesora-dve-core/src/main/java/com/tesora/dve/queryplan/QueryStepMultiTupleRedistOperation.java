@@ -110,8 +110,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		preallocatedTargetWorkerGroup = wg;
 	}
 	
-	public QueryStepMultiTupleRedistOperation(PersistentDatabase execCtxDB, SQLCommand command, DistributionModel sourceDistModel) {
-		super(execCtxDB);
+	public QueryStepMultiTupleRedistOperation(StorageGroup sg, PersistentDatabase execCtxDB, SQLCommand command, DistributionModel sourceDistModel) throws PEException {
+		super(sg, execCtxDB);
 		this.command = command;
 		this.sourceDistModel = sourceDistModel;
 		this.targetDistModel = BroadcastDistributionModel.SINGLETON;
@@ -189,7 +189,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 	 * @returns number of rows transferred
 	 */
 	@Override
-	public void execute(final SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+	public void executeSelf(final SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		
 		if (targetGroup == null)
 			throw new PEException("QueryStepRedistOperation not properly initialized (must call toTempTable or toUserTable)");
@@ -533,7 +533,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 
 	
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 	

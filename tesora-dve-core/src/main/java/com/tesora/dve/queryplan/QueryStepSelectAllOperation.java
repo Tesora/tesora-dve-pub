@@ -29,6 +29,7 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.PersistentGroup;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -61,8 +62,8 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 	 * @param command sql query to execute
 	 * @throws PEException 
 	 */
-	public QueryStepSelectAllOperation(PersistentDatabase execCtxDBName, DistributionModel distModel, SQLCommand command) throws PEException {
-		super(execCtxDBName);
+	public QueryStepSelectAllOperation(StorageGroup sg, PersistentDatabase execCtxDBName, DistributionModel distModel, SQLCommand command) throws PEException {
+		super(sg, execCtxDBName);
 		if (command.isEmpty())
 			throw new PEException("Cannot create QueryStep with empty SQL command");
 
@@ -70,9 +71,9 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 		this.command = command;
 	}
 
-	public QueryStepSelectAllOperation(final SSConnection ssCon, PersistentDatabase execCtxDBName, DistributionModel distModel, String command)
+	public QueryStepSelectAllOperation(StorageGroup sg, final SSConnection ssCon, PersistentDatabase execCtxDBName, DistributionModel distModel, String command)
 			throws PEException {
-		this(execCtxDBName, distModel, new SQLCommand(ssCon, command));
+		this(sg, execCtxDBName, distModel, new SQLCommand(ssCon, command));
 	}
 
 		/**
@@ -80,7 +81,7 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 	 * @throws Throwable 
 	 */
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		resultConsumer.setResultsLimit(getResultsLimit());
 		WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).onDatabase(database);
 		beginExecution();
@@ -90,7 +91,7 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 	

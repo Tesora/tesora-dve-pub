@@ -26,7 +26,7 @@ import java.util.List;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.schema.Database;
@@ -77,7 +77,7 @@ public class TriggerExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps,
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps,
 			ProjectionInfo projection, SchemaContext sc) throws PEException {
 		// the other stuff then has to be turned into qsos and tossed into the trigger qso
 		throw new PEException("Not quite yet");

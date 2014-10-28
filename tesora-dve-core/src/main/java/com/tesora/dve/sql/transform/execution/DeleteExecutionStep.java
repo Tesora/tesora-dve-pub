@@ -24,11 +24,11 @@ package com.tesora.dve.sql.transform.execution;
 
 import java.util.List;
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateByKeyOperation;
@@ -61,19 +61,19 @@ public final class DeleteExecutionStep extends DirectExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		QueryStepOperation qso = null;
 		IKeyValue kv = getKeyValue(sc);
 		SQLCommand sqlCommand = getCommand(sc).withReferenceTime(getReferenceTimestamp(sc));
+		StorageGroup sg = getStorageGroup(sc);
 		if (kv != null)
-			qso = new QueryStepUpdateByKeyOperation(getPersistentDatabase(), kv, sqlCommand);
+			qso = new QueryStepUpdateByKeyOperation(sg,getPersistentDatabase(), kv, sqlCommand);
 		else {
-			qso = new QueryStepUpdateAllOperation(getPersistentDatabase(),
+			qso = new QueryStepUpdateAllOperation(sg, getPersistentDatabase(),
 					table.getDistributionVector(sc).getPersistent(sc), sqlCommand);
 		}
-		addStep(sc,qsteps, qso);
-
+		qsteps.add(qso);
 	}
 	
 	@Override

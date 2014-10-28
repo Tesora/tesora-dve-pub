@@ -22,6 +22,7 @@ package com.tesora.dve.queryplan;
  */
 
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
@@ -39,20 +40,25 @@ public class QueryStepSetScopedVariableOperation extends
 	protected ValueAccessor accessor;
 	protected boolean requireWorkers = false;
 	
-	public QueryStepSetScopedVariableOperation(VariableScope vs, String variableName, ValueAccessor accessor, boolean requireWorkers) {
-		super();
+	
+	public QueryStepSetScopedVariableOperation(StorageGroup sg,VariableScope vs, String variableName, ValueAccessor accessor, boolean requireWorkers) throws PEException {
+		super(sg == null ? nullStorageGroup : sg);
 		this.scope = vs;
 		this.variableName = variableName;
 		this.accessor = accessor;
 		this.requireWorkers = requireWorkers;
 	}
 
-	public QueryStepSetScopedVariableOperation(VariableScope vs, String variableName, String value) {
+	public QueryStepSetScopedVariableOperation(VariableScope vs, String variableName, ValueAccessor accessor, boolean requireWorkers) throws PEException {
+		this(null,vs,variableName,accessor,requireWorkers);
+	}
+	
+	public QueryStepSetScopedVariableOperation(VariableScope vs, String variableName, String value) throws PEException {
 		this(vs, variableName, new ConstantValueAccessor(value), false);
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		String nv = accessor.getValue(ssCon, wg);
 		if (VariableScopeKind.GLOBAL == scope.getKind()) {
@@ -74,7 +80,7 @@ public class QueryStepSetScopedVariableOperation extends
 	}
 	
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 	public interface ValueAccessor {

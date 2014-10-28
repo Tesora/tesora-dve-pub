@@ -35,7 +35,6 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -122,11 +121,11 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 
 	private static class DeleteContainerTenantsCallback extends NestedOperationDDLCallback {
 
-		private List<QueryStep> steps;
+		private List<QueryStepOperation> steps;
 		private List<SchemaCacheKey<PEContainerTenant>> tenants;
 		private List<CatalogEntity> deleted;
 		
-		public DeleteContainerTenantsCallback(List<QueryStep> steps, List<SchemaCacheKey<PEContainerTenant>> tenants) {
+		public DeleteContainerTenantsCallback(List<QueryStepOperation> steps, List<SchemaCacheKey<PEContainerTenant>> tenants) {
 			this.steps = steps;
 			this.tenants = tenants;
 		}
@@ -188,8 +187,8 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer)
 				throws Throwable {
 			for(int i = 0; i < steps.size(); i++) {
-				QueryStepOperation qso = steps.get(i).getOperation();
-				qso.execute(conn, wg, resultConsumer);
+				QueryStepOperation qso = steps.get(i);
+				qso.executeSelf(conn, wg, resultConsumer);
 			}			
 		}
 
@@ -313,7 +312,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 					es.getPlan().setCacheable(false);
 				ExecutionSequence subseq = new ExecutionSequence(null);
 				getSelfChildren().get(0).schedule(sc, subseq, scheduled);
-				ArrayList<QueryStep> substeps = new ArrayList<QueryStep>();
+				ArrayList<QueryStepOperation> substeps = new ArrayList<QueryStepOperation>();
 				subseq.schedule(null, substeps, null, sc.getContext());
 				Database<?> db = childStep.getDatabase(sc);
 				

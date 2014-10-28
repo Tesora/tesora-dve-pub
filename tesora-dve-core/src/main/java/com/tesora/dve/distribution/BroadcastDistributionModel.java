@@ -107,11 +107,11 @@ public class BroadcastDistributionModel extends DistributionModel {
 			redistTable.setPersistentGroup(netNewSG);
 	
 			QueryStepMultiTupleRedistOperation qso =
-					new QueryStepMultiTupleRedistOperation(userTable.getDatabase(),
+					new QueryStepMultiTupleRedistOperation(netNewSG, userTable.getDatabase(),
 							new SQLCommand(ssCon, "select * from " + userTable.getNameAsIdentifier()),
 							BroadcastDistributionModel.SINGLETON
 							).toUserTable(netNewSG, redistTable);
-			qso.execute(ssCon, wg, DBEmptyTextResultConsumer.INSTANCE);
+			qso.executeSelf(ssCon, wg, DBEmptyTextResultConsumer.INSTANCE);
 		}
 	}
 

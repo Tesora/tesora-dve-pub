@@ -22,6 +22,8 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
+import com.tesora.dve.exceptions.PEException;
 
 
 public abstract class QueryStepResultsOperation extends QueryStepDMLOperation {
@@ -30,8 +32,8 @@ public abstract class QueryStepResultsOperation extends QueryStepDMLOperation {
 	
 	long resultsLimit = Long.MAX_VALUE;
 
-	protected QueryStepResultsOperation(PersistentDatabase pdb) {
-		super(pdb);
+	protected QueryStepResultsOperation(StorageGroup sg, PersistentDatabase pdb) throws PEException {
+		super(sg, pdb);
 	}
 	
 	protected long getResultsLimit() {

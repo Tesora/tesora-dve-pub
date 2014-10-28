@@ -22,7 +22,9 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -37,14 +39,15 @@ public class QueryStepOperationPrepareStatement extends QueryStepOperation {
 	@SuppressWarnings("unused")
 	private ProjectionInfo projection;
 	
-	public QueryStepOperationPrepareStatement(PersistentDatabase pdb, SQLCommand command, ProjectionInfo projInfo) {
+	public QueryStepOperationPrepareStatement(StorageGroup sg, PersistentDatabase pdb, SQLCommand command, ProjectionInfo projInfo) throws PEException {
+		super(sg);
 		this.ctxDatabase = pdb;
 		this.toPrepare = command;
 		this.projection = projInfo;
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 //		WorkerClientPrepareStatementRequest req = 
 //				new WorkerClientPrepareStatementRequest(ssCon.getTransactionalContext(), ctxDatabase, toPrepare, projection);
 
@@ -53,7 +56,7 @@ public class QueryStepOperationPrepareStatement extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 	

@@ -91,8 +91,6 @@ public class QueryStepBasicTest extends PETest {
 	SSConnection ssConnection;
 	UserTable foo;
 	
-	QueryPlan plan;
-	
 	int currentId = 10;
 
 	@BeforeClass
@@ -120,14 +118,11 @@ public class QueryStepBasicTest extends PETest {
 				.findDynamicPolicy(KnownVariables.DYNAMIC_POLICY.lookupPersistentConfig(ssConnection.getCatalogDAO()).getValue());
         populateSites(SimpleQueryTest.class, Singletons.require(HostService.class).getProperties());
 		++currentId;
-		plan = new QueryPlan();
 		foo = db.getTableByName("foo");
 	}
 	
 	@After
 	public void cleanupTest() throws PEException {
-		if(plan != null)
-			plan.close();
 		if(conProxy != null)
 			conProxy.close();
 		if(ssConnection != null)
@@ -136,22 +131,18 @@ public class QueryStepBasicTest extends PETest {
 	
 	@Test(expected=PEException.class)
 	public void emptyExecuteStep() throws Throwable {
-		QueryStep step1 = new QueryStep(sg, null);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
-		plan.executeStep(ssConnection, new MysqlTextResultCollector());
+		QueryPlan qp = new QueryPlan();
+		qp.executeStep(ssConnection, new MysqlTextResultCollector());
 		ssConnection.userRollbackTransaction();
 	}
 	
 	@Test
 	public void emptyResultSet() throws Throwable {
-		QueryStepOperation step1op1 = new QueryStepSelectAllOperation(ssConnection, db, foo.getDistributionModel(),
+		QueryStepOperation step1op1 = new QueryStepSelectAllOperation(sg,ssConnection, db, foo.getDistributionModel(),
 				"select * from foo where 0=1");
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		QueryPlan qp = new QueryPlan(step1op1);
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertTrue(results.hasResults());
 		assertEquals(0, results.getNumRowsAffected());
 	}
@@ -162,34 +153,12 @@ public class QueryStepBasicTest extends PETest {
 		KeyValue distValue = t.getDistValue(ssConnection.getCatalogDAO());
 		distValue.get("id").setValue(new Integer(currentId));
 
-		QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(ssConnection, db, distValue, "insert into foo values (" + currentId + ", 'Hello')");
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(sg, ssConnection, db, distValue, "insert into foo values (" + currentId + ", 'Hello')");
+		QueryPlan qp = new QueryPlan(step1op1);
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertFalse(results.hasResults());
 		assertEquals(1, results.getUpdateCount());
-	}
-	
-	@Test
-	public void setupStep() throws Throwable {
-		UserTable t = db.getTableByName("foo"); 
-		KeyValue distValue = t.getDistValue(ssConnection.getCatalogDAO());
-		distValue.get("id").setValue(new Integer(currentId));
-		
-		QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(ssConnection, db, distValue,
-				"insert into foo values ("+currentId+", 'setup')");
-		QueryStepOperation step1op2 = new QueryStepSelectAllOperation(ssConnection, db, foo.getDistributionModel(),
-				"select * from foo where id = "+currentId);
-		QueryStep step1 = new QueryStep(sg, step1op2).addSetupOperation(step1op1);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
-		MysqlTextResultCollector results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
-		assertTrue(results.hasResults());
-		assertEquals(1, results.getNumRowsAffected());
-		plan.close();
 	}
 	
 	@Test
@@ -198,20 +167,17 @@ public class QueryStepBasicTest extends PETest {
 		String tempName = UserTable.getNewTempTableName();
 		StorageGroup tempSG = new DynamicGroup(dynamicPolicy, StorageGroup.GroupScale.SMALL);
 		
-		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(db, 
+		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(sg, db, 
 				new SQLCommand(ssConnection, "select * from bar where 0=1"), bar.getDistributionModel())
 			.toTempTable(tempSG, db, tempName);
-		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(ssConnection, db, bar.getDistributionModel(),
+		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(tempSG,ssConnection, db, bar.getDistributionModel(),
 				"select * from "+tempName+" where id > 1999");
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		QueryStep step2 = new QueryStep(tempSG, step2op1).addDependencyStep(step1);
-		plan.addStep(step2);
-				
+		QueryPlan qp = new QueryPlan(step1op1);
+		qp.addStep(step2op1);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector(true);
-		plan.executeStep(ssConnection, rc);
+		qp.executeStep(ssConnection, rc);
 		assertTrue(rc.hasResults());
 		assertEquals(0, rc.getRowData().size());
-		plan.close();
 	}
 
 	@Test
@@ -220,18 +186,17 @@ public class QueryStepBasicTest extends PETest {
 		String tempName = UserTable.getNewTempTableName();
 		StorageGroup tempSG = new AggregationGroup(dynamicPolicy);
 		
-		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(db, 
+		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(sg,db, 
 				new SQLCommand(ssConnection, "select id c1, value c2 from bar"), bar.getDistributionModel())
 			.toTempTable(tempSG, db, tempName);
-		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(ssConnection, db,
+		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(tempSG,ssConnection, db,
 				StaticDistributionModel.SINGLETON,
 				"select c1, c2 from "+tempName+" where c1 > 1999");
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		QueryStep step2 = new QueryStep(tempSG, step2op1).addDependencyStep(step1);
-		plan.addStep(step2);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		step2op1.addRequirement(step1op1);
+		QueryPlan qp = new QueryPlan(step2op1);
+		
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertTrue(results.hasResults());
 		assertEquals(2, results.getNumRowsAffected());
 	}
@@ -245,28 +210,24 @@ public class QueryStepBasicTest extends PETest {
 		String temp1Name = UserTable.getNewTempTableName();
 		String temp2Name = UserTable.getNewTempTableName();
 		
-		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(db, 
+		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(sg,db, 
 				new SQLCommand(ssConnection, "select concat('a',id), concat(value,'a') from bar where id > 1999"), bar.getDistributionModel())
 			.toTempTable(sg, db, temp1Name)
 			.distributeOn(Arrays.asList(new String[]{"concat('a',id)"}));
-		QueryStepOperation step2op1 = new QueryStepMultiTupleRedistOperation(db, 
+		QueryStepOperation step2op1 = new QueryStepMultiTupleRedistOperation(sg,db, 
 				new SQLCommand(ssConnection, "select `concat('a',id)` c1, `concat(value,'a')` c2 from " + temp1Name), StaticDistributionModel.SINGLETON)
 			.toTempTable(sg, db, temp2Name);
-		QueryStepOperation step3op1 = new QueryStepSelectAllOperation(ssConnection, db,
+		QueryStepOperation step3op1 = new QueryStepSelectAllOperation(sg,ssConnection, db,
 				BroadcastDistributionModel.SINGLETON,
 				"select c1, c2 from "+temp2Name);
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		QueryStep step2 = new QueryStep(sg, step2op1); //.addDependencyStep(step1);
-		QueryStep step3 = new QueryStep(sg, step3op1); //.addDependencyStep(step2);
-		step3.addDependencyStep(step1);
-		step3.addDependencyStep(step2);
-		plan.addStep(step3);
-				
+		step3op1.addRequirement(step1op1);
+		step3op1.addRequirement(step2op1);
+		QueryPlan qp = new QueryPlan(step3op1);
+		
 		MysqlTextResultCollector rc = new MysqlTextResultCollector(true);
-		plan.executeStep(ssConnection, rc);
+		qp.executeStep(ssConnection, rc);
 		assertTrue(rc.hasResults());
 		assertEquals(2, rc.getRowData().size());
-		plan.close();
 	}
 
 	@Test
@@ -274,17 +235,15 @@ public class QueryStepBasicTest extends PETest {
 		UserTable bar = db.getTableByName("bar"); 
 		String tempName = UserTable.getNewTempTableName();
 		
-		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(db, 
+		QueryStepOperation step1op1 = new QueryStepMultiTupleRedistOperation(sg,db, 
 				new SQLCommand(ssConnection, "select id c1, value c2 from bar"), bar.getDistributionModel())
 			.toTempTable(sg, db, tempName);
-		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(ssConnection, db, foo.getDistributionModel(),
+		QueryStepOperation step2op1 = new QueryStepSelectAllOperation(sg,ssConnection, db, foo.getDistributionModel(),
 				"select * from "+tempName+" t, foo f where t.c1 = f.id");
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		QueryStep step2 = new QueryStep(sg, step2op1).addDependencyStep(step1);
-		plan.addStep(step2);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		step2op1.addRequirement(step1op1);
+		QueryPlan qp = new QueryPlan(step2op1);
 		MysqlTextResultCollector results = new MysqlTextResultCollector(true);
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertTrue(results.hasResults());
 		results.printRows();
 		assertEquals(2, results.getNumRowsAffected());
@@ -305,49 +264,40 @@ public class QueryStepBasicTest extends PETest {
 		assertEquals(3, ut.getUserColumns().size());
 
 		// Create table
-		QueryStepDDLOperation step1op1 = new QueryStepDDLOperation(db, new SQLCommand(ssConnection,
+		QueryStepDDLOperation step1op1 = new QueryStepDDLOperation(sg,db, new SQLCommand(ssConnection,
 				"create table foobar (col1 int, col2 varchar(10), col3 int)"), null);
 		step1op1.addCatalogUpdate(ut);
 		step1op1.addCatalogUpdate(c1);
 		step1op1.addCatalogUpdate(c2);
 		step1op1.addCatalogUpdate(c3);
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		QueryPlan qp = new QueryPlan(step1op1);
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertFalse(results.hasResults());
 		assertEquals(0, results.getUpdateCount());
-		plan.close();
 		assertEquals(3, ut.getUserColumns().size());
 		
 		// insert a record
 		QueryPlan insertPlan = new QueryPlan();
 		KeyValue distValue = ut.getDistValue(ssConnection.getCatalogDAO());
 		distValue.get("col1").setValue(new Integer(currentId));
-		QueryStepOperation step2op1 = new QueryStepInsertByKeyOperation(ssConnection, db, distValue, "insert into foobar values (" + currentId
+		QueryStepOperation step2op1 = new QueryStepInsertByKeyOperation(sg,ssConnection, db, distValue, "insert into foobar values (" + currentId
 				+ ", 'Hello', 1)");
-		QueryStep step2 = new QueryStep(sg, step2op1);
-		insertPlan.addStep(step2);
-		logger.debug("Executing QueryPlan:\n"+insertPlan.asXML());
+		insertPlan.addStep(step2op1);
 		results = new MysqlTextResultCollector();
 		insertPlan.executeStep(ssConnection, results);
 		assertFalse(results.hasResults());
 		assertEquals(1, results.getUpdateCount());
-		insertPlan.close();
 		
 		// retrieve the record
 		QueryPlan resultPlan = new QueryPlan();
-		QueryStepOperation step3op1 = new QueryStepSelectAllOperation(ssConnection, db, ut.getDistributionModel(),
+		QueryStepOperation step3op1 = new QueryStepSelectAllOperation(sg,ssConnection, db, ut.getDistributionModel(),
 				"select * from foobar");
-		QueryStep step3 = new QueryStep(sg, step3op1);
-		resultPlan.addStep(step3);
-		logger.debug("Executing QueryPlan:\n"+resultPlan.asXML());
+		resultPlan.addStep(step3op1);
 		results = new MysqlTextResultCollector();
 		resultPlan.executeStep(ssConnection, results);
 		assertTrue(results.hasResults());
 		assertEquals(1, results.getNumRowsAffected());
-		resultPlan.close();
 		
 		// verify the catalog
 		EntityManager em = CatalogDAOAccessor.getEntityManager(catalogDAO);
@@ -373,18 +323,16 @@ public class QueryStepBasicTest extends PETest {
 		
 		ssConnection.userBeginTransaction();
 		try {
-			QueryStepDDLOperation step1op1 = new QueryStepDDLOperation(db, new SQLCommand(ssConnection,
+			QueryStepDDLOperation step1op1 = new QueryStepDDLOperation(sg,db, new SQLCommand(ssConnection,
 					"create table foobear (col1 int, col2 varchar(10), col3 int)"), null);
 			step1op1.addCatalogUpdate(ut);
 			step1op1.addCatalogUpdate(c1);
 
 			step1op1.addCatalogUpdate(c2);
 			step1op1.addCatalogUpdate(c3);
-			QueryStep step1 = new QueryStep(sg, step1op1);
-			plan.addStep(step1);
-			logger.debug("Executing QueryPlan:\n"+plan.asXML());
+			QueryPlan qp = new QueryPlan(step1op1);
 			MysqlTextResultCollector results = new MysqlTextResultCollector();
-			plan.executeStep(ssConnection, results);
+			qp.executeStep(ssConnection, results);
 			assertFalse(results.hasResults());
 			assertEquals(0, results.getUpdateCount());
 			ssConnection.userCommitTransaction();
@@ -398,12 +346,10 @@ public class QueryStepBasicTest extends PETest {
 	public void updateRow() throws Throwable {
 		UserTable t = db.getTableByName("foo"); 
 		
-		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(ssConnection, db, t.getDistributionModel(), "update foo set value = 'bob' where id = 1");
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(sg,ssConnection, db, t.getDistributionModel(), "update foo set value = 'bob' where id = 1");
+		QueryPlan qp = new QueryPlan(step1op1);
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertFalse(results.hasResults());
 		assertEquals(1, results.getUpdateCount());
 	}
@@ -412,12 +358,10 @@ public class QueryStepBasicTest extends PETest {
 	public void updateMultiRow() throws Throwable {
 		UserTable t = db.getTableByName("foo"); 
 		
-		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(ssConnection, db, t.getDistributionModel(), "update foo set value = 'bob' where id < 3");
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		QueryStepOperation step1op1 = new QueryStepUpdateAllOperation(sg,ssConnection, db, t.getDistributionModel(), "update foo set value = 'bob' where id < 3");
+		QueryPlan qp = new QueryPlan(step1op1);
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertFalse(results.hasResults());
 		assertEquals(2, results.getUpdateCount());
 	}
@@ -426,15 +370,12 @@ public class QueryStepBasicTest extends PETest {
 	public void createAndDropDatabase() throws Throwable {
 		String databaseName = "MyTestDB";
 		UserDatabase newDB = new UserDatabase(databaseName, sg);
-		QueryStepOperation step1op1 = new QueryStepCreateDatabaseOperation(newDB, null);
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		QueryStepOperation step1op1 = new QueryStepCreateDatabaseOperation(sg, newDB, null);
+		QueryPlan qp = new QueryPlan(step1op1);
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertFalse(results.hasResults());
 		assertEquals(2, results.getUpdateCount());
-		plan.close();
 
 		// create a table as well to test if drop database removes the table 
 		// and column information from the metadata
@@ -447,20 +388,17 @@ public class QueryStepBasicTest extends PETest {
 		UserColumn c2 = catalogDAO.createUserColumn(ut, "col2", Types.VARCHAR, "VARCHAR", 10);
 		UserColumn c3 = catalogDAO.createUserColumn(ut, "col3", Types.INTEGER, "INT", 10);
 		newDB.addUserTable(ut);
-		QueryStepDDLOperation step1op2 = new QueryStepDDLOperation(newDB, new SQLCommand(ssConnection,
+		QueryStepDDLOperation step1op2 = new QueryStepDDLOperation(sg,newDB, new SQLCommand(ssConnection,
 				"create table foobar (col1 int, col2 varchar(10), col3 int)"), null);
 		step1op2.addCatalogUpdate(ut);
 		step1op2.addCatalogUpdate(c1);
 		step1op2.addCatalogUpdate(c2);
 		step1op2.addCatalogUpdate(c3);
-		step1 = new QueryStep(sg, step1op2);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		qp = new QueryPlan(step1op2);
 		results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertFalse(results.hasResults());
 		assertEquals(0, results.getUpdateCount());
-		plan.close();
 		
 		// verify the table and columns are created in the test database
 		assertTrue("Catalog must contain table " + ut.displayName(),
@@ -474,13 +412,10 @@ public class QueryStepBasicTest extends PETest {
 		assertTrue("Catalog must contain column " + c3.getName(),
 				userColumns.contains(c3));
 		
-		plan = new QueryPlan();
-		step1op1 = new QueryStepDropDatabaseOperation(newDB,null);
-		step1 = new QueryStep(sg, step1op1);
-		plan.addStep(step1);
-		logger.debug("Executing QueryPlan:\n"+plan.asXML());
+		step1op1 = new QueryStepDropDatabaseOperation(sg,newDB,null);
+		qp = new QueryPlan(step1op1);
 		results = new MysqlTextResultCollector();
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertFalse(results.hasResults());
 		
 		// make sure the database is deleted from the user_database as well
@@ -512,24 +447,21 @@ public class QueryStepBasicTest extends PETest {
 		// after a statement fails. i.e. make sure the "Cannot re-allocate active StorageGroup"
 		// problem is fixed.
 		UserDatabase newDB = new UserDatabase("TestDB", sg);
-		QueryStepOperation step1op1 = new QueryStepCreateDatabaseOperation(newDB, null);
-		QueryStep step1 = new QueryStep(sg, step1op1);
-		plan.addStep(step1);
+		QueryStepOperation step1op1 = new QueryStepCreateDatabaseOperation(sg,newDB, null);
+		QueryPlan qp = new QueryPlan(step1op1);
 		try {
-			plan.executeStep(ssConnection, new MysqlTextResultCollector());
+			qp.executeStep(ssConnection, new MysqlTextResultCollector());
 			fail("Exception expected on creation of duplicate database TestDB");	}
 		catch (PEException re) {
 			// this is expected...
 		}
 		
-		plan = new QueryPlan();
 		newDB = new UserDatabase("TestDB2", sg);
-		step1op1 = new QueryStepCreateDatabaseOperation(newDB, null);
-		step1 = new QueryStep(sg, step1op1);
-		plan.addStep(step1);
+		step1op1 = new QueryStepCreateDatabaseOperation(sg,newDB, null);
+		qp = new QueryPlan(step1op1);
 		MysqlTextResultCollector results = new MysqlTextResultCollector();
 		// this shouldn't generate an exception...
-		plan.executeStep(ssConnection, results);
+		qp.executeStep(ssConnection, results);
 		assertFalse(results.hasResults());
 	}
 

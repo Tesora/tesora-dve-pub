@@ -442,28 +442,26 @@ public class DistributionTest extends PETest{
 	}
 
 	public void selectAll(UserTable t, int expectedCount) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(t.getPersistentGroup(),ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier()+" where id < 10");
-		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
+		QueryPlan plan = new QueryPlan(op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
 		assertTrue(rc.hasResults());
 		rc.printRows();
 		assertEquals(expectedCount, rc.getUpdateCount());
-		plan.close();
 	}
 
 	public void selectOne(UserTable t, int recId, int expectedCount)
 			throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(t.getPersistentGroup(),ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier()+" where id = "+recId);
-		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
+		QueryPlan plan = new QueryPlan(op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
 		assertTrue(rc.hasResults());
 //		rc.printRows();
 		assertEquals(expectedCount, rc.getUpdateCount());
-		plan.close();
 	}
 
 	public void selectByKey(UserTable t, int recId) throws Throwable {
@@ -473,18 +471,14 @@ public class DistributionTest extends PETest{
 
 	public void selectByKey(UserTable t, KeyValue dv, int recId,
 			int expectedCount) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectByKeyOperation(ssConnection, t.getDatabase(), dv,
+		QueryStepOperation op = new QueryStepSelectByKeyOperation(t.getPersistentGroup(),ssConnection, t.getDatabase(), dv,
 				"select * from "+t.getNameAsIdentifier()+" where id = "+recId);
-		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
-		try {
-			MysqlTextResultCollector rc = new MysqlTextResultCollector();
-			plan.executeStep(ssConnection, rc);
-			assertTrue(rc.hasResults());
-//			rc.printRows();
-			assertEquals(expectedCount, rc.getUpdateCount());
-		} finally {
-			plan.close();
-		}
+		QueryPlan plan = new QueryPlan(op);
+		MysqlTextResultCollector rc = new MysqlTextResultCollector();
+		plan.executeStep(ssConnection, rc);
+		assertTrue(rc.hasResults());
+		//			rc.printRows();
+		assertEquals(expectedCount, rc.getUpdateCount());
 	}
 
 	public void selectByKey(UserTable t, KeyValue dv, int recId)
@@ -501,27 +495,25 @@ public class DistributionTest extends PETest{
 	public void insertRecord(UserTable t, KeyValue distValue, int recId,
 			String value) throws Throwable {
 		QueryPlan plan;
-		QueryStepOperation op = new QueryStepInsertByKeyOperation(ssConnection, t.getDatabase(), distValue,
+		QueryStepOperation op = new QueryStepInsertByKeyOperation(t.getPersistentGroup(),ssConnection, t.getDatabase(), distValue,
 				"insert into "+t.getNameAsIdentifier()+" values ("+recId+", '"+value+"')");
-		plan = new QueryPlan(t.getPersistentGroup(), op);
+		plan = new QueryPlan(op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
 		assertFalse(rc.hasResults());
 		assertEquals(1, rc.getUpdateCount());
-		plan.close();
 	}
 
 	void selectWithDiscriminator(UserTable t, String col, String val,
 			int count) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(t.getPersistentGroup(),ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier()+" where "+col+" = "+val);
-		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
+		QueryPlan plan = new QueryPlan(op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
 		assertTrue(rc.hasResults());
 		rc.printRows();
 		assertEquals(count, rc.getUpdateCount());
-		plan.close();
 	}
 
 	public void insertOneRecord(UserTable t, int recId) throws Throwable {
@@ -534,14 +526,13 @@ public class DistributionTest extends PETest{
 
 	void updateRecord(UserTable t, KeyValue dv, int recId, String value)
 			throws Throwable {
-		QueryStepOperation op = new QueryStepUpdateByKeyOperation(t.getDatabase(), dv, 
+		QueryStepOperation op = new QueryStepUpdateByKeyOperation(t.getPersistentGroup(),t.getDatabase(), dv, 
 				new SQLCommand(ssConnection, "update " + t.getNameAsIdentifier() + " set value = '" + value + "' where id = " + recId));
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
-		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
+		QueryPlan plan = new QueryPlan(op);
 		plan.executeStep(ssConnection, rc);
 		assertFalse(rc.hasResults());
 		assertEquals(1, rc.getNumRowsAffected());
-		plan.close();
 	}
 
 	public void updateOne(UserTable t, int recId, String value)
@@ -555,16 +546,15 @@ public class DistributionTest extends PETest{
 
 	void updateRange(UserTable t, int lowVal, int highVal, int count,
 			String value) throws Throwable {
-		QueryStepOperation op = new QueryStepUpdateAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepUpdateAllOperation(t.getPersistentGroup(),ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"update "+t.getNameAsIdentifier()
 				+ " set value = '"+value+"'"
 				+ " where id >="+lowVal+" and id <="+highVal);
-		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
+		QueryPlan plan = new QueryPlan(op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
 		assertFalse(rc.hasResults());
 		assertEquals(count, rc.getUpdateCount());
-		plan.close();
 	}
 
 	protected void updateRange(UserTable t, int lowVal, int highVal,
@@ -574,27 +564,25 @@ public class DistributionTest extends PETest{
 	}
 
 	long getRowCount(UserTable t) throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), t.getDistributionModel(),
+		QueryStepOperation op = new QueryStepSelectAllOperation(t.getPersistentGroup(),ssConnection, t.getDatabase(), t.getDistributionModel(),
 				"select * from "+t.getNameAsIdentifier());
-		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
+		QueryPlan plan = new QueryPlan(op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
 		assertTrue(rc.hasResults());
 		rc.printRows();
 		long rowCount = rc.getUpdateCount();
-		plan.close();
 		return rowCount;
 	}
 
 	void deleteRow(UserTable t, KeyValue dv, int recId) throws Throwable {
-		QueryStepOperation op = new QueryStepUpdateByKeyOperation(t.getDatabase(), dv, 
+		QueryStepOperation op = new QueryStepUpdateByKeyOperation(t.getPersistentGroup(),t.getDatabase(), dv, 
 				new SQLCommand(ssConnection, "delete from " + t.getNameAsIdentifier() + " where id = " + recId));
-		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
+		QueryPlan plan = new QueryPlan(op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
 		assertFalse(rc.hasResults());
 		assertEquals(1, rc.getUpdateCount());
-		plan.close();
 	}
 
 	protected void insertAndDelete(UserTable t, int recId, String value)
@@ -611,15 +599,14 @@ public class DistributionTest extends PETest{
 
 	protected void selectAllFromAll(UserTable t, int expectedCount)
 			throws Throwable {
-		QueryStepOperation op = new QueryStepSelectAllOperation(ssConnection, t.getDatabase(), StaticDistributionModel.SINGLETON,
+		QueryStepOperation op = new QueryStepSelectAllOperation(t.getPersistentGroup(),ssConnection, t.getDatabase(), StaticDistributionModel.SINGLETON,
 				"select * from "+t.getNameAsIdentifier()+" where id < 10");
-		QueryPlan plan = new QueryPlan(t.getPersistentGroup(), op);
+		QueryPlan plan = new QueryPlan(op);
 		MysqlTextResultCollector rc = new MysqlTextResultCollector();
 		plan.executeStep(ssConnection, rc);
 		assertTrue(rc.hasResults());
 		rc.printRows();
 		assertEquals(expectedCount, rc.getUpdateCount());
-		plan.close();
 	}
 
 }

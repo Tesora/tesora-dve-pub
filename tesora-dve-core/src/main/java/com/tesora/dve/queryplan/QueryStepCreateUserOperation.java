@@ -22,6 +22,7 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
@@ -39,13 +40,14 @@ public class QueryStepCreateUserOperation extends QueryStepOperation {
 	User user;
 	CacheInvalidationRecord record;
 	
-	public QueryStepCreateUserOperation(User u, CacheInvalidationRecord record) {
+	public QueryStepCreateUserOperation(StorageGroup sg, User u, CacheInvalidationRecord record) throws PEException {
+		super(sg);
 		user = u;
 		this.record = record;
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		if (ssCon.hasActiveTransaction())
 			throw new PEException("Cannot execute CREATE USER " + user.getName() +  " within active transaction");
@@ -89,7 +91,7 @@ public class QueryStepCreateUserOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

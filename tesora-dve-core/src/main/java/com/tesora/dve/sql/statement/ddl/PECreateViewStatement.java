@@ -520,8 +520,9 @@ public class PECreateViewStatement extends
 			}
 			cmds.add(pushDown != null ? pushDown : emulatedDefinition);
 			for(SQLCommand sqlc : cmds) {
-				QueryStepUpdateAllOperation qsuo = new QueryStepUpdateAllOperation(onDatabase,BroadcastDistributionModel.SINGLETON,sqlc);
-				qsuo.execute(conn, wg, resultConsumer);
+				QueryStepUpdateAllOperation qsuo = 
+						new QueryStepUpdateAllOperation(backingTable.getStorageGroup(context).getPersistent(context),onDatabase,BroadcastDistributionModel.SINGLETON,sqlc);
+				qsuo.executeSelf(conn, wg, resultConsumer);
 			}
 		}
 	}

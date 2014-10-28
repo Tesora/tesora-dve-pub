@@ -43,7 +43,6 @@ import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.queryplan.QueryPlan;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepInsertByKeyOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateByKeyOperation;
@@ -126,14 +125,12 @@ public class SimpleConcurrencyTestNG extends PETest /* do not change this to a S
 			distValue.get("id").setValue(new Integer(currentId));
 
 			QueryPlan plan = new QueryPlan();
-			QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(ssConnection, db, distValue, "select * from foo where id = " + currentId);
-			QueryStep step1 = new QueryStep(sg, step1op1);
-			plan.addStep(step1);
+			QueryStepOperation step1op1 = new QueryStepInsertByKeyOperation(sg,ssConnection, db, distValue, "select * from foo where id = " + currentId);
+			plan.addStep(step1op1);
 			MysqlTextResultCollector results = new MysqlTextResultCollector();
 			plan.executeStep(ssConnection, results);
 			assertTrue(results.hasResults());
 //			assertEquals(1, results.getNumRowsAffected());
-			plan.close();
 		}
 		conProxy.close();
 		
@@ -183,17 +180,15 @@ public class SimpleConcurrencyTestNG extends PETest /* do not change this to a S
 			distValue.get("id").setValue(new Integer(currentId));
 
 			QueryPlan plan = new QueryPlan();
-			QueryStepOperation step1op1 = new QueryStepUpdateByKeyOperation(db, distValue, new SQLCommand(ssConnection, "update foo set value = 'value"
+			QueryStepOperation step1op1 = new QueryStepUpdateByKeyOperation(sg,db, distValue, new SQLCommand(ssConnection, "update foo set value = 'value"
 					+ currentId + "' where id = " + currentId));
 //			QueryStepOperation step1op1 = new QueryStepUpdateByKeyOperation(db, distValue, new SQLCommand("select * from foo where id = "+currentId));
-			QueryStep step1 = new QueryStep(sg, step1op1);
-			plan.addStep(step1);
+			plan.addStep(step1op1);
 			MysqlTextResultCollector results = new MysqlTextResultCollector();
 			plan.executeStep(ssConnection, results);
 			assertFalse(results.hasResults());
 //			assertTrue(results.hasResults());
 //			assertEquals(1, results.getNumRowsAffected());
-			plan.close();
 		}
 		Thread.sleep(100);
 		conProxy.close();
