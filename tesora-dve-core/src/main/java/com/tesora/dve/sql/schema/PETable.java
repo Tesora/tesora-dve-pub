@@ -26,9 +26,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
@@ -1155,9 +1157,27 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return getTriggers(sc,et) != null;
 	}
 
+	public boolean hasTriggers() {
+		return ((triggers != null) && !triggers.isEmpty());
+	}
+
 	public PETableTriggerEventInfo getTriggers(SchemaContext sc, TriggerEvent et) {
-		if (triggers == null || triggers.isEmpty()) return null;
+		if (!hasTriggers()) return null;
 		return triggers.get(et);
+	}
+	
+	public Set<PETrigger> getAllTriggers(SchemaContext sc) {
+		if (hasTriggers()) {
+			final Set<PETrigger> allTriggers = new LinkedHashSet<PETrigger>();
+			for (final TriggerEvent e : TriggerEvent.values()) {
+				final PETableTriggerEventInfo trigger = triggers.get(e);
+				if (trigger != null) {
+					allTriggers.addAll(trigger.get());
+				}
+			}
+		}
+
+		return Collections.EMPTY_SET;
 	}
 	
 }

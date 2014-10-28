@@ -42,6 +42,7 @@ public enum StatementType {
 	DROP_DB,
 	DROP_TABLE,
 	DROP_INDEX,
+	DROP_TRIGGER,
 	GRANT,
 	
 	// txnal,

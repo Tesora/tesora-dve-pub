@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -110,9 +111,17 @@ public class PrivateRange implements TemplateRangeItem {
 				}
 
 				/* Enough! Compare them on something distinct and stable. */
-				final Integer aHash = aColumns.hashCode();
-				final Integer bHash = bColumns.hashCode();
-				return aHash.compareTo(bHash);
+				final Iterator<TableColumn> aColumnsIterator = aColumns.iterator();
+				final Iterator<TableColumn> bColumnsIterator = bColumns.iterator();
+				while (aColumnsIterator.hasNext() && bColumnsIterator.hasNext()) {
+					final String aName = aColumnsIterator.next().getName().get();
+					final String bName = bColumnsIterator.next().getName().get();
+					if (!bName.equals(aName)) {
+						return bName.compareTo(aName);
+					}
+				}
+
+				return 0;
 			}
 
 			return frequencyDifference;

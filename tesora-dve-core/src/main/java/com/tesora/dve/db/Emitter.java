@@ -1847,6 +1847,8 @@ public abstract class Emitter {
 			emitDropTableStatement(sc, (PEDropTableStatement) dts,buf);
 		} else if (PEViewTable.class.equals(dts.getTargetClass())) {
 			emitDropViewStatement(dts,buf);
+		} else if (PETrigger.class.equals(dts.getTargetClass())) {
+			emitDropTriggerStatement(dts, buf);
 		} else if (PEUser.class.equals(dts.getTargetClass())) {
 			emitDropUserStatement(dts,buf);
 		} else if (PETenant.class.equals(dts.getTargetClass())) {
@@ -1899,6 +1901,10 @@ public abstract class Emitter {
 		emitDropStatement(peds, buf, "VIEW");
 	}
 	
+	public void emitDropTriggerStatement(PEDropStatement<?, ?> peds, StringBuilder buf) {
+		emitDropStatement(peds, buf, "TRIGGER");
+	}
+
 	public void emitDropDatabaseStatement(PEDropStatement<?,?> peds, StringBuilder buf) {
 		emitDropStatement(peds, buf, "DATABASE");
 	}

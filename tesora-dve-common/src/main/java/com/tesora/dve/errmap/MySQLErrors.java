@@ -108,6 +108,16 @@ public class MySQLErrors {
 					"Incorrect argument type to variable '%s'",
 					1232,
 					"42000");
+	public static final ErrorCodeFormatter trgAlreadyExists =
+			new ZeroParamErrorCodeFormatter(DVEErrors.TRG_ALREADY_EXISTS,
+					"Trigger already exists",
+					1359,
+					"HY000");
+	public static final ErrorCodeFormatter trgDoesNotExist =
+			new ZeroParamErrorCodeFormatter(DVEErrors.TRG_DOES_NOT_EXIST,
+					"Trigger does not exist",
+					1360,
+					"HY000");
 			
 	
 	public static final ErrorCodeFormatter[] myFormatters = new ErrorCodeFormatter[] {
@@ -128,7 +138,9 @@ public class MySQLErrors {
 		unknownCharacterSetFormatter,
 		unknownCollationFormatter,
 		wrongValueForVariable,
-		wrongTypeForVariable
+		wrongTypeForVariable,
+		trgAlreadyExists,
+		trgDoesNotExist
 	};
 
 			

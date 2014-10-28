@@ -28,6 +28,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
@@ -115,4 +116,58 @@ public class TriggerDDLTest extends SchemaTest {
 				
 	}
 	
+	@Test
+	public void testDrop() throws Throwable {
+		// DROP TRIGGER [IF EXISTS] [schema_name.]trigger_name
+
+		conn.execute("create table A (id int auto_increment, event varchar(32), primary key (id)) broadcast distribute");
+		conn.execute("create table B (a int, b int, c int, primary key(a)) broadcast distribute");
+
+		conn.execute("create trigger atrig after insert on B for each row insert into A (event) values ('insert')");
+		conn.execute("DROP TRIGGER atrig");
+		conn.assertResults("show triggers", br());
+
+		conn.execute("DROP TRIGGER IF EXISTS nonexistent");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("DROP TRIGGER nonexistent");
+			}
+		}.assertError(SQLException.class, MySQLErrors.trgDoesNotExist, "Trigger does not exist");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("DROP TRIGGER nonexistent");
+			}
+		}.assertError(SQLException.class, MySQLErrors.trgDoesNotExist, "Trigger does not exist");
+
+		conn.execute("create trigger btrig after insert on B for each row insert into A (event) values ('insert')");
+
+		conn.execute("use INFORMATION_SCHEMA");
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("DROP TRIGGER btrig");
+			}
+		}.assertError(SQLException.class, MySQLErrors.trgDoesNotExist, "Trigger does not exist");
+
+		conn.execute("DROP TRIGGER adb.btrig");
+		conn.assertResults("show triggers", br());
+
+		conn.execute("use adb");
+
+		conn.execute("create trigger ctrig after insert on B for each row insert into A (event) values ('insert')");
+
+		conn.execute("drop table A");
+		conn.assertResults("show triggers", br(nr, "ctrig", "INSERT", "B", "INSERT INTO A (event) VALUES ('insert')",
+				"AFTER",null,"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%",
+				"utf8", "utf8_general_ci", "utf8_general_ci"));
+
+		conn.execute("drop table B");
+		conn.assertResults("show triggers", br());
+
+	}
+
 }

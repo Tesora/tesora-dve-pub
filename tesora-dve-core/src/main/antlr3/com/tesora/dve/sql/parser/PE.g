@@ -1142,6 +1142,7 @@ drop_statement returns [Statement s] options {k=1;}:
   | USER (IF e=EXISTS)? userid { $s = utils.buildDropUserStatement($userid.us, $e != null); }
   | VIEW (IF ve=EXISTS)? qualified_identifier { $s = utils.buildDropViewStatement($qualified_identifier.n,$ve != null); }
   | INDEX in=unqualified_identifier ON tn=qualified_identifier { $s = utils.buildExternalDropIndexStatement($in.n,$tn.n); }
+  | TRIGGER (IF e=EXISTS)? qualified_identifier { $s = utils.buildDropTriggerStatement($qualified_identifier.n,$e != null); }
   ;
 
 pe_drop_target returns [Statement s] options {k=1;}:
