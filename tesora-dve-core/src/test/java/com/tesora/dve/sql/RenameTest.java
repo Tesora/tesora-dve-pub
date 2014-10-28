@@ -244,7 +244,7 @@ public class RenameTest extends SchemaMirrorTest {
 			public void test() throws Throwable {
 				connection.execute("RENAME TABLE oops.pe741_3 TO pe741_4");
 			}
-		}.assertError(SQLException.class, MySQLErrors.unknownDatabaseFormatter, "Unknown database 'oops'");
+		}.assertSqlError(SQLException.class, MySQLErrors.unknownDatabaseFormatter, "Unknown database 'oops'");
 
 		new ExpectedExceptionTester() {
 			@Override

@@ -34,7 +34,7 @@ import java.util.Set;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.MultiMap;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
@@ -162,19 +162,19 @@ public class ScopeEntry implements Scope {
 	}
 	
 	private void throwNonUniqueTableException(final Name ambiguousTableName) {
-		throw new SchemaException(new ErrorInfo(DVEErrors.NON_UNIQUE_TABLE, ambiguousTableName.getUnquotedName().get()));
+		throw new SchemaException(new ErrorInfo(AvailableErrors.NON_UNIQUE_TABLE, ambiguousTableName.getUnquotedName().get()));
 	}
 	
 	private static void tableNotFound(SchemaContext sc, Schema<?> schema, Name givenName) throws SchemaException {
 		ErrorInfo ei = null;
 		if (givenName.isQualified()) {
 			QualifiedName qn = (QualifiedName) givenName;
-			ei = new ErrorInfo(DVEErrors.TABLE_DNE,
+			ei = new ErrorInfo(AvailableErrors.TABLE_DNE,
 					qn.getNamespace().getUnquotedName().get(),
 					qn.getUnqualified().getUnquotedName().get());
 		} else {
 			UnqualifiedName db = schema.getSchemaName(sc);
-			ei = new ErrorInfo(DVEErrors.TABLE_DNE,
+			ei = new ErrorInfo(AvailableErrors.TABLE_DNE,
 					db.getUnquotedName().get(),
 					givenName.getUnquotedName().get());
 		}
@@ -182,7 +182,7 @@ public class ScopeEntry implements Scope {
 	}
 	
 	private static void columnNotFound(Name columnName, LexicalLocation location) throws SchemaException {
-		throw new SchemaException(new ErrorInfo(DVEErrors.COLUMN_DNE,
+		throw new SchemaException(new ErrorInfo(AvailableErrors.COLUMN_DNE,
 				columnName.getUnquotedName().get(),
 				location.getExternal()));
 	}

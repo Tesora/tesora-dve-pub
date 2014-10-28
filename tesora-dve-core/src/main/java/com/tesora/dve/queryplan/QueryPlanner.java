@@ -25,11 +25,10 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-
 import com.tesora.dve.clock.NoopTimingService;
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.groupmanager.CacheInvalidationMessage;
@@ -178,7 +177,7 @@ public class QueryPlanner {
 			return false;
 		if (t instanceof SchemaException) {
 			SchemaException se = (SchemaException) t;
-			if (se.getErrorInfo().getCode() == DVEErrors.TABLE_DNE) {
+			if (se.getErrorInfo().getCode() == AvailableErrors.TABLE_DNE) {
 				List<UnqualifiedName> names = new ArrayList<UnqualifiedName>();
 				for(Object o : se.getErrorInfo().getParams()) {
 					names.add(new UnqualifiedName((String)o));
@@ -205,27 +204,28 @@ public class QueryPlanner {
 		plan.setInputStatement(planningResult.getOriginalSQL());
 		final ExecutionPlanOptions opts = new ExecutionPlanOptions();
 		final int lastExecutionPlanIndex = plans.size() - 1;
+		Long accUpdateCount = null;
 		for (int epIdx = 0; epIdx <= lastExecutionPlanIndex; ++epIdx) {
 			final ExecutionPlan ep = plans.get(epIdx);
-			ep.logPlan(sc, "on conn " + connMgr.getName(), null);
-			final List<QueryStep> steps = ep.schedule(opts, connMgr, sc);
+			ep.logPlan(sc, "on conn " + connMgr.getName(), null);			
+			final List<QueryStepOperation> steps = ep.schedule(opts, connMgr, sc);
 			final int numQuerySteps = steps.size();
 			for (int qsIdx = 0; qsIdx < numQuerySteps; ++qsIdx) {
-				final QueryStep qs = steps.get(qsIdx);
+				final QueryStepOperation qs = steps.get(qsIdx);
 				plan.addStep(qs);
-				if ((epIdx > 0) && (qsIdx == 0)) {
-					final QueryStep leadingPlanStep = plan.getSteps().get(0);
-					leadingPlanStep.addDependencyStep(qs);
-				}
 			}
 
+			Long anyUpdate = ep.getUpdateCount(sc);
+			if (anyUpdate != null) 
+				accUpdateCount = anyUpdate;
+			
 			if (epIdx == lastExecutionPlanIndex) {
-				plan.setTrueUpdateCount(ep.getUpdateCount(sc));
 				if (ep.useRowCount()) {
 					plan.setUseRowCount();
 				}
 			}
 		}
+		plan.setTrueUpdateCount(accUpdateCount);
 		plan.setRuntimeUpdateCountAdjustment(opts);
 		// the query plan is created - do any cleanup on the context
 		sc.cleanupPostPlanning();

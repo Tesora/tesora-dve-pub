@@ -23,7 +23,7 @@ package com.tesora.dve.sql;
 
 import java.io.Serializable;
 
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -54,23 +54,23 @@ public class ParserException extends PEMappedRuntimeException {
 	
 	
 	protected ParserException() {
-		super(new ErrorInfo(DVEErrors.INTERNAL,"(unknown error)"));
+		super(new ErrorInfo(AvailableErrors.INTERNAL,"(unknown error)"));
 	}
 	
 	public ParserException(Pass p) {
-		super(new ErrorInfo(DVEErrors.INTERNAL,"(unknown error)"));
+		super(new ErrorInfo(AvailableErrors.INTERNAL,"(unknown error)"));
 	}
 
 	public ParserException(Pass p, String message) {
-		super(new ErrorInfo(DVEErrors.INTERNAL,message),message);
+		super(new ErrorInfo(AvailableErrors.INTERNAL,message),message);
 	}
 
 	public ParserException(Pass p, Throwable cause) {
-		super(new ErrorInfo(DVEErrors.INTERNAL,cause.getMessage()),cause);
+		super(new ErrorInfo(AvailableErrors.INTERNAL,cause.getMessage()),cause);
 	}
 
 	public ParserException(Pass p, String message, Throwable cause) {
-		super(new ErrorInfo(DVEErrors.INTERNAL, message),message, cause);
+		super(new ErrorInfo(AvailableErrors.INTERNAL, message),message, cause);
 	}
 
 	public ParserException(ErrorInfo ei) {

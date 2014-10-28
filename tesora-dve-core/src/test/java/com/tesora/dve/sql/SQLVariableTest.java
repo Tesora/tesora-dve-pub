@@ -41,6 +41,7 @@ import org.junit.Test;
 
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEStringUtils;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -284,7 +285,7 @@ public class SQLVariableTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("set sql_auto_is_null = 1");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: No support for sql_auto_is_null = 1 (planned)");
 		conn.execute("set sql_auto_is_null = 0");
 	}

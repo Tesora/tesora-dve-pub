@@ -66,7 +66,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.ValueConverter;
 import com.tesora.dve.distribution.DistributionRange;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockManager;
@@ -412,7 +412,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				return parentSchema;
 			}
 
-			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_DATABASE, parentSchemaName.get()));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.UNKNOWN_DATABASE, parentSchemaName.get()));
 		}
 
 		final Database<?> currentSchema = sc.getCurrentDatabase();
@@ -420,7 +420,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			return currentSchema;
 		}
 
-		throw new SchemaException(new ErrorInfo(DVEErrors.NO_DATABASE_SELECTED));
+		throw new SchemaException(new ErrorInfo(AvailableErrors.NO_DATABASE_SELECTED));
 	}
 
 	public TranslatorUtils(ParserOptions opts, SchemaContext pc, InputState state) {
@@ -1197,7 +1197,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				unknownTables.add(givenName);
 			} else {
 				if (tempTabs && !ti.getTableKey().isUserlandTemporaryTable())
-					throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_TABLE,givenName.getUnquotedName().get()));
+					throw new SchemaException(new ErrorInfo(AvailableErrors.UNKNOWN_TABLE,givenName.getUnquotedName().get()));
 				tblKeys.add(ti.getTableKey());
 			}
 		}
@@ -2581,7 +2581,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public TableModifier buildCommentTableModifier(final Name tableName, final String s) throws SchemaException {
 		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableCommentLength();
 		if (s.length() > maxAllowedLength) {
-			throw new SchemaException(new ErrorInfo(DVEErrors.TOO_LONG_TABLE_COMMENT, tableName.getUnqualified().getUnquotedName().get(), maxAllowedLength));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.TOO_LONG_TABLE_COMMENT, tableName.getUnqualified().getUnquotedName().get(), maxAllowedLength));
 		}
 
 		return new CommentTableModifier(buildComment(s));
@@ -2590,7 +2590,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public Comment buildTableFieldComment(final Name fieldName, final String s) throws SchemaException {
 		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableFieldCommentLength();
 		if (s.length() > maxAllowedLength) {
-			throw new SchemaException(new ErrorInfo(DVEErrors.TOO_LONG_TABLE_FIELD_COMMENT, fieldName.getUnquotedName().get(), maxAllowedLength));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.TOO_LONG_TABLE_FIELD_COMMENT, fieldName.getUnquotedName().get(), maxAllowedLength));
 		}
 
 		return buildComment(s);
@@ -2665,7 +2665,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			encName = pc.getCurrentDatabase().getName().getUnqualified();
 		}
 			
-		throw new SchemaException(new ErrorInfo(DVEErrors.TABLE_DNE,encName.getUnquotedName().get(),tname.getUnquotedName().get()));
+		throw new SchemaException(new ErrorInfo(AvailableErrors.TABLE_DNE,encName.getUnquotedName().get(),tname.getUnquotedName().get()));
 	}
 
 	public ExpressionNode buildSubquery(Statement in, Name alias, Object orig, boolean makeVirtualTable) {
@@ -3008,7 +3008,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				// just do an empty statement
 				return new EmptyStatement("drop nonexistent user");
 			}
-			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_USER,us.getUserName(),us.getScope()));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.UNKNOWN_USER,us.getUserName(),us.getScope()));
 		}
 		return new PEDropUserStatement(peu);
 	}
@@ -3320,7 +3320,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		} else if (args.size() == 1) {
 			return new RandFunctionCall(args.get(0));
 		} else {
-			throw new SchemaException(new ErrorInfo(DVEErrors.INCORRECT_PARAM_COUNT_FUNCTION_CALL,"RAND"));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.INCORRECT_PARAM_COUNT_FUNCTION_CALL,"RAND"));
 		}
 	}
 
@@ -4260,12 +4260,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			}
 		} catch (final SchemaException e) {
 			final ErrorInfo error = e.getErrorInfo();
-			if (!DVEErrors.UNKNOWN_DATABASE.equals(error.getCode())) {
+			if (!AvailableErrors.UNKNOWN_DATABASE.equals(error.getCode())) {
 				throw e;
 			}
 		}
 
-		throw new SchemaException(new ErrorInfo(DVEErrors.TRG_DOES_NOT_EXIST));
+		throw new SchemaException(new ErrorInfo(AvailableErrors.TRG_DOES_NOT_EXIST));
 	}
 
 	public Statement buildPreparePreparedStatement(Name pstmtName, String stmt) {
@@ -4352,8 +4352,13 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	public Statement buildCreateTrigger(Name triggerName, boolean isBefore, TriggerEvent triggerType,
 			PETable targetTable, Statement body,Token triggerToken) {
 		PETrigger already = pc.findTrigger(PETrigger.buildCacheKey(triggerName.getUnquotedName().get(), (TableCacheKey) targetTable.getCacheKey()));
-		if (already != null)
-			throw new SchemaException(new ErrorInfo(DVEErrors.TRG_ALREADY_EXISTS));
+		if (already != null) {
+			throw new SchemaException(new ErrorInfo(AvailableErrors.TRG_ALREADY_EXISTS));
+		} else if (((triggerType == TriggerEvent.UPDATE) || (triggerType == TriggerEvent.DELETE))
+				&& !targetTable.hasUniqueKey(pc)) {
+			final String targetTableName = targetTable.getName().getUnquotedName().get();
+			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_UNIQUE_KEY_ON_TRG_TARGET, targetTableName));
+		}
 		
     	String origStmt = getInputSQL();
     	int l = triggerToken.getCharPositionInLine();

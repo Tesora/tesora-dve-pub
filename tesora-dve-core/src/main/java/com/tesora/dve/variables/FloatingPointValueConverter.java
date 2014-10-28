@@ -21,7 +21,7 @@ package com.tesora.dve.variables;
  * #L%
  */
 
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaException;
@@ -37,7 +37,7 @@ public class FloatingPointValueConverter extends ValueMetadata<Double> {
 		try {
 			return Double.valueOf(in);
 		} catch (final NumberFormatException nfe) {
-			throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_TYPE_FOR_VARIABLE, varName));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.WRONG_TYPE_FOR_VARIABLE, varName));
 		}
 	}
 

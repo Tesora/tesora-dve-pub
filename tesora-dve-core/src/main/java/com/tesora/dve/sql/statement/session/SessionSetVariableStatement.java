@@ -29,7 +29,7 @@ import java.util.List;
 
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepFilterOperation.OperationFilter;
@@ -190,7 +190,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 				final VariableHandler<?> vh = vm.lookup(variableName);
 				if ((vh != null) && vh.getMetadata().isNumeric()
 						&& PEStringUtils.isQuoted(String.valueOf(sve.getVariableExpr()))) {
-					throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_TYPE_FOR_VARIABLE, variableName));
+					throw new SchemaException(new ErrorInfo(AvailableErrors.WRONG_TYPE_FOR_VARIABLE, variableName));
 				}
 			}
 			es.append(new SetVariableExecutionStep(vi.getScope(), variableName, nva, pc.getPersistentGroup()));

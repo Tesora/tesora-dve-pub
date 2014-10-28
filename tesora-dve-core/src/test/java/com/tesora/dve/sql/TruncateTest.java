@@ -133,8 +133,7 @@ public class TruncateTest extends SchemaMirrorTest {
 				public void test() throws Throwable {
 					connection.execute("truncate table v");
 				}
-			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
-						String.format("Table '%s.%s' doesn't exist", dbName, "v"));
+			}.assertSqlError(SQLException.class, MySQLErrors.missingTableFormatter, dbName, "v");
 			
 			testTableTruncate(connection, dbName, "t", 3);
 		} finally {

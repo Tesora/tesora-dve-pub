@@ -642,6 +642,10 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		return null;
 	}
 	
+	public boolean hasUniqueKey(SchemaContext sc) {
+		return (getUniqueKey(sc) != null);
+	}
+
 	public boolean isPrimaryKeyPart(SchemaContext sc, PEColumn c) {
 		checkLoaded(sc);
 		if (pk == null) return false;

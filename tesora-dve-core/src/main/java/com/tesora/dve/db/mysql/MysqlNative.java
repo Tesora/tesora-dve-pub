@@ -39,7 +39,7 @@ import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.portal.protocol.MSPAuthenticateV10MessageMessage;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -446,14 +446,14 @@ public class MysqlNative extends DBNative {
 	@Override
 	public void assertValidCharacterSet(String value) throws PEException {
 		if (!getSupportedCharSets().isCompatibleCharacterSet(value)) {
-			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_CHARACTER_SET, value));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.UNKNOWN_CHARACTER_SET, value));
 		}
 	}
 
     @Override
     public void assertValidCollation(String value) throws PEException {
 		if (!getSupportedCollations().isCompatibleCollation(value)) {
-			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_COLLATION, value));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.UNKNOWN_COLLATION, value));
 		}
     }
 

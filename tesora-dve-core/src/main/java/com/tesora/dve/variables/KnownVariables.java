@@ -35,9 +35,8 @@ import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.mysql.MySQLTransactionIsolation;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
-import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.server.connectionmanager.ConnectionSemaphore;
@@ -392,7 +391,7 @@ public class KnownVariables implements VariableConstants {
 					CHARACTER_SET_CONNECTION.setGlobalValue(conn, parentCharSetValue);
 				}
 			} else {
-				throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_COLLATION, value));
+				throw new SchemaException(new ErrorInfo(AvailableErrors.UNKNOWN_COLLATION, value));
 			}
 		}
 
@@ -407,7 +406,7 @@ public class KnownVariables implements VariableConstants {
 					CHARACTER_SET_CONNECTION.setSessionValue(conn, parentCharSetValue);
 				}
 			} else {
-				throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_COLLATION, value));
+				throw new SchemaException(new ErrorInfo(AvailableErrors.UNKNOWN_COLLATION, value));
 			}
 		}
 	};
@@ -429,7 +428,7 @@ public class KnownVariables implements VariableConstants {
 					COLLATION_CONNECTION.setGlobalValue(conn, defaultCollationValue);
 				}
 			} else {
-				throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_CHARACTER_SET, value));
+				throw new SchemaException(new ErrorInfo(AvailableErrors.UNKNOWN_CHARACTER_SET, value));
 			}
 		}
 
@@ -444,7 +443,7 @@ public class KnownVariables implements VariableConstants {
 					COLLATION_CONNECTION.setSessionValue(conn, defaultCollationValue);
 				}
 			} else {
-				throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_CHARACTER_SET, value));
+				throw new SchemaException(new ErrorInfo(AvailableErrors.UNKNOWN_CHARACTER_SET, value));
 			}
 		}
 		

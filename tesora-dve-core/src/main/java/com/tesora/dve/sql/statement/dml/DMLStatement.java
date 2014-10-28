@@ -32,7 +32,7 @@ import java.util.Set;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -247,7 +247,7 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 		} catch (Throwable t) {
 			if (t instanceof SchemaException) {
 				SchemaException se = (SchemaException) t;
-				if (se.getErrorInfo().getCode() != DVEErrors.INTERNAL)
+				if (se.getErrorInfo().getCode() != AvailableErrors.INTERNAL)
 					throw se;
 			}
 			// see if we can emit something useful here

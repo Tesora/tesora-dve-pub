@@ -44,6 +44,7 @@ import com.tesora.dve.common.catalog.FKMode;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.mysql.MysqlNativeTypeCatalog;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PESQLException;
@@ -123,7 +124,7 @@ public class TestCreates extends SchemaTest {
 			public void test() throws Throwable {
 				rootConnection.execute("create table uncreatable (`id` int, `funding` enum ('bankrupt')) static distribute on (`funding`)");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Invalid distribution column type: enum('bankrupt')");
 	}
 	
@@ -254,7 +255,7 @@ public class TestCreates extends SchemaTest {
 			public void test() throws Throwable {
 				rootConnection.execute("create database mtdb default persistent group pg using template " + TemplateMode.OPTIONAL);
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Database mtdb already exists");
 	}
 

@@ -32,7 +32,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tesora.dve.errmap.MySQLErrors;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
@@ -155,7 +155,7 @@ public class TableMaintenanceTest extends SchemaTest {
 					};
 
 					if (shouldFail) {
-						tester.assertError(SQLException.class, MySQLErrors.internalFormatter,
+						tester.assertSqlError(SQLException.class, InternalErrors.internalFormatter,
 								"Internal error: Table 'c' in maintenance command is not in Persistent Group 'checkg'");
 					} else {
 						tester.test();

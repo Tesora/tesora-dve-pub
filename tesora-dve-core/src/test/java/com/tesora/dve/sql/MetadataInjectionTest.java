@@ -34,7 +34,7 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.distribution.RangeDistributionModel;
-import com.tesora.dve.errmap.MySQLErrors;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.template.TemplateBuilder;
 import com.tesora.dve.sql.template.jaxb.FkModeType;
@@ -110,7 +110,7 @@ public class MetadataInjectionTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("create table `titles` (`id` int auto_increment, `name` varchar(50))");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: No matching template found for table `titles`");
 
 		conn.execute("drop database mitdb");
@@ -129,7 +129,7 @@ public class MetadataInjectionTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("create table `laws` (`id` int auto_increment, `law` longtext)");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: No such range from template 'mit' on storage group mitg: longrange");
 		
 		conn.execute("drop database mitdb");

@@ -126,7 +126,6 @@ public class DBCTest extends PETest {
 			public void test() throws Throwable {
 				conn.executeUpdate("INSERT INTO foo VALUES (1)");
 			}
-		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter,
-					"No database selected");
+		}.assertSqlError(SQLException.class, MySQLErrors.missingDatabaseFormatter);
 	}
 }

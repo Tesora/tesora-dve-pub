@@ -26,6 +26,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.PEDDL;
@@ -109,7 +110,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("insert into bt values (3, 'three')");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter, errorMessage);
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter, errorMessage);
 		conn.disconnect();
 		conn.connect();
 		conn.execute("use " + testDDL.getDatabaseName());
@@ -120,7 +121,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("insert into bt values (3, 'three')");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter, errorMessage);
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter, errorMessage);
 	}
 	
 	@Test
@@ -150,7 +151,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("drop container testcont");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Unable to drop container testcont due to existing tables");
 		// I shouldn't be able to drop the base table out of the container if the container has other nonbase tables
 		// this is because if I could, then I could no longer access those tables. 
@@ -159,7 +160,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("drop table bt");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Unable to drop table `bt` because it is the base table to container testcont which is not empty");
 		conn.execute("drop table A");
 		conn.execute("drop table B");
@@ -175,7 +176,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("drop range cont_range");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Unable to drop range cont_range because used by container testcont");
 	}
 	
@@ -197,7 +198,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("insert into A values (1,'one')");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Inserts into table `A` for container testcont must be done when in a specific container context");
 		// shouldn't be able to insert into CMT with nonglobal context specified
 		conn.execute("using container testcont (global)");
@@ -206,7 +207,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("insert into A values (1,'one')");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Inserts into table `A` for container testcont must be done when in a specific container context");
 	}
 	
@@ -223,7 +224,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("drop persistent group " + testDDL.getPersistentGroup().getName());
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Unable to drop persistent group checkg because used by container droptest");
 	}
 	
@@ -240,7 +241,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("alter table bt drop junk");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Illegal alter on container base table `bt` discriminant column `junk`");
 		conn.execute("alter table bt alter column `unused` set default 'deadbeef'");
 
@@ -250,7 +251,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("update bt set id = 20 where unused = 'whatever'");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.invalidDiscriminantUpdateFormatter,
+		}.assertError(SchemaException.class, InternalErrors.invalidDiscriminantUpdateFormatter,
 					"id","bt");
 		// this should work
 		conn.execute("update bt set unused = 'whatever' where id = 1");
@@ -262,7 +263,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("delete from bt where unused = 'whatever'");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.invalidContainerDeleteFormatter,
+		}.assertError(SchemaException.class, InternalErrors.invalidContainerDeleteFormatter,
 					"bt");
 		// this does work, however
 		conn.execute("delete from bt where id = 2 and junk = 'two'");
@@ -290,7 +291,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("create table C (`id` int, `sid` int, primary key (id), foreign key (sid) references B (id)) random distribute");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Invalid foreign key C.C_ibfk_1: table C is not colocated with B");
 		conn.execute("set foreign_key_checks = 0");
 		conn.execute("create table D (`id` int, `sid` int, primary key (id), foreign key tfk (sid) references E (id)) container distribute testcont");
@@ -313,7 +314,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("create table E (`id` int, `junk` varchar(32), primary key (`id`)) random distribute");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Invalid foreign key D.D_ibfk_1: table D is not colocated with E");
 		conn.execute("create table E (`id` int, `junk` varchar(32), primary key (`id`)) container distribute testcont");
 		conn.assertResults("select * from information_schema.referential_constraints",results);
@@ -375,7 +376,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("create table b (id int, col2 varchar(10)) discriminate on (id) using container testcont");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Cannot set table 'b' as a base table because container 'testcont' already has a base table.");
 	}
 
@@ -396,7 +397,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("using container testcont (global, junk='global', id=1)");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: GLOBAL context cannot be specified with container discriminant.");
 
 		// cannot specify GLOBAL context and discriminators
@@ -405,7 +406,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("using container testcont (global, junk='global', null, id=1)");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: GLOBAL context cannot be specified with container discriminant.");
 		
 		// cannot specify NULL context and discriminators
@@ -414,7 +415,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("using container testcont (null, junk='global', id=1)");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: NULL context cannot be specified with container discriminant.");
 		
 		// cannot specify NULL context and discriminators
@@ -423,7 +424,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("using container testcont (junk='global', null, global, id=1)");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: NULL context cannot be specified with container discriminant.");
 	}
 

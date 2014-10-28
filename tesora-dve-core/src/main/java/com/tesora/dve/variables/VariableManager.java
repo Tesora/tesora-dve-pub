@@ -30,7 +30,7 @@ import java.util.Map;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.VariableConfig;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedException;
@@ -95,7 +95,7 @@ public class VariableManager {
 			boolean verbose = false;
 			if (src != null) 
 				verbose = KnownVariables.ERROR_MIGRATOR.getGlobalValue(src);
-			throw new PEMappedException(new ErrorInfo(DVEErrors.UNKNOWN_SYS_VAR,name),verbose);
+			throw new PEMappedException(new ErrorInfo(AvailableErrors.UNKNOWN_SYS_VAR,name),verbose);
 		}
 		return vh;		
 	}

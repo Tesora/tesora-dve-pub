@@ -247,7 +247,7 @@ public class SchemaTest extends PETest {
 		} catch (SQLException se) {
 			// re.printStackTrace();
 			// ignore: reasons: the user doesn't exist, or the user exists on some but not all sites
-			ExpectedSqlErrorTester.assertSQLException(se, MySQLErrors.unknownUserFormatter,
+			ExpectedSqlErrorTester.assertSqlException(se, MySQLErrors.unknownUserFormatter,
 					"Operation DROP USER failed for " + accessSpec);
 		} catch (PEException pe) {
 			// re.printStackTrace();
