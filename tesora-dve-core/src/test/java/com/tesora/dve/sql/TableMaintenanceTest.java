@@ -156,7 +156,7 @@ public class TableMaintenanceTest extends SchemaTest {
 
 					if (shouldFail) {
 						tester.assertSqlError(SQLException.class, InternalErrors.internalFormatter,
-								"Internal error: Table 'c' in maintenance command is not in Persistent Group 'checkg'");
+								"Table 'c' in maintenance command is not in Persistent Group 'checkg'");
 					} else {
 						tester.test();
 					}

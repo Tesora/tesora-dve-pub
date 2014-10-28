@@ -227,8 +227,7 @@ public class TemporaryTableTest extends SchemaTest {
 				public void test() throws Throwable {
 					conn.execute("drop temporary table targ"); // should fail - doesn't exist
 				}
-			}.assertSqlError(SQLException.class, MySQLErrors.unknownTableFormatter,
-						"Unknown table 'targ'");
+			}.assertSqlError(SQLException.class, MySQLErrors.unknownTableFormatter, "targ");
 			conn.execute("drop table targ"); // succeeds
 			conn.assertResults("show tables",br());
 			
