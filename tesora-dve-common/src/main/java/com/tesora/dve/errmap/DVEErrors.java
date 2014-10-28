@@ -78,6 +78,10 @@ public class DVEErrors {
 	public static final OneParamErrorCode<String> WRONG_TYPE_FOR_VARIABLE =
 			new OneParamErrorCode<String>("WRONG_TYPE_FOR_VARIABLE", false);
 
+	// trigger related errors
+	public static final ZeroParamErrorCode TRG_ALREADY_EXISTS = new ZeroParamErrorCode("TRG_ALREADY_EXISTS", false);
+	public static final ZeroParamErrorCode TRG_DOES_NOT_EXIST = new ZeroParamErrorCode("TRG_DOES_NOT_EXIST", false);
+
 	public static final ErrorCode[] universe = new ErrorCode[] {
 		TABLE_DNE,
 		COLUMN_DNE,
@@ -94,6 +98,8 @@ public class DVEErrors {
 		UNKNOWN_COLLATION,
 		WRONG_VALUE_FOR_VARIABLE,
 		WRONG_TYPE_FOR_VARIABLE,
+		TRG_ALREADY_EXISTS,
+		TRG_DOES_NOT_EXIST,
 		
 		INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
 		INVALID_CONTAINER_DELETE,

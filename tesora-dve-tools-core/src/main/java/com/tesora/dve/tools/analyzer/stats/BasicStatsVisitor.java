@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.Stack;
 import java.util.TreeSet;
@@ -139,6 +140,11 @@ public class BasicStatsVisitor implements StatsVisitor {
 	}
 
 	@Override
+	public void onIdentColumnTuple(Set<Column<?>> ct, int freq) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
 	public void onJoin(EquijoinInfo joinInfo, int freq) {
 		getStats(joinInfo.getLHS()).takeJoin(joinInfo, freq);
 		getStats(joinInfo.getRHS()).takeJoin(joinInfo, freq);
@@ -164,6 +170,11 @@ public class BasicStatsVisitor implements StatsVisitor {
 	@Override
 	public void onGroupBy(Column<?> c, int freq) {
 		getStats(c.getTable()).takeGroupBy(c, freq);
+	}
+
+	@Override
+	public void onGroupByColumnTuple(Set<Column<?>> ct, int freq) {
+		// TODO Auto-generated method stub
 	}
 
 	@Override
@@ -392,4 +403,5 @@ public class BasicStatsVisitor implements StatsVisitor {
 			return out;
 		}
 	}
+
 }

@@ -127,6 +127,19 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 		return pep;
 	}
 	
+	public static PETrigger lookup(final SchemaContext sc, final Name triggerName, final Database<?> parentSchema) {
+		return lookup(sc, triggerName.getUnqualified().get(), parentSchema.getName().get());
+	}
+
+	private static PETrigger lookup(final SchemaContext sc, final String triggerName, final String parentSchemaName) {
+		final UserTrigger ut = sc.getCatalog().findTrigger(triggerName, parentSchemaName);
+		if (ut != null) {
+			return PETrigger.load(ut, sc, null);
+		}
+
+		return null;
+	}
+
 	private PETrigger(UserTrigger ut, SchemaContext sc, PETable onTable) {
 		super(buildCacheKey(ut.getName(),
 				(TableCacheKey)(onTable == null ? PETable.getTableKey(ut.getTable()) : onTable.getCacheKey())));
@@ -243,10 +256,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 
 		@Override
 		public PETrigger load(SchemaContext sc) {
-			UserTrigger ut = sc.getCatalog().findTrigger(triggerName, targetTable.getDatabaseName());
-			if (ut == null)
-				return null;
-			return PETrigger.load(ut, sc, null);
+			return lookup(sc, triggerName, targetTable.getDatabaseName());
 		}
 
 		@Override

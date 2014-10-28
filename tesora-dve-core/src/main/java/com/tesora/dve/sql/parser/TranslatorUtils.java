@@ -227,6 +227,7 @@ import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementTraits;
+import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.ddl.AddGlobalVariableStatement;
 import com.tesora.dve.sql.statement.ddl.AddStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.AlterDatabaseStatement;
@@ -262,6 +263,7 @@ import com.tesora.dve.sql.statement.ddl.PEDropStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropStorageGroupStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropStorageSiteStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropTableStatement;
+import com.tesora.dve.sql.statement.ddl.PEDropTriggerStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropUserStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropViewStatement;
 import com.tesora.dve.sql.statement.ddl.PEGroupProviderDDLStatement;
@@ -398,14 +400,27 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return ti.getAbstractTable();
 	}
 
-	public static UnqualifiedName getDatabaseNameForTable(final SchemaContext sc, final Name tableName) {
-		return (tableName.isQualified()) ? ((QualifiedName) tableName).getNamespace() : getCurrentDatabaseName(sc);
+	public static UnqualifiedName getDatabaseNameForObject(final SchemaContext sc, final Name objectName) {
+		return getDatabaseForObject(sc, objectName).getName().getUnqualified();
 	}
 
-	public static UnqualifiedName getCurrentDatabaseName(final SchemaContext sc) {
-		final Database<?> currentDatabase = sc.getCurrentDatabase();
+	public static Database<?> getDatabaseForObject(final SchemaContext sc, final Name objectName) throws SchemaException {
+		if (objectName.isQualified()) {
+			final UnqualifiedName parentSchemaName = ((QualifiedName) objectName).getNamespace();
+			final Database<?> parentSchema = sc.findDatabase(parentSchemaName);
+			if (parentSchema != null) {
+				return parentSchema;
+			}
 
-		return (currentDatabase != null) ? currentDatabase.getName().getUnqualified() : null;
+			throw new SchemaException(new ErrorInfo(DVEErrors.UNKNOWN_DATABASE, parentSchemaName.get()));
+		}
+
+		final Database<?> currentSchema = sc.getCurrentDatabase();
+		if (currentSchema != null) {
+			return currentSchema;
+		}
+
+		throw new SchemaException(new ErrorInfo(DVEErrors.NO_DATABASE_SELECTED));
 	}
 
 	public TranslatorUtils(ParserOptions opts, SchemaContext pc, InputState state) {
@@ -4234,6 +4249,25 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new PEDropViewStatement(exists.asView(),ifExists);
 	}
 	
+	public Statement buildDropTriggerStatement(Name triggerName, boolean ifExists) {
+		try {
+			final Database<?> parentSchema = getDatabaseForObject(pc, triggerName);
+			final PETrigger trigger = PETrigger.lookup(pc, triggerName, parentSchema);
+			if (trigger != null) {
+				return new PEDropTriggerStatement(trigger, ifExists);
+			} else if (Boolean.TRUE.equals(ifExists)) {
+				return new EmptyStatement("drop nonexistent trigger", StatementType.DROP_TRIGGER);
+			}
+		} catch (final SchemaException e) {
+			final ErrorInfo error = e.getErrorInfo();
+			if (!DVEErrors.UNKNOWN_DATABASE.equals(error.getCode())) {
+				throw e;
+			}
+		}
+
+		throw new SchemaException(new ErrorInfo(DVEErrors.TRG_DOES_NOT_EXIST));
+	}
+
 	public Statement buildPreparePreparedStatement(Name pstmtName, String stmt) {
 		return new PreparePStmtStatement(pstmtName.getUnqualified(), PEStringUtils.dequote(stmt));
 	}
@@ -4319,8 +4353,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			PETable targetTable, Statement body,Token triggerToken) {
 		PETrigger already = pc.findTrigger(PETrigger.buildCacheKey(triggerName.getUnquotedName().get(), (TableCacheKey) targetTable.getCacheKey()));
 		if (already != null)
-			// todo: come back and do the right err msg
-			throw new SchemaException(Pass.SECOND,"Trigger " + triggerName + " already exists");
+			throw new SchemaException(new ErrorInfo(DVEErrors.TRG_ALREADY_EXISTS));
 		
     	String origStmt = getInputSQL();
     	int l = triggerToken.getCharPositionInLine();
