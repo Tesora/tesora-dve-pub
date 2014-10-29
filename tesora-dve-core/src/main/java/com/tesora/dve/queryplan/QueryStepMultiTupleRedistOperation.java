@@ -189,10 +189,12 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 	 * @returns number of rows transferred
 	 */
 	@Override
-	public void executeSelf(final SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		
 		if (targetGroup == null)
 			throw new PEException("QueryStepRedistOperation not properly initialized (must call toTempTable or toUserTable)");
+		
+		final SSConnection ssCon = estate.getConnection();
 		
 		// TODO: we should have a RedistributeRequest which makes the
 		// workers do the redistribution, saving a hop of the data
@@ -223,7 +225,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			targetWG = allocatedWG;
 
 			doRedistribution(ssCon, resultConsumer, /* useSystemTempTable */ targetGroup.isTemporaryGroup(), tempTableName,
-					sourceWG, database, sourceDistModel, command,
+					sourceWG, database, sourceDistModel, bindCommand(estate,command),
 					specifiedDistKeyValue, distColumns, distributeTempTableLike,
 					targetWG, targetUserDatabase, targetDistModel, targetTable, 
 					tableHints, tempHints, insertOptions, allocatedWG, /* cleanupWG */ null,

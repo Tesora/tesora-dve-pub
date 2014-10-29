@@ -83,16 +83,18 @@ public class QueryStepInsertByKeyOperation extends QueryStepDMLOperation {
 	 * is executed to actually insert the row.
 	 * */
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		beginExecution();
-		executeInsertByKey(ssCon, wg, resultConsumer, database, command, distValue);
+		executeInsertByKey(estate, wg, resultConsumer, database, bindCommand(estate,command), distValue);
 		endExecution(resultConsumer.getUpdateCount());
 	}
 
-	public static void executeInsertByKey(SSConnection ssCon,
+	public static void executeInsertByKey(ExecutionState estate,
 			WorkerGroup wg, DBResultConsumer resultConsumer, PersistentDatabase database, SQLCommand command, 
 			IKeyValue distValue) throws Throwable {
 		DistributionModel dm = distValue.getDistributionModel();
+		
+		SSConnection ssCon = estate.getConnection();
 		
 		WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).onDatabase(database);
 		WorkerGroup.MappingSolution mappingSolution = dm.mapKeyForInsert(ssCon.getCatalogDAO(), wg.getGroup(), distValue);

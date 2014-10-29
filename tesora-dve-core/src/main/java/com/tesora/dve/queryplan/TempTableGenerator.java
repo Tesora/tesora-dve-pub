@@ -53,7 +53,9 @@ public class TempTableGenerator {
 			PersistentDatabase database, ColumnSet metadata, DistributionModel tempDist) throws PEException {
 		UserTable theTable = createTableFromMetadata(targetWG, tempHints, tempTableName, database, metadata, tempDist); 
 //		System.out.println(tempTable.getName() + ".useSystemTempTable = " + useSystemTempTable + " on " + targetWG);
-		String sqlCommand = buildCreateTableStatement(theTable,useSystemTempTable);
+		boolean systemTempTable = useSystemTempTable;
+		
+		String sqlCommand = buildCreateTableStatement(theTable,systemTempTable);
 //		System.out.println(sqlCommand);
 		WorkerRequest req = 
 				new WorkerExecuteRequest(
@@ -74,7 +76,7 @@ public class TempTableGenerator {
 		}
 
 		try {
-			if (!useSystemTempTable || suppressTempDeletMode) {
+			if (!systemTempTable || suppressTempDeletMode) {
 				WorkerRequest preCleanupReq = 
 						new WorkerExecuteRequest(
 								ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, tempTableName, true)

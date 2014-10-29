@@ -58,8 +58,10 @@ public class QueryStepUpdateByKeyOperation extends QueryStepDMLOperation {
 	}
 
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		DistributionModel dm = distValue.getDistributionModel();
+		
+		SSConnection ssCon = estate.getConnection();
 		
 		WorkerGroup.MappingSolution mappingSolution = dm.mapKeyForUpdate(ssCon.getCatalogDAO(), wg.getGroup(), distValue);
 
@@ -67,7 +69,7 @@ public class QueryStepUpdateByKeyOperation extends QueryStepDMLOperation {
 				&& "5.6".equals(Singletons.require(HostService.class).getDveVersion(ssCon));
 
 		WorkerExecuteRequest req =
-				new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).
+				new WorkerExecuteRequest(ssCon.getTransactionalContext(), bindCommand(estate,command)).
 				onDatabase(database).withLockRecovery(savepointRequired);
 		
 		resultConsumer.setRowAdjuster(dm.getUpdateAdjuster());

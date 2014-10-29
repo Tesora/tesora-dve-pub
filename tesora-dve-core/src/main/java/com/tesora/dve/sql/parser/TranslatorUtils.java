@@ -70,10 +70,10 @@ import com.tesora.dve.errmap.DVEErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockManager;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ProjectionInfo;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.UserXid;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -2862,7 +2862,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 
 							@Override
-							public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+							public void execute(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 									throws Throwable {
 								try {
 									// Servers should have been started with a log4j system property

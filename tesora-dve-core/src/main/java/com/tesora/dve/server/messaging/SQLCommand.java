@@ -34,6 +34,7 @@ import java.util.regex.Pattern;
 
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.GenericSQLCommand.CommandFragment;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
@@ -188,12 +189,21 @@ public class SQLCommand implements Serializable {
 
 	public SQLCommand getResolvedCommand(final Worker worker) {
 		final SQLCommand newCommand = new SQLCommand(sql.resolveLateEntries(worker));
+		return copyFields(newCommand);
+	}
+
+	public SQLCommand getLateResolvedCommand(ExecutionState estate) {
+		final SQLCommand newCommand = new SQLCommand(sql.resolveLateConstants(estate.getBoundConstants()));
+		return copyFields(newCommand);
+	}
+	
+	private SQLCommand copyFields(SQLCommand newCommand) {
 		newCommand.parameters = parameters;
 		newCommand.projection = projection;
 		newCommand.referenceTime = referenceTime;
 		return newCommand;
 	}
-
+	
 	public int getWidth() {
 		return width;
 	}

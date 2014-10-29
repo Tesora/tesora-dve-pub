@@ -63,20 +63,24 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 	}
 	
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		resultConsumer.setResultsLimit(getResultsLimit());
 
-        final boolean savepointRequired = ssCon.getTransId() != null && command.isForUpdateStatement()
+		SSConnection ssCon = estate.getConnection();
+		
+		SQLCommand bound = bindCommand(estate,command);
+		
+        final boolean savepointRequired = ssCon.getTransId() != null && bound.isForUpdateStatement()
 				&& "5.6".equals(Singletons.require(HostService.class).getDveVersion(ssCon));
 		
 		WorkerExecuteRequest req =
-				new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).
+				new WorkerExecuteRequest(ssCon.getTransactionalContext(), bound).
 				onDatabase(database).withLockRecovery(savepointRequired);
 		
 		WorkerGroup.MappingSolution mappingSolution = 
 				distValue.getDistributionModel().mapKeyForQuery(
 						ssCon.getCatalogDAO(), wg.getGroup(), distValue,
-						command.isForUpdateStatement() ? DistKeyOpType.SELECT_FOR_UPDATE : DistKeyOpType.QUERY);
+						bound.isForUpdateStatement() ? DistKeyOpType.SELECT_FOR_UPDATE : DistKeyOpType.QUERY);
 		if (logger.isDebugEnabled())
 			logger.debug(this.getClass().getSimpleName() + " maps dv " + distValue + " to " + mappingSolution);
 		

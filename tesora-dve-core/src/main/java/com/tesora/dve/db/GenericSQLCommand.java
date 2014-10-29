@@ -648,6 +648,25 @@ public class GenericSQLCommand {
 		return new GenericSQLCommand(this.encoding, resolvedFragments, this.type, this.isUpdate, this.hasLimit);
 	}
 
+	public GenericSQLCommand resolveLateConstants(LateBoundConstants lbc) {
+		if (lbc.isEmpty())
+			return this;
+		if (!this.commandFragments.hasIndexEntries()) {
+			return this;
+		}
+
+		final FragmentTable resolvedFragments = new FragmentTable(this.commandFragments);
+		for (final OffsetEntry oe : resolvedFragments.viewIndexEntries()) {
+			if (oe.getKind() == EntryKind.LATE_CONSTANT) {
+				final LateBindingConstantOffsetEntry lbcoe = (LateBindingConstantOffsetEntry) oe;
+				String val = lbc.getConstantValue(lbcoe.getExpression().getPosition());
+				resolvedFragments.replace(oe, new CommandFragment(this.encoding,val));
+			} 		
+		}
+
+		return new GenericSQLCommand(this.encoding, resolvedFragments, this.type, this.isUpdate, this.hasLimit);		
+	}
+	
 	/**
 	 * Resolve the command as String for display/logging purposes.
 	 * 

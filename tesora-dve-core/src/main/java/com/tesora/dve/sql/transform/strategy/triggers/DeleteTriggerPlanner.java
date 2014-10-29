@@ -77,14 +77,7 @@ public class DeleteTriggerPlanner extends TriggerPlanner {
 
 		PETable subject = triggered.get(0);
 		
-		TableKey deleteKey = null;
-		for(TableKey tk : ds.getDerivedInfo().getLocalTableKeys()) {
-			if (tk.getAbstractTable().asTable() == subject) {
-				deleteKey = tk;
-				break;
-			}
-		}
-
+		TableKey deleteKey = deleteTabs.get(0);
 		
 		PETableTriggerPlanningEventInfo triggerInfo = (PETableTriggerPlanningEventInfo) subject.getTriggers(context.getContext(), TriggerEvent.DELETE);
 		

@@ -49,6 +49,26 @@ public class TriggerTableKey extends TableKey {
 			instance = new TriggerTableInstance(backingTable, node, before);
 		return instance;
 	}
-	
 
+	@Override
+	protected int computeHashCode() {
+		final int prime = 31;
+		int result = super.computeHashCode();
+		result = prime * result + (before ? 1231 : 1237);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof TriggerTableKey) {
+			TriggerTableKey otk = (TriggerTableKey) obj;
+			if (!super.equals(otk))
+				return false;
+			return before == otk.before;
+		}
+		return false;
+	}
+	
+	
+	
 }

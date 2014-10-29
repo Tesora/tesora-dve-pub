@@ -145,7 +145,7 @@ public class QueryPlan implements LogSubject {
 		beforeLogger.end();
         preStep.end();
 		try {
-			root.execute(ssCon1, resultConsumer);
+			root.execute(new ExecutionState(ssCon1), resultConsumer);
 			if (trueUpdateCount != null) 
 				resultConsumer.setNumRowsAffected(trueUpdateCount);
 			// for certain operations we have to accumulate the update count from dependent steps (i.e. REPLACE INTO)

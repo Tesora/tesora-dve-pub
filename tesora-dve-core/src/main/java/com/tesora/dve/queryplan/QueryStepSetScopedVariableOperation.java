@@ -58,8 +58,9 @@ public class QueryStepSetScopedVariableOperation extends
 	}
 	
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
+		SSConnection ssCon = estate.getConnection();
 		String nv = accessor.getValue(ssCon, wg);
 		if (VariableScopeKind.GLOBAL == scope.getKind()) {
 			Singletons.require(HostService.class).getVariableManager().lookupMustExist(ssCon,variableName).setGlobalValue(ssCon,nv);

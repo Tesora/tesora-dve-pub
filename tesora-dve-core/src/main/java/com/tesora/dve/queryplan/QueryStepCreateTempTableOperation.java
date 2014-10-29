@@ -54,9 +54,10 @@ public class QueryStepCreateTempTableOperation extends QueryStepOperation {
 	}
 	
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg,
+	public void executeSelf(ExecutionState estate, WorkerGroup wg,
 			DBResultConsumer results) throws Throwable {
 		String sqlCommand = theTable.getCreateTableStmt(true);
+		SSConnection ssCon = estate.getConnection();
 		WorkerRequest req = new WorkerExecuteRequest(
 				ssCon.getNonTransactionalContext(), new SQLCommand(ssCon, sqlCommand))
 				.onDatabase(theTable.getDatabase()).forDDL();

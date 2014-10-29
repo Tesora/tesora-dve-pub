@@ -28,7 +28,6 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.WorkerCreateDatabaseRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
@@ -53,11 +52,11 @@ public class QueryStepCreateDatabaseOperation extends QueryStepOperation {
 	 * @throws Throwable 
 	 */
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-		if (ssCon.hasActiveTransaction())
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		if (estate.hasActiveTransaction())
 			throw new PEException("Cannot execute DDL within active transaction: CREATE DATABASE " + newDatabase.getName());
 		
-		CatalogDAO c = ssCon.getCatalogDAO();
+		CatalogDAO c = estate.getCatalogDAO();
 		c.begin();
 		try {
 			QueryPlanner.invalidateCache(invalidate);
@@ -68,7 +67,7 @@ public class QueryStepCreateDatabaseOperation extends QueryStepOperation {
 			// registered to back out the DDL we are about to execute in the 
 			// event of a failure after the DDL is executed but before the txn is committed.
 
-			WorkerRequest req = new WorkerCreateDatabaseRequest(ssCon.getNonTransactionalContext(), newDatabase, newDatabase.getMultitenantMode().isMT());
+			WorkerRequest req = new WorkerCreateDatabaseRequest(estate.getNonTransactionalContext(), newDatabase, newDatabase.getMultitenantMode().isMT());
 			wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 			
 			c.commit();

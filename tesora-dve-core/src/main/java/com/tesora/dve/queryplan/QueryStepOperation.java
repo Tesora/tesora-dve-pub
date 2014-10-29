@@ -38,6 +38,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.GetWorkerRequest;
+import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.worker.WorkerGroup;
@@ -70,17 +71,18 @@ public abstract class QueryStepOperation implements LogSubject {
 		reqs.add(qso);
 	}
 
-	public void execute(SSConnection ssCon, DBResultConsumer resultConsumer) throws Throwable {
-		executeRequirements(ssCon);
-		executeOperation(ssCon,resultConsumer);
+	public void execute(ExecutionState state, DBResultConsumer resultConsumer) throws Throwable {
+		executeRequirements(state);
+		executeOperation(state,resultConsumer);
 	}
 	
-	final void executeRequirements(SSConnection ssCon) throws Throwable {
+	final void executeRequirements(ExecutionState estate) throws Throwable {
 		for(QueryStepOperation qso : reqs)
-			qso.execute(ssCon, DBEmptyTextResultConsumer.INSTANCE);
+			qso.execute(estate, DBEmptyTextResultConsumer.INSTANCE);
 	}
 
-	void executeOperation(SSConnection ssCon, DBResultConsumer resultConsumer) throws Throwable {
+	void executeOperation(ExecutionState execState, DBResultConsumer resultConsumer) throws Throwable {
+		SSConnection ssCon = execState.getConnection();
 		try {
 			ExecutionLogger beforeLogger = ssCon.getExecutionLogger().getNewLogger("BeforeStepExec");
 			WorkerGroup wg = null;
@@ -98,7 +100,7 @@ public abstract class QueryStepOperation implements LogSubject {
 					logger.debug("QueryStep executes " + toString());
 				slowQueryLogger = ssCon.getExecutionLogger().getNewLogger(this); 
 
-				executeSelf(ssCon, wg, resultConsumer);
+				executeSelf(execState, wg, resultConsumer);
 			} finally {
 				ExecutionLogger afterLogger = null;
 				try {
@@ -118,6 +120,9 @@ public abstract class QueryStepOperation implements LogSubject {
 		}
 	}
 
+	protected SQLCommand bindCommand(ExecutionState in, SQLCommand sqlc) {
+		return sqlc.getLateResolvedCommand(in);
+	}
 	
 	/**
 	 * Called by <b>QueryStep</b> to execute the operation.  Any results
@@ -131,7 +136,7 @@ public abstract class QueryStepOperation implements LogSubject {
 	 * @throws PEException
 	 * @throws Throwable 
 	 */
-	public abstract void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable;
+	public abstract void executeSelf(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable;
 	
 	public boolean requiresTransactionSelf() {
 		return true;

@@ -26,6 +26,7 @@ import java.util.List;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementDiscarder;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -66,13 +67,14 @@ public class PreparePStmtStatement extends PStmtStatement {
 		es.append(new TransientSessionExecutionStep(subes.getDatabase(),subes.getPEStorageGroup(),"", false, true, new AdhocOperation() {
 
 			@Override
-			public void execute(SSConnection ssCon, WorkerGroup wg,
+			public void execute(ExecutionState estate, WorkerGroup wg,
 					DBResultConsumer resultConsumer) throws Throwable {
 				// convert to a plan
+				SSConnection ssCon = estate.getConnection();
 				List<QueryStepOperation> steps = ep.schedule(new ExecutionPlanOptions(), ssCon, indep);
 				QueryStepOperation qso = steps.get(0);
 				MysqlPrepareStatementDiscarder discarder = new MysqlPrepareStatementDiscarder();
-				qso.executeSelf(ssCon, wg, discarder);
+				qso.executeSelf(estate, wg, discarder);
 				if (discarder.isSuccessful())
 					PlanCacheUtils.registerPreparedStatementPlan(indep, prepResult.getCachedPlan(),
 							prepResult.getOriginalSQL(), ssCon.getConnectionId(), pstmtId, false);

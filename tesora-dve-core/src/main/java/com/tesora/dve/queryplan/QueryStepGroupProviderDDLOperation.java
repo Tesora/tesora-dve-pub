@@ -48,7 +48,7 @@ public class QueryStepGroupProviderDDLOperation extends QueryStepDDLOperation {
 
 	// allow derived classes to step in
 	@Override
-	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+	protected void prepareAction(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		if (target == null) {
 			// we don't know if this particular site manager has ever been
 			// created before, so we're going to
@@ -63,7 +63,7 @@ public class QueryStepGroupProviderDDLOperation extends QueryStepDDLOperation {
 	}
 
 	@Override
-	protected void executeAction(SSConnection conn, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+	protected void executeAction(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		int rowcount = target.update(this.smc);
 		resultConsumer.setNumRowsAffected(rowcount);
 	}

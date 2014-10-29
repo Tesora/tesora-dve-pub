@@ -30,6 +30,7 @@ import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
@@ -258,10 +259,10 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		public void executeNested(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 			if (dml != null) {
 				for (QueryStepOperation qso : dml) {
-					qso.executeSelf(conn, wg, resultConsumer);
+					qso.executeSelf(execState, wg, resultConsumer);
 				}
 			}
 		}

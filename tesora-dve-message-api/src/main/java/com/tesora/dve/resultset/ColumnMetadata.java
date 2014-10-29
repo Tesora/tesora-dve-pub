@@ -250,6 +250,10 @@ public class ColumnMetadata {
 				dataType == Types.BINARY || dataType == Types.VARBINARY;
 	}
 	
+	public boolean isStringType() {
+		return dataType == Types.VARCHAR || dataType == Types.CHAR;
+	}
+	
 	public Boolean isKeyPart() {
 		return isPrimaryKey() || isUniqueKey() || isNonUniqueKey();
 	}

@@ -58,10 +58,12 @@ public class QueryStepMultiInsertByKeyOperation extends QueryStepDMLOperation {
 	}
 
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 
 		MultiMap<StorageSite, SQLCommand> mappedInserts = new MultiMap<StorageSite, SQLCommand>();
 
+		SSConnection ssCon = estate.getConnection();
+		
 		// note that all the key/cmd pairs in the insertList must be of the same DistributionModel
 		DistributionModel dm = insertList.get(0).getFirst().getDistributionModel();
 		for(Pair<IKeyValue, SQLCommand> keyCmd : insertList) {
@@ -71,7 +73,7 @@ public class QueryStepMultiInsertByKeyOperation extends QueryStepDMLOperation {
 			}
 			
 			WorkerGroup.MappingSolution mappingSolution = dm.mapKeyForInsert(ssCon.getCatalogDAO(), wg.getGroup(), keyCmd.getFirst());
-			mappedInserts.put(wg.resolveSite(mappingSolution.getSite()), keyCmd.getSecond());
+			mappedInserts.put(wg.resolveSite(mappingSolution.getSite()), bindCommand(estate,keyCmd.getSecond()));
 		}
 
 		WorkerRequest req = new WorkerMultiInsertRequest(ssCon.getTransactionalContext(), mappedInserts).onDatabase(database);

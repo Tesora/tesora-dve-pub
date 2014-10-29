@@ -39,6 +39,7 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepFilterOperation.OperationFilter;
 import com.tesora.dve.queryplan.QueryStepOperation;
@@ -462,14 +463,14 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		public void executeNested(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 			for (final QueryStepOperation qso : this.plan) {
-				qso.executeSelf(conn, wg, new MysqlTextResultCollector());
+				qso.executeSelf(estate, wg, new MysqlTextResultCollector());
 			}
 
 			// The metadata should have already been loaded, so update the
 			// catalog records.
-			final SchemaContext sc = SchemaContext.createContext(conn);
+			final SchemaContext sc = SchemaContext.createContext(estate.getConnection());
 			this.alterTargetTableStatement.getCatalogEntries(sc);
 			this.alterTargetTableStatement.getDeleteObjects(sc);
 		}
