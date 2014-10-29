@@ -94,14 +94,16 @@ public class TriggerTransformTest extends TransformTest {
 						)
 						.withExplain(new DMLExplainRecord(DMLExplainReason.TRIGGER_SRC_TABLE)),
 						new TriggerExpectedStep(group,
-						  "SELECT temp8.t10s0_7,temp8.litex,temp8.t10s1_9 FROM temp8",
-							bes(
-								new UpdateExpectedStep(
-									group,
-								  "UPDATE `subj` AS s",
-								  "SET s.`action` = _lbc1",
-								  "WHERE s.`id` = _lbc2"
-								)
+							new ProjectingExpectedStep(ExecutionType.SELECT,
+								null,
+							  "SELECT temp8.t10s0_7,temp8.litex,temp8.t10s1_9",
+							  "FROM temp8"
+							),
+							new UpdateExpectedStep(
+								group,
+							  "UPDATE `subj` AS s",
+							  "SET s.`action` = _lbc1",
+							  "WHERE s.`id` = _lbc2"
 							),
 						  null,
 							bes(
@@ -138,7 +140,7 @@ public class TriggerTransformTest extends TransformTest {
 								  "SELECT temp3.ri0_4 AS t5r0_5",
 								  "FROM temp3",
 								  "INNER JOIN temp1 ON temp3.ri0_4 = temp1.lt2_2",
-								  "WHERE _lbc0 like '%whatevs%'"
+								  "WHERE _lbc1 like '%whatevs%'"
 								)
 								.withExplain(new DMLExplainRecord(DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT)),
 								new UpdateExpectedStep(
@@ -208,14 +210,16 @@ public class TriggerTransformTest extends TransformTest {
 						)
 						.withExplain(new DMLExplainRecord(DMLExplainReason.TRIGGER_SRC_TABLE)),
 						new TriggerExpectedStep(group,
-						  "SELECT temp8.t10s0_7,temp8.t10s1_8 FROM temp8",
-							bes(
-								new DeleteExpectedStep(
-									group,
-								  "DELETE s",
-								  "FROM `subj` AS s",
-								  "WHERE s.`id` = _lbc1"
-								)
+							new ProjectingExpectedStep(ExecutionType.SELECT,
+								null,
+							  "SELECT temp8.t10s0_7,temp8.t10s1_8",
+							  "FROM temp8"
+							),
+							new DeleteExpectedStep(
+								group,
+							  "DELETE s",
+							  "FROM `subj` AS s",
+							  "WHERE s.`id` = _lbc1"
 							),
 						  null,
 							bes(
@@ -265,8 +269,21 @@ public class TriggerTransformTest extends TransformTest {
 					)
 					));
 
-
 		
 	}
 	
+	@Test
+	public void testNewAutoIncrementValueRewrite() throws Throwable {
+		SchemaContext db = buildSchema(TestName.MULTI,
+				"create table src (id int AUTO_INCREMENT, value int, primary key (id)) random distribute",
+				"create table no_ai_src (id int, value int, primary key (id)) random distribute",
+				"create trigger make_copy before update on src for each row "
+						+ "begin update no_ai_src set id = NEW.id, value = NEW.value; END");
+
+		String sql = "update src set value = 29";
+
+		PEStorageGroup group = getGroup(db);
+		stmtTest(db, sql, UpdateStatement.class, null);
+	}
+
 }

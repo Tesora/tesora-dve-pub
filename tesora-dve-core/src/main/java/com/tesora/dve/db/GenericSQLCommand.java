@@ -648,6 +648,25 @@ public class GenericSQLCommand {
 		return new GenericSQLCommand(this.encoding, resolvedFragments, this.type, this.isUpdate, this.hasLimit);
 	}
 
+	public GenericSQLCommand resolveLateConstants(LateBoundConstants lbc) {
+		if (lbc.isEmpty())
+			return this;
+		if (!this.commandFragments.hasIndexEntries()) {
+			return this;
+		}
+
+		final FragmentTable resolvedFragments = new FragmentTable(this.commandFragments);
+		for (final OffsetEntry oe : resolvedFragments.viewIndexEntries()) {
+			if (oe.getKind() == EntryKind.LATE_CONSTANT) {
+				final LateBindingConstantOffsetEntry lbcoe = (LateBindingConstantOffsetEntry) oe;
+				String val = lbc.getConstantValue(lbcoe.getExpression().getPosition());
+				resolvedFragments.replace(oe, new CommandFragment(this.encoding,val));
+			} 		
+		}
+
+		return new GenericSQLCommand(this.encoding, resolvedFragments, this.type, this.isUpdate, this.hasLimit);		
+	}
+	
 	/**
 	 * Resolve the command as String for display/logging purposes.
 	 * 
@@ -796,8 +815,6 @@ public class GenericSQLCommand {
 
 		public abstract EntryKind getKind();
 
-		//		public abstract OffsetEntry makeAdjusted(int newoff);
-
 		@Override
 		public String toString() {
 			return this.getKind().toString().concat(" (").concat(this.getToken()).concat(")");
@@ -817,11 +834,6 @@ public class GenericSQLCommand {
 		public EntryKind getKind() {
 			return EntryKind.LITERAL;
 		}
-
-		//		@Override
-		//		public OffsetEntry makeAdjusted(int newoff) {
-		//			return new LiteralOffsetEntry(newoff, getToken(), this.literal);
-		//		}
 
 		public ILiteralExpression getLiteral() {
 			return this.literal;
@@ -849,11 +861,6 @@ public class GenericSQLCommand {
 			return EntryKind.PRETTY;
 		}
 
-		//		@Override
-		//		public OffsetEntry makeAdjusted(int newoff) {
-		//			return new PrettyOffsetEntry(newoff, this.indent);
-		//		}
-
 	}
 
 	// two different kinds of parameters - those that we can just sub in
@@ -874,11 +881,6 @@ public class GenericSQLCommand {
 			return EntryKind.PARAMETER;
 		}
 
-		//		@Override
-		//		public OffsetEntry makeAdjusted(int newoff) {
-		//			return new ParameterOffsetEntry(newoff, getToken(), this.parameter);
-		//		}
-
 		public IParameter getParameter() {
 			return this.parameter;
 		}
@@ -896,11 +898,6 @@ public class GenericSQLCommand {
 			return EntryKind.DBNAME;
 		}
 
-		//		@Override
-		//		public OffsetEntry makeAdjusted(int newoff) {
-		//			return new LateResolveEntry(newoff, getToken());
-		//		}
-
 	}
 
 	public static class TempTableOffsetEntry extends OffsetEntry {
@@ -916,11 +913,6 @@ public class GenericSQLCommand {
 		public EntryKind getKind() {
 			return EntryKind.TEMPTABLE;
 		}
-
-		//		@Override
-		//		public OffsetEntry makeAdjusted(int newoff) {
-		//			return new TempTableOffsetEntry(newoff, getToken(), this.temp);
-		//		}
 
 		public TempTable getTempTable() {
 			return this.temp;
@@ -942,11 +934,6 @@ public class GenericSQLCommand {
 			return EntryKind.LATEVAR;
 		}
 
-		//		@Override
-		//		public OffsetEntry makeAdjusted(int newoff) {
-		//			return new LateResolvingVariableOffsetEntry(newoff, getToken(), this.expr);
-		//		}
-
 	}
 
 	public static class RandomSeedOffsetEntry extends LateResolveEntry {
@@ -966,11 +953,6 @@ public class GenericSQLCommand {
 		public EntryKind getKind() {
 			return EntryKind.RANDOM_SEED;
 		}
-
-		//		@Override
-		//		public OffsetEntry makeAdjusted(int newoff) {
-		//			return new RandomSeedOffsetEntry(newoff, getToken(), this.expr);
-		//		}
 
 	}
 

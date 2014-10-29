@@ -372,7 +372,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		} else if (hp instanceof TriggerExecutionStep) {
 			TriggerExecutionStep tes = (TriggerExecutionStep) hp;
 			buf.append(prefix).append("new TriggerExpectedStep(group,").append(PEConstants.LINE_SEPARATOR);
-			buf.append(prefix).append("  \"").append(tes.getRowQuery().getSQL(pc)).append("\",").append(PEConstants.LINE_SEPARATOR);
+			printExecutionStepVerify(pc,tes.getRowQuery(),nesting+1,true,buf);
 			printExecutionStepVerify(pc,tes.getActualStep(),nesting+1,true,buf);
 			if (tes.getBeforeStep() == null)
 				buf.append(prefix).append("  null,").append(PEConstants.LINE_SEPARATOR);
@@ -842,9 +842,9 @@ public abstract class TransformTest extends TransientSchemaTest {
 		private final ExpectedStep actual;
 		private final ExpectedStep before;
 		private final ExpectedStep after;
-		private final String rowQuery;
+		private final ExpectedStep rowQuery;
 		
-		public TriggerExpectedStep(PEStorageGroup sourceGroup, String rowQuery, ExpectedStep actual, ExpectedStep before, ExpectedStep after) {
+		public TriggerExpectedStep(PEStorageGroup sourceGroup, ExpectedStep rowQuery, ExpectedStep actual, ExpectedStep before, ExpectedStep after) {
 			super(TriggerExecutionStep.class, sourceGroup, (String)null);
 			this.rowQuery = rowQuery;
 			this.actual = actual;
@@ -863,7 +863,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		public void verify(SchemaContext sc, ExecutionStep es) {
 			super.verify(sc, es);
 			TriggerExecutionStep trigStep = (TriggerExecutionStep) es;
-			assertEquals(rowQuery,trigStep.getRowQuery().getSQL(sc));
+			rowQuery.verify(sc, trigStep.getRowQuery());
 			actual.verify(sc, trigStep.getActualStep());
 			verifyTriggerBody(sc,"before",before,trigStep.getBeforeStep());
 			verifyTriggerBody(sc,"after",after,trigStep.getAfterStep());
