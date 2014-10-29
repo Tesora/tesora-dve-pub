@@ -44,6 +44,7 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
@@ -132,7 +133,7 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("alter table altest rename to `baltest`");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Table `baltest` already exists");
 		conn.execute("alter table altest rename to `ralter`");
 		conn.assertResults("show tables like 'ralter'",br(nr,"ralter"));

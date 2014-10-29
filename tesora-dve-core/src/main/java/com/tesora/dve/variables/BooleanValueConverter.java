@@ -27,7 +27,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.BooleanUtils;
 
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.collector.ResultCollector;
@@ -85,7 +85,7 @@ public class BooleanValueConverter extends ValueMetadata<Boolean> {
 			return true;
 		if (falseMap.contains(lc))
 			return false;
-		throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_VALUE_FOR_VARIABLE, varName, lc));
+		throw new SchemaException(new ErrorInfo(AvailableErrors.WRONG_VALUE_FOR_VARIABLE, varName, lc));
 	}
 
 	@Override

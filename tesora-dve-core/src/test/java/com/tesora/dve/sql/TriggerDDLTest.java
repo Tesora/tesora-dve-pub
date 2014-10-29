@@ -28,6 +28,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.PEDDL;
@@ -99,6 +100,27 @@ public class TriggerDDLTest extends SchemaTest {
 		}.assertException(SQLException.class, "PEException: No support for trigger execution");
 		// but, this should not fail
 		conn.execute("delete from B where a = 1");
+
+		// a table without any UNIQUE keys
+		conn.execute("create table C (a int, b int, c int) broadcast distribute");
+
+		// UPDATE and DELETE triggers should not be allowed on C
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("create trigger ctrig before update on C for each row insert into A (event) values ('insert')");
+			}
+		}.assertSqlError(SQLException.class, InternalErrors.noUniqueKeyOnTriggerTableFormatter, "C");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("create trigger ctrig before delete on C for each row insert into A (event) values ('insert')");
+			}
+		}.assertSqlError(SQLException.class, InternalErrors.noUniqueKeyOnTriggerTableFormatter, "C");
+
+		// but INSERT triggers should be fine
+		conn.execute("create trigger ctrig before insert on C for each row insert into A (event) values ('insert')");
 	}
 	
 	@Test
@@ -134,14 +156,14 @@ public class TriggerDDLTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("DROP TRIGGER nonexistent");
 			}
-		}.assertError(SQLException.class, MySQLErrors.trgDoesNotExist, "Trigger does not exist");
+		}.assertSqlError(SQLException.class, MySQLErrors.trgDoesNotExist);
 
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				conn.execute("DROP TRIGGER nonexistent");
 			}
-		}.assertError(SQLException.class, MySQLErrors.trgDoesNotExist, "Trigger does not exist");
+		}.assertSqlError(SQLException.class, MySQLErrors.trgDoesNotExist);
 
 		conn.execute("create trigger btrig after insert on B for each row insert into A (event) values ('insert')");
 
@@ -151,7 +173,7 @@ public class TriggerDDLTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("DROP TRIGGER btrig");
 			}
-		}.assertError(SQLException.class, MySQLErrors.trgDoesNotExist, "Trigger does not exist");
+		}.assertSqlError(SQLException.class, MySQLErrors.trgDoesNotExist);
 
 		conn.execute("DROP TRIGGER adb.btrig");
 		conn.assertResults("show triggers", br());

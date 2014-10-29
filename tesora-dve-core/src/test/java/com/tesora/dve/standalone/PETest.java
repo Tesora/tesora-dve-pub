@@ -62,7 +62,10 @@ import com.tesora.dve.comms.client.messages.FetchResponse;
 import com.tesora.dve.errmap.ErrorCode;
 import com.tesora.dve.errmap.ErrorCodeFormatter;
 import com.tesora.dve.errmap.ErrorInfo;
-import com.tesora.dve.errmap.MySQLErrors;
+import com.tesora.dve.errmap.InternalErrors;
+import com.tesora.dve.errmap.OneParamErrorCodeFormatter;
+import com.tesora.dve.errmap.TwoParamErrorCodeFormatter;
+import com.tesora.dve.errmap.ZeroParamErrorCodeFormatter;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.lockmanager.LockManager;
@@ -422,19 +425,53 @@ public class PETest extends PEBaseTest {
 	
 	protected static abstract class ExpectedSqlErrorTester extends ExpectedExceptionTester {
 
-		public <T extends PEMappedRuntimeException> void assertError(final Class<T> expectedExceptionClass, final ErrorCodeFormatter formatter,
+		public <T extends PEMappedRuntimeException> void assertError(final Class<T> expectedExceptionClass, final ZeroParamErrorCodeFormatter formatter)
+				throws Throwable {
+			assertError(expectedExceptionClass, formatter, new Object[] {});
+		}
+
+		public <T extends PEMappedRuntimeException, P1 extends Object> void assertError(final Class<T> expectedExceptionClass,
+				final OneParamErrorCodeFormatter<P1> formatter,
+				final P1 first) throws Throwable {
+			assertError(expectedExceptionClass, formatter, new Object[] { first });
+		}
+
+		public <T extends PEMappedRuntimeException, P1 extends Object, P2 extends Object> void assertError(final Class<T> expectedExceptionClass,
+				final TwoParamErrorCodeFormatter<P1, P2> formatter,
+				final P1 first, final P2 second) throws Throwable {
+			assertError(expectedExceptionClass, formatter, new Object[] { first, second });
+		}
+
+		protected <T extends PEMappedRuntimeException> void assertError(final Class<T> expectedExceptionClass, final ErrorCodeFormatter formatter,
 				final Object... params) throws Throwable {
 			final T cause = getAssertException(expectedExceptionClass, null, false);
 			assertErrorInfo(cause, formatter, params);
 		}
 
-		public <T extends SQLException> void assertError(final Class<T> expectedExceptionClass, final ErrorCodeFormatter formatter,
-				final String message) throws Throwable {
-			final T cause = getAssertException(expectedExceptionClass, null, false);
-			assertSQLException(cause, formatter, message);
+		public <T extends SQLException> void assertSqlError(final Class<T> expectedExceptionClass, final ZeroParamErrorCodeFormatter formatter)
+				throws Throwable {
+			assertSqlError(expectedExceptionClass, formatter, new Object[] {});
 		}
 
-		public static <T extends SQLException> void assertSQLException(final T cause, final ErrorCodeFormatter formatter,
+		public <T extends SQLException, P1 extends Object> void assertSqlError(final Class<T> expectedExceptionClass,
+				final OneParamErrorCodeFormatter<P1> formatter,
+				final P1 first) throws Throwable {
+			assertSqlError(expectedExceptionClass, formatter, new Object[] { first });
+		}
+
+		public <T extends SQLException, P1 extends Object, P2 extends Object> void assertSqlError(final Class<T> expectedExceptionClass,
+				final TwoParamErrorCodeFormatter<P1, P2> formatter,
+				final P1 first, final P2 second) throws Throwable {
+			assertSqlError(expectedExceptionClass, formatter, new Object[] { first, second });
+		}
+
+		protected <T extends SQLException> void assertSqlError(final Class<T> expectedExceptionClass, final ErrorCodeFormatter formatter,
+				final Object... params) throws Throwable {
+			final T cause = getAssertException(expectedExceptionClass, null, false);
+			assertSqlException(cause, formatter, formatter.format(params, null));
+		}
+
+		public static <T extends SQLException> void assertSqlException(final T cause, final ErrorCodeFormatter formatter,
 				final String message) throws Throwable {
 			assertEquals("Should have same native code", formatter.getNativeCode(), cause.getErrorCode());
 			assertEquals("Should have same sql state", formatter.getSQLState(), cause.getSQLState());
@@ -457,7 +494,7 @@ public class PETest extends PEBaseTest {
 				}
 			}
 			assertTrue("Should contain error code", found);
-			if (formatter == MySQLErrors.internalFormatter) {
+			if (formatter == InternalErrors.internalFormatter) {
 				// first param is the message
 				String message = (String) params[0];
 				assertEquals("should have same message", formatter.format(info.getParams(), null), message);

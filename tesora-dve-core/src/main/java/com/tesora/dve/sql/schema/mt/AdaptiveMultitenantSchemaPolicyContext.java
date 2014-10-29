@@ -40,7 +40,7 @@ import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TableVisibility;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.lockmanager.LockType;
 import com.tesora.dve.sql.SchemaException;
@@ -178,7 +178,7 @@ public class AdaptiveMultitenantSchemaPolicyContext extends SchemaPolicyContext 
 	public Long getTenantID(boolean mustExist) {
 		PETenant pet = getCurrentTenant(mustExist);
 		if (mustExist && pet == null)
-			throw new SchemaException(new ErrorInfo(DVEErrors.NO_DATABASE_SELECTED));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_DATABASE_SELECTED));
 		if (pet == null) return null;
 		return pet.getTenantID();
 	}

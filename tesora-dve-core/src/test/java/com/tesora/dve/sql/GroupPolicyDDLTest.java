@@ -28,7 +28,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tesora.dve.errmap.MySQLErrors;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
@@ -143,22 +143,22 @@ public class GroupPolicyDDLTest extends SchemaTest {
 			public void test() throws Throwable {
 				userConn.execute("create dynamic site policy mine () strict = off");
 			}
-		}.assertError(SQLException.class, MySQLErrors.internalFormatter,
-					"Internal error: You do not have permission to create a dynamic site policy");
+		}.assertSqlError(SQLException.class, InternalErrors.internalFormatter,
+				"You do not have permission to create a dynamic site policy");
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				userConn.execute("alter dynamic site policy mine change aggregate count 1");
 			}
-		}.assertError(SQLException.class, MySQLErrors.internalFormatter,
-					"Internal error: You do not have permission to alter a dynamic site policy");
+		}.assertSqlError(SQLException.class, InternalErrors.internalFormatter,
+				"You do not have permission to alter a dynamic site policy");
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				userConn.execute("drop dynamic site policy empty");
 			}
-		}.assertError(SQLException.class, MySQLErrors.internalFormatter,
-					"Internal error: You do not have permission to drop a dynamic site policy");
+		}.assertSqlError(SQLException.class, InternalErrors.internalFormatter,
+				"You do not have permission to drop a dynamic site policy");
 		
 	}
 			

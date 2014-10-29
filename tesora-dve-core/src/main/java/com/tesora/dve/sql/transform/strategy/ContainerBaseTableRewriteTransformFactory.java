@@ -32,7 +32,7 @@ import java.util.Set;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.ExecutionState;
@@ -91,7 +91,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 				FunctionCall fc = (FunctionCall) iter.next();
 				ColumnInstance lhs = (ColumnInstance) fc.getParametersEdge().get(0);
 				if (lhs.getPEColumn().isPartOfContainerDistributionVector())
-					throw new SchemaException(new ErrorInfo(DVEErrors.INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
+					throw new SchemaException(new ErrorInfo(AvailableErrors.INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
 							lhs.getPEColumn().getName().getUnquotedName().get(),
 							lhs.getPEColumn().getTable().getName().getUnquotedName().get()));
 			}
@@ -102,7 +102,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 			if (pet.isContainerBaseTable(sc)) {
 				List<Part> parts = DiscriminantCollector.getDiscriminants(sc, ds.getWhereClause());
 				if (parts == null || parts.isEmpty())
-					throw new SchemaException(new ErrorInfo(DVEErrors.INVALID_CONTAINER_DELETE,
+					throw new SchemaException(new ErrorInfo(AvailableErrors.INVALID_CONTAINER_DELETE,
 							pet.getName().getUnquotedName().get()));
 				else {
 					List<SchemaCacheKey<PEContainerTenant>> matchingTenants = convert(sc, parts);

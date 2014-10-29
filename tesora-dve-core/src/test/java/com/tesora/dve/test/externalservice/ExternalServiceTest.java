@@ -222,8 +222,7 @@ public class ExternalServiceTest extends SchemaTest {
 				public void test() throws Throwable {
 					conn.execute("USE " + datastore);
 				}
-			}.assertError(SQLException.class, MySQLErrors.unknownDatabaseFormatter,
-						"Unknown database '" + datastore + "'");
+			}.assertSqlError(SQLException.class, MySQLErrors.unknownDatabaseFormatter, datastore);
 		}
 		
 		// make sure service is gone

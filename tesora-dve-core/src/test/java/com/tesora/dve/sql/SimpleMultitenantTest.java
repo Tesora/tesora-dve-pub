@@ -255,9 +255,8 @@ public class SimpleMultitenantTest extends MultitenantTest {
 				// make sure that if you do an insert as the null tenant, you have to specify everything
 				rootConnection.execute("insert into " + tn + " (`module`, `delta`, `theme`) values ('c','c','c')");
 			}
-		}.assertError(SQLException.class,
-					MySQLErrors.missingDatabaseFormatter,
-					"No database selected");
+		}.assertSqlError(SQLException.class,
+				MySQLErrors.missingDatabaseFormatter);
 	}
 
 	@Test
@@ -285,9 +284,8 @@ public class SimpleMultitenantTest extends MultitenantTest {
 				public void test() throws Throwable {
 					tenantConnection.execute("select * from block");
 				}
-			}.assertError(SQLException.class,
-						MySQLErrors.missingTableFormatter,
-						"Table 'mtdb.block' doesn't exist");
+			}.assertSqlError(SQLException.class,
+					MySQLErrors.missingTableFormatter, "mtdb", "block");
 			tenantConnection.execute(block_table_decl);
 			// verify that the backing table exists and is shared
 			rootConnection.assertResults(String.format(visibilitySQL,tenantNames[i]),

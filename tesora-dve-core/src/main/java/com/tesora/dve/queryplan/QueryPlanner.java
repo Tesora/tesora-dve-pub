@@ -28,7 +28,7 @@ import java.util.concurrent.Callable;
 import com.tesora.dve.clock.NoopTimingService;
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.groupmanager.CacheInvalidationMessage;
@@ -177,7 +177,7 @@ public class QueryPlanner {
 			return false;
 		if (t instanceof SchemaException) {
 			SchemaException se = (SchemaException) t;
-			if (se.getErrorInfo().getCode() == DVEErrors.TABLE_DNE) {
+			if (se.getErrorInfo().getCode() == AvailableErrors.TABLE_DNE) {
 				List<UnqualifiedName> names = new ArrayList<UnqualifiedName>();
 				for(Object o : se.getErrorInfo().getParams()) {
 					names.add(new UnqualifiedName((String)o));

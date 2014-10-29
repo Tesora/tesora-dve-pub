@@ -41,6 +41,7 @@ import org.junit.runners.MethodSorters;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
@@ -201,7 +202,7 @@ public class CatalogQueryTest extends SchemaTest {
 			public void test() throws Throwable {
 				testCommand(conn, "table", br(nr, "A", "AB"), "A", 0, br(nr, "A"), false);
 			}
-		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter, "No database selected");
+		}.assertSqlError(SQLException.class, MySQLErrors.missingDatabaseFormatter);
 
 		conn.execute("use cqtdb");
 		testCommand(conn,"table",br(nr,"A",nr,"AB"),"A",0,br(nr,"A"),false);
@@ -236,8 +237,7 @@ public class CatalogQueryTest extends SchemaTest {
 				public void test() throws Throwable {
 					conn.execute("describe foo");
 				}
-			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
-						"Table 'cqtdb.foo' doesn't exist");
+			}.assertSqlError(SQLException.class, MySQLErrors.missingTableFormatter, "cqtdb", "foo");
 		}
 	}
 	
@@ -356,8 +356,7 @@ public class CatalogQueryTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("show table status");
 			}
-		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter,
-					"No database selected");
+		}.assertSqlError(SQLException.class, MySQLErrors.missingDatabaseFormatter);
 				
 		rr = conn.fetch("show table status from " + project.getDatabaseName());
 		rows = rr.getResults();
@@ -375,8 +374,7 @@ public class CatalogQueryTest extends SchemaTest {
 			conn.execute("show tables");
 
 			}
-		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter,
-					"No database selected");
+		}.assertSqlError(SQLException.class, MySQLErrors.missingDatabaseFormatter);
 		
 		rr = conn.fetch("show tables from " + project.getDatabaseName());
 		rows = rr.getResults();
@@ -599,7 +597,7 @@ public class CatalogQueryTest extends SchemaTest {
 				public void test() throws Throwable {
 					nonRootConn.execute("show master logs");
 				}
-			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+			}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
 
 			new ExpectedSqlErrorTester() {
@@ -607,7 +605,7 @@ public class CatalogQueryTest extends SchemaTest {
 				public void test() throws Throwable {
 					nonRootConn.execute("show master status");
 				}
-			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+			}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
 
 			new ExpectedSqlErrorTester() {
@@ -615,7 +613,7 @@ public class CatalogQueryTest extends SchemaTest {
 				public void test() throws Throwable {
 					nonRootConn.execute("show slave status");
 				}
-			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+			}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
 			
 			nonRootConn.assertResults("SELECT * FROM information_schema.character_sets order by character_set_name", 

@@ -50,7 +50,7 @@ import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.NativeTypeCatalog;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.infomessage.ConnectionMessageManager;
@@ -380,7 +380,7 @@ public class SchemaContext {
 	
 	public Database<?> getCurrentDatabase(boolean mustExist, boolean domtchecks) {
 		if ((connection.getCurrentDatabase() == null || connection.getCurrentDatabase().get(this) == null) && mustExist) 
-			throw new SchemaException(new ErrorInfo(DVEErrors.NO_DATABASE_SELECTED));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_DATABASE_SELECTED));
 		if (connection.getCurrentDatabase() == null) return null;
 		if (!domtchecks) 
 			return connection.getCurrentDatabase().get(this);
