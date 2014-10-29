@@ -40,12 +40,25 @@ public final class InternalErrors {
 					"The target table '%s' must have a unique key.",
 					6002,
 					"DVETR");
+	public static final TwoParamErrorCodeFormatter<String,String> invalidInsertContainerBaseTableFormatter =
+			new TwoParamErrorCodeFormatter<String, String>(AvailableErrors.INVALID_INSERT_CONTAINER_BASE_TABLE,
+					"Inserts into base table '%s' for container '%s' must be done when in the global container context",
+					6003,
+					"DVECO");
+	public static final TwoParamErrorCodeFormatter<String,String> invalidInsertContainerTableFormatter =
+			new TwoParamErrorCodeFormatter<String, String>(AvailableErrors.INVALID_INSERT_CONTAINER_TABLE,
+					"Inserts into table '%s' for container '%s' must be done when in a specific container context",
+					6004,
+					"DVECO");
+
 	
 	public static final ErrorCodeFormatter[] messages = new ErrorCodeFormatter[] {
 		internalFormatter,
 		invalidDiscriminantUpdateFormatter,
 		invalidContainerDeleteFormatter,
-		noUniqueKeyOnTriggerTableFormatter
+		noUniqueKeyOnTriggerTableFormatter,
+		invalidInsertContainerBaseTableFormatter,
+		invalidInsertContainerTableFormatter
 	};
 
 }

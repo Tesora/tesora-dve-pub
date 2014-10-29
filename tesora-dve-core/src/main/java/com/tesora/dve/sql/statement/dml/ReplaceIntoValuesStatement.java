@@ -23,17 +23,10 @@ package com.tesora.dve.sql.statement.dml;
 
 import java.util.List;
 
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.node.MultiMultiEdge;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.parser.SourceLocation;
-import com.tesora.dve.sql.schema.PEAbstractTable;
-import com.tesora.dve.sql.schema.PETable;
-import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.Table;
-import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
-import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 
 public class ReplaceIntoValuesStatement extends InsertIntoValuesStatement {
 
@@ -47,23 +40,6 @@ public class ReplaceIntoValuesStatement extends InsertIntoValuesStatement {
 		return true;
 	}
 	
-	@Override
-	public void plan(SchemaContext pc, ExecutionSequence ges, BehaviorConfiguration config) throws PEException {
-		Table<?> table = getPrimaryTable().getTable();
-		if (table.isInfoSchema()) 
-			throw new PEException("Cannot insert into info schema table " + intoTable.get().getTable().getName());
-		PEAbstractTable<?> peat = getPrimaryTable().getAbstractTable();
-		if (peat.isView())
-			throw new PEException("No support for updatable views");
-		PETable pet = peat.asTable();
-		if (pet.getStorageGroup(pc).isSingleSiteGroup())
-			planInternal(pc,ges);
-		else if (pet.getUniqueKeys(pc).isEmpty())
-			planInternal(pc,ges);
-		else
-			DMLStatement.planViaTransforms(pc,this, ges, config);
-	}
-
 	// we need access of this for efficiency purposes
 	// don't go messing around with this, however
 	public MultiMultiEdge<InsertIntoValuesStatement, ExpressionNode> getValuesEdge() {

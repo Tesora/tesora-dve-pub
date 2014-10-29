@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import com.tesora.dve.errmap.AvailableErrors;
+import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.MultiEdge;
@@ -94,10 +96,9 @@ public class ContainerPolicyContext extends SchemaPolicyContext {
 		if (pet.isContainerBaseTable(getSchemaContext())) {
 			if (currentTenant.get(getSchemaContext()) == null ||
 					!currentTenant.get(getSchemaContext()).isGlobalTenant()) 
-				throw new SchemaException(Pass.NORMALIZE, "Inserts into base table " 
-						+ pet.getName().getSQL() 
-						+ " for container " + pet.getDistributionVector(getSchemaContext()).getContainer(getSchemaContext()).getName().getSQL()
-						+ " must be done when in the global container context");
+				throw new SchemaException(new ErrorInfo(AvailableErrors.INVALID_INSERT_CONTAINER_BASE_TABLE,
+						pet.getName().getUnquotedName().get(),
+						pet.getDistributionVector(getSchemaContext()).getContainer(getSchemaContext()).getName().getUnquotedName().get()));
 			// container base table is never cacheable due to the implicit ddl
 			return false;
 		} else if (pet.getDistributionVector(getSchemaContext()).getContainer(getSchemaContext()) != null) {
@@ -105,10 +106,9 @@ public class ContainerPolicyContext extends SchemaPolicyContext {
 			// we do this so that we can figure out what the tenant id should be
 			if (currentTenant.get(getSchemaContext()) == null ||
 					currentTenant.get(getSchemaContext()).isGlobalTenant())
-				throw new SchemaException(Pass.NORMALIZE, "Inserts into table "
-						+ pet.getName().getSQL()
-						+ " for container " + pet.getDistributionVector(getSchemaContext()).getContainer(getSchemaContext()).getName().getSQL()
-						+ " must be done when in a specific container context");
+				throw new SchemaException(new ErrorInfo(AvailableErrors.INVALID_INSERT_CONTAINER_TABLE,
+						pet.getName().getUnquotedName().get(),
+						pet.getDistributionVector(getSchemaContext()).getContainer(getSchemaContext()).getName().getUnquotedName().get()));
 		}
 		return true;
 	}

@@ -522,16 +522,14 @@ public class SchemaPolicyContext {
 	public boolean isCacheableInsert(InsertIntoValuesStatement stmt) {
 		PEAbstractTable<?> pet = stmt.getTableInstance().getAbstractTable();
 		if (pet.isContainerBaseTable(getSchemaContext()))
-			throw new SchemaException(Pass.NORMALIZE, "Inserts into base table "
-					+ pet.getName().getSQL() 
-					+ " for container " + pet.getDistributionVector(getSchemaContext()).getContainer(getSchemaContext()).getName().getSQL()
-					+ " must be done when in the global container context");
+			throw new SchemaException(new ErrorInfo(AvailableErrors.INVALID_INSERT_CONTAINER_BASE_TABLE,
+					pet.getName().getUnquotedName().get(),
+					pet.getDistributionVector(getSchemaContext()).getContainer(getSchemaContext()).getName().getUnquotedName().get()));
 		else if (pet.getDistributionVector(getSchemaContext()).isContainer()) 
 			// insert into a cmt with no tenant specified is an error
-			throw new SchemaException(Pass.NORMALIZE, "Inserts into table "
-					+ pet.getName().getSQL()
-					+ " for container " + pet.getDistributionVector(getSchemaContext()).getContainer(getSchemaContext()).getName().getSQL()
-					+ " must be done when in a specific container context");			
+			throw new SchemaException(new ErrorInfo(AvailableErrors.INVALID_INSERT_CONTAINER_TABLE,
+					pet.getName().getUnquotedName().get(),
+					pet.getDistributionVector(getSchemaContext()).getContainer(getSchemaContext()).getName().getUnquotedName().get()));
 		return true;		
 	}
 

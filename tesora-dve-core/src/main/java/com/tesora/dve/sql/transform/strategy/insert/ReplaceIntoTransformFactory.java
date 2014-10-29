@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.transform.strategy;
+package com.tesora.dve.sql.transform.strategy.insert;
 
 /*
  * #%L
@@ -69,6 +69,9 @@ import com.tesora.dve.sql.transform.execution.CreateTempTableExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.FilterExecutionStep.LateBindingOperationFilter;
 import com.tesora.dve.sql.transform.execution.LateBindingUpdateCountFilter.LateBindingUpdateCountAccumulator;
+import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
+import com.tesora.dve.sql.transform.strategy.PlannerContext;
+import com.tesora.dve.sql.transform.strategy.TransformFactory;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.MultiFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.NonQueryFeatureStep;
@@ -168,6 +171,16 @@ public class ReplaceIntoTransformFactory extends TransformFactory {
 		InsertStatement is = (InsertStatement) stmt;
 		if (!is.isReplace())
 			return null;
+		// weed out the easy cases - we will let the insert planner handle these
+		InsertIntoValuesPlanner.checkForIllegalInsert(ipc,is);
+		PETable pet = is.getTableInstance().getAbstractTable().asTable();
+		if (pet.getStorageGroup(ipc.getContext()).isSingleSiteGroup())
+			// let the insert planner handle it
+			return null;
+		if (pet.getUniqueKeys(ipc.getContext()).isEmpty())
+			// let the insert planner handle it
+			return null;
+		
 		PlannerContext context = ipc.withTransform(getFeaturePlannerID());
 		if (stmt instanceof ReplaceIntoValuesStatement) {
 			return planValuesStatement(context, (ReplaceIntoValuesStatement)stmt);

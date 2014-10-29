@@ -27,7 +27,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.tesora.dve.errmap.InternalErrors;
-import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
@@ -102,7 +101,6 @@ public class SimpleContainerTest extends SchemaTest {
 		conn.execute("insert into bt values (2, 'two')");
 		conn.assertResults("show container_tenants like '%two%'", br(nr,"testcont","id:2,junk:'two'",getIgnore()));
 		conn.execute("using container testcont (1, 'one')");
-		String errorMessage = "Internal error: Inserts into base table `bt` for container testcont must be done when in the global container context";
 
 		// should not be able to insert into base table as a nonglobal container tenant
 		new ExpectedSqlErrorTester() {
@@ -110,7 +108,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("insert into bt values (3, 'three')");
 			}
-		}.assertError(SchemaException.class, InternalErrors.internalFormatter, errorMessage);
+		}.assertError(SchemaException.class, InternalErrors.invalidInsertContainerBaseTableFormatter, "bt","testcont");
 		conn.disconnect();
 		conn.connect();
 		conn.execute("use " + testDDL.getDatabaseName());
@@ -121,7 +119,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("insert into bt values (3, 'three')");
 			}
-		}.assertError(SchemaException.class, InternalErrors.internalFormatter, errorMessage);
+		}.assertError(SchemaException.class, InternalErrors.invalidInsertContainerBaseTableFormatter, "bt","testcont");
 	}
 	
 	@Test
@@ -198,8 +196,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("insert into A values (1,'one')");
 			}
-		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
-					"Internal error: Inserts into table `A` for container testcont must be done when in a specific container context");
+		}.assertError(SchemaException.class, InternalErrors.invalidInsertContainerTableFormatter,"A","testcont");
 		// shouldn't be able to insert into CMT with nonglobal context specified
 		conn.execute("using container testcont (global)");
 		new ExpectedSqlErrorTester() {
@@ -207,8 +204,7 @@ public class SimpleContainerTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("insert into A values (1,'one')");
 			}
-		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
-					"Internal error: Inserts into table `A` for container testcont must be done when in a specific container context");
+		}.assertError(SchemaException.class, InternalErrors.invalidInsertContainerTableFormatter,"A","testcont"); 
 	}
 	
 	@Test

@@ -21,7 +21,7 @@ package com.tesora.dve.db;
  * #L%
  */
 
-import java.util.List;
+
 
 public class LateBoundConstants {
 

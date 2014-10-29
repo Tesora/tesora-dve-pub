@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.TempTableGenerator;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
