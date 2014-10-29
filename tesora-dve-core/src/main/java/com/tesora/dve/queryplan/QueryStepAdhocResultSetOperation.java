@@ -25,7 +25,6 @@ package com.tesora.dve.queryplan;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.IntermediateResultSet;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepAdhocResultSetOperation extends QueryStepOperation {
@@ -38,7 +37,7 @@ public class QueryStepAdhocResultSetOperation extends QueryStepOperation {
 	}
 	
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		resultConsumer.inject(results.getMetadata(), results.getRows());
 	}

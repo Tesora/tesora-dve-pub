@@ -61,11 +61,13 @@ public class QueryStepUpdateAllOperation extends QueryStepDMLOperation {
 	 * @throws Throwable 
 	 */
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-		WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).onDatabase(database);
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		SSConnection ssCon = estate.getConnection();
+		SQLCommand bound = bindCommand(estate,command);
+		WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), bound).onDatabase(database);
 		resultConsumer.setRowAdjuster(distributionModel.getUpdateAdjuster());
 		beginExecution();
-		wg.execute(StaticDistributionModel.SINGLETON.mapForQuery(wg, command), req, resultConsumer);
+		wg.execute(StaticDistributionModel.SINGLETON.mapForQuery(wg, bound), req, resultConsumer);
 		endExecution(resultConsumer.getUpdateCount());
 	}
 	

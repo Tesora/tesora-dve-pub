@@ -1,4 +1,4 @@
-package com.tesora.dve.queryplan;
+package com.tesora.dve.db;
 
 /*
  * #%L
@@ -21,31 +21,26 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageGroup;
-import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.UserXid;
-import com.tesora.dve.worker.WorkerGroup;
+import java.util.List;
 
-public class QueryStepEndXATransactionOperation extends QueryStepOperation {
+public class LateBoundConstants {
 
-	UserXid xid;
+	private final String[] values;
 	
-	public QueryStepEndXATransactionOperation(StorageGroup sg, UserXid id) throws PEException {
-		super(sg);
-		this.xid = id;
+	public LateBoundConstants() {
+		values = null;
 	}
 	
-	@Override
-	public void executeSelf(ExecutionState estate, WorkerGroup wg,
-			DBResultConsumer resultConsumer) throws Throwable {
-		// TODO Auto-generated method stub
-
+	public boolean isEmpty() {
+		return values == null;
 	}
-
-	@Override
-	public boolean requiresWorkers() {
-		return false;
+	
+	public LateBoundConstants(String[] vals) {
+		values = vals;
 	}
-
+	
+	public String getConstantValue(int index) {
+		return values[index];
+	}
+	
 }

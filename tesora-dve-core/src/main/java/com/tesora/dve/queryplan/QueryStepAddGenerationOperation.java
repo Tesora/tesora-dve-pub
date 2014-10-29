@@ -76,16 +76,17 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public void executeSelf(final SSConnection ssCon, final WorkerGroup wg,	DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(final ExecutionState execState, final WorkerGroup wg,	DBResultConsumer resultConsumer) throws Throwable {
 		try {
 			if (record != null)
 				QueryPlanner.invalidateCache(record);
+			final SSConnection ssCon = execState.getConnection();
 			ssCon.getCatalogDAO().new EntityGenerator() {
 				@Override
 				public CatalogEntity generate() throws Throwable {
 					StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
 					ssCon.getCatalogDAO().persistToCatalog(newGen);
-					group.addGeneration(ssCon, wg, newGen, tableDecls, mustIgnoreFKs, userDecls, rebalanceInfo);
+					group.addGeneration(execState, wg, newGen, tableDecls, mustIgnoreFKs, userDecls, rebalanceInfo);
 					return newGen;
 				}
 			}.execute();

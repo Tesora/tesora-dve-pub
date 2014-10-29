@@ -60,6 +60,7 @@ import com.tesora.dve.distribution.RangeTableRelationship;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLOperation;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
@@ -504,11 +505,13 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 //		return userDatabase.getName()+"."+getName();
 	}
 
-	public void prepareGenerationAddition(SSConnection ssCon, WorkerGroup wg, StorageGroupGeneration newGen, SQLCommand command) throws Throwable {
+	public void prepareGenerationAddition(ExecutionState estate, WorkerGroup wg, StorageGroupGeneration newGen, SQLCommand command) throws Throwable {
 		Set<PersistentSite> netNewSites = new HashSet<PersistentSite>(newGen.getStorageSites());
 		netNewSites.removeAll(wg.getStorageSites());
 		PersistentGroup newSG = new PersistentGroup(netNewSites);
 
+		SSConnection ssCon = estate.getConnection();
+		
 		Manager wgManager = wg.setManager(null);
 		WorkerGroup newWG = WorkerGroupFactory.newInstance(ssCon, newSG, userDatabase);
 		newWG.assureDatabase(ssCon, userDatabase);
@@ -519,11 +522,11 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 				QueryStepDDLOperation qso =
 						new QueryStepDDLOperation(newSG, getDatabase(), (command == null ? new SQLCommand(ssCon,getCreateTableStmt()) : command), null);
 
-				qso.executeSelf(ssCon, newWG, DBEmptyTextResultConsumer.INSTANCE);
+				qso.executeSelf(estate, newWG, DBEmptyTextResultConsumer.INSTANCE);
 			}
 
 			if (getView() == null)
-				distributionModel.prepareGenerationAddition(ssCon, wg, this, newGen);
+				distributionModel.prepareGenerationAddition(estate, wg, this, newGen);
 		} finally {
 			WorkerGroupFactory.purgeInstance(ssCon, newWG);
 			wg.setManager(wgManager);

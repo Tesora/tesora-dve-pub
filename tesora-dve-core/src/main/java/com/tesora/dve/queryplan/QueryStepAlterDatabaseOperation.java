@@ -26,7 +26,6 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.WorkerAlterDatabaseRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
@@ -45,12 +44,12 @@ public class QueryStepAlterDatabaseOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public void executeSelf(final SSConnection ssCon, final WorkerGroup wg, final DBResultConsumer resultConsumer) throws Throwable {
-		if (ssCon.hasActiveTransaction()) {
+	public void executeSelf(final ExecutionState estate, final WorkerGroup wg, final DBResultConsumer resultConsumer) throws Throwable {
+		if (estate.hasActiveTransaction()) {
 			throw new PEException("Cannot execute DDL within active transaction: ALTER DATABASE " + this.alteredDatabase.getName());
 		}
 
-		CatalogDAO c = ssCon.getCatalogDAO();
+		CatalogDAO c = estate.getCatalogDAO();
 		c.begin();
 		try {
 			QueryPlanner.invalidateCache(this.invalidationRecord);
@@ -63,7 +62,7 @@ public class QueryStepAlterDatabaseOperation extends QueryStepOperation {
 			// event of a failure after the DDL is executed but before the txn
 			// is committed.
 
-			final WorkerRequest request = new WorkerAlterDatabaseRequest(ssCon.getNonTransactionalContext(), this.alteredDatabase);
+			final WorkerRequest request = new WorkerAlterDatabaseRequest(estate.getNonTransactionalContext(), this.alteredDatabase);
 			wg.execute(MappingSolution.AllWorkers, request, resultConsumer);
 
 			c.commit();

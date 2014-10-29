@@ -39,9 +39,9 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.DBResultConsumer.RowCountAdjuster;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.worker.WorkerGroup;
@@ -107,7 +107,7 @@ public abstract class DistributionModel implements CatalogEntity {
 		return WorkerGroup.MappingSolution.AllWorkers;
 	}
 
-	public void prepareGenerationAddition(SSConnection ssCon, WorkerGroup wg, UserTable userTable, StorageGroupGeneration newGen) throws PEException {
+	public void prepareGenerationAddition(ExecutionState estate, WorkerGroup wg, UserTable userTable, StorageGroupGeneration newGen) throws PEException {
 		// Most models do nothing
 	}
 	

@@ -81,11 +81,12 @@ public class QueryStepSelectAllOperation extends QueryStepResultsOperation {
 	 * @throws Throwable 
 	 */
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		resultConsumer.setResultsLimit(getResultsLimit());
-		WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).onDatabase(database);
+		SQLCommand bound = bindCommand(estate,command);
+		WorkerExecuteRequest req = new WorkerExecuteRequest(estate.getConnection().getTransactionalContext(), bound).onDatabase(database);
 		beginExecution();
-		wg.execute(distributionModel.mapForQuery(wg, command), req, resultConsumer);
+		wg.execute(distributionModel.mapForQuery(wg, bound), req, resultConsumer);
 		if (resultConsumer instanceof MysqlParallelResultConsumer) 
 			endExecution(((MysqlParallelResultConsumer)resultConsumer).getNumRowsAffected());
 	}

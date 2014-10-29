@@ -27,8 +27,8 @@ import java.util.List;
 
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
@@ -121,8 +121,8 @@ public class UseContainerStatement extends SessionStatement {
 	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		es.append(new TransientSessionExecutionStep(getSQL(pc),new AdhocOperation() {
 			@Override
-			public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-				ssCon.setCurrentTenant(tenant);
+			public void execute(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+				estate.getConnection().setCurrentTenant(tenant);
 			}
 		}));
 	}

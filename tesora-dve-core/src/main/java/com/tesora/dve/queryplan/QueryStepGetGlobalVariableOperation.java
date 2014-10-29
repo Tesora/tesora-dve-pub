@@ -27,7 +27,6 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -49,11 +48,11 @@ public class QueryStepGetGlobalVariableOperation extends QueryStepOperation {
 
 
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
         resultConsumer.inject(ColumnSet.singleColumn(alias, Types.VARCHAR),
 				ResultRow.singleRow(
-						handler.toRow(handler.getGlobalValue(ssCon))));
+						handler.toRow(handler.getGlobalValue(estate.getConnection()))));
 	}
 
 	@Override

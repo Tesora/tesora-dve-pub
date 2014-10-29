@@ -132,6 +132,23 @@ public class RedistFeatureStep extends FeatureStep {
 		return out;
 	}
 	
+	public ProjectingFeatureStep buildTriggerRowsStep(PlannerContext pc, FeaturePlanner planner) throws PEException {
+		TempTable tt = getTargetTempTable();
+		if (tt == null) return null;
+		SelectStatement intent = tt.buildSelect(pc.getContext());
+		ProjectingFeatureStep out = 
+				DefaultFeatureStepBuilder.INSTANCE.buildProjectingStep(pc, planner, 
+						intent,
+						source.getCost(),
+						targetGroup,
+						getPlannedStatement().getDatabase(pc.getContext()),
+						tt.getDistributionVector(pc.getContext()),
+						null, 
+						null);
+		// don't thread self in - the step is executed outside of the normal flow
+		return out;
+	}
+	
 	public SelectStatement buildNewSelect(PlannerContext pc) throws PEException {
 		TempTable tt = getTargetTempTable();
 		if (tt == null) return null;

@@ -35,6 +35,7 @@ import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultChunk;
@@ -77,9 +78,10 @@ public class ShowSitesStatusStatement extends SessionStatement {
 				new AdhocOperation() {
 
 					@Override
-					public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+					public void execute(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 						try {
 							GetStatisticsRequest req = new GetStatisticsRequest();
+							SSConnection ssCon = estate.getConnection();
                             Envelope e = ssCon.newEnvelope(req).to(Singletons.require(HostService.class).getStatisticsManagerAddress());
 							ResponseMessage rm = ssCon.sendAndReceive(e);
 							

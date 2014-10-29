@@ -38,6 +38,7 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepAddGenerationOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -384,10 +385,10 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
+		public void executeNested(ExecutionState estate, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
 			if (op == null) return;
-			op.executeSelf(conn, wg, resultConsumer);
+			op.executeSelf(estate, wg, resultConsumer);
 		}
 		
 	}

@@ -35,6 +35,7 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -184,11 +185,11 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer)
+		public void executeNested(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer)
 				throws Throwable {
 			for(int i = 0; i < steps.size(); i++) {
 				QueryStepOperation qso = steps.get(i);
-				qso.executeSelf(conn, wg, resultConsumer);
+				qso.executeSelf(execState, wg, resultConsumer);
 			}			
 		}
 

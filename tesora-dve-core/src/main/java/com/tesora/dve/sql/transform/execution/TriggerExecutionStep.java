@@ -24,22 +24,21 @@ package com.tesora.dve.sql.transform.execution;
 import java.util.ArrayList;
 import java.util.List;
 import com.tesora.dve.db.Emitter.EmitOptions;
-import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepOperation;
+import com.tesora.dve.queryplan.QueryStepTriggerOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.util.UnaryProcedure;
 
 public class TriggerExecutionStep extends ExecutionStep {
 
 	// the select I will execute to get the rows
-	private SelectStatement rowQuery;
+	private ExecutionStep rowQuery;
 	// any before step
 	private ExecutionStep before;
 	// the actual step
@@ -51,7 +50,7 @@ public class TriggerExecutionStep extends ExecutionStep {
 			ExecutionStep actual,
 			ExecutionStep before,
 			ExecutionStep after,
-			SelectStatement rowQuery) {
+			ExecutionStep rowQuery) {
 		super(db, storageGroup, ExecutionType.TRIGGER);
 		this.actual = actual;
 		this.before = before;
@@ -60,7 +59,7 @@ public class TriggerExecutionStep extends ExecutionStep {
 	}
 
 	// accessors used in the tests
-	public SelectStatement getRowQuery() {
+	public ExecutionStep getRowQuery() {
 		return rowQuery;
 	}
 	
@@ -79,20 +78,25 @@ public class TriggerExecutionStep extends ExecutionStep {
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps,
 			ProjectionInfo projection, SchemaContext sc) throws PEException {
-		// the other stuff then has to be turned into qsos and tossed into the trigger qso
-		throw new PEException("Not quite yet");
+		QueryStepTriggerOperation trigOp = new QueryStepTriggerOperation(buildOperation(opts,sc,rowQuery),
+				(before == null ? null : buildOperation(opts,sc,before)),
+				buildOperation(opts,sc,actual),
+				(after == null ? null : buildOperation(opts,sc,after)));
+		qsteps.add(trigOp);
 	}
 
+	private QueryStepOperation buildOperation(ExecutionPlanOptions opts, SchemaContext sc, ExecutionStep toSchedule) throws PEException {
+		List<QueryStepOperation> sub = new ArrayList<QueryStepOperation>();
+		toSchedule.schedule(opts,sub,null,sc);
+		return 	ExecutionPlan.collapseOperationList(sub);
+	}
+	
 	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
 		super.display(sc, buf, indent, opts);
 		String sub1 = indent + "  ";
 		String sub2 = sub1 + "  ";
-		GenericSQLCommand gsql = rowQuery.getGenericSQL(sc, false, true);
-		List<String> ugh = new ArrayList<String>();
-		gsql.resolveAsTextLines(sc, false, sub2, ugh);
 		buf.add(sub1 + "Row query");
-		for(String s : ugh)
-			buf.add(sub2 + s);
+		rowQuery.display(sc,buf,sub2,opts);
 		if (before != null) {
 			buf.add(sub1 + "Before");
 			before.display(sc,buf,sub2,opts);

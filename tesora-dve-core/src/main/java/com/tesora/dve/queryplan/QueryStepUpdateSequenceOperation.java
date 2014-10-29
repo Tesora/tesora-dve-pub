@@ -27,7 +27,6 @@ import java.util.List;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.worker.WorkerGroup;
@@ -45,10 +44,10 @@ public class QueryStepUpdateSequenceOperation extends QueryStepOperation {
 	}
 	
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		resultConsumer.setSenderCount(ops.size());
 		for (QueryStepOperation qso : ops)
-			qso.executeSelf(ssCon, wg, resultConsumer);
+			qso.executeSelf(estate, wg, resultConsumer);
 	}
 
 	@Override

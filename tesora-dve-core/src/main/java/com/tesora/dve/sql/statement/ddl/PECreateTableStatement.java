@@ -41,6 +41,7 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
@@ -420,10 +421,10 @@ public class PECreateTableStatement extends
 					new AdhocOperation() {
 
 						@Override
-						public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+						public void execute(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 								throws Throwable {
 
-							WorkerCreateDatabaseRequest req = new WorkerCreateDatabaseRequest(ssCon.getTransactionalContext(),pedb,true);
+							WorkerCreateDatabaseRequest req = new WorkerCreateDatabaseRequest(estate.getConnection().getTransactionalContext(),pedb,true);
 							wg.execute(WorkerGroup.MappingSolution.AllWorkers, req, resultConsumer);
 
 						}
@@ -605,10 +606,10 @@ public class PECreateTableStatement extends
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		public void executeNested(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 			if (ddl != null) {
 				for(QueryStepOperation qso : ddl) {
-					qso.executeSelf(conn, wg, DBEmptyTextResultConsumer.INSTANCE);
+					qso.executeSelf(estate, wg, DBEmptyTextResultConsumer.INSTANCE);
 				}			
 			}
 		}

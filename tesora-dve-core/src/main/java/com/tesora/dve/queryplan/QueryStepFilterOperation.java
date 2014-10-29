@@ -43,10 +43,10 @@ public class QueryStepFilterOperation extends QueryStepOperation {
 	}
 	
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		MysqlTextResultCollector tempRc = new MysqlTextResultCollector(true);
-		source.executeSelf(ssCon, wg, tempRc);
-		filter.filter(ssCon, tempRc.getColumnSet(), tempRc.getRowData(), tempRc);
+		source.executeSelf(execState, wg, tempRc);
+		filter.filter(execState.getConnection(), tempRc.getColumnSet(), tempRc.getRowData(), tempRc);
 	}
 
 	@Override

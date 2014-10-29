@@ -40,6 +40,7 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
@@ -500,7 +501,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 
 		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
+		public void prepareNested(ExecutionState estate, CatalogDAO c,
 				final WorkerGroup wg, DBResultConsumer resultConsumer)
 				throws PEException {
 			try {
@@ -513,20 +514,20 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 					WorkerGroup cwg = wg;
 					try {
 						if (qso.requiresWorkers() && !qso.getStorageGroup().equals(wg.getGroup())) {
-							cwg = conn.getWorkerGroupAndPushContext(qso.getStorageGroup(),qso.getContextDatabase());
+							cwg = estate.getConnection().getWorkerGroupAndPushContext(qso.getStorageGroup(),qso.getContextDatabase());
 						}
 						DBResultConsumer consumer = (i == last ? resultConsumer : DBEmptyTextResultConsumer.INSTANCE);
 						if (redistOffset == i) {
 							// this is always a multituple redist (for now) - indicate that the given wg is our preallocated wg
 							QueryStepMultiTupleRedistOperation rd = (QueryStepMultiTupleRedistOperation) qso;
 							rd.setPreallocatedTargetWorkerGroup(wg);
-							qso.executeSelf(conn, cwg, consumer);
+							qso.executeSelf(estate, cwg, consumer);
 						} else {
-							qso.executeSelf(conn, cwg, consumer);
+							qso.executeSelf(estate, cwg, consumer);
 						}						
 					} finally {
 						if (cwg != wg) {
-							conn.returnWorkerGroupAndPopContext(cwg);
+							estate.getConnection().returnWorkerGroupAndPopContext(cwg);
 						}
 					}
 				}
@@ -541,7 +542,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
+		public void executeNested(ExecutionState estate, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
 			// nothing to do - this is handled elsewhere
 		}

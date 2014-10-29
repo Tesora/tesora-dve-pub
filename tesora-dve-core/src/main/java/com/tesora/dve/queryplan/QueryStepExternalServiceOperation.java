@@ -28,7 +28,6 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
 import com.tesora.dve.externalservice.ExternalServicePlugin;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.PEExternalService;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
@@ -48,8 +47,8 @@ public class QueryStepExternalServiceOperation extends QueryStepDDLOperation {
 	}
 
 	@Override
-	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
-		super.prepareAction(ssCon,c,wg,resultConsumer);
+	protected void prepareAction(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+		super.prepareAction(estate,c,wg,resultConsumer);
 		
 		switch(action) {
 		case DROP:
@@ -80,10 +79,10 @@ public class QueryStepExternalServiceOperation extends QueryStepDDLOperation {
 	}
 	
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		// call base first to get the external service into the catalog
-		super.executeSelf(ssCon, wg, resultConsumer);
+		super.executeSelf(execState, wg, resultConsumer);
 
 		// we do this here instead of prepareAction because we need the service
 		// to be committed (by super.execute) to the catalog before registering 

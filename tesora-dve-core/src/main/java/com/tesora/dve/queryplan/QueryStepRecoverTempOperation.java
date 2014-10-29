@@ -44,7 +44,8 @@ public class QueryStepRecoverTempOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		SSConnection ssCon = estate.getConnection();
 		WorkerRequest req = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, tempTable.getName(), false)
 				).onDatabase(database);
 		wg.execute(MappingSolution.AllWorkers, req, resultConsumer);

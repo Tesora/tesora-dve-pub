@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.TempTableGenerator;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -49,6 +50,7 @@ import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilt
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.TriggerExecutionStep;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.TransformFactory;
@@ -116,9 +118,9 @@ public abstract class TriggerPlanner extends TransformFactory {
 						new RedistributionFlags(),
 						DMLExplainReason.TRIGGER_SRC_TABLE.makeRecord());
 		
-		SelectStatement rows = rowsTable.buildNewSelect(context);
+		ProjectingFeatureStep rows = rowsTable.buildTriggerRowsStep(context, this);
 		
-		FeatureStep targetStep = 
+		FeatureStep targetStep =  
 				buildPlan(uniqueStatement,context.withTransform(getFeaturePlannerID()),
 						DefaultFeaturePlannerFilter.INSTANCE);
 		
@@ -134,17 +136,17 @@ public abstract class TriggerPlanner extends TransformFactory {
 		private final FeatureStep actual;
 		private final FeatureStep before;
 		private final FeatureStep after;
-		private final SelectStatement rowQuery;
+		private final FeatureStep rowQuery;
 		private final PETable onTable;
 		
-		public TriggerFeatureStep(FeaturePlanner planner, PETable actualTable, RedistFeatureStep rowsTable, SelectStatement rowQuery,
+		public TriggerFeatureStep(FeaturePlanner planner, PETable actualTable, RedistFeatureStep rowsTable, FeatureStep rowsQuery,
 				FeatureStep actual, FeatureStep before, FeatureStep after) {
 			super(planner);
 			this.rowsTable = rowsTable;
 			this.actual = actual;
 			this.before = before;
 			this.after = after;
-			this.rowQuery = rowQuery;
+			this.rowQuery = rowsQuery;
 			this.onTable = actualTable;
 			// make sure the traversal still works
 			addChild(rowsTable);
@@ -164,15 +166,17 @@ public abstract class TriggerPlanner extends TransformFactory {
 					buildSubSequence(sc,actual,es.getPlan()),
 					(before == null ? null : buildSubSequence(sc,before,es.getPlan())),
 					(after == null ? null : buildSubSequence(sc,after,es.getPlan())),
-					rowQuery);
+					buildSubSequence(sc,rowQuery,es.getPlan()));
 			es.append(step);
 		}
 		
-		private ExecutionSequence buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
+		private ExecutionStep buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
 			ExecutionSequence sub = new ExecutionSequence(parentPlan);
 			step.schedule(pc,sub,new HashSet<FeatureStep>());
+			if (sub.getSteps().size() == 1)
+				return (ExecutionStep)sub.getSteps().get(0);
 			return sub;
 		}
 	}
-	
+
 }

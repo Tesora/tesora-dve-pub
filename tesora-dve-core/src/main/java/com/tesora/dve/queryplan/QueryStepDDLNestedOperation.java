@@ -26,7 +26,6 @@ import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -41,13 +40,13 @@ public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
 	}
 
 	@Override
-	protected void executeAction(SSConnection conn, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-		nestedOp.executeNested(conn, wg, resultConsumer);
+	protected void executeAction(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		nestedOp.executeNested(estate, wg, resultConsumer);
 	}
 
 	@Override
-	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
-		nestedOp.prepareNested(ssCon, c, wg, resultConsumer);
+	protected void prepareAction(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+		nestedOp.prepareNested(estate, c, wg, resultConsumer);
 	}
 
 	
@@ -59,9 +58,9 @@ public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
 	
 	public static abstract class NestedOperationDDLCallback extends DDLCallback {
 		
-		public abstract void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable;
+		public abstract void executeNested(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable;
 
-		public void prepareNested(SSConnection conn, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+		public void prepareNested(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 			
 		}
 		

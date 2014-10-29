@@ -49,18 +49,18 @@ import com.tesora.dve.sql.parser.InitialInputState;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.parser.PreparePlanningResult;
-import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.schema.DistributionKeyTemplate;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.TempTable;
-import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.schema.mt.AdaptiveMultitenantSchemaPolicyContext;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.TransientSchemaTest;
+import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.transform.execution.AbstractProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.AdhocResultsSessionStep;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
@@ -76,11 +76,11 @@ import com.tesora.dve.sql.transform.execution.ParallelExecutionStep;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
 import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep;
+import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep.VariableValueSource;
 import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
 import com.tesora.dve.sql.transform.execution.TriggerExecutionStep;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionSequence;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionStep;
-import com.tesora.dve.sql.transform.execution.SetVariableExecutionStep.VariableValueSource;
 import com.tesora.dve.sql.util.BinaryProcedure;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryProcedure;
@@ -384,7 +384,8 @@ public abstract class TransformTest extends TransientSchemaTest {
 				printExecutionStepVerify(pc,tes.getAfterStep(),nesting+1,false,buf);
 			buf.append(")");
 		} else {
-			throw new IllegalArgumentException("Unsupported step kind for emit verify check: " + hp.getClass().getName());
+			buf.append("null");
+			//			throw new IllegalArgumentException("Unsupported step kind for emit verify check: " + hp.getClass().getName());
 		}
 		if (hasNext)
 			buf.append(",");

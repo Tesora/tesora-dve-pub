@@ -23,6 +23,7 @@ package com.tesora.dve.sql.statement.session;
 
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.schema.Database;
@@ -50,7 +51,8 @@ public class UseDatabaseStatement extends UseStatement {
 	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		es.append(new TransientSessionExecutionStep(getSQL(pc),new AdhocOperation() {
 			@Override
-			public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+			public void execute(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+				SSConnection ssCon = estate.getConnection();
 				ssCon.setCurrentDatabase(target);
 				ssCon.setCurrentTenant(null);
 				// does not blow away the container - orthogonal

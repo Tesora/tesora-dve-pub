@@ -36,6 +36,7 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -512,7 +513,7 @@ public class PECreateViewStatement extends
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
+		public void executeNested(ExecutionState estate, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
 			List<SQLCommand> cmds = new ArrayList<SQLCommand>();
 			if (dropCommand != null) {
@@ -522,7 +523,7 @@ public class PECreateViewStatement extends
 			for(SQLCommand sqlc : cmds) {
 				QueryStepUpdateAllOperation qsuo = 
 						new QueryStepUpdateAllOperation(backingTable.getStorageGroup(context).getPersistent(context),onDatabase,BroadcastDistributionModel.SINGLETON,sqlc);
-				qsuo.executeSelf(conn, wg, resultConsumer);
+				qsuo.executeSelf(estate, wg, resultConsumer);
 			}
 		}
 	}

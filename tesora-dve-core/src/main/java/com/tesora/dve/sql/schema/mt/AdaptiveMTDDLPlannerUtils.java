@@ -42,6 +42,7 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepOperation;
@@ -646,11 +647,11 @@ public final class AdaptiveMTDDLPlannerUtils {
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
+		public void executeNested(ExecutionState estate, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
 			for(QueryStepOperation qso : steps) {
 				boolean care = (qso == canonicalResultStep || (canonicalResultStep == null && qso == steps.get(steps.size() - 1)));
-				qso.executeSelf(conn, wg, (care ? resultConsumer : DBEmptyTextResultConsumer.INSTANCE));
+				qso.executeSelf(estate, wg, (care ? resultConsumer : DBEmptyTextResultConsumer.INSTANCE));
 			}
 		}
 

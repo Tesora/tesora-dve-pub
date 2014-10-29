@@ -66,7 +66,7 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 	}
 	
 	// allow derived classes to step in
-	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+	protected void prepareAction(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		// does nothing
 	}
 	
@@ -74,11 +74,11 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 		entities.postCommitAction(c);
 	}
 	
-	protected void executeAction(SSConnection ssCon,CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	protected void executeAction(ExecutionState estate,CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		SQLCommand sql = entities.getCommand(c);
 		try {
 			if (!sql.isEmpty()) {
-				WorkerRequest req = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), sql).onDatabase(database);
+				WorkerRequest req = new WorkerExecuteRequest(estate.getConnection().getNonTransactionalContext(), sql).onDatabase(database);
 				wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 			}
 		} catch (Throwable t) {
@@ -96,8 +96,9 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 	 * @throws Throwable 
 	 */
 	@Override
-	public void executeSelf(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		SSConnection ssCon = estate.getConnection();
+		
 		if (ssCon.hasActiveTransaction())
 			throw new PEException("Cannot execute DDL within active transaction: " + entities.getCommand(ssCon.getCatalogDAO()));
 		
@@ -132,7 +133,7 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 				List<CatalogEntity> entitiesToNotifyOfUpdate = new ArrayList<CatalogEntity>();
 				List<CatalogEntity> entitiesToNotifyOfDrop = new ArrayList<CatalogEntity>();
 
-				prepareAction(ssCon,c, wg, resultConsumer);
+				prepareAction(estate,c, wg, resultConsumer);
 
 				// do the changes to the catalog first because we may be able to  
 				// restore the data if the ddl operation fails on the actual database
@@ -174,7 +175,7 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 				// event of a failure after the DDL is executed but before the txn is committed.
 				// or - in the case where the action succeeds but the txn fails at commit
 				if (!sideffects) {
-					executeAction(ssCon,c, wg, resultConsumer);
+					executeAction(estate,c, wg, resultConsumer);
 					sideffects = true;
 					if (entities != null)
 						entities.onExecute();

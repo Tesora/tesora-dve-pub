@@ -187,16 +187,19 @@ public class ExecutionPlan implements HasPlanning {
 		steps.schedule(opts, buf,projection, sc);
 		if (buf.isEmpty()) return;
 
-		// the plan is represented by a tree - of which the sequence is the root.
-		// convert the tree such that the last execution step is the single query step
-		// and all others are dependent steps.
-		QueryStepOperation end = buf.remove(buf.size() - 1);
-		for(QueryStepOperation qs : buf) {
-			end.addRequirement(qs);
-		}
-		qsteps.add(end);
+		qsteps.add(collapseOperationList(buf));
 	}
 
+	// the plan is represented by a tree - of which the sequence is the root.
+	// convert the tree such that the last execution step is the single query step
+	// and all others are dependent steps.
+	protected static QueryStepOperation collapseOperationList(List<QueryStepOperation> ops) {
+		QueryStepOperation end = ops.remove(ops.size() - 1);
+		for(QueryStepOperation qs : ops)
+			end.addRequirement(qs);
+		return end;
+	}
+	
 	@Override
 	public ExecutionType getExecutionType() {
 		return null;
