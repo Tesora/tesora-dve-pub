@@ -272,4 +272,46 @@ public class TriggerTransformTest extends TransformTest {
 		
 	}
 	
+	@Test
+	public void testNewAutoIncrementValueRewrite() throws Throwable {
+		SchemaContext db = buildSchema(TestName.MULTI,
+				"create table src (id int AUTO_INCREMENT, value int, primary key (id)) random distribute",
+				"create table no_ai_src (id int, value int, primary key (id)) random distribute",
+				"create trigger make_copy before update on src for each row "
+						+ "begin update no_ai_src set id = NEW.id, value = NEW.value; END");
+
+		String sql = "update src set value = 29";
+
+		PEStorageGroup group = getGroup(db);
+		stmtTest(db, sql, UpdateStatement.class, bes(
+				new ProjectingExpectedStep(ExecutionType.SELECT,
+						group, "temp1", TransientExecutionEngine.AGGREGATION, BroadcastDistributionModel.MODEL_NAME,
+						emptyDV,
+						emptyIndexes,
+						"SELECT `src`.`id` AS s1i0_4,`src`.`value` AS s1v1_5,29 AS litex_6",
+						"FROM `src`"
+				)
+						.withExplain(new DMLExplainRecord(DMLExplainReason.TRIGGER_SRC_TABLE)),
+				new TriggerExpectedStep(group,
+						new ProjectingExpectedStep(ExecutionType.SELECT,
+								null,
+								"SELECT temp1.s1i0_4,temp1.s1v1_5,temp1.litex_6",
+								"FROM temp1"
+						),
+						new UpdateExpectedStep(
+								group,
+								"UPDATE `src`",
+								"SET `src`.`value` = _lbc2",
+								"WHERE `src`.`id` = _lbc0"
+						),
+						new UpdateExpectedStep(
+								group,
+								"UPDATE `no_ai_src`",
+								"SET `no_ai_src`.`id` = IFNULL( _lbc0,0 ) ,`no_ai_src`.`value` = _lbc1"
+						),
+						null
+				)
+				));
+	}
+
 }

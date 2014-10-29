@@ -28,11 +28,15 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
+import com.tesora.dve.sql.node.expression.ActualLiteralExpression;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
+import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 
@@ -124,13 +128,20 @@ public class PETableTriggerPlanningEventInfo extends PETableTriggerEventInfo {
 				ColumnInstance ci = (ColumnInstance) in;
 				TableInstance ti = ci.getTableInstance();
 				if (ti instanceof TriggerTableInstance) {
+					final TriggerTableInstance tti = (TriggerTableInstance) ti;
 					ColumnKey ck = ci.getColumnKey();
 					Integer any = triggerColumnOffsets.get(ck);
 					if (any == null) {
 						any = triggerColumnOffsets.size();
 						triggerColumnOffsets.put(ck, any);
 					}
-					return new LateBindingConstantExpression(any.intValue());
+
+					final LateBindingConstantExpression value = new LateBindingConstantExpression(any.intValue());
+					if (tti.isBefore() && ci.getPEColumn().isAutoIncrement()) {
+						final ExpressionNode zeroLiteral = new ActualLiteralExpression(0, TokenTypes.Unsigned_Integer, null, null);
+						return new FunctionCall(FunctionName.makeIfNull(), value, zeroLiteral);
+					}
+					return value;
 				}
 			}
 			return in;
