@@ -140,16 +140,7 @@ public class BufferedExecute extends MyMessage {
 
 //                    stmtExecuteBuf.writeBytes(rowSet, payloadLen-bitmapSize-1);
             rowPacketData.marshallRawValues(stmtExecuteBuf);
-//            if (rowPacketData.autoIncr != null) {
-////                System.out.printf("SMG: would have written autoinc, %s\n",rowPacketData.autoIncr);
-////                stmtExecuteBuf.writeLong(rowPacketData.autoIncr);
-//            }
             ++rowsWritten;
-//                }
-//                if (!rowSet.isReadable()) {
-//                    i.remove();
-//                    rowSet.release();
-//                }
 
         }
 

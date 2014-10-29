@@ -96,9 +96,6 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 
 	@Override
 	public void normalize(SchemaContext sc) {
-        //SMG:
-//		if (rebalance)
-//			throw new SchemaException(Pass.PLANNER, "No runtime support for rebalance");
 		super.normalize(sc);
 	}
 	

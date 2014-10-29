@@ -32,6 +32,8 @@ import com.tesora.dve.sql.schema.RangeDistribution;
 import com.tesora.dve.sql.statement.ddl.AddStorageGenRangeInfo;
 import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.WorkerGroup;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -39,6 +41,8 @@ import java.util.*;
  *
  */
 public class QueryStepRebalance extends QueryStepOperation {
+    static final Logger log = LoggerFactory.getLogger(QueryStepRebalance.class);
+
     PersistentGroup group;
     List<AddStorageGenRangeInfo> rebalanceInfo;
     boolean ignoreFKs;
@@ -64,11 +68,10 @@ public class QueryStepRebalance extends QueryStepOperation {
     }
 
     private void migrateAllGenerationsToCurrent(SSConnection ssCon, WorkerGroup wg) throws PEException {
-        //SMG:
         List<StorageGroupGeneration> generations = group.getGenerations();
         //NOTE: Assumes previous storage gen add has copied broadcast tables to all p-sites, while random data and ranged data have not been copied.
 
-        System.out.printf("SMG: migrating old generations on group %s\n",group.getName());
+        log.debug("migrating old generations on group {}",group.getName());
 
         Set<PersistentSite> sitesInOldGens = new LinkedHashSet<>();
 
@@ -82,40 +85,28 @@ public class QueryStepRebalance extends QueryStepOperation {
         }
 
         if (oldGenerations.isEmpty()) {
-            System.out.printf("SMG: no old generations to compact, exiting.\n");
+            log.debug("Found no old generations to compact, exiting.");
             return;
         } else {
-            System.out.printf("SMG: %s old generations to compact\n",oldGenerations.size());
+            log.debug("Found {} old generations to compact.",oldGenerations.size());
         }
 
         StorageGroupGeneration newGen = group.getLastGen();
 
-        System.out.printf("SMG: current generation\n");
         PersistentGroup group = newGen.getStorageGroup();
-        System.out.printf("SMG:\tgroup=%s\n", group.getName());
-        for (StorageSite existingSite : group.getStorageSites())
-            System.out.printf("SMG:\t\tgroup.site=%s\n",existingSite.getName());
-        System.out.printf("SMG:\told sites\n");
-        for (StorageSite oldSite : sitesInOldGens)
-            System.out.printf("SMG:\t\told.site=%s\n",oldSite.getName());
-        System.out.printf("SMG:\tnew sites\n");
-        for (StorageSite genSite : newGen.getStorageSites())
-            System.out.printf("SMG:\t\tgen.site=%s\n",genSite.getName());
 
         //TODO: We will eventually need to deal with down-sizing and balancing, even for random data.
         //TODO: Broadcast data has already been copied for up sizing, but we will eventually need to deal with down-sizing.
 
         for (StorageGroupGeneration oldGen : oldGenerations) {
             //NOTE: this visits all old generations except the current gen in youngest to oldest order, which will properly migrate overlapping storage gens into the current gen.
-            System.out.printf("SMG:\tProcessing old generation, version=%s\n", oldGen.getVersion() );
+            log.debug("Processing old generation, version={}", oldGen.getVersion() );
 
             for (AddStorageGenRangeInfo rebalanceEntry : rebalanceInfo){
                 //TODO: we need to start an XA here.  Eventually we can split generation/key range, which would let us update a key range after moving some data for just one site.
-                System.out.printf("SMG: inspecting rebalance entries:\n");
-                rebalanceEntry.display("SMG:\t","\t",System.out);
                 RangeDistribution schemaRange = rebalanceEntry.getRange();
                 DistributionRange range = schemaRange.getPersistent(ssCon.getSchemaContext());
-                System.out.printf("SMG:Processing range=%s\n", range.getName());
+                log.debug("Processing range={}", range.getName());
 
                 for (PersistentSite oldSite : oldGen.getStorageSites()) {
                     //TODO: right now, we move all rows.  In the future we can move fewer rows, as long as we move all rows for dist-key / FK.
@@ -134,10 +125,6 @@ public class QueryStepRebalance extends QueryStepOperation {
             ssCon.getCatalogDAO().remove(oldGen);
 
         }
-
-
-        //SMG:
-
     }
 
 
