@@ -29,6 +29,8 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 
@@ -38,8 +40,8 @@ public class QueryStepDDLOperation extends QueryStepDDLGeneralOperation {
 	
 	private StaticEntityGenerator catalogEntities;
 
-	public QueryStepDDLOperation(PersistentDatabase db, SQLCommand command, CacheInvalidationRecord invalidationRecord) {
-		super(db);
+	public QueryStepDDLOperation(StorageGroup sg, PersistentDatabase db, SQLCommand command, CacheInvalidationRecord invalidationRecord) throws PEException {
+		super(sg, db);
 		catalogEntities = new StaticEntityGenerator(command,invalidationRecord);
 		setEntities(catalogEntities);
 	}

@@ -23,12 +23,13 @@ package com.tesora.dve.sql.transform.execution;
 
 import java.util.List;
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -48,19 +49,19 @@ public class ComplexDDLExecutionStep extends CatalogModificationExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		QueryStepDDLGeneralOperation qso = null;
+		StorageGroup sg = getStorageGroup(sc);
 		if (cb instanceof NestedOperationDDLCallback) {
-			qso = new QueryStepDDLNestedOperation(getPersistentDatabase(),(NestedOperationDDLCallback)cb);
+			qso = new QueryStepDDLNestedOperation(sg,getPersistentDatabase(),(NestedOperationDDLCallback)cb);
 		} else {
-			qso = new QueryStepDDLGeneralOperation(getPersistentDatabase());
+			qso = new QueryStepDDLGeneralOperation(sg,getPersistentDatabase());
 			qso.setEntities(cb);
 		}
 		if (commitOverride != null)
 			qso = qso.withCommitOverride(false);
-		addStep(sc,qsteps,qso);
-
+		qsteps.add(qso);
 	}
 
 	public ComplexDDLExecutionStep withCommitOverride(boolean v) {

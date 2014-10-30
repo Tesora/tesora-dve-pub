@@ -27,13 +27,14 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.catalog.HasAutoIncrementTracker;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.TableHints;
 import com.tesora.dve.queryplan.TempTableDeclHints;
 import com.tesora.dve.queryplan.TempTableGenerator;
@@ -173,12 +174,14 @@ public final class RedistributionExecutionStep extends
 
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps,
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps,
 			ProjectionInfo projection, SchemaContext sc) throws PEException {
 		QueryStepMultiTupleRedistOperation qsrdo = null;
 		
+		StorageGroup sg = getStorageGroup(sc);
+		
 		if (targetTable.mustBeCreated()) {
-			qsrdo = new QueryStepMultiTupleRedistOperation(getPersistentDatabase(), getCommand(sc),	getDistributionModel(sc));
+			qsrdo = new QueryStepMultiTupleRedistOperation(sg, getPersistentDatabase(), getCommand(sc),	getDistributionModel(sc));
 			if (targetTable.isExplicitlyDeclared()) {
 				// need to create a new context to avoid leaking
 				SchemaContext mutableContext = SchemaContext.makeMutableIndependentContext(sc);
@@ -218,7 +221,7 @@ public final class RedistributionExecutionStep extends
 					hints.withExistingAutoIncs(new Pair<Integer, HasAutoIncrementTracker>(offsetOfExistingAutoinc, hait));
 				}
 					
-				qsrdo = new QueryStepMultiTupleRedistOperation(getPersistentDatabase(), getCommand(sc), getDistributionModel(sc))
+				qsrdo = new QueryStepMultiTupleRedistOperation(sg, getPersistentDatabase(), getCommand(sc), getDistributionModel(sc))
 						.toUserTable(targetTable.getPersistentStorage(sc).getPersistent(sc), targetTable.getPersistentTable(sc), hints, true);
 			} finally {
 				sc.endSaveContext();
@@ -236,7 +239,7 @@ public final class RedistributionExecutionStep extends
 		if (userlandTemporaryTable)
 			qsrdo.withUserlandTemporaryTables();
 		qsrdo.setStatistics(getStepStatistics(sc));
-		addStep(sc,qsteps,qsrdo);
+		qsteps.add(qsrdo);
 
 	}
 

@@ -26,8 +26,8 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
 import com.tesora.dve.externalservice.ExternalServicePlugin;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -60,7 +60,7 @@ public class ExternalServiceControlStatement extends SessionStatement {
 				new AdhocOperation() {
 
 					@Override
-					public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+					public void execute(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 							throws Throwable {
 						ExternalServicePlugin plugin = null;
 						boolean isRegistered = ExternalServiceFactory.isRegistered(externalService.getName());

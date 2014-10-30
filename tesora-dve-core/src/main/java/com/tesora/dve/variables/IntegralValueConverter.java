@@ -23,7 +23,7 @@ package com.tesora.dve.variables;
 
 import java.sql.Types;
 
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.collector.ResultCollector;
@@ -38,7 +38,7 @@ public class IntegralValueConverter extends ValueMetadata<Long> {
 		try {
 			return Long.parseLong(in);
 		} catch (final NumberFormatException nfe) {
-			throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_TYPE_FOR_VARIABLE, varName));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.WRONG_TYPE_FOR_VARIABLE, varName));
 		}
 	}
 

@@ -215,4 +215,8 @@ public class ProxyConnectionResource extends ConnectionResource {
 		return lastHadWarning;
 	}
 	
+	public SSConnection getBackingConnection() {
+		return proxy;
+	}
+	
 }

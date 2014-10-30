@@ -34,7 +34,7 @@ import java.util.Set;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.MultiMap;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
@@ -52,6 +52,7 @@ import com.tesora.dve.sql.node.expression.WildcardTable;
 import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.parser.LexicalLocation;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.MultiMapLookup;
@@ -161,19 +162,19 @@ public class ScopeEntry implements Scope {
 	}
 	
 	private void throwNonUniqueTableException(final Name ambiguousTableName) {
-		throw new SchemaException(new ErrorInfo(DVEErrors.NON_UNIQUE_TABLE, ambiguousTableName.getUnquotedName().get()));
+		throw new SchemaException(new ErrorInfo(AvailableErrors.NON_UNIQUE_TABLE, ambiguousTableName.getUnquotedName().get()));
 	}
 	
 	private static void tableNotFound(SchemaContext sc, Schema<?> schema, Name givenName) throws SchemaException {
 		ErrorInfo ei = null;
 		if (givenName.isQualified()) {
 			QualifiedName qn = (QualifiedName) givenName;
-			ei = new ErrorInfo(DVEErrors.TABLE_DNE,
+			ei = new ErrorInfo(AvailableErrors.TABLE_DNE,
 					qn.getNamespace().getUnquotedName().get(),
 					qn.getUnqualified().getUnquotedName().get());
 		} else {
 			UnqualifiedName db = schema.getSchemaName(sc);
-			ei = new ErrorInfo(DVEErrors.TABLE_DNE,
+			ei = new ErrorInfo(AvailableErrors.TABLE_DNE,
 					db.getUnquotedName().get(),
 					givenName.getUnquotedName().get());
 		}
@@ -181,7 +182,7 @@ public class ScopeEntry implements Scope {
 	}
 	
 	private static void columnNotFound(Name columnName, LexicalLocation location) throws SchemaException {
-		throw new SchemaException(new ErrorInfo(DVEErrors.COLUMN_DNE,
+		throw new SchemaException(new ErrorInfo(AvailableErrors.COLUMN_DNE,
 				columnName.getUnquotedName().get(),
 				location.getExternal()));
 	}
@@ -202,9 +203,14 @@ public class ScopeEntry implements Scope {
 	// is not unique, emit an error
 	@Override
 	public TableInstance buildTableInstance(Name inTableName, UnqualifiedName alias, Schema<?> inSchema, SchemaContext sc, LockInfo info) {
-		TableInstance raw = resolver.lookupTable(sc, inSchema, inTableName, info);
-		TableInstance ti = raw.adapt(inTableName.getUnqualified(), alias, (sc == null ? 0 : sc.getNextTable()),
-				(sc != null && sc.getOptions().isResolve()));
+		TableInstance ti = null;
+		if (sc.getCapability() == Capability.PARSING_ONLY) {
+			ti = new TableInstance(null,inTableName,alias,false);
+		} else {
+			TableInstance raw = resolver.lookupShowTable(sc, inSchema, inTableName, info);
+			ti = raw.adapt(inTableName.getUnqualified(), alias, (sc == null ? 0 : sc.getNextTable()),
+					(sc != null && sc.getOptions().isResolve()));			
+		}
 		insertTable(ti,alias,inTableName.getUnqualified());
 		return ti;
 	}
@@ -271,10 +277,11 @@ public class ScopeEntry implements Scope {
 	}
 
 	private ColumnInstance buildColumnInstance(SchemaContext sc, Name given, Column<?> c, TableInstance ti) {
-		if (sc != null && sc.getOptions().isRawPlanStep() && ti.getTable() instanceof TempTable)
-			return new ColumnInstance(c,ti);
-		else
-			return new ColumnInstance(given,c,ti);
+		if (sc != null) {
+			if (sc.getOptions().isRawPlanStep() && ti.getTable() instanceof TempTable)
+				return new ColumnInstance(c,ti);
+		}
+		return new ColumnInstance(given,c,ti);
 	}
 	
 	@Override

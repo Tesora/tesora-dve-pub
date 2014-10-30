@@ -32,7 +32,7 @@ import java.util.Set;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -55,6 +55,7 @@ import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.statement.CacheableStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.transform.SchemaMapper;
@@ -64,7 +65,9 @@ import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
+import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.TransformFactory;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.ListSetMap;
 
@@ -132,12 +135,6 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 			if (jg.getPartitions().size() > 1 && jg.getJoins().isEmpty())
 				return true;
 			return false;
-			/*
-			ListSet<ColocatedJoin> invalidJoins = EngineConstant.INVALID_JOINS.getValue(this,getPersistenceContext());
-			if ((partitions == null || partitions.isEmpty()) && (invalidJoins == null || invalidJoins.isEmpty()))
-				// cross join? 
-				return true;
-				*/
 		}
 		return false;
 	}
@@ -164,23 +161,6 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 	// well, more specifically, it requires redistribution if there is more than one persistent group
 	// (because worker groups are based on persistent groups)
 	public boolean requiresRedistribution(SchemaContext sc) {
-/*
-		ListSet<Partition> partitions = EngineConstant.PARTITIONS.getValue(this,getPersistenceContext());
-		ListSet<ColocatedJoin> invalidJoins = EngineConstant.INVALID_JOINS.getValue(this,getPersistenceContext());
-		if (partitions != null && partitions.size() > 1) {
-			if (!EngineConstant.EQUIJOINS.hasValue(this,getPersistenceContext())) {
-				// no joins at all - see if there is more than one persistent group involved
-				ListSet<PEStorageGroup> groups = EngineConstant.GROUPS.getValue(this,getPersistenceContext());
-				if (groups != null && groups.size() > 1)
-					return true;
-			} else {
-				return true;
-			}
-		}
-		if (invalidJoins != null && invalidJoins.size() > 0)
-			return true;
-		return false;
-		*/
 		JoinGraph jg = EngineConstant.PARTITIONS.getValue(this, sc);
 		if (jg != null && jg.getPartitions().size() > 1) {
 			if (jg.getJoins().isEmpty()) {
@@ -246,17 +226,28 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 
 	public static final DMLExplainRecord distKeyExplain = DMLExplainReason.DISTRIBUTION_KEY_MATCHED.makeRecord(); 
 	
-	protected static void planViaTransforms(SchemaContext sc, DMLStatement dmls, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
+	protected static void planViaTransforms(final SchemaContext sc, final DMLStatement dmls, final ExecutionSequence es, final BehaviorConfiguration config) throws PEException {
 		// for now, we're going to say dml statements are cacheable - we'll override this later
 		// don't cache plans with parameters yet - won't work right for reuse
 		if (es.getPlan() != null && !(sc.getValueManager().hasPassDownParams() || dmls.getDerivedInfo().hasUserlandTemporaryTables())) 
 			es.getPlan().setCacheable(true);
+		invokePlanner(sc,dmls,new PlannerExecution() {
+
+			@Override
+			public void execute() throws Throwable {
+				TransformFactory.featurePlan(sc, dmls, es, config);				
+			}
+			
+		});
+	}
+	
+	protected static void invokePlanner(SchemaContext sc, DMLStatement dmls, PlannerExecution toInvoke) throws PEException {
 		try {
-			TransformFactory.featurePlan(sc, dmls, es, config);
+			toInvoke.execute();
 		} catch (Throwable t) {
 			if (t instanceof SchemaException) {
 				SchemaException se = (SchemaException) t;
-				if (se.getErrorInfo().getCode() != DVEErrors.INTERNAL)
+				if (se.getErrorInfo().getCode() != AvailableErrors.INTERNAL)
 					throw se;
 			}
 			// see if we can emit something useful here
@@ -270,8 +261,8 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 			} catch (Throwable it) {
 				throw new PEException(t);
 			}
-			throw new PEException(buf.toString(), t);
-		}		
+			throw new PEException(buf.toString(), t);			
+		}
 	}
 	
 	protected static void emitTables(SchemaContext sc, Collection<TableKey> tables, Set<PEAbstractTable<?>> tabs, StringBuilder buf) {
@@ -301,10 +292,37 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 		planViaTransforms(sc, this,es, config);
 	}
 		
+	@Override
+	public FeatureStep plan(final SchemaContext sc, final BehaviorConfiguration config) throws PEException {
+		final FeatureStep out[] = new FeatureStep[1];
+		final PlannerContext pc = new PlannerContext(sc,config);
+		invokePlanner(sc, this, new PlannerExecution() {
+
+			@Override
+			public void execute() throws Throwable {
+				// TODO Auto-generated method stub
+				out[0] = TransformFactory.buildFeatureStep(pc, DMLStatement.this);
+			}
+			
+		});
+		return out[0];
+	}
+	
 	public abstract DistKeyOpType getKeyOpType();
 
+	public abstract TriggerEvent getTriggerEvent();
+	
+	public abstract boolean hasTrigger(SchemaContext sc);
+
+	
 	@Override
 	public String toString() {
 		return System.identityHashCode(this) + "@ " + super.toString();
-	}	
+	}
+	
+	interface PlannerExecution {
+		
+		public void execute() throws Throwable;
+		
+	}
 }

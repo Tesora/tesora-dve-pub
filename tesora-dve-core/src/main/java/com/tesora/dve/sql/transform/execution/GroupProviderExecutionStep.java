@@ -48,7 +48,7 @@ public class GroupProviderExecutionStep extends
 
 	@Override
 	protected QueryStepDDLOperation buildOperation(SchemaContext sc) throws PEException {
-		return new QueryStepGroupProviderDDLOperation(smc);
+		return new QueryStepGroupProviderDDLOperation(getStorageGroup(sc),smc);
 	}
 
 	@Override

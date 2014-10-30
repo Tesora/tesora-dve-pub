@@ -28,13 +28,6 @@ import java.util.Properties;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import com.tesora.dve.server.connectionmanager.BroadcastMessageAgent;
-import com.tesora.dve.server.connectionmanager.NotificationManager;
-import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
-import com.tesora.dve.server.global.BootstrapHostService;
-import com.tesora.dve.server.global.MySqlPortalService;
-import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.worker.DirectConnectionCache;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -47,11 +40,11 @@ import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.ExternalService;
 import com.tesora.dve.common.catalog.Provider;
 import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.User;
-import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.comms.client.messages.ConnectRequest;
 import com.tesora.dve.comms.client.messages.GlobalRecoveryRequest;
 import com.tesora.dve.db.mysql.portal.MySqlPortal;
@@ -62,8 +55,14 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
 import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.locking.ClusterLock;
+import com.tesora.dve.server.connectionmanager.BroadcastMessageAgent;
+import com.tesora.dve.server.connectionmanager.NotificationManager;
+import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.server.global.BootstrapHostService;
+import com.tesora.dve.server.global.MySqlPortalService;
 import com.tesora.dve.server.statistics.manager.StatisticsManager;
 import com.tesora.dve.server.transactionmanager.Transaction2PCTracker;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.siteprovider.SiteProviderContextInitialisation;
 import com.tesora.dve.siteprovider.SiteProviderPlugin.SiteProviderContext;
 import com.tesora.dve.siteprovider.SiteProviderPlugin.SiteProviderFactory;
@@ -71,9 +70,10 @@ import com.tesora.dve.smqplugin.SimpleMQPlugin;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.schema.mt.TableGarbageCollector;
 import com.tesora.dve.sql.transexec.CatalogHelper;
-import com.tesora.dve.worker.agent.Agent;
-import com.tesora.dve.worker.WorkerManager;
+import com.tesora.dve.worker.DirectConnectionCache;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;
+import com.tesora.dve.worker.WorkerManager;
+import com.tesora.dve.worker.agent.Agent;
 
 public class BootstrapHost extends Host implements BootstrapHostMBean, BootstrapHostService {
 
@@ -212,6 +212,7 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 		// Attempt to load the JDBC driver - fail early if it isn't available
 		DBHelper.loadDriver(props.getProperty(DBHelper.CONN_DRIVER_CLASS));
 
+		props.put(DBHelper.CONN_URL, CatalogHelper.buildCatalogBaseUrlFrom(props).toString());
 		props.put(DBHelper.CONN_DBNAME,  database);
 		DBHelper helper = new DBHelper(props);
 		int catalogAccessible = 1;

@@ -32,6 +32,7 @@ import com.tesora.dve.sql.expression.MTTableKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.AutoIncrementLiteralExpression;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
@@ -134,8 +135,8 @@ public class AutoIncrementBlock {
 			for(IConstantExpression dle : toAllocate) {
 				Long aiv = new Long(first + i);
 				if (dle instanceof IAutoIncrementLiteralExpression) {
-					cv.resetAutoIncValue(dle.getPosition(), aiv);				
-				} else if (dle.isParameter()) {
+					cv.resetAutoIncValue(dle.getPosition(), aiv);	
+				} else if (dle.getConstantType() == ConstantType.PARAMETER) {
 					cv.resetParameterValue(dle.getPosition(), aiv);
 				} else {
 					cv.setLiteralValue(dle.getPosition(), aiv);
@@ -158,7 +159,7 @@ public class AutoIncrementBlock {
 				return true;
 			Object rv = ile.getValue(sc);
 			return requiresAutoIncAllocation(rv,!ile.isStringLiteral(),mode);
-		} else if (in.isParameter()) {
+		} else if (in.getConstantType() == ConstantType.PARAMETER) { 
 			IParameter ip = (IParameter) in;
 			Object v = ip.getValue(sc);
 			return requiresAutoIncAllocation(v,true,mode);			

@@ -23,28 +23,28 @@ package com.tesora.dve.queryplan;
 
 
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.IntermediateResultSet;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepAdhocResultSetOperation extends QueryStepOperation {
 
 	private IntermediateResultSet results;
 	
-	public QueryStepAdhocResultSetOperation(IntermediateResultSet theResults) {
-		super();
+	public QueryStepAdhocResultSetOperation(IntermediateResultSet theResults) throws PEException {
+		super(nullStorageGroup);
 		results = theResults;
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		resultConsumer.inject(results.getMetadata(), results.getRows());
 	}
 
 	
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

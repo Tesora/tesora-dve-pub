@@ -147,21 +147,13 @@ public class LogicalSchemaQueryEngine {
 	// main entry point.  
 	public static InfoPlanningResults buildResults(SchemaContext sc, ViewQuery vq, ProjectionInfo pi, FeaturePlanner planner) {
 		if (sc == null) return new InfoPlanningResults(new IntermediateResultSet());
-		LogicalQuery lq = convertDown(sc,vq);
+		LogicalQuery lq = convertDown(sc,vq,planner);
 		if (planner == null)
 			throw new InformationSchemaException("Missing feature planner");
 		return new InfoPlanningResults(buildStep(sc, lq, planner, pi));
 	}
 	
-	// convenience entry point, transitional
-	public static IntermediateResultSet buildResultSet(SchemaContext sc, ViewQuery vq, ProjectionInfo pi) {
-		InfoPlanningResults ipr = buildResults(sc,vq,pi,null);
-		if (ipr.getResults() != null)
-			return ipr.getResults();
-		throw new InformationSchemaException("No results available (executed via direct)");
-	}
-	
-	public static LogicalQuery convertDown(SchemaContext sc, ViewQuery vq) {
+	public static LogicalQuery convertDown(SchemaContext sc, ViewQuery vq, FeaturePlanner fp) {
 		SelectStatement in = vq.getQuery();
 		if (canLog()) {
 			String sql = in.getSQL(sc);
@@ -182,7 +174,7 @@ public class LogicalSchemaQueryEngine {
 				}
 			}
 		}
-		return convertDirectDown(sc,vq);
+		return convertDirectDown(sc,vq, fp);
 		
 	}
 	
@@ -243,7 +235,7 @@ public class LogicalSchemaQueryEngine {
 
 	// convenience
 	public static FeatureStep buildStep(SchemaContext sc, ViewQuery vq, ProjectionInfo pi) {
-		LogicalQuery dlq = convertDown(sc,vq);
+		LogicalQuery dlq = convertDown(sc,vq,null);
 		return buildStep(sc,dlq,new InformationSchemaRewriteTransformFactory(),pi);
 	}
 	
@@ -287,10 +279,10 @@ public class LogicalSchemaQueryEngine {
 				es.append(pes);		
 			}
 
-		};
+		}.withDefangInvariants();
 	}
 	
-	public static LogicalQuery convertDirectDown(SchemaContext sc, ViewQuery vq) {
+	public static LogicalQuery convertDirectDown(SchemaContext sc, ViewQuery vq, FeaturePlanner fp) {
 		SelectStatement in = vq.getQuery();
 		SelectStatement copy = CopyVisitor.copy(in);
 		if (canLog())
@@ -304,7 +296,7 @@ public class LogicalSchemaQueryEngine {
 		if (canLog())
 			log("After conversion: " + copy.getSQL(sc));
 		// and now we can explode it
-		ViewRewriteTransformFactory.applyViewRewrites(sc, copy);
+		ViewRewriteTransformFactory.applyViewRewrites(sc, copy, fp);
 		Map<String,Object> params = vq.getParams();
 		if (params == null) params = new HashMap<String,Object>();
 		Long anyTenant = sc.getPolicyContext().getTenantID(false);

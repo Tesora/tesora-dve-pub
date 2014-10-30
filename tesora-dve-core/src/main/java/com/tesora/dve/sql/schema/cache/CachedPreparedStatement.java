@@ -59,14 +59,14 @@ public class CachedPreparedStatement implements CachedPlan {
 		return false;
 	}
 
-	public ExecutionPlan rebuildPlan(SchemaContext sc, List<?> params) throws PEException {
+	public ExecutionPlan rebuildPlan(SchemaContext sc, List<Object> params) throws PEException {
 		if (thePlan.getValueManager().getNumberOfParameters() != params.size()) {
 			throw new PEException("Invalid prep. stmt. execute: require " + thePlan.getValueManager().getNumberOfParameters() + " parameters but have " + params.size());
 		}
 		thePlan.getValueManager().resetForNewPStmtExec(sc, params);
 		if (InvokeParser.isSqlLoggingEnabled()) {
 			GenericSQLCommand resolved = logFormat.resolve(sc, false, "  ");
-			InvokeParser.logSql(sc, resolved.getUnresolved());
+			InvokeParser.logSql(sc, resolved.getDecoded());
 		}
 		return thePlan;
 	}

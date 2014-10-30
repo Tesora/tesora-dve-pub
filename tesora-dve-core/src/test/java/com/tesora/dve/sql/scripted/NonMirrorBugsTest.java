@@ -84,7 +84,7 @@ public class NonMirrorBugsTest extends SchemaTest {
 	
 	@Test
 	public void testPE504() throws Throwable {
-		String jdbc = TestCatalogHelper.getInstance().getCatalogUrl();
+		String jdbc = TestCatalogHelper.getInstance().getCatalogBaseUrl();
 		String actualJdbc = "jdbc:mysql://localhost:3307";
 		List<String> stmts = importTest(this.getClass(),"pe504.sql",actualJdbc,jdbc);
 		runTest(conn,stmts);
@@ -93,7 +93,7 @@ public class NonMirrorBugsTest extends SchemaTest {
 	@Ignore
 	@Test
 	public void testPE505() throws Throwable {
-		String jdbc = TestCatalogHelper.getInstance().getCatalogUrl();
+		String jdbc = TestCatalogHelper.getInstance().getCatalogBaseUrl();
 		String actualJdbc = "jdbc:mysql://localhost:3307";
 		List<String> stmts = importTest(this.getClass(),"pe505.sql",actualJdbc,jdbc);
 		runTest(conn,stmts);
@@ -101,7 +101,7 @@ public class NonMirrorBugsTest extends SchemaTest {
 	
 	@Test
 	public void testPE506() throws Throwable {
-		String jdbc = TestCatalogHelper.getInstance().getCatalogUrl();
+		String jdbc = TestCatalogHelper.getInstance().getCatalogBaseUrl();
 		String actualJdbc = "jdbc:mysql://localhost:3307";
 		List<String> stmts = importTest(this.getClass(),"pe506.sql",actualJdbc,jdbc);
 		runTest(conn,stmts);
@@ -109,7 +109,7 @@ public class NonMirrorBugsTest extends SchemaTest {
 	
 	@Test
 	public void testPE494() throws Throwable {
-		String jdbc = TestCatalogHelper.getInstance().getCatalogUrl();
+		String jdbc = TestCatalogHelper.getInstance().getCatalogBaseUrl();
 		String actualJdbc = "jdbc:mysql://localhost:3307";
 		List<String> stmts = importTest(this.getClass(),"pe494.sql",actualJdbc,jdbc);
 		runTest(conn,stmts);
@@ -119,7 +119,7 @@ public class NonMirrorBugsTest extends SchemaTest {
 	public void testPE520() throws Throwable {
 		conn.execute("alter dve set plan_cache_limit = 0");
 		conn.execute("alter dve set cache_limit = 0");
-		String jdbc = TestCatalogHelper.getInstance().getCatalogUrl();
+		String jdbc = TestCatalogHelper.getInstance().getCatalogBaseUrl();
 		String actualJdbc = "jdbc:mysql://localhost:3305";
 		List<String> stmts = importTest(this.getClass(), "pe520.sql", actualJdbc, jdbc);
 		Map<Integer, String> locations = new LinkedHashMap<Integer, String>();

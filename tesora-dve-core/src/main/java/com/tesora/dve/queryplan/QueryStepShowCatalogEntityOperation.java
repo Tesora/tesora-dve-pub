@@ -32,7 +32,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultChunk;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepShowCatalogEntityOperation extends QueryStepOperation {
@@ -41,13 +40,14 @@ public class QueryStepShowCatalogEntityOperation extends QueryStepOperation {
 	List<CatalogEntity> catalogEntity;
 	CatalogQueryOptions queryOpts;
 	
-	public QueryStepShowCatalogEntityOperation( List<CatalogEntity> ce, CatalogQueryOptions opts ) {
+	public QueryStepShowCatalogEntityOperation(List<CatalogEntity> ce, CatalogQueryOptions opts ) throws PEException {
+		super(nullStorageGroup);
 		this.catalogEntity = ce;
 		this.queryOpts = opts;
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		if ( catalogEntity.size() > 0 ) {
 			ResultChunk rc = new ResultChunk();
 			for ( CatalogEntity ce : catalogEntity ) {
@@ -67,7 +67,7 @@ public class QueryStepShowCatalogEntityOperation extends QueryStepOperation {
 
 	
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

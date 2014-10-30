@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.worker.MysqlTextResultCollector;
@@ -35,22 +36,22 @@ public class QueryStepFilterOperation extends QueryStepOperation {
 	QueryStepOperation source;
 	OperationFilter filter;
 	
-	public QueryStepFilterOperation(QueryStepOperation src, OperationFilter filter) {
-		super();
+	public QueryStepFilterOperation(QueryStepOperation src, OperationFilter filter) throws PEException {
+		super(src.sg);
 		this.source = src;
 		this.filter = filter;
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		MysqlTextResultCollector tempRc = new MysqlTextResultCollector(true);
-		source.execute(ssCon, wg, tempRc);
-		filter.filter(ssCon, tempRc.getColumnSet(), tempRc.getRowData(), tempRc);
+		source.executeSelf(execState, wg, tempRc);
+		filter.filter(execState.getConnection(), tempRc.getColumnSet(), tempRc.getRowData(), tempRc);
 	}
 
 	@Override
-	public boolean requiresTransaction() {
-		return source.requiresTransaction();
+	public boolean requiresTransactionSelf() {
+		return source.requiresTransactionSelf();
 	}
 	
 	@Override

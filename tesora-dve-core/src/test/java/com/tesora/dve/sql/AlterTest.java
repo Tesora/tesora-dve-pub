@@ -44,6 +44,7 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
@@ -132,7 +133,7 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("alter table altest rename to `baltest`");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: Table `baltest` already exists");
 		conn.execute("alter table altest rename to `ralter`");
 		conn.assertResults("show tables like 'ralter'",br(nr,"ralter"));
@@ -410,18 +411,18 @@ public class AlterTest extends SchemaTest {
 	@Test
 	public void testPE1276() throws Throwable {
         final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
-		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8", true);
-		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII", true);
-		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1", true);
+		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8");
+		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII");
+		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1");
 
 		executeAlterCharsetCollateTest("pe1276_charset", ascii.getName(), null);
-		executeAlterCharsetCollateTest("pe1276_collate", null, Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
-		executeAlterCharsetCollateTest("pe1276_both", latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+		executeAlterCharsetCollateTest("pe1276_collate", null, Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
+		executeAlterCharsetCollateTest("pe1276_both", latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 
 		new ExpectedExceptionTester() {
 			@Override
 			public void test() throws Throwable {
-				executeAlterCharsetCollateTest("pe1276_ex1", utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName(), true).getName());
+				executeAlterCharsetCollateTest("pe1276_ex1", utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 			}
 		}.assertException(SchemaException.class, "COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
 
@@ -430,7 +431,7 @@ public class AlterTest extends SchemaTest {
 			public void test() throws Throwable {
 				executeAlterCharsetCollateTest("pe1276_ex2", "big5", null);
 			}
-		}.assertException(SchemaException.class, "No collations found for character set 'big5'");
+		}.assertException(SchemaException.class, "Unsupported CHARACTER SET big5");
 
 		executeAlterCharsetCollateTest("pe1276_ex3", null, "utf8_unicode_ci");
 
@@ -451,11 +452,11 @@ public class AlterTest extends SchemaTest {
 
 		NativeCharSet expectedCharSet = null;
 		if (charSetName != null) {
-			expectedCharSet = supportedCharsets.findCharSetByName(charSetName, false);
+			expectedCharSet = supportedCharsets.findCharSetByName(charSetName);
 			alterStmt.append(" CHARACTER SET ").append(charSetName);
 		} else {
 			if (collationName != null) {
-				expectedCharSet = supportedCharsets.findCharSetByCollation(collationName, false);
+				expectedCharSet = supportedCharsets.findCharSetByCollation(collationName);
 			}
 		}
 
@@ -465,7 +466,7 @@ public class AlterTest extends SchemaTest {
 			alterStmt.append(" COLLATE ").append(collationName);
 		} else {
 			if (expectedCharSet != null) {
-				expectedCollationName = Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(expectedCharSet.getName(), true).getName();
+				expectedCollationName = Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(expectedCharSet.getName()).getName();
 			}
 		}
 		

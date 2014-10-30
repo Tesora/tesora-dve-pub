@@ -92,13 +92,18 @@ public abstract class TransformFactory implements FeaturePlanner {
 
 	public static void featurePlan(SchemaContext sc, DMLStatement stmt, ExecutionSequence sequence, BehaviorConfiguration config) throws PEException {
 		PlannerContext pc = new PlannerContext(sc,config);
-		FeatureStep fp = buildPlan(stmt,pc,DefaultFeaturePlannerFilter.INSTANCE);
-		if (fp == null)
-			throw new PEException("No applicable planning for '" + stmt.getSQL(sc) + "'");
-		fp = pc.getBehaviorConfiguration().getPostPlanningTransformer(pc, stmt).transform(pc, stmt, fp);
-		pc.getTempGroupManager().plan(sc);
-		maintainInvariants(sc,stmt,fp.getPlannedStatement());
+		FeatureStep fp = buildFeatureStep(pc,stmt);
 		fp.schedule(pc, sequence, new HashSet<FeatureStep>());
 	}
-
+	
+	public static FeatureStep buildFeatureStep(PlannerContext pc, DMLStatement stmt) throws PEException {
+		FeatureStep fp = buildPlan(stmt,pc,DefaultFeaturePlannerFilter.INSTANCE);
+		if (fp == null)
+			throw new PEException("No applicable planning for '" + stmt.getSQL(pc.getContext()) + "'");
+		fp = pc.getBehaviorConfiguration().getPostPlanningTransformer(pc, stmt).transform(pc, stmt, fp);
+		pc.getTempGroupManager().plan(pc.getContext());
+		maintainInvariants(pc.getContext(),stmt,fp.getPlannedStatement());
+		return fp;
+	}
+	
 }

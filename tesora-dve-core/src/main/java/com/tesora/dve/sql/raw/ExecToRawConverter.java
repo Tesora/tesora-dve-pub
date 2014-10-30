@@ -287,6 +287,6 @@ public final class ExecToRawConverter {
 			mapping.put(me.getKey().getPosition(), "@" + me.getValue().getName());
 		}
 		GenericSQLCommand p = in.resolveRawEntries(mapping, sc);
-		return p.getUnresolved();
+		return p.getDecoded();
 	}
 }

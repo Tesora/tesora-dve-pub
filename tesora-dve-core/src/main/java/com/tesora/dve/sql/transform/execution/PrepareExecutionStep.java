@@ -28,7 +28,7 @@ import java.util.List;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepOperationPrepareStatement;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -43,8 +43,8 @@ public class PrepareExecutionStep extends DirectExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc) throws PEException {
-		addStep(sc,qsteps,new QueryStepOperationPrepareStatement(getDatabase(),getCommand(sc),projection));
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc) throws PEException {
+		qsteps.add(new QueryStepOperationPrepareStatement(getStorageGroup(sc),getDatabase(),getCommand(sc),projection));
 	}
 
 	// we need our own version of getCommand so that we don't attempt to resolve the parameters
@@ -56,7 +56,7 @@ public class PrepareExecutionStep extends DirectExecutionStep {
 
 	@Override
 	public String getSQL(SchemaContext sc, EmitOptions opts) {
-		return sql.resolve(sc,true,null).getUnresolved();
+		return sql.resolve(sc,true,null).getDecoded();
 	}
 
 	@Override

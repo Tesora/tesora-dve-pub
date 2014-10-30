@@ -40,6 +40,7 @@ import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import com.google.common.collect.Sets;
 import com.tesora.dve.common.MathUtils;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
@@ -47,6 +48,7 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.structural.JoinSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.node.test.EngineToken;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.Name;
@@ -61,6 +63,8 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.modifiers.EngineTableModifier;
 import com.tesora.dve.sql.schema.modifiers.EngineTableModifier.EngineTag;
 import com.tesora.dve.sql.schema.types.Type;
+import com.tesora.dve.sql.statement.Statement;
+import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.ForeignRelationship;
@@ -87,7 +91,7 @@ public class CorpusStats implements StatsVisitor {
 			final long bSize = b.getPredictedFutureSize(this.isRowWidthWeightingEnabled);
 			return Long.compare(aSize, bSize);
 		}
-	};
+	}
 
 	public static enum StatementType {
 		SELECT("SELECT"),
@@ -321,6 +325,10 @@ public class CorpusStats implements StatsVisitor {
 				return TableStats.this.getFullTableName().concat(".").concat(this.getColumnInstance().getName().get());
 			}
 
+			public TableStats getParentTable() {
+				return TableStats.this;
+			}
+
 			@Override
 			public boolean equals(Object other) {
 				if (other == null) {
@@ -465,8 +473,11 @@ public class CorpusStats implements StatsVisitor {
 		private final String tableName;
 		private final QualifiedName fullName;
 		private final Map<StatementType, Long> statementStats = new HashMap<StatementType, Long>();
-		private final Map<TableColumn, Long> identColumnStats = new HashMap<TableColumn, Long>();
-		private final Map<TableColumn, Long> groupByColumnStats = new HashMap<TableColumn, Long>();
+
+		private final Map<Set<TableColumn>, Long> identColumnTuplesStats = new HashMap<Set<TableColumn>, Long>();
+		private final Map<TableColumn, Long> identColumnSinglesStats = new HashMap<TableColumn, Long>();
+
+		private final Map<Set<TableColumn>, Long> groupByColumnStats = new HashMap<Set<TableColumn>, Long>();
 		private final Map<TableColumn, Long> updateColumnStats = new HashMap<TableColumn, Long>();
 		private final Set<TableColumn> columns = new HashSet<TableColumn>();
 		private final Set<ForeignRelationship> forwardRelationships = new HashSet<ForeignRelationship>();
@@ -602,15 +613,19 @@ public class CorpusStats implements StatsVisitor {
 			return (reads > 0) ? ((double) writes / reads) : writes;
 		}
 
-		public Map<TableColumn, Long> getIdentColumns() {
-			return Collections.unmodifiableMap(this.identColumnStats);
+		public Map<TableColumn, Long> getIdentColumnSingles() {
+			return Collections.unmodifiableMap(this.identColumnSinglesStats);
+		}
+
+		public Map<Set<TableColumn>, Long> getIdentColumnTuples() {
+			return Collections.unmodifiableMap(this.identColumnTuplesStats);
 		}
 
 		public boolean hasIdentColumns() {
-			return !this.identColumnStats.isEmpty();
+			return !this.identColumnSinglesStats.isEmpty();
 		}
 
-		public Map<TableColumn, Long> getGroupByColumns() {
+		public Map<Set<TableColumn>, Long> getGroupByColumns() {
 			return Collections.unmodifiableMap(this.groupByColumnStats);
 		}
 
@@ -707,16 +722,6 @@ public class CorpusStats implements StatsVisitor {
 				count += increment;
 			}
 			this.statementStats.put(type, count);
-		}
-
-		protected void bumpCount(final TableColumn identColumn, final int increment, final Map<TableColumn, Long> columnStats) {
-			Long count = columnStats.get(identColumn);
-			if (count == null) {
-				count = new Long(increment);
-			} else {
-				count += increment;
-			}
-			columnStats.put(identColumn, count);
 		}
 
 		protected void setTableCardinality(final long cardinality) {
@@ -988,6 +993,19 @@ public class CorpusStats implements StatsVisitor {
 		return tableJoins;
 	}
 
+	private static final Set<EngineToken> ACCEPTED_JOIN_ON_OPERATORS = Collections.singleton(EngineConstant.EQUALS);
+	private static final Set<EngineToken> ACCEPTED_WHERE_OPERATORS = Sets.newHashSet(EngineConstant.EQUALS, EngineConstant.IN);
+
+	public static <T> void bumpCount(final T identColumnTuple, final int increment, final Map<T, Long> columnStats) {
+		Long count = columnStats.get(identColumnTuple);
+		if (count == null) {
+			count = new Long(increment);
+		} else {
+			count += increment;
+		}
+		columnStats.put(identColumnTuple, count);
+	}
+
 	private final String corpusName;
 	private final int corpusScaleFactor;
 	private final SortedMap<QualifiedName, TableStats> corpusStats = new TreeMap<QualifiedName, TableStats>(new Comparator<QualifiedName>() {
@@ -997,6 +1015,7 @@ public class CorpusStats implements StatsVisitor {
 		}
 	});
 	private final Set<JoinStats> joins = new HashSet<JoinStats>();
+	private Statement currentStatement;
 	private SchemaContext currentContext;
 
 	public CorpusStats(final String corpusName, final int corpusScaleFactor) {
@@ -1050,13 +1069,53 @@ public class CorpusStats implements StatsVisitor {
 
 	@Override
 	public void beginStmt(StatementAnalysis<?> s) {
+		this.currentStatement = s.getStatement();
 		this.currentContext = s.getSchemaContext();
 	}
 
 	@Override
 	public void onIdentColumn(Column<?> c, int freq) {
-		final TableStats table = getStats(c.getTable(), currentContext);
-		table.bumpCount(convertToPEColumn(c), freq, table.identColumnStats);
+		final TableStats table = getStats(c.getTable(), this.currentContext);
+		bumpCount(convertToPEColumn(c), freq, table.identColumnSinglesStats);
+	}
+
+	/**
+	 * Identity columns can be handled using the logic applied on JOINs.
+	 */
+	@Override
+	public void onIdentColumnTuple(final Set<Column<?>> ct, int freq) {
+		final ExpressionNode parentWhereClause = (ExpressionNode) EngineConstant.WHERECLAUSE.getEdge(this.currentStatement).get();
+		final Set<Set<ExpressionNode>> independentConditions = decomposeIntoIndependentWhereConditions(parentWhereClause);
+		for (final Set<ExpressionNode> conditionGroup : independentConditions) {
+			final Map<TableStats, Set<TableColumn>> tuplesByTable = new HashMap<TableStats, Set<TableColumn>>();
+			final Set<ColumnInstance> columnGroup = ColumnInstanceCollector.getColumnInstances(conditionGroup);
+			for (final ColumnInstance column : columnGroup) {
+				final Column<?> instance = column.getColumn();
+
+				// Use only identity columns.
+				if (ct.contains(instance)) {
+					putTupleColumn(convertToPEColumn(instance), tuplesByTable);
+				}
+			}
+
+			for (final TableStats table : tuplesByTable.keySet()) {
+				bumpCount(tuplesByTable.get(table), freq, table.identColumnTuplesStats);
+			}
+		}
+	}
+
+	private Set<Set<ExpressionNode>> decomposeIntoIndependentWhereConditions(final ExpressionNode expr) {
+		return decomposeIntoIndependentConditions(expr, ACCEPTED_WHERE_OPERATORS);
+	}
+
+	private static void putTupleColumn(final TableColumn column, final Map<TableStats, Set<TableColumn>> tuplesByTable) {
+		final TableStats parentTable = column.getParentTable();
+		Set<TableColumn> vector = tuplesByTable.get(parentTable);
+		if (vector == null) {
+			vector = new LinkedHashSet<TableColumn>();
+			tuplesByTable.put(parentTable, vector);
+		}
+		vector.add(column);
 	}
 
 	@Override
@@ -1096,47 +1155,57 @@ public class CorpusStats implements StatsVisitor {
 	 * Build all combinations of colocatable join column pairs.
 	 * 
 	 * a) t1 JOIN t3 ON t1.a = t2.a AND t1.b = t2.b
-	 *    't1' and 't2' can be colocated in a single range on both column pairs 'a'
-	 *    and 'b'.
+	 * 't1' and 't2' can be colocated in a single range on both column pairs 'a'
+	 * and 'b'.
 	 * 
 	 * b) t1 JOIN t3 ON t1.a = t2.a OR t1.b = t2.b
-	 *    't1' and 't2' cannot be colocated on both column pairs 'a' and 'b'.
-	 *    The above join can however be handled as two independent joins:
-	 *    "t1 JOIN t3 ON t1.a = t2.a" and "t1 JOIN t3 ON t1.b = t2.b"
-	 *    Ranging 't1' and 't2' on one of the two column pairs ('a' or 'b') may
-	 *    benefit the planner/optimizer.
+	 * 't1' and 't2' cannot be colocated on both column pairs 'a' and 'b'.
+	 * The above join can however be handled as two independent joins:
+	 * "t1 JOIN t3 ON t1.a = t2.a" and "t1 JOIN t3 ON t1.b = t2.b"
+	 * Ranging 't1' and 't2' on one of the two column pairs ('a' or 'b') may
+	 * benefit the planner/optimizer.
 	 * 
 	 * This method builds all independently colocatable column groups based on
 	 * the rules above.
 	 * A new join is constructed for each of the independent groups.
 	 */
 	private Set<Set<ExpressionNode>> decomposeIntoIndependentJoinConditions(final ExpressionNode expr) {
+		return decomposeIntoIndependentConditions(expr, ACCEPTED_JOIN_ON_OPERATORS);
+	}
+
+	private Set<Set<ExpressionNode>> decomposeIntoIndependentConditions(final ExpressionNode expr, final Set<EngineToken> acceptedOperators) {
 		if (expr instanceof FunctionCall) {
 			final FunctionCall func = (FunctionCall) expr;
-			if (EngineConstant.FUNCTION.has(func, EngineConstant.EQUALS)) {
-				return Collections.singleton(Collections.singleton(expr));
-			}
-
-			final List<ExpressionNode> pars = func.getParameters();
-			final Set<Set<ExpressionNode>> left = decomposeIntoIndependentJoinConditions(pars.get(0));
-			final Set<Set<ExpressionNode>> right = decomposeIntoIndependentJoinConditions(pars.get(1));
-			final Set<Set<ExpressionNode>> decomposed = new LinkedHashSet<Set<ExpressionNode>>();
-
-			if (EngineConstant.FUNCTION.has(func, EngineConstant.OR)) {
-				decomposed.addAll(left);
-				decomposed.addAll(right);
-			} else if (EngineConstant.FUNCTION.has(func, EngineConstant.AND)) {
-				for (final Set<ExpressionNode> ln : left) {
-					for (final Set<ExpressionNode> rn : right) {
-						final Set<ExpressionNode> row = new LinkedHashSet<ExpressionNode>();
-						row.addAll(ln);
-						row.addAll(rn);
-						decomposed.add(row);
-					}
+			for (final EngineToken operator : acceptedOperators) {
+				if (EngineConstant.FUNCTION.has(func, operator)) {
+					return Collections.singleton(Collections.singleton(expr));
 				}
 			}
 
-			return decomposed;
+			final List<ExpressionNode> pars = func.getParameters();
+
+			// Only binary functions - not foo(column).
+			if (pars.size() == 2) {
+				final Set<Set<ExpressionNode>> left = decomposeIntoIndependentConditions(pars.get(0), acceptedOperators);
+				final Set<Set<ExpressionNode>> right = decomposeIntoIndependentConditions(pars.get(1), acceptedOperators);
+				final Set<Set<ExpressionNode>> decomposed = new LinkedHashSet<Set<ExpressionNode>>();
+
+				if (EngineConstant.FUNCTION.has(func, EngineConstant.OR)) {
+					decomposed.addAll(left);
+					decomposed.addAll(right);
+				} else if (EngineConstant.FUNCTION.has(func, EngineConstant.AND)) {
+					for (final Set<ExpressionNode> ln : left) {
+						for (final Set<ExpressionNode> rn : right) {
+							final Set<ExpressionNode> row = new LinkedHashSet<ExpressionNode>();
+							row.addAll(ln);
+							row.addAll(rn);
+							decomposed.add(row);
+						}
+					}
+				}
+
+				return decomposed;
+			}
 		}
 
 		return Collections.EMPTY_SET;
@@ -1186,7 +1255,7 @@ public class CorpusStats implements StatsVisitor {
 	@Override
 	public void onUpdate(PEColumn c, int freq) {
 		final TableStats table = getStats(c.getTable(), currentContext);
-		table.bumpCount(convertToPEColumn(c), freq, table.updateColumnStats);
+		bumpCount(convertToPEColumn(c), freq, table.updateColumnStats);
 	}
 
 	@Override
@@ -1220,13 +1289,35 @@ public class CorpusStats implements StatsVisitor {
 	@Override
 	public void onUnion(int freq) {
 		// not implemented
-
 	}
 
 	@Override
 	public void onGroupBy(Column<?> c, int freq) {
-		final TableStats table = getStats(c.getTable(), currentContext);
-		table.bumpCount(convertToPEColumn(c), freq, table.groupByColumnStats);
+		// not implemented
+	}
+
+	/**
+	 * a) If all GROUP BY columns belong to a single table we treat them as
+	 * joined by 'AND' operator.
+	 * Ranging that table on all of them will place each group on a single
+	 * persistent site.
+	 * 
+	 * b) In general, we won't be able to collocate something like GROUP BY
+	 * t1.a, t1.b, t2.a
+	 * It may benefit the planner/optimizer to range the tables on their
+	 * respective tuples independently (i.e. 't1' on ['a', 'b'] and 't2' on
+	 * 'b').
+	 */
+	@Override
+	public void onGroupByColumnTuple(final Set<Column<?>> ct, int freq) {
+		final Map<TableStats, Set<TableColumn>> tuplesByTable = new HashMap<TableStats, Set<TableColumn>>();
+		for (final TableColumn column : convertAll(ct)) {
+			putTupleColumn(column, tuplesByTable);
+		}
+
+		for (final TableStats table : tuplesByTable.keySet()) {
+			bumpCount(tuplesByTable.get(table), freq, table.groupByColumnStats);
+		}
 	}
 
 	@Override
@@ -1236,7 +1327,7 @@ public class CorpusStats implements StatsVisitor {
 
 	@Override
 	public void endStmt(StatementAnalysis<?> s) {
-		// noop
+		// not implemented
 	}
 
 	@Override
@@ -1283,6 +1374,15 @@ public class CorpusStats implements StatsVisitor {
 			this.corpusStats.put(fullTableName, stats);
 		}
 		return stats;
+	}
+
+	private Set<TableColumn> convertAll(final Set<Column<?>> collection) {
+		final Set<TableColumn> converted = new LinkedHashSet<TableColumn>(collection.size());
+		for (final Column<?> column : collection) {
+			converted.add(convertToPEColumn(column));
+		}
+
+		return converted;
 	}
 
 	private TableColumn convertToPEColumn(final Column<?> c) {

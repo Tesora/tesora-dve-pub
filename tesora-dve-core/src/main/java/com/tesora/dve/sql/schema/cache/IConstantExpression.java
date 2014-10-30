@@ -29,7 +29,7 @@ public interface IConstantExpression {
 
 	public int getPosition();
 
-	public boolean isParameter();
+	public ConstantType getConstantType();
 	
 	public IConstantExpression getCacheExpression();
 	

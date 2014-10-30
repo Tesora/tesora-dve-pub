@@ -57,6 +57,7 @@ import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.distribution.RangeDistributionModel;
 import com.tesora.dve.distribution.RangeTableRelationship;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepAddGenerationOperation;
 import com.tesora.dve.queryplan.QueryStepDDLOperation;
 import com.tesora.dve.queryplan.QueryStepInsertByKeyOperation;
@@ -328,12 +329,12 @@ public class BootstrapTest extends PETest {
 
 		UserTable foo = utilCreateTableTwoColumns(tableName, sg, dm, db);
 		QueryStepDDLOperation createTableDDL =
-				new QueryStepDDLOperation(db, new SQLCommand(ssConnection, foo.getCreateTableStmt()), null);
+				new QueryStepDDLOperation(sg,db, new SQLCommand(ssConnection, foo.getCreateTableStmt()), null);
 		createTableDDL.addCatalogUpdate(foo);
 
 		WorkerGroup wg = WorkerGroupFactory.newInstance(ssConnection, sg, db);
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		createTableDDL.execute(ssConnection, wg, results);
+		createTableDDL.executeSelf(new ExecutionState(ssConnection), wg, results);
 
 		try {
 			assertEquals(0, results.getUpdateCount());
@@ -347,7 +348,7 @@ public class BootstrapTest extends PETest {
 			QueryStepOperation qso = new QueryStepAddGenerationOperation(sg, Arrays.asList(gen2),
 					CacheInvalidationRecord.GLOBAL);
 			results = new MysqlTextResultChunkProvider();
-			qso.execute(ssConnection, wg, results);
+			qso.executeSelf(new ExecutionState(ssConnection), wg, results);
 			assertEquals(results.getUpdateCount(), 0);
 
 			// need to refresh the wg as we have changed the sg beneath it
@@ -364,10 +365,10 @@ public class BootstrapTest extends PETest {
 			for (int i = 0; i < 20; ++i) {
 				KeyValue dv = foo.getDistValue(ssConnection.getCatalogDAO());
 				dv.get("id").setValue(i);
-				qso = new QueryStepSelectByKeyOperation(ssConnection, db, dv,
+				qso = new QueryStepSelectByKeyOperation(sg,ssConnection, db, dv,
 						"select * from " + foo.getNameAsIdentifier() + " where id = " + i);
 				results = new MysqlTextResultChunkProvider();
-				qso.execute(ssConnection, wg, results);
+				qso.executeSelf(new ExecutionState(ssConnection), wg, results);
 				assertEquals(1, results.getNumRowsAffected());
 			}
 
@@ -381,10 +382,10 @@ public class BootstrapTest extends PETest {
 				expCntSG = new PersistentGroup(sg.getStorageSites());
 
 			wg = WorkerGroupFactory.newInstance(ssConnection, expCntSG, db);
-			qso = new QueryStepSelectAllOperation(ssConnection, db, dm,
+			qso = new QueryStepSelectAllOperation(expCntSG,ssConnection, db, dm,
 					"select * from " + foo.getNameAsIdentifier());
 			results = new MysqlTextResultChunkProvider();
-			qso.execute(ssConnection, wg, results);
+			qso.executeSelf(new ExecutionState(ssConnection), wg, results);
 			assertEquals(expectedCount, results.getNumRowsAffected());
 		} finally {
 			WorkerGroupFactory.returnInstance(ssConnection, wg);
@@ -453,22 +454,22 @@ public class BootstrapTest extends PETest {
 		
 		UserTable foo = utilCreateTableTwoColumns(tableName1, sg, dm, db);
 		QueryStepDDLOperation createTable1DDL =
-				new QueryStepDDLOperation(db, new SQLCommand(ssConnection, foo.getCreateTableStmt()), null);
+				new QueryStepDDLOperation(sg,db, new SQLCommand(ssConnection, foo.getCreateTableStmt()), null);
 		createTable1DDL.addCatalogUpdate(foo);
 		createTable1DDL.addCatalogUpdate(new RangeTableRelationship(foo, dr));
 
 		UserTable foobar = utilCreateTableTwoColumns(tableName2, sg, dm, db);
 		QueryStepDDLOperation createTable2DDL =
-				new QueryStepDDLOperation(db, new SQLCommand(ssConnection, foobar.getCreateTableStmt()), null);
+				new QueryStepDDLOperation(sg,db, new SQLCommand(ssConnection, foobar.getCreateTableStmt()), null);
 		createTable2DDL.addCatalogUpdate(foobar);
 		createTable2DDL.addCatalogUpdate(new RangeTableRelationship(foobar, dr));
 
 		WorkerGroup wg = WorkerGroupFactory.newInstance(ssConnection, sg, db);
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
-		createTable1DDL.execute(ssConnection, wg, results);
+		createTable1DDL.executeSelf(new ExecutionState(ssConnection), wg, results);
 		assertEquals(0, results.getUpdateCount());
 		results = new MysqlTextResultChunkProvider();
-		createTable2DDL.execute(ssConnection, wg, results);
+		createTable2DDL.executeSelf(new ExecutionState(ssConnection), wg, results);
 		assertEquals(0, results.getUpdateCount());
 
 		for (int i = 0; i < 10; ++i) {
@@ -483,10 +484,10 @@ public class BootstrapTest extends PETest {
 		for (int i = 0; i < 10; ++i) {
 			KeyValue dv = foo.getDistValue(ssConnection.getCatalogDAO());
 			dv.get("id").setValue(i);
-			QueryStepOperation qso = new QueryStepSelectByKeyOperation(ssConnection, db, dv,
+			QueryStepOperation qso = new QueryStepSelectByKeyOperation(sg,ssConnection, db, dv,
 					"select * from " + foo.getNameAsIdentifier() + " foo, " + foobar.getNameAsIdentifier() + " foobar where foo.id=foobar.id and foo.id = " + i);
 			results = new MysqlTextResultChunkProvider();
-			qso.execute(ssConnection, wg, results);
+			qso.executeSelf(new ExecutionState(ssConnection), wg, results);
 			assertEquals(1, results.getNumRowsAffected());
 		}
 
@@ -526,7 +527,7 @@ public class BootstrapTest extends PETest {
 		try {
 			QueryStepOperation qso = new QueryStepAddGenerationOperation(sg, Arrays.asList(new PersistentSite[] { ss3 }),CacheInvalidationRecord.GLOBAL);
 			results = new MysqlTextResultChunkProvider();
-			qso.execute(ssConnection, wg, results);
+			qso.executeSelf(new ExecutionState(ssConnection), wg, results);
 			assertEquals(results.getUpdateCount(), 0);
 		} finally {
 			// need to refresh the wg as we have changed the sg beneath it
@@ -543,10 +544,10 @@ public class BootstrapTest extends PETest {
 			for (int i = 0; i < 20; ++i) {
 				KeyValue dv = foo.getDistValue(ssConnection.getCatalogDAO());
 				dv.get("id").setValue(i);
-				QueryStepOperation qso = new QueryStepSelectByKeyOperation(ssConnection, db, dv,
+				QueryStepOperation qso = new QueryStepSelectByKeyOperation(sg,ssConnection, db, dv,
 						"select * from " + foo.getNameAsIdentifier() + " where id = " + i);
 				results = new MysqlTextResultChunkProvider();
-				qso.execute(ssConnection, wg, results);
+				qso.executeSelf(new ExecutionState(ssConnection), wg, results);
 				assertEquals("On record " + i, 1, results.getNumRowsAffected());
 			}
 		} finally {
@@ -556,10 +557,10 @@ public class BootstrapTest extends PETest {
 		PersistentGroup lastGenSG = new PersistentGroup(sg.getLastGen().getStorageSites());
 		wg = WorkerGroupFactory.newInstance(ssConnection, lastGenSG, db);
 		try {
-			QueryStepOperation qso = new QueryStepSelectAllOperation(ssConnection, db, dm,
+			QueryStepOperation qso = new QueryStepSelectAllOperation(sg,ssConnection, db, dm,
 					"select * from " + foo.getNameAsIdentifier());
 			results = new MysqlTextResultChunkProvider();
-			qso.execute(ssConnection, wg, results);
+			qso.executeSelf(new ExecutionState(ssConnection), wg, results);
 			assertEquals(10, results.getNumRowsAffected());
 		} finally {
 			WorkerGroupFactory.returnInstance(ssConnection, wg);
@@ -570,9 +571,9 @@ public class BootstrapTest extends PETest {
 		KeyValue dv = ut.getDistValue(ssConnection.getCatalogDAO());
 		dv.get("id").setValue(id);
 		QueryStepOperation qso = 
-				new QueryStepInsertByKeyOperation(ssConnection, db, dv,
+				new QueryStepInsertByKeyOperation(wg.getGroup(),ssConnection, db, dv,
 						"insert into " + ut.getNameAsIdentifier() + " values (" + id + ", 'value" + id + "')");
-		qso.execute(ssConnection, wg, results);
+		qso.executeSelf(new ExecutionState(ssConnection), wg, results);
 	}
 	
 	private UserTable utilCreateTableTwoColumns(String name, PersistentGroup sg, DistributionModel dm, UserDatabase db) {

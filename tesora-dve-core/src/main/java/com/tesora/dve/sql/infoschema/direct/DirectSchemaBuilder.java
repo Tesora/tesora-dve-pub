@@ -165,7 +165,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					"collations",
 					// ah, let the stupid mysqlisms begin
 					"select c.name as `COLLATION_NAME`, c.character_set_name as `CHARACTER_SET_NAME`, "
-					+"cast((c.id+1)-1 as signed integer) as `ID`, "
+					+forceLong("c.id") + " as `ID`, "
 					+"case c.is_default when 1 then 'Yes' else '' end as `IS_DEFAULT`, "
 					+"case c.is_compiled when 1 then 'Yes' else 'No' end as `IS_COMPILED`, "
 					+"c.sortlen as `SORTLEN` "
@@ -686,7 +686,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					"views",
 					"select 'def' as `TABLE_CATALOG`, ud.name as `TABLE_SCHEMA`, ut.name as `TABLE_NAME`, "
 					+"v.definition as `VIEW_DEFINITION`, v.check_option as `CHECK_OPTION`, "
-					+"'NO' as `IS_UPDATABLE`, concat(u.name,'@',u.accessSpec) as `DEFINER`, v.security as `SECURITY_TYPE`, "
+					+"'NO' as `IS_UPDATABLE`, " + buildDefiner("u") + " as `DEFINER`, v.security as `SECURITY_TYPE`, "
 					+"v.character_set_client as `CHARACTER_SET_CLIENT`, v.collation_connection as `COLLATION_CONNECTION`, "
 					+"v.mode as `MODE` "
 					+"from user_view v inner join user_table ut on v.table_id = ut.table_id "
@@ -832,43 +832,6 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("CHARACTER_SET_CLIENT",    "varchar(32)"),
 					c("COLLATION_CONNECTION",    "varchar(32)"),
 					c("DATABASE_COLLATION",      "varchar(32)")),
-			new ViewTableGenerator(InfoView.INFORMATION,
-					"triggers",null,"triggers",null,
-					c("TRIGGER_CATALOG",           "varchar(512)"),
-					c("TRIGGER_SCHEMA",            "varchar(64)"),
-					c("TRIGGER_NAME",              "varchar(64)"),
-					c("EVENT_MANIPULATION",        "varchar(6)"),
-					c("EVENT_OBJECT_CATALOG",      "varchar(512)"),
-					c("EVENT_OBJECT_SCHEMA",       "varchar(64)"),
-					c("EVENT_OBJECT_TABLE",        "varchar(64)"),
-					c("ACTION_ORDER",              "bigint(4)"),
-					c("ACTION_CONDITION",          "longtext"),
-					c("ACTION_STATEMENT",          "longtext"),
-					c("ACTION_ORIENTATION",        "varchar(9)"),
-					c("ACTION_TIMING",             "varchar(6)"),
-					c("ACTION_REFERENCE_OLD_TABLE","varchar(64)"),
-					c("ACTION_REFERENCE_NEW_TABLE","varchar(64)"),
-					c("ACTION_REFERENCE_OLD_ROW",  "varchar(3)"),
-					c("ACTION_REFERENCE_NEW_ROW",  "varchar(3)"),
-					c("CREATED",                   "datetime"),
-					c("SQL_MODE",                  "varchar(8192)"),
-					c("DEFINER",                   "varchar(77)"),
-					c("CHARACTER_SET_CLIENT",      "varchar(32)"),
-					c("COLLATION_CONNECTION",      "varchar(32)"),
-					c("DATABASE_COLLATION",        "varchar(32)")),
-			new ViewTableGenerator(InfoView.SHOW,
-					"trigger","triggers","triggers",null,
-					c("Trigger","varchar(64)").withIdent(),
-					c("Event","varchar(6)"),
-					c("Table","varchar(64)"),
-					c("Statement","longtext"),
-					c("Timing","varchar(6)"),
-					c("Created","datetime"),
-					c("sql_mode","varchar(8192)"),
-					c("Definer","varchar(77)"),
-					c("character_set_client","varchar(32)"),
-					c("collation_connection","varchar(32)"),
-					c("Database Collation","varchar(32)")),
 			new ViewTableGenerator(InfoView.SHOW,
 					"procedure status",null,
 					"procedure_status",null,
@@ -1138,6 +1101,86 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 					c("connect_user","varchar(255)"),
 					c("uses_datastore","varchar(3)"),
 					c("config","longtext")).withExtension().withPrivilege(),
+			new ViewTableGenerator(InfoView.SHOW,
+					"triggers",null,
+					"show_triggers",
+					"select t.trigger_name as `Trigger`, t.trigger_event as `Event`, ut.name as `Table`, "
+					+"t.trigger_body as `Statement`, t.trigger_time as `Timing`, NULL as `Created`, "
+					+"t.sql_mode as `sql_mode`, " + buildDefiner("u") + " as `Definer`, "
+					+"t.character_set_client as `character_set_client`, "
+					+"t.collation_connection as `collation_connection`, "
+					+"t.database_collation as `Database Collation` "
+					+"from user_trigger t inner join user_table ut on t.table_id = ut.table_id "
+					+"inner join user u on t.user_id = u.id "
+					+"inner join user_database ud on ut.user_database_id = ud.user_database_id "
+					+"where ud.name = @dbn ",
+					c("Trigger","varchar(64)").withOrderBy(0),
+					c("Event","varchar(6)"),
+					c("Table","varchar(64)").withIdent(),
+					c("Statement","longtext"),
+					c("Timing","varchar(6)"),
+					c("Created","datetime"),
+					c("sql_mode","varchar(8192)"),
+					c("Definer","varchar(77)"),
+					c("character_set_client","varchar(32)"),
+					c("collation_connection","varchar(32)"),
+					c("Database Collation","varchar(32)")),
+			new ViewTableGenerator(InfoView.SHOW,
+					"create trigger",null,
+					"show_create_trigger",
+					"select t.trigger_name as `Trigger`, t.sql_mode as `sql_mode`, "
+					+"concat('CREATE DEFINER=`',u.name,'`@`',u.accessSpec,'` ',t.origsql) as `SQL Original Statement`, "
+					+"t.character_set_client as `character_set_client`, "
+					+"t.collation_connection as `collation_connection`, "
+					+"t.database_collation as `Database Collation` "
+					+"from user_trigger t inner join user_table ut on t.table_id = ut.table_id "
+					+"inner join user_database ud on ut.user_database_id = ud.user_database_id "
+					+"inner join user u on t.user_id = u.id "
+					+"where ud.name = @dbn ",
+					c("Trigger","varchar(64)").withIdent(),
+					c("sql_mode","varchar(8192)"),
+					c("SQL Original Statement","longtext"),
+					c("character_set_client","varchar(32)"),
+					c("collation_connection","varchar(32)"),
+					c("Database Collation","varchar(32)")),	
+			new ViewTableGenerator(InfoView.INFORMATION,
+					"triggers",null,
+					"triggers",
+					"select 'def' as `TRIGGER_CATALOG`, ud.name as `TRIGGER_SCHEMA`, t.trigger_name as `TRIGGER_NAME`, "
+					+"t.trigger_event as `EVENT_MANIPULATION`, 'def' as `EVENT_OBJECT_CATALOG`, ud.name as `EVENT_OBJECT_SCHEMA`, "
+					+"ut.name as `EVENT_OBJECT_TABLE`, " + forceLong("0") + " as `ACTION_ORDER`, NULL as `ACTION_CONDITION`, "
+					+"t.trigger_body as `ACTION_STATEMENT`, 'ROW' as `ACTION_ORIENTATION`, t.trigger_time as `ACTION_TIMING`, "
+					+"NULL as `ACTION_REFERENCE_OLD_TABLE`, NULL as `ACTION_REFERENCE_NEW_TABLE`, "
+					+"'OLD' as `ACTION_REFERENCE_OLD_ROW`, 'NEW' as `ACTION_REFERENCE_NEW_ROW`, NULL as `CREATED`, "
+					+"t.sql_mode as `SQL_MODE`, " + buildDefiner("u") + " as `DEFINER`, "
+					+"t.character_set_client as `CHARACTER_SET_CLIENT`, "
+					+"t.collation_connection as `COLLATION_CONNECTION`, "
+					+"t.database_collation as `DATABASE_COLLATION` "
+					+"from user_trigger t inner join user_table ut on t.table_id = ut.table_id "
+					+"inner join user_database ud on ut.user_database_id = ud.user_database_id "
+					+"inner join user u on t.user_id = u.id ",
+					c("TRIGGER_CATALOG","varchar(512)"),
+					c("TRIGGER_SCHEMA","varchar(64)"),
+					c("TRIGGER_NAME","varchar(64)"),
+					c("EVENT_MANIPULATION","varchar(6)"),
+					c("EVENT_OBJECT_CATALOG","varchar(512)"),
+					c("EVENT_OBJECT_SCHEMA","varchar(64)"),
+					c("EVENT_OBJECT_TABLE","varchar(64)"),
+					c("ACTION_ORDER","bigint(4)"),
+					c("ACTION_CONDITION","longtext"),
+					c("ACTION_STATEMENT","longtext"),
+					c("ACTION_ORIENTATION","varchar(9)"),
+					c("ACTION_TIMING","varchar(6)"),
+					c("ACTION_REFERENCE_OLD_TABLE","varchar(64)"),
+					c("ACTION_REFERENCE_NEW_TABLE","varchar(64)"),
+					c("ACTION_REFERENCE_OLD_ROW","varchar(3)"),
+					c("ACTION_REFERENCE_NEW_ROW","varchar(3)"),
+					c("CREATED","datetime"),
+					c("SQL_MODE","varchar(8192)"),
+					c("DEFINER","varchar(77)"),
+					c("CHARACTER_SET_CLIENT","varchar(32)"),
+					c("COLLATION_CONNECTION","varchar(32)"),
+					c("DATABASE_COLLATION","varchar(32)")),
 			new DirectTableGenerator(InfoView.SHOW,
 					"create table",null,
 					c("Table","varchar(255)").withIdent(),
@@ -1275,6 +1318,14 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 		String flags = uc + ".flags";
 		return ColumnAttributes.buildSQLTest(flags, ColumnAttributes.AUTO_INCREMENT, "'auto_increment'", 
 				ColumnAttributes.buildSQLTest(flags, ColumnAttributes.ONUPDATE, "'on update CURRENT_TIMESTAMP'", "''"));
+	}
+	
+	private static String buildDefiner(String userTable) {
+		return String.format("concat(%s.name,'@',%s.accessSpec)",userTable,userTable);
+	}
+	
+	private static String forceLong(String colName) {
+		return String.format("cast((%s + 1)-1 as unsigned integer)",colName);
 	}
 	
 	private static DirectColumnGenerator c(String name, String decl) {

@@ -23,11 +23,11 @@ package com.tesora.dve.queryplan;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
 import com.tesora.dve.externalservice.ExternalServicePlugin;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.PEExternalService;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
@@ -38,17 +38,17 @@ public class QueryStepExternalServiceOperation extends QueryStepDDLOperation {
 	Action action;
 	PEExternalService rootEntity;
 
-	public QueryStepExternalServiceOperation(PersistentDatabase execCtxDBName,
-			SQLCommand command, Action action, PEExternalService rootEntity2) {
-		super(execCtxDBName, command,null);
+	public QueryStepExternalServiceOperation(StorageGroup sg, PersistentDatabase execCtxDBName,
+			SQLCommand command, Action action, PEExternalService rootEntity2) throws PEException {
+		super(sg, execCtxDBName, command,null);
 
 		this.action = action;
 		this.rootEntity = rootEntity2;
 	}
 
 	@Override
-	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
-		super.prepareAction(ssCon,c,wg,resultConsumer);
+	protected void prepareAction(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+		super.prepareAction(estate,c,wg,resultConsumer);
 		
 		switch(action) {
 		case DROP:
@@ -79,10 +79,10 @@ public class QueryStepExternalServiceOperation extends QueryStepDDLOperation {
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		// call base first to get the external service into the catalog
-		super.execute(ssCon, wg, resultConsumer);
+		super.executeSelf(execState, wg, resultConsumer);
 
 		// we do this here instead of prepareAction because we need the service
 		// to be committed (by super.execute) to the catalog before registering 

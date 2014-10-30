@@ -27,12 +27,12 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.Priviledge;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.WorkerGrantPrivilegesRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
@@ -46,13 +46,14 @@ public class QueryStepGrantPrivilegesOperation extends QueryStepOperation {
 	private Priviledge priv;
 	private CacheInvalidationRecord invalidationRecord;
 	
-	public QueryStepGrantPrivilegesOperation(Priviledge p, CacheInvalidationRecord cir) {
+	public QueryStepGrantPrivilegesOperation(StorageGroup sg, Priviledge p, CacheInvalidationRecord cir) throws PEException {
+		super(sg);
 		this.priv = p;
 		this.invalidationRecord = cir;
 	}
 
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		// this op is only called for non-global privileges, so figure out which database it's on
 		
@@ -62,11 +63,11 @@ public class QueryStepGrantPrivilegesOperation extends QueryStepOperation {
 			database = tenant.getDatabase();
 		User user = priv.getUser();
 		
-		if (ssCon.hasActiveTransaction())
+		if (estate.hasActiveTransaction())
             throw new PEException("Cannot execute DDL within active transaction: GRANT PRIVILEDGES ON " + database.getName() + ".* TO " +
                     Singletons.require(HostService.class).getDBNative().getUserDeclaration(user, false));
 		
-		CatalogDAO c = ssCon.getCatalogDAO();
+		CatalogDAO c = estate.getCatalogDAO();
 		c.begin();
 		try {
 			// if the user is new, persist that as well
@@ -82,7 +83,7 @@ public class QueryStepGrantPrivilegesOperation extends QueryStepOperation {
 			// registered to back out the DDL we are about to execute in the 
 			// event of a failure after the DDL is executed but before the txn is committed.
 
-            WorkerRequest req = new WorkerGrantPrivilegesRequest(ssCon.getNonTransactionalContext(), database.getName(), Singletons.require(HostService.class).getDBNative().getUserDeclaration(user, true));
+            WorkerRequest req = new WorkerGrantPrivilegesRequest(estate.getNonTransactionalContext(), database.getName(), Singletons.require(HostService.class).getDBNative().getUserDeclaration(user, true));
 			wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 			
 			c.commit();
@@ -101,7 +102,7 @@ public class QueryStepGrantPrivilegesOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

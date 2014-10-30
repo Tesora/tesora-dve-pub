@@ -23,6 +23,7 @@ package com.tesora.dve.sql.statement.session;
 
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -58,7 +59,8 @@ public class UseTenantStatement extends UseStatement {
 			final PETenant ten = getTenant();
 			es.append(new TransientSessionExecutionStep(getSQL(pc), new AdhocOperation() {
 				@Override
-				public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+				public void execute(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+					SSConnection ssCon = estate.getConnection();
 					ssCon.setCurrentDatabase(db);
 					ssCon.setCurrentTenant(ten);
 				}

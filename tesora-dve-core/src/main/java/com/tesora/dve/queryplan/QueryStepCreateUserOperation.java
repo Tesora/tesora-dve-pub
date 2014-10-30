@@ -22,10 +22,10 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
@@ -39,15 +39,16 @@ public class QueryStepCreateUserOperation extends QueryStepOperation {
 	User user;
 	CacheInvalidationRecord record;
 	
-	public QueryStepCreateUserOperation(User u, CacheInvalidationRecord record) {
+	public QueryStepCreateUserOperation(StorageGroup sg, User u, CacheInvalidationRecord record) throws PEException {
+		super(sg);
 		user = u;
 		this.record = record;
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
-		if (ssCon.hasActiveTransaction())
+		if (estate.hasActiveTransaction())
 			throw new PEException("Cannot execute CREATE USER " + user.getName() +  " within active transaction");
 		
 		// Send the catalog changes to the transaction manager so that it can
@@ -56,7 +57,7 @@ public class QueryStepCreateUserOperation extends QueryStepOperation {
 		// Add the catalog entries.  We have to do this before we execute any sql because the workers may
 		// depend on the catalog being correct.  For instance, for a create database, the UserDatabase has to
 		// exist in the catalog - otherwise the create database command is sent to the wrong database.
-		CatalogDAO c = ssCon.getCatalogDAO();
+		CatalogDAO c = estate.getCatalogDAO();
 		c.begin();
 		try {
 			QueryPlanner.invalidateCache(record);
@@ -71,8 +72,8 @@ public class QueryStepCreateUserOperation extends QueryStepOperation {
 
 			// build two different stmts: the create user statement and the grant statement
 
-			WorkerRequest req = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), Singletons.require(HostService.class).getDBNative()
-					.getCreateUserCommand(ssCon, user));
+			WorkerRequest req = new WorkerExecuteRequest(estate.getNonTransactionalContext(), Singletons.require(HostService.class).getDBNative()
+					.getCreateUserCommand(estate.getConnection(), user));
 			wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 
 			c.commit();
@@ -89,7 +90,7 @@ public class QueryStepCreateUserOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

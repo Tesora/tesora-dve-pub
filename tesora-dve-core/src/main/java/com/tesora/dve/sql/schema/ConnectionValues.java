@@ -22,6 +22,7 @@ package com.tesora.dve.sql.schema;
  */
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
@@ -31,12 +32,13 @@ import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.AutoIncrementLiteralExpression;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.parser.TimestampVariableUtils;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.util.ResizableArray;
 
 public class ConnectionValues {
 
-	private ResizableArray<Object> literalValues = new ResizableArray<Object>();
+	private EnumMap<ConstantType,ResizableArray<Object>> constantValues = new EnumMap<ConstantType,ResizableArray<Object>>(ConstantType.class);
 	
 	private AutoIncrementBlock autoincs = null;
 
@@ -48,8 +50,6 @@ public class ConnectionValues {
 
 	private ResizableArray<Long> autoincValues = new ResizableArray<Long>();
 	
-	private List<Object> parameterValues = null;
-	
 	private Long lastInsertId;
 	
 	private List<JustInTimeInsert> lateSortedInsert = null;
@@ -60,16 +60,28 @@ public class ConnectionValues {
 
 	public ConnectionValues() {
 		original = true;
+		for(ConstantType ct : ConstantType.values()) {
+			if (ct == ConstantType.PARAMETER)
+				constantValues.put(ct,  null);
+			else
+				constantValues.put(ct, new ResizableArray<Object>());
+		}
 	}
 	
 	private ConnectionValues(ConnectionValues other) {
-		literalValues = new ResizableArray<Object>(other.literalValues.size()); 
+		for(ConstantType ct : ConstantType.values()) {
+			ResizableArray<Object> ovals = other.constantValues.get(ct);
+			if (ct == ConstantType.PARAMETER) {
+				constantValues.put(ct, ovals);
+			} else {
+				constantValues.put(ct,new ResizableArray<Object>(ovals == null ? 0 : ovals.size()));
+			}
+		}
 		tenantID = other.tenantID;
 		tempTables = new ArrayList<UnqualifiedName>(other.tempTables);
 		autoincs = (other.autoincs == null ? null : other.autoincs.makeCopy());
 		autoincValues = new ResizableArray<Long>(other.autoincValues.size());
 		placeholderGroups = new ArrayList<PEStorageGroup>(other.placeholderGroups);
-		parameterValues = (other.parameterValues == null ? null : other.parameterValues);
 		original = false;
 		lastInsertId = null;
 		lateSortedInsert = null;
@@ -118,34 +130,43 @@ public class ConnectionValues {
 	public void resetTenantID(SchemaContext sc) throws PEException {
 		tenantID = sc.getPolicyContext().getTenantID(false);
 	}
-	
+
 	public Object getLiteralValue(int index) {
-		return literalValues.get(index);
+		return constantValues.get(ConstantType.LITERAL).get(index);
 	}
 	
 	public void setLiteralValue(int index, Object value) {
-		literalValues.set(index, value);
+		constantValues.get(ConstantType.LITERAL).set(index, value);
 	}
 	
 	public int getNumberOfLiterals() {
-		return literalValues.size();
+		return constantValues.get(ConstantType.LITERAL).size();
 	}
 
-	public void setParameters(List<?> params) {
-		parameterValues = new ArrayList<Object>(params);
+	public void setParameters(List<Object> params) {
+		constantValues.put(ConstantType.PARAMETER, new ResizableArray<Object>(params));
 	}
 	
 	public Object getParameterValue(int index) {
-		if (parameterValues == null)
-			return null;
-		return parameterValues.get(index);
+		ResizableArray<Object> vals = constantValues.get(ConstantType.PARAMETER);
+		if (vals == null) return null;
+		return vals.get(index);
 	}
 	
 	public void resetParameterValue(int index, Object newVal) {
-		if (parameterValues == null) return;
-		parameterValues.remove(index);
-		parameterValues.add(index, newVal);
+		ResizableArray<Object> vals = constantValues.get(ConstantType.PARAMETER);
+		if (vals == null) return;
+		vals.set(index, newVal);
 	}
+	
+	public void setRuntimeConstants(List<Object> vals) {
+		constantValues.put(ConstantType.RUNTIME, new ResizableArray<Object>(vals));
+	}
+	
+	public Object getRuntimeConstant(int index) {
+		return constantValues.get(ConstantType.RUNTIME).get(index);
+	}
+	
 	
 	public Long getTenantID() {
 		return tenantID;

@@ -22,6 +22,7 @@ package com.tesora.dve.tools.analyzer.stats;
  */
 
 import java.util.List;
+import java.util.Set;
 
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.PEColumn;
@@ -41,6 +42,8 @@ public interface StatsVisitor {
 	 * A column from the where clause of the form c = <literal>, or c = ?.
 	 */
 	public void onIdentColumn(Column<?> c, int freq);
+
+	public void onIdentColumnTuple(Set<Column<?>> ct, int freq);
 
 	public void onJoin(EquijoinInfo joinInfo, int freq);
 
@@ -69,6 +72,8 @@ public interface StatsVisitor {
 	 * Where c shows up (directly or indirectly) in a group by expression.
 	 */
 	public void onGroupBy(Column<?> c, int freq);
+
+	public void onGroupByColumnTuple(Set<Column<?>> ct, int freq);
 
 	/**
 	 * Where c shows up (directly or indirectly) in an order by expression.

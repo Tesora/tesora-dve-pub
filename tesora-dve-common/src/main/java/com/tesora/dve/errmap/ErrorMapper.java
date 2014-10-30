@@ -35,7 +35,7 @@ public class ErrorMapper {
 	private static final Map<ErrorCode,ErrorCodeFormatter> formatters = buildFormatters();
 
 	public static void initialize() throws PEException {
-		for(ErrorCode ec : DVEErrors.universe) {
+		for(ErrorCode ec : AvailableErrors.universe) {
 			ErrorCodeFormatter mapped = formatters.get(ec);
 			if (mapped == null) {
 				throw new PEException("Missing error mapper for error code: " + ec.getName());
@@ -75,7 +75,7 @@ public class ErrorMapper {
 	
 	private static Map<ErrorCode,ErrorCodeFormatter> buildFormatters() {
 		HashMap<ErrorCode,ErrorCodeFormatter> out = new HashMap<ErrorCode,ErrorCodeFormatter>();
-		for(ErrorCodeFormatter ecf : MySQLErrors.myFormatters) {
+		for (ErrorCodeFormatter ecf : AvailableErrorMessages.getAll()) {
 			for(ErrorCode ec : ecf.getHandledCodes())
 				out.put(ec,ecf);
 		}

@@ -38,6 +38,7 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepAddGenerationOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -230,7 +231,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 		// we know we can emit all of [1] right away
 		// we have to build a dep tree for [2] - we can figure out here if it's cyclical
 		// we have to build a dep tree for [3]
-		private QueryStepAddGenerationOperation buildOperation(SchemaContext sc, PersistentGroup pg, List<PersistentSite> sites) {
+		private QueryStepAddGenerationOperation buildOperation(SchemaContext sc, PersistentGroup pg, List<PersistentSite> sites) throws PEException {
 			MultiMap<PEDatabase,PETable> plain = new MultiMap<PEDatabase,PETable>();
 			MultiMap<PEDatabase,PETable> fks = new MultiMap<PEDatabase,PETable>();
 			MultiMap<PEDatabase,PEViewTable> views = new MultiMap<PEDatabase,PEViewTable>();
@@ -374,10 +375,10 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
+		public void executeNested(ExecutionState estate, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
 			if (op == null) return;
-			op.execute(conn, wg, resultConsumer);
+			op.executeSelf(estate, wg, resultConsumer);
 		}
 		
 	}

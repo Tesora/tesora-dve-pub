@@ -24,7 +24,7 @@ package com.tesora.dve.variables;
 import java.util.LinkedHashMap;
 
 import com.tesora.dve.common.PEStringUtils;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaException;
@@ -45,7 +45,7 @@ public class EnumValueConverter<E extends Enum<E>> extends ValueMetadata<E> {
 		String deq = PEStringUtils.dequote(in);
 		E any = universe.get(deq);
 		if (any == null) {
-			throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_VALUE_FOR_VARIABLE, varName, deq));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.WRONG_VALUE_FOR_VARIABLE, varName, deq));
 		}
 		return any;
 	}

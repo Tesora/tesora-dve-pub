@@ -59,6 +59,7 @@ import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.TableInstanceCollector;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 
@@ -88,7 +89,7 @@ public class ViewRewriteTransformFactory extends TransformFactory {
 		return FeaturePlannerIdentifier.VIEW;
 	}
 	
-	public static void applyViewRewrites(SchemaContext sc, DMLStatement dmls) {
+	public static void applyViewRewrites(SchemaContext sc, DMLStatement dmls, FeaturePlanner planner) {
 		boolean any;
 		do {
 			any = false;
@@ -100,6 +101,10 @@ public class ViewRewriteTransformFactory extends TransformFactory {
 				PEViewTable petv = peat.asView();
 				if (petv.getView(sc).getMode() == ViewMode.ACTUAL) continue;
 				swapInView(sc,dmls,ti,petv,dmls.getAliases());
+				if (planner != null && planner.emitting()) {
+					planner.emit("After swapping in " + petv.getName() + " for " + ti);
+					planner.emit(dmls.getSQL(sc, "  "));
+				}
 				any = true;
 			}
 		} while(any);		
@@ -196,13 +201,14 @@ public class ViewRewriteTransformFactory extends TransformFactory {
 
 	// this is the non merge case, so we want to ensure that all refs to the view table are replaced with ti - i.e. all column refs
 	private static void ensureMapped(final SchemaContext sc, DMLStatement enclosing, final TableInstance ti, final PEViewTable theView, ProjectingStatement remapped) {
+		final TableKey myKey = ti.getTableKey();
 		new Traversal(Order.POSTORDER, ExecStyle.ONCE) {
 
 			@Override
 			public LanguageNode action(LanguageNode in) {
 				if (in instanceof ColumnInstance) {
 					ColumnInstance ci = (ColumnInstance) in;
-					if (ci.getTableInstance().getTable() == theView) {
+					if (ci.getTableInstance().getTableKey().equals(myKey)) {
 						return new ColumnInstance(ci.getSpecifiedAs(),ci.getColumn(),ti);
 					}
 				}
@@ -356,7 +362,7 @@ public class ViewRewriteTransformFactory extends TransformFactory {
 		DMLStatement copy = CopyVisitor.copy(stmt);
 		if (emitting()) 
 			emit("Before view rewrite: " + copy.getSQL(context.getContext()));
-		applyViewRewrites(context.getContext(),copy);
+		applyViewRewrites(context.getContext(),copy,this);
 		if (emitting())
 			emit("After view rewrite: " + copy.getSQL(context.getContext()));
 		

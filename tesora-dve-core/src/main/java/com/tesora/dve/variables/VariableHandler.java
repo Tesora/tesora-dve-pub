@@ -26,7 +26,7 @@ import java.util.Locale;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.VariableConfig;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -376,7 +376,7 @@ public class VariableHandler<Type> {
 		if (in == null || NULL_VALUE.equals(in)) {
 			if (options.contains(VariableOption.NULLABLE)) 
 				return null;
-			throw new SchemaException(new ErrorInfo(DVEErrors.WRONG_VALUE_FOR_VARIABLE, this.getName(), "NULL"));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.WRONG_VALUE_FOR_VARIABLE, this.getName(), "NULL"));
 		}
 		return getMetadata().convertToInternal(getName(),in);
 	}

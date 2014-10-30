@@ -156,7 +156,7 @@ public abstract class PlanCache {
     	sc.getSource().clearPreparedStatement(sc.getConnection().getConnectionId(),stmtID);
     }
 
-    public static ExecutionPlan bindPreparedStatement(SchemaContext sc, String stmtID, List<?> params) throws PEException {
+    public static ExecutionPlan bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
     	CachedPreparedStatement cps = sc.getSource().getPreparedStatement(sc, sc.getConnection().getConnectionId(), stmtID);    	
     	return cps.rebuildPlan(sc, params);
     }

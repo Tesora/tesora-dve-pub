@@ -24,9 +24,9 @@ package com.tesora.dve.sql.statement.session;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteKillRequest;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
@@ -61,10 +61,10 @@ public class KillStatement extends SessionStatement {
 				new AdhocOperation() {
 
 					@Override
-					public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+					public void execute(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 							throws Throwable {
 
-						WorkerExecuteRequest req = new WorkerExecuteKillRequest(ssCon.getNonTransactionalContext(),
+						WorkerExecuteRequest req = new WorkerExecuteKillRequest(estate.getNonTransactionalContext(),
 								new SQLCommand(sc, "KILL QUERY"), connectionId);
 						wg.execute(WorkerGroup.MappingSolution.AllWorkers, req, resultConsumer);
 

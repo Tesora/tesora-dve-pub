@@ -41,6 +41,7 @@ import org.junit.runners.MethodSorters;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.TestCatalogHelper;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
@@ -155,7 +156,7 @@ public class CatalogQueryTest extends SchemaTest {
 				   nr, "mtcqtps", new Integer(4),
 				   nr,PEConstants.SYSTEM_GROUP_NAME,new Integer(2)),
 				   "cqtps",0,br(nr,"cqtps",new Integer(3)),true);
-		String siteURL = TestCatalogHelper.getInstance().getCatalogUrl();
+		String siteURL = TestCatalogHelper.getInstance().getCatalogBaseUrl();
 		Object[] siteResults = br(nr,"cqt0","Single",siteURL, 
 				nr, "cqt1", "Single", siteURL, 
 				nr, "cqt2", "Single", siteURL, 
@@ -201,7 +202,7 @@ public class CatalogQueryTest extends SchemaTest {
 			public void test() throws Throwable {
 				testCommand(conn, "table", br(nr, "A", "AB"), "A", 0, br(nr, "A"), false);
 			}
-		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter, "No database selected");
+		}.assertSqlError(SQLException.class, MySQLErrors.missingDatabaseFormatter);
 
 		conn.execute("use cqtdb");
 		testCommand(conn,"table",br(nr,"A",nr,"AB"),"A",0,br(nr,"A"),false);
@@ -236,8 +237,7 @@ public class CatalogQueryTest extends SchemaTest {
 				public void test() throws Throwable {
 					conn.execute("describe foo");
 				}
-			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
-						"Table 'cqtdb.foo' doesn't exist");
+			}.assertSqlError(SQLException.class, MySQLErrors.missingTableFormatter, "cqtdb", "foo");
 		}
 	}
 	
@@ -356,8 +356,7 @@ public class CatalogQueryTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("show table status");
 			}
-		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter,
-					"No database selected");
+		}.assertSqlError(SQLException.class, MySQLErrors.missingDatabaseFormatter);
 				
 		rr = conn.fetch("show table status from " + project.getDatabaseName());
 		rows = rr.getResults();
@@ -375,8 +374,7 @@ public class CatalogQueryTest extends SchemaTest {
 			conn.execute("show tables");
 
 			}
-		}.assertError(SQLException.class, MySQLErrors.missingDatabaseFormatter,
-					"No database selected");
+		}.assertSqlError(SQLException.class, MySQLErrors.missingDatabaseFormatter);
 		
 		rr = conn.fetch("show tables from " + project.getDatabaseName());
 		rows = rr.getResults();
@@ -599,7 +597,7 @@ public class CatalogQueryTest extends SchemaTest {
 				public void test() throws Throwable {
 					nonRootConn.execute("show master logs");
 				}
-			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+			}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
 
 			new ExpectedSqlErrorTester() {
@@ -607,7 +605,7 @@ public class CatalogQueryTest extends SchemaTest {
 				public void test() throws Throwable {
 					nonRootConn.execute("show master status");
 				}
-			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+			}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
 
 			new ExpectedSqlErrorTester() {
@@ -615,7 +613,7 @@ public class CatalogQueryTest extends SchemaTest {
 				public void test() throws Throwable {
 					nonRootConn.execute("show slave status");
 				}
-			}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+			}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 						"Internal error: You do not have permission to show persistent sites");
 			
 			nonRootConn.assertResults("SELECT * FROM information_schema.character_sets order by character_set_name", 
@@ -627,6 +625,7 @@ public class CatalogQueryTest extends SchemaTest {
 			nonRootConn.assertResults("SELECT * FROM information_schema.collations order by character_set_name, id", br(
 					nr, "ascii_general_ci", "ascii", Long.valueOf(11), "Yes", "Yes", Long.valueOf(1),
 					nr, "ascii_bin", "ascii", Long.valueOf(65), "", "Yes", Long.valueOf(1),
+					nr, "latin1_german1_ci", "latin1", Long.valueOf(5), "", "Yes", Long.valueOf(1),
 					nr, "latin1_swedish_ci", "latin1", Long.valueOf(8), "Yes", "Yes", Long.valueOf(1),
 					nr, "latin1_danish_ci", "latin1", Long.valueOf(15), "", "Yes", Long.valueOf(1),
 					nr, "latin1_german2_ci", "latin1", Long.valueOf(31), "", "Yes", Long.valueOf(2),
@@ -656,6 +655,7 @@ public class CatalogQueryTest extends SchemaTest {
 					nr, "utf8_esperanto_ci", "utf8", Long.valueOf(209), "", "Yes", Long.valueOf(8),
 					nr, "utf8_hungarian_ci", "utf8", Long.valueOf(210), "", "Yes", Long.valueOf(8),
 					nr, "utf8_sinhala_ci", "utf8", Long.valueOf(211), "", "Yes", Long.valueOf(8),
+					nr, "utf8_general_mysql500_ci", "utf8", Long.valueOf(223), "", "Yes", Long.valueOf(1),
 					nr, "utf8mb4_general_ci", "utf8mb4", Long.valueOf(45), "Yes", "Yes", Long.valueOf(1),
 					nr, "utf8mb4_bin", "utf8mb4", Long.valueOf(46), "", "Yes", Long.valueOf(1),
 					nr, "utf8mb4_unicode_ci", "utf8mb4", Long.valueOf(224), "", "Yes", Long.valueOf(8),
@@ -820,6 +820,20 @@ public class CatalogQueryTest extends SchemaTest {
 				br(nr,"def","cqtdb","id","int(11)","PRI","",
 				   nr,"def","cqtdb","fid","varchar(32)","MUL","",
 				   nr,"def","cqtdb","sid","decimal(10,5)","",""));		
+	}
+	
+	@Test
+	public void testMysqlDump() throws Throwable {
+		String sql = "select logfile_group_name, file_name, engine "
+				+"from information_schema.files "
+				+"where file_type = 'UNDOLOG' and file_name is not null and logfile_group_name in ( "
+				+"   select distinct logfile_group_name "
+				+"   from information_schema.files where file_type = 'DATAFILE' and tablespace_name in ( "
+				+"        select distinct tablespace_name "
+				+"        from information_schema.partitions "
+				+"        where table_schema in ('magento_schema'))) "
+				+"group by logfile_group_name, file_name, engine order by logfile_group_name";
+		conn.execute(sql);
 	}
 	
 }

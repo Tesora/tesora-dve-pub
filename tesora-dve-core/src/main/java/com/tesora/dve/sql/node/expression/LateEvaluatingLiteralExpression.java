@@ -44,11 +44,6 @@ public class LateEvaluatingLiteralExpression extends DelegatingLiteralExpression
 	}
 	
 	@Override
-	public boolean isParameter() {
-		return false;
-	}
-
-	@Override
 	protected LanguageNode copySelf(CopyContext cc) {
 		ConstantExpression[] np = new ConstantExpression[params.length];
 		for(int i = 0; i < params.length; i++)

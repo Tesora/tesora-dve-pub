@@ -38,6 +38,7 @@ import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
+import com.tesora.dve.sql.node.expression.NameInstance;
 import com.tesora.dve.sql.node.expression.WildcardTable;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.types.TempColumnType;
@@ -91,6 +92,9 @@ public class SubqueryTable extends PETable {
 				for(Column<?> c : theTable.getColumns(sc)) {
 					newColumns.add(new TempColumn(sc,c.getName(),c.getType()));
 				}
+			} else if (en instanceof NameInstance && sc.getCapability() == Capability.PARSING_ONLY) {
+				NameInstance ni = (NameInstance) en;
+				newColumns.add(new TempColumn(sc,ni.getName().getUnqualified(),TempColumnType.TEMP_TYPE));
 			} else {
 				throw new SchemaException(Pass.SECOND, "Unable to build name for virtual table");
 			}
@@ -99,11 +103,10 @@ public class SubqueryTable extends PETable {
 		PEDatabase pdb = (PEDatabase) in.getDatabase(sc);
 		PEStorageGroup pg = null;
 		List<PEStorageGroup> groups = in.getStorageGroups(sc);
-		if (groups.size() > 1) {
-			pg = virtualTableStorageGroup;
-		} else {
+		if (groups.size() == 1)
 			pg = groups.get(0);
-		}
+		else
+			pg = virtualTableStorageGroup;
 		DistributionVector dvect = new DistributionVector(sc,Collections.EMPTY_LIST, Model.RANDOM);
 		ListSet<TableKey> allTabs = ps.getAllTableKeys();
 		boolean cardInfo = true;

@@ -22,8 +22,10 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
@@ -35,13 +37,15 @@ public class QueryStepRecoverTempOperation extends QueryStepOperation {
 	PersistentDatabase database;
 	UserTable tempTable;
 
-	public QueryStepRecoverTempOperation(PersistentDatabase database, UserTable tempTable) {
+	public QueryStepRecoverTempOperation(StorageGroup sg, PersistentDatabase database, UserTable tempTable) throws PEException {
+		super(sg);
 		this.database = database;
 		this.tempTable = tempTable;
 	}
 
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		SSConnection ssCon = estate.getConnection();
 		WorkerRequest req = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, tempTable.getName(), false)
 				).onDatabase(database);
 		wg.execute(MappingSolution.AllWorkers, req, resultConsumer);

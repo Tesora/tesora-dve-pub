@@ -98,12 +98,16 @@ options
 
 // incomplete
 sql_data_statement returns [Statement s] options {k=1;}:
+  basic_sql_data_statement { $s = $basic_sql_data_statement.s; }
+  | load_data_infile_statement { $s = $load_data_infile_statement.s; }
+  ;
+
+basic_sql_data_statement returns [Statement s] options {k=1;}:
   select_statement { $s = $select_statement.s; }
   | insert_statement { $s = $insert_statement.s; }
   | update_statement { $s = $update_statement.s; }
   | delete_statement { $s = $delete_statement.s; }
   | truncate_statement { $s = $truncate_statement.s; }
-  | load_data_infile_statement { $s = $load_data_infile_statement.s; }
   ;
 
 select_statement returns [ProjectingStatement s] options{k=1;}:
@@ -277,6 +281,35 @@ limit_value returns [ExpressionNode expr] options {k=1;}:
   | unsigned_integral_literal { $expr = $unsigned_integral_literal.expr; }
   | rhs_variable_ref { $expr = $rhs_variable_ref.vi; }
   ;
+
+rhs_variable_ref returns [VariableInstance vi] options {k=1;}:
+  (f=AT_Sign (t=AT_Sign (variable_scope_kind Period)?)? unqualified_identifier
+  { $vi = utils.buildRHSVariableInstance($f,$t,$variable_scope_kind.vsk, $unqualified_identifier.n, $unqualified_identifier.tree); })
+  ;
+
+variable_scope_kind returns [VariableScopeKind vsk] options {k=1;}:
+  (GLOBAL { $vsk = VariableScopeKind.GLOBAL; })
+  | (SESSION { $vsk = VariableScopeKind.SESSION; })
+  | (DVE { $vsk = VariableScopeKind.SCOPED; })
+  | (LOCAL { $vsk = VariableScopeKind.SESSION; })
+  ;
+  
+
+field_width returns [SizeTypeAttribute ts] options {k=1;}:
+  Left_Paren a=unsigned_integral_literal (Comma b=unsigned_integral_literal)? Right_Paren 
+  { $ts = utils.buildSizeTypeAttribute($a.expr,$b.expr); }
+  ;
+
+convert_type_description returns [Type type] options {k=1;}:
+  (cst=(BINARY | CHAR | DECIMAL) field_width? { $type = utils.buildType(Collections.singletonList(bkn($cst)),$field_width.ts,null); })
+  | (cust=(DATE | DATETIME | TIME) { $type = utils.buildType(Collections.singletonList(bkn($cust)), null, null); })
+  | ((s=SIGNED | UNSIGNED) INTEGER?  
+    { ArrayList l = new ArrayList();
+      l.add($s == null ? utils.buildTypeModifier(TypeModifierKind.UNSIGNED) : utils.buildTypeModifier(TypeModifierKind.SIGNED));
+      $type = utils.buildType(Collections.singletonList(utils.buildName("INTEGER")),null, l); })
+  ; 
+
+
 
 table_reference_list returns [List l] options {k=1;}:
   { $l = new ArrayList(); } 
@@ -582,6 +615,39 @@ comment returns [String str] options {k=1;}:
   FIELD_COMMENT Character_String_Literal 
   { $str = $Character_String_Literal.text; }
   ;
+
+compound_or_single_statement returns [Statement s] options {k=1;}:
+  ((sql_data_statement { $s = $sql_data_statement.s; })
+  | (compound_statement { $s = $compound_statement.s; }))
+  ;
+
+compound_statement returns [Statement s] options {k=1;}:
+  { List acc = new ArrayList(); }
+  BEGIN 
+  ( t=compound_statement_element { acc.add($t.s); } Semicolon)*
+  END
+  { $s = utils.buildCompoundStatement(acc); }
+  ;
+
+compound_statement_element returns [Statement s] options {k=1;}:
+  sql_data_statement { $s = $sql_data_statement.s; }
+  | case_statement { $s = $case_statement.s; }
+  ;
+
+case_statement returns [Statement s] options {k=1;}:
+  CASE value_expression case_stmt_when_clauses (ELSE compound_or_single_statement Semicolon)? END CASE
+  { $s = utils.buildCaseStatement($value_expression.expr, $case_stmt_when_clauses.l, $compound_or_single_statement.s); }
+  ; 
+
+case_stmt_when_clauses returns [List l] options {k=1;}:
+  { $l = new ArrayList(); }
+  (case_stmt_when_clause { $l.add($case_stmt_when_clause.swc); })+
+  ;
+  
+case_stmt_when_clause returns [StatementWhenClause swc] options {k=1;}:
+  WHEN s=value_expression THEN compound_or_single_statement Semicolon
+  { $swc = utils.buildStatementWhenClause($s.expr,$compound_or_single_statement.s); }
+  ; 
 
 
 value_expression returns [ExpressionNode expr] options {k=1;}

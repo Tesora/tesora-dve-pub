@@ -59,6 +59,7 @@ import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.common.catalog.UserView;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
@@ -84,6 +85,7 @@ import com.tesora.dve.sql.schema.CatalogContext;
 import com.tesora.dve.sql.schema.ConnectionContext;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
+import com.tesora.dve.sql.schema.Capability;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEContainerTenant;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -113,6 +115,7 @@ import com.tesora.dve.sql.statement.ddl.PECreateDatabaseStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTenantTableStatement;
+import com.tesora.dve.sql.statement.ddl.PECreateTriggerStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateViewStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropStatement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
@@ -190,7 +193,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 			throw new SchemaException(Pass.FIRST, "Unable to initialize global vars for trans exec engine");
 		}
 		sessionVariables.setValue(KnownVariables.DYNAMIC_POLICY, OnPremiseSiteProvider.DEFAULT_POLICY_NAME);
-		tpc = SchemaContext.createContext(this,this,types);
+		tpc = SchemaContext.createContext(this,this,types,Capability.TRANSIENT);
 		currentUser = new PEUser(tpc);
 		users.add(new User(currentUser.getUserScope().getUserName(), 
 				currentUser.getPassword(),
@@ -317,6 +320,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		boolean tenantCreate = pecs instanceof PECreateTenantTableStatement;
 		boolean tableCreate = pecs instanceof PECreateTableStatement;
 		boolean viewCreate = pecs instanceof PECreateViewStatement;
+		boolean trigCreate = pecs instanceof PECreateTriggerStatement;
 		Set<PEForeignKey> postPass = null;
 		if (tableCreate) {
 			pecs.normalize(tpc);
@@ -340,7 +344,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 			Persistable<?,?> t = nm.getKey();
 			CatalogEntity cat = nm.getValue();
 			if (cat instanceof UserColumn || cat instanceof DistributionModel || (cat instanceof UserTable && !tenantCreate)
-					|| cat instanceof Key || cat instanceof KeyColumn)
+					|| cat instanceof Key || cat instanceof KeyColumn || cat instanceof UserTrigger)
 				continue;
 			if (tenantCreate && (cat instanceof UserTable)) {
 				// we dynamically create the table scope via reloading callback - not available via static computation.
@@ -1223,6 +1227,12 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	@Override
 	public VariableValueStore getUserVariableStore() {
 		return userVariables;
+	}
+
+	@Override
+	public UserTrigger findTrigger(String name, String dbName) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

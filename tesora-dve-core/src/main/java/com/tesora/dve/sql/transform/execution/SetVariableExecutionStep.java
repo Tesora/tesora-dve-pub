@@ -25,9 +25,10 @@ package com.tesora.dve.sql.transform.execution;
 
 import java.util.List;
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepSetScopedVariableOperation;
 import com.tesora.dve.queryplan.QueryStepSetScopedVariableOperation.ConstantValueAccessor;
 import com.tesora.dve.queryplan.QueryStepSetScopedVariableOperation.ValueAccessor;
@@ -67,10 +68,10 @@ public class SetVariableExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
-		boolean requireWorkers = getStorageGroup(sc) != null;
-		addStep(sc,qsteps,new QueryStepSetScopedVariableOperation(scope, variableName, valueSource.buildAccessor(sc), requireWorkers));
+		StorageGroup sg = getStorageGroup(sc);
+		qsteps.add(new QueryStepSetScopedVariableOperation(sg,scope, variableName, valueSource.buildAccessor(sc), sg != null));
 	}
 
 	public String getScopeName() {

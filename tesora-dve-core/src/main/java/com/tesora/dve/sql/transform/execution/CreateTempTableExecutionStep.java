@@ -26,7 +26,6 @@ import java.util.List;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepCreateTempTableOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
@@ -47,7 +46,7 @@ public class CreateTempTableExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		// we need to persist out the table each time rather than caching it due to the generated names.  avoid leaking
 		// persistent entities by using a new ddl context.
@@ -55,8 +54,8 @@ public class CreateTempTableExecutionStep extends ExecutionStep {
 		// set the values so that we get the updated table name
 		tsc.setValues(sc._getValues());
 		UserTable ut = theTable.getPersistent(tsc);
-		QueryStepOperation qso = new QueryStepCreateTempTableOperation(ut);
-		addStep(sc,qsteps, qso);
+		QueryStepOperation qso = new QueryStepCreateTempTableOperation(getStorageGroup(sc),ut);
+		qsteps.add(qso);
 	}
 
 	@Override

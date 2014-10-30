@@ -21,16 +21,8 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.*;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.DelegatingCompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.CommandChannel;
-import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.mysql.*;
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.worker.agent.Agent;
+import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import io.netty.channel.EventLoopGroup;
 
 import java.sql.SQLException;
@@ -41,11 +33,24 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.common.catalog.ISiteInstance;
+import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.common.catalog.UserDatabase;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.server.messaging.WorkerRequest;
+import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.worker.agent.Agent;
 
 /**
  * Worker is the agent that processes commands against the database. It
@@ -53,9 +58,9 @@ import com.tesora.dve.exceptions.PESQLException;
  * Temp), though which database it is connected to can be changed by the
  * WorkerManager.
  */
-public class Worker implements GenericSQLCommand.DBNameResolver {
+public abstract class Worker implements GenericSQLCommand.DBNameResolver {
     static final EventLoopGroup DEFAULT_EVENTLOOP = SharedEventLoopHolder.getLoop();
-
+    	
     public enum AvailabilityType { SINGLE, MASTER_MASTER }
 
     // TODO: With XADataSource, we are now using a connection pool. Does it
@@ -204,7 +209,6 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
     }
 
 	// used in late resolution support
-	@Override
 	public String getNameOnSite(String dbName) {
 		return UserDatabase.getNameOnSite(dbName, site);
 	}

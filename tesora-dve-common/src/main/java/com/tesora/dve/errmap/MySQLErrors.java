@@ -23,94 +23,92 @@ package com.tesora.dve.errmap;
 
 
 
-public class MySQLErrors {
+public final class MySQLErrors {
 	
-	public static final ErrorCodeFormatter internalFormatter = 
-			new OneParamErrorCodeFormatter<String>(DVEErrors.INTERNAL,"Internal error: %s",99,"99999");
-	public static final ErrorCodeFormatter missingTableFormatter = 
-			new TwoParamErrorCodeFormatter<String,String>(DVEErrors.TABLE_DNE,
+	public static final TwoParamErrorCodeFormatter<String, String> missingTableFormatter =
+			new TwoParamErrorCodeFormatter<String,String>(AvailableErrors.TABLE_DNE,
 					"Table '%s.%s' doesn't exist",
 					1146,"42S02");
-	public static final ErrorCodeFormatter missingColumnFormatter =
-			new TwoParamErrorCodeFormatter<String,String>(DVEErrors.COLUMN_DNE,
+	public static final TwoParamErrorCodeFormatter<String, String> missingColumnFormatter =
+			new TwoParamErrorCodeFormatter<String,String>(AvailableErrors.COLUMN_DNE,
 					"Unknown column '%s' in '%s'",
 					1054,
 					"42S22");
-	public static final ErrorCodeFormatter unknownTableFormatter =
-			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_TABLE,
+	public static final OneParamErrorCodeFormatter<String> unknownTableFormatter =
+			new OneParamErrorCodeFormatter<String>(AvailableErrors.UNKNOWN_TABLE,
 					"Unknown table '%s'",
 					1051,"42S02");
-	public static final ErrorCodeFormatter unknownUserFormatter =
-			new TwoParamErrorCodeFormatter<String,String>(DVEErrors.UNKNOWN_USER,
+	public static final TwoParamErrorCodeFormatter<String, String> unknownUserFormatter =
+			new TwoParamErrorCodeFormatter<String,String>(AvailableErrors.UNKNOWN_USER,
 					"Operation DROP USER failed for '%s'@'%s'",
 					1396,"HY000");
-	public static final ErrorCodeFormatter missingDatabaseFormatter =
-			new ZeroParamErrorCodeFormatter(DVEErrors.NO_DATABASE_SELECTED,
+	public static final ZeroParamErrorCodeFormatter missingDatabaseFormatter =
+			new ZeroParamErrorCodeFormatter(AvailableErrors.NO_DATABASE_SELECTED,
 					"No database selected",
 					1046,"3D000");
-	public static final ErrorCodeFormatter unknownDatabaseFormatter =
-			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_DATABASE,
+	public static final OneParamErrorCodeFormatter<String> unknownDatabaseFormatter =
+			new OneParamErrorCodeFormatter<String>(AvailableErrors.UNKNOWN_DATABASE,
 					"Unknown database '%s'",
 					1049,
 					"42000");
-	public static final ErrorCodeFormatter incorrectParamCountFormatter =
-			new OneParamErrorCodeFormatter<String>(DVEErrors.INCORRECT_PARAM_COUNT_FUNCTION_CALL,
+	public static final OneParamErrorCodeFormatter<String> incorrectParamCountFormatter =
+			new OneParamErrorCodeFormatter<String>(AvailableErrors.INCORRECT_PARAM_COUNT_FUNCTION_CALL,
 					"Incorrect parameter count in the call to native function '%s'",
 					1582,
 					"42000");
-	public static final ErrorCodeFormatter invalidDiscriminantUpdateFormatter =
-			new TwoParamErrorCodeFormatter<String,String>(DVEErrors.INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
-					"Invalid update: discriminant column '%s' of container base table '%s' cannot be updated",
-					6000,
-					"DVECO");
-	public static final ErrorCodeFormatter invalidContainerDeleteFormatter =
-			new OneParamErrorCodeFormatter<String>(DVEErrors.INVALID_CONTAINER_DELETE,
-					"Invalid delete on container base table '%s'.  Not restricted by discriminant columns",
-					6001,
-					"DVECO");
-	public static final ErrorCodeFormatter unknownSysVarFormatter =
-			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_SYS_VAR,
+	public static final OneParamErrorCodeFormatter<String> unknownSysVarFormatter =
+			new OneParamErrorCodeFormatter<String>(AvailableErrors.UNKNOWN_SYS_VAR,
 					"Unknown system variable '%s'",
 					1193,
 					"HY000");
-	public static final ErrorCodeFormatter tooLongTableCommentFormatter =
-			new TwoParamErrorCodeFormatter<String, Long>(DVEErrors.TOO_LONG_TABLE_COMMENT,
+	public static final TwoParamErrorCodeFormatter<String, Long> tooLongTableCommentFormatter =
+			new TwoParamErrorCodeFormatter<String, Long>(AvailableErrors.TOO_LONG_TABLE_COMMENT,
 					"Comment for table '%s' is too long (max = %d).",
 					1628,
 					"HY000");
-	public static final ErrorCodeFormatter tooLongTableFieldCommentFormatter =
-			new TwoParamErrorCodeFormatter<String, Long>(DVEErrors.TOO_LONG_TABLE_FIELD_COMMENT,
+	public static final TwoParamErrorCodeFormatter<String, Long> tooLongTableFieldCommentFormatter =
+			new TwoParamErrorCodeFormatter<String, Long>(AvailableErrors.TOO_LONG_TABLE_FIELD_COMMENT,
 					"Comment for field '%s' is too long (max = %d).",
 					1629,
 					"HY000");
-	public static final ErrorCodeFormatter nonUniqueTableFormatter =
-			new OneParamErrorCodeFormatter<String>(DVEErrors.NON_UNIQUE_TABLE,
+	public static final OneParamErrorCodeFormatter<String> nonUniqueTableFormatter =
+			new OneParamErrorCodeFormatter<String>(AvailableErrors.NON_UNIQUE_TABLE,
 					"Not unique table/alias: '%s'",
 					1066,
 					"42000");
-	public static final ErrorCodeFormatter unknownCharacterSetFormatter =
-			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_CHARACTER_SET,
+	public static final OneParamErrorCodeFormatter<String> unknownCharacterSetFormatter =
+			new OneParamErrorCodeFormatter<String>(AvailableErrors.UNKNOWN_CHARACTER_SET,
 					"Unknown character set: '%s'",
 					1115,
 					"42000");
-	public static final ErrorCodeFormatter unknownCollationFormatter =
-			new OneParamErrorCodeFormatter<String>(DVEErrors.UNKNOWN_COLLATION,
+	public static final OneParamErrorCodeFormatter<String> unknownCollationFormatter =
+			new OneParamErrorCodeFormatter<String>(AvailableErrors.UNKNOWN_COLLATION,
 					"Unknown collation: '%s'",
 					1273,
 					"HY000");
-	public static final ErrorCodeFormatter wrongValueForVariable =
-			new TwoParamErrorCodeFormatter<String, String>(DVEErrors.WRONG_VALUE_FOR_VARIABLE,
+	public static final TwoParamErrorCodeFormatter<String, String> wrongValueForVariable =
+			new TwoParamErrorCodeFormatter<String, String>(AvailableErrors.WRONG_VALUE_FOR_VARIABLE,
 					"Variable '%s' can't be set to the value of '%s'",
 					1231,
 					"42000");
-	public static final ErrorCodeFormatter wrongTypeForVariable =
-			new OneParamErrorCodeFormatter<String>(DVEErrors.WRONG_TYPE_FOR_VARIABLE,
+	public static final OneParamErrorCodeFormatter<String> wrongTypeForVariable =
+			new OneParamErrorCodeFormatter<String>(AvailableErrors.WRONG_TYPE_FOR_VARIABLE,
 					"Incorrect argument type to variable '%s'",
 					1232,
 					"42000");
+	public static final ZeroParamErrorCodeFormatter trgAlreadyExists =
+			new ZeroParamErrorCodeFormatter(AvailableErrors.TRG_ALREADY_EXISTS,
+					"Trigger already exists",
+					1359,
+					"HY000");
+	public static final ZeroParamErrorCodeFormatter trgDoesNotExist =
+			new ZeroParamErrorCodeFormatter(AvailableErrors.TRG_DOES_NOT_EXIST,
+					"Trigger does not exist",
+					1360,
+					"HY000");
 			
 	
-	public static final ErrorCodeFormatter[] myFormatters = new ErrorCodeFormatter[] {
+	public static final ErrorCodeFormatter[] messages = new ErrorCodeFormatter[] {
 		missingTableFormatter,
 		missingColumnFormatter,
 		unknownTableFormatter,
@@ -118,17 +116,16 @@ public class MySQLErrors {
 		missingDatabaseFormatter,
 		unknownDatabaseFormatter,
 		incorrectParamCountFormatter,
-		invalidDiscriminantUpdateFormatter,
-		invalidContainerDeleteFormatter,
 		unknownSysVarFormatter,
-		internalFormatter,
 		tooLongTableCommentFormatter,
 		tooLongTableFieldCommentFormatter,
 		nonUniqueTableFormatter,
 		unknownCharacterSetFormatter,
 		unknownCollationFormatter,
 		wrongValueForVariable,
-		wrongTypeForVariable
+		wrongTypeForVariable,
+		trgAlreadyExists,
+		trgDoesNotExist
 	};
 
 			

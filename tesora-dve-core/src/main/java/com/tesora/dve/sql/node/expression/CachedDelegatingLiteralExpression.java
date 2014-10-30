@@ -24,6 +24,7 @@ package com.tesora.dve.sql.node.expression;
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
 
@@ -75,8 +76,8 @@ public class CachedDelegatingLiteralExpression implements IDelegatingLiteralExpr
 	}
 
 	@Override
-	public boolean isParameter() {
-		return false;
+	public ConstantType getConstantType() {
+		return ConstantType.LITERAL;
 	}
 
 }

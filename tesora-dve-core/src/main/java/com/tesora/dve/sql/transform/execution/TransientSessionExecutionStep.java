@@ -27,9 +27,9 @@ import java.util.List;
 
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -60,9 +60,9 @@ public class TransientSessionExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
-		addStep(sc, qsteps, new QueryStepGeneralOperation(op,txn,workers));
+		qsteps.add(new QueryStepGeneralOperation(getStorageGroup(sc),op,txn,workers));
 	}
 	
 	@Override

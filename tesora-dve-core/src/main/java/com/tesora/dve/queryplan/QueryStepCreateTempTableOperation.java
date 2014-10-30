@@ -25,10 +25,12 @@ import java.util.Collection;
 import java.util.concurrent.Future;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
@@ -41,7 +43,8 @@ public class QueryStepCreateTempTableOperation extends QueryStepOperation {
 
 	private UserTable theTable;
 	
-	public QueryStepCreateTempTableOperation(UserTable toCreate) {
+	public QueryStepCreateTempTableOperation(StorageGroup sg, UserTable toCreate) throws PEException {
+		super(sg);
 		theTable = toCreate;
 	}
 
@@ -51,9 +54,10 @@ public class QueryStepCreateTempTableOperation extends QueryStepOperation {
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg,
+	public void executeSelf(ExecutionState estate, WorkerGroup wg,
 			DBResultConsumer results) throws Throwable {
 		String sqlCommand = theTable.getCreateTableStmt(true);
+		SSConnection ssCon = estate.getConnection();
 		WorkerRequest req = new WorkerExecuteRequest(
 				ssCon.getNonTransactionalContext(), new SQLCommand(ssCon, sqlCommand))
 				.onDatabase(theTable.getDatabase()).forDDL();

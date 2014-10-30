@@ -26,6 +26,7 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.exceptions.PEException;
@@ -42,8 +43,8 @@ public class QueryStepUpdateAllOperation extends QueryStepDMLOperation {
 	DistributionModel distributionModel;
 	SQLCommand command;
 
-	public QueryStepUpdateAllOperation(PersistentDatabase execCtxDBName, DistributionModel distModelOfTable, SQLCommand command) throws PEException {
-		super(execCtxDBName);
+	public QueryStepUpdateAllOperation(StorageGroup sg, PersistentDatabase execCtxDBName, DistributionModel distModelOfTable, SQLCommand command) throws PEException {
+		super(sg, execCtxDBName);
 		if (command.isEmpty())
 			throw new PEException("Cannot create QueryStep with empty SQL command");
 
@@ -51,20 +52,22 @@ public class QueryStepUpdateAllOperation extends QueryStepDMLOperation {
 		this.command = command;
 	}
 
-	public QueryStepUpdateAllOperation(final SSConnection ssCon, PersistentDatabase execCtxDBName, DistributionModel distModelOfTable, String command)
+	public QueryStepUpdateAllOperation(StorageGroup sg, final SSConnection ssCon, PersistentDatabase execCtxDBName, DistributionModel distModelOfTable, String command)
 			throws PEException {
-		this(execCtxDBName, distModelOfTable, new SQLCommand(ssCon, command));
+		this(sg, execCtxDBName, distModelOfTable, new SQLCommand(ssCon, command));
 	}
 	/**
 	 * Called by <b>QueryStep</b> to execute the query.
 	 * @throws Throwable 
 	 */
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-		WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).onDatabase(database);
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		SSConnection ssCon = estate.getConnection();
+		SQLCommand bound = bindCommand(estate,command);
+		WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), bound).onDatabase(database);
 		resultConsumer.setRowAdjuster(distributionModel.getUpdateAdjuster());
 		beginExecution();
-		wg.execute(StaticDistributionModel.SINGLETON.mapForQuery(wg, command), req, resultConsumer);
+		wg.execute(StaticDistributionModel.SINGLETON.mapForQuery(wg, bound), req, resultConsumer);
 		endExecution(resultConsumer.getUpdateCount());
 	}
 	

@@ -34,7 +34,6 @@ import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.charset.NativeCharSetCatalog;
-import com.tesora.dve.charset.NativeCollationCatalog;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEConstants;
@@ -87,6 +86,36 @@ public class CatalogHelper {
 	private String rootUser;
 	private String rootPassword;
 	
+	/**
+	 * @see public static PEUrl buildCatalogBaseUrlFrom(String) throws
+	 *      PEException
+	 */
+	public static PEUrl buildCatalogBaseUrlFrom(final Properties catalogProperties) throws PEException {
+		return buildCatalogBaseUrlFrom(catalogProperties.getProperty(DBHelper.CONN_URL));
+	}
+
+	/**
+	 * Clear any existing query and path and append the required connection
+	 * properties.
+	 */
+	public static PEUrl buildCatalogBaseUrlFrom(final String otherUrl) throws PEException {
+		final PEUrl baseUrl = PEUrl.fromUrlString(otherUrl);
+		baseUrl.setPath(null);
+		baseUrl.clearQuery();
+		baseUrl.setQueryOptions(buildRequiredConnectionProperties());
+
+		return baseUrl;
+	}
+	
+	private static Properties buildRequiredConnectionProperties() {
+		final Properties connectionSettings = new Properties();
+		connectionSettings.put("useUnicode", "true");
+		connectionSettings.put("characterEncoding", "utf8");
+		connectionSettings.put("connectionCollation", "utf8_general_ci");
+
+		return connectionSettings;
+	}
+
 	public CatalogHelper(Class<?> bootClass) throws PEException {
 		catalogProperties = PEFileUtils.loadPropertiesFile(bootClass, PEConstants.CONFIG_FILE_NAME);
 
@@ -107,16 +136,15 @@ public class CatalogHelper {
 		return catalogProperties;
 	}
 
-	public String getCatalogDBUrl() throws PEException {
-		final PEUrl baseUrl = PEUrl.fromUrlString(this.getCatalogUrl());
-		final PEUrl catalogDbUrl = PEUrl.fromUrlString(baseUrl.getStringWithoutQueryPart().concat("/").concat(this.getCatalogDBName()));
-		catalogDbUrl.setQuery(baseUrl.getQuery());
+	public String getCatalogDatabaseUrl() throws PEException {
+		final PEUrl baseUrl = PEUrl.fromUrlString(this.getCatalogBaseUrl());
+		baseUrl.setPath(this.getCatalogDBName());
 
-		return catalogDbUrl.toString();
+		return baseUrl.toString();
 	}
 
-	public String getCatalogUrl() throws PEException {
-		return catalogProperties.getProperty(DBHelper.CONN_URL);
+	public String getCatalogBaseUrl() throws PEException {
+		return buildCatalogBaseUrlFrom(catalogProperties).toString();
 	}
 
 	public String getCatalogDBName() throws PEException {
@@ -186,7 +214,7 @@ public class CatalogHelper {
 
 			// Generate a Site Provider configuration with encrypted passwords
 			OnPremiseSiteProviderConfig providerConfig = generateProviderConfig(dynamicSites, providerName,
-					getCatalogUrl(), getCatalogUser(), getCatalogPassword());
+					getCatalogBaseUrl(), getCatalogUser(), getCatalogPassword());
 
 			c.createProvider(providerName, OnPremiseSiteProvider.class.getCanonicalName(),
 					PEXmlUtils.marshalJAXB(providerConfig));
@@ -203,7 +231,7 @@ public class CatalogHelper {
 			// sites on the catalog host
 			List<PersistentSite> sites = new ArrayList<PersistentSite>();
 			for (int i = 1; i <= storageSites; i++) {
-				sites.add(c.createPersistentSite(DEFAULT_SITE_PREFIX + i, getCatalogUrl(), getCatalogUser(),
+				sites.add(c.createPersistentSite(DEFAULT_SITE_PREFIX + i, getCatalogBaseUrl(), getCatalogUser(),
 						getCatalogPassword()));
 			}
 			PersistentGroup sg = createStorageGroup(c, sgName, sites);
@@ -231,7 +259,7 @@ public class CatalogHelper {
 			Project p = minimal.getFirst();
 			// Generate a Site Provider configuration with encrypted passwords
 			OnPremiseSiteProviderConfig providerConfig = generateProviderConfig(1, PEConstants.BOOTSTRAP_PROVIDER_NAME,
-					getCatalogUrl(), getCatalogUser(), getCatalogPassword());
+					getCatalogBaseUrl(), getCatalogUser(), getCatalogPassword());
 
 			c.createProvider(PEConstants.BOOTSTRAP_PROVIDER_NAME, OnPremiseSiteProvider.class.getCanonicalName(),
 					PEXmlUtils.marshalJAXB(providerConfig));
@@ -357,15 +385,13 @@ public class CatalogHelper {
 
 		// create the System persistent site and persistent group
 		PersistentGroup sysSG = c.createPersistentGroup(PEConstants.SYSTEM_GROUP_NAME);
-		sysSG.addStorageSite(c.createPersistentSite(PEConstants.SYSTEM_SITENAME, getCatalogUrl(), getCatalogUser(),
+		sysSG.addStorageSite(c.createPersistentSite(PEConstants.SYSTEM_SITENAME, getCatalogBaseUrl(), getCatalogUser(),
 				getCatalogPassword()));
 
 		// load the default character sets
 		String driver = DBHelper.loadDriver(catalogProperties.getProperty(DBHelper.CONN_DRIVER_CLASS));
 		NativeCharSetCatalog csCatalog = NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.fromDriverClass(driver));
 		csCatalog.save(c);
-		NativeCollationCatalog collectionCatalog = NativeCollationCatalog.getDefaultCollationCatalog(DBType.fromDriverClass(driver));
-		collectionCatalog.save(c);
 
 		// Create the engines
 		for (Engines engines : Engines.getDefaultEngines()) {
@@ -775,7 +801,7 @@ public class CatalogHelper {
 
 	public void checkURLAvailable() throws PEException {
 		// In production we don't have a default value for the catalog URL
-		if (StringUtils.isEmpty(this.getCatalogUrl()))
+		if (StringUtils.isEmpty(this.getCatalogBaseUrl()))
 			throw new PEException("Value for " + DBHelper.CONN_URL + " not specified in properties");
 	}
 
@@ -783,7 +809,7 @@ public class CatalogHelper {
 		if (dbNative == null) {
 			checkURLAvailable();
 
-			dbNative = DBNative.DBNativeFactory.newInstance(DBHelper.urlToDBType(getCatalogUrl()));
+			dbNative = DBNative.DBNativeFactory.newInstance(DBHelper.urlToDBType(getCatalogBaseUrl()));
 		}
 		return dbNative;
 	}
@@ -825,7 +851,7 @@ public class CatalogHelper {
 			dbHelper.connect();
 
 			if (catalogExists(dbHelper))
-				throw new PEException("DVE Catalog already exists at '" + getCatalogDBUrl() + "'");
+				throw new PEException("DVE Catalog already exists at '" + getCatalogDatabaseUrl() + "'");
 
 			final String catalogName = getCatalogDBName();
 			final String defaultScharSet = dbNative.getDefaultServerCharacterSet();
@@ -845,7 +871,7 @@ public class CatalogHelper {
 	}
 
 	public void dumpCatalogInfo(PrintWriter pw, boolean verbose) throws PEException {
-		pw.println("URL: " + getCatalogDBUrl());
+		pw.println("URL: " + getCatalogDatabaseUrl());
 
 		CatalogDAO c = CatalogDAOFactory.newInstance(catalogProperties);
 		try {

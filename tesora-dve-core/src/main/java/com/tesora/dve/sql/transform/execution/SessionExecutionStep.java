@@ -29,7 +29,7 @@ import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -53,9 +53,9 @@ public class SessionExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
-		addStep(sc, qsteps, new QueryStepSelectAllOperation(getPersistentDatabase(), distributionModel, getSQLCommand(sc)));
+		qsteps.add(new QueryStepSelectAllOperation(getStorageGroup(sc),getPersistentDatabase(), distributionModel, getSQLCommand(sc)));
 	}
 
 	@Override

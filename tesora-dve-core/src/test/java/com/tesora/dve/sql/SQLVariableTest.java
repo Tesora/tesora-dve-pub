@@ -41,6 +41,7 @@ import org.junit.Test;
 
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEStringUtils;
+import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -96,7 +97,6 @@ public class SQLVariableTest extends SchemaTest {
 	public void after() throws Throwable {
 		conn.disconnect();
 	}
-
 	
 	@Test
 	public void testA() throws Throwable {
@@ -285,7 +285,7 @@ public class SQLVariableTest extends SchemaTest {
 			public void test() throws Throwable {
 				conn.execute("set sql_auto_is_null = 1");
 			}
-		}.assertError(SchemaException.class, MySQLErrors.internalFormatter,
+		}.assertError(SchemaException.class, InternalErrors.internalFormatter,
 					"Internal error: No support for sql_auto_is_null = 1 (planned)");
 		conn.execute("set sql_auto_is_null = 0");
 	}
@@ -631,10 +631,46 @@ public class SQLVariableTest extends SchemaTest {
 		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "tx_isolation", "NULL");
 	}
 
+	@Test
+	public void testPE1662() throws Throwable {
+
+		// SESSION values
+		assertVariableValue("character_set_connection", "utf8");
+		assertVariableValue("collation_connection", "utf8_general_ci");
+
+		conn.execute("set character_set_connection = ascii");
+
+		assertVariableValue("character_set_connection", "ascii");
+		assertVariableValue("collation_connection", "ascii_general_ci");
+
+		conn.execute("set collation_connection = utf8_general_ci");
+
+		assertVariableValue("character_set_connection", "utf8");
+		assertVariableValue("collation_connection", "utf8_general_ci");
+
+		// GLOBAL values
+		assertGlobalVariableValue("character_set_connection", "utf8");
+		assertGlobalVariableValue("collation_connection", "utf8_general_ci");
+
+		conn.execute("set global character_set_connection = ascii");
+
+		assertGlobalVariableValue("character_set_connection", "ascii");
+		assertGlobalVariableValue("collation_connection", "ascii_general_ci");
+
+		conn.execute("set global collation_connection = utf8_general_ci");
+
+		assertGlobalVariableValue("character_set_connection", "utf8");
+		assertGlobalVariableValue("collation_connection", "utf8_general_ci");
+	}
+
 	private void assertVariableValue(final String variableName, final Object expected) throws Throwable {
 		conn.assertResults("show variables like '" + variableName + "'", br(nr, variableName, expected));
 	}
 	
+	private void assertGlobalVariableValue(final String variableName, final Object expected) throws Throwable {
+		conn.assertResults("show global variables like '" + variableName + "'", br(nr, variableName, expected));
+	}
+
 	private String getVariableValue(final String variableName) throws Throwable {
 		final List<ResultRow> rows = conn.fetch("show variables like '" + variableName + "'").getResults();
 		assertEquals("Exactly one result row expected for variable '" + variableName + "'.", 1, rows.size());

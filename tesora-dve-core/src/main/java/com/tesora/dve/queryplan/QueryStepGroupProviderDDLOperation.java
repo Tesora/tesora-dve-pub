@@ -22,6 +22,7 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -38,8 +39,8 @@ public class QueryStepGroupProviderDDLOperation extends QueryStepDDLOperation {
 	protected SiteManagerCommand smc;
 	protected SiteProviderPlugin target;
 
-	public QueryStepGroupProviderDDLOperation(SiteManagerCommand smc) {
-		super(null, SQLCommand.EMPTY,null);
+	public QueryStepGroupProviderDDLOperation(StorageGroup sg, SiteManagerCommand smc) throws PEException {
+		super(sg, null, SQLCommand.EMPTY,null);
 		this.smc = smc;
 		// delay creation until we prepare
 		this.target = null;
@@ -47,7 +48,7 @@ public class QueryStepGroupProviderDDLOperation extends QueryStepDDLOperation {
 
 	// allow derived classes to step in
 	@Override
-	protected void prepareAction(SSConnection ssCon, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+	protected void prepareAction(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		if (target == null) {
 			// we don't know if this particular site manager has ever been
 			// created before, so we're going to
@@ -62,7 +63,7 @@ public class QueryStepGroupProviderDDLOperation extends QueryStepDDLOperation {
 	}
 
 	@Override
-	protected void executeAction(SSConnection conn, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+	protected void executeAction(ExecutionState estate, CatalogDAO c, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
 		int rowcount = target.update(this.smc);
 		resultConsumer.setNumRowsAffected(rowcount);
 	}

@@ -41,7 +41,7 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepMultiTupleRedistOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
@@ -212,7 +212,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 			pc.setOptions(opts);
 		}
 		
-		ArrayList<QueryStep> steps = new ArrayList<QueryStep>();
+		ArrayList<QueryStepOperation> steps = new ArrayList<QueryStepOperation>();
 		subes.schedule(null, steps, null, pc);
 		int redistOffset = steps.size() - 1;
 
@@ -407,7 +407,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 
 	private class CreateTableViaRedistCallback extends NestedOperationDDLCallback {
 
-		private final List<QueryStep> toExecute;
+		private final List<QueryStepOperation> toExecute;
 		private final int redistOffset;
 		private final ComplexPETable target;
 		
@@ -423,7 +423,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		int pincount = 0;
 
 		
-		public CreateTableViaRedistCallback(SchemaContext cntxt, ComplexPETable tab, List<QueryStep> steps,
+		public CreateTableViaRedistCallback(SchemaContext cntxt, ComplexPETable tab, List<QueryStepOperation> steps,
 				int redistOffset,
 				CacheInvalidationRecord record) {
 			this.target = tab;
@@ -502,7 +502,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 
 		@Override
-		public void prepareNested(SSConnection conn, CatalogDAO c,
+		public void prepareNested(ExecutionState estate, CatalogDAO c,
 				final WorkerGroup wg, DBResultConsumer resultConsumer)
 				throws PEException {
 			try {
@@ -511,25 +511,24 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 				// return our given group (it was allocated in our parent step, which is the nested ddl step)
 				int last = toExecute.size() - 1;
 				for(int i = 0; i < toExecute.size(); i++) {
-					QueryStep qs = toExecute.get(i);
-					QueryStepOperation qso = qs.getOperation();
+					QueryStepOperation qso = toExecute.get(i); 
 					WorkerGroup cwg = wg;
 					try {
-						if (qso.requiresWorkers() && !qs.getSourceGroup().equals(wg.getGroup())) {
-							cwg = conn.getWorkerGroupAndPushContext(qs.getSourceGroup(),qso.getContextDatabase());
+						if (qso.requiresWorkers() && !qso.getStorageGroup().equals(wg.getGroup())) {
+							cwg = estate.getConnection().getWorkerGroupAndPushContext(qso.getStorageGroup(),qso.getContextDatabase());
 						}
 						DBResultConsumer consumer = (i == last ? resultConsumer : DBEmptyTextResultConsumer.INSTANCE);
 						if (redistOffset == i) {
 							// this is always a multituple redist (for now) - indicate that the given wg is our preallocated wg
 							QueryStepMultiTupleRedistOperation rd = (QueryStepMultiTupleRedistOperation) qso;
 							rd.setPreallocatedTargetWorkerGroup(wg);
-							qso.execute(conn, cwg, consumer);
+							qso.executeSelf(estate, cwg, consumer);
 						} else {
-							qso.execute(conn, cwg, consumer);
+							qso.executeSelf(estate, cwg, consumer);
 						}						
 					} finally {
 						if (cwg != wg) {
-							conn.returnWorkerGroupAndPopContext(cwg);
+							estate.getConnection().returnWorkerGroupAndPopContext(cwg);
 						}
 					}
 				}
@@ -544,7 +543,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
+		public void executeNested(ExecutionState estate, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
 			// nothing to do - this is handled elsewhere
 		}

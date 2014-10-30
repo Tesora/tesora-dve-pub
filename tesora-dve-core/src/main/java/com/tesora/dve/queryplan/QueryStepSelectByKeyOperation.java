@@ -26,6 +26,7 @@ import javax.xml.bind.annotation.XmlType;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.exceptions.PEException;
@@ -46,9 +47,9 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 	SQLCommand command;
 	IKeyValue distValue;
 	
-	public QueryStepSelectByKeyOperation(PersistentDatabase execCtxDBName, IKeyValue distValue, SQLCommand command)
+	public QueryStepSelectByKeyOperation(StorageGroup sg, PersistentDatabase execCtxDBName, IKeyValue distValue, SQLCommand command)
 			throws PEException {
-		super(execCtxDBName);
+		super(sg, execCtxDBName);
 		if (command.isEmpty())
 			throw new PEException("Cannot create QueryStep with empty SQL command");
 
@@ -56,23 +57,27 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 		this.distValue = distValue;
 	}
 
-	public QueryStepSelectByKeyOperation(final SSConnection ssCon, PersistentDatabase execCtxDBName, IKeyValue distValue, String command)
+	public QueryStepSelectByKeyOperation(StorageGroup sg, final SSConnection ssCon, PersistentDatabase execCtxDBName, IKeyValue distValue, String command)
 			throws PEException {
-		this(execCtxDBName, distValue, new SQLCommand(ssCon, command));
+		this(sg, execCtxDBName, distValue, new SQLCommand(ssCon, command));
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		resultConsumer.setResultsLimit(getResultsLimit());
+
+		SSConnection ssCon = estate.getConnection();
 		
+		SQLCommand bound = bindCommand(estate,command);
+		        
 		WorkerExecuteRequest req =
-				new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).
+				new WorkerExecuteRequest(ssCon.getTransactionalContext(), bound).
 				onDatabase(database);
 		
 		WorkerGroup.MappingSolution mappingSolution = 
 				distValue.getDistributionModel().mapKeyForQuery(
 						ssCon.getCatalogDAO(), wg.getGroup(), distValue,
-						command.isForUpdateStatement() ? DistKeyOpType.SELECT_FOR_UPDATE : DistKeyOpType.QUERY);
+						bound.isForUpdateStatement() ? DistKeyOpType.SELECT_FOR_UPDATE : DistKeyOpType.QUERY);
 		if (logger.isDebugEnabled())
 			logger.debug(this.getClass().getSimpleName() + " maps dv " + distValue + " to " + mappingSolution);
 		
@@ -100,7 +105,7 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 	

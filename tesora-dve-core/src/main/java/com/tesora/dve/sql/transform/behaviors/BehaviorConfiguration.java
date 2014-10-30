@@ -77,6 +77,4 @@ public interface BehaviorConfiguration extends FeaturePlannerBehavior {
 	 */
 	public FeaturePlanTransformerBehavior getPostPlanningTransformer(PlannerContext pc, DMLStatement original);
 	
-	// accessors for builtin planners - you can override individual planners as needed
-
 }

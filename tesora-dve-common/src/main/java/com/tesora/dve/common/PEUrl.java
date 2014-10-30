@@ -367,6 +367,12 @@ public class PEUrl {
 		return this;
 	}
 
+	public PEUrl clearQuery() {
+		this.query = null;
+		queryOptions.clear();
+		return this;
+	}
+
 	/**
 	 * Return all the query options as <code>Properties</code>
 	 * 
@@ -420,10 +426,6 @@ public class PEUrl {
 			if (props.getProperty(normPrefix + "dbname") != null)
 				setPath(props.getProperty(normPrefix + "dbname"));
 		}
-	}
-
-	public String getStringWithoutQueryPart() {
-		return PEUrl.stripUrlParameters(this.toString());
 	}
 
 	// [protocol:subprotocol:][//authority][path][?query][#fragment]

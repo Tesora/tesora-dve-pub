@@ -34,6 +34,7 @@ import java.util.Map;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.UnqualifiedName;
@@ -226,19 +227,24 @@ public class RenameTest extends SchemaMirrorTest {
 			}
 		}.assertException(SQLException.class, "Internal error: No such table '" + dbName + ".pe741_3'.");
 		
-		new ExpectedExceptionTester() {
+		try {
+			connection.execute("CREATE DATABASE IF NOT EXISTS pe741_temp USING TEMPLATE OPTIONAL");
+			new ExpectedExceptionTester() {
+				@Override
+				public void test() throws Throwable {
+					connection.execute("RENAME TABLE pe741_temp.pe741_3 TO pe741_4");
+				}
+			}.assertException(SQLException.class, "Internal error: Moving tables between databases and persistent groups is not allowed.");
+		} finally {
+			connection.execute("DROP DATABASE IF EXISTS pe741_temp");
+		}
+
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				connection.execute("RENAME TABLE oops.pe741_3 TO pe741_4");
 			}
-		}.assertException(SQLException.class, "Internal error: Moving tables between databases and persistent groups is not allowed.");
-
-		new ExpectedExceptionTester() {
-			@Override
-			public void test() throws Throwable {
-				connection.execute("RENAME TABLE oops.pe741_3 TO oops.pe741_4");
-			}
-		}.assertException(SQLException.class, "Internal error: No such database 'oops'.");
+		}.assertSqlError(SQLException.class, MySQLErrors.unknownDatabaseFormatter, "oops");
 
 		new ExpectedExceptionTester() {
 			@Override

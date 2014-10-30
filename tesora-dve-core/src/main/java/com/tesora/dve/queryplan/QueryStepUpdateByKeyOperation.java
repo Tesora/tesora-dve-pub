@@ -27,6 +27,7 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.exceptions.PEException;
@@ -44,8 +45,8 @@ public class QueryStepUpdateByKeyOperation extends QueryStepDMLOperation {
 	SQLCommand command;
 	IKeyValue distValue;
 	
-	public QueryStepUpdateByKeyOperation(PersistentDatabase execCtxDBName, IKeyValue distValue, SQLCommand sql) throws PEException {
-		super(execCtxDBName);
+	public QueryStepUpdateByKeyOperation(StorageGroup sg, PersistentDatabase execCtxDBName, IKeyValue distValue, SQLCommand sql) throws PEException {
+		super(sg, execCtxDBName);
 		if (sql.isEmpty())
 			throw new PEException("Cannot create QueryStep with empty SQL command");
 
@@ -54,13 +55,16 @@ public class QueryStepUpdateByKeyOperation extends QueryStepDMLOperation {
 	}
 
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		DistributionModel dm = distValue.getDistributionModel();
+		
+		SSConnection ssCon = estate.getConnection();
 		
 		WorkerGroup.MappingSolution mappingSolution = dm.mapKeyForUpdate(ssCon.getCatalogDAO(), wg.getGroup(), distValue);
 
 		WorkerExecuteRequest req =
-				new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).onDatabase(database);
+				new WorkerExecuteRequest(ssCon.getTransactionalContext(), bindCommand(estate,command)).
+				onDatabase(database);
 		
 		resultConsumer.setRowAdjuster(dm.getUpdateAdjuster());
 		beginExecution();
@@ -69,7 +73,7 @@ public class QueryStepUpdateByKeyOperation extends QueryStepDMLOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

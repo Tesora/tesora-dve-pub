@@ -41,7 +41,7 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
@@ -421,10 +421,10 @@ public class PECreateTableStatement extends
 					new AdhocOperation() {
 
 						@Override
-						public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+						public void execute(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 								throws Throwable {
 
-							WorkerCreateDatabaseRequest req = new WorkerCreateDatabaseRequest(ssCon.getTransactionalContext(),pedb,true);
+							WorkerCreateDatabaseRequest req = new WorkerCreateDatabaseRequest(estate.getConnection().getTransactionalContext(),pedb,true);
 							wg.execute(WorkerGroup.MappingSolution.AllWorkers, req, resultConsumer);
 
 						}
@@ -485,7 +485,7 @@ public class PECreateTableStatement extends
 		private PETable enclosingTable;
 		private List<KeyID> keysToDrop;
 		private List<CatalogEntity> updates;
-		private List<QueryStep> ddl;
+		private List<QueryStepOperation> ddl;
 		private CacheInvalidationRecord record;
 		
 		public DelayedFKDrop(PETable tab, List<KeyID> keys) {
@@ -564,7 +564,7 @@ public class PECreateTableStatement extends
 				es.append(ses);
 			}
 			tab.setDeclaration(sc,tab);
-			ddl = new ArrayList<QueryStep>();
+			ddl = new ArrayList<QueryStepOperation>();
 			es.schedule(null, ddl, null, sc);
 			sc.beginSaveContext();
 			try {
@@ -606,11 +606,10 @@ public class PECreateTableStatement extends
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		public void executeNested(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 			if (ddl != null) {
-				for(QueryStep qs : ddl) {
-					QueryStepOperation qso = qs.getOperation();
-					qso.execute(conn, wg, DBEmptyTextResultConsumer.INSTANCE);
+				for(QueryStepOperation qso : ddl) {
+					qso.executeSelf(estate, wg, DBEmptyTextResultConsumer.INSTANCE);
 				}			
 			}
 		}

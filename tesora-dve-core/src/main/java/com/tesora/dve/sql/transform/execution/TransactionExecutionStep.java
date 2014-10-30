@@ -25,9 +25,9 @@ package com.tesora.dve.sql.transform.execution;
 
 import java.util.List;
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepBeginTransactionOperation;
 import com.tesora.dve.queryplan.QueryStepCommitTransactionOperation;
 import com.tesora.dve.queryplan.QueryStepEndXATransactionOperation;
@@ -72,19 +72,20 @@ public class TransactionExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		QueryStepOperation qso = null;
 		Kind txn = stmt.getKind();
+		StorageGroup sg = getStorageGroup(sc);
 		if (txn == Kind.START) {
-			QueryStepBeginTransactionOperation qsbto = new QueryStepBeginTransactionOperation();
+			QueryStepBeginTransactionOperation qsbto = new QueryStepBeginTransactionOperation(sg);
 			if (stmt.isConsistent())
 				qsbto.withConsistentSnapshot();
 			qsbto.withXAXid(stmt.getXAXid());
 			qso = qsbto;
 		}
 		else if (txn == Kind.COMMIT) {
-			QueryStepCommitTransactionOperation qscto = new QueryStepCommitTransactionOperation();
+			QueryStepCommitTransactionOperation qscto = new QueryStepCommitTransactionOperation(sg);
 			if (stmt.getXAXid() != null) {
 				XACommitTransactionStatement xac = (XACommitTransactionStatement) stmt;
 				qscto.withXAXid(xac.getXAXid(), xac.isOnePhase());
@@ -92,16 +93,16 @@ public class TransactionExecutionStep extends ExecutionStep {
 			qso = qscto;
 		}
 		else if (txn == Kind.ROLLBACK) {
-			QueryStepRollbackTransactionOperation qsrto = new QueryStepRollbackTransactionOperation();
+			QueryStepRollbackTransactionOperation qsrto = new QueryStepRollbackTransactionOperation(sg);
 			if (stmt.getXAXid() != null)
 				qsrto.withXAXid(stmt.getXAXid());
 			qso = qsrto;
 		} else if (txn == Kind.PREPARE) {
-			qso = new QueryStepPrepareXATransactionOperation(stmt.getXAXid());
+			qso = new QueryStepPrepareXATransactionOperation(sg,stmt.getXAXid());
 		} else if (txn == Kind.END) {
-			qso = new QueryStepEndXATransactionOperation(stmt.getXAXid());
+			qso = new QueryStepEndXATransactionOperation(sg,stmt.getXAXid());
 		}
-		addStep(sc, qsteps,qso);
+		qsteps.add(qso);
 	}
 	
 }

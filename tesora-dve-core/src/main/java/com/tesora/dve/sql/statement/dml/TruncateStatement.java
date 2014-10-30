@@ -29,6 +29,7 @@ import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.expression.MTTableKey;
@@ -43,6 +44,7 @@ import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
+import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
@@ -103,7 +105,8 @@ public class TruncateStatement extends UnaryTableDMLStatement {
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+		public void executeNested(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+			SSConnection conn = estate.getConnection();
 			final SchemaContext sc = SchemaContext.createContext(conn);
 			if (table.hasAutoInc()) {
 				AutoIncrementTracker ait = null;
@@ -210,6 +213,11 @@ public class TruncateStatement extends UnaryTableDMLStatement {
 	@Override
 	protected int selfHashCode() {
 		return 0;
+	}
+
+	@Override
+	public TriggerEvent getTriggerEvent() {
+		return null;
 	}
 
 }

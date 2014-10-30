@@ -30,16 +30,19 @@ public class CatalogSchema {
 	SimpleTableMetadata userTable;
 	SimpleTableMetadata userColumn;
 	SimpleTableMetadata userDatabase;
+	SimpleTableMetadata collations;
 	
 	public CatalogSchema() throws PEException {
 		userDatabase = buildUserDatabase();
 		userTable = buildUserTable();
 		userColumn = buildUserColumn();
+		collations = buildCollations();
 	}
 	
 	public SimpleTableMetadata getTable() { return userTable; }
 	public SimpleTableMetadata getColumn() { return userColumn; }
 	public SimpleTableMetadata getDatabase() { return userDatabase; }
+	public SimpleTableMetadata getCollations() { return collations; }
 		
 	private SimpleTableMetadata buildUserTable() throws PEException {
 		SimpleTableMetadata t = new SimpleTableMetadata("user_table");
@@ -83,6 +86,17 @@ public class CatalogSchema {
 		t.addColumn(new SimpleColumnMetadata("name"));
 		t.addColumn(new SimpleColumnMetadata("default_group_id"));
 		t.addColumn(new SimpleColumnMetadata("fk_mode"));
+		return t;
+	}
+
+	private SimpleTableMetadata buildCollations() throws PEException {
+		SimpleTableMetadata t = new SimpleTableMetadata("collations");
+		t.addColumn(new SimpleColumnMetadata("name"));
+		t.addColumn(new SimpleColumnMetadata("character_set_name"));
+		t.addColumn(new SimpleColumnMetadata("id"));
+		t.addColumn(new SimpleColumnMetadata("is_default"));
+		t.addColumn(new SimpleColumnMetadata("is_compiled"));
+		t.addColumn(new SimpleColumnMetadata("sortlen"));
 		return t;
 	}
 }

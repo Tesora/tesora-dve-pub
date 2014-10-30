@@ -45,6 +45,7 @@ import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.PurgeDistributionRangeCache;
 import com.tesora.dve.locking.ClusterLock;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -123,11 +124,12 @@ public class RangeDistributionModel extends DistributionModel {
 	}
 
 	@Override
-	public void prepareGenerationAddition(SSConnection ssCon, WorkerGroup wg, UserTable ut, StorageGroupGeneration newGen) throws PEException {
+	public void prepareGenerationAddition(ExecutionState estate, WorkerGroup wg, UserTable ut, StorageGroupGeneration newGen) throws PEException {
 		// Compute the range of the generation as the superset of the ranges
 		// of all the tables that use the range (they should all be the same,
 		// but in case the user has defined disjoint ranges we need to
 		// pick the superset).
+		SSConnection ssCon = estate.getConnection();
 		DistributionRange dr = ssCon.getCatalogDAO().findRangeForTable(ut);
 
         ClusterLock genLock = GroupManager.getCoordinationServices().getClusterLock(GENERATION_LOCKNAME);

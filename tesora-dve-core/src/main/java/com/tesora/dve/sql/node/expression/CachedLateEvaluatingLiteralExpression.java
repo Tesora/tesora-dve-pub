@@ -27,6 +27,7 @@ import com.tesora.dve.sql.node.expression.LateEvaluatingLiteralExpression.LateEv
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.ILateEvalLiteralExpression;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
@@ -81,8 +82,8 @@ public class CachedLateEvaluatingLiteralExpression implements
 	}
 
 	@Override
-	public boolean isParameter() {
-		return false;
+	public ConstantType getConstantType() {
+		return ConstantType.LITERAL;
 	}
 
 }

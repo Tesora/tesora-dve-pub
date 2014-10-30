@@ -43,6 +43,7 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.PurgeWorkerGroupCaches;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepRebalance;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
@@ -250,8 +251,10 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 		getLastGen().addStorageSite(site);
 	}
 
-	public void addGeneration(SSConnection ssCon, WorkerGroup wg, StorageGroupGeneration newGen,
-			ListOfPairs<UserTable,SQLCommand> tableDecls, boolean ignoreFKs, List<SQLCommand> userDecls) throws Throwable {
+	public void addGeneration(ExecutionState estate, WorkerGroup wg, StorageGroupGeneration newGen,
+			ListOfPairs<UserTable,SQLCommand> tableDecls, boolean ignoreFKs, List<SQLCommand> userDecls,
+			List<AddStorageGenRangeInfo> rebalanceInfo) throws Throwable {
+		SSConnection ssCon = estate.getConnection();
 		if (false == this.equals(wg.getGroup()))
 			throw new PEException("WorkerGroup does not match StorageGroup");
 		if (generations.size() > 0)
@@ -266,7 +269,7 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 			for(UserDatabase udb : dbs)
 				wg.assureDatabase(ssCon, udb);
 			for(Pair<UserTable,SQLCommand> p : tableDecls) {
-				p.getFirst().prepareGenerationAddition(ssCon, wg, newGen, p.getSecond());
+				p.getFirst().prepareGenerationAddition(estate, wg, newGen, p.getSecond());
 			}
 		} else {
 			List<UserTable> tables = ssCon.getCatalogDAO().findAllTablesInPersistentGroup(this);
@@ -276,7 +279,7 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 			for(UserDatabase udb : dbs)
 				wg.assureDatabase(ssCon, udb);
 			for(UserTable ut : tables)
-				ut.prepareGenerationAddition(ssCon,wg,newGen,null);
+				ut.prepareGenerationAddition(estate,wg,newGen,null);
 		}
 		if (ignoreFKs)
 			ssCon.setSessionVariable("foreign_key_checks", (fkVal ? "1" : "0"));

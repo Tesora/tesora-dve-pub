@@ -47,6 +47,7 @@ import com.tesora.dve.common.catalog.Tenant;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.common.catalog.UserView;
 import com.tesora.dve.distribution.DistributionRange;
 import com.tesora.dve.distribution.IKeyValue;
@@ -191,6 +192,8 @@ public interface CatalogContext {
 	
 	// find matching temporary table records on _this_ server
 	public List<TemporaryTable> findUserlandTemporaryTable(Integer connID, String dbName, String tabName);
+	
+	public UserTrigger findTrigger(String name, String dbName);
 	
 	public void startTxn();
 	public void commitTxn();

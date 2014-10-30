@@ -36,6 +36,7 @@ import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -99,7 +100,7 @@ public class PECreateViewStatement extends
 	
 	private final PEViewTable tschema;
 	
-	private final boolean orReplace;
+	private boolean orReplace;
 	
 	protected PECreateViewStatement(PEView newView, boolean createOrReplace, PEDatabase ofDB, PEStorageGroup ofGroup, 
 			List<UnqualifiedName> colNames) {
@@ -124,15 +125,30 @@ public class PECreateViewStatement extends
 		return orReplace;
 	}
 	
+	public void setCreateOrReplace() {
+		orReplace = true;
+	}
+	
 	// tschema ONLY
 	public PEViewTable getViewTable() {
 		return tschema;
 	}
 	
+	public static PECreateViewStatement build(SchemaContext pc,Name viewName,ProjectingStatement viewDef,
+			List<UnqualifiedName> columnNames,String checkOption,
+			List<TableComponent<?>> colDefs) {
+		return build(pc,viewName,viewDef,null,columnNames,null,null,checkOption,false,colDefs,true);
+	}
+
+	
 	public static PECreateViewStatement build(SchemaContext sc, Name name, ProjectingStatement definition, 
-			UserScope definer, List<UnqualifiedName> givenNames,
-			String algo, String security, String checkOption, 
-			boolean replaceIfExists, List<TableComponent<?>> tschemaColDefs) {
+			UserScope definer, 
+			List<UnqualifiedName> givenNames,
+			String algo, String security, 
+			String checkOption, 
+			boolean replaceIfExists, 
+			List<TableComponent<?>> tschemaColDefs,
+			boolean kern) {
 		// we only build a minimal view here - for instance we're going to remove most of the column related info
 		PEStorageGroup theGroup = null;
 		try {
@@ -143,19 +159,21 @@ public class PECreateViewStatement extends
 		PEDatabase theDB = (PEDatabase) definition.getDatabase(sc);
 		
 		PEUser user = null;
-		if (definer == null || sc.getOptions().isIgnoreMissingUser())
-			user = sc.getCurrentUser().get(sc);
-		else {
-			user = sc.findUser(definer.getUserName(), definer.getScope());
-			if (user == null)
-				throw new SchemaException(Pass.SECOND, "No such user: " + definer.getSQL());
+		if (!kern) {
+			if (definer == null || sc.getOptions().isIgnoreMissingUser())
+				user = sc.getCurrentUser().get(sc);
+			else {
+				user = sc.findUser(definer.getUserName(), definer.getScope());
+				if (user == null)
+					throw new SchemaException(Pass.SECOND, "No such user: " + definer.getSQL());
+			}
 		}
 		
 		PEAbstractTable<?> existing = sc.findTable(PEAbstractTable.getTableKey(theDB, name));
 		if (existing != null) {
 			if (existing.isTable()) {
 				throw new SchemaException(Pass.SECOND, "Table " + name + " already exists");
-			} else if (!replaceIfExists) {
+			} else if (!kern && !replaceIfExists) {
 				throw new SchemaException(Pass.SECOND, "View " + name + " already exists");
 			}
 		}
@@ -206,8 +224,8 @@ public class PECreateViewStatement extends
 		}
 				
 		String checkMode = (checkOption == null ? "NONE" : checkOption);
-		String algorithm = (algo == null ? "UNDEFINED" : algo);
-		String sec = (security == null ? "DEFINER" : security);
+		String algorithm = (kern ? null : (algo == null ? "UNDEFINED" : algo));
+		String sec = (kern ? null : (security == null ? "DEFINER" : security));
 		
 		PEView nv = new PEView(sc,name.getUnqualified(),theDB,user,definition, 
 				new UnqualifiedName(charset), new UnqualifiedName(collation), vm, checkMode, algorithm, sec);
@@ -495,7 +513,7 @@ public class PECreateViewStatement extends
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
+		public void executeNested(ExecutionState estate, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
 			List<SQLCommand> cmds = new ArrayList<SQLCommand>();
 			if (dropCommand != null) {
@@ -503,8 +521,9 @@ public class PECreateViewStatement extends
 			}
 			cmds.add(pushDown != null ? pushDown : emulatedDefinition);
 			for(SQLCommand sqlc : cmds) {
-				QueryStepUpdateAllOperation qsuo = new QueryStepUpdateAllOperation(onDatabase,BroadcastDistributionModel.SINGLETON,sqlc);
-				qsuo.execute(conn, wg, resultConsumer);
+				QueryStepUpdateAllOperation qsuo = 
+						new QueryStepUpdateAllOperation(backingTable.getStorageGroup(context).getPersistent(context),onDatabase,BroadcastDistributionModel.SINGLETON,sqlc);
+				qsuo.executeSelf(estate, wg, resultConsumer);
 			}
 		}
 	}

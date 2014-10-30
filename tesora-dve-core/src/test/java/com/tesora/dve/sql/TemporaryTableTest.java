@@ -91,9 +91,8 @@ public class TemporaryTableTest extends SchemaTest {
 					conn2.execute("select * from foo");
 
 				}
-			}.assertError(SQLException.class,
-						MySQLErrors.missingTableFormatter,
-						"Table 'sysdb.foo' doesn't exist");
+			}.assertSqlError(SQLException.class,
+					MySQLErrors.missingTableFormatter, "sysdb", "foo");
 		} finally {
 			conn1.disconnect();
 			conn2.disconnect();
@@ -198,8 +197,7 @@ public class TemporaryTableTest extends SchemaTest {
 				public void test() throws Throwable {
 					conn.execute("select * from targ");
 				}
-			}.assertError(SQLException.class, MySQLErrors.missingTableFormatter,
-						"Table 'sysdb.targ' doesn't exist");
+			}.assertSqlError(SQLException.class, MySQLErrors.missingTableFormatter, "sysdb", "targ");
 		}
 	}
 	
@@ -229,8 +227,7 @@ public class TemporaryTableTest extends SchemaTest {
 				public void test() throws Throwable {
 					conn.execute("drop temporary table targ"); // should fail - doesn't exist
 				}
-			}.assertError(SQLException.class, MySQLErrors.unknownTableFormatter,
-						"Unknown table 'targ'");
+			}.assertSqlError(SQLException.class, MySQLErrors.unknownTableFormatter, "targ");
 			conn.execute("drop table targ"); // succeeds
 			conn.assertResults("show tables",br());
 			

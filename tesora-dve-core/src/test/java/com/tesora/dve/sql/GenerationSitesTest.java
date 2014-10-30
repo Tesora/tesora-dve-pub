@@ -23,6 +23,7 @@ package com.tesora.dve.sql;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -42,7 +43,9 @@ import com.tesora.dve.common.catalog.MultitenantMode;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.common.catalog.StorageSite;
+import com.tesora.dve.common.catalog.TestCatalogHelper;
 import com.tesora.dve.common.catalog.UserDatabase;
+import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.SSConnectionAccessor;
@@ -51,6 +54,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
+import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.worker.DBConnectionParameters;
@@ -60,6 +64,7 @@ public class GenerationSitesTest extends SchemaTest {
 	protected ProxyConnectionResource conn = null;
 
 	private static final StorageGroupDDL sg = new StorageGroupDDL("gstsg",50,3,"pg");
+	private static final StorageGroupDDL smallsg = new StorageGroupDDL("smallsg",5,"sg");
 	
 	private static final PEDDL testDDL =
 			new PEDDL("gsdb",sg,"database");
@@ -67,10 +72,12 @@ public class GenerationSitesTest extends SchemaTest {
 			new PEDDL("nonmt",sg,"database");
 	private static final PEDDL mtDDL =
 			new PEDDL("mtdb",sg,"database").withMTMode(MultitenantMode.ADAPTIVE);
-					
+	private static final PEDDL smallDDL =
+			new PEDDL("smalldb",smallsg,"database");
+	
 	@BeforeClass
 	public static void setup() throws Exception {
-		PETest.projectSetup(testDDL,nonmtDDL,mtDDL);
+		PETest.projectSetup(testDDL,nonmtDDL,mtDDL,smallDDL);
 		PETest.bootHost = BootstrapHost.startServices(PETest.class);
 	}
 
@@ -485,5 +492,70 @@ public class GenerationSitesTest extends SchemaTest {
 		} finally {
 			conn.execute("drop multitenant database " + mtDDL.getDatabaseName());
 		}		
+	}
+	
+	@Test
+	public void testScaling() throws Throwable {
+		ProxyConnectionResource uc = null;
+		try {
+			setTemplateModeOptional();
+			SchemaTest.removeUser(conn, "buser", "localhost");
+			for(int i = 1; i <= 5; i++) {
+				conn.execute(String.format("create persistent site smallsg%d url='%s' user='%s' password='%s'",
+						i,
+						TestCatalogHelper.getInstance().getCatalogBaseUrl(),
+						TestCatalogHelper.getInstance().getCatalogUser(),
+						TestCatalogHelper.getInstance().getCatalogPassword()));
+			}
+			// create the first generation - just site1
+			conn.execute("create persistent group sg add smallsg1");
+			conn.execute("create database if not exists smalldb default persistent group sg");
+			// give our user access
+			conn.execute("create user 'buser'@'localhost' identified by 'buser'");
+			conn.execute("grant all on smalldb.* to 'buser'@'localhost'");
+			uc = new ProxyConnectionResource("buser","buser");
+			uc.execute("use smalldb");
+			// create our tiny schema.  first we need a range
+			conn.execute("create range scaler (int) persistent group sg");
+			uc.execute("create table gendata (id int, vers int, primary key (id)) range distribute on (id) using scaler");
+			uc.execute("create table genname (drow int, contents varchar(64), foreign key (drow) references gendata (id)) range distribute on (drow) using scaler");
+			uc.execute("create view genview as select d.id as `id`, d.vers as `version`, n.contents as `contents` from gendata d inner join genname n on d.id=n.drow");
+			// first row
+			int counter = -1;
+			scalingInsert(uc,++counter,0,"smallsg1");
+			// all our generations, in order
+			String[] generations = new String[] {
+					"smallsg2", "smallsg3", "smallsg1,smallsg2", "smallsg2,smallsg3", "smallsg1,smallsg3", "smallsg1,smallsg2,smallsg3", 
+					"smallsg1,smallsg3","smallsg2,smallsg3","smallsg1,smallsg2","smallsg3","smallsg2","smallsg1"
+			};
+			int[] rows = new int[] {
+					1,1,2,2,2,3,2,2,2,1,1,1
+			};
+			for(int i = 0; i < generations.length; i++) {
+				conn.execute(String.format("alter persistent group sg add generation %s",generations[i]));
+				for(int j = 0; j < rows[i]; j++) 
+					scalingInsert(uc,++counter,i+1,generations[i]);
+			}
+			String sql = "select g.id, g.version, g.contents, cast(@dve_sitename as char(64)) from genview g order by g.id";
+//			System.out.println(uc.printResults(sql));
+			ResourceResponse resp = uc.execute(sql);
+			for(ResultRow rr : resp.getResults()) {
+				// verify that the last parameter is part of the second to last
+				String contents = (String) rr.getResultColumn(3).getColumnValue();
+				String site = (String) rr.getResultColumn(4).getColumnValue();
+				if (contents.indexOf(site) == -1) {
+					fail("Site '" + site + "' is not among allowed sites '" + contents + "'");
+				}
+			}
+		} finally {
+			smallDDL.destroy(conn);
+			if (uc != null)
+				uc.close();
+		}
+	}
+	
+	private static void scalingInsert(ProxyConnectionResource uc, int id, int version, String sites) throws Throwable {
+		uc.execute(String.format("insert into gendata (id,vers) values (%d,%d)",id,version));
+		uc.execute(String.format("insert into genname (drow, contents) values (%d,'%s')",id,sites));
 	}
 }

@@ -21,11 +21,9 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import javax.xml.bind.annotation.XmlType;
-
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.UserXid;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -34,7 +32,6 @@ import com.tesora.dve.worker.WorkerGroup;
  * commits a transaction.
  *
  */
-@XmlType(name="QueryStepBeginTransactionOperation")
 public class QueryStepCommitTransactionOperation extends QueryStepOperation {
 	
 	@SuppressWarnings("unused")
@@ -42,6 +39,10 @@ public class QueryStepCommitTransactionOperation extends QueryStepOperation {
 	@SuppressWarnings("unused")
 	private boolean onePhase;
 
+	public QueryStepCommitTransactionOperation(StorageGroup sg) throws PEException {
+		super(sg);
+	}
+	
 	public QueryStepCommitTransactionOperation withXAXid(UserXid xid, boolean onePhase) {
 		this.xaXid = xid;
 		this.onePhase = onePhase;
@@ -49,9 +50,9 @@ public class QueryStepCommitTransactionOperation extends QueryStepOperation {
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		try {
-			ssCon.userCommitTransaction();
+			estate.getConnection().userCommitTransaction();
 		} catch (Throwable t) {
 			throw new PEException("Unable to commit transaction",t);
 		}

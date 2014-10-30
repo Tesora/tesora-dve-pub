@@ -23,9 +23,9 @@ package com.tesora.dve.queryplan;
 
 import javax.xml.bind.annotation.XmlType;
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.UserXid;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -40,11 +40,13 @@ public class QueryStepBeginTransactionOperation extends QueryStepOperation {
 	boolean withConsistentSnapshot = false;
 	UserXid xaXid = null;
 	
-	public QueryStepBeginTransactionOperation(boolean withConsistentSnapshot) {
+	public QueryStepBeginTransactionOperation(StorageGroup sg, boolean withConsistentSnapshot) throws PEException {
+		super(sg);
 		this.withConsistentSnapshot = withConsistentSnapshot;
 	}
 
-	public QueryStepBeginTransactionOperation() {
+	public QueryStepBeginTransactionOperation(StorageGroup sg) throws PEException {
+		this(sg,false);
 	}
 	
 	public QueryStepBeginTransactionOperation withConsistentSnapshot() {
@@ -58,8 +60,8 @@ public class QueryStepBeginTransactionOperation extends QueryStepOperation {
 	}
 	
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
-		ssCon.userBeginTransaction(withConsistentSnapshot, xaXid);
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
+		estate.getConnection().userBeginTransaction(withConsistentSnapshot, xaXid);
 	}
 
 	@Override

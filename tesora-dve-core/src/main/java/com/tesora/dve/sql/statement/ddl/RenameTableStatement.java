@@ -32,8 +32,8 @@ import java.util.Set;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.parser.TranslatorUtils;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
@@ -101,8 +101,8 @@ public class RenameTableStatement extends DDLStatement {
 			Name source = namePair.getFirst();
 			Name target = namePair.getSecond();
 
-			final UnqualifiedName sourceDbName = TranslatorUtils.getDatabaseNameForTable(sc, source);
-			final UnqualifiedName targetDbName = TranslatorUtils.getDatabaseNameForTable(sc, target);
+			final UnqualifiedName sourceDbName = TranslatorUtils.getDatabaseNameForObject(sc, source);
+			final UnqualifiedName targetDbName = TranslatorUtils.getDatabaseNameForObject(sc, target);
 			if (!sourceDbName.equals(targetDbName)) {
 				/* This is a DVE only limitation. */
 				throw new SchemaException(Pass.FIRST, "Moving tables between databases and persistent groups is not allowed.");

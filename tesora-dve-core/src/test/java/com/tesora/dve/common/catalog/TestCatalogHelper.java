@@ -211,7 +211,7 @@ public class TestCatalogHelper extends CatalogHelper {
 			if (numSites != -1) {
 				// add 10 - numSites more StorageSites
 				for (int i = numSites + 1; i <= 10; i++) {
-					helper.createStorageSite("site" + i, helper.getCatalogUrl(), 
+					helper.createStorageSite("site" + i, helper.getCatalogBaseUrl(), 
 							helper.getCatalogUser(), helper.getCatalogPassword());
 				}
 			}
@@ -292,7 +292,7 @@ public class TestCatalogHelper extends CatalogHelper {
 
 		for (int i = 1; i <= numStorageSites; i++) {
 			String siteName = prefix + "site" + i;
-			sites.add(createStorageSite(siteName, getCatalogUrl(), getCatalogUser(), getCatalogPassword()));
+			sites.add(createStorageSite(siteName, getCatalogBaseUrl(), getCatalogUser(), getCatalogPassword()));
 		}
 
 		// Create a persistent group and add the sites created above
@@ -353,7 +353,7 @@ public class TestCatalogHelper extends CatalogHelper {
 	}
 
 	private OnPremiseSiteProviderConfig addTestDefaultSiteProviders(CatalogDAO c) throws PEException {
-		OnPremiseSiteProviderConfig config = generateProviderConfig(siteCount, OnPremiseSiteProvider.DEFAULT_NAME, getCatalogUrl(),
+		OnPremiseSiteProviderConfig config = generateProviderConfig(siteCount, OnPremiseSiteProvider.DEFAULT_NAME, getCatalogBaseUrl(),
 				getCatalogUser(), getCatalogPassword());
 
 		c.createProvider(OnPremiseSiteProvider.DEFAULT_NAME, OnPremiseSiteProvider.class.getCanonicalName(), PEXmlUtils.marshalJAXB(config));

@@ -23,10 +23,11 @@ package com.tesora.dve.queryplan;
 
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.worker.WorkerGroup;
@@ -40,25 +41,23 @@ public class QueryStepDropTempTableOperation extends QueryStepOperation {
 	UserDatabase database;
 	String tableName;
 	
-	public QueryStepDropTempTableOperation() {
-	}
-	
-	public QueryStepDropTempTableOperation(UserDatabase udb, String tableName) {
+	public QueryStepDropTempTableOperation(StorageGroup sg, UserDatabase udb, String tableName) throws PEException {
+		super(sg);
 		this.database = udb;
 		this.tableName = tableName;
 	}
 
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
 		WorkerRequest req = 
-				new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, tableName, false)).
+				new WorkerExecuteRequest(estate.getNonTransactionalContext(), UserTable.getDropTableStmt(estate.getConnection(), tableName, false)).
 				onDatabase(database);
 		wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

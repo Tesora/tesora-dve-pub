@@ -32,10 +32,10 @@ import java.util.Set;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.errmap.DVEErrors;
+import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -91,7 +91,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 				FunctionCall fc = (FunctionCall) iter.next();
 				ColumnInstance lhs = (ColumnInstance) fc.getParametersEdge().get(0);
 				if (lhs.getPEColumn().isPartOfContainerDistributionVector())
-					throw new SchemaException(new ErrorInfo(DVEErrors.INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
+					throw new SchemaException(new ErrorInfo(AvailableErrors.INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
 							lhs.getPEColumn().getName().getUnquotedName().get(),
 							lhs.getPEColumn().getTable().getName().getUnquotedName().get()));
 			}
@@ -102,7 +102,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 			if (pet.isContainerBaseTable(sc)) {
 				List<Part> parts = DiscriminantCollector.getDiscriminants(sc, ds.getWhereClause());
 				if (parts == null || parts.isEmpty())
-					throw new SchemaException(new ErrorInfo(DVEErrors.INVALID_CONTAINER_DELETE,
+					throw new SchemaException(new ErrorInfo(AvailableErrors.INVALID_CONTAINER_DELETE,
 							pet.getName().getUnquotedName().get()));
 				else {
 					List<SchemaCacheKey<PEContainerTenant>> matchingTenants = convert(sc, parts);
@@ -122,11 +122,11 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 
 	private static class DeleteContainerTenantsCallback extends NestedOperationDDLCallback {
 
-		private List<QueryStep> steps;
+		private List<QueryStepOperation> steps;
 		private List<SchemaCacheKey<PEContainerTenant>> tenants;
 		private List<CatalogEntity> deleted;
 		
-		public DeleteContainerTenantsCallback(List<QueryStep> steps, List<SchemaCacheKey<PEContainerTenant>> tenants) {
+		public DeleteContainerTenantsCallback(List<QueryStepOperation> steps, List<SchemaCacheKey<PEContainerTenant>> tenants) {
 			this.steps = steps;
 			this.tenants = tenants;
 		}
@@ -185,11 +185,11 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 		}
 
 		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg, DBResultConsumer resultConsumer)
+		public void executeNested(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer)
 				throws Throwable {
 			for(int i = 0; i < steps.size(); i++) {
-				QueryStepOperation qso = steps.get(i).getOperation();
-				qso.execute(conn, wg, resultConsumer);
+				QueryStepOperation qso = steps.get(i);
+				qso.executeSelf(execState, wg, resultConsumer);
 			}			
 		}
 
@@ -313,7 +313,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 					es.getPlan().setCacheable(false);
 				ExecutionSequence subseq = new ExecutionSequence(null);
 				getSelfChildren().get(0).schedule(sc, subseq, scheduled);
-				ArrayList<QueryStep> substeps = new ArrayList<QueryStep>();
+				ArrayList<QueryStepOperation> substeps = new ArrayList<QueryStepOperation>();
 				subseq.schedule(null, substeps, null, sc.getContext());
 				Database<?> db = childStep.getDatabase(sc);
 				

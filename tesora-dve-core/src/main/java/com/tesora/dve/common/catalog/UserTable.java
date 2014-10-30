@@ -60,6 +60,7 @@ import com.tesora.dve.distribution.RangeTableRelationship;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLOperation;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
@@ -144,6 +145,9 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 
 	@OneToOne(mappedBy="table", cascade=CascadeType.ALL, fetch=FetchType.LAZY)
 	UserView view;
+	
+	@OneToMany(cascade=CascadeType.ALL, mappedBy="table")
+	List<UserTrigger> triggers = new ArrayList<UserTrigger>();
 	
 	// engine can be nullable for views
 	@Column(name = "engine", nullable=true)
@@ -501,11 +505,13 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 //		return userDatabase.getName()+"."+getName();
 	}
 
-	public void prepareGenerationAddition(SSConnection ssCon, WorkerGroup wg, StorageGroupGeneration newGen, SQLCommand command) throws Throwable {
+	public void prepareGenerationAddition(ExecutionState estate, WorkerGroup wg, StorageGroupGeneration newGen, SQLCommand command) throws Throwable {
 		Set<PersistentSite> netNewSites = new HashSet<PersistentSite>(newGen.getStorageSites());
 		netNewSites.removeAll(wg.getStorageSites());
 		PersistentGroup newSG = new PersistentGroup(netNewSites);
 
+		SSConnection ssCon = estate.getConnection();
+		
 		Manager wgManager = wg.setManager(null);
 		WorkerGroup newWG = WorkerGroupFactory.newInstance(ssCon, newSG, userDatabase);
 		newWG.assureDatabase(ssCon, userDatabase);
@@ -514,13 +520,13 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 				// nothing to do
 			} else {
 				QueryStepDDLOperation qso =
-						new QueryStepDDLOperation(getDatabase(), (command == null ? new SQLCommand(ssCon,getCreateTableStmt()) : command), null);
+						new QueryStepDDLOperation(newSG, getDatabase(), (command == null ? new SQLCommand(ssCon,getCreateTableStmt()) : command), null);
 
-				qso.execute(ssCon, newWG, DBEmptyTextResultConsumer.INSTANCE);
+				qso.executeSelf(estate, newWG, DBEmptyTextResultConsumer.INSTANCE);
 			}
 
 			if (getView() == null)
-				distributionModel.prepareGenerationAddition(ssCon, wg, this, newGen);
+				distributionModel.prepareGenerationAddition(estate, wg, this, newGen);
 		} finally {
 			WorkerGroupFactory.purgeInstance(ssCon, newWG);
 			wg.setManager(wgManager);
@@ -645,6 +651,10 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	public void setCreateOptions(String s) {
 		createOptions = s;
 	}
+
+	public final List<UserTrigger> getTriggers() {
+		return triggers;
+	}
 	
 	@Override
 	public void removeFromParent() throws Throwable {
@@ -660,7 +670,7 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 			ceList.addAll(view.getDependentEntities(c));
 			ceList.add(view);
 		}
-		
+				
 		RangeTableRelationship rtr = c.findRangeTableRelationship(this, false);
 		if ( rtr != null )
 			ceList.add(rtr);
@@ -675,6 +685,11 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 		
 		if (isContainerBaseTable()) {
 			ceList.add(getContainer());
+		}
+		
+		for(UserTrigger ut : triggers) {
+			ceList.addAll(ut.getDependentEntities(c));
+			ceList.add(ut);
 		}
 		return ceList;
 	}

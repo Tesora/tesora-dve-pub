@@ -276,6 +276,8 @@ public class InsertIntoValuesStatement extends InsertStatement {
 	protected void planInternal(SchemaContext pc, ExecutionSequence ges) throws PEException {
 		if (intoTable.get().getTable().isInfoSchema()) 
 			throw new PEException("Cannot insert into info schema table " + intoTable.get().getTable().getName());
+		if (hasTrigger(pc))
+			throw new PEException("No support for trigger execution");
 		normalize(pc);
 		if (ges.getPlan() != null) {
 			if (Boolean.FALSE.equals(cacheable)) ges.getPlan().setCacheable(false);

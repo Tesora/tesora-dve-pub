@@ -97,7 +97,7 @@ public class LoadDataBlockExecutor {
 					KnownVariables.CHARACTER_SET_CLIENT.getSessionValue(connMgr).getJavaCharset());
 		}
 
-		List<String> params = new ArrayList<String>();
+		List<Object> params = new ArrayList<Object>();
 		int targetNumTuples = rows.size();
 		int currentTupleCount = 1;
 		
@@ -133,7 +133,7 @@ public class LoadDataBlockExecutor {
 		return (currentTupleCount == loadDataInfileContext.getClosestPreparedStatementTuples(maxTuples));
 	}
 
-	static void buildInsertStatement(MyLoadDataInfileContext loadDataInfileContext, List<byte[]> cols, List<String> params)	throws PEException {
+	static void buildInsertStatement(MyLoadDataInfileContext loadDataInfileContext, List<byte[]> cols, List<Object> params)	throws PEException {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Processing datablock: col length = " + cols.size()
 					+ ", projection length = "

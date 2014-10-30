@@ -25,8 +25,8 @@ import java.util.List;
 
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
 import com.tesora.dve.queryplan.QueryStepMultiInsertByKeyOperation;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.Database;
@@ -72,18 +72,18 @@ public class LateSortingInsertExecutionStep extends DirectExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		List<JustInTimeInsert> late = getLateInserts(sc);
 
-		QueryStepMultiInsertByKeyOperation qso = new QueryStepMultiInsertByKeyOperation(getPersistentDatabase());
+		QueryStepMultiInsertByKeyOperation qso = new QueryStepMultiInsertByKeyOperation(getStorageGroup(sc),getPersistentDatabase());
 		for(JustInTimeInsert jti : late) {
 			SQLCommand sqlc = jti.getSQL();
 			sqlc.withReferenceTime(sc.getValueManager().getCurrentTimestamp(sc));
 			qso.addStatement(jti.getKey().getDetachedKey(sc), sqlc);
 		}
 		qso.setStatistics(getStepStatistics(sc));
-		addStep(sc,qsteps,qso);
+		qsteps.add(qso);
 	}
 	
 	@Override

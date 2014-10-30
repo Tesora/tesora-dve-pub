@@ -22,6 +22,7 @@ package com.tesora.dve.sql.node.expression;
  */
 
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
 
@@ -44,13 +45,13 @@ public class CachedParameterExpression implements IParameter {
 	}
 
 	@Override
-	public boolean isParameter() {
-		return true;
+	public IConstantExpression getCacheExpression() {
+		return this;
 	}
 
 	@Override
-	public IConstantExpression getCacheExpression() {
-		return this;
+	public ConstantType getConstantType() {
+		return ConstantType.LITERAL;
 	}
 	
 }

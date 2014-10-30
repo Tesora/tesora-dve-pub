@@ -28,6 +28,7 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.PersistentSite;
+import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.exceptions.PEException;
@@ -59,8 +60,8 @@ public class QueryStepInsertByKeyOperation extends QueryStepDMLOperation {
 	 * @param command sql command to actually insert the row
 	 * @throws PEException 
 	 */
-	public QueryStepInsertByKeyOperation(PersistentDatabase execCtxDBName, IKeyValue distValue, SQLCommand command) throws PEException {
-		super(execCtxDBName);
+	public QueryStepInsertByKeyOperation(StorageGroup sg, PersistentDatabase execCtxDBName, IKeyValue distValue, SQLCommand command) throws PEException {
+		super(sg, execCtxDBName);
 		if (command.isEmpty())
 			throw new PEException("Cannot create QueryStep with empty SQL command");
 
@@ -69,8 +70,8 @@ public class QueryStepInsertByKeyOperation extends QueryStepDMLOperation {
 	}
 
 	// compatibility ctor
-	public QueryStepInsertByKeyOperation(final SSConnection ssCon, PersistentDatabase execCtxDB, IKeyValue distValue, String command) throws PEException {
-		this(execCtxDB, distValue, new SQLCommand(ssCon, command));
+	public QueryStepInsertByKeyOperation(StorageGroup sg, final SSConnection ssCon, PersistentDatabase execCtxDB, IKeyValue distValue, String command) throws PEException {
+		this(sg, execCtxDB, distValue, new SQLCommand(ssCon, command));
 	}
 	
 	/**
@@ -82,16 +83,18 @@ public class QueryStepInsertByKeyOperation extends QueryStepDMLOperation {
 	 * is executed to actually insert the row.
 	 * */
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 		beginExecution();
-		executeInsertByKey(ssCon, wg, resultConsumer, database, command, distValue);
+		executeInsertByKey(estate, wg, resultConsumer, database, bindCommand(estate,command), distValue);
 		endExecution(resultConsumer.getUpdateCount());
 	}
 
-	public static void executeInsertByKey(SSConnection ssCon,
+	public static void executeInsertByKey(ExecutionState estate,
 			WorkerGroup wg, DBResultConsumer resultConsumer, PersistentDatabase database, SQLCommand command, 
 			IKeyValue distValue) throws Throwable {
 		DistributionModel dm = distValue.getDistributionModel();
+		
+		SSConnection ssCon = estate.getConnection();
 		
 		WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).onDatabase(database);
 		WorkerGroup.MappingSolution mappingSolution = dm.mapKeyForInsert(ssCon.getCatalogDAO(), wg.getGroup(), distValue);
@@ -101,7 +104,7 @@ public class QueryStepInsertByKeyOperation extends QueryStepDMLOperation {
 	}
 	
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

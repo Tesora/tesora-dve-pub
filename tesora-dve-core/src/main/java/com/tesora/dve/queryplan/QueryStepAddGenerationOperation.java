@@ -25,6 +25,7 @@ import java.util.List;
 
 import com.tesora.dve.common.catalog.*;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
@@ -47,14 +48,16 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	// all the users and grants
 	List<SQLCommand> userDecls;
 	
-	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate) {
-		this(sg,sites,invalidate,null,false,null);
+	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate) throws PEException {
+		this(sg,sites,invalidate,null,false,null, Collections.<AddStorageGenRangeInfo> emptyList());
 	}
 	
 	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate,
 			ListOfPairs<UserTable,SQLCommand> tableDecls,
 			boolean ignoreFKs,
-			List<SQLCommand> userDecls) {
+			List<SQLCommand> userDecls,
+			List<AddStorageGenRangeInfo> rebalanceInfo) throws PEException {
+		super(sg);
 		this.group = sg;
 		this.sites = sites;
 		this.record = invalidate;
@@ -64,19 +67,18 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public void execute(final SSConnection ssCon, final WorkerGroup wg,	DBResultConsumer resultConsumer) throws Throwable {
+	public void executeSelf(final ExecutionState execState, final WorkerGroup wg,	DBResultConsumer resultConsumer) throws Throwable {
 		try {
 			if (record != null)
 				QueryPlanner.invalidateCache(record);
-            final CatalogDAO catalogDAO = ssCon.getCatalogDAO();
-            catalogDAO.new EntityGenerator() {
+			final SSConnection ssCon = execState.getConnection();
+			ssCon.getCatalogDAO().new EntityGenerator() {
 				@Override
 				public CatalogEntity generate() throws Throwable {
-                    //NOTE: this catalog entry is for the latest storage generation.
-                    StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
-                    //NOTE: this call is responsible for scanning the dist-key ranges and setting up any catalog entries for older generations.
-                    group.addGeneration(ssCon, wg, newGen, tableDecls, mustIgnoreFKs, userDecls);
-                    return newGen;
+					StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
+					ssCon.getCatalogDAO().persistToCatalog(newGen);
+					group.addGeneration(execState, wg, newGen, tableDecls, mustIgnoreFKs, userDecls, rebalanceInfo);
+					return newGen;
 				}
 			}.execute();
 		} finally {
@@ -86,7 +88,7 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	}
 
 	@Override
-	public boolean requiresTransaction() {
+	public boolean requiresTransactionSelf() {
 		return false;
 	}
 

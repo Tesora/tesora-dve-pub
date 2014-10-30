@@ -166,7 +166,7 @@ public class UpdateRewriteTransformFactory extends TransformFactory {
 		return colsAtOffsets;
 	}
 
-	private static ListOfPairs<ColumnKey, ExpressionNode> getUpdateExpressions(UpdateStatement us) throws PEException {
+	public static ListOfPairs<ColumnKey, ExpressionNode> getUpdateExpressions(UpdateStatement us) throws PEException {
 		ListOfPairs<ColumnKey, ExpressionNode> out = new ListOfPairs<ColumnKey, ExpressionNode>();
 		for (ExpressionNode en : us.getUpdateExpressionsEdge().getMulti()) {
 			if (!EngineConstant.FUNCTION.has(en, EngineConstant.EQUALS))
@@ -181,7 +181,7 @@ public class UpdateRewriteTransformFactory extends TransformFactory {
 		return out;
 	}
 
-	private static TableKey getUpdateTables(final ListOfPairs<ColumnKey, ExpressionNode> updateExprs) {
+	public static TableKey getUpdateTables(final ListOfPairs<ColumnKey, ExpressionNode> updateExprs) {
 		final ListSet<TableKey> updatedTables = new ListSet<TableKey>();
 		for (final Pair<ColumnKey, ExpressionNode> ue : updateExprs) {
 			updatedTables.add(ue.getFirst().getTableKey());

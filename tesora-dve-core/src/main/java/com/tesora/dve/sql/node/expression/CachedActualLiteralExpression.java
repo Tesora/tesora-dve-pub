@@ -25,6 +25,7 @@ package com.tesora.dve.sql.node.expression;
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
 
@@ -46,11 +47,6 @@ public class CachedActualLiteralExpression implements ILiteralExpression {
 	@Override
 	public int getPosition() {
 		return 0;
-	}
-
-	@Override
-	public boolean isParameter() {
-		return false;
 	}
 
 	@Override
@@ -76,6 +72,11 @@ public class CachedActualLiteralExpression implements ILiteralExpression {
 	@Override
 	public UnqualifiedName getCharsetHint() {
 		return null;
+	}
+
+	@Override
+	public ConstantType getConstantType() {
+		return ConstantType.LITERAL;
 	}
 
 }

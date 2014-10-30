@@ -24,9 +24,9 @@ package com.tesora.dve.queryplan;
 import java.sql.Types;
 
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -36,23 +36,28 @@ public class QueryStepGetGlobalVariableOperation extends QueryStepOperation {
 	private String alias;
 
 
-	public QueryStepGetGlobalVariableOperation(VariableHandler handler, String alias) {
-		super();
+	public QueryStepGetGlobalVariableOperation(VariableHandler handler, String alias) throws PEException {
+		super(nullStorageGroup);
 		this.handler = handler;
 		this.alias = alias;
 	}
 	
-	public QueryStepGetGlobalVariableOperation(VariableHandler handler) {
+	public QueryStepGetGlobalVariableOperation(VariableHandler handler) throws PEException {
 		this(handler, handler.getName());
 	}
 
 
 	@Override
-	public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer)
+	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {
         resultConsumer.inject(ColumnSet.singleColumn(alias, Types.VARCHAR),
 				ResultRow.singleRow(
-						handler.toRow(handler.getGlobalValue(ssCon))));
+						handler.toRow(handler.getGlobalValue(estate.getConnection()))));
 	}
 
+	@Override
+	public boolean requiresWorkers() {
+		return false;
+	}
+	
 }

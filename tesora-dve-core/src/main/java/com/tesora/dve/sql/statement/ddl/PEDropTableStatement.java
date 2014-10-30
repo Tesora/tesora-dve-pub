@@ -47,6 +47,7 @@ import com.tesora.dve.sql.schema.PEContainer;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PETable;
+import com.tesora.dve.sql.schema.PETrigger;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
@@ -131,7 +132,6 @@ public class PEDropTableStatement extends
 		super.preplan(pc, es, explain);
 	}
 
-	
 	protected static void compute(SchemaContext pc, 
 			Set<CatalogEntity> deletes, Set<CatalogEntity> updates, 
 			List<TableKey> keys, boolean ignoreFKChecks) throws PEException {
@@ -139,6 +139,7 @@ public class PEDropTableStatement extends
 		if (!deletes.isEmpty()) return;
 		for(TableKey tk : keys) {
 			PETable tab = tk.getAbstractTable().asTable();
+			appendChildTriggersToCollection(pc, tab, deletes);
 			List<PEForeignKey> effectedForeignKeys = new ArrayList<PEForeignKey>();
 			if (!tk.isUserlandTemporaryTable())
 				checkForeignKeys(pc, tab, effectedForeignKeys, ignoreFKChecks);
@@ -183,6 +184,11 @@ public class PEDropTableStatement extends
 		
 	}
 	
+	private static void appendChildTriggersToCollection(final SchemaContext pc, final PETable parent, final Set<CatalogEntity> collection) {
+		for (final PETrigger trigger : parent.getAllTriggers(pc)) {
+			collection.add(trigger.getPersistent(pc));
+		}
+	}
 	
 	protected void compute(SchemaContext pc, boolean ignoreFKChecks) throws PEException {
 		if (tableKeys.isEmpty()) return;

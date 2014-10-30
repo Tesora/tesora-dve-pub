@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStep;
+import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.schema.ExplainOptions;
@@ -187,7 +187,7 @@ public class ExecutionSequence extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStep> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		if (steps.isEmpty()) return;
 		for(HasPlanning hp : steps)

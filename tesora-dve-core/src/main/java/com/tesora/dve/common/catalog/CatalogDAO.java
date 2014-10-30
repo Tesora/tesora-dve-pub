@@ -56,6 +56,7 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.groupmanager.GroupManager;
+import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.sql.util.Functional;
 
 public class CatalogDAO {
@@ -1166,6 +1167,14 @@ public class CatalogDAO {
 		return onlyOne(keys, "Specific key", dbName + "." + encTabName + "/" + keyName, false);
 	}
 	
+	public UserTrigger findTrigger(String name, String dbName) throws PEException {
+		Query query = em.get().createQuery("from UserTrigger ut where ut.name = :name and ut.table.userDatabase.name = :dbname");
+		query.setParameter("name",name);
+		query.setParameter("dbname",dbName);
+		List<UserTrigger> trigs = query.getResultList();
+		return onlyOne(trigs, "Triggers", dbName + "." + name,false);
+	}
+	
 	public void deleteAllServerRegistration() {
 		Query q = em.get().createQuery("delete from ServerRegistration");
 		q.executeUpdate();
@@ -1209,22 +1218,23 @@ public class CatalogDAO {
 		}
 		
 		private static Properties fixProperties(Properties p) throws PEException {
-			String url = p.getProperty(DBHelper.CONN_URL);
+			final String url = p.getProperty(DBHelper.CONN_URL);
 			
 			// In production we don't have a default value for the catalog URL
 			if(StringUtils.isEmpty(url)) 
 				throw new PEException("Value for " + DBHelper.CONN_URL + " not specified in properties");
 
-			Properties props = new Properties(p);
+			final Properties props = new Properties(p);
 			props.putAll(p);
 			
-			PEUrl peUrl = PEUrl.fromUrlString(url);
+			final PEUrl peUrl = CatalogHelper.buildCatalogBaseUrlFrom(url);
 			
-			String dbName = props.getProperty(DBHelper.CONN_DBNAME);
+			final String dbName = props.getProperty(DBHelper.CONN_DBNAME);
 			props.remove(DBHelper.CONN_DBNAME);
 			peUrl.setPath(dbName);
 			props.setProperty(DBHelper.CONN_URL, peUrl.getURL());
 			props.remove("hibernate.hbm2ddl.auto");
+
 			return props;
 		}
 		

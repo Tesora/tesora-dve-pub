@@ -48,7 +48,6 @@ import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.sql.parser.ParserInvoker.LineInfo;
@@ -65,29 +64,47 @@ public class MysqlConnectionResource extends ConnectionResource {
 	private String userName;
 	private String password;
 	private boolean connected = false;
+	private final boolean useUTF8;
+	private Charset encoding;
 	
 	private MysqlConnection mysqlConn;
 
 	public MysqlConnectionResource() throws Throwable {
+		this(true);
+	}
+
+	public MysqlConnectionResource(final boolean useUTF8) throws Throwable {
 		super(null);
 		
+		this.useUTF8 = useUTF8;
+
 		Properties catalogProps = TestCatalogHelper.getTestCatalogProps(PETest.class);
 		String portalPort = catalogProps.getProperty(PEConstants.MYSQL_PORTAL_PORT_PROPERTY, PEConstants.MYSQL_PORTAL_DEFAULT_PORT);
 
 		PEUrl peurl = PEUrl.fromUrlString(catalogProps.getProperty(DBHelper.CONN_URL));
+		peurl.setQueryOptions(new Properties());
 		peurl.setPort(portalPort);
-		init(peurl.getURL(),catalogProps.getProperty(DBHelper.CONN_USER),catalogProps.getProperty(DBHelper.CONN_PASSWORD));
+		init(peurl.getURL(), catalogProps.getProperty(DBHelper.CONN_USER), catalogProps.getProperty(DBHelper.CONN_PASSWORD), useUTF8);
 	}
 
-	public MysqlConnectionResource(String url, String userName, String password) throws Throwable {
+	private MysqlConnectionResource(String url, String userName, String password, final boolean useUTF8) throws Throwable {
 		super(null);
-		init(url, userName, password);
+		this.useUTF8 = useUTF8;
+		init(url, userName, password, useUTF8);
 	}
 
-	private void init(String url, String userName, String password) throws Throwable {
+	private void init(String url, String userName, String password, boolean useUTF8) throws Throwable {
 		this.url = url;
 		this.userName = userName;
 		this.password = password;
+
+		if (useUTF8) {
+			this.encoding = CharsetUtil.UTF_8;
+			addPostConnectCmd("SET NAMES utf8");
+		} else {
+			this.encoding = CharsetUtil.ISO_8859_1;
+			addPostConnectCmd("SET NAMES latin1");
+		}
 	
 		mysqlConn = new MysqlConnection(new TestStorageSite());
 	
@@ -96,7 +113,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 	@Override
 	public ResourceResponse execute(LineInfo info, String stmt)	throws Throwable {
-		return execute(new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(mysqlConn.getConnectionId()), stmt));
+		return execute(new SQLCommand(this.encoding, stmt));
 	}
 
 	public ResourceResponse execute(LineInfo info, Charset encoding, byte[] stmt) throws Throwable {
@@ -118,8 +135,8 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 		MysqlPrepareStatementCollector collector = new MysqlPrepareStatementCollector();
 
-        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        collector.getDispatchBundle(mysqlConn, new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(mysqlConn.getConnectionId()), stmt), promise).writeAndFlush(mysqlConn);;        
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();		
+        collector.getDispatchBundle(mysqlConn, new SQLCommand(this.encoding, stmt), promise).writeAndFlush(mysqlConn);;        
         promise.sync();
 		return collector.getPreparedStatement();
 	}
@@ -132,7 +149,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 		MysqlPreparedStmtExecuteCollector collector = new MysqlPreparedStmtExecuteCollector(pstmt);
 		
-		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand(CharsetUtil.UTF_8, "EXEC PREPARED"), parameters);
+		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand(this.encoding, "EXEC PREPARED"), parameters);
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
         collector.getDispatchBundle(mysqlConn, sqlc, promise).writeAndFlush(mysqlConn);
         promise.sync();
@@ -159,6 +176,8 @@ public class MysqlConnectionResource extends ConnectionResource {
 	public void connect() throws Throwable {
 		mysqlConn.connect(url, userName, password, ClientCapabilities.DEFAULT_PSITE_CAPABILITIES);
 		connected = true;
+
+		executePostConnectCmds();
 	}
 
 	@Override
@@ -184,7 +203,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 	@Override
 	public ConnectionResource getNewConnection() throws Throwable {
-		return new MysqlConnectionResource(this.url, this.userName, this.password);
+		return new MysqlConnectionResource(this.url, this.userName, this.password, this.useUTF8);
 	}
 
 	@Override

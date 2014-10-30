@@ -23,7 +23,9 @@ package com.tesora.dve.tools.analyzer.stats;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -108,7 +110,7 @@ public class StatementAnalysis<T extends DMLStatement> {
 	 * 
 	 * @see StatsVisitor
 	 */
-	public List<Column<?>> getIdentityColumns() {
+	public Set<Column<?>> getIdentityColumns() {
 		final IdentityClauseTraversal ict = new IdentityClauseTraversal();
 		ict.traverse(EngineConstant.WHERECLAUSE.getEdge(getStatement()));
 		return ict.getIdentityColumns();
@@ -134,9 +136,13 @@ public class StatementAnalysis<T extends DMLStatement> {
 			sv.onJoin(eji, frequency);
 		}
 
-		final List<Column<?>> identCols = getIdentityColumns();
+		final Set<Column<?>> identCols = getIdentityColumns();
 		for (final Column<?> p : identCols) {
 			sv.onIdentColumn(p, frequency);
+		}
+		
+		if (!identCols.isEmpty()) {
+			sv.onIdentColumnTuple(identCols, frequency);
 		}
 	}
 
@@ -168,7 +174,7 @@ public class StatementAnalysis<T extends DMLStatement> {
 				}
 			}
 		}
-		final List<Column<?>> identCols = getIdentityColumns();
+		final Set<Column<?>> identCols = getIdentityColumns();
 		if (!identCols.isEmpty()) {
 			lines.add(indent + "Identity columns");
 			for (final Column<?> pec : identCols) {
@@ -193,16 +199,33 @@ public class StatementAnalysis<T extends DMLStatement> {
 		return buf.toString();
 	}
 
-	private static class IdentityClauseTraversal extends Traversal {
+	public static class IdentityClauseTraversal extends Traversal {
 
-		private final ListSet<Column<?>> identColumns = new ListSet<Column<?>>();
+		private final Set<Column<?>> identColumns = new LinkedHashSet<Column<?>>();
 
 		public IdentityClauseTraversal() {
 			super(Order.POSTORDER, ExecStyle.ONCE);
 		}
 
-		public ListSet<Column<?>> getIdentityColumns() {
+		public Set<Column<?>> getIdentityColumns() {
 			return identColumns;
+		}
+
+		@Override
+		public int hashCode() {
+			return identColumns.hashCode();
+		}
+
+		@Override
+		public boolean equals(final Object other) {
+			if (other == this) {
+				return true;
+			} else if (other instanceof IdentityClauseTraversal) {
+				final IdentityClauseTraversal otherTraversal = (IdentityClauseTraversal) other;
+				return otherTraversal.identColumns.equals(this.identColumns);
+			}
+
+			return false;
 		}
 
 		@Override
