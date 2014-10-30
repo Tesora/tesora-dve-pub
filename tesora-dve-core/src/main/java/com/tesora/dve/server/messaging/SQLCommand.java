@@ -109,7 +109,7 @@ public class SQLCommand implements Serializable {
 		return sql.getDecoded();
 	}
 
-	public ByteBuffer getBytes() {
+    public ByteBuffer getBytes() {
 		return sql.getEncoded();
 	}
 

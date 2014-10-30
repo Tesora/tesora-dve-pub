@@ -21,7 +21,11 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.db.CommandChannel;
+import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.db.mysql.DelegatingResultsProcessor;
+import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import io.netty.channel.EventLoopGroup;
 
@@ -58,7 +62,7 @@ import com.tesora.dve.worker.agent.Agent;
  * Temp), though which database it is connected to can be changed by the
  * WorkerManager.
  */
-public abstract class Worker implements GenericSQLCommand.DBNameResolver {
+public class Worker implements GenericSQLCommand.DBNameResolver {
     static final EventLoopGroup DEFAULT_EVENTLOOP = SharedEventLoopHolder.getLoop();
     	
     public enum AvailabilityType { SINGLE, MASTER_MASTER }

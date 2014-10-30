@@ -24,15 +24,10 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 
-import java.util.List;
-
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public class MysqlKillResultDiscarder extends DBResultConsumer {
@@ -45,7 +40,7 @@ public class MysqlKillResultDiscarder extends DBResultConsumer {
     public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled())
 			logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getBytes());
         return new Bundle(message, new MysqlExecuteCommand(sql, channel.getMonitor(), null, promise));
 	}
 

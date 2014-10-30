@@ -47,27 +47,31 @@ public class QueryStepRebalance extends QueryStepOperation {
     List<AddStorageGenRangeInfo> rebalanceInfo;
     boolean ignoreFKs;
     
-    public QueryStepRebalance(PersistentGroup group, List<AddStorageGenRangeInfo> rebalanceInfo, boolean ignoreFKs) {
+    public QueryStepRebalance(PersistentGroup group, List<AddStorageGenRangeInfo> rebalanceInfo, boolean ignoreFKs) throws PEException {
+        super(group);
         this.group = group;
         this.rebalanceInfo = rebalanceInfo;
         this.ignoreFKs = ignoreFKs;
     }
 
     @Override
-    public void execute(SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+    public void executeSelf(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+        SSConnection ssCon = execState.getConnection();
+
 		boolean fkVal = KnownVariables.FOREIGN_KEY_CHECKS.getSessionValue(ssCon);
     	try {
     		if (ignoreFKs) 
     			ssCon.setSessionVariable("foreign_key_checks", "0");
 
-    		this.migrateAllGenerationsToCurrent(ssCon, wg);
+    		this.migrateAllGenerationsToCurrent(execState, wg);
     	} finally {
     		if (ignoreFKs)
-    			ssCon.setSessionVariable("foreign_key_checks", (fkVal ? "1" : "0"));
+    	        ssCon.setSessionVariable("foreign_key_checks", (fkVal ? "1" : "0"));
     	}
     }
 
-    private void migrateAllGenerationsToCurrent(SSConnection ssCon, WorkerGroup wg) throws PEException {
+    private void migrateAllGenerationsToCurrent(ExecutionState execState, WorkerGroup wg) throws Throwable {
+        SSConnection ssCon = execState.getConnection();
         List<StorageGroupGeneration> generations = group.getGenerations();
         //NOTE: Assumes previous storage gen add has copied broadcast tables to all p-sites, while random data and ranged data have not been copied.
 
@@ -88,7 +92,7 @@ public class QueryStepRebalance extends QueryStepOperation {
             log.debug("Found no old generations to compact, exiting.");
             return;
         } else {
-            log.debug("Found {} old generations to compact.",oldGenerations.size());
+            log.debug("Found {} old generations to compact.", oldGenerations.size());
         }
 
         StorageGroupGeneration newGen = group.getLastGen();
@@ -100,7 +104,7 @@ public class QueryStepRebalance extends QueryStepOperation {
 
         for (StorageGroupGeneration oldGen : oldGenerations) {
             //NOTE: this visits all old generations except the current gen in youngest to oldest order, which will properly migrate overlapping storage gens into the current gen.
-            log.debug("Processing old generation, version={}", oldGen.getVersion() );
+            log.debug("Processing old generation, version={}", oldGen.getVersion());
 
             for (AddStorageGenRangeInfo rebalanceEntry : rebalanceInfo){
                 //TODO: we need to start an XA here.  Eventually we can split generation/key range, which would let us update a key range after moving some data for just one site.
@@ -110,8 +114,8 @@ public class QueryStepRebalance extends QueryStepOperation {
 
                 for (PersistentSite oldSite : oldGen.getStorageSites()) {
                     //TODO: right now, we move all rows.  In the future we can move fewer rows, as long as we move all rows for dist-key / FK.
-                    QueryStepShardMovement shardMove = new QueryStepShardMovement(oldGen, range, oldSite, newGen, rebalanceEntry);
-                    shardMove.execute(ssCon,wg, DBEmptyTextResultConsumer.INSTANCE);
+                    QueryStepShardMovement shardMove = new QueryStepShardMovement(this.group,oldGen, range, oldSite, newGen, rebalanceEntry);
+                    shardMove.executeSelf(execState,wg, DBEmptyTextResultConsumer.INSTANCE);
                 }
 
                 //TODO:update catalog entries, commit XA, invalidate any key range related caching.

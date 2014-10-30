@@ -252,8 +252,7 @@ public class PersistentGroup implements CatalogEntity, StorageGroup {
 	}
 
 	public void addGeneration(ExecutionState estate, WorkerGroup wg, StorageGroupGeneration newGen,
-			ListOfPairs<UserTable,SQLCommand> tableDecls, boolean ignoreFKs, List<SQLCommand> userDecls,
-			List<AddStorageGenRangeInfo> rebalanceInfo) throws Throwable {
+                              ListOfPairs<UserTable, SQLCommand> tableDecls, boolean ignoreFKs, List<SQLCommand> userDecls) throws Throwable {
 		SSConnection ssCon = estate.getConnection();
 		if (false == this.equals(wg.getGroup()))
 			throw new PEException("WorkerGroup does not match StorageGroup");

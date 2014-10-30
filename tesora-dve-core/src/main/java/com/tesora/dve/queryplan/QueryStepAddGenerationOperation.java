@@ -49,15 +49,15 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	List<SQLCommand> userDecls;
 	
 	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate) throws PEException {
-		this(sg,sites,invalidate,null,false,null, Collections.<AddStorageGenRangeInfo> emptyList());
+		this(sg,sites,invalidate,null,false,null);
 	}
-	
+
 	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate,
 			ListOfPairs<UserTable,SQLCommand> tableDecls,
 			boolean ignoreFKs,
-			List<SQLCommand> userDecls,
-			List<AddStorageGenRangeInfo> rebalanceInfo) throws PEException {
-		super(sg);
+			List<SQLCommand> userDecls) throws PEException
+    {
+        super(sg);
 		this.group = sg;
 		this.sites = sites;
 		this.record = invalidate;
@@ -66,7 +66,7 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 		this.userDecls = userDecls;
 	}
 
-	@Override
+    @Override
 	public void executeSelf(final ExecutionState execState, final WorkerGroup wg,	DBResultConsumer resultConsumer) throws Throwable {
 		try {
 			if (record != null)
@@ -77,7 +77,7 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 				public CatalogEntity generate() throws Throwable {
 					StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
 					ssCon.getCatalogDAO().persistToCatalog(newGen);
-					group.addGeneration(execState, wg, newGen, tableDecls, mustIgnoreFKs, userDecls, rebalanceInfo);
+					group.addGeneration(execState, wg, newGen, tableDecls, mustIgnoreFKs, userDecls);
 					return newGen;
 				}
 			}.execute();

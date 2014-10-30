@@ -29,6 +29,7 @@ import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepRebalance;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -123,10 +124,11 @@ public class StartRebalanceStatement extends DDLStatement {
 			this.rangeInfo = rangeInfo;
 			this.ignoreFKS = ignoreFKS;
 		}
-		
-		@Override
-		public void executeNested(SSConnection conn, WorkerGroup wg,
+
+        @Override
+		public void executeNested(ExecutionState estate, WorkerGroup wg,
 				DBResultConsumer resultConsumer) throws Throwable {
+            SSConnection conn = estate.getConnection();
 			SchemaContext cntxt = conn.getSchemaContext();
 			cntxt.beginSaveContext();
 			PersistentGroup pg = null;
@@ -136,7 +138,7 @@ public class StartRebalanceStatement extends DDLStatement {
 				cntxt.endSaveContext();
 			}
             QueryStepRebalance rangeRebalance = new QueryStepRebalance(pg,rangeInfo,ignoreFKS);
-            rangeRebalance.execute(conn, wg, DBEmptyTextResultConsumer.INSTANCE);
+            rangeRebalance.executeSelf(estate, wg, DBEmptyTextResultConsumer.INSTANCE);
 		}
 
 		@Override

@@ -23,10 +23,7 @@ package com.tesora.dve.sql;
 
 import java.sql.SQLException;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 
 import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
@@ -66,6 +63,8 @@ public class TriggerDDLTest extends SchemaTest {
 		conn = null;
 	}
 
+    //SMG: this might be failing just on MariaDB, or could be something else entirely. -sgossard
+//    @Ignore
 	@Test
 	public void testCreate() throws Throwable {
 		conn.execute("create table A (id int auto_increment, event varchar(32), primary key (id)) broadcast distribute");

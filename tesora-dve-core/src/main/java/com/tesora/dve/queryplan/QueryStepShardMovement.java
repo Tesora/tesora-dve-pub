@@ -64,7 +64,8 @@ public class QueryStepShardMovement extends QueryStepOperation {
     StorageGroupGeneration targetGen;
     AddStorageGenRangeInfo rebalanceInfo;
 
-    public QueryStepShardMovement(StorageGroupGeneration oldGen, DistributionRange range, PersistentSite oldSite, StorageGroupGeneration targetGen, AddStorageGenRangeInfo rebalanceEntry) {
+    public QueryStepShardMovement(PersistentGroup sg, StorageGroupGeneration oldGen, DistributionRange range, PersistentSite oldSite, StorageGroupGeneration targetGen, AddStorageGenRangeInfo rebalanceEntry) throws PEException {
+        super(sg);
         //TODO: The source rows are scoped to all affected tables in (range, old generation, one site), and the target is a (new generation).  Ideally construction should reflect this.  -sgossard
         this.oldGen = oldGen;
         this.range = range;
@@ -90,9 +91,11 @@ public class QueryStepShardMovement extends QueryStepOperation {
         return String.format("shard movement: oldgen=[%s], newgen=[%s], range=[%s], tables=%s , from=[%s], to=%s", oldGen.getVersion(),targetGen.getVersion(),range.getName(),tableNames,oldSite.getName(),newSiteNames);
     }
 
+
     @Override
-    public void execute(final SSConnection ssCon, WorkerGroup wg, DBResultConsumer resultConsumer) throws PEException {
-        log.debug( this.toString() );
+    public void executeSelf(ExecutionState execState, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
+        final SSConnection ssCon = execState.getConnection();
+        log.debug(this.toString());
 
         //NOTE: currently assumes someone above us is dealing with the XA and catalog updates.
         //NOTE: does not return until all data for all affected tables in the range have been moved.  In the future, can be changed to be an incremental reduction of a range boundary.
@@ -182,7 +185,7 @@ public class QueryStepShardMovement extends QueryStepOperation {
 
                 log.debug("Row placement [source==> site={},database={},table={}], total rows read={}", new Object[]{oldSite.getName(), sourceTableInfo.getDatabase().getName(), sourceTableInfo.getName(), rowProcessor.getRowsRead()});
                 for (Map.Entry<StorageSite,Long> siteCount : rowProcessor.getFinalRowCounts().entrySet()){
-                    log.debug("\t{} == {}",siteCount.getKey().getName(),siteCount.getValue());
+                    log.debug("\t{} == {}", siteCount.getKey().getName(), siteCount.getValue());
                 }
 
                 //OK, we've copied all the rows.
@@ -191,12 +194,12 @@ public class QueryStepShardMovement extends QueryStepOperation {
                 //TODO: need to verify that the generated SQL is OK now, and this can be removed. -sgossard
                 String dirtySysbenchHack = deleteMovedRows.getRawSQL().replace("sbtest.", "");
                 deleteMovedRows = new SQLCommand(new GenericSQLCommand(CharsetUtil.UTF_8,dirtySysbenchHack));
-                log.error("*** hacked sql to delete via table, {}",deleteMovedRows.getRawSQL());
+                log.error("*** hacked sql to delete via table, {}", deleteMovedRows.getRawSQL());
 
                 WorkerExecuteRequest deleteJoinRequest = new WorkerExecuteRequest(ssCon.getTransactionalContext(), deleteMovedRows).onDatabase(sourceTableInfo.getDatabase());
                 MysqlTextResultCollector textResultCollector = new MysqlTextResultCollector();
                 sourceWG.execute(WorkerGroup.MappingSolution.AllWorkers,deleteJoinRequest,textResultCollector);
-                log.debug("executed delete join, database was {} , affected row count was {}",sourceTableInfo.getDatabase().getName(), textResultCollector.getNumRowsAffected());
+                log.debug("executed delete join, database was {} , affected row count was {}", sourceTableInfo.getDatabase().getName(), textResultCollector.getNumRowsAffected());
 
                 if ( ! rebalanceInfo.hasSharedTable() ) {
                     SQLCommand dropSideTable = sourceTableInfo.getDropSideTableStmt();
@@ -482,7 +485,7 @@ public class QueryStepShardMovement extends QueryStepOperation {
 
         @Override
         public void insertOK(RedistTargetSite site, MyOKResponse okPacket) {
-            log.debug("inserted rows into target site OK, row count={}",okPacket.getAffectedRows());
+            log.debug("inserted rows into target site OK, row count={}", okPacket.getAffectedRows());
             checkFinished();
         }
 

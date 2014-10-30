@@ -25,7 +25,6 @@ import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
-import com.tesora.dve.db.*;
 import com.tesora.dve.db.mysql.portal.protocol.*;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PESQLStateException;
@@ -51,25 +50,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Objects;
-import com.tesora.dve.charset.NativeCharSetCatalog;
-import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
-import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
@@ -217,7 +208,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
         if (promise == null)
             promise = getExceptionDeferringPromise();
 
-        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getBytes());
         this.writeAndFlush(message, new PassFailProcessor(promise));
     }
 

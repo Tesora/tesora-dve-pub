@@ -34,7 +34,6 @@ import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.worker.StatementManager;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
-import org.apache.commons.lang.CharSetUtils;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.comms.client.messages.RequestMessage;
@@ -151,7 +150,7 @@ public abstract class WorkerRequest extends RequestMessage implements GroupDispa
             if (referenceTime != null) {
                 CompletionHandle<Boolean> deferred = dbConnection.getExceptionDeferringPromise();
                 String setTimestampSQL = "SET TIMESTAMP=" + referenceTime + ";";
-                MysqlMessage message = MSPComQueryRequestMessage.newMessage(new SQLCommand(CharsetUtil.UTF_8,setTimestampSQL).getSQLAsBytes());
+                MysqlMessage message = MSPComQueryRequestMessage.newMessage(new SQLCommand(CharsetUtil.UTF_8, setTimestampSQL).getBytes());
                 dbConnection.writeAndFlush(message, new PassFailProcessor(deferred));
             }
 

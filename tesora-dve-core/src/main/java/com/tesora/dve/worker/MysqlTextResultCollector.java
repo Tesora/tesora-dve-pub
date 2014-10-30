@@ -180,7 +180,7 @@ public class MysqlTextResultCollector extends MysqlParallelResultConsumer {
 
     @Override
     public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getBytes());
         return new Bundle(message, new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise) );
 	}
 

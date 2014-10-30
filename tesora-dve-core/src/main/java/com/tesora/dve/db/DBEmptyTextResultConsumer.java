@@ -25,8 +25,6 @@ import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.libmy.*;
 
-import java.util.List;
-
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
@@ -35,8 +33,6 @@ import com.tesora.dve.db.mysql.MysqlExecuteCommand;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public class DBEmptyTextResultConsumer extends DBResultConsumer implements MysqlQueryResultConsumer {
@@ -97,7 +93,7 @@ public class DBEmptyTextResultConsumer extends DBResultConsumer implements Mysql
     @Override
     public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled()) logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getSQLAsBytes());
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getBytes());
         return new Bundle(message, new MysqlExecuteCommand(sql, channel.getMonitor(), this, promise));
 	}
 
