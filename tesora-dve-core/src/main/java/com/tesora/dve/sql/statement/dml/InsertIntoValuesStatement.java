@@ -25,17 +25,12 @@ package com.tesora.dve.sql.statement.dml;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.TransformException;
-import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -44,7 +39,6 @@ import com.tesora.dve.sql.node.MultiMultiEdge;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.Default;
-import com.tesora.dve.sql.node.expression.DelegatingLiteralExpression;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.TableInstance;
@@ -52,30 +46,18 @@ import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.Wildcard;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.AutoIncrementBlock;
-import com.tesora.dve.sql.schema.Column;
-import com.tesora.dve.sql.schema.DistributionKey;
-import com.tesora.dve.sql.schema.DistributionVector;
-import com.tesora.dve.sql.schema.LateSortedInsert;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.StatementType;
-import com.tesora.dve.sql.statement.session.TransactionStatement;
-import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
-import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
-import com.tesora.dve.sql.transform.execution.ExecutionSequence;
-import com.tesora.dve.sql.transform.execution.InsertExecutionStep;
-import com.tesora.dve.sql.transform.execution.LateSortingInsertExecutionStep;
-import com.tesora.dve.sql.transform.execution.TransactionExecutionStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.InsertValuesFeatureStep.UpdateCountAdjuster;
 import com.tesora.dve.sql.util.Functional;
-import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.KnownVariables;
 
-public class InsertIntoValuesStatement extends InsertStatement {
+public class InsertIntoValuesStatement extends InsertStatement implements UpdateCountAdjuster {
 
 	public static final boolean batchInserts = true;
 	
@@ -99,6 +81,7 @@ public class InsertIntoValuesStatement extends InsertStatement {
 	}		
 			
 	public List<List<ExpressionNode>> getValues() { return values.getMultiMulti(); }
+	public MultiMultiEdge<?, ExpressionNode> getValuesEdge() { return values; }
 	
 	public void setValues(List<List<ExpressionNode>> in) {
 		values.clear();
@@ -272,151 +255,13 @@ public class InsertIntoValuesStatement extends InsertStatement {
 	public TableInstance getPrimaryTable() {
 		return intoTable.get();
 	}
-
-	protected void planInternal(SchemaContext pc, ExecutionSequence ges) throws PEException {
-		if (intoTable.get().getTable().isInfoSchema()) 
-			throw new PEException("Cannot insert into info schema table " + intoTable.get().getTable().getName());
-		if (hasTrigger(pc))
-			throw new PEException("No support for trigger execution");
-		normalize(pc);
-		if (ges.getPlan() != null) {
-			if (Boolean.FALSE.equals(cacheable)) ges.getPlan().setCacheable(false);
-			// if this turns out to not be the case we'll reset it later
-			else ges.getPlan().setCacheable(true);
-		}
-		ExecutionSequence es = ges;
-		ExecutionPlan ep = null;
-		if (isExplain()) {
-			ep = new ExecutionPlan(null,pc.getValueManager(), StatementType.EXPLAIN);
-			es = ep.getSequence();
-		}
-		// structural planning
-		// if this is a on dup key insert, if the row already exists the update count is 2, and if not it is 1
-		// if we can completely determine the pk, we can compute this ourselves
-		assertValidDupKey(pc);
-		if (txnFlag != null) {
-			if (txnFlag == TransactionStatement.Kind.START)
-				es.append(TransactionExecutionStep.buildStart(pc, intoTable.get().getAbstractTable().getPEDatabase(pc)));
-		}
-
-		boolean requiresReferenceTimestamp = getDerivedInfo().doSetTimestampVariable();
-
-		// first time planning, get the value manager to allocate values now - well, unless this is prepare - in which case not so much
-		if (!pc.getOptions().isPrepare())
-			pc.getValueManager().handleAutoincrementValues(pc);
-		
-		
-		TableInstance intoTI = intoTable.get();
-		TableKey tk = intoTI.getTableKey();
-		DistributionVector dv = intoTI.getAbstractTable().getDistributionVector(pc);
-		
-		// since we've already normalized the auto inc ids are already filled in
-		if (dv.isBroadcast()) {
-			// will redist to every site, no sense in even bothering with the sorting, breaking up
-			// well, we still have to if this is an on dup key insert - because we need to figure out what
-			// the id value is so we can set the last inserted id right
-			@SuppressWarnings("unchecked")
-			DistributionKey dk = new DistributionKey(tk, Collections.EMPTY_LIST, null);
-			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), tk.getAbstractTable().getStorageGroup(pc), this,
-					intoTI.getAbstractTable().asTable(),dk,adjustUpdateCount(getValues().size())),
-					requiresReferenceTimestamp);
-		} else if (dv.getDistributedWhollyOnTenantColumn(pc) != null 
-				&& (pc.getPolicyContext().isSchemaTenant() || pc.getPolicyContext().isDataTenant())) {
-			// so the whole table is distributed on tenant column - so just shove the whole thing down - but first
-			// build a dist key
-			PEColumn tenantColumn = intoTI.getAbstractTable().getTenantColumn(pc);
-			ListOfPairs<PEColumn,ConstantExpression> values = new ListOfPairs<PEColumn,ConstantExpression>();
-			values.add(tenantColumn,pc.getPolicyContext().getTenantIDLiteral(true));
-			DistributionKey dk = new DistributionKey(tk, Collections.singletonList(tenantColumn), values);
-			appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), tk.getAbstractTable().getStorageGroup(pc), this,
-					intoTI.getAbstractTable().asTable(),dk,adjustUpdateCount(getValues().size())),
-					requiresReferenceTimestamp);
-		} else {
-			ListOfPairs<List<ExpressionNode>, DistributionKey> parts = preparePlanInsert(pc);
-
-			if (intoTI.getAbstractTable().getStorageGroup(pc).isSingleSiteGroup() || parts.size() == 1) {
-				// push the whole thing down, and just use the first dist key
-				appendStep(es, InsertExecutionStep.build(pc,getDatabase(pc), tk.getAbstractTable().getStorageGroup(pc), this,
-					intoTI.getAbstractTable().asTable(),parts.get(0).getSecond(),adjustUpdateCount(getValues().size())),
-					requiresReferenceTimestamp);
-				
-			} else {
-				final LateSortedInsert lsi = new LateSortedInsert(this, parts);
-				pc.getValueManager().registerLateSortedInsert(lsi);
-				if (!pc.getOptions().isPrepare())
-					pc.getValueManager().handleLateSortedInsert(pc);
-				appendStep(es, LateSortingInsertExecutionStep.build(pc, getDatabase(pc), 
-						tk.getAbstractTable().getStorageGroup(pc), intoTI.getAbstractTable().asTable(), (onDuplicateKey.size()>0 || ignore)),requiresReferenceTimestamp);
-			}
-		}
-		if (txnFlag != null) {
-			if (txnFlag == TransactionStatement.Kind.COMMIT)
-				es.append(TransactionExecutionStep.buildCommit(pc, intoTable.get().getAbstractTable().getPEDatabase(pc)));
-		}
-
-		if (ep != null) {
-			ges.append(ep.generateExplain(pc,this,null));
-		}		
-	}
 	
-	@Override
-	public void plan(SchemaContext sc, ExecutionSequence ges, BehaviorConfiguration config) throws PEException {
-		planInternal(sc, ges);
-	}
-
-	private void appendStep(ExecutionSequence es, DirectExecutionStep ies, boolean requiresReferenceTimestamp) {
-		ies.setRequiresReferenceTimestamp(requiresReferenceTimestamp);
-		es.append(ies);
-	}
-	
-	private Long adjustUpdateCount(int in) {
+	public Long adjustUpdateCount(int in) {
 		if (onDuplicateKey.size()>0 || ignore || hiddenUpdateCount)
 			return null;
 		return new Long(in);
 	}
 	
-	public ListOfPairs<List<ExpressionNode>, DistributionKey> preparePlanInsert(SchemaContext sc) {
-		List<PEColumn> distTemplate = getTableInstance().getAbstractTable().getDistributionVector(sc).getDistributionTemplate(sc);
-		// the user may have specified the columns in a random order, go figure out the (0 offset) position of each column in the dist template
-		Map<Column<?>, Integer> columnOffset = new HashMap<Column<?>, Integer>();
-		for(int i = 0; i < getColumnSpecification().size(); i++) {
-			ExpressionNode e = getColumnSpecification().get(i);
-			if (e instanceof ColumnInstance) {
-				ColumnInstance cr = (ColumnInstance)e;
-				if (distTemplate.contains(cr.getColumn()))
-					columnOffset.put(cr.getColumn(), new Integer(i));
-			} else {
-				throw new TransformException(Pass.PLANNER,"Unrecognized expression type in insert colum specification: " + e.getClass().getName());
-			}
-		}
-		ListOfPairs<List<ExpressionNode>, DistributionKey> ret = new ListOfPairs<List<ExpressionNode>, DistributionKey>();
-		for(List<ExpressionNode> rowValues : getValues()) {
-			for(ExpressionNode en : rowValues)
-				en.setParent(null);
-			// columns in hand, I can pull out the dv vector
-			ListOfPairs<PEColumn,ConstantExpression> values = new ListOfPairs<PEColumn,ConstantExpression>();
-			for(Map.Entry<Column<?>, Integer> offset : columnOffset.entrySet()) {
-				ExpressionNode e = rowValues.get(offset.getValue());
-				if (e instanceof ConstantExpression) {
-					ConstantExpression ce = (ConstantExpression) e;
-					// this should be interpreted as the sql type of the column
-					if (e instanceof LiteralExpression) {
-						LiteralExpression le = (LiteralExpression)e;
-						if (le instanceof DelegatingLiteralExpression) {
-							DelegatingLiteralExpression dle = (DelegatingLiteralExpression) le;
-							sc.getValueManager().setLiteralType(dle, offset.getKey().getType());
-						}
-					}
-					values.add((PEColumn)offset.getKey(), ce);
-				} else {
-					throw new TransformException(Pass.PLANNER, "Nonliteral insert value: '" + e.getClass().getName());
-				}
-			}
-			DistributionKey dk = getTableInstance().getAbstractTable().getDistributionVector(sc).buildDistKey(sc, getTableInstance().getTableKey(), values);
-			ret.add(rowValues,dk);
-		}
-		return ret;
-	}
 
 	
 	@SuppressWarnings("unchecked")

@@ -56,6 +56,10 @@ public final class AvailableErrors {
 			new TwoParamErrorCode<String,String>("INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE",false);
 	public static final OneParamErrorCode<String> INVALID_CONTAINER_DELETE =
 			new OneParamErrorCode<String>("INVALID_CONTAINER_DELETE",false);
+	public static final TwoParamErrorCode<String,String> INVALID_INSERT_CONTAINER_BASE_TABLE =
+			new TwoParamErrorCode<String,String>("INVALID_INSERT_CONTAINER_BASE_TABLE",false);
+	public static final TwoParamErrorCode<String,String> INVALID_INSERT_CONTAINER_TABLE =
+			new TwoParamErrorCode<String,String>("INVALID_INSERT_CONTAINER_TABLE",false);
 	
 	// max comment length exceeded
 	public static final TwoParamErrorCode<String, Long> TOO_LONG_TABLE_COMMENT =
@@ -105,6 +109,9 @@ public final class AvailableErrors {
 		
 		INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
 		INVALID_CONTAINER_DELETE,
+		INVALID_INSERT_CONTAINER_BASE_TABLE,
+		INVALID_INSERT_CONTAINER_TABLE,
+		
 		INTERNAL		
 	};
 }

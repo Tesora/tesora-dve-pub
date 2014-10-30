@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.transform.strategy;
+package com.tesora.dve.sql.transform.strategy.insert;
 
 /*
  * #%L
@@ -49,6 +49,10 @@ import com.tesora.dve.sql.transform.TransformKey.TransformKeySimple;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
+import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
+import com.tesora.dve.sql.transform.strategy.PlannerContext;
+import com.tesora.dve.sql.transform.strategy.SingleSiteStorageGroupTransformFactory;
+import com.tesora.dve.sql.transform.strategy.TransformFactory;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;
@@ -59,7 +63,7 @@ import com.tesora.dve.sql.util.Pair;
  * Specifically for insert into select.  We plan as a redist with a user table as
  * the target; we may set some additional flags for autoinc processing.
  */
-public class InsertIntoTransformFactory extends TransformFactory {
+public class InsertIntoSelectPlanner extends TransformFactory {
 
 	@Override
 	public FeaturePlannerIdentifier getFeaturePlannerID() {

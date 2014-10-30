@@ -63,8 +63,8 @@ public class TriggerDDLTest extends SchemaTest {
 		conn = null;
 	}
 
-    //SMG: this might be failing just on MariaDB, or could be something else entirely. -sgossard
-//    @Ignore
+    //TODO: this test fails on MariaDB, due to some weirdness with the returned types being different between MariaDB and Percona/Mysql if a function is nested.  Issue logged as PE-1664. -sgossard
+    @Ignore
 	@Test
 	public void testCreate() throws Throwable {
 		conn.execute("create table A (id int auto_increment, event varchar(32), primary key (id)) broadcast distribute");

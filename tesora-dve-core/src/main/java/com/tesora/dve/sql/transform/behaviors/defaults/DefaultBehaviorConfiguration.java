@@ -27,6 +27,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;
 import com.tesora.dve.sql.statement.dml.InsertIntoSelectStatement;
+import com.tesora.dve.sql.statement.dml.InsertIntoValuesStatement;
 import com.tesora.dve.sql.statement.dml.ReplaceIntoSelectStatement;
 import com.tesora.dve.sql.statement.dml.ReplaceIntoValuesStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -42,12 +43,10 @@ import com.tesora.dve.sql.transform.strategy.DistributionKeyExecuteTransformFact
 import com.tesora.dve.sql.transform.strategy.GroupByRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.HavingRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.InformationSchemaRewriteTransformFactory;
-import com.tesora.dve.sql.transform.strategy.InsertIntoTransformFactory;
 import com.tesora.dve.sql.transform.strategy.NestedQueryBroadcastTransformFactory;
 import com.tesora.dve.sql.transform.strategy.NullLiteralColumnTransformFactory;
 import com.tesora.dve.sql.transform.strategy.OrderByLimitRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
-import com.tesora.dve.sql.transform.strategy.ReplaceIntoTransformFactory;
 import com.tesora.dve.sql.transform.strategy.SessionRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.SingleSiteStorageGroupTransformFactory;
 import com.tesora.dve.sql.transform.strategy.TruncateStatementMTTransformFactory;
@@ -58,6 +57,9 @@ import com.tesora.dve.sql.transform.strategy.aggregation.GenericAggRewriteTransf
 import com.tesora.dve.sql.transform.strategy.correlated.ProjectionCorrelatedSubqueryTransformFactory;
 import com.tesora.dve.sql.transform.strategy.correlated.WhereClauseCorrelatedSubqueryTransformFactory;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
+import com.tesora.dve.sql.transform.strategy.insert.InsertIntoSelectPlanner;
+import com.tesora.dve.sql.transform.strategy.insert.InsertIntoValuesPlanner;
+import com.tesora.dve.sql.transform.strategy.insert.ReplaceIntoTransformFactory;
 import com.tesora.dve.sql.transform.strategy.join.JoinRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.joinsimplification.JoinSimplificationTransformFactory;
 import com.tesora.dve.sql.transform.strategy.nested.NestedQueryRewriteTransformFactory;
@@ -88,6 +90,8 @@ public final class DefaultBehaviorConfiguration implements BehaviorConfiguration
 			return getReplaceIntoSelectPlanners(pc,dmls);
 		else if (dmls instanceof ReplaceIntoValuesStatement)
 			return getReplaceIntoValuesPlanners(pc,dmls);
+		else if (dmls instanceof InsertIntoValuesStatement)
+			return getInsertIntoValuesPlanners(pc,dmls);
 		else if (dmls instanceof InsertIntoSelectStatement)
 			return getInsertIntoSelectPlanners(pc,dmls);
 		else if (dmls instanceof TruncateStatement)
@@ -157,7 +161,7 @@ public final class DefaultBehaviorConfiguration implements BehaviorConfiguration
 				new InsertIntoTriggerPlanner(),
 				new SessionRewriteTransformFactory(),
 				new ViewRewriteTransformFactory(),
-				new InsertIntoTransformFactory(),
+				new InsertIntoSelectPlanner(),
 				new SingleSiteStorageGroupTransformFactory(),
 		};
 
@@ -187,8 +191,16 @@ public final class DefaultBehaviorConfiguration implements BehaviorConfiguration
 				new InformationSchemaRewriteTransformFactory(),
 				new ReplaceIntoTriggerPlanner(),
 				new SessionRewriteTransformFactory(),
-				new ReplaceIntoTransformFactory()
+				new ReplaceIntoTransformFactory(),
+				// for simple cases we can use the insert into values planner
+				new InsertIntoValuesPlanner()
 			};
+	}
+	
+	public FeaturePlanner[] getInsertIntoValuesPlanners(PlannerContext pc, DMLStatement dmls) {
+		return new FeaturePlanner[] {
+				new InsertIntoValuesPlanner()
+		};
 	}
 	
 	public FeaturePlanner[] getTruncatePlanners(PlannerContext pc, DMLStatement dmls) {

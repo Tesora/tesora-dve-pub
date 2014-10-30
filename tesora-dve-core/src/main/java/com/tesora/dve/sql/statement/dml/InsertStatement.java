@@ -94,6 +94,10 @@ public abstract class InsertStatement extends UnaryTableDMLStatement {
 		return false;
 	}
 	
+	public Boolean isCacheable() {
+		return cacheable;
+	}
+	
 	@Override
 	public ExecutionType getExecutionType() {
 		return ExecutionType.INSERT;
