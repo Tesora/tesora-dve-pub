@@ -23,7 +23,11 @@ package com.tesora.dve.sql;
 
 import java.sql.SQLException;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import com.tesora.dve.errmap.InternalErrors;
 import com.tesora.dve.errmap.MySQLErrors;
@@ -137,6 +141,25 @@ public class TriggerDDLTest extends SchemaTest {
 				
 	}
 	
+	@Test
+	public void testInvalidColumns() throws Throwable {
+		conn.execute("create table A (a int, b int, c int, primary key(a)) random distribute");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("create trigger a_insert_trig before insert on A for each row select OLD.a");
+			}
+		}.assertSqlError(SQLException.class, MySQLErrors.noSuchRowInTrg, "OLD", "INSERT");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("create trigger a_delete_trig before delete on A for each row select NEW.a");
+			}
+		}.assertSqlError(SQLException.class, MySQLErrors.noSuchRowInTrg, "NEW", "DELETE");
+	}
+
 	@Test
 	public void testDrop() throws Throwable {
 		// DROP TRIGGER [IF EXISTS] [schema_name.]trigger_name

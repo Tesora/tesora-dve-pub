@@ -106,6 +106,11 @@ public final class MySQLErrors {
 					"Trigger does not exist",
 					1360,
 					"HY000");
+	public static final TwoParamErrorCodeFormatter<String, String> noSuchRowInTrg =
+			new TwoParamErrorCodeFormatter<String, String>(AvailableErrors.NO_SUCH_ROW_IN_TRG,
+					"There is no %s row in %s trigger",
+					1363,
+					"HY000");
 			
 	
 	public static final ErrorCodeFormatter[] messages = new ErrorCodeFormatter[] {
@@ -125,7 +130,8 @@ public final class MySQLErrors {
 		wrongValueForVariable,
 		wrongTypeForVariable,
 		trgAlreadyExists,
-		trgDoesNotExist
+		trgDoesNotExist,
+		noSuchRowInTrg
 	};
 
 			

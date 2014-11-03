@@ -86,6 +86,7 @@ public final class AvailableErrors {
 	public static final ZeroParamErrorCode TRG_ALREADY_EXISTS = new ZeroParamErrorCode("TRG_ALREADY_EXISTS", false);
 	public static final ZeroParamErrorCode TRG_DOES_NOT_EXIST = new ZeroParamErrorCode("TRG_DOES_NOT_EXIST", false);
 	public static final OneParamErrorCode<String> NO_UNIQUE_KEY_ON_TRG_TARGET = new OneParamErrorCode<String>("NO_UNIQUE_KEY_ON_TRG_TARGET", false);
+	public static final TwoParamErrorCode<String, String> NO_SUCH_ROW_IN_TRG = new TwoParamErrorCode<String, String>("NO_SUCH_ROW_IN_TRG", false);
 
 	public static final ErrorCode[] universe = new ErrorCode[] {
 		TABLE_DNE,
@@ -106,6 +107,7 @@ public final class AvailableErrors {
 		TRG_ALREADY_EXISTS,
 		TRG_DOES_NOT_EXIST,
 		NO_UNIQUE_KEY_ON_TRG_TARGET,
+		NO_SUCH_ROW_IN_TRG,
 		
 		INVALID_CONTAINER_DISCRIMINANT_COLUMN_UPDATE,
 		INVALID_CONTAINER_DELETE,
