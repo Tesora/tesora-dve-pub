@@ -136,11 +136,23 @@ public class CatalogHelper {
 		return catalogProperties;
 	}
 
-	public String getCatalogDatabaseUrl() throws PEException {
+	/**
+	 * Same as the connection URL but without any parameters.
+	 */
+	public String getCatalogDatabaseLocation() throws PEException {
+		final PEUrl baseUrl = this.buildCatalogDatabaseConnectionUrl();
+		baseUrl.clearQuery();
+		return baseUrl.toString();
+	}
+
+	public String getCatalogDatabaseConnectionUrl() throws PEException {
+		return this.buildCatalogDatabaseConnectionUrl().toString();
+	}
+
+	private PEUrl buildCatalogDatabaseConnectionUrl() throws PEException {
 		final PEUrl baseUrl = PEUrl.fromUrlString(this.getCatalogBaseUrl());
 		baseUrl.setPath(this.getCatalogDBName());
-
-		return baseUrl.toString();
+		return baseUrl;
 	}
 
 	public String getCatalogBaseUrl() throws PEException {
@@ -851,7 +863,7 @@ public class CatalogHelper {
 			dbHelper.connect();
 
 			if (catalogExists(dbHelper))
-				throw new PEException("DVE Catalog already exists at '" + getCatalogDatabaseUrl() + "'");
+				throw new PEException("DVE Catalog already exists at '" + getCatalogDatabaseLocation() + "'");
 
 			final String catalogName = getCatalogDBName();
 			final String defaultScharSet = dbNative.getDefaultServerCharacterSet();
@@ -871,7 +883,7 @@ public class CatalogHelper {
 	}
 
 	public void dumpCatalogInfo(PrintWriter pw, boolean verbose) throws PEException {
-		pw.println("URL: " + getCatalogDatabaseUrl());
+		pw.println("URL: " + getCatalogDatabaseLocation());
 
 		CatalogDAO c = CatalogDAOFactory.newInstance(catalogProperties);
 		try {
