@@ -134,7 +134,7 @@ public final class RedistributionExecutionStep extends
 		this.targetGroup = targetGroup;
 
 		if ((redistToTable != null) && redistToTable.isTempTable()) {
-			this.declarationHints = ((TempTable) redistToTable).getHints(sc);
+			this.declarationHints = ((TempTable) redistToTable).finalizeHints(sc);
 		}
 
 		if (targetTable.isUserlandTemporaryTable() || 
@@ -167,7 +167,7 @@ public final class RedistributionExecutionStep extends
 		distKey = distKeyTemplate;
 
 		if ((redistToTable != null) && redistToTable.isTempTable()) {
-			this.declarationHints = ((TempTable) redistToTable).getHints(sc);
+			this.declarationHints = ((TempTable) redistToTable).finalizeHints(sc);
 		}
 	}
 	

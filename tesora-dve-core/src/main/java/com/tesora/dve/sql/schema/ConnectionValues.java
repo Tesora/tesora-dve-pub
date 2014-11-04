@@ -177,7 +177,8 @@ public class ConnectionValues {
 	}
 	
 	public void allocateAutoIncBlock(ValueManager vm, TableKey tk) {
-		if (autoincs != null) throw new SchemaException(Pass.SECOND, "Duplicate autoinc block");
+		if (autoincs != null) 
+			throw new SchemaException(Pass.SECOND, "Duplicate autoinc block");
 		autoincs = new AutoIncrementBlock(vm,tk);
 	}
 

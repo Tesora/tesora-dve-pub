@@ -27,18 +27,21 @@ import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepTriggerOperation;
+import com.tesora.dve.queryplan.TriggerValueHandlers;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.util.UnaryProcedure;
 
 public class TriggerExecutionStep extends ExecutionStep {
 
 	// the select I will execute to get the rows
 	private ExecutionStep rowQuery;
+	private TriggerValueHandlers handlers;
 	// any before step
 	private ExecutionStep before;
 	// the actual step
@@ -50,12 +53,14 @@ public class TriggerExecutionStep extends ExecutionStep {
 			ExecutionStep actual,
 			ExecutionStep before,
 			ExecutionStep after,
-			ExecutionStep rowQuery) {
+			ExecutionStep rowQuery,
+			TriggerValueHandlers handlers) {
 		super(db, storageGroup, ExecutionType.TRIGGER);
 		this.actual = actual;
 		this.before = before;
 		this.after = after;
 		this.rowQuery = rowQuery;
+		this.handlers = handlers;
 	}
 
 	// accessors used in the tests
@@ -78,7 +83,8 @@ public class TriggerExecutionStep extends ExecutionStep {
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps,
 			ProjectionInfo projection, SchemaContext sc) throws PEException {
-		QueryStepTriggerOperation trigOp = new QueryStepTriggerOperation(buildOperation(opts,sc,rowQuery),
+		QueryStepTriggerOperation trigOp = new QueryStepTriggerOperation(handlers,
+				buildOperation(opts,sc,rowQuery),
 				(before == null ? null : buildOperation(opts,sc,before)),
 				buildOperation(opts,sc,actual),
 				(after == null ? null : buildOperation(opts,sc,after)));

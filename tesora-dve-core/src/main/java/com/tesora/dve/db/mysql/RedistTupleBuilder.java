@@ -149,6 +149,7 @@ public class RedistTupleBuilder implements MysqlMultiSiteCommandResultsProcessor
                 dvm.inspectValue(binRow, i, dv, maxAutoIncr);
             }
 
+            // don't need exec state here - values are fully materialized
             mappingSolution = distModel.mapKeyForInsert(catalogDAO, targetWG.getGroup(), dv);
 
             autoIncrBlocks = tableHints.tableHasAutoIncs() ? new long[] {nextAutoIncr++} : null;

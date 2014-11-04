@@ -50,49 +50,82 @@ public class TempTableGenerator {
 	
 	public UserTable createTable(SSConnection ssCon, WorkerGroup targetWG, WorkerGroup cleanupWG,
 			TempTableDeclHints tempHints, boolean useSystemTempTable, String tempTableName,
-			PersistentDatabase database, ColumnSet metadata, DistributionModel tempDist) throws PEException {
-		UserTable theTable = createTableFromMetadata(targetWG, tempHints, tempTableName, database, metadata, tempDist); 
-//		System.out.println(tempTable.getName() + ".useSystemTempTable = " + useSystemTempTable + " on " + targetWG);
+			PersistentDatabase database, ColumnSet metadata, DistributionModel tempDist,
+			UserTable exists) throws PEException {
+		UserTable theTable = null;
 		boolean systemTempTable = useSystemTempTable;
 		
-		String sqlCommand = buildCreateTableStatement(theTable,systemTempTable);
-//		System.out.println(sqlCommand);
-		WorkerRequest req = 
-				new WorkerExecuteRequest(
-						ssCon.getNonTransactionalContext(), new SQLCommand(ssCon, sqlCommand)
-						).onDatabase(database).forDDL();
-		ExecutionLogger logger = ssCon.getExecutionLogger().getNewLogger("CreateTempTable");
+		if (exists != null) {
+			theTable = exists;
+			// we have to truncate
 
-		// We can't execute DDL on the targetWG if it is in a transaction
-		WorkerGroup wgForDDL = targetWG;
-		// if targetWG was cloned, it may not have active connections at this point
-		// and if that is the case, activeTransactionCount will cause the connections to become active
-		if (wgForDDL.activeTransactionCount() > 0)
-			wgForDDL = WorkerGroupFactory.newInstance(ssCon, targetWG.getGroup(), database);
-		else {
-			if (requireSessVarsOnDDLGroup())
-				// make sure the sess vars are set!
-				wgForDDL.assureSessionVariables(ssCon);
-		}
+			// We can't execute DDL on the targetWG if it is in a transaction
+			WorkerGroup wgForDDL = targetWG;
+			// if targetWG was cloned, it may not have active connections at this point
+			// and if that is the case, activeTransactionCount will cause the connections to become active
+			if (wgForDDL.activeTransactionCount() > 0)
+				wgForDDL = WorkerGroupFactory.newInstance(ssCon, targetWG.getGroup(), database);
+			else {
+				if (requireSessVarsOnDDLGroup())
+					// make sure the sess vars are set!
+					wgForDDL.assureSessionVariables(ssCon);
+			}
 
-		try {
-			if (!systemTempTable || suppressTempDeletMode) {
+			try {
 				WorkerRequest preCleanupReq = 
 						new WorkerExecuteRequest(
-								ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, tempTableName, true)
+								ssCon.getNonTransactionalContext(), 
+								new SQLCommand(ssCon.getSchemaContext(),"delete from " + exists.getName())
 								).onDatabase(database).forDDL();
-				wgForDDL.execute(MappingSolution.AllWorkers, preCleanupReq, DBEmptyTextResultConsumer.INSTANCE);
-			}
-			Collection<Future<Worker>> f = wgForDDL.submit(MappingSolution.AllWorkers, req, DBEmptyTextResultConsumer.INSTANCE);
-			addCleanupStep(ssCon,theTable,database,cleanupWG);
-			WorkerGroup.syncWorkers(f);
-		} finally {
-			if (wgForDDL != targetWG)
-				WorkerGroupFactory.returnInstance(ssCon, wgForDDL);
-			logger.end();
-		}
+				Collection<Future<Worker>> f = wgForDDL.submit(MappingSolution.AllWorkers, preCleanupReq, DBEmptyTextResultConsumer.INSTANCE);
+				WorkerGroup.syncWorkers(f);
+			} finally {
+				if (wgForDDL != targetWG)
+					WorkerGroupFactory.returnInstance(ssCon, wgForDDL);
+			}			
+		} else {
+			theTable = createTableFromMetadata(targetWG, tempHints, tempTableName, database, metadata, tempDist); 
+			//		System.out.println(tempTable.getName() + ".useSystemTempTable = " + useSystemTempTable + " on " + targetWG);
 
-		ssCon.setTempCleanupRequired(true);
+			String sqlCommand = buildCreateTableStatement(theTable,systemTempTable);
+			//		System.out.println(sqlCommand);
+			WorkerRequest req = 
+					new WorkerExecuteRequest(
+							ssCon.getNonTransactionalContext(), new SQLCommand(ssCon, sqlCommand)
+							).onDatabase(database).forDDL();
+			ExecutionLogger logger = ssCon.getExecutionLogger().getNewLogger("CreateTempTable");
+
+			// We can't execute DDL on the targetWG if it is in a transaction
+			WorkerGroup wgForDDL = targetWG;
+			// if targetWG was cloned, it may not have active connections at this point
+			// and if that is the case, activeTransactionCount will cause the connections to become active
+			if (wgForDDL.activeTransactionCount() > 0)
+				wgForDDL = WorkerGroupFactory.newInstance(ssCon, targetWG.getGroup(), database);
+			else {
+				if (requireSessVarsOnDDLGroup())
+					// make sure the sess vars are set!
+					wgForDDL.assureSessionVariables(ssCon);
+			}
+
+			try {
+				if (!systemTempTable || suppressTempDeletMode) {
+					WorkerRequest preCleanupReq = 
+							new WorkerExecuteRequest(
+									ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, tempTableName, true)
+									).onDatabase(database).forDDL();
+					wgForDDL.execute(MappingSolution.AllWorkers, preCleanupReq, DBEmptyTextResultConsumer.INSTANCE);
+				}
+				Collection<Future<Worker>> f = wgForDDL.submit(MappingSolution.AllWorkers, req, DBEmptyTextResultConsumer.INSTANCE);
+				addCleanupStep(ssCon,theTable,database,cleanupWG);
+				WorkerGroup.syncWorkers(f);
+			} finally {
+				if (wgForDDL != targetWG)
+					WorkerGroupFactory.returnInstance(ssCon, wgForDDL);
+				logger.end();
+			}
+
+			ssCon.setTempCleanupRequired(true);
+		}
 		return theTable;
 	}
 
@@ -114,7 +147,7 @@ public class TempTableGenerator {
 		if (!suppressTempDeletMode) {
 			cleanupWG.addCleanupStep(
 					new WorkerExecuteRequest(
-							ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, theTable.getName(), false)
+							ssCon.getNonTransactionalContext(), UserTable.getDropTableStmt(ssCon, theTable.getName(), true)
 							).onDatabase(database));
 		}
 	}		

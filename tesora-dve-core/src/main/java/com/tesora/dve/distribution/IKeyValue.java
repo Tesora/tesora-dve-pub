@@ -25,6 +25,7 @@ import java.util.Map;
 
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.StorageGroup;
+import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.exceptions.PEException;
 
 public interface IKeyValue {
@@ -55,4 +56,6 @@ public interface IKeyValue {
 	public int hashCode();
 	
 	public Map<String,? extends IColumnDatum> getValues();
+	
+	public IKeyValue rebind(LateBoundConstants constants) throws PEException;
 }

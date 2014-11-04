@@ -94,10 +94,10 @@ public class TriggerDDLTest extends SchemaTest {
 
 			@Override
 			public void test() throws Throwable {
-				conn.execute("insert into B (a,b,c) values (3,3,3)");
+				conn.execute("replace into B (a,b,c) values (3,3,3)");
 			}
 			
-		}.assertException(SQLException.class, "PEException: No support for trigger execution");
+		}.assertException(SQLException.class, "PEException: No planning/runtime support for triggers");
 		// but, this should not fail
 		conn.execute("delete from B where a = 1");
 

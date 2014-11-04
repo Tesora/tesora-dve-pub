@@ -21,15 +21,21 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+import java.util.List;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.sql.util.ColumnChecker;
+import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProjectDDL;
+import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
 
@@ -53,6 +59,7 @@ public class TriggerDMLTest extends SchemaTest {
 	public void before() throws Throwable {
 		conn = new PortalDBHelperConnectionResource();
 		checkDDL.create(conn);
+		conn.execute("alter dve set adaptive_cleanup_interval = 0");
 	}
 
 	@After
@@ -86,9 +93,84 @@ public class TriggerDMLTest extends SchemaTest {
 		conn.assertResults("select * from tlog order by id",
 				br(nr,1,"direct",null,
 						nr,2,"indirect",null,
-						nr,3,"inverted,sideways","update",
+						nr,3,"sideways,inverted","update",
 						nr,4,"backwards","delete"));
 		
 	}
+	
+	@Test
+	public void testB() throws Throwable {
+		conn.execute("create range arange (int) persistent group " + checkDDL.getPersistentGroup().getName());
+		conn.execute("create table ref (id int, subject varchar(64), primary key (id)) range distribute on (id) using arange");
+		conn.execute("create table lookup (id int, kind int, targ int, primary key (id)) random distribute");
+		conn.execute("create table subj (id int, action varchar(16), primary key (id)) range distribute on (id) using arange");
+		conn.execute("insert into ref (id, subject) values (1,'math'),(3,'physics'),(4,'chemistry'),(5,'religion')");
+		conn.execute("insert into lookup (id, kind, targ) values (1,5,1),(3,5,3),(4,4,4),(5,6,5)");
+		conn.execute("insert into subj (id, action) values (1,'run'),(3,'jump'),(4,'hop'),(5,'stand')");
+		
+		conn.execute("create trigger subj_upd after update on subj for each row "
+				+"begin update ref r inner join lookup l on r.id = l.targ set r.subject = concat(OLD.action,',',NEW.action) where l.kind = 5 ; end");
+		
+		conn.assertResults("select * from ref order by id", 
+				br(nr,1,"math",
+				   nr,3,"physics",
+				   nr,4,"chemistry",
+				   nr,5,"religion"));
+		conn.assertResults("select * from subj order by id", 
+				br(nr,1,"run",
+				   nr,3,"jump",
+				   nr,4,"hop",
+				   nr,5,"stand"));
+		
+		conn.execute("update subj s inner join lookup l on s.id = l.targ set s.action = 'firsttest' where l.kind = 5");
+
+		conn.assertResults("select * from ref order by id", 
+				br(nr,1,"jump,firsttest",
+				   nr,3,"jump,firsttest",
+				   nr,4,"chemistry",
+				   nr,5,"religion"));
+
+		conn.assertResults("select * from subj order by id",
+				br(nr,1,"firsttest",
+				   nr,3,"firsttest",
+				   nr,4,"hop",
+				   nr,5,"stand"));
+	}
+
+	// I know it seems dumb, but the point of this was verify that we get the correct allocated autoinc values
+	@Test
+	public void testC() throws Throwable {
+		conn.execute("create range arange (int) persistent group " + checkDDL.getPersistentGroup().getName());
+		conn.execute("create table alog (id int, subj varchar(32), primary key (id)) range distribute on (id) using arange");
+		conn.execute("create table targ (id int auto_increment, subj varchar(32), primary key (id)) range distribute on (id) using arange");
+		conn.execute("create trigger targ_ins after insert on targ for each row "
+				+"begin insert into alog (id, subj) values (NEW.id, NEW.subj); end");
+		
+		conn.execute("insert into targ (subj) values ('boom!')");
+		
+		conn.assertResults("select * from targ where id = 1",
+				br(nr,1,"boom!"));
+		conn.assertResults("select * from alog where id = 1",
+				br(nr,1,"boom!"));
+		
+		conn.execute("insert into targ (subj) values ('hi'),('hello'),('howdy'),('hiya')");
+
+		Object[] results = br(nr,1,"boom!",
+				nr,2,"hi",
+				nr,3,"hello",
+				nr,4,"howdy",
+				nr,5,"hiya");
+		
+		conn.assertResults("select * from targ order by id", results);
+		conn.assertResults("select * from alog order by id", results);
+
+		// make sure that alog & targ are colocated
+		List<ResultRow> alogResults = conn.execute("select id, cast(@dve_sitename as char(16)) from alog order by id").getResults(); 
+		ResourceResponse targLocs = conn.execute("select id, cast(@dve_sitename as char(16)) from targ order by id");
+
+		targLocs.assertResultsEqual("colocation test", targLocs.getResults(), alogResults, targLocs.getColumnCheckers());
+				
+	}
+	
 	
 }

@@ -27,6 +27,8 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.StorageSite;
@@ -34,15 +36,18 @@ import com.tesora.dve.common.logutil.ExecutionLogger;
 import com.tesora.dve.common.logutil.LogSubject;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.GetWorkerRequest;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerManager;
+import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 /**
  * Baseclass of <b>QueryStep</b> operations, which include, but are not limited to 
@@ -235,4 +240,30 @@ public abstract class QueryStepOperation implements LogSubject {
 		}
 		
 	};
+
+	// this is the ONLY place we should be calling mapping from
+	public static WorkerGroup.MappingSolution mapKeyForInsert(ExecutionState estate, StorageGroup wg, IKeyValue inkey) throws PEException {
+		return inkey.getDistributionModel().mapKeyForInsert(estate.getCatalogDAO(), wg, bindKey(estate,inkey));
+	}
+	
+	private static IKeyValue bindKey(ExecutionState estate, IKeyValue ikv) throws PEException {
+		return (estate.getBoundConstants().isEmpty() ? ikv : ikv.rebind(estate.getBoundConstants()));
+	}
+	
+	public static WorkerGroup.MappingSolution mapKeyForUpdate(ExecutionState estate, StorageGroup wg, IKeyValue inkey) throws PEException {		
+		return inkey.getDistributionModel().mapKeyForUpdate(estate.getCatalogDAO(), wg, bindKey(estate,inkey));
+	}
+
+	public static WorkerGroup.MappingSolution mapKeyForQuery(ExecutionState estate, StorageGroup wg, IKeyValue key, DistKeyOpType operation) throws PEException {
+		return key.getDistributionModel().mapKeyForQuery(
+				estate.getCatalogDAO(), wg, bindKey(estate,key),
+				operation);
+	}
+
+	public static WorkerGroup.MappingSolution mapKeyForQuery(ExecutionState estate, StorageGroup wg, IKeyValue key, 
+			DistributionModel givenDistribution, DistKeyOpType operation) throws PEException {
+		return givenDistribution.mapKeyForQuery(
+				estate.getCatalogDAO(), wg, bindKey(estate,key),
+				operation);
+	}
 }

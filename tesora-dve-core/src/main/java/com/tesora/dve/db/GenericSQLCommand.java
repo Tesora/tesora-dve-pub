@@ -655,12 +655,14 @@ public class GenericSQLCommand {
 			return this;
 		}
 
+		final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+		
 		final FragmentTable resolvedFragments = new FragmentTable(this.commandFragments);
 		for (final OffsetEntry oe : resolvedFragments.viewIndexEntries()) {
 			if (oe.getKind() == EntryKind.LATE_CONSTANT) {
 				final LateBindingConstantOffsetEntry lbcoe = (LateBindingConstantOffsetEntry) oe;
-				String val = lbc.getConstantValue(lbcoe.getExpression().getPosition());
-				resolvedFragments.replace(oe, new CommandFragment(this.encoding,val));
+				String value = emitter.emitConstantExprValue(lbcoe.getExpression(), lbc.getConstantValue(lbcoe.getExpression().getPosition()));
+				resolvedFragments.replace(oe, new CommandFragment(this.encoding,value));
 			} 		
 		}
 

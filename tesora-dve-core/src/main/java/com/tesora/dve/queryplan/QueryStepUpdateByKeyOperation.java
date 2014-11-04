@@ -63,7 +63,8 @@ public class QueryStepUpdateByKeyOperation extends QueryStepDMLOperation {
 		
 		SSConnection ssCon = estate.getConnection();
 		
-		WorkerGroup.MappingSolution mappingSolution = dm.mapKeyForUpdate(ssCon.getCatalogDAO(), wg.getGroup(), distValue);
+		WorkerGroup.MappingSolution mappingSolution = 
+				QueryStepOperation.mapKeyForUpdate(estate, wg.getGroup(), distValue);
 
         final boolean savepointRequired = ssCon.getTransId() != null && mappingSolution.equals(MappingSolution.AllWorkers)
 				&& "5.6".equals(Singletons.require(HostService.class).getDveVersion(ssCon));

@@ -88,7 +88,7 @@ public class TriggerTransformTest extends TransformTest {
 							TransientExecutionEngine.LARGE,"temp8",TransientExecutionEngine.AGGREGATION,BroadcastDistributionModel.MODEL_NAME,
 							emptyDV,
 							emptyIndexes,
-						  "SELECT temp7.sa1_6 AS t10s0_7,'firsttest' AS litex,temp7.si0_7 AS t10s1_9",
+						  "SELECT 'firsttest' AS litex,temp7.sa1_6 AS t10s0_8,temp7.si0_7 AS t10s1_9",
 						  "FROM temp7",
 						  "INNER JOIN temp5 ON temp7.si0_7 = temp5.lt2_2"
 						)
@@ -96,13 +96,13 @@ public class TriggerTransformTest extends TransformTest {
 						new TriggerExpectedStep(group,
 							new ProjectingExpectedStep(ExecutionType.SELECT,
 								null,
-							  "SELECT temp8.t10s0_7,temp8.litex,temp8.t10s1_9",
+							  "SELECT temp8.litex,temp8.t10s0_8,temp8.t10s1_9",
 							  "FROM temp8"
 							),
 							new UpdateExpectedStep(
 								group,
 							  "UPDATE `subj` AS s",
-							  "SET s.`action` = _lbc1",
+							  "SET s.`action` = _lbc0",
 							  "WHERE s.`id` = _lbc2"
 							),
 						  null,
@@ -151,7 +151,8 @@ public class TriggerTransformTest extends TransformTest {
 								)
 							)
 					)
-					));
+					)
+					);
 		
 	}
 	
@@ -283,35 +284,37 @@ public class TriggerTransformTest extends TransformTest {
 		String sql = "update src set value = 29";
 
 		PEStorageGroup group = getGroup(db);
-		stmtTest(db, sql, UpdateStatement.class, bes(
-				new ProjectingExpectedStep(ExecutionType.SELECT,
-						group, "temp1", TransientExecutionEngine.AGGREGATION, BroadcastDistributionModel.MODEL_NAME,
-						emptyDV,
-						emptyIndexes,
-						"SELECT `src`.`id` AS s1i0_4,`src`.`value` AS s1v1_5,29 AS litex_6",
-						"FROM `src`"
-				)
-						.withExplain(new DMLExplainRecord(DMLExplainReason.TRIGGER_SRC_TABLE)),
-				new TriggerExpectedStep(group,
+		stmtTest(db, sql, UpdateStatement.class, 
+				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
+							group,"temp1",TransientExecutionEngine.AGGREGATION,BroadcastDistributionModel.MODEL_NAME,
+							emptyDV,
+							emptyIndexes,
+						  "SELECT `src`.`id` AS s1i0_3,29 AS litex_4",
+						  "FROM `src`"
+						)
+						.withExplain(new DMLExplainRecord(DMLExplainReason.TRIGGER_SRC_TABLE)),
+						new TriggerExpectedStep(group,
+							new ProjectingExpectedStep(ExecutionType.SELECT,
 								null,
-								"SELECT temp1.s1i0_4,temp1.s1v1_5,temp1.litex_6",
-								"FROM temp1"
-						),
-						new UpdateExpectedStep(
+							  "SELECT temp1.s1i0_3,temp1.litex_4",
+							  "FROM temp1"
+							),
+							new UpdateExpectedStep(
 								group,
-								"UPDATE `src`",
-								"SET `src`.`value` = _lbc2",
-								"WHERE `src`.`id` = _lbc0"
-						),
-						new UpdateExpectedStep(
+							  "UPDATE `src`",
+							  "SET `src`.`value` = _lbc1",
+							  "WHERE `src`.`id` = _lbc0"
+							),
+							new UpdateExpectedStep(
 								group,
-								"UPDATE `no_ai_src`",
-								"SET `no_ai_src`.`id` = IFNULL( _lbc0,0 ) ,`no_ai_src`.`value` = _lbc1"
-						),
-						null
-				)
-				));
+							  "UPDATE `no_ai_src`",
+							  "SET `no_ai_src`.`id` = _lbc0,`no_ai_src`.`value` = _lbc1"
+							),
+					null
+					)
+					)
+				);
 	}
 
 }

@@ -97,7 +97,8 @@ public class QueryStepInsertByKeyOperation extends QueryStepDMLOperation {
 		SSConnection ssCon = estate.getConnection();
 		
 		WorkerExecuteRequest req = new WorkerExecuteRequest(ssCon.getTransactionalContext(), command).onDatabase(database);
-		WorkerGroup.MappingSolution mappingSolution = dm.mapKeyForInsert(ssCon.getCatalogDAO(), wg.getGroup(), distValue);
+		WorkerGroup.MappingSolution mappingSolution = 
+				QueryStepOperation.mapKeyForInsert(estate, wg.getGroup(), distValue);
 		
 		resultConsumer.setRowAdjuster(dm.getInsertAdjuster());
 		wg.execute(mappingSolution, req, resultConsumer);

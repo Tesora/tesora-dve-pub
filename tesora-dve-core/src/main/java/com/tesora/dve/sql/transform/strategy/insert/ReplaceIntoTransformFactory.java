@@ -172,7 +172,7 @@ public class ReplaceIntoTransformFactory extends TransformFactory {
 		if (!is.isReplace())
 			return null;
 		// weed out the easy cases - we will let the insert planner handle these
-		InsertIntoValuesPlanner.checkForIllegalInsert(ipc,is);
+		InsertIntoValuesPlanner.checkForIllegalInsert(ipc,is,true);
 		PETable pet = is.getTableInstance().getAbstractTable().asTable();
 		if (pet.getStorageGroup(ipc.getContext()).isSingleSiteGroup())
 			// let the insert planner handle it

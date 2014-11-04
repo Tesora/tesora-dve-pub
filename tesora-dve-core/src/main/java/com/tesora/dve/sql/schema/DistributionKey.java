@@ -30,18 +30,23 @@ import java.util.Map;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentGroup;
+import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.distribution.IColumnDatum;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.distribution.PELockedException;
 import com.tesora.dve.distribution.RangeLimit;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.exceptions.PERuntimeException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionPath;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
+import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.transform.MatchableKey;
 import com.tesora.dve.sql.transform.constraints.KeyConstraint;
 import com.tesora.dve.sql.transform.constraints.PlanningConstraint;
@@ -155,12 +160,20 @@ public class DistributionKey implements PlanningConstraint {
 
 	public IKeyValue getDetachedKey(SchemaContext sc) {
 		// actualize the dist key so that it can be used without a context
-		LinkedHashMap<PEColumn, TColumnDatum> vals = new LinkedHashMap<PEColumn, TColumnDatum>();
+		LinkedHashMap<PEColumn, TColumnDatumBase> vals = new LinkedHashMap<PEColumn, TColumnDatumBase>();
+		boolean late = false;
 		for(Map.Entry<PEColumn, ConstantExpression> me : values.entrySet()) {
-			vals.put(me.getKey(), new TColumnDatum(me.getKey(),
-					me.getValue().convert(sc, me.getKey().getType())));
+			TColumnDatumBase value = null;
+			if (me.getValue().getConstantType() == ConstantType.RUNTIME) {
+				late = true;
+				value = new DeferredTColumnDatum(me.getKey(),(LateBindingConstantExpression) me.getValue());
+			} else {
+				value = new TColumnDatum(me.getKey(),
+						me.getValue().convert(sc, me.getKey().getType()));
+			}
+			vals.put(me.getKey(), value);
 		}
-		return new DetachedKeyValue(sc,onTable.getAbstractTable(),vals,columnOrder,siteOverride);
+		return new DetachedKeyValue(sc,onTable.getAbstractTable(),vals,late,columnOrder,siteOverride);
 	}
 	
 	public void setFrozen() {
@@ -173,18 +186,20 @@ public class DistributionKey implements PlanningConstraint {
 	private static class DetachedKeyValue implements IKeyValue {
 
 		private final PEAbstractTable<?> table;
-		private final LinkedHashMap<PEColumn, TColumnDatum> values; //NOPMD
+		private final LinkedHashMap<PEColumn, TColumnDatumBase> values; //NOPMD
 		private final SchemaContext context;
 		private LinkedHashMap<String, TColumnDatum> externalValues = null; //NOPMD
 		private final List<PEColumn> columnOrder;
 		private final PEStorageSite pegged;
+		private final boolean hasDeferredValues;
 		
-		public DetachedKeyValue(SchemaContext sc, PEAbstractTable<?> ontab, LinkedHashMap<PEColumn,TColumnDatum> vals, List<PEColumn> cols, PEStorageSite peggedGroup) { //NOPMD
+		public DetachedKeyValue(SchemaContext sc, PEAbstractTable<?> ontab, LinkedHashMap<PEColumn,TColumnDatumBase> vals, boolean lateVals,List<PEColumn> cols, PEStorageSite peggedGroup) { //NOPMD
 			table = ontab;
 			values = vals;
 			context = sc;
 			columnOrder = cols;
 			pegged = peggedGroup;
+			this.hasDeferredValues = lateVals;
 		}
 		
 		@Override
@@ -199,11 +214,15 @@ public class DistributionKey implements PlanningConstraint {
 
 		@Override
 		public int compare(IKeyValue other) throws PEException {
+			if (hasDeferredValues)
+				throw new PECodingException("Attempt to compare a deferred key");
 			return KeyValue.compare(this,other);
 		}
 
 		@Override
 		public int compare(RangeLimit rangeLimit) throws PEException {
+			if (hasDeferredValues)
+				throw new PECodingException("Attempt to compare a deferred key");
 			return KeyValue.compare(this, rangeLimit);
 		}
 
@@ -231,10 +250,12 @@ public class DistributionKey implements PlanningConstraint {
 
 		@Override
 		public LinkedHashMap<String, ? extends IColumnDatum> getValues() { //NOPMD
+			if (hasDeferredValues)
+				throw new PERuntimeException("Attempt to getValues from deferred key");
 			if (externalValues == null) {
 				externalValues = new LinkedHashMap<String,TColumnDatum>();
 				for(PEColumn c : columnOrder) {
-					TColumnDatum tcd = values.get(c);
+					TColumnDatum tcd = (TColumnDatum) values.get(c);
 					if (tcd != null) externalValues.put(
 							tcd.getColumn().getPersistentName(),tcd);
 				}
@@ -244,11 +265,15 @@ public class DistributionKey implements PlanningConstraint {
 
 		@Override
 		public int hashCode() {
+			if (hasDeferredValues)
+				throw new PERuntimeException("Attempt to generate hash code for deferred key");
 			return KeyValue.buildHashCode(this);
 		}
 
 		@Override
 		public boolean equals(Object o) {
+			if (hasDeferredValues)
+				throw new PERuntimeException("Attempt to test equality on a deferred key");
 			return KeyValue.equals((IKeyValue)this,(IKeyValue)o);
 		}
 
@@ -267,6 +292,17 @@ public class DistributionKey implements PlanningConstraint {
 		@Override
 		public Integer getRangeId() {
 			return table.getDistributionVector(context).getRangeID(context);
+		}
+
+		@Override
+		public IKeyValue rebind(LateBoundConstants constants)
+				throws PEException {
+			if (!hasDeferredValues)
+				return this;
+			LinkedHashMap<PEColumn,TColumnDatumBase> boundVals = new LinkedHashMap<PEColumn,TColumnDatumBase>();
+			for(Map.Entry<PEColumn,TColumnDatumBase> me : values.entrySet()) 
+				boundVals.put(me.getKey(),me.getValue().bind(constants));
+			return new DetachedKeyValue(context,table,boundVals,false,columnOrder,null);
 		}
 		
 	}

@@ -113,6 +113,7 @@ public class VariableManager {
 	}
 	
 	// called during catalog initialization, i.e. CatalogHelper
+	@SuppressWarnings("rawtypes")
 	public Map<VariableHandler,VariableConfig> initializeCatalog(CatalogDAO c) throws PEException {
 		// load up compiled in values.
 		HashMap<VariableHandler,VariableConfig> out = new HashMap<VariableHandler,VariableConfig>();
@@ -123,6 +124,7 @@ public class VariableManager {
 	}
 	
 	// called during server initialization
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void initialize(CatalogDAO in) throws PEException {
 		CatalogDAO c = in;
 		if (c == null)
@@ -172,6 +174,7 @@ public class VariableManager {
 
 	}
 
+	@SuppressWarnings("rawtypes")
 	public static ValueMetadata findMetadataConverter(String type, String varName) throws PEException {
 		ValueMetadata<?> vm = null;
 		for(ValueMetadata ivm : KnownVariables.defaultConverters) {
@@ -185,6 +188,7 @@ public class VariableManager {
 		return vm;
 	}
 	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private VariableHandler loadHandler(VariableConfig vc) throws PEException {
 		ValueMetadata<?> vm = findMetadataConverter(vc.getValueType(),vc.getName());
 		VariableHandler exists = new VariableHandler(vc.getName(),vm,VariableHandler.convertScopes(vc.getScopes()),
@@ -197,6 +201,7 @@ public class VariableManager {
 	// dynamically add a new variable; this just handles loading the config out of
 	// the catalog (where it was previously persisted, possibly by some other server)
 	// and adding it to our known variables
+	@SuppressWarnings("rawtypes")
 	public VariableHandler postInitializationAddVariable(String varName) throws PEException {
 		CatalogDAO c = CatalogDAOFactory.newInstance();
 		try {
@@ -210,6 +215,7 @@ public class VariableManager {
 	}
 	
 	// for trans exec engine
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void initialiseTransient(GlobalVariableStore globals) {
 		for(VariableHandler vh : handlers.values()) {
 			ValueReference vr = globals.getReference(vh);

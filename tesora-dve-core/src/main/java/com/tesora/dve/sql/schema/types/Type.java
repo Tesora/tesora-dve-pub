@@ -120,5 +120,5 @@ public interface Type {
 	public TextType toTextType();
 	
 	public int getColumnAttributesFlags();
-
+	
 }

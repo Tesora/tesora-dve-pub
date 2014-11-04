@@ -313,7 +313,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 				PETable tab = redist.getTargetTable();
                 if (tab instanceof TempTable){ //we have a temp table, so generate match for expected index hints.
                     buf.append(prefix).append("\t");
-					TempTableDeclHints hints = ((TempTable) tab).getHints(pc);
+					TempTableDeclHints hints = ((TempTable) tab).finalizeHints(pc);
                     if (hints.getIndexes().isEmpty()) {
                     	buf.append("emptyIndexes,");
                     } else {
@@ -704,7 +704,7 @@ public abstract class TransformTest extends TransientSchemaTest {
                 if (indices != null){
                     PETable tab = redist.getTargetTable();
                     if (tab instanceof TempTable){
-						TempTableDeclHints hints = ((TempTable) tab).getHints(sc);
+						TempTableDeclHints hints = ((TempTable) tab).finalizeHints(sc);
 						List<List<String>> sesIndices = hints.getIndexes();
                         assertEquals("should have same number of index hints for sql '" + es.getSQL(sc, null) + "'",indices.size(),sesIndices.size());
                         for (int i=0;i< indices.size();i++){

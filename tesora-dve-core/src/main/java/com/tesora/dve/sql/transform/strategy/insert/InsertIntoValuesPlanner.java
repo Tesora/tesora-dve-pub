@@ -52,9 +52,11 @@ import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.InsertIntoValuesStatement;
 import com.tesora.dve.sql.statement.dml.InsertStatement;
+import com.tesora.dve.sql.statement.dml.ReplaceIntoValuesStatement;
 import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.TransformFactory;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.InsertValuesFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.LateSortedInsertFeatureStep;
@@ -70,16 +72,38 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 
 		InsertIntoValuesStatement iivs = (InsertIntoValuesStatement) stmt;
 		
-		checkForIllegalInsert(context,iivs);
+		checkForIllegalInsert(context,iivs, iivs instanceof ReplaceIntoValuesStatement);
 
 		assertValidDupKey(context.getContext(),iivs);
 
-		boolean requiresReferenceTimestamp = iivs.getDerivedInfo().doSetTimestampVariable();
-
 		// first time planning, get the value manager to allocate values now - well, unless this is prepare - in which case not so much
-		if (!context.getContext().getOptions().isPrepare())
+		// also, we don't do it if we only have late binding constants
+		if (!context.getContext().getOptions().isPrepare() && !context.getContext().getOptions().isTriggerPlanning()) 
 			context.getContext().getValueManager().handleAutoincrementValues(context.getContext());
 		
+		return buildInsertIntoValuesFeatureStep(context,this,iivs);
+	}
+
+	@Override
+	public FeaturePlannerIdentifier getFeaturePlannerID() {
+		return FeaturePlannerIdentifier.INSERT_VALUES;
+	}
+
+	public static void checkForIllegalInsert(PlannerContext pc, InsertStatement is, boolean notrigs) throws PEException {
+		Table<?> table = is.getTableInstance().getTable();
+		if (table.isInfoSchema())
+			throw new PEException("Cannot insert into info schema table " + table.getName());
+		PEAbstractTable<?> peat = is.getTableInstance().getAbstractTable();
+		if (peat.isView())
+			throw new PEException("No support for updatable views");
+		if (notrigs && peat.asTable().hasTrigger(pc.getContext(), TriggerEvent.INSERT))
+			throw new PEException("No support for trigger execution");
+	}
+	
+	public static FeatureStep buildInsertIntoValuesFeatureStep(PlannerContext context, 
+			FeaturePlanner planner, InsertIntoValuesStatement iivs) throws PEException {
+		boolean requiresReferenceTimestamp = iivs.getDerivedInfo().doSetTimestampVariable();
+
 		TableInstance intoTI = iivs.getPrimaryTable(); 
 		TableKey tk = intoTI.getTableKey();
 		DistributionVector dv = intoTI.getAbstractTable().getDistributionVector(context.getContext());
@@ -93,7 +117,7 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 			// the id value is so we can set the last inserted id right
 			@SuppressWarnings("unchecked")
 			DistributionKey dk = new DistributionKey(tk, Collections.EMPTY_LIST, null);
-			out = new InsertValuesFeatureStep(iivs,this,tk.getAbstractTable().asTable().getStorageGroup(context.getContext()),
+			out = new InsertValuesFeatureStep(iivs,planner,tk.getAbstractTable().asTable().getStorageGroup(context.getContext()),
 					dk, requiresReferenceTimestamp,iivs);
 		} else if (dv.getDistributedWhollyOnTenantColumn(context.getContext()) != null 
 				&& (context.getContext().getPolicyContext().isSchemaTenant() || context.getContext().getPolicyContext().isDataTenant())) {
@@ -103,7 +127,7 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 			ListOfPairs<PEColumn,ConstantExpression> values = new ListOfPairs<PEColumn,ConstantExpression>();
 			values.add(tenantColumn,context.getContext().getPolicyContext().getTenantIDLiteral(true));
 			DistributionKey dk = new DistributionKey(tk, Collections.singletonList(tenantColumn), values);
-			out = new InsertValuesFeatureStep(iivs,this,tk.getAbstractTable().asTable().getStorageGroup(context.getContext()),
+			out = new InsertValuesFeatureStep(iivs,planner,tk.getAbstractTable().asTable().getStorageGroup(context.getContext()),
 					dk, requiresReferenceTimestamp, iivs);
 		} else {
 		
@@ -111,7 +135,7 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 
 			if (intoTI.getAbstractTable().getStorageGroup(context.getContext()).isSingleSiteGroup() || parts.size() == 1) {
 				// push the whole thing down, and just use the first dist key
-				out = new InsertValuesFeatureStep(iivs,this,tk.getAbstractTable().asTable().getStorageGroup(context.getContext()),
+				out = new InsertValuesFeatureStep(iivs,planner,tk.getAbstractTable().asTable().getStorageGroup(context.getContext()),
 						parts.get(0).getSecond(),requiresReferenceTimestamp, iivs);
 
 			} else {
@@ -120,30 +144,14 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 				if (!context.getContext().getOptions().isPrepare())
 					context.getContext().getValueManager().handleLateSortedInsert(context.getContext());
 
-				out = new LateSortedInsertFeatureStep(iivs,this,
+				out = new LateSortedInsertFeatureStep(iivs,planner,
 						tk.getAbstractTable().asTable().getStorageGroup(context.getContext()),
 						requiresReferenceTimestamp);
 			}
 
 		}
 			
-		return out;
-	}
-
-	@Override
-	public FeaturePlannerIdentifier getFeaturePlannerID() {
-		return FeaturePlannerIdentifier.INSERT_VALUES;
-	}
-
-	public static void checkForIllegalInsert(PlannerContext pc, InsertStatement is) throws PEException {
-		Table<?> table = is.getTableInstance().getTable();
-		if (table.isInfoSchema())
-			throw new PEException("Cannot insert into info schema table " + table.getName());
-		PEAbstractTable<?> peat = is.getTableInstance().getAbstractTable();
-		if (peat.isView())
-			throw new PEException("No support for updatable views");
-		if (peat.asTable().hasTrigger(pc.getContext(), TriggerEvent.INSERT))
-			throw new PEException("No support for trigger execution");
+		return out;		
 	}
 	
 	protected void assertValidDupKey(SchemaContext sc, InsertIntoValuesStatement iivs) {
@@ -189,7 +197,7 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 		throw new SchemaException(Pass.NORMALIZE,"No support for on duplicate key insert value expression not of form id = id");
 	}
 
-	public ListOfPairs<List<ExpressionNode>, DistributionKey> preparePlanInsert(PlannerContext pc, InsertIntoValuesStatement iivs) {
+	public static ListOfPairs<List<ExpressionNode>, DistributionKey> preparePlanInsert(PlannerContext pc, InsertIntoValuesStatement iivs) {
 		SchemaContext sc = pc.getContext();
 		PETable intoTable = iivs.getPrimaryTable().getAbstractTable().asTable();
 		List<PEColumn> distTemplate = intoTable.getDistributionVector(sc).getDistributionTemplate(sc);
