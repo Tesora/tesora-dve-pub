@@ -22,12 +22,15 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
+import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
+import com.tesora.dve.db.mysql.portal.protocol.CanFlowControl;
+import com.tesora.dve.db.mysql.portal.protocol.FlowControl;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLStateException;
-import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.messaging.SQLCommand;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.ReferenceCountUtil;
@@ -38,14 +41,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
 *
 */
-class RedistTargetSite implements AutoCloseable {
+public class RedistTargetSite implements AutoCloseable, CanFlowControl {
     static Logger logger = Logger.getLogger(RedistTargetSite.class);
 
-    private RedistTupleBuilder builder;
+    public interface InsertWatcher {
+        void insertOK(RedistTargetSite site, MyOKResponse okPacket);
+        void insertFailed(RedistTargetSite site, MyErrorResponse errorPacket);
+        void insertFailed(RedistTargetSite site, Exception e);
+    }
 
-    private ChannelHandlerContext ctx;
+    private InsertWatcher watcher;
+    private FlowControl flowControl;
+
+    private CommandChannel channel;
     private int pstmtId = -1;
-    private boolean waitingForPrepare = false;
     private BufferedExecute bufferedExecute = new BufferedExecute();
 
     private BufferedExecute pendingFlush = null;
@@ -57,44 +66,53 @@ class RedistTargetSite implements AutoCloseable {
 
     private InsertPolicy policy;
     private final int maximumRowsToBuffer;
+    private final long maximumBytesToBuffer;
     private final int columnsPerTuple;
 
     public interface InsertPolicy {
         int getMaximumRowsToBuffer();
+        long getMaximumBytesToBuffer();
         int getColumnsPerTuple();
-        ColumnSet getRowsetMetadata();
         SQLCommand buildInsertStatement(int tupleCount) throws PEException;
     }
 
-    public RedistTargetSite(RedistTupleBuilder builder, ChannelHandlerContext ctx, InsertPolicy policy) {
-        this.builder = builder;
-        this.ctx = ctx;
+    public RedistTargetSite(InsertWatcher watcher, CommandChannel channel, InsertPolicy policy) {
+        this.watcher = watcher;
+        this.channel = channel;
         this.policy = policy;
 
         this.maximumRowsToBuffer = policy.getMaximumRowsToBuffer();
+        this.maximumBytesToBuffer = policy.getMaximumBytesToBuffer();
         this.columnsPerTuple = policy.getColumnsPerTuple();
     }
 
-    public void append(MyBinaryResultRow binRow, int rowsToFlushCount, int bytesToFlushCount, long[] autoIncUsed) {
-        this.bufferedExecute.add(binRow, autoIncUsed);
+    public void setUpstreamControl(FlowControl flowControl) {
+        this.flowControl = flowControl;
+    }
+
+    public boolean append(MyBinaryResultRow binRow) {
+        return append(binRow, 1,binRow.sizeInBytes());
+    }
+
+    public boolean append(MyBinaryResultRow binRow, int rowsToFlushCount, int bytesToFlushCount) {
+        this.bufferedExecute.add(binRow);
         this.queuedRowSetCount.incrementAndGet();
         this.totalQueuedBytes += bytesToFlushCount;
         this.totalQueuedRows += rowsToFlushCount;
-    }
 
-    public void handleAck(MyMessage message) {
-        if (message instanceof MyOKResponse){
-            this.pendingStatementCount.decrementAndGet();
-        } else if (message instanceof MyErrorResponse){
-            this.pendingStatementCount.decrementAndGet();
+        boolean needsFlush = this.getTotalQueuedRows() >= maximumRowsToBuffer || this.getTotalQueuedBytes() >= maximumBytesToBuffer;
+        if (needsFlush) {
+            this.flush();
+            return true;
         } else {
-            //?
+            return false;
         }
     }
 
     public void flush() {
         final BufferedExecute buffersToFlush = this.bufferedExecute;
         if (!buffersToFlush.isEmpty()) {
+
             final int rowsToFlush = this.totalQueuedRows;
             this.pendingFlush = this.bufferedExecute;
             this.bufferedExecute = new BufferedExecute();
@@ -163,16 +181,16 @@ class RedistTargetSite implements AutoCloseable {
 
                         @Override
                         void consumeError(MyErrorResponse error) throws PESQLStateException {
-                            super.consumeError(error);
                             prepareFailed(error);
                         }
                     };
-                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
+                    MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(insertCommand.getSQL(), this.channel.lookupCurrentConnectionCharset());
+                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
 
-                    this.waitingForPrepare = true; //we flip this back when the prepare response comes back in.
+                    shouldPauseInput();
 
                     //sends the prepare with the callback that will issue the execute.
-                    this.ctx.channel().writeAndFlush(prepareCmd);
+                    this.channel.writeAndFlush(message,prepareCmd);
                 } else {
                     //we have a valid statementID, so do the work now.
                     executePendingInsert();
@@ -185,9 +203,12 @@ class RedistTargetSite implements AutoCloseable {
         }
     }
 
-    public boolean willAcceptMoreRows(){
-        boolean channelBackedUp = (ctx.channel().isOpen() && !ctx.channel().isWritable());
-        return !waitingForPrepare && !channelBackedUp;
+    private void shouldPauseInput() {
+        flowControl.pauseSourceStreams();
+    }
+
+    private void shouldResumeInput(){
+        flowControl.resumeSourceStreams();
     }
 
     private void executePendingInsert() {
@@ -197,18 +218,52 @@ class RedistTargetSite implements AutoCloseable {
 
         buffersToFlush.setStmtID(currentStatementID);
         buffersToFlush.setNeedsNewParams(true); //TODO:this field can be managed by BufferedExecute. -gossard
-        buffersToFlush.setRowSetMetadata(policy.getRowsetMetadata());
         buffersToFlush.setColumnsPerTuple(columnsPerTuple);
-
         int rowsWritten = buffersToFlush.size();
-
-//        this.ctx.writeAndFlush(buffersToFlush);
-        this.ctx.channel().writeAndFlush(new SimpleMysqlCommand(buffersToFlush,builder));
+        this.channel.writeAndFlush(buffersToFlush, constructInsertHandler());
         this.pendingFlush = null;
         this.queuedRowSetCount.getAndAdd(-rowsWritten);
-
+        shouldResumeInput();
         // ********************
 
+    }
+
+    private MysqlCommandResultsProcessor constructInsertHandler() {
+        return new MysqlCommandResultsProcessor() {
+            @Override
+            public void active(ChannelHandlerContext ctx) {
+            }
+
+            @Override
+            public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+                if (message instanceof MyOKResponse){
+                    RedistTargetSite.this.pendingStatementCount.decrementAndGet();
+                    watcher.insertOK(RedistTargetSite.this,(MyOKResponse)message);
+                } else if (message instanceof MyErrorResponse){
+                    RedistTargetSite.this.pendingStatementCount.decrementAndGet();
+                    watcher.insertFailed(RedistTargetSite.this, (MyErrorResponse) message);
+                } else {
+                    Exception weirdPacket = new PEException("Received unexpected packet," + (message == null? "null" : message.getClass().getSimpleName()));
+                    watcher.insertFailed(RedistTargetSite.this, weirdPacket);
+                }
+                return false;
+            }
+
+            @Override
+            public void packetStall(ChannelHandlerContext ctx) throws PEException {
+            }
+
+            @Override
+            public void failure(Exception e) {
+                shouldResumeInput();
+                watcher.insertFailed(RedistTargetSite.this, e);
+            }
+
+            @Override
+            public void end(ChannelHandlerContext ctx) {
+
+            }
+        };
     }
 
     public int getTotalQueuedRows(){
@@ -239,22 +294,21 @@ class RedistTargetSite implements AutoCloseable {
             // Close statement commands have no results from mysql, so we can just send the command directly on the channel context
 
             MSPComStmtCloseRequestMessage closeRequestMessage = MSPComStmtCloseRequestMessage.newMessage(this.pstmtId);
-            this.ctx.write(closeRequestMessage);//don't flush, let it piggyback on the next outbound message.
+            this.channel.write( closeRequestMessage,NoopResponseProcessor.NOOP );
             this.pstmtId = -1;
             this.pstmtTupleCount = -1;
         }
     }
 
     protected void prepareFinished(long stmtID, int tupleCount){
-        this.waitingForPrepare = false;
         this.pstmtId = (int)stmtID;
         this.pstmtTupleCount = tupleCount;
+        shouldResumeInput();
     }
 
     protected void prepareFailed(MyErrorResponse error){
-        this.waitingForPrepare = false;
-        //TODO: need a better way to propigate this backwards. -gossard
-        logger.error("prepare failed, error=" + error);
+        watcher.insertFailed(this, error);
+        shouldResumeInput();
     }
 
 }

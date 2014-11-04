@@ -1,4 +1,4 @@
-package com.tesora.dve.worker;
+package com.tesora.dve.db.mysql.portal.protocol;
 
 /*
  * #%L
@@ -21,19 +21,9 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.exceptions.PESQLException;
-
-
-public class MasterMasterStatement extends SingleDirectStatement {
-
-	public MasterMasterStatement(Worker w, DBConnection jdbcConnection)
-			throws PESQLException {
-		super(w, jdbcConnection);
-	}
-
-	@Override
-	protected void onCommunicationFailure(Worker worker) throws PESQLException {
-		worker.onCommunicationsFailure();
-	}
+/**
+ *
+ */
+public interface CanFlowControl {
+    void setUpstreamControl(FlowControl control);
 }

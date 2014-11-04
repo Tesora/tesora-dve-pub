@@ -97,9 +97,7 @@ public class SchemaSystemTest extends SchemaTest {
 				List<MirrorTest> tests = buildTests();
 				for(MirrorTest mt : tests)
 					mt.execute(cmr, smr);
-			} catch (Exception e) {
-                e.printStackTrace();
-            } finally {
+			} finally {
                 // sysddl.destroy(smr);
 				// checkddl.destroy(cmr);
 			}

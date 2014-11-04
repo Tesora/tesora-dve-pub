@@ -394,15 +394,46 @@ public class GenerationSitesTest extends SchemaTest {
 	}
 	
 	// mostly about examining the metadata associated with rebalancing
-	@Ignore
 	@Test
 	public void test_pe495Alt() throws Throwable {
 		conn.execute("create range vrange (varchar) persistent group " + testDDL.getPersistentGroup().getName());
 	
-		conn.execute("create table vt1 (a varchar(32), b varchar(32), c int, primary key(a)) range distribute on (b) using vrange");
-		
-		conn.execute("insert into vt1 values ('one','one',1), ('two','two',2)");
-		conn.execute(testDDL.getPersistentGroup().getAddGenerations());
+		conn.execute("create table vt1 (a varchar(32), b varchar(32), c int, primary key(a)) range distribute on (a) using vrange");
+        conn.execute("create table vt2 (a varchar(32), b varchar(32), c int, primary key(a)) range distribute on (b) using vrange");
+
+        StringBuilder buf1 = new StringBuilder();
+        StringBuilder buf2 = new StringBuilder();
+        buf1.append("insert into vt1 values ");
+        buf2.append("insert into vt2 values ");
+        for(int i = 0; i < 10; i++) {
+        	if (i > 0) {
+        		buf1.append(", ");
+        		buf2.append(", ");
+        	}
+        	buf1.append("('key%d','one%d',%d)");
+        	buf2.append("('two%d','key%d',%d)");
+        }
+        String vt1 = buf1.toString();
+        String vt2 = buf2.toString();
+        
+        for (int i=0;i< 1000;i++){
+        	Object[] args = new Object[30];
+        	for(int j = 0; j < 10; j++) {
+        		int val = i*10 + j;
+        		args[3*j] = val;
+        		args[3*j+1] = val;
+        		args[3*j+2] = val;
+        	}
+        	conn.execute(String.format(vt1,args));
+        	conn.execute(String.format(vt2,args));
+        }
+
+//        System.out.println(conn.printResults("select * from information_schema.storage_generation"));
+        
+		conn.execute(testDDL.getPersistentGroup().getAddGenerations() + " WITH REBALANCE");
+
+//        System.out.println(conn.printResults("select * from information_schema.storage_generation"));
+
 	}
 	
 	@Test

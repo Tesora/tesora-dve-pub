@@ -37,6 +37,7 @@ import io.netty.util.CharsetUtil;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.tesora.dve.db.mysql.MyFieldType;
 import com.tesora.dve.db.mysql.common.JavaCharsetCatalog;
@@ -63,7 +64,7 @@ public class AsyncExample {
 		final MyBackendDecoder.CharsetDecodeHelper charsetHelper = constructCharsetDecodeHelper();
 		final SimpleCredentials cred = constructCredentials(username, password, isClearText);
 		final JavaCharsetCatalog javaCharsetCatalog = constructJavaCharsetCatalog();
-		final MysqlClientAuthenticationHandler authHandler = new MysqlClientAuthenticationHandler(cred, ClientCapabilities.DEFAULT_PSITE_CAPABILITIES, javaCharsetCatalog);
+		final MysqlClientAuthenticationHandler authHandler = new MysqlClientAuthenticationHandler(cred, ClientCapabilities.DEFAULT_PSITE_CAPABILITIES, javaCharsetCatalog, new AtomicReference<Charset>());
 
 		final NioEventLoopGroup connectionEventGroup = new NioEventLoopGroup(1);
 		final Bootstrap mysqlBootstrap = new Bootstrap();

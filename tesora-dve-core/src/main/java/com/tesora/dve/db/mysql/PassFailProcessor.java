@@ -21,18 +21,36 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.libmy.MyOKResponse;
 import com.tesora.dve.exceptions.PEException;
 import io.netty.channel.ChannelHandlerContext;
 
-import com.tesora.dve.common.catalog.StorageSite;
+/**
+ *
+ */
+public class PassFailProcessor extends DefaultResultProcessor {
 
-public interface MysqlMultiSiteCommandResultsProcessor extends
-		MysqlCommandResultsProcessor {
+    public PassFailProcessor(CompletionHandle<Boolean> promise) {
+        super(promise);
+    }
 
-    //subclasses both assume packet is OK or ERR
     @Override
-    boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
+    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        if (message instanceof MyOKResponse)
+            promise.success(true);
+        else if (message instanceof MyErrorResponse)
+            promise.failure( ((MyErrorResponse) message).asException() );
+        else {
+            //ignore.
+        }
+        return false;
+    }
 
-    public void addSite(StorageSite site, ChannelHandlerContext ctx);
+    @Override
+    public void failure(Exception e) {
+        promise.failure(e);
+    }
 }

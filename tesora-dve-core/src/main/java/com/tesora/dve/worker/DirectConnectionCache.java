@@ -36,16 +36,17 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.db.mysql.MysqlCommandResultsProcessor;
 import com.tesora.dve.db.mysql.MysqlConnection;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.*;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
+
+import java.util.UUID;
 
 /**
  *
@@ -137,8 +138,8 @@ public class DirectConnectionCache {
      */
     static CachedConnection connect(DSCacheKey key) throws SQLException, PEException {
 
-        if (SingleDirectConnection.logger.isDebugEnabled())
-            SingleDirectConnection.logger.debug("Allocating new JDBC connection to " + key.site.getName() + " ==> " + key.toString());
+        if (logger.isDebugEnabled())
+            logger.debug("Allocating new JDBC connection to " + key.site.getName() + " ==> " + key.toString());
 
         DBConnection dbConnection = MYSQL_FACTORY.newInstance(key.eventLoop, key.site);
         dbConnection.connect(key.url, key.userId, key.password, key.clientCapabilities);
@@ -200,11 +201,6 @@ public class DirectConnectionCache {
             dbConnection.setCatalog(databaseName, promise);
         }
 
-        @Override
-        public void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) {
-            dbConnection.setTimestamp(referenceTime, promise);
-        }
-
         @Deprecated
         @Override
         public void cancel() {
@@ -230,6 +226,16 @@ public class DirectConnectionCache {
         public String getName() { return dbConnection.getName(); }
 
         @Override
+        public UUID getPhysicalID() {
+            return dbConnection.getPhysicalID();
+        }
+
+        @Override
+        public Charset getTargetCharset() {
+            return dbConnection.getTargetCharset();
+        }
+
+        @Override
         public StorageSite getStorageSite() {
             return dbConnection.getStorageSite();
         }
@@ -243,18 +249,17 @@ public class DirectConnectionCache {
         public boolean isOpen() { return dbConnection.isOpen(); }
 
         @Override
-        public void write(MysqlCommand command) { dbConnection.write(command); }
+        public boolean isWritable() {
+            return dbConnection.isWritable();
+        }
 
         @Override
-        public void writeAndFlush(MysqlCommand command) { dbConnection.writeAndFlush(command); }
-
-        @Override
-        public void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+        public void write(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
             dbConnection.write(outboundMessage, resultsProcessor);
         }
 
         @Override
-        public void writeAndFlush(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+        public void writeAndFlush(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
             dbConnection.writeAndFlush(outboundMessage, resultsProcessor);
         }
 
@@ -344,8 +349,8 @@ public class DirectConnectionCache {
 
         @Override
         public void activateObject(DSCacheKey key, CachedConnection entry) throws Exception {
-            if (SingleDirectConnection.logger.isDebugEnabled())
-                SingleDirectConnection.logger.debug("Re-activating JDBC connection to " + key.site.getName() + " ==> " + key.toString());
+            if (logger.isDebugEnabled())
+                logger.debug("Re-activating JDBC connection to " + key.site.getName() + " ==> " + key.toString());
 
         }
 

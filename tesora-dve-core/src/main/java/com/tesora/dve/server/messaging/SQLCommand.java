@@ -87,6 +87,10 @@ public class SQLCommand implements Serializable {
 		this(new GenericSQLCommand(connectionCharset, regularStatement));
 	}
 
+    public Charset getEncoding(){
+        return sql.getEncoding();
+    }
+
 	public SQLCommand withProjection(ProjectionInfo projection) {
 		this.projection = projection;
 		return this;
@@ -105,7 +109,7 @@ public class SQLCommand implements Serializable {
 		return sql.getDecoded();
 	}
 
-	public ByteBuffer getBytes() {
+    public ByteBuffer getBytes() {
 		return sql.getEncoded();
 	}
 
@@ -187,7 +191,7 @@ public class SQLCommand implements Serializable {
 		return (sql.isForUpdate() == null ? false : sql.isForUpdate().booleanValue());
 	}
 
-	public SQLCommand getResolvedCommand(final Worker worker) {
+	public SQLCommand getResolvedCommand(final GenericSQLCommand.DBNameResolver worker) {
 		final SQLCommand newCommand = new SQLCommand(sql.resolveLateEntries(worker));
 		return copyFields(newCommand);
 	}

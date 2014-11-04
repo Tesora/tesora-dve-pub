@@ -21,20 +21,14 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import java.util.Collections;
 import java.util.List;
 
-import com.tesora.dve.common.catalog.CatalogEntity;
-import com.tesora.dve.common.catalog.PersistentGroup;
-import com.tesora.dve.common.catalog.PersistentSite;
-import com.tesora.dve.common.catalog.StorageGroupGeneration;
-import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.common.catalog.*;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
-import com.tesora.dve.sql.statement.ddl.AddStorageGenRangeInfo;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -53,29 +47,26 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 	boolean mustIgnoreFKs;
 	// all the users and grants
 	List<SQLCommand> userDecls;
-	// if we're rebalancing this is nonempty
-	List<AddStorageGenRangeInfo> rebalanceInfo;
 	
 	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate) throws PEException {
-		this(sg,sites,invalidate,null,false,null, Collections.<AddStorageGenRangeInfo> emptyList());
+		this(sg,sites,invalidate,null,false,null);
 	}
-	
+
 	public QueryStepAddGenerationOperation(PersistentGroup sg, List<PersistentSite> sites, CacheInvalidationRecord invalidate,
 			ListOfPairs<UserTable,SQLCommand> tableDecls,
 			boolean ignoreFKs,
-			List<SQLCommand> userDecls,
-			List<AddStorageGenRangeInfo> rebalanceInfo) throws PEException {
-		super(sg);
+			List<SQLCommand> userDecls) throws PEException
+    {
+        super(sg);
 		this.group = sg;
 		this.sites = sites;
 		this.record = invalidate;
 		this.tableDecls = tableDecls;
 		this.mustIgnoreFKs = ignoreFKs;
 		this.userDecls = userDecls;
-		this.rebalanceInfo = rebalanceInfo;
 	}
 
-	@Override
+    @Override
 	public void executeSelf(final ExecutionState execState, final WorkerGroup wg,	DBResultConsumer resultConsumer) throws Throwable {
 		try {
 			if (record != null)
@@ -86,7 +77,7 @@ public class QueryStepAddGenerationOperation extends QueryStepOperation {
 				public CatalogEntity generate() throws Throwable {
 					StorageGroupGeneration newGen = new StorageGroupGeneration(group, group.getGenerations().size(), sites);
 					ssCon.getCatalogDAO().persistToCatalog(newGen);
-					group.addGeneration(execState, wg, newGen, tableDecls, mustIgnoreFKs, userDecls, rebalanceInfo);
+					group.addGeneration(execState, wg, newGen, tableDecls, mustIgnoreFKs, userDecls);
 					return newGen;
 				}
 			}.execute();

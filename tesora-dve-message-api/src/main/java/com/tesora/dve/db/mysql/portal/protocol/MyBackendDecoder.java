@@ -22,10 +22,12 @@ package com.tesora.dve.db.mysql.portal.protocol;
  */
 
 import com.tesora.dve.db.mysql.MysqlMessage;
+import com.tesora.dve.db.mysql.libmy.*;
 import com.tesora.dve.mysqlapi.repl.messages.MyComBinLogDumpRequest;
 import com.tesora.dve.mysqlapi.repl.messages.MyComRegisterSlaveRequest;
 import com.tesora.dve.mysqlapi.repl.messages.MyReplEvent;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.ByteToMessageDecoder;
 
@@ -35,6 +37,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.netty.util.CharsetUtil;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.clock.NoopTimingService;
@@ -44,17 +47,6 @@ import com.tesora.dve.db.mysql.MyFieldType;
 import com.tesora.dve.db.mysql.MysqlNativeConstants;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
-import com.tesora.dve.db.mysql.libmy.BufferedExecute;
-import com.tesora.dve.db.mysql.libmy.MyBinaryResultRow;
-import com.tesora.dve.db.mysql.libmy.MyColumnCount;
-import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
-import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
-import com.tesora.dve.db.mysql.libmy.MyFieldPktResponse;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.db.mysql.libmy.MyOKResponse;
-import com.tesora.dve.db.mysql.libmy.MyPrepareOKResponse;
-import com.tesora.dve.db.mysql.libmy.MyRawMessage;
-import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.singleton.Singletons;
@@ -171,6 +163,11 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
 
             if (responseParseStrategy != null) //if a response is expected, save the sequence number the response should start with.
                 responseParseStrategy.setNextSequenceNumber(nextSequence);
+
+//            ByteBuf heap = Unpooled.buffer();
+//            ((MysqlMessage) msg).marshallPayload(heap);
+//            String asString = heap.toString(CharsetUtil.UTF_8);
+//            System.out.println("*** writing message, "+msg + " ==> "+asString);
 
             super.write(ctx, fullyEncodedSlice,promise);
         } else
@@ -435,7 +432,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
      * @param columnDefPacket
      * @return
      */
-    public static DataTypeValueFunc buildTypeCodec(CharsetDecodeHelper helper, MyFieldPktResponse columnDefPacket) throws PEException {
+    public static DecodedMeta buildTypeCodec(CharsetDecodeHelper helper, MyFieldPktResponse columnDefPacket, boolean binary) throws PEException {
         int maxDataLen = columnDefPacket.getColumn_length();
         if (maxDataLen < 0)  //TODO: mysql length is 32 bits, unsigned, but we use 32 bits signed.  This is a workaround until we deal with lengths greater than Integer.MAX_VALUE.
             maxDataLen = Integer.MAX_VALUE;
@@ -452,7 +449,8 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         supported = helper.typeSupported(fieldType, flags, maxDataLen);
         if (!supported)
             throw new PECodingException("Unsupported native type " + fieldType);
-        return DBTypeBasedUtils.getMysqlTypeFunc(fieldType, maxDataLen, flags);
+        DataTypeValueFunc mysqlTypeFunc = DBTypeBasedUtils.getMysqlTypeFunc(fieldType, maxDataLen, flags);
+        return new DecodedMeta(fieldType,mysqlTypeFunc,flags);
     }
 
 
@@ -466,7 +464,7 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
         ExecMode mode;
         ResponseState bufferState = ResponseState.AWAIT_FIELD_COUNT;
         private int bufferFieldCount;
-        private List<DataTypeValueFunc> typeDecoders = new ArrayList<>();
+        private List<DecodedMeta> typeDecoders = new ArrayList<>();
 
         ExecuteResponseParser(CharsetDecodeHelper help,ExecMode mode) {
             this.helper = help;
@@ -522,9 +520,8 @@ public class MyBackendDecoder extends ChannelDuplexHandler {
             columnDef.unmarshallMessage(lePayload);
 
             try {
-                //peek at the column define so we know how to decode the value.
-
-                DataTypeValueFunc codec = buildTypeCodec(helper,columnDef);
+                //peek at the column define so we know how to decode,encode the value.
+                DecodedMeta codec = buildTypeCodec(helper,columnDef, mode == ExecMode.PROTOCOL_BINARY);
                 typeDecoders.add(codec);
             } catch (Exception e) {
                 String errorMessage = "Ignoring problem finding type codec for " + columnDef.getColumn_type() + ", will cause problems for binary rowsets.";

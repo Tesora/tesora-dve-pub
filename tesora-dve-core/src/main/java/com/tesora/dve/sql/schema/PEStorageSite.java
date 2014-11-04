@@ -44,9 +44,9 @@ import com.tesora.dve.sql.util.Accessor;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.worker.AdditionalConnectionInfo;
-import com.tesora.dve.worker.SingleDirectWorker;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
+import com.tesora.dve.worker.WorkerFactory;
 import io.netty.channel.EventLoopGroup;
 
 public class PEStorageSite extends Persistable<PEStorageSite, PersistentSite> {
@@ -66,7 +66,7 @@ public class PEStorageSite extends Persistable<PEStorageSite, PersistentSite> {
 
 		setName(n);
 
-		haType = SingleDirectWorker.HA_TYPE;
+		haType = WorkerFactory.SINGLE_DIRECT_HA_TYPE;
 		jdbcURL = url;
 		jdbcUser = user;
 		jdbcPassword = password;
@@ -385,8 +385,8 @@ public class PEStorageSite extends Persistable<PEStorageSite, PersistentSite> {
 			return pess.getMaster().getUrl();
 		}
 
-		private Worker.Factory getWorkerFactory() {
-			return PersistentSite.getWorkerFactory(pess.getHAType());
+		private WorkerFactory getWorkerFactory() {
+			return WorkerFactory.getWorkerFactory(pess.getHAType());
 		}
 		
 		@Override

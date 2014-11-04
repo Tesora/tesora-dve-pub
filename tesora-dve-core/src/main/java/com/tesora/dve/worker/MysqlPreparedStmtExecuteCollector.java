@@ -24,11 +24,12 @@ package com.tesora.dve.worker;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.FieldMetadataAdapter;
-import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.libmy.*;
 
 import java.util.List;
 
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtExecuteRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.log4j.Logger;
 
@@ -73,43 +74,18 @@ public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implemen
 			logger.debug("Prepared Stmt Execute for: " + pstmt );
 	}
 
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows)
-			throws PEException {
-		throw new PECodingException(this.getClass().getSimpleName()+".inject not supported");
-	}
-
     @Override
-    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		return new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), this, promise);
+    public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+        int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
+        MysqlMessage message = MSPComStmtExecuteRequestMessage.newMessage(preparedID, pstmt, sql.getParameters());
+        return new Bundle(message, new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), this, promise));
 	}
 
 	@Override
 	public boolean hasResults() {
 		return hasResults;
 	}
-	
-	@Override
-	public long getUpdateCount() throws PEException {
-		return 0;
-	}
-	
-	@Override
-	public void setResultsLimit(long resultsLimit) {
-	}
-	
-	@Override
-	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-	}
-	
-	@Override
-	public void setNumRowsAffected(long rowcount) {
-	}
-	
-	@Override
-	public boolean isSuccessful() {
-		return false;
-	}
+
 
     public boolean emptyResultSet(MyOKResponse ok) {
         numRowsAffected = ok.getAffectedRows();
@@ -185,14 +161,6 @@ public class MysqlPreparedStmtExecuteCollector extends DBResultConsumer implemen
 	
 	public ResultChunk getResultChunk() {
 		return chunk;
-	}
-
-	@Override
-	public void rollback() {
-	}
-
-	@Override
-	public void setSenderCount(int senderCount) {
 	}
 
 	@Override

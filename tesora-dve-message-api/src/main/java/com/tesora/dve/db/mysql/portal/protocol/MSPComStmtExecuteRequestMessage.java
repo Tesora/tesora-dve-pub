@@ -156,7 +156,7 @@ public class MSPComStmtExecuteRequestMessage extends BaseMSPMessage<MSPComStmtEx
         }
     }
 
-    public static MSPComStmtExecuteRequestMessage newMessage(int statementID, MyPreparedStatement<MysqlGroupedPreparedStatementId> metadata, List<Object> values) throws PEException {
+    public static MSPComStmtExecuteRequestMessage newMessage(int statementID, MyPreparedStatement<MysqlGroupedPreparedStatementId> metadata, List<Object> values) {
         if (metadata.getNumParams() > 0 && metadata.getNumParams() != values.size())
             throw new PECodingException("Wrong number of parameters specified for prepared statement execution (expected"
                     + metadata.getNumParams() + ", received " + values.size() + ")");

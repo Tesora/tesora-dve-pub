@@ -44,6 +44,9 @@ public class StreamValve extends ChannelInboundHandlerAdapter {
     Queue<Object> bufferedReads = new LinkedList<>();
     boolean paused;
 
+    static final ThreadLocal<StreamValve> currentValve = new ThreadLocal<>();
+    Runnable scheduledRunnable = null;
+
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
         //track which pipeline we are on.
@@ -64,18 +67,43 @@ public class StreamValve extends ChannelInboundHandlerAdapter {
     }
 
     private void forwardQueuedReads() {
-        while (!paused && !bufferedReads.isEmpty()) {
-            Object next = bufferedReads.remove();
-            logger.debug("{} forwarding read ==> {}",this,next);
-
-            //NOTE: callee might invoke this.pause() or this.resume() on this thread before returning.
-            savedContext.fireChannelRead(next);
+        StreamValve current = currentValve.get();
+        if (current == this || scheduledRunnable != null){
+            logger.debug("ignoring request to deliver messages on {}, thread {} has future opportunity to.  current={},  scheduled={}",new Object[]{this,Thread.currentThread().getName(),current,scheduledRunnable});
+            return;
+        } else if (current != null) {
+            logger.debug("scheduling later delivery on {}, thread {} already delivering messages on {}",new Object[]{this,Thread.currentThread().getName(),current});
+            Runnable task = new Runnable() {
+                @Override
+                public void run() {
+                    scheduledRunnable = null;
+                    forwardQueuedReads();
+                }
+            };
+            scheduledRunnable = task;
+            savedContext.executor().submit(task);
+            return;
         }
 
-        if (!paused && bufferedReads.isEmpty()){
-            //valve is open and nothing is buffered, enable the channels autoread again.
-            logger.debug("{} out of messages and not paused, ensuring channel autoread is enabled",this);
-            savedContext.channel().config().setAutoRead(true);
+        logger.debug("no scheduled opportunity to deliver messages on {}, thread {} starting delivery.",new Object[]{this,Thread.currentThread().getName()});
+
+        currentValve.set(this);
+        try {
+            while (!paused && !bufferedReads.isEmpty()) {
+                Object next = bufferedReads.remove();
+                logger.debug("{} forwarding read ==> {}", this, next);
+
+                //NOTE: callee might invoke this.pause() or this.resume() on this thread before returning.
+                savedContext.fireChannelRead(next);
+            }
+
+            if (!paused && bufferedReads.isEmpty()) {
+                //valve is open and nothing is buffered, enable the channels autoread again.
+                logger.debug("{} out of messages and not paused, ensuring channel autoread is enabled", this);
+                savedContext.channel().config().setAutoRead(true);
+            }
+        } finally {
+            currentValve.set(null);
         }
     }
 
@@ -144,4 +172,21 @@ public class StreamValve extends ChannelInboundHandlerAdapter {
         return (StreamValve) context.handler();
     }
 
+
+    public static FlowControl wrap(final ChannelHandlerContext ctx) {
+        final ChannelPipeline pipeline = ctx.pipeline();
+        return new FlowControl() {
+            @Override
+            public void pauseSourceStreams() {
+                StreamValve valve = locateValve(pipeline);
+                valve.pause(pipeline);
+            }
+
+            @Override
+            public void resumeSourceStreams() {
+                StreamValve valve = locateValve(pipeline);
+                valve.resume(pipeline);
+            }
+        };
+    }
 }

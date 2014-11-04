@@ -357,20 +357,17 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 
 	public void startTableCleanup() {
 		if (tableCleanupInterval > 0) {
+            if (tgc != null)
+                tgc.stopTableCleanup();
+
 			tgc = new TableGarbageCollector(tableCleanupInterval);
-			tgc.start();
+			tgc.startTableCleanup();
 		}
 	}
 
 	private void stopTableCleanup() {
-		if (tgc != null) {
-			tgc.interrupt();
-			try {
-				tgc.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+		if (tgc != null)
+			tgc.stopTableCleanup();
 	}
 
 	public void setTableCleanupInterval(int value, boolean action) {

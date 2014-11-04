@@ -120,13 +120,17 @@ public class AddStorageGenRangeInfo extends RebalanceInfo {
 	public List<AddStorageGenRangeTableInfo> getTableInfos() {
 		return tables;
 	}
-	
-	public void display(PrintStream ps) {
-		ps.println("Rebalance info for range " + getRange().getName().get());
+
+    public void display(PrintStream ps) {
+        this.display("","\t",ps);
+    }
+	public void display(String prefix, String tab, PrintStream ps) {
+        String prefixWithIndent = prefix + tab;
+		ps.println(prefix + "range " + getRange().getName().get());
 		if (shared != null)
-			ps.println("  " + getCreateSharedTable().getRawSQL());
+			ps.println(prefixWithIndent + getCreateSharedTable().getRawSQL());
 		for(AddStorageGenRangeTableInfo info : tables) {
-			info.display(ps);
+			info.display(prefixWithIndent,tab,ps);
 		}
 	}
 	

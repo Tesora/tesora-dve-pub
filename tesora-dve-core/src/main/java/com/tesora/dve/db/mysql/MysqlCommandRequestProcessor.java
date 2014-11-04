@@ -1,4 +1,4 @@
-package com.tesora.dve.worker;
+package com.tesora.dve.db.mysql;
 
 /*
  * #%L
@@ -21,23 +21,16 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.exceptions.PESQLException;
-import io.netty.channel.EventLoopGroup;
+import com.tesora.dve.exceptions.PEException;
+import io.netty.channel.ChannelHandlerContext;
 
-public class MasterMasterConnection extends SingleDirectConnection {
+import java.nio.charset.Charset;
 
-	public MasterMasterConnection(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) {
-		super(auth, additionalConnInfo, site, preferredEventLoop);
-	}
+/**
+ *
+ */
+public interface MysqlCommandRequestProcessor {
+    void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException;
 
-	@Override
-	protected void onCommunicationsFailure(Worker w) throws PESQLException {
-		w.onCommunicationsFailure();
-	}
-
-	@Override
-	protected SingleDirectStatement getNewStatement(Worker w) throws PESQLException {
-		return new MasterMasterStatement(w, getConnection());
-	}
+    boolean isExpectingResults(ChannelHandlerContext ctx);
 }

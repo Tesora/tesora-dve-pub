@@ -24,14 +24,10 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 
-import java.util.List;
-
+import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public class MysqlKillResultDiscarder extends DBResultConsumer {
@@ -40,55 +36,12 @@ public class MysqlKillResultDiscarder extends DBResultConsumer {
 
 	public static final MysqlKillResultDiscarder INSTANCE = new MysqlKillResultDiscarder();
 
-	@Override
-	public void setSenderCount(int senderCount) {
-		// no op
-	}
-
-	@Override
-	public boolean hasResults() {
-		return false;
-	}
-
-	@Override
-	public long getUpdateCount() throws PEException {
-		return 0;
-	}
-
-	@Override
-	public void setResultsLimit(long resultsLimit) {
-		// no op
-	}
-
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException {
-		// no op
-	}
-
-	@Override
-	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-		// no op
-	}
-
-	@Override
-	public void setNumRowsAffected(long rowcount) {
-		// no op
-	}
-
     @Override
-    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+    public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
 		if (logger.isDebugEnabled())
 			logger.debug(promise + ", " + channel + " write " + sql.getRawSQL());
-		return new MysqlExecuteCommand(sql, channel.getMonitor(), null, promise);
-	}
-
-	@Override
-	public boolean isSuccessful() {
-		return false;
-	}
-
-	@Override
-	public void rollback() {
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getBytes());
+        return new Bundle(message, new MysqlExecuteCommand(sql, channel.getMonitor(), null, promise));
 	}
 
 }

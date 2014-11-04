@@ -49,7 +49,7 @@ public class WorkerAlterDatabaseRequest extends WorkerRequest {
 	}
 
 	@Override
-	public void executeRequest(final Worker w, final DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+	public void executeRequest(final Worker w, CompletionHandle<Boolean> promise) {
 
 		final String onSiteName = this.alteredDatabase.getNameOnSite(w.getWorkerSite());
 
@@ -58,7 +58,7 @@ public class WorkerAlterDatabaseRequest extends WorkerRequest {
 
 		final SQLCommand ddl = Singletons.require(HostService.class).getDBNative()
 				.getAlterDatabaseStmt(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), onSiteName, defaultCharSet, defaultCollation);
-		simpleExecute(w,resultConsumer,ddl,promise);
+        this.execute(w,ddl,promise);		
 	}
 
 	@Override

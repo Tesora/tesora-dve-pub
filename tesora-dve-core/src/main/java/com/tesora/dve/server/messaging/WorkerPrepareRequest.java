@@ -24,7 +24,6 @@ package com.tesora.dve.server.messaging;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
@@ -40,7 +39,7 @@ public class WorkerPrepareRequest extends WorkerRequest {
 	}
 	
 	@Override
-	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
+	public void executeRequest(Worker w, CompletionHandle<Boolean> promise) {
         w.prepare(getContext().getTransId(), promise);
     }
 

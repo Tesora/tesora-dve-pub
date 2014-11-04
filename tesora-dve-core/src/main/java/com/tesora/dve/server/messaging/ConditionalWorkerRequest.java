@@ -24,7 +24,7 @@ package com.tesora.dve.server.messaging;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBResultConsumer;
+import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.worker.Worker;
 
@@ -42,11 +42,17 @@ public class ConditionalWorkerRequest extends WorkerRequest {
 		this.target = targ;
 		this.guard = guard;
 	}
-	
-	@Override
-	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-		if (guard.proceed(w,resultConsumer))
-			target.executeRequest(w, resultConsumer, promise);
+
+    @Override
+    public WorkerRequest withGroupDispatch(GroupDispatch groupDispatch) {
+        target.withGroupDispatch(groupDispatch);
+        return super.withGroupDispatch(groupDispatch);
+    }
+
+    @Override
+	public void executeRequest(Worker w, CompletionHandle<Boolean> promise) {
+		if (guard.proceed(w,this))
+			target.executeRequest(w, promise);
         else
             promise.success(true);
 	}
@@ -68,7 +74,7 @@ public class ConditionalWorkerRequest extends WorkerRequest {
 
 	public interface GuardFunction {
 		
-		public boolean proceed(Worker w, DBResultConsumer consumer);
+		public boolean proceed(Worker w, GroupDispatch consumer);
 		
 	}
 	

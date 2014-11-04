@@ -21,14 +21,19 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.db.CommandChannel;
+import com.tesora.dve.db.DBConnection;
+import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.db.mysql.DelegatingResultsProcessor;
+import com.tesora.dve.db.mysql.MysqlMessage;
+import com.tesora.dve.db.mysql.SharedEventLoopHolder;
 import io.netty.channel.EventLoopGroup;
-import io.netty.util.concurrent.Future;
 
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -40,6 +45,7 @@ import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.mysql.SetVariableSQLBuilder;
+import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
@@ -56,17 +62,12 @@ import com.tesora.dve.worker.agent.Agent;
  * Temp), though which database it is connected to can be changed by the
  * WorkerManager.
  */
-public abstract class Worker {
-	
-	public interface Factory {
-		public Worker newWorker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException;
+public class Worker implements GenericSQLCommand.DBNameResolver {
+    static final EventLoopGroup DEFAULT_EVENTLOOP = SharedEventLoopHolder.getLoop();
+    	
+    public enum AvailabilityType { SINGLE, MASTER_MASTER }
 
-		public void onSiteFailure(StorageSite site) throws PEException;
-
-		public String getInstanceIdentifier(StorageSite site, ISiteInstance instance);
-	}
-	
-	// TODO: With XADataSource, we are now using a connection pool. Does it
+    // TODO: With XADataSource, we are now using a connection pool. Does it
 	// still make sense to
 	// have the worker keep connections, or should we get a new one for each
 	// transaction and
@@ -79,20 +80,19 @@ public abstract class Worker {
     EventLoopGroup previousEventLoop;
     EventLoopGroup preferredEventLoop;
 
-	StorageSite site;
-	UserAuthentication userAuthentication;
-	AdditionalConnectionInfo additionalConnInfo;
+	protected StorageSite site;
+	protected UserAuthentication userAuthentication;
+	protected AdditionalConnectionInfo additionalConnInfo;
 	
 	@Override
 	public String toString() {
 		return getName()+"("+site+")";
 	}
 
-	WorkerConnection wConnection = null;
+    Object wConnection = null;
 	boolean connectionAllocated = false;
 
 	String currentDatabaseName = null;
-	String userVisibleDatabaseName;
 	Integer currentDatabaseID = null;
 	Integer previousDatabaseID = null;
 	String currentGlobalTransaction = null;
@@ -101,60 +101,46 @@ public abstract class Worker {
 	
 	Exception lastException = null;
 
-	long lastAccessTime = System.currentTimeMillis();
-
     boolean bindingChangedSinceLastCatalogSet = false;
+    boolean statementFailureTriggersCommFailure;
 
-	Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop) throws PEException {
-		this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
-		this.site = site;
-		this.userAuthentication = auth;
-		this.additionalConnInfo = additionalConnInfo;
+    AtomicReference<DirectConnectionCache.CachedConnection> datasourceInfo = new AtomicReference<>();
+    SingleDirectStatement wSingleStatement = null;
+
+    protected Worker(UserAuthentication auth, AdditionalConnectionInfo additionalConnInfo, StorageSite site, EventLoopGroup preferredEventLoop, AvailabilityType availability) {
+        this.name = this.getClass().getSimpleName() + nextWorkerId.incrementAndGet();
+        this.site = site;
+        this.userAuthentication = auth;
+        this.additionalConnInfo = additionalConnInfo;
         this.previousEventLoop = null;
         this.preferredEventLoop = preferredEventLoop;
-	}
-
-	public abstract WorkerConnection getConnection(StorageSite site, AdditionalConnectionInfo additionalConnInfo, UserAuthentication auth, EventLoopGroup preferredEventLoop);
+        this.statementFailureTriggersCommFailure = (availability == AvailabilityType.MASTER_MASTER);
+    }
 
     public void bindToClientThread(EventLoopGroup eventLoop) throws PESQLException {
         this.previousEventLoop = this.preferredEventLoop;
         this.preferredEventLoop = eventLoop;
+        if (eventLoop == null)
+            this.preferredEventLoop = DEFAULT_EVENTLOOP;
+
         if (wConnection != null){
-            wConnection.bindToClientThread(eventLoop);
+            if (previousEventLoop != preferredEventLoop)
+                dircon_releaseConnection(true);
             bindingChangedSinceLastCatalogSet = true;
         }
     }
 
-	void sendStatistics(WorkerRequest wReq, long execTime) throws PEException {
-		LogSiteStatisticRequest sNotice = wReq.getStatisticsNotice();
-		if (sNotice != null) {
-			site.annotateStatistics(sNotice);
-			sNotice.setExecutionDetails(site.getName(), (int)execTime);
-            Agent.dispatch(Singletons.require(HostService.class).getStatisticsManagerAddress(), sNotice);
-		}
-	}
-
-	public void releaseResources() throws PEException {
-//		try {
-//			resetStatement();
-			closeWConnection();
-//		} catch (SQLException e1) {
-//			if (logger.isDebugEnabled())
-//				throw new PEException("Exception encountered releasing resources for worker " + getName(), e1);
-//		}
-	}
-
-	private void closeWConnection() {
+    private void closeWConnection() {
 		if (wConnection != null) {
 			try {
                 PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
 				resetStatement(promise);
                 promise.sync();
 //				rollback(currentGlobalTransaction);
-				wConnection.close(lastException == null);
-			} catch (Exception e) {
+                dircon_releaseConnection(lastException == null);
+            } catch (Exception e) {
                 try {
-                    wConnection.close(false);
+                    dircon_releaseConnection(false);
                 } catch (PESQLException e1) {
                     logger.warn("Encountered problem resetting and closing connection "+wConnection, e);
                 }
@@ -207,51 +193,49 @@ public abstract class Worker {
                 previousDatabaseID = currentDatabaseID;
 				currentDatabaseID = currentDatabase.getId();
 				currentDatabaseName = newDatabaseName;
-				userVisibleDatabaseName = currentDatabase.getUserVisibleName();
                 previousEventLoop = preferredEventLoop;
-				getConnection().setCatalog(currentDatabaseName);
+                ensureConnection();
+                dircon_getConnection().setCatalog(currentDatabaseName, null);
                 bindingChangedSinceLastCatalogSet = false;
 			}
 		}
 	}
 
     public void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise) {
-        WorkerConnection connection = getConnection();
-        connection.updateSessionVariables(desiredVariables, setBuilder, promise);
+        ensureConnection();
+        DBConnection connection = null;
+        try {
+            connection = dircon_getConnection();
+            connection.updateSessionVariables(desiredVariables, setBuilder, promise);
+        } catch (PESQLException e) {
+            promise.failure(e);
+        }
     }
-	
+
 	// used in late resolution support
 	public String getNameOnSite(String dbName) {
 		return UserDatabase.getNameOnSite(dbName, site);
 	}
-	
+
+	@Override
 	public int getSiteIndex() {
 		return site.getInstanceIdentifier().hashCode();
 	}
 
-	public boolean databaseChanged() {
-		return !ObjectUtils.equals(previousDatabaseID, currentDatabaseID);
-	}
-	
 	public void setPreviousDatabaseWithCurrent() {
 		previousDatabaseID = currentDatabaseID;
 	}
-	
-	private WorkerConnection getConnection() {
-		if (wConnection == null) {
-			if (connectionAllocated)
-				throw new PECodingException("Worker connection reallocated");
-			wConnection = getConnection(site, additionalConnInfo, userAuthentication, preferredEventLoop);
-			connectionAllocated = true;
-		}
-		return wConnection;
-	}
 
-	String getWorkerId() throws PEException {
-		return getName();
-	}
-	
-	public String getName() {
+    private void ensureConnection() {
+        if (wConnection == null) {
+            if (connectionAllocated)
+                throw new PECodingException("Worker connection reallocated");
+            wConnection = new Object();
+            connectionAllocated = true;
+        }
+    }
+
+    public String getName() {
 		return name;
 	}
 
@@ -259,11 +243,7 @@ public abstract class Worker {
 		return site;
 	}
 
-	public void setSite(StorageSite site2) {
-		this.site = site2;
-	}
-
-	public DevXid getXid(String globalId) {
+	protected DevXid getXid(String globalId) {
 		return new DevXid(globalId, getName());
 	}
 
@@ -272,8 +252,14 @@ public abstract class Worker {
 			if (StringUtils.isEmpty(currentGlobalTransaction)) {
 				if (logger.isDebugEnabled())
 					logger.debug("Txn: "+getName()+".startTrans("+globalId+")");
-				getConnection().startXA(getXid(globalId));
-				currentGlobalTransaction = globalId;
+                ensureConnection();
+                DevXid xid = getXid(globalId);
+                try {
+                    dircon_getConnection().start(xid, null);
+                } catch (Exception e) {
+                    throw new PESQLException("Cannot start XA Transaction " + xid, e);
+                }
+                currentGlobalTransaction = globalId;
 			} else if (currentGlobalTransaction != globalId)
 				throw new PEException("Transaction id mismatch (expected " + currentGlobalTransaction
 						+ ", got " + globalId + ")");
@@ -288,8 +274,14 @@ public abstract class Worker {
 				if (currentGlobalTransaction != globalId)
 					throw new PEException("Transaction id mismatch (expected "
 							+ currentGlobalTransaction + ", got " + globalId + ")");
-				getConnection().endXA(getXid(globalId));
-			}
+                ensureConnection();
+                DevXid xid = getXid(globalId);
+                try {
+                    dircon_getConnection().end(xid, null);
+                } catch (Exception e) {
+                    throw new PESQLException("Cannot end XA Transaction " + xid, e);
+                }
+            }
 		}
 	}
 
@@ -312,7 +304,12 @@ public abstract class Worker {
                     return;
                 }
 
-                getConnection().prepareXA(getXid(globalId), promise);
+                ensureConnection();
+                try {
+                    dircon_getConnection().prepare(getXid(globalId), promise);
+                } catch (PESQLException sqlError){
+                    promise.failure(sqlError);
+                }
                 return;
 			}
 		}
@@ -352,7 +349,12 @@ public abstract class Worker {
 
                 };
 
-                getConnection().commitXA(getXid(globalId), onePhase, resultTracker);
+                ensureConnection();
+                try {
+                    dircon_getConnection().commit(getXid(globalId), onePhase, resultTracker);
+                } catch (PESQLException e) {
+                    resultTracker.failure(e);
+                }
                 return;
 			}
 		}
@@ -380,47 +382,50 @@ public abstract class Worker {
                 }
 
                 currentGlobalTransaction = null;
-				getConnection().rollbackXA(getXid(globalId), promise);
-			}
+                ensureConnection();
+                DevXid xid = getXid(globalId);
+                try {
+                    dircon_getConnection().rollback(xid, promise);
+                } catch (Exception e) {
+                    PESQLException problem = new PESQLException("Cannot rollback XA Transaction " + xid, e);
+                    problem.fillInStackTrace();
+                    promise.failure(problem);
+                }
+            }
 		}
 
         promise.success(true);
 	}
 
 	public void close() throws PEException {
+		closeWConnection();
+	}
+
+	public SingleDirectStatement getStatement() throws PESQLException {
+        SingleDirectStatement workerStatement;
+
 		try {
-			releaseResources();
-		} catch (PEException e) {
-			logger.warn("Exception encountered closing worker " + getName(), e);
-		}
-	}
+            ensureConnection();
+            if (wSingleStatement==null) {
+                setPreviousDatabaseWithCurrent();
 
-	public long getLastAccessTime() {
-		return lastAccessTime;
-	}
-
-	public String getCurrentDatabaseName() {
-		return currentDatabaseName;
-	}
-	
-	public String getUserVisibleDatabaseName() {
-		return userVisibleDatabaseName;
-	}
-
-	public WorkerStatement getStatement() throws PESQLException {
-		WorkerStatement workerStatement;
-		
-		try {
-			workerStatement = getConnection().getStatement(this);
+                wSingleStatement = new SingleDirectStatement(this, dircon_getConnection());
+            }
+            workerStatement = wSingleStatement;
 		} catch (PECommunicationsException ce) {
-			onCommunicationsFailure();
+			processCommunicationFailure();
 			throw ce;
 		}
-		
+
 		return workerStatement;
 	}
 
-	public void onCommunicationsFailure() throws PESQLException {
+    protected void statementHadCommFailure() {
+        if (statementFailureTriggersCommFailure)
+            this.processCommunicationFailure();
+    }
+
+	protected void processCommunicationFailure() {
 		closeWConnection();
 //		lastException = PECommunicationsException.INSTANCE;
 		try {
@@ -429,44 +434,121 @@ public abstract class Worker {
 			logger.error("Unable to send site failure notification", e1);
 		}
 	}
-	
-	private int uniqueValue = 0;
-
-	private Future<Void> executionFuture;
 
 	public void setLastException(Exception lastException) {
 		this.lastException = lastException;
 	}
 
-	public long getUniqueValue() {
-		return ++uniqueValue  ;
-	}
-
-	public boolean isActiveSiteInstance(int siteInstanceId) {
-		return site.getMasterInstanceId() == siteInstanceId;
-	}
-
-	public void setFuture(Future<Void> future) {
-		this.executionFuture = future;
-	}
-
-	public Future<Void> getFuture() {
-		return executionFuture;
-	}
-
 	public boolean isModified() throws PESQLException {
-		return getConnection().isModified();
-	}
-	
-	public String getAddress() {
-		return name;
-	}
+        ensureConnection();
+        return dircon_getConnection().hasPendingUpdate();
+    }
 
 	public boolean hasActiveTransaction() throws PESQLException {
-		return getConnection().hasActiveTransaction();
-	}
+        ensureConnection();
+        return dircon_getConnection().hasActiveTransaction();
+    }
 
 	public int getConnectionId() throws PESQLException {
-		return getConnection().getConnectionId();
-	}
+        ensureConnection();
+        return dircon_getConnection().getConnectionId();
+    }
+
+    public static class SingleDirectStatement implements WorkerStatement {
+        public DBConnection dbConnection;
+        public Worker worker;
+
+        public SingleDirectStatement(Worker worker,DBConnection dbConnection) throws PESQLException {
+            this.worker = worker;
+            this.dbConnection = dbConnection;
+        }
+
+        @Override
+        public void cancel() {
+            worker.statementCancel(this);
+        }
+
+        @Override
+        public void close() throws PESQLException {
+            worker.statementClose(this);
+        }
+
+    }
+
+    private void statementCancel(SingleDirectStatement stmt){
+        if (stmt.dbConnection != null)
+            stmt.dbConnection.cancel();
+    }
+
+    private void statementClose(SingleDirectStatement stmt){
+        if (stmt.dbConnection != null)
+            stmt.dbConnection = null;
+    }
+
+    public void writeAndFlush(CommandChannel dbConnection, MysqlMessage outboundMessage, final DelegatingResultsProcessor statementInterceptor) {
+        //TODO: this dbConnection is one we handed out earlier.  Need to pull it back in.  Maybe have Worker delegate? -sgossard
+
+        final DelegatingResultsProcessor workerResultInterceptor = new DelegatingResultsProcessor(statementInterceptor){
+            boolean triggeredFailure = false;
+            @Override
+            public void failure(Exception e) {
+                if (!triggeredFailure) {
+                    PESQLException psqlError = PESQLException.coerce(e);
+
+                    if (psqlError instanceof PECommunicationsException) {
+                        statementHadCommFailure();
+                    }
+
+                    setLastException(psqlError);
+
+                    super.failure(psqlError);
+                    triggeredFailure = true;
+                }
+            }
+        };
+
+        if (outboundMessage != null) {
+
+            dbConnection.writeAndFlush(outboundMessage, workerResultInterceptor);
+        }
+    }
+
+
+    protected DBConnection dircon_getConnection() throws PESQLException {
+        DirectConnectionCache.CachedConnection cacheEntry = datasourceInfo.get();
+        while (cacheEntry == null){
+            cacheEntry = DirectConnectionCache.checkoutDatasource(preferredEventLoop,userAuthentication, additionalConnInfo, site);
+
+            if (datasourceInfo.compareAndSet(null, cacheEntry))
+                break;
+
+            DirectConnectionCache.returnDatasource(cacheEntry);
+            cacheEntry = datasourceInfo.get();
+        }
+        return cacheEntry;
+    }
+
+
+    private void dircon_releaseConnection(boolean isStateValid) throws PESQLException {
+        if (wSingleStatement != null) {
+            wSingleStatement.close();
+            wSingleStatement = null;
+        }
+
+        DirectConnectionCache.CachedConnection currentConnection = datasourceInfo.getAndSet(null);
+
+        if (currentConnection != null){
+            if (isStateValid) {
+                DirectConnectionCache.returnDatasource(currentConnection);
+            } else {
+                DirectConnectionCache.discardDatasource(currentConnection);
+            }
+        }
+    }
+
+
+    public CommandChannel getDirectChannel() throws PESQLException {
+        return this.dircon_getConnection();
+    }
+
 }

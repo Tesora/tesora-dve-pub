@@ -23,24 +23,29 @@ package com.tesora.dve.db;
 
 import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.mysql.MysqlCommand;
-import com.tesora.dve.db.mysql.MysqlCommandResultsProcessor;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.db.mysql.*;
+
+import java.nio.charset.Charset;
+import java.util.UUID;
 
 /**
  *
  */
 public interface CommandChannel {
     String getName();
+    UUID getPhysicalID();
+    Charset getTargetCharset();
+    Charset lookupCurrentConnectionCharset();
     StorageSite getStorageSite();
     DBConnection.Monitor getMonitor();
 
     boolean isOpen();
-    void write(MysqlCommand command);
-    void writeAndFlush(MysqlCommand command);
-    void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
-    void writeAndFlush(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
+    boolean isWritable();
+    void write(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
+    void writeAndFlush(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor);
 
     CompletionHandle<Boolean> getExceptionDeferringPromise();
     Exception getAndClearPendingException();
+
+
 }

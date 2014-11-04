@@ -25,7 +25,8 @@ import com.tesora.dve.concurrent.CompletionHandle;
 
 import java.util.List;
 
-import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.db.mysql.MysqlMessage;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
@@ -37,56 +38,30 @@ import com.tesora.dve.server.messaging.SQLCommand;
 public class MysqlStmtCloseDiscarder extends DBResultConsumer  {
 	
 	final MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt;
+    final Long pstmtID;
 
 	public MysqlStmtCloseDiscarder(
 			MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt) {
 		super();
 		this.pstmt = pstmt;
+        this.pstmtID = null;
 	}
 
-	@Override
-	public void setSenderCount(int senderCount) {
-	}
-
-	@Override
-	public boolean hasResults() {
-		return false;
-	}
-
-	@Override
-	public long getUpdateCount() throws PEException {
-		return 0;
-	}
-
-	@Override
-	public void setResultsLimit(long resultsLimit) {
-	}
-
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows)
-			throws PEException {
-	}
-
-	@Override
-	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-	}
-
-	@Override
-	public void setNumRowsAffected(long rowcount) {
-	}
+    public MysqlStmtCloseDiscarder(long pstmtID) {
+        super();
+        this.pstmt = null;
+        this.pstmtID = pstmtID;
+    }
 
     @Override
-    public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		return new MysqlStmtCloseCommand(pstmt,promise);
-	}
-
-	@Override
-	public boolean isSuccessful() {
-		return false;
-	}
-
-	@Override
-	public void rollback() {
+    public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+        int preparedID;
+        if (pstmt != null)
+            preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
+        else
+            preparedID = (int)pstmtID.longValue();
+        MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
+        return new Bundle(message, new MysqlStmtCloseCommand(preparedID, promise) );
 	}
 
 }

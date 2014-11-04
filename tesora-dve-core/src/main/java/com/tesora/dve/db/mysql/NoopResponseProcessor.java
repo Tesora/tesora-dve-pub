@@ -21,17 +21,37 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.mysql.libmy.MyMessage;
+import com.tesora.dve.exceptions.PEException;
+import io.netty.channel.ChannelHandlerContext;
 
-public abstract class MysqlConcurrentCommand extends MysqlCommand {
+/**
+ *
+ */
+public class NoopResponseProcessor implements MysqlCommandResultsProcessor {
+    public static final NoopResponseProcessor NOOP = new NoopResponseProcessor();
+    @Override
+    public void active(ChannelHandlerContext ctx) {
 
-	private CompletionHandle<Boolean> promise;
+    }
 
-	public MysqlConcurrentCommand(CompletionHandle<Boolean> promise) {
-		this.promise = promise;
-	}
+    @Override
+    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        return false;
+    }
 
-	public CompletionHandle<Boolean> getCompletionHandle() {
-		return promise;
-	}
+    @Override
+    public void packetStall(ChannelHandlerContext ctx) throws PEException {
+
+    }
+
+    @Override
+    public void failure(Exception e) {
+
+    }
+
+    @Override
+    public void end(ChannelHandlerContext ctx) {
+
+    }
 }

@@ -21,6 +21,13 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
+import com.tesora.dve.charset.NativeCharSetCatalog;
+import com.tesora.dve.common.DBType;
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.DelegatingCompletionHandle;
+import com.tesora.dve.db.mysql.portal.protocol.*;
+import com.tesora.dve.exceptions.PECommunicationsException;
+import com.tesora.dve.exceptions.PESQLStateException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
@@ -35,35 +42,25 @@ import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Objects;
-import com.tesora.dve.charset.NativeCharSetCatalog;
-import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.DelegatingCompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
-import com.tesora.dve.exceptions.PECommunicationsException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
@@ -97,6 +94,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
 	Bootstrap mysqlBootstrap;
 	EventLoopGroup connectionEventGroup;
+    private UUID physicalID;
 	private Channel channel;
 	private ChannelFuture pendingConnection;
 	private MysqlClientAuthenticationHandler authHandler;
@@ -106,6 +104,8 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
 	private boolean pendingUpdate = false;
 	private boolean hasActiveTransaction = false;
+
+    private AtomicReference<Charset> targetCharset = new AtomicReference<>();
 
     Map<String,String> currentSessionVariables = new HashMap<>();
     Map<String,String> sessionDefaults = new HashMap<>();
@@ -167,7 +167,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 		.handler(new ChannelInitializer<Channel>() {
 			@Override
 			protected void initChannel(Channel ch) throws Exception {
-				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL));           
+				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL), targetCharset);
 
                 if (PACKET_LOGGER)
                     ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
@@ -184,6 +184,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 
 //		System.out.println("Create connection: Allocated " + totalConnections.incrementAndGet() + ", active " + activeConnections.incrementAndGet());
 		channel = pendingConnection.channel();
+        physicalID = UUID.randomUUID();
 
         //TODO: this was moved from execute to connect, which avoids blocking on the execute to be netty friendly, but causes lag on checkout.  Should make this event driven like everything else. -sgossard
         syncToServerConnect();
@@ -204,7 +205,11 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
     //syntactic sugar for some of the inner utility calls.
     protected void execute(SQLCommand sql, CompletionHandle<Boolean> promise){
         //TODO: it would be good to replace this with a simple command, especially since we don't care about the result set (but watch out for deferred exceptions). -sgossard
-        DBEmptyTextResultConsumer.INSTANCE.dispatch(this,sql, promise);
+        if (promise == null)
+            promise = getExceptionDeferringPromise();
+
+        MysqlMessage message = MSPComQueryRequestMessage.newMessage(sql.getBytes());
+        this.writeAndFlush(message, new PassFailProcessor(promise));
     }
 
     /**
@@ -215,23 +220,13 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
      * @param resultsProcessor
      */
     @Override
-    public void write(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
-        this.sendCommand( new SimpleMysqlCommand(outboundMessage,resultsProcessor), false);
+    public void write(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+        this.sendCommand( SimpleMysqlCommandBundle.bundle(outboundMessage,resultsProcessor), false);
     }
 
     @Override
-    public void writeAndFlush(MyMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
-        this.sendCommand( new SimpleMysqlCommand(outboundMessage,resultsProcessor), true);
-    }
-
-    @Override
-    public void write(MysqlCommand command){
-        sendCommand(command,false);
-    }
-
-    @Override
-    public void writeAndFlush(MysqlCommand command){
-        sendCommand(command,true);
+    public void writeAndFlush(MysqlMessage outboundMessage, MysqlCommandResultsProcessor resultsProcessor){
+        this.sendCommand(SimpleMysqlCommandBundle.bundle(outboundMessage, resultsProcessor), true);
     }
 
     /**
@@ -239,7 +234,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
      * request and response, and writing the request and reading/dispatching the response is handled in the pipeline.
      * @param command
      */
-    protected void sendCommand(MysqlCommand command, boolean shouldFlush){
+    protected void sendCommand(MysqlCommandBundle command, boolean shouldFlush){
         try {
             CommandChannel connection = this;
 
@@ -251,19 +246,27 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
                     else
                         channel.write(command);
                 } else {
-					//                    deferredException.printStackTrace(System.out);
-                    command.failure(deferredException); //if we are using the deferred error handle again, we'll just defer the exception again.
+                    command.getResponseProcessor().failure(deferredException); //if we are using the deferred error handle again, we'll just defer the exception again.
                 }
             } else {
-                command.failure(new PECommunicationsException("Channel closed: " + connection));
+                command.getResponseProcessor().failure(new PECommunicationsException("Channel closed: " + connection));
             }
         } catch (Throwable t){
-            command.failure(PEException.wrapThrowableIfNeeded(t));
+            command.getResponseProcessor().failure(PEException.wrapThrowableIfNeeded(t));
         }
     }
 
     public String getName() {
         return site.getName();
+    }
+
+    @Override
+    public UUID getPhysicalID() {
+        return physicalID;
+    }
+
+    public Charset getTargetCharset(){
+        return targetCharset.get();
     }
 
     @Override
@@ -290,7 +293,12 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
         return channel.isOpen();
     }
 
-	private void syncToServerConnect() {
+    @Override
+    public boolean isWritable() {
+        return channel.isWritable();
+    }
+
+    private void syncToServerConnect() {
 		if (pendingConnection != null) {
 			pendingConnection.syncUninterruptibly();
 			pendingConnection = null;
@@ -306,7 +314,8 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 		if (connectionEventGroup != null) {
 			if (channel.isOpen()) {
                 try {
-                    channel.writeAndFlush(new MysqlQuitCommand());
+                    MysqlMessage message = MSPComQuitRequestMessage.newMessage();
+                    this.writeAndFlush(message, new MysqlQuitCommand());
                 } finally {
 				    channel.close().syncUninterruptibly();
                 }
@@ -450,12 +459,6 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
         return mysqlError.getErrorNumber() == 1397 || //XAER_NOTA, XA id is completely unknown.
                (mysqlError.getErrorNumber() == 1399 && mysqlError.getErrorMsg().contains("NON-EXISTING")) //XAER_RMFAIL, because we are in NON-EXISTING state
         ;
-    }
-
-    @Override
-    public void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise) {
-        String setTimestampSQL = "SET TIMESTAMP=" + referenceTime + ";";
-        execute(setTimestampSQL, promise);
     }
 
     @Override

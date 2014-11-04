@@ -24,7 +24,6 @@ package com.tesora.dve.common.catalog;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +38,7 @@ import javax.persistence.OrderBy;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import com.tesora.dve.worker.WorkerFactory;
 import io.netty.channel.EventLoopGroup;
 import org.apache.log4j.Logger;
 
@@ -55,8 +55,6 @@ import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.PEStorageSite.TCacheSite;
 import com.tesora.dve.worker.AdditionalConnectionInfo;
-import com.tesora.dve.worker.MasterMasterWorker;
-import com.tesora.dve.worker.SingleDirectWorker;
 import com.tesora.dve.worker.UserAuthentication;
 import com.tesora.dve.worker.Worker;
 
@@ -68,15 +66,7 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 
 	private static final long serialVersionUID = 1L;
 
-	static Map<String, Worker.Factory> workerFactoryMap = new HashMap<String, Worker.Factory>() {
-		private static final long serialVersionUID = 1L;
-		{
-			put(SingleDirectWorker.HA_TYPE, new SingleDirectWorker.Factory());
-			put(MasterMasterWorker.HA_TYPE, new MasterMasterWorker.Factory());
-		}
-	};
-
-	@Id
+    @Id
 	@GeneratedValue
 	int id;
 
@@ -98,11 +88,11 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 	public PersistentSite(String name, SiteInstance siteInstance) throws PEException {
 		this(name);
 		addInstance(siteInstance);
-		haType = SingleDirectWorker.HA_TYPE;
+		haType = WorkerFactory.SINGLE_DIRECT_HA_TYPE;
 	}
 
 	public PersistentSite(String name) {
-		this(name, SingleDirectWorker.HA_TYPE);
+		this(name, WorkerFactory.SINGLE_DIRECT_HA_TYPE);
 	}
 
 	public PersistentSite(String name, String haType) {
@@ -217,28 +207,19 @@ public class PersistentSite implements CatalogEntity, StorageSite {
 		return getWorkerFactory().newWorker(auth, additionalConnInfo, this, preferredEventLoop);
 	}
 
-	public static Worker.Factory getWorkerFactory(String haType) {
-		Worker.Factory theFactory;
-		if (workerFactoryMap.containsKey(haType))
-			theFactory = workerFactoryMap.get(haType);
-		else
-			throw new PECodingException("Invalid ha type for worker lookup for type " + haType);
-		return theFactory;
+    protected WorkerFactory getWorkerFactory() {
+		return WorkerFactory.getWorkerFactory(getHAType());
 	}
 
-	protected Worker.Factory getWorkerFactory() {
-		return getWorkerFactory(getHAType());
+	public static void addWorkerFactory(String haType, WorkerFactory factory) {
+        WorkerFactory.registerFactory(haType, factory);
+    }
+
+    public static boolean isValidHAType(String haType) {
+		return WorkerFactory.hasFactoryFor(haType);
 	}
 
-	public static void addWorkerFactory(String haType, Worker.Factory factory) {
-		workerFactoryMap.put(haType, factory);
-	}
-
-	public static boolean isValidHAType(String haType) {
-		return workerFactoryMap.containsKey(haType);
-	}
-
-	@Override
+    @Override
 	public String toString() {
 		return getClass().getSimpleName() + "(" + name + "/" + id + "," + getMasterInstance() + ")";
 	}

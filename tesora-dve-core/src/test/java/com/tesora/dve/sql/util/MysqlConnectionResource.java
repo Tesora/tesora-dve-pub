@@ -41,9 +41,11 @@ import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.mysql.MysqlConnection;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
+import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
 import com.tesora.dve.db.mysql.portal.protocol.ClientCapabilities;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -122,7 +124,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlTextResultChunkProvider results = new MysqlTextResultChunkProvider();
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        results.dispatch(mysqlConn, sqlc, promise);
+        results.getDispatchBundle(mysqlConn, sqlc, promise).writeAndFlush(mysqlConn);
         promise.sync();
 		
 		return new ProxyConnectionResourceResponse(results);
@@ -133,8 +135,8 @@ public class MysqlConnectionResource extends ConnectionResource {
 
 		MysqlPrepareStatementCollector collector = new MysqlPrepareStatementCollector();
 
-        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-		collector.dispatch(mysqlConn, new SQLCommand(this.encoding, stmt), promise);
+        PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();		
+        collector.getDispatchBundle(mysqlConn, new SQLCommand(this.encoding, stmt), promise).writeAndFlush(mysqlConn);;        
         promise.sync();
 		return collector.getPreparedStatement();
 	}
@@ -149,7 +151,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		
 		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand(this.encoding, "EXEC PREPARED"), parameters);
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
-        collector.dispatch(mysqlConn, sqlc, promise);
+        collector.getDispatchBundle(mysqlConn, sqlc, promise).writeAndFlush(mysqlConn);
         promise.sync();
 		
 		return new ProxyConnectionResourceResponse(collector);
@@ -160,7 +162,9 @@ public class MysqlConnectionResource extends ConnectionResource {
 		@SuppressWarnings("unchecked")
 
 		MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = (MyPreparedStatement<MysqlGroupedPreparedStatementId>) id;
-        mysqlConn.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
+        int preparedID = (int)pstmt.getStmtId().getStmtId(mysqlConn.getPhysicalID());
+        MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
+        mysqlConn.writeAndFlush(message, new MysqlStmtCloseCommand(preparedID, new PEDefaultPromise<Boolean>()));
     }
 
 	@Override

@@ -26,6 +26,7 @@ import java.sql.SQLException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.errmap.InternalErrors;
@@ -66,6 +67,9 @@ public class TriggerDDLTest extends SchemaTest {
 		conn = null;
 	}
 
+    //TODO: this test fails on MariaDB, due to some weirdness with the returned types being different between MariaDB and Percona/Mysql if a function is nested.  Issue logged as PE-1664. -sgossard
+	// yeah, but don't disable the entire test - we'll forget about it and then lose the damn coverage.  that's why we have the ignore object
+	// for the asserted result sets.
 	@Test
 	public void testCreate() throws Throwable {
 		conn.execute("create table A (id int auto_increment, event varchar(32), primary key (id)) broadcast distribute");
@@ -85,7 +89,7 @@ public class TriggerDDLTest extends SchemaTest {
 						"utf8","utf8_general_ci","utf8_general_ci"));
 //		System.out.println(conn.printResults("select * from information_schema.triggers where trigger_schema = 'adb'"));
 		conn.assertResults("select * from information_schema.triggers where trigger_schema = 'adb'",
-				br(nr,"def","adb","btrig","INSERT","def","adb","B",0L,null,
+				br(nr,"def","adb","btrig","INSERT","def","adb","B",ignore,null,
 						"INSERT INTO A (event) VALUES ('insert')",
 						"ROW","AFTER",null,null,"OLD","NEW",null,
 						"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci"));
@@ -138,6 +142,25 @@ public class TriggerDDLTest extends SchemaTest {
 				
 	}
 	
+	@Test
+	public void testInvalidColumns() throws Throwable {
+		conn.execute("create table A (a int, b int, c int, primary key(a)) random distribute");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("create trigger a_insert_trig before insert on A for each row select OLD.a");
+			}
+		}.assertSqlError(SQLException.class, MySQLErrors.noSuchRowInTrg, "OLD", "INSERT");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				conn.execute("create trigger a_delete_trig before delete on A for each row select NEW.a");
+			}
+		}.assertSqlError(SQLException.class, MySQLErrors.noSuchRowInTrg, "NEW", "DELETE");
+	}
+
 	@Test
 	public void testDrop() throws Throwable {
 		// DROP TRIGGER [IF EXISTS] [schema_name.]trigger_name

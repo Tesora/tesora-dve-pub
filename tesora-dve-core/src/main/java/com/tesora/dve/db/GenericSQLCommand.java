@@ -34,6 +34,7 @@ import java.util.Set;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.PersistentSite;
+import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.server.global.HostService;
@@ -58,6 +59,14 @@ import com.tesora.dve.worker.Worker;
 // instead it uses a 'format' string (non literal parts of the final result)
 // and a list of offsets for where literals exist.
 public class GenericSQLCommand {
+
+    public interface DBNameResolver {
+        String getNameOnSite(String dbName);
+
+        int getSiteIndex();
+
+        StorageSite getWorkerSite();
+    }
 
 	private static enum Tokens {
 
@@ -449,6 +458,11 @@ public class GenericSQLCommand {
 		this.hasLimit = hasLimit;
 	}
 
+    public Charset getEncoding(){
+        return encoding;
+    }     
+        
+
 	private static FragmentTable chopToFragments(final Charset encoding, final String value, final List<OffsetEntry> entries) {
 		final FragmentTable fragments = new FragmentTable((2 * entries.size()) + 1);
 		int lastEntryIndex = 0;
@@ -716,7 +730,7 @@ public class GenericSQLCommand {
 	 * Here we resolve late entries whose values depend on the worker/site they
 	 * execute on.
 	 */
-	public GenericSQLCommand resolveLateEntries(final Worker w) {
+	public GenericSQLCommand resolveLateEntries(final GenericSQLCommand.DBNameResolver w) {
 		if (!this.commandFragments.hasIndexEntries()) {
 			return this;
 		}

@@ -24,6 +24,7 @@ package com.tesora.dve.sql.schema.mt;
 import java.sql.ResultSet;
 import java.util.LinkedHashSet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.log4j.Logger;
 
@@ -34,19 +35,17 @@ import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.dbc.ServerDBConnection;
 import com.tesora.dve.sql.util.Pair;
 
-public class TableGarbageCollector extends Thread {
+public class TableGarbageCollector implements Runnable {
 
 	private static final Logger logger = Logger.getLogger( TableGarbageCollector.class );
 
-
+    private AtomicReference<Thread> execThread = new AtomicReference<>(null);
 	private AtomicInteger interval;
 	private AtomicInteger request;
 	
 	private ServerDBConnection persistentConnection;
 	
 	public TableGarbageCollector(int cleanupInterval) {
-		super("AdaptiveMTGarbageCollector");
-		setDaemon(true);
 		persistentConnection = null;
 		request = new AtomicInteger(1);
 		interval = new AtomicInteger(cleanupInterval);
@@ -165,23 +164,21 @@ public class TableGarbageCollector extends Thread {
 	public void run() {
 		logger.info("Starting TableCleanup thread with interval=" + interval.get());
 
-		boolean running = true;
-		while (running) {
+		while ( isActiveThread(Thread.currentThread()) ) {
 			try {
-				sleep(interval.get());
+				Thread.sleep(interval.get());
 				doCleanup();
-				if ( Thread.currentThread().isInterrupted() )
-					running = false;
 			} catch (InterruptedException e) {
-				running = false;
-			} catch (Throwable t) {
+				//ignore.
+			} catch (Error td) {
+                logger.error("Caught severe error in TableCleanup, stopping table GC.",td);
+                throw td;
+            } catch (Throwable t) {
 				logger.error("Exception returned from cleanup",t);
 			}
-			
-			if ( !running )
-				logger.info("Stopping TableCleanup thread");
-		}
 
+		}
+        logger.info("Stopping TableCleanup thread");
 		// we're leaving, close the connection if need be.
 		try {
 			closeConnection();
@@ -190,5 +187,30 @@ public class TableGarbageCollector extends Thread {
 		}
 		
 	}
-	
+
+    public void startTableCleanup() {
+        Thread newThread  = new Thread(this,"AdaptiveMTGarbageCollector");
+        newThread.setDaemon(true);
+        if (execThread.compareAndSet(null,newThread))
+            newThread.start();
+    }
+
+    public boolean isActive(){
+        return execThread.get() != null;
+    }
+
+    public boolean isActiveThread(Thread thread){
+        return execThread.get() == thread;
+    }
+
+    public void stopTableCleanup() {
+        Thread existingThread = execThread.getAndSet(null);
+        if (existingThread != null)
+            try {
+                existingThread.interrupt();
+                existingThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+    }
 }

@@ -22,7 +22,6 @@ package com.tesora.dve.server.messaging;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.server.connectionmanager.ConnectionInfo;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
@@ -41,7 +40,7 @@ public class WorkerExecuteKillRequest extends WorkerExecuteRequest {
 	}
 
 	@Override
-	protected void executeStatement(Worker w, SQLCommand stmtCommand, DBResultConsumer resultConsumer, CompletionHandle<Boolean> callersResults) {
+	protected void executeStatement(Worker w, SQLCommand stmtCommand, CompletionHandle<Boolean> callersResults) {
 
 		ConnectionInfo connectionInfo = PerHostConnectionManager.INSTANCE.getConnectionInfo(connectionId);
 		if (connectionInfo == null) {
@@ -60,8 +59,10 @@ public class WorkerExecuteKillRequest extends WorkerExecuteRequest {
 
 		StringBuilder sql = new StringBuilder(stmtCommand.getRawSQL());
 		sql.append(' ').append(siteConnId);
-		super.executeStatement(w, new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), sql.toString()), resultConsumer,
-				callersResults);
+		super.executeStatement(
+                w, 
+                new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), sql.toString()),
+				callersResults);		
 	}
 
 }

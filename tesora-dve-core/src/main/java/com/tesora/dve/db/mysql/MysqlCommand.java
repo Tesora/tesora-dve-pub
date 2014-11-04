@@ -23,25 +23,16 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.clock.Timer;
 import com.tesora.dve.clock.TimingService;
+import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
-import com.tesora.dve.singleton.Singletons;
 import io.netty.channel.ChannelHandlerContext;
-
-import java.nio.charset.Charset;
 
 import com.tesora.dve.exceptions.PEException;
 
 public abstract class MysqlCommand implements MysqlCommandResultsProcessor {
 
-    //these Timers are used to measure how much time is being spent on the backend for a given frontend request.
-    //the frontend timer is picked up from a thread local, since changing all the subclasses of MysqlCommand and their callers would be prohibitive.
-
-    Timer frontendTimer = Singletons.require(TimingService.class).getTimerOnThread();
-
-    //a place for MysqlCommandSenderHandler to hang backend timing info for this command.  Not great encapsulation / ood, ,but makes life much easier.
-    protected Timer commandTimer;
-
-    abstract void execute(ChannelHandlerContext ctx, Charset charset) throws PEException;
+    protected MysqlCommand() {
+    }
 
     @Override
     abstract public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException;
@@ -55,13 +46,8 @@ public abstract class MysqlCommand implements MysqlCommandResultsProcessor {
     @Override
     abstract public void active(ChannelHandlerContext ctx);
 
+    @Override
+    public void end(ChannelHandlerContext ctx) {
 
-    final void executeInContext(ChannelHandlerContext ctx, Charset charset) throws PEException {
-		execute(ctx, charset);
-	}
-
-    public boolean isExpectingResults(ChannelHandlerContext ctx){
-        return true;
     }
-
 }

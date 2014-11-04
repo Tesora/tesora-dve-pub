@@ -24,6 +24,7 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.*;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
 import io.netty.channel.ChannelHandlerContext;
@@ -51,7 +52,7 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 	}
 
     @Override
-    public MysqlCommand  writeCommandExecutor(final CommandChannel channel, SQLCommand sql, final CompletionHandle<Boolean> promise) {
+    public Bundle getDispatchBundle(final CommandChannel channel, SQLCommand sql, final CompletionHandle<Boolean> promise) {
         //TODO: this executor is weird.  It sends a prepare to a backend site, forwards the response to a frontend site (with a tweaked stmtID), and then closes the backend prepared statement. -sgossard
 		final MysqlPrepareStatementForwarder resultForwarder = this;
 		final PEDefaultPromise<Boolean> preparePromise = new PEDefaultPromise<Boolean>();
@@ -59,14 +60,16 @@ public class MysqlPrepareStatementForwarder extends MysqlPrepareParallelConsumer
 			@Override
 			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = resultForwarder.getPreparedStatement();
-				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt,promise));
+                int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
+                MysqlMessage message = MSPComStmtCloseRequestMessage.newMessage(preparedID);
+				channel.writeAndFlush(message, new MysqlStmtCloseCommand(preparedID, promise));
 			}
 			@Override
 			public void failure(Exception e) {
 				promise.failure(e);
 			}
 		});
-		return super.writeCommandExecutor(channel, sql, preparePromise);
+		return super.getDispatchBundle(channel, sql, preparePromise);
 	}
 
 	@Override

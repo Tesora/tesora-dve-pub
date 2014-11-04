@@ -25,51 +25,38 @@ import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.exceptions.PEException;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.nio.charset.Charset;
-
 /**
  *
  */
-public class SimpleMysqlCommand extends MysqlCommand {
-    final MyMessage outboundMessage;
-    final MysqlCommandResultsProcessor processor;
-    final boolean shouldFlush;
+public class DelegatingResultsProcessor implements MysqlCommandResultsProcessor {
+    MysqlCommandResultsProcessor delegate;
 
-    public SimpleMysqlCommand(MyMessage outboundMessage, MysqlCommandResultsProcessor processor) {
-        this(outboundMessage,processor,false);
-    }
-
-    public SimpleMysqlCommand(MyMessage outboundMessage, MysqlCommandResultsProcessor processor, boolean shouldFlush) {
-        this.outboundMessage = outboundMessage;
-        this.processor = processor;
-        this.shouldFlush = shouldFlush;
-    }
-
-    @Override
-    void execute(ChannelHandlerContext ctx, Charset charset) throws PEException {
-        if (shouldFlush)
-            ctx.writeAndFlush(outboundMessage);
-        else
-            ctx.write(outboundMessage);
-    }
-
-    @Override
-    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
-        return processor.processPacket(ctx,message);
-    }
-
-    @Override
-    public void packetStall(ChannelHandlerContext ctx) throws PEException {
-        processor.packetStall(ctx);
-    }
-
-    @Override
-    public void failure(Exception e) {
-        processor.failure(e);
+    public DelegatingResultsProcessor(MysqlCommandResultsProcessor delegate) {
+        this.delegate = delegate;
     }
 
     @Override
     public void active(ChannelHandlerContext ctx) {
-        processor.active(ctx);
+        delegate.active(ctx);
+    }
+
+    @Override
+    public boolean processPacket(ChannelHandlerContext ctx, MyMessage message) throws PEException {
+        return delegate.processPacket(ctx, message);
+    }
+
+    @Override
+    public void packetStall(ChannelHandlerContext ctx) throws PEException {
+        delegate.packetStall(ctx);
+    }
+
+    @Override
+    public void failure(Exception e) {
+        delegate.failure(e);
+    }
+
+    @Override
+    public void end(ChannelHandlerContext ctx) {
+        delegate.end(ctx);
     }
 }

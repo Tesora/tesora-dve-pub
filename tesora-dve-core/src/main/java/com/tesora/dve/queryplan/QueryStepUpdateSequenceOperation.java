@@ -45,7 +45,6 @@ public class QueryStepUpdateSequenceOperation extends QueryStepOperation {
 	
 	@Override
 	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
-		resultConsumer.setSenderCount(ops.size());
 		for (QueryStepOperation qso : ops)
 			qso.executeSelf(estate, wg, resultConsumer);
 	}

@@ -53,7 +53,6 @@ public interface DBConnection extends CommandChannel {
 
     void updateSessionVariables(Map<String,String> desiredVariables, SetVariableSQLBuilder setBuilder, CompletionHandle<Boolean> promise);
     void setCatalog(String databaseName, CompletionHandle<Boolean> promise);
-    void setTimestamp(long referenceTime, CompletionHandle<Boolean> promise);
 
     @Deprecated
 	void cancel();
@@ -61,5 +60,4 @@ public interface DBConnection extends CommandChannel {
 	boolean hasPendingUpdate();
 	boolean hasActiveTransaction();
 	int getConnectionId();
-	public Charset lookupCurrentConnectionCharset();
 }

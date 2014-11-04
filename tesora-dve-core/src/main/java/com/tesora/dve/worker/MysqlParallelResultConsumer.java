@@ -223,10 +223,6 @@ public abstract class MysqlParallelResultConsumer extends DBResultConsumer imple
 		return infoString;
 	}
 
-	public int getSenderCount() {
-		return senderCount;
-	}
-
 	public long getLastInsertId() {
 		return lastInsertId;
 	}

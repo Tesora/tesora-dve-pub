@@ -23,36 +23,27 @@ package com.tesora.dve.server.messaging;
 
 
 import java.sql.ResultSet;
-
+import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.concurrent.PEDefaultPromise;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
-import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;
 import com.tesora.dve.worker.Worker;
-import com.tesora.dve.worker.WorkerStatement;
 
 public class WorkerExecuteRequest extends WorkerRequest {
-	
-	static Logger logger = Logger.getLogger( WorkerExecuteRequest.class );
-
 	private static final long serialVersionUID = 1L;
 
 	PersistentDatabase defaultDatabase;
 	final SQLCommand command;
-
-	boolean recoverLocks;
 
 	public WorkerExecuteRequest(SSContext ssContext, SQLCommand command) {
 		super(ssContext);
@@ -63,19 +54,13 @@ public class WorkerExecuteRequest extends WorkerRequest {
 		defaultDatabase = database;
 		return this;
 	}
-
-	public WorkerExecuteRequest withLockRecovery(boolean recoverLocks) {
-		this.recoverLocks = recoverLocks;
-		return this;
-	}
 	
 	@Override
-	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> promise) {
-		executeStatement(w, getCommand(), resultConsumer, promise);
+	public void executeRequest(Worker w, CompletionHandle<Boolean> promise) {
+		executeStatement(w, getCommand(), promise);
 	}
 	
-	protected void executeStatement(final Worker w, final SQLCommand stmtCommand, final DBResultConsumer resultConsumer,
-			final CompletionHandle<Boolean> callersResult) {
+	protected void executeStatement(final Worker w, final SQLCommand stmtCommand, final CompletionHandle<Boolean> callersResult) {
 
         try {
             w.setCurrentDatabase(defaultDatabase);
@@ -84,98 +69,12 @@ public class WorkerExecuteRequest extends WorkerRequest {
 
             if (isAutoTransact())
                 w.startTrans(getTransId());
-		
 
-			String savepointId = null;
-			
-			if (recoverLocks) {
-                savepointId = executeSavepoint(w);
-			}
-
-            final String finalSavepoint = savepointId;
-
-			final WorkerStatement stmt = w.getStatement();
-
-            CompletionHandle<Boolean> executeTracker = new PEDefaultPromise<Boolean>(){
-                @Override
-                public void failure(Exception t) {
-                    if (logger.isDebugEnabled())
-                        logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
-                                .append(stmtCommand)
-                                .append(")").append(" except=")
-						.append(t.getMessage())
-						.toString());
-
-                    callersResult.failure(t);
-                }
-
-                @Override
-                public void success(Boolean returnValue) {
-                    try {
-                        long rowCount = -1;
-                        final boolean hasResults = false;
-                        ColumnSet rsmd = null;
-
-                        if (recoverLocks) {
-                            ResultSet resultSet = stmt.getResultSet();
-                            boolean rowsFound = (hasResults && resultSet != null && resultSet.isBeforeFirst())
-                                    || (!hasResults && resultConsumer.getUpdateCount() > 0);
-                            if (!rowsFound) {
-                                rollbackToSavepoint(w, finalSavepoint);
-                            }
-                        }
-
-                        rowCount = resultConsumer.getUpdateCount();
-                        new ExecuteResponse(hasResults, rowCount, rsmd ).from(w.getAddress()).success();
-                        callersResult.success(true);
-
-                        if (logger.isDebugEnabled())
-                            logger.debug(new StringBuilder("WorkerExecuteRequest/w(").append(w.getName()).append("/").append(w.getCurrentDatabaseName()).append("): exec'd \"")
-                                    .append(stmtCommand).append("\" updating ").append(rowCount).append(" rows (hasResults=")
-                                    .append(hasResults ? "true" : "false")
-                                    .append(")")
-                                    .toString());
-
-                    } catch (Exception e){
-                        callersResult.failure(e);
-                    }
-                }
-
-            };
-
-            stmt.execute(getConnectionId(), stmtCommand, resultConsumer,executeTracker);
+            this.execute(w, stmtCommand, callersResult);
 		} catch (Exception pe) {
 			callersResult.failure(pe);
 		}
 	}
-
-    private void rollbackToSavepoint(Worker w, String savepointId) throws PEException {
-        try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-			w.getStatement().execute(getConnectionId(),
-					new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), "rollback to " + savepointId),
-					DBEmptyTextResultConsumer.INSTANCE, promise);
-            promise.sync();
-        } catch (Exception e) {
-            throw new PEException(e);
-        }
-    }
-
-    private String executeSavepoint(Worker w) throws PEException {
-        String savepointId;
-        savepointId = "barrier" + w.getUniqueValue();
-
-        try {
-            PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
-			w.getStatement().execute(getConnectionId(),
-					new SQLCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), "savepoint " + savepointId),
-					DBEmptyTextResultConsumer.INSTANCE, promise);
-            promise.sync();
-        } catch (Exception e) {
-            throw new PEException(e);
-        }
-        return savepointId;
-    }
 
     @Override
 	public String toString() {

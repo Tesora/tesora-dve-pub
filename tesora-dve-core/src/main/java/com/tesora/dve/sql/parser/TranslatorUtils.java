@@ -123,6 +123,7 @@ import com.tesora.dve.sql.node.expression.Subquery;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TableJoin;
 import com.tesora.dve.sql.node.expression.TriggerTableInstance;
+import com.tesora.dve.sql.node.expression.TriggerTableInstance.EarlyTriggerTableCollector;
 import com.tesora.dve.sql.node.expression.ValueSource;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.WhenClause;
@@ -4360,8 +4361,15 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			final String targetTableName = targetTable.getName().getUnquotedName().get();
 			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_UNIQUE_KEY_ON_TRG_TARGET, targetTableName));
 		}
-		
-    	String origStmt = getInputSQL();
+
+		final EarlyTriggerTableCollector collector = TriggerTableInstance.collectTriggerTableReferences(body);
+		if ((triggerType == TriggerEvent.INSERT) && collector.hasBeforeColumns()) {
+			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_SUCH_ROW_IN_TRG, TriggerTime.BEFORE.getAlias().get(), TriggerEvent.INSERT.toString()));
+		} else if ((triggerType == TriggerEvent.DELETE) && collector.hasAfterColumns()) {
+			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_SUCH_ROW_IN_TRG, TriggerTime.AFTER.getAlias().get(), TriggerEvent.DELETE.toString()));
+		}
+
+		String origStmt = getInputSQL();
     	int l = triggerToken.getCharPositionInLine();
     	String rawSQL = origStmt.substring(l);
 		

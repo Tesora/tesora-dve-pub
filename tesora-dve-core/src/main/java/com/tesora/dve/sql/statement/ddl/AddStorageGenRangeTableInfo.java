@@ -26,6 +26,7 @@ import java.io.PrintStream;
 import java.util.Collections;
 import java.util.List;
 
+import com.tesora.dve.distribution.KeyValue;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
@@ -36,12 +37,7 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TempTableInstance;
 import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
-import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.schema.PEColumn;
-import com.tesora.dve.sql.schema.PETable;
-import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.TempTable;
-import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.*;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.InsertIntoValuesStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -51,20 +47,41 @@ import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
 
 public abstract class AddStorageGenRangeTableInfo extends RebalanceInfo {
-
 	protected final PETable srcTab;
+    protected final Database srcDB;
+    protected final KeyValue emptyDistKey;
 	protected final List<PEColumn> distColumns;
 	protected final int[] distKeyOffsets;
 	
 	public AddStorageGenRangeTableInfo(SchemaContext sc, PETable srcTab) {
 		super(sc);
 		this.srcTab = srcTab;
-		this.distColumns = srcTab.getDistributionVector(sc).getColumns(sc);
+        this.srcDB = srcTab.getDatabase(sc);
+        DistributionVector distributionVector = srcTab.getDistributionVector(sc);
+        this.distColumns = distributionVector.getColumns(sc);
 		this.distKeyOffsets = new int[distColumns.size()];
 		for(int i = 0; i < distKeyOffsets.length; i++) {
 			distKeyOffsets[i] = i;
 		}
+
+        this.emptyDistKey = distributionVector.buildEmptyKeyValue(sc);
 	}
+
+    public PETable getSourceTable(){
+        return srcTab;
+    }
+
+    public Name getName(){
+        return srcTab.getName();
+    }
+
+    public Database getDatabase(){
+        return srcDB;
+    }
+
+    public KeyValue getEmptyDistKey(){
+        return new KeyValue(emptyDistKey);
+    }
 
 	public abstract boolean hasSharedTable();
 	
@@ -98,14 +115,14 @@ public abstract class AddStorageGenRangeTableInfo extends RebalanceInfo {
 	}
 
 	public SQLCommand getChunkQuery() {
-		SelectStatement q = buildSkeleton();
+		SelectStatement q = buildSkeleton(false);
 		TableInstance ti = q.getTables().get(0).getBaseTable();
 		q.setProjection(buildProjection(ti,distColumns));
 		return getCommand(q);
 	}
 
 	public SQLCommand getDataChunkQuery() {
-		SelectStatement q = buildSkeleton();
+		SelectStatement q = buildSkeleton(false);
 		TableInstance ti = q.getTables().get(0).getBaseTable();
 		q.setProjection(buildProjection(ti,getFullColumns()));
 		return getCommand(q);
@@ -138,34 +155,36 @@ public abstract class AddStorageGenRangeTableInfo extends RebalanceInfo {
 			
 		});
 		final InsertIntoValuesStatement iivs = new InsertIntoValuesStatement(ti,columns,Collections.<List<ExpressionNode>> emptyList(),Collections.<ExpressionNode> emptyList(),new AliasInformation(),null);
+        iivs.setIgnore(true);
 		return getInsertPrefix(iivs);
 	}
 	
-	public void display(PrintStream ps) {
+	public void display(String prefix, String tab, PrintStream ps) {
+        String prefixWithIndent = prefix+tab;
 		ps.println();
-		ps.println(srcTab.getPEDatabase(cntxt).getName().get() + "." + srcTab.getName().get() + ": ");
+		ps.println(prefix + srcTab.getPEDatabase(cntxt).getName().get() + "." + srcTab.getName().get() + ": ");
 		if (!hasSharedTable()) {
-			ps.println("Side table:");
-			ps.println(getCreateSideTableStmt().getRawSQL());
-			ps.println(getDropSideTableStmt().getRawSQL());
+			ps.println(prefix + "Side table:");
+			ps.println(prefixWithIndent+ getCreateSideTableStmt().getRawSQL());
+			ps.println(prefixWithIndent+ getDropSideTableStmt().getRawSQL());
 		}
-		ps.println("Chunk query");
-		ps.println(getChunkQuery().getRawSQL());
-		ps.println("Data chunk query");
-		ps.println(getDataChunkQuery().getRawSQL());
-		ps.println("Side insert offsets");
+		ps.println(prefix + "Chunk query");
+		ps.println(prefixWithIndent + getChunkQuery().getRawSQL());
+		ps.println(prefix + "Data chunk query");
+		ps.println(prefixWithIndent + getDataChunkQuery().getRawSQL());
+		ps.println(prefix + "Side insert offsets");
 		StringBuffer buf = new StringBuffer();
 		for(int i = 0; i < getSideInsertOffsets().length; i++) {
 			if (i > 0) buf.append(", ");
 			buf.append(getSideInsertOffsets()[i]);
 		}
-		ps.println(buf.toString());
-		ps.println("Side insert prefix");
-		ps.println(getSideInsertPrefix().getRawSQL());
-		ps.println("Src insert prefix");
-		ps.println(getSrcInsertPrefix().getRawSQL());
-		ps.println("Delete");
-		ps.println(getSideDelete().getRawSQL());
+		ps.println(prefixWithIndent + buf.toString());
+		ps.println(prefix + "Side insert prefix");
+		ps.println(prefixWithIndent + getSideInsertPrefix().getRawSQL());
+		ps.println(prefix + "Src insert prefix");
+		ps.println(prefixWithIndent + getSrcInsertPrefix().getRawSQL());
+		ps.println(prefix + "Delete");
+		ps.println(prefixWithIndent + getSideDelete().getRawSQL());
 	}
 	
 
@@ -189,7 +208,7 @@ public abstract class AddStorageGenRangeTableInfo extends RebalanceInfo {
 		return proj;
 	}
 	
-	protected SelectStatement buildSkeleton() {
+	protected SelectStatement buildSkeleton(boolean withLimitAndOffset) {
 		final TableInstance ti = buildSrcTableInstance();
 		List<SortingSpecification> sorts = Functional.apply(distColumns, new UnaryFunction<SortingSpecification,PEColumn>() {
 
@@ -202,11 +221,15 @@ public abstract class AddStorageGenRangeTableInfo extends RebalanceInfo {
 			
 		});
 		// do I need to set positions?  hmmm
-		LimitSpecification limit = new LimitSpecification(new Parameter(null),new Parameter(null));
+        //TODO: leave out the limits for now, since using them requires iteration inside the rebalance. -sgossard
+
 		SelectStatement ss = new SelectStatement(new AliasInformation());
 		ss.setTables(ti);
 		ss.setOrderBy(sorts);
-		ss.setLimit(limit);
+        if (withLimitAndOffset) {
+            LimitSpecification limit = new LimitSpecification(new Parameter(null),new Parameter(null));
+            ss.setLimit(limit);
+        }
 		return ss;
 	}
 

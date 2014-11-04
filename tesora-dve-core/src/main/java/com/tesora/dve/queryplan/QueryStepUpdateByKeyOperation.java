@@ -23,8 +23,6 @@ package com.tesora.dve.queryplan;
 
 import javax.xml.bind.annotation.XmlType;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.DistributionModel;
@@ -38,7 +36,6 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.worker.WorkerGroup;
-import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 @XmlType(name="QueryStepUpdateByKeyOperation")
 public class QueryStepUpdateByKeyOperation extends QueryStepDMLOperation {
@@ -66,12 +63,9 @@ public class QueryStepUpdateByKeyOperation extends QueryStepDMLOperation {
 		WorkerGroup.MappingSolution mappingSolution = 
 				QueryStepOperation.mapKeyForUpdate(estate, wg.getGroup(), distValue);
 
-        final boolean savepointRequired = ssCon.getTransId() != null && mappingSolution.equals(MappingSolution.AllWorkers)
-				&& "5.6".equals(Singletons.require(HostService.class).getDveVersion(ssCon));
-
 		WorkerExecuteRequest req =
 				new WorkerExecuteRequest(ssCon.getTransactionalContext(), bindCommand(estate,command)).
-				onDatabase(database).withLockRecovery(savepointRequired);
+				onDatabase(database);
 		
 		resultConsumer.setRowAdjuster(dm.getUpdateAdjuster());
 		beginExecution();

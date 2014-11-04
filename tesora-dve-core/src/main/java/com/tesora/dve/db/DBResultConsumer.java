@@ -24,8 +24,13 @@ package com.tesora.dve.db;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.mysql.MysqlCommand;
+import com.tesora.dve.exceptions.PECodingException;
+import com.tesora.dve.exceptions.PECommunicationsException;
+import io.netty.channel.Channel;
+
 import java.util.List;
 
+import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
@@ -33,43 +38,47 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class DBResultConsumer {
+public abstract class DBResultConsumer implements GroupDispatch {
     static final Logger logger = LoggerFactory.getLogger(DBResultConsumer.class);
 
 	public interface RowCountAdjuster {
 		long adjust(long numRowsAffected, int siteCount);
 	}
 
-	abstract public void setSenderCount(int senderCount);
-
-    abstract public boolean hasResults();
-
-    abstract public long getUpdateCount() throws PEException;
-
-    abstract public void setResultsLimit(long resultsLimit);
-
-    abstract public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException;
-
-    abstract public void setRowAdjuster(RowCountAdjuster rowAdjuster);
-
-    abstract public void setNumRowsAffected(long rowcount);
-
-    abstract public boolean isSuccessful();
-
-    abstract public void rollback();
-
-    abstract public MysqlCommand writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise);
-
-    public final void dispatch(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise) {
-        /**TODO: In order to decouple the DBResultConsumer hierarchy from the DBConnection classes, this logic was moved
-         * out of MysqlConnection, and unfortunately still has some connection state related dependencies.
-         * after all the DBResultConsumer nastiness is untangled, it would be good to move the exception deferring
-         * stuff 100% out of the connection, and the isOpen/communication failure stuff 100% back in. -sgossard
-          */
-        if (promise == null)
-            promise = connection.getExceptionDeferringPromise();
-
-        MysqlCommand cmd = this.writeCommandExecutor(connection, sql, promise);
-        connection.writeAndFlush(cmd);
+    //****************************************
+    //Oriented around inspecting results after request dispatch..
+    //****************************************
+    public boolean hasResults() {
+        return false;
     }
+
+    public boolean isSuccessful() {return false;}
+
+    public long getUpdateCount() throws PEException {return 0L;}
+
+    //****************************************
+    //Oriented around changing processing behavior before request dispatch.
+    //****************************************
+    public void setRowAdjuster(RowCountAdjuster rowAdjuster){}
+    public void setResultsLimit(long resultsLimit){}
+
+    //****************************************
+    //Oriented around changing behavior after request dispatch.
+    //****************************************
+    public void inject(ColumnSet metadata, List<ResultRow> rows) throws PEException {
+        throw new PECodingException(this.getClass().getSimpleName()+".inject not supported");
+    }
+
+    public void setNumRowsAffected(long rowcount){}
+
+    public void rollback(){}
+
+    //****************************************
+    //Oriented around actual dispatch of requests to databases.
+    //****************************************
+    @Override
+    public void setSenderCount(int senderCount){}
+
+    @Override
+    abstract public Bundle getDispatchBundle(CommandChannel connection, SQLCommand sql, CompletionHandle<Boolean> promise);
 }

@@ -24,6 +24,9 @@ package com.tesora.dve.worker;
 import com.tesora.dve.concurrent.*;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.*;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtExecuteRequestMessage;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
@@ -42,14 +45,8 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 		super(outboundCtx);
 	}
 
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows)
-			throws PEException {
-		throw new PEException("Cannot inject into " + this.getClass().getSimpleName());
-	}
-
     @Override
-    public MysqlCommand writeCommandExecutor(final CommandChannel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
+    public Bundle getDispatchBundle(final CommandChannel channel, final SQLCommand sql, final CompletionHandle<Boolean> promise) {
         //TODO: this executor is weird.  It sends a prepare, collects the statement ID, sends an execute, then closes the prepared statement. -sgossard
 		final MysqlQueryResultConsumer resultForwarder = this;
 		final MysqlPrepareParallelConsumer prepareCollector = new MysqlPrepareStatementDiscarder();
@@ -58,16 +55,21 @@ public class MysqlSyntheticPreparedResultForwarder extends MysqlDemultiplexingRe
 			@Override
 			public void success(Boolean returnValue) {
 				MyPreparedStatement<MysqlGroupedPreparedStatementId> pstmt = prepareCollector.getPreparedStatement();
-				channel.write(new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, sql.getParameters(), resultForwarder, promise));
+                int preparedID = (int)pstmt.getStmtId().getStmtId(channel.getPhysicalID());
+                MysqlMessage message = MSPComStmtExecuteRequestMessage.newMessage(preparedID, pstmt, sql.getParameters());
+				channel.write( message, new MysqlStmtExecuteCommand(sql, channel.getMonitor(), pstmt, preparedID, sql.getParameters(), resultForwarder, promise));
 //			System.out.println("selectCollector " + pstmt);
-				channel.writeAndFlush(new MysqlStmtCloseCommand(pstmt));
+                MysqlMessage closeMessage = MSPComStmtCloseRequestMessage.newMessage(preparedID);
+				channel.writeAndFlush(closeMessage,new MysqlStmtCloseCommand(preparedID, new PEDefaultPromise<Boolean>()));
 			}
 			@Override
 			public void failure(Exception e) {
 				promise.failure(e);
 			}
 		});
-		return new MysqlStmtPrepareCommand(sql.getSQL(), prepareCollector, preparePromise);
+
+        MysqlMessage prepareMessage = MSPComPrepareStmtRequestMessage.newMessage(sql.getSQL(), channel.lookupCurrentConnectionCharset());
+        return new Bundle(prepareMessage, new MysqlStmtPrepareCommand(channel,sql.getSQL(), prepareCollector, preparePromise));
 	}
 
 }

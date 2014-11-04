@@ -69,13 +69,10 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 		SSConnection ssCon = estate.getConnection();
 		
 		SQLCommand bound = bindCommand(estate,command);
-		
-        final boolean savepointRequired = ssCon.getTransId() != null && bound.isForUpdateStatement()
-				&& "5.6".equals(Singletons.require(HostService.class).getDveVersion(ssCon));
-		
+		        
 		WorkerExecuteRequest req =
 				new WorkerExecuteRequest(ssCon.getTransactionalContext(), bound).
-				onDatabase(database).withLockRecovery(savepointRequired);
+				onDatabase(database);
 		
 		WorkerGroup.MappingSolution mappingSolution = 
 				distValue.getDistributionModel().mapKeyForQuery(
@@ -85,7 +82,6 @@ public class QueryStepSelectByKeyOperation extends QueryStepResultsOperation {
 			logger.debug(this.getClass().getSimpleName() + " maps dv " + distValue + " to " + mappingSolution);
 		
 		resultConsumer.setResultsLimit(getResultsLimit());
-		resultConsumer.setSenderCount(mappingSolution.computeSize(wg));
 		beginExecution();
 		wg.execute(mappingSolution, req, resultConsumer);
 		if (resultConsumer instanceof MysqlParallelResultConsumer) 

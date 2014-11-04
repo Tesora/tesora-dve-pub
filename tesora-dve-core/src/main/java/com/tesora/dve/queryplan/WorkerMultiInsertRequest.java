@@ -26,13 +26,10 @@ import java.util.Iterator;
 
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.StorageSite;
-import com.tesora.dve.comms.client.messages.ExecuteResponse;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.PEDefaultPromise;
-import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
@@ -52,13 +49,13 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
 	}
 
 	@Override
-	public void executeRequest(Worker w, DBResultConsumer resultConsumer, CompletionHandle<Boolean> callersResults) {
+	public void executeRequest(Worker w, CompletionHandle<Boolean> callersResults) {
         try {
             Collection<SQLCommand> cmds = mappedInserts.get(w.getWorkerSite());
 
             if ( cmds != null ) {
                 Iterator<SQLCommand> commandIterator = cmds.iterator();
-                executeNextInsert(w, resultConsumer, callersResults, commandIterator);
+                executeNextInsert(w, callersResults, commandIterator);
             } else {
                 callersResults.success(true);
             }
@@ -68,14 +65,9 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
         }
 	}
 
-    private void executeNextInsert(final Worker w, final DBResultConsumer resultConsumer, final CompletionHandle<Boolean> callersResults, final Iterator<SQLCommand> commandIterator) {
+    private void executeNextInsert(final Worker w, final CompletionHandle<Boolean> callersResults, final Iterator<SQLCommand> commandIterator) {
         if (!commandIterator.hasNext()){
-            try {
-                new ExecuteResponse(resultConsumer.hasResults(), resultConsumer.getUpdateCount(), null ).from(w.getAddress()).success();
-                callersResults.success(true);
-            } catch (PEException e) {
-                callersResults.failure(e);
-            }
+            callersResults.success(true);
             return;
         }
 
@@ -84,7 +76,7 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
             @Override
             public void success(Boolean returnValue) {
                 //this insert was OK, do the next one.
-                executeNextInsert(w,resultConsumer,callersResults,commandIterator);
+                executeNextInsert(w, callersResults,commandIterator);
             }
 
             @Override
@@ -93,7 +85,7 @@ public class WorkerMultiInsertRequest extends WorkerExecuteRequest {
             }
         };
 
-        executeStatement(w, sqlCommand, resultConsumer, oneInsert);
+        executeStatement(w, sqlCommand, oneInsert);
     }
 
     @Override

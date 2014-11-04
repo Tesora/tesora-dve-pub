@@ -23,19 +23,19 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyOKResponse;
-import com.tesora.dve.db.mysql.portal.protocol.MSPComQuitRequestMessage;
 import com.tesora.dve.exceptions.PECommunicationsException;
 import io.netty.channel.ChannelHandlerContext;
-
-import java.nio.charset.Charset;
 
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
-public class MysqlQuitCommand extends MysqlCommand implements
-		MysqlCommandResultsProcessor {
+public class MysqlQuitCommand extends MysqlCommand {
 
     boolean closed = false;
+
+    public MysqlQuitCommand() {
+        super();
+    }
 
     @Override
     public void packetStall(ChannelHandlerContext ctx) {
@@ -61,12 +61,6 @@ public class MysqlQuitCommand extends MysqlCommand implements
 		throw new PECodingException(this.getClass().getSimpleName() + " encountered unhandled exception", e);
 	}
 
-	@Override
-	void execute(ChannelHandlerContext ctx, Charset charset)
-			throws PEException {
-        MSPComQuitRequestMessage quitRequest = MSPComQuitRequestMessage.newMessage();
-        ctx.write(quitRequest);
-    }
 
     @Override
     public void active(ChannelHandlerContext ctx) {

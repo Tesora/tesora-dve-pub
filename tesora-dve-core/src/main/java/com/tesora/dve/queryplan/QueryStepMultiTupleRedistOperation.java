@@ -23,8 +23,11 @@ package com.tesora.dve.queryplan;
 
 import java.nio.charset.Charset;
 import java.util.List;
-import java.util.concurrent.Future;
 
+import com.tesora.dve.db.NoopConsumer;
+import com.tesora.dve.db.mysql.RedistTupleBuilder;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
@@ -37,7 +40,6 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.MysqlStmtCloseDiscarder;
-import com.tesora.dve.db.RedistTupleUpdateConsumer;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementCollector;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.IKeyValue;
@@ -47,10 +49,8 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerExecuteRequest;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.worker.AggregationGroup;
@@ -64,7 +64,6 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 	static Logger logger = Logger.getLogger( QueryStepMultiTupleRedistOperation.class );
 	
 	final SQLCommand command;
-	final SQLCommand preFetchCommand = null;
 	SQLCommand insertOptions = null;
 	
 	final DistributionModel sourceDistModel;
@@ -81,8 +80,6 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 	PersistentTable targetTable;
 	TableHints tableHints = TableHints.EMPTY_HINT;
 	TempTableDeclHints tempHints;
-
-	String distributionName;
 	
 	DistributionModel targetDistModel;
 	boolean useResultSetAliases = false;
@@ -401,9 +398,8 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			//					return getTableInsertStatement(tableForInsertStatement, insertOptions, resultMetadata, maxTupleCount);
 			//				}
 			//			});
-			Future<SQLCommand> insertStatementFuture = null;
 
-			//			// Prepare the insert statement on the target worker group
+            //			// Prepare the insert statement on the target worker group
 			//			SQLCommand insertStatement = getTableInsertStatement(targetTable, resultMetadata);
 			//			WorkerExecuteRequest redistInsertRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), insertStatement).onDatabase(targetUserDatabase);
 			//			MysqlPrepareStatementCollector insertCollector = new MysqlPrepareStatementCollector();
@@ -421,20 +417,17 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
             else
                 dv = new KeyValue(distributeTableLike,distributeTableLike.getRangeID(c),givenDistColumns);
 
-            //TODO: the futures handshake between update consumer, forwarder, and tuple builder works, but is pretty messy. -sgossard
-			// Set up the update consumer on the target WG to accept updates
-			RedistTupleUpdateConsumer updateConsumer = new RedistTupleUpdateConsumer(c,distributeTableLike.getDistributionModel(), insertStatementFuture, givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
-			updateConsumer.setInsertIgnore(insertIgnore);
-			WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(givenTargetUserDatabase);
-			if (logger.isDebugEnabled())
-				logger.debug(ssCon + ": Redist: Setting up the update consumer on target group: " + emptyRequest);
-			targetWG.execute(MappingSolution.AllWorkers, emptyRequest, updateConsumer);
+            RedistTupleBuilder newBuilder = new RedistTupleBuilder(c, distributeTableLike.getDistributionModel(), givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
+            newBuilder.setInsertIgnore(insertIgnore);
 
+            //TODO: It would be nicer if we didn't have to set database on all the target sites up front.
+			WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(givenTargetUserDatabase);
+            targetWG.execute(MappingSolution.AllWorkers, emptyRequest, NoopConsumer.SINGLETON);
 
 			MysqlRedistTupleForwarder redistForwarder = 
 					new MysqlRedistTupleForwarder(
 							dv, givenTableHints,
-							useResultSetAliases, selectCollector.getPreparedStatement(), updateConsumer.getHandlerFuture());
+							useResultSetAliases, selectCollector.getPreparedStatement(), newBuilder);
 			if (logger.isDebugEnabled())
 				logger.debug(ssCon + ": Redist: starting redistribution: " + redistForwarder);
 			sourceWG.execute(sourceWorkerMapping, redistQueryRequest, redistForwarder);
@@ -443,7 +436,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			// Everything is sent now, so sync up with the results handler
 			@SuppressWarnings("unused")
 			int recordsSent = redistForwarder.getNumRowsForwarded();
-			int recordsInserted = updateConsumer.getExecutionHandler().getUpdateCount();
+			int recordsInserted = newBuilder.getUpdateCount();
 			rowcount = recordsInserted;
 			
 			// Close the prepared statements

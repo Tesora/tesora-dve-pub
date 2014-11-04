@@ -24,6 +24,7 @@ package com.tesora.dve.db.mysql;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.mysql.libmy.*;
+import com.tesora.dve.db.mysql.portal.protocol.MSPComPrepareStmtRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
 import io.netty.channel.ChannelHandlerContext;
@@ -51,13 +52,14 @@ public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
 	private ChannelHandlerContext ctxToConsume = null;
 
     @Override
-    public MysqlCommand  writeCommandExecutor(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
-		MysqlCommand cmd = new MysqlStmtPrepareCommand(sql.getSQL(), this, promise);
-		return cmd;
+    public Bundle getDispatchBundle(CommandChannel channel, SQLCommand sql, CompletionHandle<Boolean> promise) {
+        MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(sql.getSQL(), channel.lookupCurrentConnectionCharset());
+		MysqlCommand cmd = new MysqlStmtPrepareCommand(channel, sql.getSQL(), this, promise);
+        return new Bundle(message, cmd );
 	}
 
-	public void header(ChannelHandlerContext ctx, MyPrepareOKResponse prepareOK) {
-		pstmt.getStmtId().addStmtId(ctx.channel(), (int)prepareOK.getStmtId());
+	public void header(CommandChannel executingOnChannel, ChannelHandlerContext ctx, MyPrepareOKResponse prepareOK) {
+		pstmt.getStmtId().addStmtId(executingOnChannel.getPhysicalID(), (int)prepareOK.getStmtId());
 		synchronized (this) {
 			if (ctxToConsume == null) {
 				ctxToConsume  = ctx;
@@ -117,38 +119,6 @@ public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {
 	}
 
     abstract void consumeError(MyErrorResponse error) throws PESQLStateException;
-
-	@Override
-	public void setSenderCount(int senderCount) {
-	}
-
-	@Override
-	public boolean hasResults() {
-		return false;
-	}
-
-	@Override
-	public long getUpdateCount() {
-		return 0;
-	}
-
-	@Override
-	public void setResultsLimit(long resultsLimit) {
-	}
-
-	@Override
-	public void inject(ColumnSet metadata, List<ResultRow> rows)
-			throws PEException {
-		throw new PECodingException(this.getClass().getSimpleName()+".inject not implemented");
-	}
-
-	@Override
-	public void setRowAdjuster(RowCountAdjuster rowAdjuster) {
-	}
-
-	@Override
-	public void setNumRowsAffected(long rowcount) {
-	}
 
 	@Override
 	public boolean isSuccessful() {
