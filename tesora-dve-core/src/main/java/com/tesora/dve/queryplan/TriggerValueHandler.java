@@ -1,4 +1,4 @@
-package com.tesora.dve.db;
+package com.tesora.dve.queryplan;
 
 /*
  * #%L
@@ -21,26 +21,38 @@ package com.tesora.dve.db;
  * #L%
  */
 
+import com.tesora.dve.db.ValueConverter;
+import com.tesora.dve.sql.schema.types.Type;
 
+public class TriggerValueHandler {
 
-public class LateBoundConstants {
-
-	private final Object[] values;
+	protected final Type type;
 	
-	public LateBoundConstants() {
-		values = null;
+	public TriggerValueHandler(Type t) {
+		this.type = t;
 	}
 	
-	public boolean isEmpty() {
-		return values == null;
+	public Object onBefore(ExecutionState estate, String value) {
+		if (value == null) return null;
+		return ValueConverter.INSTANCE.convert(value, type);
 	}
 	
-	public LateBoundConstants(Object[] vals) {
-		values = vals;
+	// if you override this, make sure you override the has as well
+	public Object onTarget(ExecutionState estate, Object beforeValue) {
+		return beforeValue;
 	}
 	
-	public Object getConstantValue(int index) {
-		return values[index];
+	public Object onAfter(Object targetValue) {
+		return targetValue;
+	}
+	
+	
+	public boolean hasTarget() {
+		return false;
+	}
+	
+	public boolean hasAfter() {
+		return false;
 	}
 	
 }

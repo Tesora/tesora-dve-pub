@@ -24,37 +24,21 @@ package com.tesora.dve.sql.schema;
 import org.apache.commons.lang.ArrayUtils;
 
 import com.tesora.dve.common.catalog.PersistentColumn;
+import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.db.ValueConverter;
 import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.distribution.IColumnDatum;
 import com.tesora.dve.sql.ConversionException;
 
-public class TColumnDatum implements IColumnDatum {
+public class TColumnDatum extends TColumnDatumBase {
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
-	private final PEColumn column;
 	private final Object value;
-	private String comparatorClassName;
 	
 	public TColumnDatum(PEColumn col, Object value) {
-		column = col;
+		super(col);
 		this.value = value;
 	}
-
-	/*
-	@Override
-	public String getColumnName() {
-		return column.getName().getUnquotedName().get();
-	}
-
-	@Override
-	public int getColumnId() {
-		return column.getPersistentID();
-	}
-	*/
 
 	@Override
 	public Object getValue() {
@@ -92,21 +76,6 @@ public class TColumnDatum implements IColumnDatum {
 	public boolean equals(Object o) {
 		return ColumnDatum.equals(this,(IColumnDatum)o);
 	}
-
-	@Override
-	public String getComparatorClassName() {
-		return comparatorClassName;
-	}
-	
-	@Override
-	public void setComparatorClassName(String comparatorClassName) {
-		this.comparatorClassName = comparatorClassName;
-	}
-	
-	@Override
-	public String getNativeType() {
-		return this.column.getType().getBaseType().getTypeName();
-	}
 	
 	@Override
 	public String toString() {
@@ -114,7 +83,8 @@ public class TColumnDatum implements IColumnDatum {
 	}
 
 	@Override
-	public PersistentColumn getColumn() {
-		return column;
+	public TColumnDatumBase bind(LateBoundConstants constants) {
+		return this;
 	}
+
 }

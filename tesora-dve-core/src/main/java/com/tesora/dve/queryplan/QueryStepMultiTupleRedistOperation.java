@@ -93,6 +93,9 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 	// for slow query support - record the total number of rows redistributed
 	private int totalRows = -1;
 
+	private long executeCounter = 0;
+	private UserTable[] createdTempTables = new UserTable[4];
+	
 	private boolean enforceScalarValue;
 	private boolean insertIgnore = false;
 	
@@ -221,12 +224,12 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 				logger.debug("Redist allocates for different storage group: " + allocatedWG);
 			targetWG = allocatedWG;
 
-			doRedistribution(ssCon, resultConsumer, /* useSystemTempTable */ targetGroup.isTemporaryGroup(), tempTableName,
+			doRedistribution(estate, resultConsumer, /* useSystemTempTable */ targetGroup.isTemporaryGroup(), tempTableName,
 					sourceWG, database, sourceDistModel, bindCommand(estate,command),
 					specifiedDistKeyValue, distColumns, distributeTempTableLike,
 					targetWG, targetUserDatabase, targetDistModel, targetTable, 
 					tableHints, tempHints, insertOptions, allocatedWG, /* cleanupWG */ null,
-					tempTableGenerator);
+					tempTableGenerator,0);
 		} else if ((ssCon.hasActiveTransaction() && wg.isModified() && targetTable != null) || usesUserlandTemporaryTables) {
 			// Here we want to redistribute from a persistent group back into itself, within the context
 			// of a transaction.  However, we must both read within the context of the transaction, and
@@ -243,20 +246,20 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			try {
 				String intermediateTempTableName = UserTable.getNewTempTableName();
 				PersistentTable tempTable = 
-				doRedistribution(ssCon, resultConsumer, /* useSystemTempTable */ true, intermediateTempTableName,
-						/* sourceWG */ wg, database, sourceDistModel, command,
+				doRedistribution(estate, resultConsumer, /* useSystemTempTable */ true, intermediateTempTableName,
+						/* sourceWG */ wg, database, sourceDistModel, bindCommand(estate,command),
 						specifiedDistKeyValue, distColumns, /* distributeTempTableLike */ null,
 						/* targetWG */ cacheWG, targetUserDatabase, BroadcastDistributionModel.SINGLETON, /* targetTable */ null, 
 						tableHints, /* tempHints */ null, /* insertOptions */ null, /* allocatedWG */ null, /* cleanupWG */ null,
-						TempTableGenerator.DEFAULT_GENERATOR);
+						TempTableGenerator.DEFAULT_GENERATOR,1);
 				
 				SQLCommand tempQuery = new SQLCommand(ssCon, "select * from " + tempTable.getNameAsIdentifier());
-				doRedistribution(ssCon, resultConsumer, /* useSystemTempTable */ false, tempTableName,
+				doRedistribution(estate, resultConsumer, /* useSystemTempTable */ false, tempTableName,
 						cacheWG, targetUserDatabase, BroadcastDistributionModel.SINGLETON, tempQuery,
 						/* specifiedDistKeyValue */ null, /* distColumns */ null, distributeTempTableLike,
 						/* targetWG */ wg, targetUserDatabase, targetDistModel, targetTable, 
 						/* tableHints */ TableHints.EMPTY_HINT, tempHints, insertOptions, /* allocatedWG */ null, /* cleanupWG */ null,
-						tempTableGenerator);
+						tempTableGenerator,2);
 			} catch (Exception e) {
 				cacheWG.markForPurge();
 				throw e;
@@ -297,19 +300,20 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 				allocatedWG.markForPurge();
 			}
 
-			doRedistribution(ssCon, resultConsumer, /* useSystemTempTable */ false, tempTableName,
-					sourceWG, database, sourceDistModel, command,
+			doRedistribution(estate, resultConsumer, /* useSystemTempTable */ false, tempTableName,
+					sourceWG, database, sourceDistModel, bindCommand(estate,command),
 					specifiedDistKeyValue, distColumns, distributeTempTableLike,
 					targetWG, targetUserDatabase, targetDistModel, targetTable, 
 					tableHints, tempHints, insertOptions, allocatedWG, cleanupWG,
-					tempTableGenerator);
+					tempTableGenerator,3);
 		}
 
 		endExecution(totalRows);
+		executeCounter++;
 	}
 
 
-	private PersistentTable doRedistribution(final SSConnection ssCon, 
+	private PersistentTable doRedistribution(ExecutionState estate, 
 			DBResultConsumer resultConsumer, 
 			boolean useSystemTempTable, 
 			String givenTempTableName,
@@ -329,7 +333,10 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			SQLCommand givenInsertOptions, 
 			WorkerGroup allocatedWG,
 			WorkerGroup cleanupWG,
-			TempTableGenerator tableGenerator) throws PEException {
+			TempTableGenerator tableGenerator,
+			int branch) throws PEException {
+		
+		final SSConnection ssCon = estate.getConnection();
 		
 		CatalogDAO c = ssCon.getCatalogDAO();
 		
@@ -349,10 +356,7 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			MysqlPrepareStatementCollector selectCollector = new MysqlPrepareStatementCollector();
 			MappingSolution sourceWorkerMapping = null;
 			if (givenSpecifiedDistKeyValue != null) {
-				sourceWorkerMapping = givenSourceDistModel.mapKeyForQuery(
-						ssCon.getCatalogDAO(), sourceWG.getGroup(),
-						givenSpecifiedDistKeyValue,
-						DistKeyOpType.QUERY);
+				sourceWorkerMapping = QueryStepOperation.mapKeyForQuery(estate, sourceWG.getGroup(), givenSpecifiedDistKeyValue, givenSourceDistModel, DistKeyOpType.QUERY);
 			} else {
 				sourceWorkerMapping = givenSourceDistModel.mapForQuery(sourceWG, givenCommand);
 			}
@@ -369,9 +373,14 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			if (givenTargetTable == null) {
 				if (cleanupWG == null)
 					cleanupWG = targetWG;
+				UserTable existing = null;
+				if (executeCounter > 0)
+					existing = createdTempTables[branch];
 				givenTargetTable = tableGenerator.createTable(ssCon, targetWG, cleanupWG,
 						givenTempHints, useSystemTempTable, givenTempTableName,
-						givenTargetUserDatabase, resultMetadata, givenTargetDistModel);
+						givenTargetUserDatabase, resultMetadata, givenTargetDistModel,existing);
+				if (executeCounter == 0)
+					createdTempTables[branch] = (UserTable) givenTargetTable;
 				if (logger.isDebugEnabled())
 					logger.debug(ssCon + ": Redist: Created temp table " + givenTargetTable);
 				//				WorkerExecuteRequest lockReq = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), new SQLCommand("LOCK TABLES " + targetTable.getNameAsIdentifier() + " WRITE"));

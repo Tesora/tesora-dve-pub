@@ -131,6 +131,7 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, Redist
                 dvm.inspectValue(binRow, i, dv, maxAutoIncr);
             }
 
+            // don't need exec state here - values are fully materialized
             mappingSolution = distModel.mapKeyForInsert(catalogDAO, targetWG.getGroup(), dv);
         }
 

@@ -58,9 +58,11 @@ import com.tesora.dve.worker.WorkerGroup;
 // fields are all fairly self explanatory
 public class AddGlobalVariableStatement extends AlterStatement {
 
+	@SuppressWarnings("rawtypes")
 	private final VariableHandler handler;
 	
 	
+	@SuppressWarnings("rawtypes")
 	public AddGlobalVariableStatement(VariableHandler newHandler) {
 		super(true);
 		this.handler = newHandler;
@@ -87,6 +89,7 @@ public class AddGlobalVariableStatement extends AlterStatement {
 		
 	}
 	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static AddGlobalVariableStatement decode(SchemaContext sc, String varName, List<Pair<Name,LiteralExpression>> options) {
 		EnumSet<VariableScopeKind> scopes = null;
 		EnumSet<VariableOption> opts = null;
@@ -133,9 +136,11 @@ public class AddGlobalVariableStatement extends AlterStatement {
 	
 	private static class AddVariableCallback extends DDLCallback {
 
+		@SuppressWarnings("rawtypes")
 		private final VariableHandler newHandler;
 		private Boolean success = null;
 		
+		@SuppressWarnings("rawtypes")
 		public AddVariableCallback(VariableHandler handler) {
 			this.newHandler = handler;
 		}
@@ -170,6 +175,7 @@ public class AddGlobalVariableStatement extends AlterStatement {
 			success = Boolean.FALSE;
 		}
 
+		@SuppressWarnings("unchecked")
 		public void onFinally(SSConnection conn) throws Throwable {
 			if (Boolean.TRUE.equals(success))
 				ServerGlobalVariableStore.INSTANCE.addVariable(newHandler, newHandler.getDefaultOnMissing());

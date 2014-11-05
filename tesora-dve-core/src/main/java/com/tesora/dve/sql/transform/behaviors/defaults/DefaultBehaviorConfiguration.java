@@ -64,7 +64,8 @@ import com.tesora.dve.sql.transform.strategy.join.JoinRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.joinsimplification.JoinSimplificationTransformFactory;
 import com.tesora.dve.sql.transform.strategy.nested.NestedQueryRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.triggers.DeleteTriggerPlanner;
-import com.tesora.dve.sql.transform.strategy.triggers.InsertIntoTriggerPlanner;
+import com.tesora.dve.sql.transform.strategy.triggers.InsertIntoSelectTriggerPlanner;
+import com.tesora.dve.sql.transform.strategy.triggers.InsertIntoValuesTriggerPlanner;
 import com.tesora.dve.sql.transform.strategy.triggers.ReplaceIntoTriggerPlanner;
 import com.tesora.dve.sql.transform.strategy.triggers.UpdateTriggerPlanner;
 
@@ -158,7 +159,7 @@ public final class DefaultBehaviorConfiguration implements BehaviorConfiguration
 	public FeaturePlanner[] getInsertIntoSelectPlanners(PlannerContext pc, DMLStatement dmls) {
 		return new FeaturePlanner[] {
 				new InformationSchemaRewriteTransformFactory(),
-				new InsertIntoTriggerPlanner(),
+				new InsertIntoSelectTriggerPlanner(),
 				new SessionRewriteTransformFactory(),
 				new ViewRewriteTransformFactory(),
 				new InsertIntoSelectPlanner(),
@@ -199,6 +200,7 @@ public final class DefaultBehaviorConfiguration implements BehaviorConfiguration
 	
 	public FeaturePlanner[] getInsertIntoValuesPlanners(PlannerContext pc, DMLStatement dmls) {
 		return new FeaturePlanner[] {
+				new InsertIntoValuesTriggerPlanner(),
 				new InsertIntoValuesPlanner()
 		};
 	}

@@ -34,15 +34,18 @@ import com.tesora.dve.sql.transform.CopyContext;
 public class LateBindingConstantExpression extends ConstantExpression {
 
 	private final int position;
+	private final Type type;
 	
-	public LateBindingConstantExpression(int position) {
+	public LateBindingConstantExpression(int position, Type type) {
 		super((SourceLocation)null);
 		this.position = position;
+		this.type = type;
 	}
 	
 	public LateBindingConstantExpression(LateBindingConstantExpression o) {
 		super(o);
 		this.position = o.position;
+		this.type = o.type;
 	}
 	
 	@Override
@@ -54,7 +57,7 @@ public class LateBindingConstantExpression extends ConstantExpression {
 	public ConstantType getConstantType() {
 		return ConstantType.RUNTIME;
 	}
-
+	
 	@Override
 	public IConstantExpression getCacheExpression() {
 		// we can be our own cache expression since we are really just an offset
@@ -92,4 +95,8 @@ public class LateBindingConstantExpression extends ConstantExpression {
 		return position;
 	}
 
+	public Type getType() {
+		return type;
+	}
+	
 }

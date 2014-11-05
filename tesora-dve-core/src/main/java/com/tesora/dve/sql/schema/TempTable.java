@@ -128,9 +128,10 @@ public final class TempTable extends PETable {
 				declHint.addCharset(cn, c.getType().getCharset().getUnquotedName().get());			
 		}
 
-        //add better than nothing hint for any null columns
         if (nullColumns == null)
-            nullColumns = new ArrayList<PEColumn>();
+            nullColumns = new ListSet<PEColumn>();
+				
+        //add better than nothing hint for any null columns
         this.forceDefinitions(pc, nullColumns );
 
 		// also, if the table is distributed on explicit columns - add index hints on those columns
@@ -234,7 +235,11 @@ public final class TempTable extends PETable {
 		addKey(sc,uniqued);
 	}
 
-	public TempTableDeclHints getHints(SchemaContext sc) {
+	public TempTableDeclHints getRawHints() {
+		return declHint;
+	}
+	
+	public TempTableDeclHints finalizeHints(SchemaContext sc) {
 		// if we have keys we have to add them to the hints
 		final List<PEKey> keys = getKeys(sc);
 		if (!keys.isEmpty()) {
@@ -334,6 +339,10 @@ public final class TempTable extends PETable {
 		Map<Integer, PEColumn> dvcols = new HashMap<Integer, PEColumn>();
 		
 		List<ExpressionNode> projection = in.getProjections().get(0);
+
+		if (sc.getOptions().isTriggerPlanning())
+			// have a flag on this as it is expensive
+			PETableTriggerPlanningEventInfo.forceConstantTypes(in);
 		
 		for(int i = 0; i < projection.size(); i++) {
 			ExpressionNode e = projection.get(i);
@@ -343,7 +352,7 @@ public final class TempTable extends PETable {
 			boolean invisibleColumn = invisible.contains(i);
 			if (targ instanceof ColumnInstance) {
 				ci = (ColumnInstance) targ;
-			}
+			}  
 
 			PEColumn nc = null;
 			if (ci != null && !invisibleColumn)

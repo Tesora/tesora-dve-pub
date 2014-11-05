@@ -215,4 +215,5 @@ public class ExpressionUtils {
 	public static FunctionCall buildNullBinaryCast() {
 		return new CastFunctionCall(LiteralExpression.makeNullLiteral(), new UnqualifiedName("BINARY(" + MysqlNativeConstants.MAX_PACKET_SIZE + ")"));
 	}
+	
 }

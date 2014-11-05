@@ -33,11 +33,14 @@ import com.tesora.dve.sql.node.Traversal;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.Table;
+import com.tesora.dve.sql.schema.TriggerTime;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.transform.CopyContext;
 
 public class TriggerTableInstance extends TableInstance {
+
+	private final TriggerTime when;
 
 	public static final class EarlyTriggerTableCollector {
 		
@@ -49,9 +52,9 @@ public class TriggerTableInstance extends TableInstance {
 					final Name name = ((NameInstance) in).getName();
 					if (name.isQualified()) {
 						final UnqualifiedName namespace = ((QualifiedName) name).getNamespace();
-						if (namespace.equals(OLD)) {
+						if (namespace.equals(TriggerTime.BEFORE.getAlias())) {
 							EarlyTriggerTableCollector.this.beforeColumns.add(in);
-						} else if (namespace.equals(NEW)) {
+						} else if (namespace.equals(TriggerTime.AFTER.getAlias())) {
 							EarlyTriggerTableCollector.this.afterColumns.add(in);
 						}
 					}
@@ -83,27 +86,22 @@ public class TriggerTableInstance extends TableInstance {
 		return collector;
 	}
 
-	public static final UnqualifiedName NEW = new UnqualifiedName("NEW");
-	public static final UnqualifiedName OLD = new UnqualifiedName("OLD");
-	
-	private final boolean before;
-	
-	public TriggerTableInstance(Table<?> schemaTable, long node, boolean before) {
-		super(schemaTable, schemaTable.getName(), before ? NEW : OLD, node, false);
-		this.before = before;
+	public TriggerTableInstance(Table<?> schemaTable, long node, TriggerTime when) {
+		super(schemaTable, schemaTable.getName(), when.getAlias(), node, false);
+		this.when = when;
 	}
 
-	public boolean isBefore() {
-		return this.before;
+	public TriggerTime getTime() {
+		return when;
 	}
 	
 	@Override
 	protected LanguageNode copySelf(CopyContext cc) {
 		if (cc == null)
-			return withHints(new TriggerTableInstance(schemaTable,node,before));
+			return withHints(new TriggerTableInstance(schemaTable,node,when));
 		TriggerTableInstance out = (TriggerTableInstance) cc.getTableInstance(this);
 		if (out != null) return out;
-		out = withHints(new TriggerTableInstance(schemaTable, node, before));
+		out = withHints(new TriggerTableInstance(schemaTable, node, when));
 		return cc.put(this, out);
 	}
 

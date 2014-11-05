@@ -58,7 +58,7 @@ public class TempTableDeclHints extends TableHints {
 		overrideDecls = new HashMap<String,UserColumn>();
 	}
 
-	private TempTableColumnHints getHint(String columnName) {
+	public TempTableColumnHints getHint(String columnName) {
 		TempTableColumnHints h = columnHints.get(columnName);
 		if (h == null) {
 			h = new TempTableColumnHints();
@@ -98,7 +98,7 @@ public class TempTableDeclHints extends TableHints {
 	public void addCharset(String column, String charset) {
 		getHint(column).setCharset(charset);
 	}
-
+	
 	public List<List<String>> getIndexes() {
 		return indexColumns;
 	}
@@ -191,7 +191,7 @@ public class TempTableDeclHints extends TableHints {
 		
 		public String getCharset() {
 			return charset;
-		}	
+		}			
 	}
 	
 }

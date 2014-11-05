@@ -28,13 +28,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.ExecutionState;
+import com.tesora.dve.queryplan.TriggerValueHandler;
+import com.tesora.dve.queryplan.TriggerValueHandlers;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
+import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PETable;
@@ -42,6 +47,7 @@ import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
 import com.tesora.dve.sql.schema.TempTableCreateOptions;
 import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
+import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.InsertStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -97,12 +103,13 @@ public abstract class TriggerPlanner extends TransformFactory {
 		for(Map.Entry<PEColumn,Integer> me : uniqueKeyOffsets.entrySet()) {
 			eqs.add(new FunctionCall(FunctionName.makeEquals(),
 					new ColumnInstance(me.getKey(),targetTable.toInstance()),
-					new LateBindingConstantExpression(me.getValue())));
+					new LateBindingConstantExpression(me.getValue(),me.getKey().getType())));
 		}
 		return ExpressionUtils.safeBuildAnd(eqs);
 	}
 	
-	protected TriggerFeatureStep commonPlanning(PlannerContext context, TableKey targetTable, SelectStatement srcSelect, DMLStatement uniqueStatement,
+	protected BasicTriggerFeatureStep commonPlanning(PlannerContext context, TableKey targetTable, SelectStatement srcSelect, TriggerValueHandlers handlers, 
+			DMLStatement uniqueStatement,
 			PETableTriggerPlanningEventInfo triggerInfo) throws PEException {
 		
 		ProjectingFeatureStep srcStep =
@@ -119,34 +126,65 @@ public abstract class TriggerPlanner extends TransformFactory {
 		
 		ProjectingFeatureStep rows = rowsTable.buildTriggerRowsStep(context, this);
 		
-		FeatureStep targetStep =  
-				buildPlan(uniqueStatement,context.withTransform(getFeaturePlannerID()),
-						DefaultFeaturePlannerFilter.INSTANCE);
-		
-		return new TriggerFeatureStep(this,targetTable.getAbstractTable().asTable(),
-				rowsTable,rows,targetStep,
+		ParserOptions was = context.getContext().getOptions();
+		FeatureStep targetStep = null;
+		try {
+			context.getContext().setOptions(was.setTriggerPlanning());
+			targetStep =
+					buildPlan(uniqueStatement,context.withTransform(getFeaturePlannerID()),
+							DefaultFeaturePlannerFilter.INSTANCE);
+		} finally {
+			context.getContext().setOptions(was);
+		}
+				
+		return new BasicTriggerFeatureStep(this,targetTable.getAbstractTable().asTable(),
+				rowsTable,rows,handlers,targetStep,
 				triggerInfo.getBeforeStep(context.getContext()),
 				triggerInfo.getAfterStep(context.getContext()));
 	}
 	
-	protected static class TriggerFeatureStep extends MultiFeatureStep {
+	protected static abstract class AbstractTriggerFeatureStep extends MultiFeatureStep {
+
+		protected final FeatureStep rowQuery;
+		protected final PETable onTable;
+		protected final TriggerValueHandlers handlers;
+
+		public AbstractTriggerFeatureStep(FeaturePlanner planner, PETable actualTable, FeatureStep rowsQuery, TriggerValueHandlers handlers) {
+			super(planner);
+			this.rowQuery = rowsQuery;
+			this.onTable = actualTable;
+			this.handlers = handlers;
+			withDefangInvariants();
+		}
+
+		protected ExecutionStep buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
+			ExecutionSequence sub = new ExecutionSequence(parentPlan);
+			step.schedule(pc,sub,new HashSet<FeatureStep>());
+			if (sub.getSteps().size() == 1)
+				return (ExecutionStep)sub.getSteps().get(0);
+			return sub;
+		}
+
+		@Override
+		public abstract void schedule(PlannerContext sc, ExecutionSequence es, Set<FeatureStep> scheduled) throws PEException;
+
+	}
+	
+	protected static class BasicTriggerFeatureStep extends AbstractTriggerFeatureStep {
 
 		private final RedistFeatureStep rowsTable;
 		private final FeatureStep actual;
 		private final FeatureStep before;
 		private final FeatureStep after;
-		private final FeatureStep rowQuery;
-		private final PETable onTable;
 		
-		public TriggerFeatureStep(FeaturePlanner planner, PETable actualTable, RedistFeatureStep rowsTable, FeatureStep rowsQuery,
+		public BasicTriggerFeatureStep(FeaturePlanner planner, PETable actualTable, RedistFeatureStep rowsTable, FeatureStep rowsQuery,
+				TriggerValueHandlers handlers,
 				FeatureStep actual, FeatureStep before, FeatureStep after) {
-			super(planner);
+			super(planner,actualTable,rowsQuery,handlers);
 			this.rowsTable = rowsTable;
 			this.actual = actual;
 			this.before = before;
 			this.after = after;
-			this.rowQuery = rowsQuery;
-			this.onTable = actualTable;
 			// make sure the traversal still works
 			addChild(rowsTable);
 			addChild(actual);
@@ -154,7 +192,6 @@ public abstract class TriggerPlanner extends TransformFactory {
 				addChild(before);
 			if (after != null)
 				addChild(after);
-			withDefangInvariants();
 		}
 
 		@Override
@@ -165,17 +202,42 @@ public abstract class TriggerPlanner extends TransformFactory {
 					buildSubSequence(sc,actual,es.getPlan()),
 					(before == null ? null : buildSubSequence(sc,before,es.getPlan())),
 					(after == null ? null : buildSubSequence(sc,after,es.getPlan())),
-					buildSubSequence(sc,rowQuery,es.getPlan()));
+					buildSubSequence(sc,rowQuery,es.getPlan()),
+					handlers);
 			es.append(step);
 		}
 		
-		private ExecutionStep buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
-			ExecutionSequence sub = new ExecutionSequence(parentPlan);
-			step.schedule(pc,sub,new HashSet<FeatureStep>());
-			if (sub.getSteps().size() == 1)
-				return (ExecutionStep)sub.getSteps().get(0);
-			return sub;
-		}
 	}
 
+	protected static class AutoincrementTriggerValueHandler extends TriggerValueHandler {
+
+		private final PEColumn column;
+		
+		public AutoincrementTriggerValueHandler(PEColumn col) {
+			super(col.getType());
+			this.column = col;
+		}
+
+		public Object onTarget(ExecutionState estate, Object beforeValue) {
+			long extant = 0;
+			if (beforeValue instanceof Number) {
+				Number n = (Number) beforeValue;
+				extant = n.longValue();
+			}
+			if (extant > 0) {
+				AutoIncrementTracker.removeValue(estate.getCatalogDAO(),
+						column.getTable().asTable().getAutoIncrTrackerID(),
+						extant);
+				return beforeValue;
+			} else {
+				return AutoIncrementTracker.getNextValue(estate.getCatalogDAO(), 
+						column.getTable().asTable().getAutoIncrTrackerID());
+			}
+		}
+
+		public boolean hasTarget() {
+			return true;
+		}
+
+	}
 }

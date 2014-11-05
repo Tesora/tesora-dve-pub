@@ -1,4 +1,4 @@
-package com.tesora.dve.db;
+package com.tesora.dve.sql.schema;
 
 /*
  * #%L
@@ -21,26 +21,19 @@ package com.tesora.dve.db;
  * #L%
  */
 
+public enum TriggerTime {
 
+	BEFORE(new UnqualifiedName("OLD")),
+	AFTER(new UnqualifiedName("NEW"));
+	
+	private final UnqualifiedName aliasName;
+	
+	private TriggerTime(UnqualifiedName tok) {
+		this.aliasName = tok;
+	}
 
-public class LateBoundConstants {
-
-	private final Object[] values;
-	
-	public LateBoundConstants() {
-		values = null;
-	}
-	
-	public boolean isEmpty() {
-		return values == null;
-	}
-	
-	public LateBoundConstants(Object[] vals) {
-		values = vals;
-	}
-	
-	public Object getConstantValue(int index) {
-		return values[index];
+	public UnqualifiedName getAlias() {
+		return aliasName;
 	}
 	
 }

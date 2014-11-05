@@ -32,7 +32,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.tesora.dve.common.catalog.*;
+import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.DistributionModel;
+import com.tesora.dve.common.catalog.PersistentGroup;
+import com.tesora.dve.common.catalog.UserColumn;
+import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.distribution.ContainerDistributionModel;
@@ -44,6 +49,7 @@ import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.distribution.RangeDistributionModel;
 import com.tesora.dve.distribution.RangeLimit;
 import com.tesora.dve.distribution.StaticDistributionModel;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
@@ -628,6 +634,12 @@ public class DistributionVector extends Persistable<DistributionVector, Distribu
 		@Override
 		public Integer getRangeId() {
 			return dv.getRangeID(context);
+		}
+
+		@Override
+		public IKeyValue rebind(LateBoundConstants constants)
+				throws PEException {
+			return this;
 		}
 
 

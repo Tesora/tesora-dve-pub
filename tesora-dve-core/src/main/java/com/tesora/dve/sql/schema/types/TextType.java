@@ -39,6 +39,10 @@ public class TextType extends SizedType {
 		this.collation = collation;
 	}
 	
+	public TextType(TextType basedOn, int newSize) {
+		this(basedOn.getBaseType(),basedOn.flags,newSize,null,null);
+	}
+	
 	@Override
 	public UnqualifiedName getCharset() {
 		return charset;

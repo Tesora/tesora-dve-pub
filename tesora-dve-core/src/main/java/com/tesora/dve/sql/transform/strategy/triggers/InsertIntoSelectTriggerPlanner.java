@@ -28,7 +28,7 @@ import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 
-public class InsertIntoTriggerPlanner extends TriggerPlanner {
+public class InsertIntoSelectTriggerPlanner extends TriggerPlanner {
 
 	@Override
 	public FeatureStep plan(DMLStatement stmt, PlannerContext context)

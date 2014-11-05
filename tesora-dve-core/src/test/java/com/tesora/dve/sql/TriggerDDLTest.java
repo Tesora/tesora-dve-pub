@@ -68,7 +68,8 @@ public class TriggerDDLTest extends SchemaTest {
 	}
 
     //TODO: this test fails on MariaDB, due to some weirdness with the returned types being different between MariaDB and Percona/Mysql if a function is nested.  Issue logged as PE-1664. -sgossard
-    @Ignore
+	// yeah, but don't disable the entire test - we'll forget about it and then lose the damn coverage.  that's why we have the ignore object
+	// for the asserted result sets.
 	@Test
 	public void testCreate() throws Throwable {
 		conn.execute("create table A (id int auto_increment, event varchar(32), primary key (id)) broadcast distribute");
@@ -88,7 +89,7 @@ public class TriggerDDLTest extends SchemaTest {
 						"utf8","utf8_general_ci","utf8_general_ci"));
 //		System.out.println(conn.printResults("select * from information_schema.triggers where trigger_schema = 'adb'"));
 		conn.assertResults("select * from information_schema.triggers where trigger_schema = 'adb'",
-				br(nr,"def","adb","btrig","INSERT","def","adb","B",0L,null,
+				br(nr,"def","adb","btrig","INSERT","def","adb","B",ignore,null,
 						"INSERT INTO A (event) VALUES ('insert')",
 						"ROW","AFTER",null,null,"OLD","NEW",null,
 						"NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES","root@%","utf8","utf8_general_ci","utf8_general_ci"));
@@ -97,10 +98,10 @@ public class TriggerDDLTest extends SchemaTest {
 
 			@Override
 			public void test() throws Throwable {
-				conn.execute("insert into B (a,b,c) values (3,3,3)");
+				conn.execute("replace into B (a,b,c) values (3,3,3)");
 			}
 			
-		}.assertException(SQLException.class, "PEException: No support for trigger execution");
+		}.assertException(SQLException.class, "PEException: No planning/runtime support for triggers");
 		// but, this should not fail
 		conn.execute("delete from B where a = 1");
 

@@ -24,29 +24,30 @@ package com.tesora.dve.sql.expression;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.schema.Table;
+import com.tesora.dve.sql.schema.TriggerTime;
 
 public class TriggerTableKey extends TableKey {
 
-	protected boolean before;
+	protected TriggerTime when;
 	
 	public TriggerTableKey(TriggerTableInstance ti) {
 		super(ti);
-		this.before = ti.isBefore();
+		this.when = ti.getTime();
 	}
 
-	public TriggerTableKey(Table<?> backing, long n, boolean before) {
+	public TriggerTableKey(Table<?> backing, long n, TriggerTime when) {
 		super(backing,n);
-		this.before = before;
+		this.when = when;
 	}
 	
-	public boolean isBefore() {
-		return before;
+	public TriggerTime getTime() {
+		return when;
 	}
 	
 	@Override
 	public TableInstance toInstance() {
 		if (instance == null)
-			instance = new TriggerTableInstance(backingTable, node, before);
+			instance = new TriggerTableInstance(backingTable, node, when);
 		return instance;
 	}
 
@@ -54,7 +55,7 @@ public class TriggerTableKey extends TableKey {
 	protected int computeHashCode() {
 		final int prime = 31;
 		int result = super.computeHashCode();
-		result = prime * result + (before ? 1231 : 1237);
+		result = prime * result + when.hashCode();
 		return result;
 	}
 
@@ -64,7 +65,7 @@ public class TriggerTableKey extends TableKey {
 			TriggerTableKey otk = (TriggerTableKey) obj;
 			if (!super.equals(otk))
 				return false;
-			return before == otk.before;
+			return when == otk.when;
 		}
 		return false;
 	}

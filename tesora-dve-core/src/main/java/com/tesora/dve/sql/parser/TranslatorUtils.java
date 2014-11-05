@@ -192,6 +192,7 @@ import com.tesora.dve.sql.schema.Table;
 import com.tesora.dve.sql.schema.TableComponent;
 import com.tesora.dve.sql.schema.TableResolver;
 import com.tesora.dve.sql.schema.TriggerEvent;
+import com.tesora.dve.sql.schema.TriggerTime;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.UnresolvedDistributionVector;
 import com.tesora.dve.sql.schema.UserScope;
@@ -4363,9 +4364,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 		final EarlyTriggerTableCollector collector = TriggerTableInstance.collectTriggerTableReferences(body);
 		if ((triggerType == TriggerEvent.INSERT) && collector.hasBeforeColumns()) {
-			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_SUCH_ROW_IN_TRG, TriggerTableInstance.OLD.get(), TriggerEvent.INSERT.toString()));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_SUCH_ROW_IN_TRG, TriggerTime.BEFORE.getAlias().get(), TriggerEvent.INSERT.toString()));
 		} else if ((triggerType == TriggerEvent.DELETE) && collector.hasAfterColumns()) {
-			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_SUCH_ROW_IN_TRG, TriggerTableInstance.NEW.get(), TriggerEvent.DELETE.toString()));
+			throw new SchemaException(new ErrorInfo(AvailableErrors.NO_SUCH_ROW_IN_TRG, TriggerTime.AFTER.getAlias().get(), TriggerEvent.DELETE.toString()));
 		}
 
 		String origStmt = getInputSQL();
@@ -4452,8 +4453,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		TableInstance targTab = basicResolver.lookupTable(pc, n, lockInfo);
 		PETable theTable = targTab.getAbstractTable().asTable();
 		long node = pc.getNextTable();
-		TriggerTableInstance before = new TriggerTableInstance(theTable,node,true);
-		TriggerTableInstance after = new TriggerTableInstance(theTable,node,false);
+		TriggerTableInstance before = new TriggerTableInstance(theTable,node,TriggerTime.BEFORE);
+		TriggerTableInstance after = new TriggerTableInstance(theTable,node,TriggerTime.AFTER);
 		pushScope();
 		scope.insertTable(before);
 		scope.insertTable(after);
@@ -4465,8 +4466,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		// we always use the same node number for trigger tables so that
 		// we can correctly plan when there are both before and after triggers
 		long node = -1;
-		TriggerTableInstance before = new TriggerTableInstance(tab,node,true);
-		TriggerTableInstance after = new TriggerTableInstance(tab,node,false);
+		TriggerTableInstance before = new TriggerTableInstance(tab,node,TriggerTime.BEFORE);
+		TriggerTableInstance after = new TriggerTableInstance(tab,node,TriggerTime.AFTER);
 		pushScope();
 		scope.insertTable(before);
 		scope.insertTable(after);

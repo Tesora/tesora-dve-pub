@@ -60,7 +60,8 @@ public class QueryStepUpdateByKeyOperation extends QueryStepDMLOperation {
 		
 		SSConnection ssCon = estate.getConnection();
 		
-		WorkerGroup.MappingSolution mappingSolution = dm.mapKeyForUpdate(ssCon.getCatalogDAO(), wg.getGroup(), distValue);
+		WorkerGroup.MappingSolution mappingSolution = 
+				QueryStepOperation.mapKeyForUpdate(estate, wg.getGroup(), distValue);
 
 		WorkerExecuteRequest req =
 				new WorkerExecuteRequest(ssCon.getTransactionalContext(), bindCommand(estate,command)).

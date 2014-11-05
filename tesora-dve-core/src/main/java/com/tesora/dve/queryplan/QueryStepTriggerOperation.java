@@ -23,29 +23,37 @@ package com.tesora.dve.queryplan;
 
 import java.util.List;
 
+import org.apache.log4j.Logger;
+
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
+import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepTriggerOperation extends QueryStepOperation {
 
+	private static final Logger logger = Logger.getLogger( QueryStepTriggerOperation.class );
+	
 	private final QueryStepOperation rowQuery;
 	private final QueryStepOperation before;
 	private final QueryStepOperation actual;
 	private final QueryStepOperation after;
 	
-	public QueryStepTriggerOperation(QueryStepOperation rowQuery, QueryStepOperation beforeBody, QueryStepOperation targetBody, QueryStepOperation afterBody) throws PEException {
+	private final TriggerValueHandlers columnHandlers;
+		
+	public QueryStepTriggerOperation(TriggerValueHandlers handlers,
+			QueryStepOperation rowQuery, QueryStepOperation beforeBody, QueryStepOperation targetBody, QueryStepOperation afterBody) throws PEException {
 		super(targetBody.getStorageGroup());
 		this.rowQuery = rowQuery;
 		this.before = beforeBody;
 		this.after = afterBody;
 		this.actual = targetBody;
+		this.columnHandlers = handlers;
 	}
 
 	@Override
@@ -56,27 +64,21 @@ public class QueryStepTriggerOperation extends QueryStepOperation {
 		MysqlTextResultCollector rows = new MysqlTextResultCollector(true);
 		rowQuery.execute(estate, rows);
 		for(List<String> row : rows.getRowData()) {
-			ExecutionState childState = estate.pushConstants(buildConstants(rows.getColumnSet(),row));
+			LateBoundConstants beforeValues = columnHandlers.onBefore(estate,row);
+			ExecutionState childState = estate.pushConstants(beforeValues);
 			if (before != null)
 				before.execute(childState, DBEmptyTextResultConsumer.INSTANCE);
+			LateBoundConstants targetValues = columnHandlers.onTarget(estate,beforeValues);
+			childState = estate.pushConstants(targetValues);
 			actual.execute(childState, resultConsumer);
-			if (after != null)
+			if (after != null) {
+				LateBoundConstants afterValues = columnHandlers.onAfter(targetValues); 
+				childState = estate.pushConstants(afterValues);
 				after.execute(childState, DBEmptyTextResultConsumer.INSTANCE);
+			}
 		}
 	}
 
-	private LateBoundConstants buildConstants(ColumnSet typeInfo, List<String> row) {
-		String[] out = new String[row.size()];
-		for(int i = 0; i < row.size(); i++) {
-			ColumnMetadata cmd= typeInfo.getColumn(i+1);
-			if (cmd.isStringType()) {
-				out[i] = PEStringUtils.singleQuote(row.get(i));
-			} else {
-				out[i] = row.get(i);
-			}
-		}
-		return new LateBoundConstants(out);
-	}
 	
 	@Override
 	public void executeSelf(ExecutionState estate, WorkerGroup wg,

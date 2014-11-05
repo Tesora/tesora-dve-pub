@@ -72,7 +72,8 @@ public class QueryStepMultiInsertByKeyOperation extends QueryStepDMLOperation {
 						" but found " + keyCmd.getFirst().getDistributionModel());
 			}
 			
-			WorkerGroup.MappingSolution mappingSolution = dm.mapKeyForInsert(ssCon.getCatalogDAO(), wg.getGroup(), keyCmd.getFirst());
+			WorkerGroup.MappingSolution mappingSolution = 
+					QueryStepOperation.mapKeyForInsert(estate, wg.getGroup(), keyCmd.getFirst());
 			mappedInserts.put(wg.resolveSite(mappingSolution.getSite()), bindCommand(estate,keyCmd.getSecond()));
 		}
 

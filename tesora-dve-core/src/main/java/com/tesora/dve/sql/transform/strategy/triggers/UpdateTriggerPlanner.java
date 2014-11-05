@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.TriggerValueHandler;
+import com.tesora.dve.queryplan.TriggerValueHandlers;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.expression.TriggerTableKey;
@@ -44,6 +46,8 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
 import com.tesora.dve.sql.schema.TriggerEvent;
+import com.tesora.dve.sql.schema.TriggerTime;
+import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -73,10 +77,10 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 		LinkedHashMap<ColumnKey,Integer> updateExprOffsets = new LinkedHashMap<ColumnKey,Integer>();
 		LinkedHashMap<PEColumn,Integer> uniqueKeyOffsets = new LinkedHashMap<PEColumn,Integer>();
 		
-		SelectStatement srcSelect = buildTempTableSelect(context,us,updateTable,triggerInfo,updateExprOffsets, uniqueKeyOffsets);
+		Pair<TriggerValueHandlers,SelectStatement> srcSelect = buildTempTableSelect(context,us,updateTable,triggerInfo,updateExprOffsets, uniqueKeyOffsets);
 		UpdateStatement uniqueKeyUpdate = buildUniqueKeyUpdate(context, updateTable, updateExprOffsets, uniqueKeyOffsets);
 
-        return commonPlanning(context,updateTable,srcSelect,uniqueKeyUpdate,triggerInfo);		
+        return commonPlanning(context,updateTable,srcSelect.getSecond(),srcSelect.getFirst(),uniqueKeyUpdate,triggerInfo);		
 	}
 
 	@Override
@@ -84,7 +88,7 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 		return FeaturePlannerIdentifier.UPDATE_TRIGGER;
 	}
 
-	private SelectStatement buildTempTableSelect(PlannerContext pc, UpdateStatement us,  
+	private Pair<TriggerValueHandlers,SelectStatement> buildTempTableSelect(PlannerContext pc, UpdateStatement us,  
 			TableKey updatedTable, PETableTriggerPlanningEventInfo triggerInfo,
 			Map<ColumnKey,Integer> updateExprOffsets, Map<PEColumn,Integer> ukOffsets) throws PEException {
 
@@ -111,20 +115,22 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 		// key is orginal column key, value is update expression
 		LinkedHashMap<ColumnKey,ExpressionNode> updateExprMap = new LinkedHashMap<ColumnKey,ExpressionNode>();
 		for(Pair<ColumnKey,ExpressionNode> p : updateExprs) {
-			ColumnKey triggerColumnKey = new ColumnKey(new TriggerTableKey(updatedTable.getTable(),-1,false),p.getFirst().getPEColumn());
+			ColumnKey triggerColumnKey = new ColumnKey(new TriggerTableKey(updatedTable.getTable(),-1,TriggerTime.AFTER),p.getFirst().getPEColumn());
 			updateKeyForwarding.put(triggerColumnKey,p.getFirst());
 			updateExprMap.put(p.getFirst(),p.getSecond());
 		}
 		List<ExpressionNode> proj = new ArrayList<ExpressionNode>();
+		List<TriggerValueHandler> types = new ArrayList<TriggerValueHandler>();
 		
 		Collection<ColumnKey> triggerColumns = triggerInfo.getTriggerBodyColumns(pc.getContext());
 		for(ColumnKey ck : triggerColumns) {
 			int position = proj.size();
 			boolean isKeyPart = false;
 			TriggerTableKey ttk = (TriggerTableKey) ck.getTableKey();
-			if (ttk.isBefore()) {
+			if (ttk.getTime() == TriggerTime.BEFORE) {
 				isKeyPart = ukColumns.contains(ck.getPEColumn());
 				proj.add(new ColumnInstance(ck.getPEColumn(),updatedTable.toInstance()));
+				types.add(new TriggerValueHandler(ck.getPEColumn().getType()));
 			} else {
 				ColumnKey origCK = updateKeyForwarding.get(ck);
 				if (origCK != null) {
@@ -136,6 +142,7 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 					isKeyPart = ukColumns.contains(ck.getPEColumn());
 					proj.add(new ColumnInstance(ck.getPEColumn(),updatedTable.toInstance()));
 				}
+				types.add(new TriggerValueHandler(ck.getPEColumn().getType()));
 			}
 			if (isKeyPart) {
 				Integer any = ukOffsets.get(ck.getPEColumn());
@@ -149,6 +156,7 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 		for(Map.Entry<ColumnKey, ExpressionNode> me : updateExprMap.entrySet()) {
 			updateExprOffsets.put(me.getKey(), proj.size());
 			proj.add(me.getValue());
+			types.add(new TriggerValueHandler(me.getKey().getPEColumn().getType()));
 		}
 		
 		// finally, if there are any parts of the unique key which are missing, add those too
@@ -157,12 +165,13 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 			if (any == null) {
 				ukOffsets.put(pec, proj.size());
 				proj.add(new ColumnInstance(pec,updatedTable.toInstance()));
+				types.add(new TriggerValueHandler(pec.getType()));
 			}
 		}
 
 		out.setProjection(proj);
 		
-		return out;
+		return new Pair<TriggerValueHandlers,SelectStatement>(new TriggerValueHandlers(types),out);
 	}
 	
 	private UpdateStatement buildUniqueKeyUpdate(PlannerContext context, TableKey updatedTable, LinkedHashMap<ColumnKey,Integer> updateExprOffsets,
@@ -170,7 +179,8 @@ public class UpdateTriggerPlanner extends TriggerPlanner {
 		// build a new table key for this thing
 		List<ExpressionNode> updateExprs = new ArrayList<ExpressionNode>();
 		for(Map.Entry<ColumnKey,Integer> me : updateExprOffsets.entrySet()) {
-			FunctionCall eq = new FunctionCall(FunctionName.makeEquals(),me.getKey().toInstance(),new LateBindingConstantExpression(me.getValue()));
+			FunctionCall eq = new FunctionCall(FunctionName.makeEquals(),me.getKey().toInstance(),
+					new LateBindingConstantExpression(me.getValue(),me.getKey().getColumn().getType()));
 			updateExprs.add(eq);
 		}
 

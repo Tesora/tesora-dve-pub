@@ -29,6 +29,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.queryplan.TriggerValueHandler;
+import com.tesora.dve.queryplan.TriggerValueHandlers;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ColumnKey;
@@ -43,6 +45,7 @@ import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
 import com.tesora.dve.sql.schema.TriggerEvent;
+import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;
@@ -54,6 +57,7 @@ import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryFunction;
 
 public class DeleteTriggerPlanner extends TriggerPlanner {
@@ -83,11 +87,11 @@ public class DeleteTriggerPlanner extends TriggerPlanner {
 		
 		LinkedHashMap<PEColumn,Integer> uniqueKeyOffsets = new LinkedHashMap<PEColumn,Integer>();
 		
-		SelectStatement srcSelect = buildTempTableSelect(context,ds,deleteKey,triggerInfo,uniqueKeyOffsets);
+		Pair<TriggerValueHandlers,SelectStatement> srcSelect = buildTempTableSelect(context,ds,deleteKey,triggerInfo,uniqueKeyOffsets);
 		
 		DeleteStatement targetDelete = buildUniqueKeyDelete(context,deleteKey,uniqueKeyOffsets);
 
-		return commonPlanning(context,deleteKey,srcSelect,targetDelete,triggerInfo); 
+		return commonPlanning(context,deleteKey,srcSelect.getSecond(),srcSelect.getFirst(),targetDelete,triggerInfo); 
 	}
 
 	@Override
@@ -95,7 +99,7 @@ public class DeleteTriggerPlanner extends TriggerPlanner {
 		return FeaturePlannerIdentifier.DELETE_TRIGGER;
 	}
 
-	private SelectStatement buildTempTableSelect(PlannerContext context, DeleteStatement ds, TableKey triggerTable, 
+	private Pair<TriggerValueHandlers,SelectStatement> buildTempTableSelect(PlannerContext context, DeleteStatement ds, TableKey triggerTable, 
 			PETableTriggerPlanningEventInfo triggerInfo,
 			LinkedHashMap<PEColumn,Integer> uniqueKeyOffsets) throws PEException {
 		
@@ -120,10 +124,12 @@ public class DeleteTriggerPlanner extends TriggerPlanner {
 		List<ExpressionNode> proj = new ArrayList<ExpressionNode>();
 		Collection<ColumnKey> triggerColumns = triggerInfo.getTriggerBodyColumns(context.getContext());
 		
+		List<TriggerValueHandler> types = new ArrayList<TriggerValueHandler>();
+		
 		for(ColumnKey ck : triggerColumns) {
 			int position = proj.size();
-			// these can only be OLD columns
 			proj.add(new ColumnInstance(ck.getPEColumn(),triggerTable.toInstance()));
+			types.add(new TriggerValueHandler(ck.getPEColumn().getType()));
 			if (ukColumns.contains(ck.getPEColumn())) {
 				Integer any = uniqueKeyOffsets.get(ck.getPEColumn());
 				if (any == null)
@@ -136,12 +142,13 @@ public class DeleteTriggerPlanner extends TriggerPlanner {
 			if (any == null) {
 				uniqueKeyOffsets.put(pec, proj.size());
 				proj.add(new ColumnInstance(pec,triggerTable.toInstance()));
+				types.add(new TriggerValueHandler(pec.getType()));
 			}
 		}
 		
 		out.setProjection(proj);
 		
-		return out;
+		return new Pair<TriggerValueHandlers,SelectStatement>(new TriggerValueHandlers(types),out);
 	}
 	
 	private DeleteStatement buildUniqueKeyDelete(PlannerContext context, TableKey deleteTable,

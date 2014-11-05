@@ -149,6 +149,7 @@ public class RedistFeatureStep extends FeatureStep {
 		return out;
 	}
 	
+	
 	public SelectStatement buildNewSelect(PlannerContext pc) throws PEException {
 		TempTable tt = getTargetTempTable();
 		if (tt == null) return null;

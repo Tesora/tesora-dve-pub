@@ -56,6 +56,7 @@ public enum FeaturePlannerIdentifier {
 	UPDATE_TRIGGER,
 	DELETE_TRIGGER,
 	INSERT_INTO_SELECT_TRIGGER,
+	INSERT_INTO_VALUES_TRIGGER,
 	REPLACE_INTO_TRIGGER,
 	
 	// compound statement planners - they use the feature planner infrastructure
