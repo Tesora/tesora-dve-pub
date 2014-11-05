@@ -57,7 +57,6 @@ import com.tesora.dve.sql.node.expression.CaseExpression;
 import com.tesora.dve.sql.node.expression.CastFunctionCall;
 import com.tesora.dve.sql.node.expression.CharFunctionCall;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
-import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.ConvertFunctionCall;
 import com.tesora.dve.sql.node.expression.Default;
 import com.tesora.dve.sql.node.expression.DelegatingLiteralExpression;
@@ -1531,34 +1530,6 @@ public abstract class Emitter {
 		buf.append(tok);
 		if (gsql)
 			builder.withLateConstant(offset, tok, expr);
-	}
-
-	public String emitConstantExprValue(IConstantExpression expr, Object value) {
-		boolean stringLit = false;
-		String any = null;
-		if (expr instanceof ILiteralExpression) {
-			ILiteralExpression ile = (ILiteralExpression) expr;
-			if (ile.getCharsetHint() != null)
-				any = ile.getCharsetHint().getUnquotedName().get();
-			stringLit = ile.isStringLiteral();
-		} else if (expr instanceof LateBindingConstantExpression) {
-			LateBindingConstantExpression lbce = (LateBindingConstantExpression) expr;
-			if (lbce.getType().isStringType())
-				stringLit = true;
-		}
-		String tok = null;
-		if (value instanceof String) {
-			tok = (String) value;
-		} else if (value instanceof Date) {
-			tok = FastDateFormat.getInstance(MysqlNativeConstants.MYSQL_TIMESTAMP_FORMAT).format((Date) value);
-		} else {
-			tok = String.valueOf(value);
-		}
-		if (value != null && stringLit) {
-			tok = "'" + tok + "'";
-		}
-		if (any != null) return any + tok;
-		return tok;
 	}
 
 	public String emitConstantExprValue(IConstantExpression expr, Object value) {
