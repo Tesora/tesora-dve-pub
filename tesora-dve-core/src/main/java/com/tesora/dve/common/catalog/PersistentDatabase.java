@@ -32,5 +32,4 @@ public interface PersistentDatabase extends UserVisibleDatabase {
 	public String getDefaultCollationName();
 	
 	public String getDefaultCharacterSetName();
-
 }

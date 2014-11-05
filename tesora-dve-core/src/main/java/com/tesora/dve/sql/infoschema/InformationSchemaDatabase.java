@@ -89,6 +89,11 @@ public class InformationSchemaDatabase implements Database<InformationSchemaTabl
 	}
 
 	@Override
+	public boolean hasNameManglingEnabled() {
+		return false;
+	}
+
+	@Override
 	public String getNameOnSite(StorageSite site) {
 		return UserDatabase.getNameOnSite(name.get(), site);
 	}

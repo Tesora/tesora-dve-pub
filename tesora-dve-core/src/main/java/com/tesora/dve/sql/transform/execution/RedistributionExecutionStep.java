@@ -134,7 +134,7 @@ public final class RedistributionExecutionStep extends
 		this.targetGroup = targetGroup;
 
 		if ((redistToTable != null) && redistToTable.isTempTable()) {
-			this.declarationHints = ((TempTable) redistToTable).getHints(sc);
+			this.declarationHints = ((TempTable) redistToTable).finalizeHints(sc);
 		}
 
 		if (targetTable.isUserlandTemporaryTable() || 
@@ -167,7 +167,7 @@ public final class RedistributionExecutionStep extends
 		distKey = distKeyTemplate;
 
 		if ((redistToTable != null) && redistToTable.isTempTable()) {
-			this.declarationHints = ((TempTable) redistToTable).getHints(sc);
+			this.declarationHints = ((TempTable) redistToTable).finalizeHints(sc);
 		}
 	}
 	
@@ -194,7 +194,8 @@ public final class RedistributionExecutionStep extends
 					mutableContext.endSaveContext();
 				}
 			} else {
-				qsrdo.toTempTable(targetGroup.getPersistent(sc), getPersistentDatabase(), targetTable.getName(sc).get(), true);
+				final Database<?> targetDb = targetTable.getDatabase(sc);
+				qsrdo.toTempTable(targetGroup.getPersistent(sc), (targetDb != null) ? targetDb : getPersistentDatabase(), targetTable.getName(sc).get(), true);
 			}
 			if (distKey.usesColumns(sc)) {
 				if (Model.RANGE.equals(distKey.getModel(sc)))

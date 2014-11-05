@@ -57,6 +57,7 @@ import com.tesora.dve.sql.node.expression.CaseExpression;
 import com.tesora.dve.sql.node.expression.CastFunctionCall;
 import com.tesora.dve.sql.node.expression.CharFunctionCall;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
+import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.ConvertFunctionCall;
 import com.tesora.dve.sql.node.expression.Default;
 import com.tesora.dve.sql.node.expression.DelegatingLiteralExpression;
@@ -120,6 +121,7 @@ import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.VariableScopeKind;
+import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
 import com.tesora.dve.sql.schema.modifiers.TableModifiers;
@@ -1519,28 +1521,44 @@ public abstract class Emitter {
 	}
 	
 	public void emitLateBindingConstantExpression(SchemaContext sc, LateBindingConstantExpression expr, StringBuilder buf) {
-		boolean emitValue = this.hasOptions() && getOptions().isResolveLateConstants();
 		boolean gsql = this.hasOptions() && getOptions().isGenericSQL();
 		
 		int offset = -1;
 		String tok;
-		if (emitValue) {
-			Object v = expr.getValue(sc);
-			if (v instanceof String) {
-				tok = (String) v;
-			} else if (v instanceof Date) {
-					tok = FastDateFormat.getInstance(MysqlNativeConstants.MYSQL_TIMESTAMP_FORMAT).format((Date) v);
-			} else {
-				tok = String.valueOf(v);
-			}
-		} else {
-			if (gsql)
-				offset = buf.length();
-			tok = "_lbc" + expr.getPosition();
-		}
+		if (gsql)
+			offset = buf.length();
+		tok = "_lbc" + expr.getPosition();
 		buf.append(tok);
-		if (gsql && !emitValue)
+		if (gsql)
 			builder.withLateConstant(offset, tok, expr);
+	}
+
+	public String emitConstantExprValue(IConstantExpression expr, Object value) {
+		boolean stringLit = false;
+		String any = null;
+		if (expr instanceof ILiteralExpression) {
+			ILiteralExpression ile = (ILiteralExpression) expr;
+			if (ile.getCharsetHint() != null)
+				any = ile.getCharsetHint().getUnquotedName().get();
+			stringLit = ile.isStringLiteral();
+		} else if (expr instanceof LateBindingConstantExpression) {
+			LateBindingConstantExpression lbce = (LateBindingConstantExpression) expr;
+			if (lbce.getType().isStringType())
+				stringLit = true;
+		}
+		String tok = null;
+		if (value instanceof String) {
+			tok = (String) value;
+		} else if (value instanceof Date) {
+			tok = FastDateFormat.getInstance(MysqlNativeConstants.MYSQL_TIMESTAMP_FORMAT).format((Date) value);
+		} else {
+			tok = String.valueOf(value);
+		}
+		if (value != null && stringLit) {
+			tok = "'" + tok + "'";
+		}
+		if (any != null) return any + tok;
+		return tok;
 	}
 	
 	public void emitVariable(VariableInstance vi, StringBuilder buf) {
@@ -1657,9 +1675,9 @@ public abstract class Emitter {
 			Database<?> curDb = sc.getCurrentDatabase(false);
 			Database<?> tblDb = pet.getDatabase(sc);
 			if (context == TableInstanceContext.TABLE_FACTOR) {
-				if ((curDb == null && tblDb != null) || 
-						((curDb != null && tblDb != null) && (curDb.getId() != tblDb.getId()))) {
-					if (getOptions() == null || !getOptions().isCatalog()) { 
+				if (((curDb == null) && (tblDb != null)) ||
+						(((curDb != null) && (tblDb != null)) && (curDb.getId() != tblDb.getId()))) {
+					if (tblDb.hasNameManglingEnabled()) {
 						int offset = buf.length();
 						String toAdd = pet.getDatabase(sc).getName().getUnqualified().getSQL();
 						buf.append(toAdd).append(".");
@@ -2580,14 +2598,6 @@ public abstract class Emitter {
 		
 		public boolean isAddViewTableDecls() {
 			return hasSetting(EmitOption.VIEW_DECL_EMIT_TABLE_DECL);
-		}
-		
-		public EmitOptions addCatalog() {
-			return this.add(EmitOption.CATALOG, Boolean.TRUE);
-		}
-		
-		public boolean isCatalog() {
-			return hasSetting(EmitOption.CATALOG);
 		}
 		
 		public EmitOptions addResolveLateConstants() {

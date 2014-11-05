@@ -51,6 +51,7 @@ import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.JdbcConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
@@ -1141,5 +1142,13 @@ public class TestCreates extends SchemaTest {
 			rc.execute("DROP DATABASE `日本語`");
 			rc.execute("DROP DATABASE `龔龖龗`");
 		}
+	}
+
+	@Test
+	public void testPE1634() throws Throwable {
+		rootConnection.execute("create table pe1634 select * from information_schema.collations");
+		final ResourceResponse expected = rootConnection.execute("select * from information_schema.collations");
+		final ResourceResponse actual = rootConnection.execute("select * from pe1634");
+		actual.assertEqualResults("testCreateAsSelectFromInfoSchema", expected, ComparisonOptions.DEFAULT);
 	}
 }

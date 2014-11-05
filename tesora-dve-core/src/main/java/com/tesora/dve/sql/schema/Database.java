@@ -38,4 +38,6 @@ public interface Database<T extends Table<?>> extends HasName, PersistentDatabas
 	public SchemaEdge<PEPersistentGroup> getDefaultStorageEdge();
 	
 	public boolean isInfoSchema();	
+
+	public boolean hasNameManglingEnabled();
 }

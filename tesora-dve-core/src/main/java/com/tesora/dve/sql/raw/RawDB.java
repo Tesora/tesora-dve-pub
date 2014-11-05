@@ -101,6 +101,11 @@ public class RawDB implements Database<PEAbstractTable<?>> {
 		return true;
 	}
 
+	@Override
+	public boolean hasNameManglingEnabled() {
+		return base.hasNameManglingEnabled();
+	}
+
 	private static class RawDBCacheKey extends SchemaCacheKey<RawDB> {
 
 		private static final long serialVersionUID = 1L;

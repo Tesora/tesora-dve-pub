@@ -210,6 +210,7 @@ public class CatalogHelper {
 	 *            Number of dynamic sites
 	 * @throws PEException
 	 */
+	@SuppressWarnings("rawtypes")
 	public void createLocalhostCatalog(String providerName, String sgName, int storageSites, int dynamicSites)
 			throws PEException {
 
@@ -222,7 +223,6 @@ public class CatalogHelper {
 
 			Pair<Project,Map<VariableHandler,VariableConfig>> minimal = 
 					createMinimalCatalog(c, getRootUser(), getRootPassword());
-			Project p = minimal.getFirst();
 
 			// Generate a Site Provider configuration with encrypted passwords
 			OnPremiseSiteProviderConfig providerConfig = generateProviderConfig(dynamicSites, providerName,
@@ -257,6 +257,7 @@ public class CatalogHelper {
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	public void createBootstrapCatalog() throws PEException {
 
 		createCatalogDB();
@@ -268,7 +269,6 @@ public class CatalogHelper {
 
 			Pair<Project,Map<VariableHandler,VariableConfig>> minimal = 
 					createMinimalCatalog(c, getRootUser(), getRootPassword());
-			Project p = minimal.getFirst();
 			// Generate a Site Provider configuration with encrypted passwords
 			OnPremiseSiteProviderConfig providerConfig = generateProviderConfig(1, PEConstants.BOOTSTRAP_PROVIDER_NAME,
 					getCatalogBaseUrl(), getCatalogUser(), getCatalogPassword());
@@ -290,6 +290,7 @@ public class CatalogHelper {
 		}
 	}
 	
+	@SuppressWarnings("rawtypes")
 	public void createStandardCatalog(List<PersistentSite> sites, List<PersistentGroup> groups,
 			PersistentGroup defaultGroup, OnPremiseSiteProviderConfig dynamic, DynamicPolicy policy) throws PEException {
 
@@ -302,7 +303,6 @@ public class CatalogHelper {
 
 			Pair<Project,Map<VariableHandler,VariableConfig>> minimal = 
 					createMinimalCatalog(c, getRootUser(), getRootPassword());
-			Project p = minimal.getFirst();
 
 			// We are going to do the policy first since we need the name
 			// of the dynamic provider out of the policy
@@ -373,6 +373,7 @@ public class CatalogHelper {
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	protected Pair<Project,Map<VariableHandler,VariableConfig>> createMinimalCatalog(CatalogDAO c, String user, String password) throws PEException {
 		createSchema(c);
 
@@ -697,6 +698,7 @@ public class CatalogHelper {
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	public VariableConfig setVariable(String key, String value, boolean create) throws PEException {
 		CatalogDAO c = CatalogDAOFactory.newInstance(catalogProperties);
 
