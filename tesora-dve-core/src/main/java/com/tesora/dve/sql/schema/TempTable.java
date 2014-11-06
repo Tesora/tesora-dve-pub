@@ -222,7 +222,7 @@ public final class TempTable extends PETable {
 	
 	@Override
 	public Name getName(SchemaContext sc) {
-		return sc._getValues().getTempTableName(index);
+		return sc.getValues().getTempTableName(index);
 	}
 	
 	@Override
@@ -271,7 +271,7 @@ public final class TempTable extends PETable {
     protected void forceDefinitions(SchemaContext sc, Collection<PEColumn> columns) {
         if (columns.size() > 0){
             SchemaContext mutable = SchemaContext.makeMutableIndependentContext(sc);
-            mutable.setValues(sc._getValues());
+            mutable.setValues(sc.getValues());
             for(PEColumn p : columns) {
                 UserColumn uc = p.getPersistent(mutable);
                 declHint.addOverrideDecl(p.getName().getUnquotedName().get(), uc);

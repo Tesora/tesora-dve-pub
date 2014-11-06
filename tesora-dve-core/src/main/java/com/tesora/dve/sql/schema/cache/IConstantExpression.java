@@ -21,11 +21,12 @@ package com.tesora.dve.sql.schema.cache;
  * #L%
  */
 
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 
 public interface IConstantExpression {
 
-	public Object getValue(SchemaContext sc);
+	public Object getValue(ConnectionValues cv);
 
 	public int getPosition();
 

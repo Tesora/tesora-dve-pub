@@ -24,6 +24,7 @@ package com.tesora.dve.sql.node.expression;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.LanguageNode;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PEContainer;
 import com.tesora.dve.sql.schema.PEContainerTenant;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -35,39 +36,18 @@ import com.tesora.dve.sql.transform.CopyContext;
 
 public class ContainerTenantIDLiteral extends TenantIDLiteral {
 
-	private SchemaCacheKey<PEContainer> container;
-	
-	public ContainerTenantIDLiteral(ValueSource vs, SchemaCacheKey<PEContainer> spec) {
+	public ContainerTenantIDLiteral(ValueSource vs) {
 		super(vs);
-		container = spec;
 	}
 	
 	protected ContainerTenantIDLiteral(ContainerTenantIDLiteral other) {
 		super(other);
-		this.container = other.container;
 	}
 
-	protected static void validate(SchemaCacheKey<PEContainer> expecting, SchemaContext sc) {
-		SchemaEdge<IPETenant> e = sc.getCurrentTenant();
-		IPETenant actual = e.get(sc);
-		if (actual == null)
-			throw new SchemaException(Pass.PLANNER, "Require a tenant");
-		if (actual instanceof PEContainerTenant) {
-			PEContainerTenant pect = (PEContainerTenant) actual;
-			SchemaCacheKey<PEContainer> currentContainer = pect.getContainerCacheKey();
-			if (currentContainer == null)
-				throw new SchemaException(Pass.PLANNER, "Require a container tenant");
-			else if (!currentContainer.equals(expecting))
-				throw new SchemaException(Pass.PLANNER, "Invalid container context");
-		} else {
-			throw new SchemaException(Pass.PLANNER, "Invalid current tenant for plan - expected container tenant but found " + actual.getClass().getSimpleName());
-		}		
-	}
-	
 	@Override
-	public Object getValue(SchemaContext sc) {
-		validate(container,sc);
-		return source.getTenantID(sc);
+	public Object getValue(ConnectionValues cv) {
+		if (source != null) return source.getTenantID();
+		return cv.getTenantID();
 	}
 	
 	@Override
@@ -78,7 +58,7 @@ public class ContainerTenantIDLiteral extends TenantIDLiteral {
 
 	@Override
 	public ILiteralExpression getCacheExpression() {
-		return new CachedContainerTenantIDLiteral(getValueType(),container);
+		return new CachedContainerTenantIDLiteral(getValueType());
 	}
 
 

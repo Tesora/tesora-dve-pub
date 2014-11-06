@@ -21,6 +21,7 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
 
@@ -31,8 +32,8 @@ public class IdentifierLiteralExpression extends ActualLiteralExpression {
 	}
 
 	@Override
-	public Object getValue(SchemaContext sc) {
-		Name n = (Name)super.getValue(sc);
+	public Object getValue(ConnectionValues cv) {
+		Name n = (Name)super.getValue(cv);
 		return n.getSQL();
 	}
 	

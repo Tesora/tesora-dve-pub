@@ -36,6 +36,7 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.VariableScope;
@@ -61,7 +62,7 @@ public class SetVariableExecutionStep extends ExecutionStep {
 		String sn = getScopeName();
 		String prefix = "set " + sn + " " + variableName + " = ";
 		if (valueSource.isConstant()) {
-			buf.add(prefix + " " + valueSource.getConstantValue(sc));
+			buf.add(prefix + " " + valueSource.getConstantValue(sc.getValues()));
 		} else {
 			buf.add(prefix + " <callback>");
 		}
@@ -71,7 +72,7 @@ public class SetVariableExecutionStep extends ExecutionStep {
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
 			throws PEException {
 		StorageGroup sg = getStorageGroup(sc);
-		qsteps.add(new QueryStepSetScopedVariableOperation(sg,scope, variableName, valueSource.buildAccessor(sc), sg != null));
+		qsteps.add(new QueryStepSetScopedVariableOperation(sg,scope, variableName, valueSource.buildAccessor(sc.getValues()), sg != null));
 	}
 
 	public String getScopeName() {
@@ -89,11 +90,11 @@ public class SetVariableExecutionStep extends ExecutionStep {
 	
 	public interface VariableValueSource {
 		
-		public ValueAccessor buildAccessor(SchemaContext sc);
+		public ValueAccessor buildAccessor(ConnectionValues cv);
 
 		public boolean isConstant();
 		
-		public String getConstantValue(SchemaContext sc);
+		public String getConstantValue(ConnectionValues cv);
 		
 	}
 	
@@ -118,8 +119,8 @@ public class SetVariableExecutionStep extends ExecutionStep {
 		}
 		
 		@Override
-		public ValueAccessor buildAccessor(SchemaContext sc) {
-			return new ConstantValueAccessor(getConstantValue(sc));
+		public ValueAccessor buildAccessor(ConnectionValues cv) {
+			return new ConstantValueAccessor(getConstantValue(cv));
 		}
 
 		@Override
@@ -128,13 +129,13 @@ public class SetVariableExecutionStep extends ExecutionStep {
 		}
 
 		@Override
-		public String getConstantValue(SchemaContext sc) {
+		public String getConstantValue(ConnectionValues cv) {
 			if (constant instanceof LiteralExpression) {
 				LiteralExpression litex = (LiteralExpression) constant;
 				if (litex.isNullLiteral())
 					return null;
 			}
-			return constant.getValue(sc).toString();
+			return constant.getValue(cv).toString();
 		}
 			
 	}
@@ -148,7 +149,7 @@ public class SetVariableExecutionStep extends ExecutionStep {
 		}
 
 		@Override
-		public ValueAccessor buildAccessor(SchemaContext sc) {
+		public ValueAccessor buildAccessor(ConnectionValues cv) {
 			return new ValueAccessor() {
 
 				@Override
@@ -163,7 +164,7 @@ public class SetVariableExecutionStep extends ExecutionStep {
 		}
 
 		@Override
-		public String getConstantValue(SchemaContext sc) {
+		public String getConstantValue(ConnectionValues cv) {
 			return null;
 		}
 	}
@@ -177,7 +178,7 @@ public class SetVariableExecutionStep extends ExecutionStep {
 		}
 
 		@Override
-		public ValueAccessor buildAccessor(SchemaContext sc) {
+		public ValueAccessor buildAccessor(ConnectionValues cv) {
 			return new ConstantValueAccessor(value);
 		}
 
@@ -187,7 +188,7 @@ public class SetVariableExecutionStep extends ExecutionStep {
 		}
 
 		@Override
-		public String getConstantValue(SchemaContext sc) {
+		public String getConstantValue(ConnectionValues cv) {
 			return value;
 		}
 	}

@@ -25,6 +25,7 @@ package com.tesora.dve.sql.node.expression;
 
 import com.tesora.dve.sql.node.expression.LateEvaluatingLiteralExpression.LateEvaluator;
 import com.tesora.dve.sql.parser.TokenTypes;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.ConstantType;
@@ -77,8 +78,8 @@ public class CachedLateEvaluatingLiteralExpression implements
 	}
 
 	@Override
-	public Object getValue(SchemaContext sc) {
-		return evaluator.getValue(sc, expressions);	
+	public Object getValue(ConnectionValues cv) {
+		return evaluator.getValue(cv, expressions);	
 	}
 
 	@Override

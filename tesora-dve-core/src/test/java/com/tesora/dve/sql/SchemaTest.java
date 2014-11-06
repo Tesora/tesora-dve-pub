@@ -149,7 +149,7 @@ public class SchemaTest extends PETest {
 		if (v == null)
 			assertTrue(l.isNullLiteral());
 		else
-			assertEquals(l.getValue(sc), v);
+			assertEquals(l.getValue(sc.getValues()), v);
 	}
 	
 	protected void assertValuesAre(SchemaContext sc, List<ExpressionNode> cols, Object[] vs) {

@@ -228,7 +228,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 						ExpressionNode value = sve.getValue().get(0);
 						if (value instanceof LiteralExpression) {
 							LiteralExpression litex = (LiteralExpression) value;
-							String strval = litex.getValue(pc).toString();
+							String strval = litex.getValue(pc.getValues()).toString();
 							if ("1".equals(strval.trim())) {
 								throw new SchemaException(Pass.PLANNER, "No support for " + VariableConstants.SQL_AUTO_IS_NULL_NAME + " = 1 (planned)");
 							}

@@ -114,7 +114,7 @@ public class NRBuilder extends Traversal {
 			lookup.put(litex, sn);
 		} else if (in instanceof FunctionCall) {
 			FunctionCall fc = (FunctionCall) in;
-			FunctionNode fn = new FunctionNode(sc,fc,findChildren(fc));
+			FunctionNode fn = new FunctionNode(sc.getValues(),fc,findChildren(fc));
 			if (doSimpTest) {
 				ExpressionNode repl = fn.getSimplifiedValue();
 				if (repl != null) {

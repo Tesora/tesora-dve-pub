@@ -39,10 +39,12 @@ import com.tesora.dve.sql.parser.ExtractedLiteral;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
+import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
+import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.util.ResizableArray;
 
-public class ValueManager implements ValueSource {
+public class ValueManager {
 
 	// we store the original literal expression so that we can get the type off of them
 	// when we reset the literal values we'll use the types in the expressions to figure out
@@ -94,20 +96,20 @@ public class ValueManager implements ValueSource {
 			}
 		}
 		if (values != null) {
-			values = values.makeCopy();
+			values = values.makeCopy(null);
 		}
 		
 		frozen = true;
 	}
 	
-	private ConnectionValues getValues(SchemaContext sc) {
+	public ConnectionValues getValues(SchemaContext sc) {
 		return getValues(sc,true);
 	}
 	
-	private ConnectionValues getValues(SchemaContext sc, boolean check) {
-		ConnectionValues cv = sc._getValues();
+	public ConnectionValues getValues(SchemaContext sc, boolean check) {
+		ConnectionValues cv = sc.getValues();
 		if (cv == null) {
-			values = new ConnectionValues();
+			values = new ConnectionValues(this,sc.getConnection());
 			cv = values;
 			sc.setValues(values);
 		} else if (check && cv.getNumberOfLiterals() < literals.size()) {
@@ -120,7 +122,6 @@ public class ValueManager implements ValueSource {
 		return passDownParameters;
 	}
 	
-	@Override
 	public Object getValue(SchemaContext sc, IParameter p) {
 		return getValues(sc).getParameterValue(p.getPosition());
 	}
@@ -142,23 +143,10 @@ public class ValueManager implements ValueSource {
 		return dle.getSourceLocation().getText();
 	}
 	
-	@Override
-	public Object getLiteral(SchemaContext sc, IDelegatingLiteralExpression dle) {
-		return getLiteral(sc, dle.getPosition());
+	public Object getLiteral(SchemaContext sc,  IDelegatingLiteralExpression dle) {
+		return getValues(sc).getLiteral(dle);
 	}
 
-	public Object getLiteral(SchemaContext sc, int index) {
-		try {
-			Type any = literalTypes.get(index);
-			Object value = getValues(sc).getLiteralValue(index);
-			if (any != null && value != null)
-                return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(value, any);
-			return value;
-		} catch (Throwable t) {
-			throw new SchemaException(Pass.PLANNER, "Literal for index " + index + " is invalid",t);
-		}
-	}
-	
 	private void checkFrozen(String message) {
 		if (frozen) throw new SchemaException(Pass.PLANNER, "Attempt to modify existing cached plan: " + message);
 	}
@@ -191,6 +179,12 @@ public class ValueManager implements ValueSource {
 		}
 	}
 	
+	public Type getLiteralType(IDelegatingLiteralExpression dle) {
+		if (dle instanceof IAutoIncrementLiteralExpression)
+			return null;
+		return literalTypes.get(dle.getPosition());
+	}
+	
 	public void registerParameter(SchemaContext sc, Parameter p) {
 		checkFrozen("add a new parameter");
 		IParameter already = parameters.get(p.getPosition());
@@ -203,18 +197,17 @@ public class ValueManager implements ValueSource {
 		return parameters.size();
 	}
 	
-	@Override
 	public Object getTenantID(SchemaContext sc) {
 		return getValues(sc).getTenantID();
 	}
 	
-	public void setTenantID(SchemaContext sc, Long v) {
-		getValues(sc,false).setTenantID(v);
+	public void setTenantID(SchemaContext sc, Long v, SchemaCacheKey<PEContainer> container) {
+		getValues(sc,false).setTenantID(v, container);
 	}
 	
 	public void allocateAutoIncBlock(SchemaContext sc, TableKey tk) {
 		checkFrozen("allocate autoincrement values");
-		getValues(sc).allocateAutoIncBlock(this, tk);
+		getValues(sc).allocateAutoIncBlock(tk);
 	}
 	
 	public AutoIncrementLiteralExpression allocateAutoInc(SchemaContext sc) {
@@ -234,9 +227,7 @@ public class ValueManager implements ValueSource {
 		this.lsi = lsi;
 	}
 	
-	@Override
-	public Object getAutoincValue(SchemaContext sc,
-			IAutoIncrementLiteralExpression exp) {
+	public Object getAutoincValue(SchemaContext sc, IAutoIncrementLiteralExpression exp) {
 		return getValues(sc).getAutoincValue(exp);
 	}
 	
@@ -263,13 +254,21 @@ public class ValueManager implements ValueSource {
 	}	
 
 	private ConnectionValues basicReset(SchemaContext sc) throws PEException {
-		ConnectionValues cv = (values == null ? new ConnectionValues() : values.makeCopy());
+		SchemaCacheKey<PEContainer> container = null;
+		if (sc.getPolicyContext().isContainerContext()) {
+			IPETenant ipe = sc.getPolicyContext().getCurrentTenant();
+			if (ipe instanceof PEContainerTenant) {
+				PEContainerTenant pect = (PEContainerTenant) ipe;
+				container = pect.getContainerCacheKey();
+			}
+		}
+		ConnectionValues cv = (values == null ? new ConnectionValues(this,sc.getConnection()) : values.makeCopy(sc.getConnection()));
 		sc.setValues(cv);
 		sc.setValueManager(this);
-		cv.setTenantID(sc.getPolicyContext().getTenantID(false));
+		cv.setTenantID(sc.getPolicyContext().getTenantID(false),container);
 		cv.resetTempTables(sc);
-		cv.resetTempGroups(sc);
-		cv.resetTenantID(sc);
+		cv.resetTempGroups();
+		cv.resetTenantID(sc.getPolicyContext().getTenantID(false),container);
 		cv.clearCurrentTimestamp();
 
 		return cv;
@@ -291,7 +290,7 @@ public class ValueManager implements ValueSource {
 	
 	public int allocateTempTableName(SchemaContext sc) {
 		checkFrozen("allocate temp table");
-		return getValues(sc).allocateTempTableName(sc);
+		return getValues(sc).allocateTempTableName(sc.getCatalog().getTempTableName());
 	}
 	
 	public int allocatePlaceholderGroup(SchemaContext sc, PEStorageGroup dynGroup) {
@@ -304,6 +303,6 @@ public class ValueManager implements ValueSource {
 	}
 	
 	public long getCurrentTimestamp(SchemaContext sc) {
-		return getValues(sc).getCurrentTimestamp(sc);
+		return getValues(sc).getCurrentTimestamp();
 	}
 }

@@ -735,7 +735,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 			subOptions = subOptions.setLockOverride(li);
 		PETable tschemaVersion = null;
 		ValueManager vm = sc.getValueManager();
-		ConnectionValues cv = sc._getValues();
+		ConnectionValues cv = sc.getValues();
 		sc.setValueManager(new ValueManager());
 		try {
 			sc.setCurrentDatabase(getDatabase(sc));

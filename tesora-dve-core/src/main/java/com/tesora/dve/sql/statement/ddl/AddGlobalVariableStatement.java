@@ -99,7 +99,7 @@ public class AddGlobalVariableStatement extends AlterStatement {
 		
 		for(Pair<Name,LiteralExpression> p : options) {
 			String key = p.getFirst().getUnqualified().getUnquotedName().get().toLowerCase(Locale.ENGLISH);
-			String val = PEStringUtils.dequote(p.getSecond().asString(sc));
+			String val = PEStringUtils.dequote(p.getSecond().asString(sc.getValues()));
 			if ("options".equals(key)) {
 				opts = VariableHandler.convertOptions(val);
 			} else if ("scopes".equals(key)) {

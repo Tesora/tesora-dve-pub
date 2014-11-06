@@ -22,6 +22,7 @@ package com.tesora.dve.sql.node.expression;
  */
 
 import com.tesora.dve.sql.parser.TokenTypes;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.ConstantType;
@@ -56,8 +57,8 @@ public class CachedDelegatingLiteralExpression implements IDelegatingLiteralExpr
 	}
 
 	@Override
-	public Object getValue(SchemaContext sc) {
-		return sc.getValueManager().getLiteral(sc, this);
+	public Object getValue(ConnectionValues cv) {
+		return cv.getLiteral(this);
 	}
 
 	@Override

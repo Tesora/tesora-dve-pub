@@ -142,12 +142,12 @@ public class DistributionKey implements PlanningConstraint {
 		return false;
 	}
 	
-	public String describe(final SchemaContext sc) {
+	public String describe(final ConnectionValues cv) {
 		return "{" + Functional.join(columnOrder, ", ", new UnaryFunction<String, PEColumn>() {
 			@Override
 			public String evaluate(PEColumn object) {
 				ConstantExpression ce = values.get(object);
-				return object.getName().get() + "='" + (ce == null ? "unset" : ce.getValue(sc)) + "'";
+				return object.getName().get() + "='" + (ce == null ? "unset" : ce.getValue(cv)) + "'";
 			}
 		}) + "}";
 	}
@@ -169,7 +169,7 @@ public class DistributionKey implements PlanningConstraint {
 				value = new DeferredTColumnDatum(me.getKey(),(LateBindingConstantExpression) me.getValue());
 			} else {
 				value = new TColumnDatum(me.getKey(),
-						me.getValue().convert(sc, me.getKey().getType()));
+						me.getValue().convert(sc.getValues(), me.getKey().getType()));
 			}
 			vals.put(me.getKey(), value);
 		}

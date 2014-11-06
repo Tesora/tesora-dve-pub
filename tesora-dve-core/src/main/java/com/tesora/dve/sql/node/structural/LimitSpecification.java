@@ -76,7 +76,7 @@ public class LimitSpecification extends StructuralNode {
 		boolean ret = false;
 		
 		if (rowcount.get() instanceof LiteralExpression) {
-			ret = ((Long)((LiteralExpression)rowcount.get()).getValue(sc)) == 1;
+			ret = ((Long)((LiteralExpression)rowcount.get()).getValue(sc.getValues())) == 1;
 		}
 		
 		return ret;

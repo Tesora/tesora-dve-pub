@@ -26,6 +26,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.ConstantType;
@@ -48,13 +49,13 @@ public class Parameter extends ConstantExpression implements IParameter {
 	}
 	
 	@Override
-	public Object getValue(SchemaContext sc) {
-		return sc.getValueManager().getValue(sc, this);
+	public Object getValue(ConnectionValues cv) {
+		return cv.getParameterValue(getPosition());
 	}
 	
 	@Override
-	public Object convert(SchemaContext sc, Type type) {
-        return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(getValue(sc), type);
+	public Object convert(ConnectionValues cv, Type type) {
+        return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(getValue(cv), type);
 	}
 	
 	@Override

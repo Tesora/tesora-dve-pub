@@ -312,7 +312,7 @@ public class InsertIntoValuesStatement extends InsertStatement implements Update
 				ConstantExpression ce = (ConstantExpression)v;
 				if (ce instanceof LiteralExpression) {
 					LiteralExpression litex = (LiteralExpression) ce;
-					if (AutoIncrementBlock.requiresAllocation(litex,sc, mode))
+					if (AutoIncrementBlock.requiresAllocation(litex,sc.getValues(), mode))
 						return handleMissing(sc);
 				} 
 				sc.getValueManager().registerSpecifiedAutoinc(sc,ce);

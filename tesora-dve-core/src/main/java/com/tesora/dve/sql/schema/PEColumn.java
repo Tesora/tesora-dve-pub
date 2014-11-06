@@ -482,7 +482,7 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 			if (le.isNullLiteral()) {
 				uc.setDefaultValue(null);
 			} else {
-				uc.setDefaultValue(le.getValue(sc).toString());
+				uc.setDefaultValue(le.getValue(sc.getValues()).toString());
 			}
 		}		
 	}

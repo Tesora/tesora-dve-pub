@@ -514,7 +514,7 @@ public class SelectStatement extends ProjectingStatement {
 			else if (target instanceof LiteralExpression) {
 				// i.e. order by 1,2,3
 				LiteralExpression le = (LiteralExpression) target;
-				Object value = le.getValue(pc);
+				Object value = le.getValue(pc.getValues());
 				if (value instanceof Long) {
 					Long index = (Long) value;
 					if ((index.intValue() - 1) < projection.size()) {

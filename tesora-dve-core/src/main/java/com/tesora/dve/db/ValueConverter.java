@@ -41,6 +41,7 @@ import com.tesora.dve.sql.ParserException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.parser.TokenTypes;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.types.Type;
 
@@ -373,8 +374,8 @@ public class ValueConverter {
 	// after parsing, many literals are just strings, and need further
 	// manipulation
 	// q: should we do enforcement?
-	public Object convert(SchemaContext sc, ConstantExpression in, Type toType) {
-		Object inValue = in.getValue(sc);
+	public Object convert(ConnectionValues cv, ConstantExpression in, Type toType) {
+		Object inValue = in.getValue(cv);
 		return convert(inValue, toType);
 	}
 

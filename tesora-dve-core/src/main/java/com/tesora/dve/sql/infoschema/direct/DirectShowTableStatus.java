@@ -74,7 +74,7 @@ public class DirectShowTableStatus extends DirectShowSchemaTable {
 			throw new SchemaException(Pass.SECOND,"Currently unsupported: show table status where ....");			
 		}
 		LiteralExpression litex = (LiteralExpression)likeExpr;
-		String likeStr = (litex == null ? "%" : (String)litex.getValue(sc));
+		String likeStr = (litex == null ? "%" : (String)litex.getValue(sc.getValues()));
 		// we have the like use either the tenant query or a regular user table query
 		String query = null;
 		HashMap<String,Object> params = new HashMap<String,Object>();

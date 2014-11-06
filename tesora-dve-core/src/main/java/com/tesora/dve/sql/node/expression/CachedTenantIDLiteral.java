@@ -21,6 +21,7 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 
 public class CachedTenantIDLiteral extends CachedDelegatingLiteralExpression {
@@ -30,8 +31,8 @@ public class CachedTenantIDLiteral extends CachedDelegatingLiteralExpression {
 	}
 	
 	@Override
-	public Object getValue(SchemaContext sc) {
-		return sc.getValueManager().getTenantID(sc);
+	public Object getValue(ConnectionValues cv) {
+		return cv.getTenantID();
 	}
 	
 }

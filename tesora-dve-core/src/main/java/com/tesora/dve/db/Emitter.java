@@ -1495,7 +1495,7 @@ public abstract class Emitter {
 		if (deltoken) {
 			tok = "_e" + dle.getPosition();
 		} else {
-			Object v = le.getValue(sc);
+			Object v = le.getValue((sc == null ? null : sc.getValues()));
 			if (le.getCharsetHint() != null)
 				buf.append(le.getCharsetHint().getUnquotedName().get());
 			if (v instanceof String) {
@@ -1517,7 +1517,7 @@ public abstract class Emitter {
 	}
 		
 	public void emitIdentifierLiteral(SchemaContext sc, IdentifierLiteralExpression ile, StringBuilder buf) {
-		buf.append(ile.getValue(sc));
+		buf.append(ile.getValue(sc.getValues()));
 	}
 	
 	public void emitLateBindingConstantExpression(SchemaContext sc, LateBindingConstantExpression expr, StringBuilder buf) {
@@ -2009,7 +2009,7 @@ public abstract class Emitter {
 			.append(" ").append(operation).append(" ");
 		// and now emit the options
 		for(Pair<Name,LiteralExpression> p : in.getOptions()) {
-			opts.add(p.getFirst().getSQL() + "=" + p.getSecond().getValue(sc));
+			opts.add(p.getFirst().getSQL() + "=" + p.getSecond().getValue(sc.getValues()));
 		}
 		buf.append(Functional.join(opts, ", "));
 	}

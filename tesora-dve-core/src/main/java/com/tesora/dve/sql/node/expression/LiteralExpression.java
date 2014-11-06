@@ -29,6 +29,7 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.parser.TokenTypes;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.ConstantType;
@@ -147,8 +148,8 @@ public abstract class LiteralExpression extends ConstantExpression implements IL
 		}
 	}
 
-	public String asString(SchemaContext sc) {
-		Object lv = getValue(sc);
+	public String asString(ConnectionValues cv) {
+		Object lv = getValue(cv);
 		if (lv instanceof String) {
 			return (String)lv;
 		} else {
@@ -188,10 +189,11 @@ public abstract class LiteralExpression extends ConstantExpression implements IL
 		return new ActualLiteralExpression(Boolean.valueOf(b), b ? TokenTypes.TRUE : TokenTypes.FALSE, null, null);
 	}
 	
-	public Object convert(SchemaContext sc, Type type) {
+	@Override
+	public Object convert(ConnectionValues cv, Type type) {
 		if (isNullLiteral())
 			return null;
-        return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(getValue(sc), type);
+        return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(getValue(cv), type);
 	}
 
 	@Override

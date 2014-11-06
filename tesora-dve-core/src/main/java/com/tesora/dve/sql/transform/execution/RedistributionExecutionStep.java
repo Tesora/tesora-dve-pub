@@ -185,7 +185,7 @@ public final class RedistributionExecutionStep extends
 			if (targetTable.isExplicitlyDeclared()) {
 				// need to create a new context to avoid leaking
 				SchemaContext mutableContext = SchemaContext.makeMutableIndependentContext(sc);
-				mutableContext.setValues(sc._getValues());
+				mutableContext.setValues(sc.getValues());
 				mutableContext.beginSaveContext();
 				try {
 					UserTable ut = targetTable.getPersistent(mutableContext);

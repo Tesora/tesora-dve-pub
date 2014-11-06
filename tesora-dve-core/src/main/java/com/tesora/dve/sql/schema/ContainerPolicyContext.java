@@ -161,8 +161,8 @@ public class ContainerPolicyContext extends SchemaPolicyContext {
 	public LiteralExpression getTenantIDLiteral(boolean mustExist, PEContainer cont) {
 		Long value = getTenantID(mustExist);
 		if (value == null) return null;
-		sc.getValueManager().setTenantID(sc,value);
-		return new ContainerTenantIDLiteral(sc.getValueManager(), (SchemaCacheKey<PEContainer>) cont.getCacheKey());
+		sc.getValueManager().setTenantID(sc,value,(SchemaCacheKey<PEContainer>) cont.getCacheKey());
+		return new ContainerTenantIDLiteral(sc.getValues());
 	}
 
 	

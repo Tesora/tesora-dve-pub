@@ -231,7 +231,7 @@ public class ViewShowSchemaTable extends ViewInformationSchemaTable implements S
 						});
 				ColumnSet cs = LogicalSchemaQueryEngine.buildProjectionMetadata(sc,proj,null,null);
 				IntermediateResultSet irs = new IntermediateResultSet(cs,
-						tempTableHandler.buildResults(sc, matching, options, (likeExpr == null ? null : (String)((LiteralExpression)likeExpr).getValue(sc))));
+						tempTableHandler.buildResults(sc, matching, options, (likeExpr == null ? null : (String)((LiteralExpression)likeExpr).getValue(sc.getValues()))));
 				return new SchemaQueryStatement(false,getName().get(),irs);
 			}
 		}

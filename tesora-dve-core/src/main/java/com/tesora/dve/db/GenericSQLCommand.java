@@ -650,7 +650,7 @@ public class GenericSQLCommand {
 				}
 			} else if (oe.getKind() == EntryKind.LATEVAR) {
 				final LateResolvingVariableOffsetEntry lrvoe = (LateResolvingVariableOffsetEntry) oe;
-				final Object value = lrvoe.expr.getValue(sc);
+				final Object value = lrvoe.expr.getValue(sc.getValues());
 				if (value != null) {
 					resolvedFragments.replace(oe, new CommandFragment(this.encoding, PEStringUtils.singleQuote(value.toString())));
 				} else {

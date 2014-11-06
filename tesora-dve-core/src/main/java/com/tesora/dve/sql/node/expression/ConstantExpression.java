@@ -22,6 +22,7 @@ package com.tesora.dve.sql.node.expression;
  */
 
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.types.Type;
@@ -38,9 +39,9 @@ public abstract class ConstantExpression extends ExpressionNode implements ICons
 	}
 	
 	@Override
-	public abstract Object getValue(SchemaContext sc);
+	public abstract Object getValue(ConnectionValues sc);
 
-	public abstract Object convert(SchemaContext sc, Type type);
+	public abstract Object convert(ConnectionValues cv, Type type);
 
 	
 	

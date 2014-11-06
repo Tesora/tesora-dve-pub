@@ -65,6 +65,7 @@ import com.tesora.dve.sql.raw.jaxb.TargetTableType;
 import com.tesora.dve.sql.raw.jaxb.TransactionActionType;
 import com.tesora.dve.sql.raw.jaxb.TransactionStepType;
 import com.tesora.dve.sql.raw.jaxb.UpdateStepType;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.DistributionKeyTemplate;
 import com.tesora.dve.sql.schema.DistributionVector;
@@ -149,7 +150,7 @@ public class RawToExecConverter {
 		SchemaContext cc = SchemaContext.makeImmutableIndependentContext(immutableContext);
 		if (origManager != null) {
 			cc.setValueManager(origManager);
-			cc.setValues(variablesContext._getValues());
+			cc.setValues(variablesContext.getValues());
 		}
 		cc.setCurrentDatabase(rawdb);
 		ParserOptions options = ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly().setActualLiterals();
@@ -232,6 +233,8 @@ public class RawToExecConverter {
 		if (stmt instanceof SelectStatement) {
 			pi = ((SelectStatement)stmt).getProjectionMetadata(variablesContext);
 		}
+		if (variablesContext.getValues() == null) 
+			variablesContext.getValueManager().getValues(variablesContext, false);
 		plan = new ExecutionPlan(pi, variablesContext.getValueManager(), stmt.getStatementType());	
 		origManager = plan.getValueManager();
 		List<VariableInstance> variables = VariableInstanceCollector.getVariables(stmt);
@@ -245,7 +248,8 @@ public class RawToExecConverter {
 			int tokType = EnumConverter.literalTypeToTokenType(type);
 			int position = literalsForParameters.size();
 			DelegatingLiteralExpression dle = new DelegatingLiteralExpression(tokType,
-					vi.getSourceLocation(),origManager,position,null);
+					vi.getSourceLocation(),variablesContext.getValues(),position,null);
+			dle.setPosition(position, true);
 			literalsForParameters.put(name, dle);
 			origManager.addLiteralValue(variablesContext,position,null,dle);
 		}

@@ -63,13 +63,13 @@ public class PECreateStorageSiteStatement extends
 			Pair<Name,LiteralExpression> p = iter.next();
 			String n = p.getFirst().getUnquotedName().get();
 			if (PESiteInstance.OPTION_URL.equalsIgnoreCase(n)) {
-				url = p.getSecond().asString(sc);
+				url = p.getSecond().asString(sc.getValues());
 				iter.remove();
 			} else if (PESiteInstance.OPTION_USER.equalsIgnoreCase(n)) {
-				username = p.getSecond().asString(sc);
+				username = p.getSecond().asString(sc.getValues());
 				iter.remove();
 			} else if (PESiteInstance.OPTION_PASSWORD.equalsIgnoreCase(n)) {
-				password = p.getSecond().asString(sc);
+				password = p.getSecond().asString(sc.getValues());
 				iter.remove();
 			}
 		}

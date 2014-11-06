@@ -176,7 +176,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
 		super.display(sc, buf, indent, opts);
 		if (distributionKey != null) {
-			buf.add(indent + "  dist key: " + distributionKey.describe(sc));
+			buf.add(indent + "  dist key: " + distributionKey.describe(sc.getValues()));
 		} else if (distributionVector != null) {
 			buf.add(indent + "  dist on: " + distributionVector.describe(sc));
 		}
@@ -191,7 +191,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	
 	protected String explainSourceDistKey(SchemaContext sc) {
 		if (distributionKey == null) return null;
-		return distributionKey.describe(sc);
+		return distributionKey.describe(sc.getValues());
 	}
 	
 	@Override

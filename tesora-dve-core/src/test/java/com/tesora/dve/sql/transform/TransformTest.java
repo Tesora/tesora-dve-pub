@@ -359,7 +359,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			VariableValueSource vvs = sves.getValueSource();
 			String value = null;
 			if (vvs.isConstant())
-				value = vvs.getConstantValue(pc);
+				value = vvs.getConstantValue(pc.getValues());
 			buf.append("new SessionVariableExpectedStep(\"" + sves.getScopeName() + "\",\"" + sves.getVariableName() + "\"," + (value == null ? "null" : "\"" + value + "\"") + ")");
 		} else if (hp instanceof TransactionExecutionStep) {
 			TransactionExecutionStep tes = (TransactionExecutionStep) hp;
@@ -799,7 +799,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			assertEquals("should have same variable name",variableName,sves.getVariableName());
 			VariableValueSource vvs = sves.getValueSource();
 			assertTrue("should be a constant source",vvs.isConstant());
-			String value = vvs.getConstantValue(db);
+			String value = vvs.getConstantValue(db.getValues());
 			assertEquals("should have same constant value",constantValue,value);
 		}
 		

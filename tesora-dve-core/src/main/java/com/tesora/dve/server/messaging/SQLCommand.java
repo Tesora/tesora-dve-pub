@@ -55,16 +55,10 @@ public class SQLCommand implements Serializable {
 	// charset of an empty string should not matter
 	public static final SQLCommand EMPTY = new SQLCommand(CharsetUtil.UTF_8, "");
 
-	static final Pattern HAS_LIMIT_CLAUSE = Pattern.compile(".*\\blimit\\s+\\d+\\b.*", Pattern.CASE_INSENSITIVE);
-	static final Pattern IS_SELECT_STATEMENT = Pattern.compile("\\s*select\\b.*", Pattern.CASE_INSENSITIVE);
-
 	private final GenericSQLCommand sql;
 	private List<Object> parameters;
 	private ProjectionInfo projection;
 	private long referenceTime = 0;
-	private int width = -1;
-	private String insertPrefix = null;
-	private String insertOptions = null;
 
 	public SQLCommand(GenericSQLCommand command) {
 		this(command, null);
@@ -171,22 +165,6 @@ public class SQLCommand implements Serializable {
 		return referenceTime != 0;
 	}
 
-	public boolean isSelectStatement() {
-		if (sql.isSelect() == null) {
-			return IS_SELECT_STATEMENT.matcher(sql.getDecoded()).matches();
-		} else {
-			return sql.isSelect().booleanValue();
-		}
-	}
-
-	public boolean hasLimitClause() {
-		if (sql.isLimit() == null) {
-			return HAS_LIMIT_CLAUSE.matcher(sql.getDecoded()).matches();
-		} else {
-			return sql.isLimit().booleanValue();
-		}
-	}
-
 	public boolean isForUpdateStatement() {
 		return (sql.isForUpdate() == null ? false : sql.isForUpdate().booleanValue());
 	}
@@ -208,31 +186,6 @@ public class SQLCommand implements Serializable {
 		return newCommand;
 	}
 	
-	public int getWidth() {
-		return width;
-	}
-
-	// used for insert redist ONLY
-	public void setWidth(int v) {
-		width = v;
-	}
-
-	public void setInsertPrefix(String insertPrefix) {
-		this.insertPrefix = insertPrefix;
-	}
-
-	public String getInsertPrefix() {
-		return insertPrefix;
-	}
-
-	public void setInsertOptions(String insertOptions) {
-		this.insertOptions = insertOptions;
-	}
-
-	public String getInsertOptions() {
-		return insertOptions;
-	}
-
 	public StatementType getStatementType() {
 		return sql.getStatementType();
 	}

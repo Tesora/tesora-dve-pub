@@ -100,7 +100,7 @@ public class LateSortingInsertExecutionStep extends DirectExecutionStep {
 				buf.add(indent + "  sql:");
 				buf.add(jti.getSQL().getRawSQL());
 			}
-			buf.add(indent + " dist key: " + jti.getKey().describe(sc));
+			buf.add(indent + " dist key: " + jti.getKey().describe(sc.getValues()));
 		}
 	}
 }

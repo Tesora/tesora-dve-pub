@@ -52,7 +52,7 @@ public class CreateTempTableExecutionStep extends ExecutionStep {
 		// persistent entities by using a new ddl context.
 		SchemaContext tsc = SchemaContext.makeMutableIndependentContext(sc);
 		// set the values so that we get the updated table name
-		tsc.setValues(sc._getValues());
+		tsc.setValues(sc.getValues());
 		UserTable ut = theTable.getPersistent(tsc);
 		QueryStepOperation qso = new QueryStepCreateTempTableOperation(getStorageGroup(sc),ut);
 		qsteps.add(qso);

@@ -21,6 +21,7 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 
@@ -32,8 +33,8 @@ public class CachedAutoIncrementLiteralExpression extends
 	}
 	
 	@Override
-	public Object getValue(SchemaContext sc) {
-		return sc.getValueManager().getAutoincValue(sc, this);
+	public Object getValue(ConnectionValues cv) {
+		return cv.getAutoincValue(this);
 	}
 
 }

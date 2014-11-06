@@ -34,6 +34,7 @@ import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.Column;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;
@@ -200,13 +201,5 @@ public abstract class TransformKey {
 			return literal instanceof IParameter;
 		}
 		
-		public Object getValue(SchemaContext sc) {
-			return literal.convert(sc, column.getColumn().getType());
-		}
-			
-		public ColumnDatum getColumnDatum(SchemaContext sc) {
-			PersistentColumn c = column.getPEColumn();
-			return new ColumnDatum(c, getValue(sc));
-		}
 	}
 }

@@ -392,7 +392,7 @@ public abstract class Statement extends StatementNode {
 				if (le.isStringLiteral()) {
 					// le is a string - we're going to flip it back into bytes and try it against the target character set
 					// if that fails, then we replace it, otherwise not so much
-                    byte[] bytes =	Singletons.require(HostService.class).getDBNative().getValueConverter().convertBinaryLiteral(le.getValue(pc));
+                    byte[] bytes =	Singletons.require(HostService.class).getDBNative().getValueConverter().convertBinaryLiteral(le.getValue(pc.getValues()));
 					// String raw = (String) le.getValue();
 					String maybe = PECharsetUtils.getString(bytes, targ, true);
 					if (maybe != null)

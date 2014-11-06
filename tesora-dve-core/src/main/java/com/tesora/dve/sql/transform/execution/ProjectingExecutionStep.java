@@ -134,7 +134,7 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 	
 	private long getInMemLimit(SchemaContext sc) {
 		if (inMemLimit == null) return -1;
-		Object value = inMemLimit.getValue(sc);
+		Object value = inMemLimit.getValue(sc.getValues());
 		long lim = -1;
 		if (value instanceof Number) {
 			lim = ((Number)value).longValue();

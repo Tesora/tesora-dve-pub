@@ -25,6 +25,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
@@ -65,13 +66,13 @@ public class LateBindingConstantExpression extends ConstantExpression {
 	}
 
 	@Override
-	public Object getValue(SchemaContext sc) {
-		return sc._getValues().getRuntimeConstant(position);
+	public Object getValue(ConnectionValues cv) {
+		return cv.getRuntimeConstant(position);
 	}
 
 	@Override
-	public Object convert(SchemaContext sc, Type type) {
-		Object val = getValue(sc);
+	public Object convert(ConnectionValues cv, Type type) {
+		Object val = getValue(cv);
 		if (val == null) return null;
         return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(val, type);
 	}

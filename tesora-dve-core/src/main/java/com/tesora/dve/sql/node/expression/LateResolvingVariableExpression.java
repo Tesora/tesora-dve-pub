@@ -26,6 +26,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
@@ -58,16 +59,16 @@ public class LateResolvingVariableExpression extends ConstantExpression {
 	}
 
 	@Override
-	public Object getValue(SchemaContext sc) {
+	public Object getValue(ConnectionValues cv) {
 		try {
-			return accessor.getValue(sc.getConnection().getVariableSource());
+			return accessor.getValue(cv.getConnection().getVariableSource());
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.PLANNER, "Unable to obtain late resolving variable value",pe);
 		}
 	}
 
 	@Override
-	public Object convert(SchemaContext sc, Type type) {
+	public Object convert(ConnectionValues cv, Type type) {
 		throw new SchemaException(Pass.PLANNER, "Illegal use of late resolving variable");
 	}
 

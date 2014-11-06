@@ -23,6 +23,7 @@ package com.tesora.dve.sql.node.expression;
 
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
@@ -39,7 +40,8 @@ public class DelegatingLiteralExpression extends LiteralExpression implements ID
 		super(tt,sloc,charsetHint);
 		this.position = position;
 		source = vs;
-		if (source == null) throw new IllegalStateException("should be created with source");
+		if (source == null) 
+			throw new IllegalStateException("should be created with source");
 		if (sloc != null && sloc.getPositionInLine() == -1) throw new IllegalStateException("Invalid source position");
 	}
 
@@ -50,9 +52,9 @@ public class DelegatingLiteralExpression extends LiteralExpression implements ID
 	}
 	
 	@Override
-	public Object getValue(SchemaContext sc) {
-		if (source != null) return source.getLiteral(sc, this);
-		Object v = sc.getValueManager().getLiteral(sc, this);
+	public Object getValue(ConnectionValues cv) {
+		if (source != null) return source.getLiteral(this);
+		Object v = cv.getLiteral(this);
 		if (hasValue == null)
 			hasValue = v != null;
 		else if (v == null && hasValue.booleanValue())

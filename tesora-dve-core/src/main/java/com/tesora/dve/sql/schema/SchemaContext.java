@@ -353,7 +353,7 @@ public class SchemaContext {
 		valueManager = vm;
 	}
 	
-	public ConnectionValues _getValues() {
+	public ConnectionValues getValues() {
 		return values;
 	}
 	

@@ -71,7 +71,7 @@ public class RuntimeLimitSpecification {
 			// a late evaluating literal expression which will convert the delegating literals into actual values
 			// and execute the sum at sql generation time
 			LateEvaluatingLiteralExpression later = new LateEvaluatingLiteralExpression(TokenTypes.Unsigned_Large_Integer,
-					sc.getValueManager(),
+					sc.getValueManager().getValues(sc, false),
 					new ConstantExpression[] { origOff, origRC },
 					LateEvaluatingLiteralExpression.SUM);					
 			intermediateSpec = new LimitSpecification(later,null);

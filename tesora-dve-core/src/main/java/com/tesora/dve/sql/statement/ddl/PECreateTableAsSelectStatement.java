@@ -288,7 +288,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 				ctype = BasicType.buildType("BINARY", 0, Collections.<TypeModifier> emptyList(),pc.getTypes());
 				modifiers.add(new DefaultValueModifier(litex));
 			} else if (litex.isStringLiteral()) {
-				String str = litex.asString(pc);
+				String str = litex.asString(pc.getValues());
 				ctype = BasicType.buildType("VARCHAR",str.length(),
 						Arrays.asList(new TypeModifier[] { new StringTypeModifier(TypeModifierKind.CHARSET,"utf8")}),pc.getTypes());
 				modifiers.add(notNullableModifier);

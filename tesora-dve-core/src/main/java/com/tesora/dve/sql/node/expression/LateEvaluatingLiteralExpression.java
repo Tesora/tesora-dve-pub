@@ -24,6 +24,7 @@ package com.tesora.dve.sql.node.expression;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.LanguageNode;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.ILateEvalLiteralExpression;
@@ -54,11 +55,11 @@ public class LateEvaluatingLiteralExpression extends DelegatingLiteralExpression
 
 	
 	@Override
-	public Object getValue(SchemaContext sc) {
+	public Object getValue(ConnectionValues cv) {
 		IConstantExpression[] vals = new IConstantExpression[params.length];
 		for(int i = 0; i < params.length; i++)
 			vals[i] = params[i];
-		return evaluator.getValue(sc, vals);
+		return evaluator.getValue(cv, vals);
 	}
 	
 	public static abstract class LateEvaluator {
@@ -75,10 +76,10 @@ public class LateEvaluatingLiteralExpression extends DelegatingLiteralExpression
 		
 		public abstract Object compute(Object[] in);
 		
-		public Object getValue(SchemaContext sc, IConstantExpression[] params) {
+		public Object getValue(ConnectionValues cv, IConstantExpression[] params) {
 			Object[] converted = new Object[params.length];
 			for(int i = 0; i < paramTypes.length; i++) {
-				Object v = params[i].getValue(sc);
+				Object v = params[i].getValue(cv);
 				converted[i] = convert(v,paramTypes[i]);
 			}
 			return compute(converted);
