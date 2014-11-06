@@ -22,7 +22,6 @@ package com.tesora.dve.sql.schema.cache;
  */
 
 import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.SchemaContext;
 
 public interface IConstantExpression {
 

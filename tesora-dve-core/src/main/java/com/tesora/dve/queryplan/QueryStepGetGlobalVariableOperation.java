@@ -32,21 +32,25 @@ import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepGetGlobalVariableOperation extends QueryStepOperation {
 	
+	@SuppressWarnings("rawtypes")
 	VariableHandler handler;
 	private String alias;
 
 
+	@SuppressWarnings("rawtypes")
 	public QueryStepGetGlobalVariableOperation(VariableHandler handler, String alias) throws PEException {
 		super(nullStorageGroup);
 		this.handler = handler;
 		this.alias = alias;
 	}
 	
+	@SuppressWarnings("rawtypes")
 	public QueryStepGetGlobalVariableOperation(VariableHandler handler) throws PEException {
 		this(handler, handler.getName());
 	}
 
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer)
 			throws Throwable {

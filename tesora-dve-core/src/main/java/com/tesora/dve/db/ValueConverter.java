@@ -42,7 +42,6 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.types.Type;
 
 public class ValueConverter {

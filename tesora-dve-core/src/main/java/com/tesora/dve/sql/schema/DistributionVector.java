@@ -49,7 +49,6 @@ import com.tesora.dve.distribution.RandomDistributionModel;
 import com.tesora.dve.distribution.RangeDistributionModel;
 import com.tesora.dve.distribution.RangeLimit;
 import com.tesora.dve.distribution.StaticDistributionModel;
-import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;

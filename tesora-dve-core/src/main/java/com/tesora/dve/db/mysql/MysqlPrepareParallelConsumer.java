@@ -29,14 +29,9 @@ import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 
 import io.netty.channel.ChannelHandlerContext;
 
-import java.util.List;
-
 import com.tesora.dve.exceptions.PESQLStateException;
 import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public abstract class MysqlPrepareParallelConsumer extends DBResultConsumer {

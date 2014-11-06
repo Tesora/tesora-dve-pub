@@ -205,6 +205,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		es.append(new SetVariableExecutionStep(stie.getScope(),VariableConstants.TRANSACTION_ISOLATION_LEVEL_NAME,nva, pc.getPersistentGroup()));
 	}
 
+	@SuppressWarnings("rawtypes")
 	private void assertPrivilege(SchemaContext pc, VariableHandler handler, VariableScope requestedScope) throws PEException {
 		PEUser currentUser = pc.getCurrentUser().get(pc);
 		if (currentUser.isRoot()) return; // root has all privileges

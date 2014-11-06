@@ -53,7 +53,6 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.modifiers.ColumnKeyModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnModifierKind;
-import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.InsertIntoValuesStatement;

@@ -65,7 +65,6 @@ import com.tesora.dve.sql.raw.jaxb.TargetTableType;
 import com.tesora.dve.sql.raw.jaxb.TransactionActionType;
 import com.tesora.dve.sql.raw.jaxb.TransactionStepType;
 import com.tesora.dve.sql.raw.jaxb.UpdateStepType;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.DistributionKeyTemplate;
 import com.tesora.dve.sql.schema.DistributionVector;

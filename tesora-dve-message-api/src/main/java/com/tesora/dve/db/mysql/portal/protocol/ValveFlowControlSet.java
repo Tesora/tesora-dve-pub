@@ -24,8 +24,6 @@ package com.tesora.dve.db.mysql.portal.protocol;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.Map;
 
 /**
  *

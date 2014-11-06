@@ -180,7 +180,6 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	}
 	
 	// placeholder table ctor
-	@SuppressWarnings("unchecked")
 	public PETable(SchemaContext pc, Name name, List<PEColumn> cols, DistributionVector distVect, PEStorageGroup group, PEDatabase pdb) {
 		super(pc,name,cols,distVect,group,pdb);
 		loaded = true;
@@ -194,7 +193,6 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		cached = null;
 	}
 	
-	@SuppressWarnings("unchecked")
 	protected PETable(UserTable table, SchemaContext lc) {
 		super(table,lc);
 		loaded = false;

@@ -21,7 +21,6 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
-import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;

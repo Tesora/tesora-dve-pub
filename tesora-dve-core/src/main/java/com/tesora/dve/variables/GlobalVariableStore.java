@@ -23,6 +23,7 @@ package com.tesora.dve.variables;
 
 public interface GlobalVariableStore extends VariableStore {
 
+	@SuppressWarnings("rawtypes")
 	public void invalidate(VariableHandler vh);
 	
 	public LocalVariableStore buildNewLocalStore();

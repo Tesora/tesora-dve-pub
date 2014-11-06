@@ -27,14 +27,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
-import com.tesora.dve.common.catalog.PersistentColumn;
-import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.schema.Column;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEColumn;

@@ -25,7 +25,6 @@ package com.tesora.dve.queryplan;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.transform.execution.StepExecutionStatistics;
 
 public abstract class QueryStepDMLOperation extends QueryStepOperation {

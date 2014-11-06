@@ -51,6 +51,7 @@ public class ValueReference<Type> {
 		set(variable.toInternal(v));
 	}
 	
+	@SuppressWarnings("unchecked")
 	protected void setInternal(Object t) {
 		value = (Type) t;
 	}

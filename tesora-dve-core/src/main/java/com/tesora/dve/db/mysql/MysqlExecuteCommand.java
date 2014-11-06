@@ -22,14 +22,10 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBConnection;
-import com.tesora.dve.db.mysql.libmy.*;
 import io.netty.channel.ChannelHandlerContext;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.DBConnection.Monitor;
 import com.tesora.dve.db.MysqlQueryResultConsumer;
 import com.tesora.dve.db.mysql.libmy.MyBinaryResultRow;
@@ -41,7 +37,6 @@ import com.tesora.dve.db.mysql.libmy.MyMessage;
 import com.tesora.dve.db.mysql.libmy.MyMessageType;
 import com.tesora.dve.db.mysql.libmy.MyOKResponse;
 import com.tesora.dve.db.mysql.libmy.MyTextResultRow;
-import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;

@@ -26,7 +26,6 @@ import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.types.Type;

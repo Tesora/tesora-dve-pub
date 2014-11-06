@@ -22,18 +22,10 @@ package com.tesora.dve.server.messaging;
  */
 
 
-import java.sql.ResultSet;
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
-import org.apache.log4j.Logger;
-
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
-import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.statistics.SiteStatKey.OperationClass;
 import com.tesora.dve.server.statistics.manager.LogSiteStatisticRequest;

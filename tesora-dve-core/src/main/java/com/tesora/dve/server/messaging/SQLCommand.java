@@ -30,8 +30,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
-
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.GenericSQLCommand.CommandFragment;
 import com.tesora.dve.queryplan.ExecutionState;
@@ -41,7 +39,6 @@ import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.variables.VariableStoreSource;
-import com.tesora.dve.worker.Worker;
 
 // we need to support both regular statements and parameterized statements;
 // this class just wraps that all up

@@ -22,7 +22,6 @@ package com.tesora.dve.sql.node.expression;
  */
 
 import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 
 public class CachedAutoIncrementLiteralExpression extends

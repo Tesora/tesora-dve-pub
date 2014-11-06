@@ -21,17 +21,9 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
-import com.tesora.dve.sql.SchemaException;
-import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.PEContainer;
-import com.tesora.dve.sql.schema.PEContainerTenant;
-import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
-import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
-import com.tesora.dve.sql.schema.cache.SchemaEdge;
-import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.sql.transform.CopyContext;
 
 public class ContainerTenantIDLiteral extends TenantIDLiteral {

@@ -510,6 +510,7 @@ public class PETest extends PEBaseTest {
 	
 	private static class GlobalVariableState extends UpdatedGlobalVariablesCallback {
 		
+		@SuppressWarnings("rawtypes")
 		private final Map<VariableHandler,String> initialValues;
 		private int counter;
 		
@@ -524,6 +525,7 @@ public class PETest extends PEBaseTest {
 			SSConnection.registerGlobalVariablesUpdater(this);
 		}
 		
+		@SuppressWarnings("rawtypes")
 		private static Map<VariableHandler,String> buildValues(DBHelper helper) throws Exception {
 			ResultSet rs = null;
 			HashMap<String,String> vals = new HashMap<String,String>();
@@ -550,6 +552,7 @@ public class PETest extends PEBaseTest {
 			return out;
 		}
 		
+		@SuppressWarnings({ "rawtypes", "unchecked" })
 		public void undo() throws Exception {
 			if (counter == 0) return;
 			DBHelper helper = buildHelper();

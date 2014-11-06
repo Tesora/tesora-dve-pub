@@ -35,7 +35,6 @@ import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.FunctionName;
-import com.tesora.dve.sql.schema.SchemaContext;
 
 public class FunctionNode extends NRNode {
 

@@ -31,8 +31,6 @@ import org.junit.Test;
 
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.sql.util.ColumnChecker;
-import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProjectDDL;

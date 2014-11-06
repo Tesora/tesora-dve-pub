@@ -24,7 +24,6 @@ package com.tesora.dve.sql.node.expression;
 
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;

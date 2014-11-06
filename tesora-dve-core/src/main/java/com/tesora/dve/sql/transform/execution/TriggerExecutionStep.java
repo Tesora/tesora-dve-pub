@@ -34,7 +34,6 @@ import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.util.UnaryProcedure;
 
 public class TriggerExecutionStep extends ExecutionStep {

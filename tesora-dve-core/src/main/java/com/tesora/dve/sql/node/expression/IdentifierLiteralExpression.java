@@ -23,7 +23,6 @@ package com.tesora.dve.sql.node.expression;
 
 import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.schema.SchemaContext;
 
 public class IdentifierLiteralExpression extends ActualLiteralExpression {
 

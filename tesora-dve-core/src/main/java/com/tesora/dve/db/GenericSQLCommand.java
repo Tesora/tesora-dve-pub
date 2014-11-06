@@ -53,7 +53,6 @@ import com.tesora.dve.sql.schema.cache.IParameter;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.VariableStoreSource;
-import com.tesora.dve.worker.Worker;
 
 // a generic sql command is what would be emitted by the emitter upto any literals
 // instead it uses a 'format' string (non literal parts of the final result)

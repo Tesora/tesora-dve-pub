@@ -47,7 +47,6 @@ import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
 import com.tesora.dve.sql.schema.TempTableCreateOptions;
 import com.tesora.dve.sql.schema.TriggerEvent;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
-import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.InsertStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;

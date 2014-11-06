@@ -320,7 +320,6 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		boolean tenantCreate = pecs instanceof PECreateTenantTableStatement;
 		boolean tableCreate = pecs instanceof PECreateTableStatement;
 		boolean viewCreate = pecs instanceof PECreateViewStatement;
-		boolean trigCreate = pecs instanceof PECreateTriggerStatement;
 		Set<PEForeignKey> postPass = null;
 		if (tableCreate) {
 			pecs.normalize(tpc);

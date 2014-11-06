@@ -2533,6 +2533,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new SessionSetVariableStatement(sets);
 	}
 
+	@SuppressWarnings("rawtypes")
 	public Statement buildAddVariable(Name newName, List<Pair<Name,LiteralExpression>> options) {
 		pc.getPolicyContext().checkRootPermission("create a new system variable");
 		String varName = newName.getUnqualified().getUnquotedName().get();
@@ -3847,9 +3848,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public ExpressionNode maybeBuildExprAlias(ExpressionNode targ, Name alias, String stringAlias,
-			Object tree) {
-		SourceLocation sloc = SourceLocation.make(tree);
-		
+			Object tree) {		
 		if (alias == null && stringAlias == null)
 			return targ;
 

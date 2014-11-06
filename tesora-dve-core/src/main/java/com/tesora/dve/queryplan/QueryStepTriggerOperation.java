@@ -25,13 +25,10 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.WorkerGroup;
 

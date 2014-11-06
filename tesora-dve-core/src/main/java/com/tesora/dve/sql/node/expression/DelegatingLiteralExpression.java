@@ -24,7 +24,6 @@ package com.tesora.dve.sql.node.expression;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;

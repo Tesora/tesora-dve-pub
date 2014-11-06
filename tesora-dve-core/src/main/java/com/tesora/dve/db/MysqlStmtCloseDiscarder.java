@@ -23,16 +23,11 @@ package com.tesora.dve.db;
 
 import com.tesora.dve.concurrent.CompletionHandle;
 
-import java.util.List;
-
 import com.tesora.dve.db.mysql.MysqlMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComStmtCloseRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlGroupedPreparedStatementId;
 import com.tesora.dve.db.mysql.MysqlStmtCloseCommand;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public class MysqlStmtCloseDiscarder extends DBResultConsumer  {

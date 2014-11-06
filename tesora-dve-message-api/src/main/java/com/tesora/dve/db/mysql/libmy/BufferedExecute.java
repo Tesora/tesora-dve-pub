@@ -23,7 +23,6 @@ package com.tesora.dve.db.mysql.libmy;
 
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 

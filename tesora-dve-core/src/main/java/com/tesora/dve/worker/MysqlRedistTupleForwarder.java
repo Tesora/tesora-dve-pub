@@ -45,7 +45,6 @@ import com.tesora.dve.queryplan.TableHints;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 
 public class MysqlRedistTupleForwarder extends DBResultConsumer implements MysqlQueryResultConsumer {

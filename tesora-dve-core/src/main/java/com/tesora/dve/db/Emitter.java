@@ -57,7 +57,6 @@ import com.tesora.dve.sql.node.expression.CaseExpression;
 import com.tesora.dve.sql.node.expression.CastFunctionCall;
 import com.tesora.dve.sql.node.expression.CharFunctionCall;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
-import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.ConvertFunctionCall;
 import com.tesora.dve.sql.node.expression.Default;
 import com.tesora.dve.sql.node.expression.DelegatingLiteralExpression;

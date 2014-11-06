@@ -729,6 +729,7 @@ public class SQLVariableTest extends SchemaTest {
 		return out;
 	}
 	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	public void testGlobalPushdown() throws Throwable {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
@@ -807,6 +808,7 @@ public class SQLVariableTest extends SchemaTest {
 	private static final String sessQuery = 
 			"select variable_value from information_schema.session_variables where variable_name = '%s'";
 			
+	@SuppressWarnings("rawtypes")
 	private void testAccess(VariableHandler handler, Values values) throws Throwable {
 		ProxyConnectionResource nonRoot = new ProxyConnectionResource(nonRootUser,nonRootUser);
 		try {
@@ -848,11 +850,13 @@ public class SQLVariableTest extends SchemaTest {
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	private String getSessionValue(ProxyConnectionResource conn, VariableHandler handler) throws Throwable {
 		ResourceResponse rr = conn.execute(String.format(sessQuery,handler.getName()));
 		return (String) rr.getResults().get(0).getRow().get(0).getColumnValue();		
 	}
 	
+	@SuppressWarnings("rawtypes")
 	private void roundTrip(ProxyConnectionResource proxyConn, VariableHandler handler,
 			VariableRoundTrip vrt, Values values) throws Throwable {
 		conn.execute(vrt.buildSet(handler.getName(), values.next(), handler.getMetadata().isNumeric()));

@@ -50,7 +50,6 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.strategy.featureplan.InsertValuesFeatureStep.UpdateCountAdjuster;
 import com.tesora.dve.sql.util.Functional;
