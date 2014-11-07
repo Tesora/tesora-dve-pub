@@ -489,13 +489,13 @@ public class CorpusStats implements StatsVisitor {
 		private TemplateModelItem distributionModel;
 		private boolean modelFreezed = false;
 
-		public TableStats(final String databaseName, final String tableName, final long cardinality, final Long dataLength, final String engine) {
+		public TableStats(final String databaseName, final String tableName, final long cardinality, final Long dataLength, final EngineTag engine) {
 			this.schemaName = databaseName;
 			this.tableName = tableName;
 			this.fullName = toQualifiedName(databaseName, tableName);
 			this.cardinality = cardinality;
 			this.dataLength = dataLength;
-			this.engine = EngineTableModifier.EngineTag.findEngine(engine);
+			this.engine = (engine != null) ? engine : CorpusStats.this.defaultStorageEngine;
 		}
 
 		public String getSchemaName() {
@@ -559,10 +559,6 @@ public class CorpusStats implements StatsVisitor {
 			return ((isRowWidthWeightingEnabled && (this.dataLength != null)) && (this.cardinality > 0)) ? (this.dataLength / this.cardinality) : 1.0;
 		}
 
-		public EngineTag getEngine() {
-			return this.engine;
-		}
-
 		public boolean supportsRowLocking() {
 			return EngineTableModifier.EngineTag.INNODB.equals(this.engine);
 		}
@@ -607,10 +603,10 @@ public class CorpusStats implements StatsVisitor {
 			return count;
 		}
 
-		public double getWriteToReadRatio() {
+		public double getWritePercentage() {
 			final long writes = this.getWriteStatementCount();
-			final long reads = this.getReadStatementCount();
-			return (reads > 0) ? ((double) writes / reads) : writes;
+			final long total = writes + this.getReadStatementCount();
+			return (total > 0) ? FuzzyLinguisticVariable.toPercent(writes, total) : 0;
 		}
 
 		public Map<TableColumn, Long> getIdentColumnSingles() {
@@ -1008,6 +1004,7 @@ public class CorpusStats implements StatsVisitor {
 
 	private final String corpusName;
 	private final int corpusScaleFactor;
+	private final EngineTag defaultStorageEngine;
 	private final SortedMap<QualifiedName, TableStats> corpusStats = new TreeMap<QualifiedName, TableStats>(new Comparator<QualifiedName>() {
 		@Override
 		public int compare(QualifiedName a, QualifiedName b) {
@@ -1018,9 +1015,10 @@ public class CorpusStats implements StatsVisitor {
 	private Statement currentStatement;
 	private SchemaContext currentContext;
 
-	public CorpusStats(final String corpusName, final int corpusScaleFactor) {
+	public CorpusStats(final String corpusName, final int corpusScaleFactor, final EngineTag defaultStorageEngine) {
 		this.corpusName = corpusName;
 		this.corpusScaleFactor = corpusScaleFactor;
+		this.defaultStorageEngine = defaultStorageEngine;
 	}
 
 	public String getCorpusName() {
@@ -1370,7 +1368,7 @@ public class CorpusStats implements StatsVisitor {
 		final QualifiedName fullTableName = toQualifiedName(databaseName, tableName);
 		TableStats stats = this.corpusStats.get(fullTableName);
 		if (stats == null) { // Table not mentioned in the static report? Silently create one and proceed...
-			stats = new TableStats(databaseName, tableName, 0, null, null);
+			stats = new TableStats(databaseName, tableName, 0, null, this.defaultStorageEngine);
 			this.corpusStats.put(fullTableName, stats);
 		}
 		return stats;

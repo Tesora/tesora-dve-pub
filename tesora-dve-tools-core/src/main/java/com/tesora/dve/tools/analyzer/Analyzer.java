@@ -54,6 +54,7 @@ import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
+import com.tesora.dve.sql.schema.modifiers.EngineTableModifier.EngineTag;
 import com.tesora.dve.sql.schema.validate.ValidateResult;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.session.UseDatabaseStatement;
@@ -245,7 +246,8 @@ public abstract class Analyzer {
 				final Long tableDataLength = staticReportTable.getDataLength();
 				final String engine = staticReportTable.getEngine();
 				corpusStats.addTable(corpusStats.new TableStats(databaseName,
-						tableName, tableRowCount, tableDataLength, engine));
+						tableName, tableRowCount, tableDataLength,
+						EngineTag.findEngine(engine)));
 			}
 		}
 
