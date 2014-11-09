@@ -23,13 +23,32 @@ package com.tesora.dve.tools.aitemplatebuilder;
 
 import java.util.SortedSet;
 
+import com.google.common.collect.ImmutableMap;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.StatementType;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 
 public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariable implements TemplateModelItem {
-
-	private static final String SORTS_FLV_NAME = "sorts";
-	private static final String CARDINALITY_FLV_NAME = "cardinality";
+	
+	public enum Variables implements FlvName {
+		SORTS_FLV_NAME {
+			@Override
+			public String get() {
+				return "sorts";
+			}
+		},
+		WRITES_FLV_NAME {
+			@Override
+			public String get() {
+				return "writes";
+			}
+		},
+		CARDINALITY_FLV_NAME {
+			@Override
+			public String get() {
+				return "cardinality";
+			}
+		};
+	}
 
 	protected FuzzyTableDistributionModel(final String fclBlockName) {
 		super(fclBlockName);
@@ -47,17 +66,22 @@ public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariabl
 		final double pcCardinality = FuzzyLinguisticVariable.toPercent(
 				CommonRange.findPositionFor(cardinality, sortedCardinalities), sortedCardinalities.size());
 
-		setVariable(SORTS_FLV_NAME, pcOrderBy);
-		setVariable(CARDINALITY_FLV_NAME, pcCardinality);
+		initializeVariables(pcOrderBy, match.getWritePercentage(), pcCardinality);
 	}
 
 	protected FuzzyTableDistributionModel(final String fclBlockName,
-			double pcOrderBy,
-			double pcCardinality) {
+			final double pcOrderBy,
+			final double pcWrites, final double pcCardinality) {
 		super(fclBlockName);
+		initializeVariables(pcOrderBy, pcWrites, pcCardinality);
+	}
 
-		setVariable(SORTS_FLV_NAME, pcOrderBy);
-		setVariable(CARDINALITY_FLV_NAME, pcCardinality);
+	private void initializeVariables(final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+		setVariables(ImmutableMap.<FlvName, Double> of(
+				Variables.SORTS_FLV_NAME, pcOrderBy,
+				Variables.WRITES_FLV_NAME, pcWrites,
+				Variables.CARDINALITY_FLV_NAME, pcCardinality
+				));
 	}
 
 	@Override

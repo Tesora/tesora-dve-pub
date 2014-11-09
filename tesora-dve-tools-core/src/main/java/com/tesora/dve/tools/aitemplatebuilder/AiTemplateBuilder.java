@@ -36,10 +36,12 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.tesora.dve.common.MathUtils;
@@ -64,6 +66,7 @@ import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableSizeComparator;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.ForeignRelationship;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.TableColumn;
+import com.tesora.dve.tools.aitemplatebuilder.FuzzyLinguisticVariable.FlvName;
 
 public final class AiTemplateBuilder {
 
@@ -611,7 +614,11 @@ public final class AiTemplateBuilder {
 	}
 
 	public static boolean hasExcessiveLocking(final TableStats table, final boolean avoidAllWriteBroadcasting) {
-		return (avoidAllWriteBroadcasting || !table.supportsRowLocking()) && isMostlyWritten(table);
+		return isUsingWrites(table, avoidAllWriteBroadcasting) && isMostlyWritten(table);
+	}
+
+	public static boolean isUsingWrites(final TableStats table, final boolean avoidAllWriteBroadcasting) {
+		return (avoidAllWriteBroadcasting || !table.supportsRowLocking());
 	}
 
 	public static boolean isMostlyWritten(final TableStats table) {
@@ -744,16 +751,6 @@ public final class AiTemplateBuilder {
 			identifyCandidateModels(this.tableStatistics, broadcastCardinalityCutoff, isRowWidthWeightingEnabled);
 		} else {
 			identifyCandidateModels(this.tableStatistics, isRowWidthWeightingEnabled);
-		}
-
-		for (final TableStats table : this.tableStatistics) {
-			if (hasExcessiveBroadcastLocking(table, this.avoidAllWriteBroadcasting)) {
-				table.setTableDistributionModel(Range.SINGLETON_TEMPLATE_ITEM);
-				final StringBuilder logMessage = new StringBuilder();
-				logMessage.append(getTableNameAndDistributionModel(table))
-						.append(" (model override: broadcasting may cause excessive locking)");
-				log(logMessage.toString(), MessageSeverity.ALERT);
-			}
 		}
 	}
 
@@ -994,8 +991,12 @@ public final class AiTemplateBuilder {
 				table.setDistributionModelFreezed(true);
 				logTableDistributionModel(table, MessageSeverity.ALERT);
 			} else {
+				final double writesWeight = BooleanUtils.toInteger(isUsingWrites(table, this.avoidAllWriteBroadcasting));
+				final ImmutableMap<FlvName, Double> ruleWeights = ImmutableMap.<FlvName, Double> of(
+						FuzzyTableDistributionModel.Variables.WRITES_FLV_NAME, writesWeight
+						);
 				final List<FuzzyTableDistributionModel> modelsSortedByScore = FuzzyLinguisticVariable
-						.evaluateDistributionModels(
+						.evaluateDistributionModels(ruleWeights,
 								new Broadcast(table, sortedCardinalities, isRowWidthWeightingEnabled),
 								new Range(table, sortedCardinalities, isRowWidthWeightingEnabled));
 

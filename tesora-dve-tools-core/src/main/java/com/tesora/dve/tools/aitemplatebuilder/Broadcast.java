@@ -40,8 +40,8 @@ public final class Broadcast extends FuzzyTableDistributionModel {
 		super(FCL_BLOCK_NAME, match, sortedCardinalities, isRowWidthWeightingEnabled);
 	}
 
-	protected Broadcast(final double pcOrderBy, final double pcCardinality) {
-		super(FCL_BLOCK_NAME, pcOrderBy, pcCardinality);
+	protected Broadcast(final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+		super(FCL_BLOCK_NAME, pcOrderBy, pcWrites, pcCardinality);
 	}
 
 	@Override

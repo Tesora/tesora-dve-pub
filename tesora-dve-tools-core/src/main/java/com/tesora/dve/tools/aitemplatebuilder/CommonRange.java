@@ -56,9 +56,22 @@ import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.TableColumn
 
 public class CommonRange extends FuzzyLinguisticVariable implements TemplateRangeItem {
 
+	public enum Variables implements FlvName {
+		JOINS_FLV_NAME {
+			@Override
+			public String get() {
+				return "joinFrequency";
+			}
+		},
+		CARDINALITY_FLV_NAME {
+			@Override
+			public String get() {
+				return "joinCardinality";
+			}
+		};
+	}
+
 	private static final String FCL_BLOCK_NAME = "RangeModel";
-	private static final String JOINS_FLV_NAME = "joinFrequency";
-	private static final String CARDINALITY_FLV_NAME = "joinCardinality";
 	private final boolean isSafeMode;
 
 	private double score = 0.0;
@@ -348,13 +361,13 @@ public class CommonRange extends FuzzyLinguisticVariable implements TemplateRang
 			final double pcCardinality = FuzzyLinguisticVariable.toPercent(findPositionFor(totalJoinCardinality, sortedJoinCardinalities),
 					sortedJoinCardinalities.size());
 
-			this.setVariable(JOINS_FLV_NAME, relativeJoinFrequency);
-			this.setVariable(CARDINALITY_FLV_NAME, pcCardinality);
+			this.setVariable(Variables.JOINS_FLV_NAME, relativeJoinFrequency);
+			this.setVariable(Variables.CARDINALITY_FLV_NAME, pcCardinality);
 
 			this.evaluate();
 
 			final double joinScore = super.getScore();
-			final float joinScoreFactor = this.computeBonusFactor(join); // TODO
+			final float joinScoreFactor = this.computeBonusFactor(join);
 			this.joins.put(join, joinScore);
 			this.score += (joinScore * joinScoreFactor);
 		}
