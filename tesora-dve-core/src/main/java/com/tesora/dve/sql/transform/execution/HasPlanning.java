@@ -28,6 +28,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.ValueManager;
@@ -36,17 +37,18 @@ import com.tesora.dve.sql.util.UnaryProcedure;
 
 public interface HasPlanning {
 
-	void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts);
+	void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts);
 	
-	void explain(SchemaContext sc, List<ResultRow> rows, ExplainOptions opts);
+	void explain(SchemaContext sc, ConnectionValues cv, List<ResultRow> rows, ExplainOptions opts);
 	
-	Long getlastInsertId(ValueManager vm, SchemaContext sc);
+	Long getlastInsertId(ValueManager vm, SchemaContext sc, ConnectionValues cv);
 	
-	Long getUpdateCount(SchemaContext sc);
+	Long getUpdateCount(SchemaContext sc, ConnectionValues cv);
 
 	boolean useRowCount();
 	
-	void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc) throws PEException;
+	void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, 
+			SchemaContext sc, ConnectionValues cv) throws PEException;
 	
 	ExecutionType getExecutionType();
 	

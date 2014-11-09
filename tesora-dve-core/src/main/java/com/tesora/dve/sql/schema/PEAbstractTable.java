@@ -107,7 +107,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 	// make a copy of other, consuming it
 	protected PEAbstractTable(SchemaContext pc, PEAbstractTable other) {
 		super(other.getCacheKey());
-		setName(other.getName(pc));
+		setName(other.getName(pc,pc.getValues()));
 		this.columns = new ArrayList<PEColumn>();
 		this.storage = StructuralUtils.buildEdge(pc,other.getPersistentStorage(pc),false);
 		ArrayList<TableComponent<?>> fieldsAndKeys = new ArrayList<TableComponent<?>>();
@@ -317,7 +317,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 	}
 	
 	@Override
-	public Name getName(SchemaContext sc) {
+	public Name getName(SchemaContext sc,ConnectionValues cv) {
 		return getName();
 	}
 		
@@ -472,7 +472,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 		checkLoaded(sc);
 		if (!getName().equals(basedOn.getName()))
 			throw new SchemaException(Pass.PLANNER, "Invalid create table stmt: trying to set " + basedOn.getName() + " into table " + getName());
-		createTableStatement = new MysqlEmitter().emitCreateTableStatement(sc, basedOn);
+		createTableStatement = new MysqlEmitter().emitCreateTableStatement(sc, sc.getValues(),basedOn);
 	}
 	
 	public String getDeclaration() {
@@ -488,7 +488,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 	
 	@Override
 	protected UserTable createEmptyNew(SchemaContext pc) throws PEException {
-        String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, this);
+        String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, pc.getValues(), this);
 		UserDatabase pdb = this.db.get(pc).persistTree(pc);
 		DistributionModel dm = dv.persistTree(pc);
 		PersistentGroup sg = null;

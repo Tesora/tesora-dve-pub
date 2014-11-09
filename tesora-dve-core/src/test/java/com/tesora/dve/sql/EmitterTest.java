@@ -126,7 +126,7 @@ public class EmitterTest extends SchemaTest {
 		pcr.execute("use " + oDDL.getDatabaseName());
 		SchemaContext sc = pcr.getBackingConnection().getSchemaContext();
 		GenericSQLCommand gsql = stmt.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), opts);
-		SQLCommand sqlc = gsql.resolve(sc, true, null).getSQLCommand();
+		SQLCommand sqlc = gsql.resolve(sc.getValues(), true, null).getSQLCommand();
 		String sql = sqlc.getSQL();
 		dbh.execute(sql);
 	}

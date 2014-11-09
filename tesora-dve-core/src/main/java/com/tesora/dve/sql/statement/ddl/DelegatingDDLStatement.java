@@ -122,7 +122,7 @@ public class DelegatingDDLStatement extends DDLStatement {
 	}
 	
 	protected SelectStatement buildFirstSelect(SchemaContext pc,TempTable tt) {
-		TableInstance ti = new TableInstance(tt, tt.getName(pc), null, pc.getNextTable(),false);
+		TableInstance ti = new TableInstance(tt, tt.getName(pc,pc.getValues()), null, pc.getNextTable(),false);
 		List<ExpressionNode> proj = new ArrayList<ExpressionNode>();
 		AliasInformation ai = new AliasInformation();
 		for(PEColumn pec : tt.getColumns(pc)) {

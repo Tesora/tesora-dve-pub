@@ -213,7 +213,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 		
 		ArrayList<QueryStepOperation> steps = new ArrayList<QueryStepOperation>();
-		subes.schedule(null, steps, null, pc);
+		subes.schedule(null, steps, null, pc, pc.getValues());
 		int redistOffset = steps.size() - 1;
 
 		boolean mustRebuildCTS = false;
@@ -610,7 +610,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 		
 		public String buildCreateTableStatement(UserTable theTable, boolean useSystemTempTable) throws PEException {
-			String out = Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(context, getTable());
+			String out = Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(context, context.getValues(), getTable());
 			return out;
 		}
 		

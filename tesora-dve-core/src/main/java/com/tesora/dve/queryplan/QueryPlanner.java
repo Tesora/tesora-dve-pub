@@ -48,7 +48,7 @@ import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.CachedPreparedStatement;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils;
 import com.tesora.dve.sql.statement.StatementType;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.util.Pair;
 
@@ -199,23 +199,23 @@ public class QueryPlanner {
 		if (planningResult == null) {
 			return new QueryPlan();
 		}
-		final List<ExecutionPlan> plans = planningResult.getPlans();
+		final List<RootExecutionPlan> plans = planningResult.getPlans();
 		final QueryPlan plan = new QueryPlan();
 		plan.setInputStatement(planningResult.getOriginalSQL());
 		final ExecutionPlanOptions opts = new ExecutionPlanOptions();
 		final int lastExecutionPlanIndex = plans.size() - 1;
 		Long accUpdateCount = null;
 		for (int epIdx = 0; epIdx <= lastExecutionPlanIndex; ++epIdx) {
-			final ExecutionPlan ep = plans.get(epIdx);
-			ep.logPlan(sc, "on conn " + connMgr.getName(), null);			
-			final List<QueryStepOperation> steps = ep.schedule(opts, connMgr, sc);
+			final RootExecutionPlan ep = plans.get(epIdx);
+			ep.logPlan(sc, planningResult.getValues(),"on conn " + connMgr.getName(), null);			
+			final List<QueryStepOperation> steps = ep.schedule(opts, connMgr, sc,planningResult.getValues());
 			final int numQuerySteps = steps.size();
 			for (int qsIdx = 0; qsIdx < numQuerySteps; ++qsIdx) {
 				final QueryStepOperation qs = steps.get(qsIdx);
 				plan.addStep(qs);
 			}
 
-			Long anyUpdate = ep.getUpdateCount(sc);
+			Long anyUpdate = ep.getUpdateCount(sc,planningResult.getValues());
 			if (anyUpdate != null) 
 				accUpdateCount = anyUpdate;
 			

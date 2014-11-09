@@ -28,10 +28,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.cache.CacheStats;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PERawPlan;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryFunction;
 
 public abstract class PlanCache {
@@ -156,7 +158,7 @@ public abstract class PlanCache {
     	sc.getSource().clearPreparedStatement(sc.getConnection().getConnectionId(),stmtID);
     }
 
-    public static ExecutionPlan bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
+    public static Pair<RootExecutionPlan,ConnectionValues> bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
     	CachedPreparedStatement cps = sc.getSource().getPreparedStatement(sc, sc.getConnection().getConnectionId(), stmtID);    	
     	return cps.rebuildPlan(sc, params);
     }

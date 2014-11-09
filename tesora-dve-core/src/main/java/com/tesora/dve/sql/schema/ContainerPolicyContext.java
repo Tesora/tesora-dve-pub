@@ -218,7 +218,7 @@ public class ContainerPolicyContext extends SchemaPolicyContext {
 				for(PEColumn pec : discriminatorColumns) {
 					ordered.add(new Pair<PEColumn,LiteralExpression>(pec,values.get(pec)));
 				}
-				String disc = PEContainerTenant.buildDiscriminantValue(sc, ordered);
+				String disc = PEContainerTenant.buildDiscriminantValue(sc, sc.getValues(), ordered);
 				Long nv = context.allocateNewTenant(container,disc);
 				return LiteralExpression.makeLongLiteral(nv.longValue());
 			}

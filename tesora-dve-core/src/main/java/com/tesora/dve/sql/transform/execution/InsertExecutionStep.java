@@ -30,6 +30,7 @@ import com.tesora.dve.queryplan.QueryStepInsertByKeyOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -57,22 +58,23 @@ public final class InsertExecutionStep extends DirectExecutionStep {
 	}
 	
 	@Override
-	public Long getlastInsertId(ValueManager vm, SchemaContext sc) {
-		return vm.getLastInsertId(sc);
+	public Long getlastInsertId(ValueManager vm, SchemaContext sc, ConnectionValues cv) {
+		return cv.getLastInsertId();
 	}
 	
 	@Override
-	public Long getUpdateCount(SchemaContext sc) {
+	public Long getUpdateCount(SchemaContext sc, ConnectionValues cv) {
 		return updateCount;
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv)
 			throws PEException {
-		SQLCommand sqlCommand = getCommand(sc).withReferenceTime(getReferenceTimestamp(sc));
+		SQLCommand sqlCommand = getCommand(sc,cv).withReferenceTime(getReferenceTimestamp(cv));
 		QueryStepInsertByKeyOperation qso = 
-				new QueryStepInsertByKeyOperation(getStorageGroup(sc),getPersistentDatabase(), 
-						getKeyValue(sc), 
+				new QueryStepInsertByKeyOperation(getStorageGroup(sc,cv),getPersistentDatabase(), 
+						getKeyValue(sc,cv), 
 						sqlCommand);
 		qso.setStatistics(getStepStatistics(sc));
 		qsteps.add(qso);

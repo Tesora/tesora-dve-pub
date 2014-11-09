@@ -83,6 +83,7 @@ import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.CatalogContext;
 import com.tesora.dve.sql.schema.ConnectionContext;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.Capability;
@@ -586,18 +587,18 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	}
 
 	@Override
-	public MappingSolution mapKey(SchemaContext sc, IKeyValue dk, Model model, DistKeyOpType op, PEStorageGroup onGroup) throws PEException {
+	public MappingSolution mapKey(SchemaContext sc, IKeyValue dk, Model model, DistKeyOpType op, PEStorageGroup onGroup, ConnectionValues cv) throws PEException {
 		// we don't do anything different by op type, but the persistent version does.
 		if (Model.RANDOM == model )
-			return RandomDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc), dk, op);
+			return RandomDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc, cv), dk, op);
 		if (Model.BROADCAST == model)
-			return BroadcastDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc), dk, op);
+			return BroadcastDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc, cv), dk, op);
 		if (Model.STATIC == model )
-			return StaticDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc), dk, op);
+			return StaticDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc, cv), dk, op);
 		if (Model.RANGE == model) 
 			// we use static dist model in place of range for the trans exec engine since range
 			// does a catalog lookup and there is no catalog
-			return StaticDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc), dk, op);
+			return StaticDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc, cv), dk, op);
 
 		throw new PEException("Unknown dist model kind: " + model.getPersistentName());
 	}

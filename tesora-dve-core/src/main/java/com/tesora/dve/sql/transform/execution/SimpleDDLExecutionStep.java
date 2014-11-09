@@ -36,6 +36,7 @@ import com.tesora.dve.queryplan.QueryStepGrantPrivilegesOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEPriviledge;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -80,17 +81,18 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 		return deletes;
 	}
 	
-	protected QueryStepDDLOperation buildOperation(SchemaContext sc) throws PEException {
-		QueryStepDDLOperation qso = new QueryStepDDLOperation(getStorageGroup(sc), getPersistentDatabase(), sql,getCacheInvalidation(sc));
+	protected QueryStepDDLOperation buildOperation(SchemaContext sc, ConnectionValues cv) throws PEException {
+		QueryStepDDLOperation qso = new QueryStepDDLOperation(getStorageGroup(sc,cv), getPersistentDatabase(), sql,getCacheInvalidation(sc));
 		if (getCommitOverride() != null)
 			return (QueryStepDDLOperation) qso.withCommitOverride(getCommitOverride());
 		return qso;
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv)
 			throws PEException {
-		StorageGroup sg = getStorageGroup(sc);
+		StorageGroup sg = getStorageGroup(sc,cv);
 		if (rootEntity instanceof PEDatabase) {
 			PEDatabase db = (PEDatabase)rootEntity;
 			CacheInvalidationRecord invalidate = new CacheInvalidationRecord(db.getCacheKey(),
@@ -121,7 +123,7 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 					qsteps.add(new QueryStepGrantPrivilegesOperation(sg, priv.getPersistent(sc),getCacheInvalidation(sc)));
 			}
 		}
-		QueryStepDDLOperation qso = buildOperation(sc);
+		QueryStepDDLOperation qso = buildOperation(sc,cv);
 		for(CatalogEntity ce : getEntities()) {
 			qso.addCatalogUpdate(ce);
 		}
@@ -132,8 +134,8 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 	}
 		
 	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cv, buf, indent, opts);
 		// drops might not have a root entity
 		if (rootEntity == null)
 			buf.add(indent + "  DDL " + action.name());
@@ -146,7 +148,7 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
 		buf.add(sql.getRawSQL());
 	}
 

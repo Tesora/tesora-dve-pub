@@ -33,12 +33,14 @@ import com.tesora.dve.sql.expression.MTTableKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.CandidateParser;
 import com.tesora.dve.sql.parser.ExtractedLiteral;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaPolicyContext;
 import com.tesora.dve.sql.statement.CacheableStatement;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RebuiltPlan;
+import com.tesora.dve.sql.util.Pair;
 
 public abstract class PlanCacheUtils {
 		
@@ -56,7 +58,7 @@ public abstract class PlanCacheUtils {
 			logger.debug(m);
 	}
 	
-	public static CachedPlan maybeCachePlan(SchemaContext sc, SchemaSourcePlanCache toCache, CacheableStatement origStatement, ExecutionPlan thePlan,
+	public static CachedPlan maybeCachePlan(SchemaContext sc, SchemaSourcePlanCache toCache, CacheableStatement origStatement, RootExecutionPlan thePlan,
 			String theSQL,
 			CandidateParser precomputed) {
 		if (sc.getSource().getType() == CacheType.MUTABLE) return null;
@@ -139,7 +141,7 @@ public abstract class PlanCacheUtils {
 		return results;
 	}
 	
-	public static boolean isValidParameterization(String theSQL, CandidateParser cp, ExecutionPlan ep) {
+	public static boolean isValidParameterization(String theSQL, CandidateParser cp, RootExecutionPlan ep) {
 		List<ExtractedLiteral> literals = cp.getLiterals();
 		if (literals.size() != ep.getValueManager().getNumberOfLiterals()) {
 			if (isDebugEnabled())
@@ -160,11 +162,11 @@ public abstract class PlanCacheUtils {
 	
 	public static CandidateCachedPlan getCachedPlan(SchemaContext sc, String theSQL, PlanCacheCallback inpcb) throws PEException {
 		if (sc.getCurrentDatabase(false) == null)
-			return new CandidateCachedPlan(null,null,false);
+			return new CandidateCachedPlan(null,null,null,false);
 		CandidateParser cp = new CandidateParser(theSQL);
 		// uncacheable if the input sql is unshrinkable
 		if (!cp.shrink()) {
-			return new CandidateCachedPlan(null,null,false);
+			return new CandidateCachedPlan(null,null,null,false);
 		}
 		String key = cp.getShrunk();
 
@@ -178,7 +180,7 @@ public abstract class PlanCacheUtils {
 		if (plan == null) {
 			pcb.onMiss(theSQL);
 			// we have no entry, but we can shrink, so indicate that we should try to cache
-			return new CandidateCachedPlan(cp,null,true);
+			return new CandidateCachedPlan(cp,null,null,true);
 		}
 		RebuiltPlan rp = plan.rebuildPlan(sc, cp.getLiterals());
 		if (rp.getEp() == null) {
@@ -190,10 +192,9 @@ public abstract class PlanCacheUtils {
 			pcb.onMiss(theSQL);
 			// we were unable to interpret the literals - next time something like this happens
 			// we'll got through the first branch above (immediate return) and try again
-			return new CandidateCachedPlan(cp,null,!rp.isClearCache());
+			return new CandidateCachedPlan(cp,null,null,!rp.isClearCache());
 		}
 		pcb.onHit(theSQL);
-		sc.setUsedCachedPlan();
 		SchemaCacheKey<?>[] keys = rp.getCacheKeys();
 		if (keys != null) {
 			for(SchemaCacheKey<?> sck : keys) {
@@ -203,7 +204,7 @@ public abstract class PlanCacheUtils {
 				sc.getConnection().acquireLock(ls, rp.getLockType());
 			}
 		}
-		return new CandidateCachedPlan(cp,rp.getEp(),false);
+		return new CandidateCachedPlan(cp,rp.getEp(),rp.getBoundValues(),false);
 	}
 		
 	public static PlanCacheKey buildCacheKey(String key, Database<?> db, SchemaPolicyContext spc) {
@@ -249,7 +250,7 @@ public abstract class PlanCacheUtils {
     	sc.getSource().clearPreparedStatement(sc.getConnection().getConnectionId(),stmtID);
     }
 
-    public static ExecutionPlan bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
+    public static Pair<RootExecutionPlan,ConnectionValues> bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
     	CachedPreparedStatement cps = sc.getSource().getPreparedStatement(sc, sc.getConnection().getConnectionId(), stmtID);    	
     	return cps.rebuildPlan(sc, params);
     }

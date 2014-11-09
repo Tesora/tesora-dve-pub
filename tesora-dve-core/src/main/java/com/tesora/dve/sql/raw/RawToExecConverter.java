@@ -91,7 +91,7 @@ import com.tesora.dve.sql.transform.VariableInstanceCollector;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
@@ -121,7 +121,7 @@ public class RawToExecConverter {
 	private final RawDB rawdb;
 	
 	private DMLStatement stmt;
-	private ExecutionPlan plan;
+	private RootExecutionPlan plan;
 	private String shrunk;
 	private List<ExtractedLiteral.Type> types;
 	private HashMap<String,TempGroupPlaceholder> declaredDynGroups;
@@ -172,7 +172,7 @@ public class RawToExecConverter {
 		return stmt;
 	}
 	
-	public ExecutionPlan getPlan() {
+	public RootExecutionPlan getPlan() {
 		return plan;
 	}
 	
@@ -234,7 +234,7 @@ public class RawToExecConverter {
 		}
 		if (variablesContext.getValues() == null) 
 			variablesContext.getValueManager().getValues(variablesContext, false);
-		plan = new ExecutionPlan(pi, variablesContext.getValueManager(), stmt.getStatementType());	
+		plan = new RootExecutionPlan(pi, variablesContext.getValueManager(), stmt.getStatementType());	
 		origManager = plan.getValueManager();
 		List<VariableInstance> variables = VariableInstanceCollector.getVariables(stmt);
 		TreeMap<SourceLocation,VariableInstance> sorted = new TreeMap<SourceLocation,VariableInstance>();

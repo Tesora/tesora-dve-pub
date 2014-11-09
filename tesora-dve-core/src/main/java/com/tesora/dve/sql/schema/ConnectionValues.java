@@ -200,8 +200,7 @@ public class ConnectionValues implements ValueSource {
 	}
 	
 	public void allocateAutoIncBlock(TableKey tk) {
-		if (autoincs != null) 
-			throw new SchemaException(Pass.SECOND, "Duplicate autoinc block");
+		if (autoincs != null) throw new SchemaException(Pass.SECOND, "Duplicate autoinc block");
 		autoincs = new AutoIncrementBlock(types,tk);
 	}
 
@@ -290,5 +289,9 @@ public class ConnectionValues implements ValueSource {
 	
 	public ConnectionContext getConnection() {
 		return connection;
+	}
+	
+	public boolean hasAutoIncs() {
+		return autoincs != null;
 	}
 }

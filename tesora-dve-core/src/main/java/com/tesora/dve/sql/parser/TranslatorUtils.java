@@ -3998,7 +3998,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		Name persistentGroup = tblInstances.get(0).getAbstractTable().getPersistentStorage(pc).getName();
 		for (TableInstance tableInstance : tblInstances) {
 			if (! persistentGroup.equals(tableInstance.getAbstractTable().getPersistentStorage(pc).getName())) {
-				throw new SchemaException(Pass.FIRST, "Table '" + tableInstance.getAbstractTable().getName(pc).get()
+				throw new SchemaException(Pass.FIRST, "Table '" + tableInstance.getAbstractTable().getName(pc,pc.getValues()).get()
 						+ "' in maintenance command is not in Persistent Group '" + persistentGroup.get() + "'");
 			}
 		}

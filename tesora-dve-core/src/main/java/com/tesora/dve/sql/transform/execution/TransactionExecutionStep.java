@@ -35,6 +35,7 @@ import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepPrepareXATransactionOperation;
 import com.tesora.dve.queryplan.QueryStepRollbackTransactionOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -52,7 +53,7 @@ public class TransactionExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
 		buf.add(stmt.getSQL(sc,opts, false));
 	}
 
@@ -72,11 +73,11 @@ public class TransactionExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
-			throws PEException {
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv) throws PEException {
 		QueryStepOperation qso = null;
 		Kind txn = stmt.getKind();
-		StorageGroup sg = getStorageGroup(sc);
+		StorageGroup sg = getStorageGroup(sc,cv);
 		if (txn == Kind.START) {
 			QueryStepBeginTransactionOperation qsbto = new QueryStepBeginTransactionOperation(sg);
 			if (stmt.isConsistent())

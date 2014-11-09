@@ -27,17 +27,19 @@ import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.InvokeParser;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
+import com.tesora.dve.sql.util.Pair;
 
 public class CachedPreparedStatement implements CachedPlan {
 
 	private final PlanCacheKey key;
-	private final ExecutionPlan thePlan;
+	private final RootExecutionPlan thePlan;
 	private final List<TableKey> tables;
 	private final GenericSQLCommand logFormat;
 	
-	public CachedPreparedStatement(PlanCacheKey pck, ExecutionPlan ep, List<TableKey> tabs, GenericSQLCommand logFormat) {
+	public CachedPreparedStatement(PlanCacheKey pck, RootExecutionPlan ep, List<TableKey> tabs, GenericSQLCommand logFormat) {
 		this.key = pck;
 		this.thePlan = ep;
 		this.tables = tabs;
@@ -59,16 +61,16 @@ public class CachedPreparedStatement implements CachedPlan {
 		return false;
 	}
 
-	public ExecutionPlan rebuildPlan(SchemaContext sc, List<Object> params) throws PEException {
+	public Pair<RootExecutionPlan,ConnectionValues> rebuildPlan(SchemaContext sc, List<Object> params) throws PEException {
 		if (thePlan.getValueManager().getNumberOfParameters() != params.size()) {
 			throw new PEException("Invalid prep. stmt. execute: require " + thePlan.getValueManager().getNumberOfParameters() + " parameters but have " + params.size());
 		}
-		thePlan.getValueManager().resetForNewPStmtExec(sc, params);
+		ConnectionValues cv = thePlan.getValueManager().resetForNewPStmtExec(sc, params);
 		if (InvokeParser.isSqlLoggingEnabled()) {
-			GenericSQLCommand resolved = logFormat.resolve(sc, false, "  ");
+			GenericSQLCommand resolved = logFormat.resolve(cv, false, "  ");
 			InvokeParser.logSql(sc, resolved.getDecoded());
 		}
-		return thePlan;
+		return new Pair<RootExecutionPlan,ConnectionValues>(thePlan,cv);
 	}
 
 	public int getNumberOfParameters() {

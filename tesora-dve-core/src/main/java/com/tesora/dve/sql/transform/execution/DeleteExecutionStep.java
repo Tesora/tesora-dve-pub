@@ -35,6 +35,7 @@ import com.tesora.dve.queryplan.QueryStepUpdateByKeyOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -61,12 +62,13 @@ public final class DeleteExecutionStep extends DirectExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv)
 			throws PEException {
 		QueryStepOperation qso = null;
-		IKeyValue kv = getKeyValue(sc);
-		SQLCommand sqlCommand = getCommand(sc).withReferenceTime(getReferenceTimestamp(sc));
-		StorageGroup sg = getStorageGroup(sc);
+		IKeyValue kv = getKeyValue(sc,cv);
+		SQLCommand sqlCommand = getCommand(sc,cv).withReferenceTime(getReferenceTimestamp(cv));
+		StorageGroup sg = getStorageGroup(sc,cv);
 		if (kv != null)
 			qso = new QueryStepUpdateByKeyOperation(sg,getPersistentDatabase(), kv, sqlCommand);
 		else {
@@ -77,8 +79,8 @@ public final class DeleteExecutionStep extends DirectExecutionStep {
 	}
 	
 	@Override
-	public Long getUpdateCount(SchemaContext sc) {
-		return super.getUpdateCount(sc);
+	public Long getUpdateCount(SchemaContext sc,ConnectionValues cv) {
+		return super.getUpdateCount(sc,cv);
 	}
 
 	@Override
@@ -88,8 +90,8 @@ public final class DeleteExecutionStep extends DirectExecutionStep {
 	}
 	
 	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cv, buf, indent, opts);
 	}
 
 }

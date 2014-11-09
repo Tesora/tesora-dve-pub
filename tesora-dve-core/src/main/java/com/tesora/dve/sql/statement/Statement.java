@@ -67,7 +67,7 @@ import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.PrePlanner;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PrepareExecutionStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
@@ -103,7 +103,7 @@ public abstract class Statement extends StatementNode {
 	
 	public String getSQL(SchemaContext sc, Emitter emitter, EmitOptions opts, boolean preserveParamMarkers) {
 		GenericSQLCommand gsql = getGenericSQL(sc,emitter,opts);
-		return gsql.resolve(sc, preserveParamMarkers, (opts == null ? null : opts.getMultilinePretty())).getDecoded(); 
+		return gsql.resolve(sc.getValues(), preserveParamMarkers, (opts == null ? null : opts.getMultilinePretty())).getDecoded(); 
 	}
 	
 	public String getSQL(SchemaContext sc, boolean withExtensions, boolean preserveParamMarkers) {
@@ -153,7 +153,7 @@ public abstract class Statement extends StatementNode {
 		try {
 			if (sc != null)
 				emitter.pushContext(sc.getTokens());
-			emitter.emitStatement(sc,this, buf);
+			emitter.emitStatement(sc,sc.getValues(), this, buf);
 		} finally {
 			if (sc != null)
 				emitter.popContext();
@@ -204,9 +204,9 @@ public abstract class Statement extends StatementNode {
 		} else {
 			logFormat = new GenericSQLCommand(sc, s.getSQL(sc));
 		}
-		ExecutionPlan currentPlan = new ExecutionPlan(projection,sc.getValueManager(),StatementType.PREPARE);
+		RootExecutionPlan currentPlan = new RootExecutionPlan(projection,sc.getValueManager(),StatementType.PREPARE);
 		if (s.filterStatement(sc))
-			return new PlanningResult(Collections.singletonList(buildFilteredPlan(currentPlan)), null,origSQL);
+			return new PlanningResult(Collections.singletonList(buildFilteredPlan(currentPlan)), sc.getValues(), null,origSQL);
 		// we will build two execution plans here - the first is the one we're going to push down for the prepare
 		// and the second is the one for the actual stmt
 		List<TableKey> tableKeys = null;
@@ -231,27 +231,27 @@ public abstract class Statement extends StatementNode {
 		if (pstmtPlan == null) {
 			pstmtPlan = new CachedPreparedStatement(pck, getExecutionPlan(sc, s, config, origSQL), tableKeys, logFormat);
 		}
-		return new PreparePlanningResult(currentPlan, pstmtPlan, origSQL);		
+		return new PreparePlanningResult(currentPlan, pstmtPlan, sc.getValues(),origSQL);		
 	}
 	
-	protected static ExecutionPlan buildFilteredPlan(ExecutionPlan ep) {
+	protected static RootExecutionPlan buildFilteredPlan(RootExecutionPlan ep) {
 		ep.getSequence().append(new EmptyExecutionStep(0,"filtered statement")); 
 		ep.setCacheable(true);
 		ep.setIsEmptyPlan(true);
 		return ep;
 	}
 	
-	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s) throws PEException {
+	public static RootExecutionPlan getExecutionPlan(SchemaContext sc, Statement s) throws PEException {
 		return getExecutionPlan(sc, s, sc.getBehaviorConfiguration());
 	}
 	
-	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config) throws PEException {
+	public static RootExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config) throws PEException {
 		return getExecutionPlan(sc, s,config,null);
 	}
 	
-	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config, String origSQL) throws PEException {
+	public static RootExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config, String origSQL) throws PEException {
 		ProjectionInfo projection = s.getProjectionMetadata(sc);
-		ExecutionPlan ep = new ExecutionPlan(projection,sc.getValueManager(), s.getStatementType());
+		RootExecutionPlan ep = new RootExecutionPlan(projection,sc.getValueManager(), s.getStatementType());
 
 		s.clearWarnings(sc);
 		
@@ -260,16 +260,16 @@ public abstract class Statement extends StatementNode {
 
 		Statement ps = PrePlanner.transform(sc,s);
 		if (ps.isExplain()) {
-			ExecutionPlan expep = ps.buildExplain(sc, config);
-			ep.getSequence().append(expep.generateExplain(sc,ps,origSQL));
+			RootExecutionPlan expep = ps.buildExplain(sc, config);
+			ep.getSequence().append(expep.generateExplain(sc,sc.getValues(),ps,origSQL));
 		} else {
 			ps.planStmt(sc, ep.getSequence(), config, false);
 		}
 		return ep;
 	}
 	
-	protected ExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
-		ExecutionPlan expep = new ExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
+	protected RootExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
+		RootExecutionPlan expep = new RootExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
 		planStmt(sc, expep.getSequence(),config, true);
 		return expep;
 	}

@@ -43,6 +43,7 @@ import com.tesora.dve.sql.PlannerStatisticType;
 import com.tesora.dve.sql.PlannerStatistics;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CandidateCachedPlan;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils;
@@ -54,7 +55,7 @@ import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.session.TransactionStatement;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.variables.KnownVariables;
@@ -355,21 +356,23 @@ public class InvokeParser {
 	
 	public static PlanningResult buildPlan(SchemaContext pc, InputState input, ParserOptions options, PlanCacheCallback ipcb) throws PEException {
 		PlanCacheCallback pcb = (ipcb == null ? logCacheCallback : ipcb);
-		List<ExecutionPlan> plans = null;
+		List<RootExecutionPlan> plans = null;
+		ConnectionValues values = null;
 		boolean tryCache = pc.getSource().canCachePlans(pc) && !pc.getIntraStmtState().isUnderLockTable();
 		CandidateCachedPlan ccp = null;
 		if (!pc.getSource().isPlanCacheEmpty() && input.getCommand() != null) {
 			ccp = PlanCacheUtils.getCachedPlan(pc, input.getCommand(), pcb);
 			if (ccp.getPlan() != null) {
-				plans = new ArrayList<ExecutionPlan>();
+				plans = new ArrayList<RootExecutionPlan>();
 				plans.add(ccp.getPlan());
+				values = ccp.getValues();
 			} else if (!ccp.tryCaching()) {
 				tryCache = false;
 			}
 		}
 		if (plans == null) {
 			ParseResult pr = parse(input, options, pc);
-			plans = new ArrayList<ExecutionPlan>();
+			plans = new ArrayList<RootExecutionPlan>();
 			Statement first = null;
 			boolean explain = false;
 			for (Statement s : pr.getStatements()) {
@@ -381,6 +384,9 @@ public class InvokeParser {
 					plans.add(Statement.getExecutionPlan(pc,s,pc.getBehaviorConfiguration(),input.getCommand()));
 				}
 			}
+			values = pc.getValues();
+			if (values == null)
+				values = pc.getValueManager().getValues(pc);
 			if (pcb != null && input.getCommand() != null && !explain)
 				pcb.onMiss(input.getCommand());
 			if (!explain && input.getCommand() != null && plans.size() == 1 && tryCache && first instanceof CacheableStatement) {
@@ -393,15 +399,15 @@ public class InvokeParser {
 					PlannerStatistics.increment(PlannerStatisticType.UNCACHEABLE_CANDIDATE_PARSE);					
 				}
 			}
-			return new PlanningResult(plans,pr.getInputState(),input.getCommand());
+			return new PlanningResult(plans,values,pr.getInputState(),input.getCommand());
 		}
 		// clear the warnings
 		pc.getConnection().getMessageManager().clear();
-		return new PlanningResult(plans,null,input.getCommand());
+		return new PlanningResult(plans,values,null,input.getCommand());
 	}
 
 	// if we have an explain - we should try to match to the plan cache
-	private static ExecutionPlan buildExplainPlan(SchemaContext sc, Statement s, String origSQL) throws PEException {
+	private static RootExecutionPlan buildExplainPlan(SchemaContext sc, Statement s, String origSQL) throws PEException {
 		// if the explain is for raw statistics, or a regular explain - then we can try the plan cache
 		// otherwise not so much
 		if (s.getExplain().tryCache()) {
@@ -410,9 +416,9 @@ public class InvokeParser {
 			if (!sc.getSource().isPlanCacheEmpty()) {
 				ccp = PlanCacheUtils.getCachedPlan(sc, sql, null);
 				if (ccp.getPlan() != null) {
-					ExecutionPlan actual = ccp.getPlan();
-					ExecutionPlan expep = new ExecutionPlan(null,actual.getValueManager(), StatementType.EXPLAIN);
-					expep.getSequence().append(actual.generateExplain(sc,s,sql));
+					RootExecutionPlan actual = ccp.getPlan();
+					RootExecutionPlan expep = new RootExecutionPlan(null,actual.getValueManager(), StatementType.EXPLAIN);
+					expep.getSequence().append(actual.generateExplain(sc,ccp.getValues(),s,sql));
 					return expep;
 				}
 			}
@@ -428,7 +434,7 @@ public class InvokeParser {
 		preparse(pc);
 		ParserOptions options = ParserOptions.NONE.setDebugLog(true).setResolve();
 		PlanningResult result = buildPlan(pc, stmt, options, null);
-		for(ExecutionPlan ep : result.getPlans()) 
+		for(RootExecutionPlan ep : result.getPlans()) 
 			SqlStatistics.incrementCounter(ep.getStatementType());
 		return result;
 	}
@@ -453,11 +459,11 @@ public class InvokeParser {
 				throw new PEException("Invalid prepare request: bad characters");
 			ParseResult pr = parameterizeAndParse(pc, options, line, cs);
 			List<Statement> stmts = pr.getStatements();
-			List<ExecutionPlan> plans = new ArrayList<ExecutionPlan>();
+			List<RootExecutionPlan> plans = new ArrayList<RootExecutionPlan>();
 			for (Statement s : stmts) {
 				plans.add(Statement.getExecutionPlan(pc,s,pc.getBehaviorConfiguration(),lineStr));
 			}
-			result = new PlanningResult(plans, pr.getInputState(),lineStr);
+			result = new PlanningResult(plans, pc.getValues(),pr.getInputState(),lineStr);
 		} else {
 			lineStr = StringUtils.strip(lineStr, new String(Character.toString(Character.MIN_VALUE)));
 
@@ -472,7 +478,7 @@ public class InvokeParser {
 			} else
 				result = buildPlan(pc, input, options, null);
 		}
-		for(ExecutionPlan ep : result.getPlans()) 
+		for(RootExecutionPlan ep : result.getPlans()) 
 			SqlStatistics.incrementCounter(ep.getStatementType());
 		return result;
 	}
@@ -480,9 +486,9 @@ public class InvokeParser {
 	public static PlanningResult bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
 		// make sure we clear the options
 		sc.setOptions(ParserOptions.NONE);
-		ExecutionPlan bound = PlanCacheUtils.bindPreparedStatement(sc, stmtID, params);
-		SqlStatistics.incrementCounter(bound.getStatementType());
-		return new PlanningResult(Collections.singletonList(bound),null,null);
+		Pair<RootExecutionPlan,ConnectionValues> bound = PlanCacheUtils.bindPreparedStatement(sc, stmtID, params);
+		SqlStatistics.incrementCounter(bound.getFirst().getStatementType());
+		return new PlanningResult(Collections.singletonList(bound.getFirst()),bound.getSecond(),null,null);
 	}
 	
 	public static PreparePlanningResult reprepareStatement(SchemaContext sc, String rawSQL, String stmtID) throws PEException {

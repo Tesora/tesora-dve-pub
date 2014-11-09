@@ -29,6 +29,7 @@ import com.tesora.dve.queryplan.QueryStepAdhocResultsOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 
 public class AdhocResultsSessionStep extends ExecutionStep {
@@ -41,12 +42,13 @@ public class AdhocResultsSessionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
 		buf.add("ad hoc results");
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv)
 			throws PEException {
 		qsteps.add(new QueryStepAdhocResultsOperation(results));
 	}

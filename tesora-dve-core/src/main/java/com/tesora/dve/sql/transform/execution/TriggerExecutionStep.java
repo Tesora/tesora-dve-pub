@@ -30,6 +30,7 @@ import com.tesora.dve.queryplan.QueryStepTriggerOperation;
 import com.tesora.dve.queryplan.TriggerValueHandlers;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -81,36 +82,36 @@ public class TriggerExecutionStep extends ExecutionStep {
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps,
-			ProjectionInfo projection, SchemaContext sc) throws PEException {
+			ProjectionInfo projection, SchemaContext sc,ConnectionValues cv) throws PEException {
 		QueryStepTriggerOperation trigOp = new QueryStepTriggerOperation(handlers,
-				buildOperation(opts,sc,rowQuery),
-				(before == null ? null : buildOperation(opts,sc,before)),
-				buildOperation(opts,sc,actual),
-				(after == null ? null : buildOperation(opts,sc,after)));
+				buildOperation(opts,sc,cv,rowQuery),
+				(before == null ? null : buildOperation(opts,sc,cv,before)),
+				buildOperation(opts,sc,cv,actual),
+				(after == null ? null : buildOperation(opts,sc,cv,after)));
 		qsteps.add(trigOp);
 	}
 
-	private QueryStepOperation buildOperation(ExecutionPlanOptions opts, SchemaContext sc, ExecutionStep toSchedule) throws PEException {
+	private QueryStepOperation buildOperation(ExecutionPlanOptions opts, SchemaContext sc, ConnectionValues cv, ExecutionStep toSchedule) throws PEException {
 		List<QueryStepOperation> sub = new ArrayList<QueryStepOperation>();
-		toSchedule.schedule(opts,sub,null,sc);
-		return 	ExecutionPlan.collapseOperationList(sub);
+		toSchedule.schedule(opts,sub,null,sc,cv);
+		return 	RootExecutionPlan.collapseOperationList(sub);
 	}
 	
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cv,buf, indent, opts);
 		String sub1 = indent + "  ";
 		String sub2 = sub1 + "  ";
 		buf.add(sub1 + "Row query");
-		rowQuery.display(sc,buf,sub2,opts);
+		rowQuery.display(sc,cv,buf,sub2,opts);
 		if (before != null) {
 			buf.add(sub1 + "Before");
-			before.display(sc,buf,sub2,opts);
+			before.display(sc,cv,buf,sub2,opts);
 		}
 		buf.add(sub1 + "Actual");
-		actual.display(sc,buf,sub2,opts);
+		actual.display(sc,cv,buf,sub2,opts);
 		if (after != null) {
 			buf.add(sub1 + "After");
-			after.display(sc,buf,sub2,opts);
+			after.display(sc,cv,buf,sub2,opts);
 		}
 	}
 	

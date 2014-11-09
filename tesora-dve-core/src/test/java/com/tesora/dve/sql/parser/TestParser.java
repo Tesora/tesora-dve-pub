@@ -51,7 +51,7 @@ import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.ddl.DDLStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.statement.session.SessionStatement;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.standalone.PETest;
@@ -142,10 +142,10 @@ public abstract class TestParser {
 				LanguageNode parent = t.getParent();
 				if (parent == null) {
 					StringBuilder buf = new StringBuilder();
-                    Singletons.require(HostService.class).getDBNative().getEmitter().emitTraversable(null,t, buf);
+                    Singletons.require(HostService.class).getDBNative().getEmitter().emitTraversable(null,null,t, buf);
 					String nodeDesc = buf.toString();
 					buf = new StringBuilder();
-                    Singletons.require(HostService.class).getDBNative().getEmitter().emitTraversable(null,root, buf);
+                    Singletons.require(HostService.class).getDBNative().getEmitter().emitTraversable(null,null,root, buf);
 					fail("Unparented node: " + nodeDesc + " of: " + buf.toString());
 				}
 			}
@@ -243,12 +243,12 @@ public abstract class TestParser {
 			for(Statement s : stmts) {
 				CorrectnessVisitor.verifyCorrectness(s);
 				features.visit(s);
-				ExecutionPlan ep = Statement.getExecutionPlan(tee.getPersistenceContext(),s);
+				RootExecutionPlan ep = Statement.getExecutionPlan(tee.getPersistenceContext(),s);
 				boolean first = true;
 				// make sure that we get sql back out without a problem!
 				for(HasPlanning hp : ep.getSequence().getSteps()) {
 					ExecutionStep es = (ExecutionStep) hp;
-					String sql = es.getSQL(tee.getPersistenceContext(),null);
+					String sql = es.getSQL(tee.getPersistenceContext(),tee.getPersistenceContext().getValues(),null);
 					if ("".equals(sql) || sql == null)
 						fail("No sql generated");
 					if (first)

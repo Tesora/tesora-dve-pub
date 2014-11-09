@@ -80,7 +80,7 @@ import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
@@ -211,7 +211,7 @@ public class PECreateViewStatement extends
 			try {
 				ParserOptions npm = pm.setInhibitSingleSiteOptimization();
 				sc.setOptions(npm);
-				ExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
+				RootExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
 				if (ep.getSequence().getSteps().size() > 1)
 					vm = ViewMode.EMULATE;
 				else
@@ -349,7 +349,7 @@ public class PECreateViewStatement extends
 		SQLCommand pushDown = null;
 		if (nv.getMode() == ViewMode.ACTUAL) {
 			GenericSQLCommand gsql = getGenericSQL(pc,false,false);
-			pushDown = new SQLCommand(gsql.resolve(pc,null));
+			pushDown = new SQLCommand(gsql.resolve(pc.getValues(),null));
 		}
 		
 		// I want to acquire locks on the underlying tables here so that we get a consistent metadata view
@@ -380,7 +380,7 @@ public class PECreateViewStatement extends
 			this.context = sc;
 			this.nascentDefinition = nv;
 			GenericSQLCommand gsql = firstStep.getGenericSQL(context, false,false);
-			littleQuery = new SQLCommand(gsql.resolve(context,null));			
+			littleQuery = new SQLCommand(gsql.resolve(context.getValues(),null));			
 			this.columnNames = colNames;
 			this.onDatabase = onDB;
 			this.backingTable = null;
@@ -522,7 +522,7 @@ public class PECreateViewStatement extends
 			cmds.add(pushDown != null ? pushDown : emulatedDefinition);
 			for(SQLCommand sqlc : cmds) {
 				QueryStepUpdateAllOperation qsuo = 
-						new QueryStepUpdateAllOperation(backingTable.getStorageGroup(context).getPersistent(context),onDatabase,BroadcastDistributionModel.SINGLETON,sqlc);
+						new QueryStepUpdateAllOperation(backingTable.getStorageGroup(context).getPersistent(context,context.getValues()),onDatabase,BroadcastDistributionModel.SINGLETON,sqlc);
 				qsuo.executeSelf(estate, wg, resultConsumer);
 			}
 		}

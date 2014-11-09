@@ -35,6 +35,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
@@ -52,9 +53,10 @@ public class FilterExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc) throws PEException {
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv) throws PEException {
 		ArrayList<QueryStepOperation> sub = new ArrayList<QueryStepOperation>();
-		source.schedule(opts, sub,projection,sc);
+		source.schedule(opts, sub,projection,sc, cv);
 		for(int i = 0; i < sub.size() - 1; i++) {
 			qsteps.add(sub.get(i));
 		}
@@ -68,13 +70,13 @@ public class FilterExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
-		source.display(sc, buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+		source.display(sc, cv, buf, indent, opts);
 	}
 	
 	@Override
-	public void explain(SchemaContext sc, List<ResultRow> rows, ExplainOptions opts) {
-		source.explain(sc,rows, opts);
+	public void explain(SchemaContext sc, ConnectionValues cv, List<ResultRow> rows, ExplainOptions opts) {
+		source.explain(sc,cv,rows, opts);
 	}
 		
 	public OperationFilter getFilter() {

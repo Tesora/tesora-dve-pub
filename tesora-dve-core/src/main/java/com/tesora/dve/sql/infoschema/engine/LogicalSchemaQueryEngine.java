@@ -251,7 +251,7 @@ public class LogicalSchemaQueryEngine {
 		if (canLog()) {
 			log("execute on " + sg.getName().getSQL());
 			List<String> lines = new ArrayList<String>();
-			gsql.resolveAsTextLines(sc, false, "  ", lines);
+			gsql.resolveAsTextLines(sc.getValues(), false, "  ", lines);
 			for(String s : lines)
 				log(s);
 			if (pi != null) {

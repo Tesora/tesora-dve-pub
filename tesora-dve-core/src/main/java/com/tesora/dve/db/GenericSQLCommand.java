@@ -43,6 +43,7 @@ import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.expression.DelegatingLiteralExpression;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.TempTable;
@@ -576,8 +577,8 @@ public class GenericSQLCommand {
 		return this;
 	}
 
-	public GenericSQLCommand resolve(SchemaContext sc, String prettyIndent) {
-		return resolve(sc, false, prettyIndent);
+	public GenericSQLCommand resolve(ConnectionValues cv, String prettyIndent) {
+		return resolve(cv, false, prettyIndent);
 	}
 
 	/**
@@ -585,26 +586,24 @@ public class GenericSQLCommand {
 	 * 
 	 * @see public GenericSQLCommand getLateResolvedOnWorker(Worker)
 	 */
-	public GenericSQLCommand resolve(SchemaContext sc, boolean preserveParamMarkers, String indent) {
+	public GenericSQLCommand resolve(ConnectionValues cv, boolean preserveParamMarkers, String indent) {
 		if (!this.commandFragments.hasIndexEntries()) {
 			return this;
 		}
 
-		final Emitter emitter =
-				(((sc.getOptions() != null) && sc.getOptions().isInfoSchemaView()) ? new MysqlEmitter() :
-						Singletons.require(HostService.class).getDBNative().getEmitter());
+		final Emitter emitter = new MysqlEmitter();
 
 		final FragmentTable resolvedFragments = new FragmentTable(this.commandFragments);
 		for (final OffsetEntry oe : resolvedFragments.viewIndexEntries()) {
 			if (oe.getKind() == EntryKind.LITERAL) {
 				final LiteralOffsetEntry loe = (LiteralOffsetEntry) oe;
 				final StringBuilder buf = new StringBuilder();
-				emitter.emitLiteral(sc, loe.getLiteral(), buf);
+				emitter.emitLiteral(cv, loe.getLiteral(), buf);
 				resolvedFragments.replace(oe, new CommandFragment(this.encoding, buf));
 			} else if (oe.getKind() == EntryKind.LATE_CONSTANT) {
 				final LateBindingConstantOffsetEntry lbcoe = (LateBindingConstantOffsetEntry) oe;
 				final StringBuilder buf = new StringBuilder();
-				emitter.emitLateBindingConstantExpression(sc, lbcoe.getExpression(), buf);
+				emitter.emitLateBindingConstantExpression(cv, lbcoe.getExpression(), buf);
 				resolvedFragments.replace(oe, new CommandFragment(this.encoding, buf));
 			} else if (oe.getKind() == EntryKind.PRETTY) {
 				if (indent != null) {
@@ -622,12 +621,13 @@ public class GenericSQLCommand {
 				}
 			} else if (oe.getKind() == EntryKind.TEMPTABLE) {
 				final TempTableOffsetEntry ttoe = (TempTableOffsetEntry) oe;
-				resolvedFragments.replace(oe, new CommandFragment(this.encoding, ttoe.getTempTable().getName(sc)));
+				resolvedFragments.replace(oe, new CommandFragment(this.encoding,
+						cv.getTempTableName(ttoe.getTempTable().getValuesIndex())));
 			} else if (oe.getKind() == EntryKind.PARAMETER) {
 				final ParameterOffsetEntry poe = (ParameterOffsetEntry) oe;
 				if (!preserveParamMarkers) {
 					// get the expr from the expr manager and swap it in
-					final Object o = sc.getValueManager().getValue(sc, poe.getParameter());
+					final Object o =  cv.getParameterValue(poe.getParameter().getPosition());
 					if (o != null) {
 						if (o.getClass().isArray()) {
 							final byte[] quoteBytes = Tokens.SINGLE_QUOTE.getBytes(this.encoding); // TODO: encode using CharsetEncoder.
@@ -649,7 +649,7 @@ public class GenericSQLCommand {
 				}
 			} else if (oe.getKind() == EntryKind.LATEVAR) {
 				final LateResolvingVariableOffsetEntry lrvoe = (LateResolvingVariableOffsetEntry) oe;
-				final Object value = lrvoe.expr.getValue(sc.getValues());
+				final Object value = lrvoe.expr.getValue(cv);
 				if (value != null) {
 					resolvedFragments.replace(oe, new CommandFragment(this.encoding, PEStringUtils.singleQuote(value.toString())));
 				} else {
@@ -688,8 +688,8 @@ public class GenericSQLCommand {
 	 * @param lines
 	 *            Resolved command's lines.
 	 */
-	public void resolveAsTextLines(final SchemaContext sc, final boolean preserveParamMarkers, final String indent, final List<String> lines) {
-		final GenericSQLCommand resolved = resolve(sc, preserveParamMarkers, indent);
+	public void resolveAsTextLines(final ConnectionValues cv, final boolean preserveParamMarkers, final String indent, final List<String> lines) {
+		final GenericSQLCommand resolved = resolve(cv, preserveParamMarkers, indent);
 		final String resolvedAsString = resolved.getDecoded();
 		lines.addAll(Arrays.asList(resolvedAsString.split(PEConstants.LINE_SEPARATOR)));
 	}
@@ -700,8 +700,8 @@ public class GenericSQLCommand {
 	 * @param mapping
 	 *            Mapping of offset entries to raw plan literal replacements.
 	 */
-	public GenericSQLCommand resolveRawEntries(final Map<Integer, String> mapping, final SchemaContext sc) {
-		return resolveRawEntries(mapping).resolve(sc, true, null);
+	public GenericSQLCommand resolveRawEntries(final Map<Integer, String> mapping, final ConnectionValues cv) {
+		return resolveRawEntries(mapping).resolve(cv, true, null);
 	}
 
 	private GenericSQLCommand resolveRawEntries(final Map<Integer, String> mapping) {

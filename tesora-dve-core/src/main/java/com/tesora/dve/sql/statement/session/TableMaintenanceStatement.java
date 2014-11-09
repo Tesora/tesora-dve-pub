@@ -32,6 +32,7 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -100,7 +101,7 @@ public class TableMaintenanceStatement extends SessionStatement {
 	@Override
 	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitTableMaintenanceStatement(pc, this, buf, -1);
+        Singletons.require(HostService.class).getDBNative().getEmitter().emitTableMaintenanceStatement(pc, pc.getValues(), this, buf, -1);
 		// we only allow on a single Persistent Group, so grab the first one
 		PEPersistentGroup sg = tableInstanceList.get(0).getAbstractTable().getPersistentStorage(pc);
 		es.append(new TableMaintenanceExecutionStep(pc.getCurrentDatabase(), sg, buf.toString()));
@@ -144,9 +145,10 @@ public class TableMaintenanceStatement extends SessionStatement {
 		}
 
 		@Override
-		public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+		public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+				ConnectionValues cv)
 				throws PEException {
-			qsteps.add(new QueryStepSelectAllOperation(getStorageGroup(sc),
+			qsteps.add(new QueryStepSelectAllOperation(getStorageGroup(sc,cv),
 					getPersistentDatabase(), StaticDistributionModel.SINGLETON, getSQLCommand(sc)));
 		}
 

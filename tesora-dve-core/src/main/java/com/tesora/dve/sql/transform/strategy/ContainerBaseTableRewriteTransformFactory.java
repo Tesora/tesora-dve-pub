@@ -256,7 +256,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 				throw new SchemaException(Pass.PLANNER, "Malformed discriminant key");
 			ordered.add(new Pair<PEColumn,LiteralExpression>(pec,(LiteralExpression)ce));
 		}
-		String discValue = PEContainerTenant.buildDiscriminantValue(sc, ordered);
+		String discValue = PEContainerTenant.buildDiscriminantValue(sc, sc.getValues(), ordered);
 		return PEContainerTenant.getContainerTenantKey(cont, discValue);		
 	}
 
@@ -314,7 +314,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 				ExecutionSequence subseq = new ExecutionSequence(null);
 				getSelfChildren().get(0).schedule(sc, subseq, scheduled);
 				ArrayList<QueryStepOperation> substeps = new ArrayList<QueryStepOperation>();
-				subseq.schedule(null, substeps, null, sc.getContext());
+				subseq.schedule(null, substeps, null, sc.getContext(), sc.getContext().getValues());
 				Database<?> db = childStep.getDatabase(sc);
 				
 				es.append(new ComplexDDLExecutionStep((PEDatabase)db,

@@ -69,8 +69,8 @@ public class RangeDistributionVector extends DistributionVector {
 	}
 
 	@Override
-	public String describe(SchemaContext sc) {
-		return super.describe(sc) + " using range " + range.getName(); 
+	public String describe(SchemaContext sc,ConnectionValues cv) {
+		return super.describe(sc,cv) + " using range " + range.getName(); 
 	}
 
 	@Override

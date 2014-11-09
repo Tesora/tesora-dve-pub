@@ -232,7 +232,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 			ExecutionSequence es = new ExecutionSequence(null);
 			iiss.plan(sc,es, sc.getBehaviorConfiguration());
 			List<QueryStepOperation> steps = new ArrayList<QueryStepOperation>();
-			es.schedule(null, steps, null, sc);
+			es.schedule(null, steps, null, sc, sc.getValues());
 			dml = steps;
 		}
 

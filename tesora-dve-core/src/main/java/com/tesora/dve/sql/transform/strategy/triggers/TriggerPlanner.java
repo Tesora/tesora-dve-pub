@@ -52,7 +52,7 @@ import com.tesora.dve.sql.statement.dml.InsertStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.TriggerExecutionStep;
@@ -156,7 +156,7 @@ public abstract class TriggerPlanner extends TransformFactory {
 			withDefangInvariants();
 		}
 
-		protected ExecutionStep buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
+		protected ExecutionStep buildSubSequence(PlannerContext pc, FeatureStep step, RootExecutionPlan parentPlan) throws PEException {
 			ExecutionSequence sub = new ExecutionSequence(parentPlan);
 			step.schedule(pc,sub,new HashSet<FeatureStep>());
 			if (sub.getSteps().size() == 1)

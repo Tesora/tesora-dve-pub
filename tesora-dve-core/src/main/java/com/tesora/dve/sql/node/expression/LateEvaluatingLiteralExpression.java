@@ -35,8 +35,8 @@ public class LateEvaluatingLiteralExpression extends DelegatingLiteralExpression
 	private final LateEvaluator evaluator;
 	private final ConstantExpression[] params;
 	
-	public LateEvaluatingLiteralExpression(int literalType, ValueSource vm, ConstantExpression[] parameters, LateEvaluator eval) {
-		super(literalType,null,vm,0,null);
+	public LateEvaluatingLiteralExpression(int literalType, ConstantExpression[] parameters, LateEvaluator eval) {
+		super(literalType,null,null,0,null,true);
 		evaluator = eval;
 		params = parameters;
 		if (params.length != evaluator.getParamTypes().length)
@@ -48,7 +48,7 @@ public class LateEvaluatingLiteralExpression extends DelegatingLiteralExpression
 		ConstantExpression[] np = new ConstantExpression[params.length];
 		for(int i = 0; i < params.length; i++)
 			np[i] = (ConstantExpression) params[i].copy(cc);
-		LateEvaluatingLiteralExpression out = new LateEvaluatingLiteralExpression(getValueType(),source,np,evaluator);
+		LateEvaluatingLiteralExpression out = new LateEvaluatingLiteralExpression(getValueType(),np,evaluator);
 		return out;
 	}
 

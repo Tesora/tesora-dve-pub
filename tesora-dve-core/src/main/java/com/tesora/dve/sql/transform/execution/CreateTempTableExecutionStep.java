@@ -31,6 +31,7 @@ import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
@@ -46,21 +47,21 @@ public class CreateTempTableExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
-			throws PEException {
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv) throws PEException {
 		// we need to persist out the table each time rather than caching it due to the generated names.  avoid leaking
 		// persistent entities by using a new ddl context.
 		SchemaContext tsc = SchemaContext.makeMutableIndependentContext(sc);
 		// set the values so that we get the updated table name
-		tsc.setValues(sc.getValues());
+		tsc.setValues(cv);
 		UserTable ut = theTable.getPersistent(tsc);
-		QueryStepOperation qso = new QueryStepCreateTempTableOperation(getStorageGroup(sc),ut);
+		QueryStepOperation qso = new QueryStepCreateTempTableOperation(getStorageGroup(sc,cv),ut);
 		qsteps.add(qso);
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
-		buf.add("EXPLICIT TEMP TABLE: " +	Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(sc, theTable));
+	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+		buf.add("EXPLICIT TEMP TABLE: " +	Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(sc, sc.getValues(), theTable));
 	}
 
 	

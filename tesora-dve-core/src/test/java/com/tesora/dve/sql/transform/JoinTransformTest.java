@@ -36,7 +36,7 @@ import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.util.TestName;
 
@@ -642,21 +642,21 @@ public class JoinTransformTest extends TransformTest {
 			stmt.append(" inner join " + ctn + " a" + ctn + " on a" + ptn + ".id=a" + ctn + ".id");
 		}
 		SchemaContext db = buildSchema(TestName.MULTI, tabs.toArray(new String[0]));
-		ExecutionPlan ep = stmtTest(db,
+		RootExecutionPlan ep = stmtTest(db,
 				stmt.toString(),
 				SelectStatement.class,
 				null);
 		System.out.println("Finished planning");
 		// exercise the plan, see if we can get it to overflow
-		ep.getlastInsertId(db.getValueManager(),db);
-		ep.getUpdateCount(db);
+		ep.getlastInsertId(db.getValueManager(),db, db.getValues());
+		ep.getUpdateCount(db,db.getValues());
 	}
 	
 	@Test
 	public void testPE449() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
 				"create table foo (`id` int, `pid` int, `junk` varchar(32), primary key (`id`))");
-		ExecutionPlan ep = stmtTest(db,"select * from foo",SelectStatement.class,
+		RootExecutionPlan ep = stmtTest(db,"select * from foo",SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 						"SELECT `foo`.`id` AS f1i0_5,`foo`.`pid` AS f1p1_6,`foo`.`junk` AS f1j2_7 FROM `foo`",

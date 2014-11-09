@@ -53,7 +53,7 @@ public abstract class AbstractProjectingExecutionStep extends
 
 	
 	public String toString() {
-		return getSQL(SchemaContext.threadContext.get(),(String)null).getDecoded();
+		return getSQL(SchemaContext.threadContext.get(),SchemaContext.threadContext.get().getValues(),(String)null).getDecoded();
 	}		
 
 }

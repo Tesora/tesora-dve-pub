@@ -85,6 +85,7 @@ import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.Comment;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.ForeignKeyAction;
@@ -312,7 +313,7 @@ public abstract class Emitter {
 		return in + 1;
 	}
 	
-	public abstract String getPersistentName(SchemaContext sc, PEAbstractTable<?> t);
+	public abstract String getPersistentName(SchemaContext sc, ConnectionValues cv, PEAbstractTable<?> t);
 	public abstract String getPersistentName(PEColumn c);
 
 	public abstract <T> Lookup<T> getLookup();
@@ -323,26 +324,26 @@ public abstract class Emitter {
 		throw re;
 	}
 	
-	public void emitTraversable(SchemaContext sc, LanguageNode t, StringBuilder buf) {
+	public void emitTraversable(SchemaContext sc, ConnectionValues cv, LanguageNode t, StringBuilder buf) {
 		if (t instanceof Statement)
-			emitStatement(sc,(Statement)t, buf);
+			emitStatement(sc,cv,(Statement)t, buf);
 		else if (t instanceof ExpressionNode)
-			emitExpression(sc, (ExpressionNode)t, buf, -1);
+			emitExpression(sc, cv,(ExpressionNode)t, buf, -1);
 		else
 			error("Unknown node kind: " + t.getClass().getName());
 	}
 	
-	public void emitStatement(SchemaContext sc, Statement s, StringBuilder buf) {
+	public void emitStatement(SchemaContext sc, ConnectionValues cv, Statement s, StringBuilder buf) {
 		if (s.getParent() == null)
 			builder.withType(s.getStatementType());
 		if (s instanceof DMLStatement) {
-			emitDMLStatement(sc,(DMLStatement)s, buf);
+			emitDMLStatement(sc,cv,(DMLStatement)s, buf);
 		} else if (s instanceof DDLStatement) {
-			emitDDLStatement(sc,(DDLStatement)s, buf);
+			emitDDLStatement(sc,cv,(DDLStatement)s, buf);
 		} else if (s instanceof SessionStatement) {
-			emitSessionStatement(sc,(SessionStatement)s, buf);
+			emitSessionStatement(sc,cv,(SessionStatement)s, buf);
 		} else if (s instanceof CompoundStatement) {
-			emitCompoundStatement(sc,(CompoundStatement)s, buf);
+			emitCompoundStatement(sc,cv,(CompoundStatement)s, buf);
 		} else if (s instanceof EmptyStatement) {
 			// does nothing
 		} else {
@@ -350,46 +351,46 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitDMLStatement(SchemaContext sc, DMLStatement s, StringBuilder buf) {
-		emitDMLStatement(sc,s,buf,0);
+	public void emitDMLStatement(SchemaContext sc, ConnectionValues cv, DMLStatement s, StringBuilder buf) {
+		emitDMLStatement(sc,cv,s,buf,0);
 	}
 		
-	public void emitDMLStatement(SchemaContext sc, DMLStatement s, StringBuilder buf, int indent) {
+	public void emitDMLStatement(SchemaContext sc, ConnectionValues cv, DMLStatement s, StringBuilder buf, int indent) {
 		if (s instanceof SelectStatement) {
-			emitSelectStatement(sc,(SelectStatement)s, buf, indent);
+			emitSelectStatement(sc,cv,(SelectStatement)s, buf, indent);
 		} else if (s instanceof UpdateStatement) {
-			emitUpdateStatement(sc,(UpdateStatement)s, buf, indent);
+			emitUpdateStatement(sc,cv,(UpdateStatement)s, buf, indent);
 		} else if (s instanceof InsertIntoValuesStatement) {
-			emitInsertStatement(sc, (InsertIntoValuesStatement)s, buf);
+			emitInsertStatement(sc,cv, (InsertIntoValuesStatement)s, buf);
 		} else if (s instanceof DeleteStatement) {
-			emitDeleteStatement(sc,(DeleteStatement)s, buf, indent);
+			emitDeleteStatement(sc,cv,(DeleteStatement)s, buf, indent);
 		} else if (s instanceof TruncateStatement) {
-			emitTruncateStatement(sc,(TruncateStatement)s, buf);
+			emitTruncateStatement(sc,cv,(TruncateStatement)s, buf);
 		} else if (s instanceof InsertIntoSelectStatement) {
-			emitInsertIntoSelectStatement(sc,(InsertIntoSelectStatement)s, buf, indent);
+			emitInsertIntoSelectStatement(sc,cv,(InsertIntoSelectStatement)s, buf, indent);
 		} else if (s instanceof UnionStatement) {
-			emitUnionStatement(sc,(UnionStatement)s, buf, indent);
+			emitUnionStatement(sc,cv,(UnionStatement)s, buf, indent);
 		} else {
 			error("Unknown DML statement kind for emitter: " + s.getClass().getName());
 		}
 	}
 
 	@SuppressWarnings("rawtypes")
-	public void emitDDLStatement(SchemaContext sc, DDLStatement s, StringBuilder buf) {
+	public void emitDDLStatement(SchemaContext sc, ConnectionValues cv, DDLStatement s, StringBuilder buf) {
 		if (s instanceof GrantStatement) {
 			emitGrantStatement((GrantStatement)s, buf);
 		} else if (s instanceof PECreateStatement) {
-			emitCreateStatement(sc, (PECreateStatement)s, buf);
+			emitCreateStatement(sc,cv, (PECreateStatement)s, buf);
 		} else if (s instanceof PEDropStatement) {
-			emitDropStatement(sc,(PEDropStatement)s, buf);
+			emitDropStatement(sc,cv,(PEDropStatement)s, buf);
 		} else if (s instanceof AlterStatement) {
-			emitAlterStatement(sc, (AlterStatement)s, buf);
+			emitAlterStatement(sc, cv,(AlterStatement)s, buf);
 		} else if (s instanceof RenameTableStatement) {
 			emitRenameStatement(sc, (RenameTableStatement) s, buf);
 		} else if (s instanceof PEGroupProviderDDLStatement) {
 			emitPEGroupProviderDDLStatement(sc, (PEGroupProviderDDLStatement)s,buf);
 		} else if (s instanceof DirectInfoSchemaStatement) {
-			emitDirectInfoSchemaStatement(sc, (DirectInfoSchemaStatement)s, buf);
+			emitDirectInfoSchemaStatement(sc, cv,(DirectInfoSchemaStatement)s, buf);
 		} else if (s instanceof PEQueryVariablesStatement) {
 			// nothing yet
 		} else {
@@ -397,11 +398,11 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitSessionStatement(SchemaContext sc, SessionStatement s, StringBuilder buf) {
-		emitSessionStatement(sc, s, buf, 0);
+	public void emitSessionStatement(SchemaContext sc, ConnectionValues cv, SessionStatement s, StringBuilder buf) {
+		emitSessionStatement(sc, cv,s, buf, 0);
 	}
 	
-	public void emitSessionStatement(SchemaContext sc, SessionStatement s, StringBuilder buf, int indent) {
+	public void emitSessionStatement(SchemaContext sc, ConnectionValues cv, SessionStatement s, StringBuilder buf, int indent) {
 		if (s instanceof UseStatement) {
 			UseStatement us = (UseStatement)s;
 			if (us instanceof UseDatabaseStatement) {
@@ -416,13 +417,13 @@ public abstract class Emitter {
 		} else if (s instanceof UseContainerStatement) {
 			emitUseContainerStatement(sc, (UseContainerStatement)s, buf, indent);
 		} else if (s instanceof SessionSetVariableStatement) {
-			emitSessionSetVariableStatement(sc,(SessionSetVariableStatement)s, buf, indent);
+			emitSessionSetVariableStatement(sc,cv,(SessionSetVariableStatement)s, buf, indent);
 		} else if (s instanceof TransactionStatement) {
 			emitTransactionStatement((TransactionStatement)s, buf, indent);
 		} else if (s instanceof SavepointStatement) {
 			emitSavepointStatement((SavepointStatement)s, buf, indent);
 		} else if (s instanceof LockStatement) {
-			emitLockStatement(sc,(LockStatement)s, buf, indent);
+			emitLockStatement(sc,cv,(LockStatement)s, buf, indent);
 		} else if (s instanceof ShowPassthroughStatement) {
 			emitShowPassthroughStatement((ShowPassthroughStatement)s, buf, indent);
 		} else if (s instanceof ExternalServiceControlStatement) {
@@ -432,11 +433,11 @@ public abstract class Emitter {
 		} else if (s instanceof ShowSitesStatusStatement) {
 			emitShowSitesStatusStatement((ShowSitesStatusStatement)s, buf, indent);
 		} else if (s instanceof TableMaintenanceStatement) {
-			emitTableMaintenanceStatement(sc,(TableMaintenanceStatement)s, buf, indent);
+			emitTableMaintenanceStatement(sc,cv,(TableMaintenanceStatement)s, buf, indent);
 		} else if (s instanceof LoadDataInfileStatement) {
-			emitLoadDataInfileStatement(sc,(LoadDataInfileStatement)s, buf, indent);
+			emitLoadDataInfileStatement(sc,cv,(LoadDataInfileStatement)s, buf, indent);
 		} else if (s instanceof AnalyzeKeysStatement) {
-			emitAnalyzeKeysStatement(sc,(AnalyzeKeysStatement)s,buf, indent);
+			emitAnalyzeKeysStatement(sc,cv,(AnalyzeKeysStatement)s,buf, indent);
 		} else if (s.isAdhoc()) {
 			emitAdhocSessionStatement(s,buf, indent);
 		} else if (s instanceof ShowErrorsWarningsStatement) {
@@ -449,21 +450,21 @@ public abstract class Emitter {
 	}
 	
 	@SuppressWarnings("rawtypes")
-	public void emitDeclaration(SchemaContext sc, Persistable p, StringBuilder buf) {
-		emitDeclaration(sc, p, null, buf);
+	public void emitDeclaration(SchemaContext sc, ConnectionValues cv, Persistable p, StringBuilder buf) {
+		emitDeclaration(sc, cv, p, null, buf);
 	}	
 	
 	@SuppressWarnings("rawtypes")
-	public void emitDeclaration(SchemaContext sc, Persistable p, PECreateStatement cs, StringBuilder buf) {
+	public void emitDeclaration(SchemaContext sc, ConnectionValues cv, Persistable p, PECreateStatement cs, StringBuilder buf) {
 		if (p instanceof PEColumn)
-			emitColumnDeclaration(sc,(PEColumn)p, buf);
+			emitColumnDeclaration(sc,cv,(PEColumn)p, buf);
 		else if (p instanceof PETable) {
 			PETable pet = (PETable) p;
 			if (pet.isUserlandTemporaryTable())
 				buf.append(" TEMPORARY");
 			buf.append(" TABLE ");
-			emitTable(sc,pet,sc.getCurrentDatabase(false),buf);
-			emitTableDeclaration(sc,(PETable)p, buf);
+			emitTable(sc,cv,pet,sc.getCurrentDatabase(false),buf);
+			emitTableDeclaration(sc,cv,(PETable)p, buf);
 		}
 		else if (p instanceof PESiteInstance)
 			emitSiteInstanceDeclaration((PESiteInstance)p, buf);
@@ -493,17 +494,17 @@ public abstract class Emitter {
 		} else if (p instanceof PERawPlan) {
 			// ignore for now
 		} else if (p instanceof PEViewTable) {
-			emitViewDeclaration(sc,((PEViewTable)p).getView(sc),(PECreateViewStatement)cs,buf);
+			emitViewDeclaration(sc,cv,((PEViewTable)p).getView(sc),(PECreateViewStatement)cs,buf);
 		} else if (p instanceof PEView) {
-			emitViewDeclaration(sc,(PEView)p,(PECreateViewStatement)cs,buf);
+			emitViewDeclaration(sc,cv,(PEView)p,(PECreateViewStatement)cs,buf);
 		} else if (p instanceof PETrigger) {
-			emitTriggerDeclaration(sc,(PETrigger)p,(PECreateTriggerStatement)cs,buf);
+			emitTriggerDeclaration(sc,cv,(PETrigger)p,(PECreateTriggerStatement)cs,buf);
 		}
 		else
 			error("Unknown persistable kind: " + p.getClass().getName());
 	}
 	
-	public void emitColumnDeclaration(final SchemaContext sc, final PEColumn c, final StringBuilder buf) {
+	public void emitColumnDeclaration(final SchemaContext sc, final ConnectionValues cv, final PEColumn c, final StringBuilder buf) {
 		final Type columnType = c.getType();
 		buf.append(c.getName().getQuotedName().getSQL()).append(" ");
 		emitDeclaration(columnType, c, buf, true);
@@ -537,7 +538,7 @@ public abstract class Emitter {
 			String defaultValue = new EmitterInvoker(buildNew()) {
 				@Override
 				protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
-					emitExpression(sc, c.getDefaultValue(), buf, -1);
+					emitExpression(sc, cv, c.getDefaultValue(), buf, -1);
 				}
 			}.getValueAsString(sc);
 			
@@ -595,36 +596,36 @@ public abstract class Emitter {
 
 	public abstract void emitComment(Comment c, StringBuilder buf);
 	
-	public String emitExternalCreateTableStatement(SchemaContext sc, PETable t, boolean omitDists) {
+	public String emitExternalCreateTableStatement(SchemaContext sc, ConnectionValues cv,PETable t, boolean omitDists) {
 		StringBuilder buf = new StringBuilder();
 		setOptions(omitDists ? EmitOptions.TEST_TABLE_DECLARATION : EmitOptions.EXTERNAL_TABLE_DECLARATION);
 		buf.append("CREATE");
 		if (t.isUserlandTemporaryTable())
 			buf.append(" TEMPORARY");
 		buf.append(" TABLE ").append(t.getName().getQuotedName().getSQL());
-		emitTableDeclaration(sc, t,buf);
+		emitTableDeclaration(sc, cv,t,buf);
 		return buf.toString();		
 	}
 	
-	public String emitCreateTableStatement(SchemaContext sc, PEAbstractTable<?> t) {
+	public String emitCreateTableStatement(SchemaContext sc, ConnectionValues cv, PEAbstractTable<?> t) {
 		StringBuilder buf = new StringBuilder();
 		buf.append("CREATE");
 		if (t.isUserlandTemporaryTable())
 			buf.append(" TEMPORARY");
 		buf.append(" TABLE ");
-		emitTable(sc,t,sc.getCurrentDatabase(false),buf);
-		emitTableDeclaration(sc, t,buf);
+		emitTable(sc,cv,t,sc.getCurrentDatabase(false),buf);
+		emitTableDeclaration(sc, cv,t,buf);
 		return buf.toString();
 	}
 	
-	public String emitTableDefinition(SchemaContext sc, PETable t) {
+	public String emitTableDefinition(SchemaContext sc, ConnectionValues cv, PETable t) {
 		StringBuilder buf = new StringBuilder();
 		setOptions(EmitOptions.TABLE_DEFINITION);
-		emitTableDeclaration(sc, t,buf);
+		emitTableDeclaration(sc, cv,t,buf);
 		return buf.toString();
 	}
 	
-	protected void emitColumnDeclarations(final SchemaContext sc, List<PEColumn> columns, String newline, 
+	protected void emitColumnDeclarations(final SchemaContext sc, final ConnectionValues cv, List<PEColumn> columns, String newline, 
 			final boolean externalTableDecl, StringBuilder buf) {
 		Functional.join(columns, buf, "," + newline, new BinaryProcedure<PEColumn, StringBuilder>() {
 
@@ -632,14 +633,14 @@ public abstract class Emitter {
 			public void execute(PEColumn aobj, StringBuilder bobj) {
 				if (externalTableDecl)
 					bobj.append("  ");
-				emitDeclaration(sc, aobj, bobj);
+				emitDeclaration(sc, cv, aobj, bobj);
 			}
 			
 		});
 		
 	}
 	
-	public void emitTableDeclaration(final SchemaContext sc, PEAbstractTable<?> t, StringBuilder buf) {
+	public void emitTableDeclaration(final SchemaContext sc, final ConnectionValues cv, PEAbstractTable<?> t, StringBuilder buf) {
 		// if pretty printing, add a newline after each column
 		String newline = null;
 		final boolean isExternalTableDecl = this.hasOptions() && getOptions().isExternalTableDeclaration();
@@ -648,7 +649,7 @@ public abstract class Emitter {
 		else 
 			newline = "";
 		buf.append(" (").append(newline);
-		emitColumnDeclarations(sc,t.getColumns(sc),newline, isExternalTableDecl,buf);
+		emitColumnDeclarations(sc,cv, t.getColumns(sc),newline, isExternalTableDecl,buf);
 		if (!t.getKeys(sc).isEmpty()) {
 			buf.append(",").append(newline);
 			List<PEKey> filtered = null;
@@ -671,7 +672,7 @@ public abstract class Emitter {
 				public void execute(PEKey aobj, StringBuilder bobj) {
 					if (isExternalTableDecl)
 						bobj.append("  ");
-					emitDeclaration(sc, aobj, bobj);
+					emitDeclaration(sc, cv, aobj, bobj);
 				}
 
 			});
@@ -747,7 +748,7 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitDeclaration(SchemaContext sc, PEForeignKey key, StringBuilder buf) {
+	public void emitDeclaration(SchemaContext sc, ConnectionValues cv, PEForeignKey key, StringBuilder buf) {
 		// must be a foreign key constraint, go find it
 		if (key.getSymbol() != null) {
 			buf.append("CONSTRAINT ");
@@ -776,7 +777,7 @@ public abstract class Emitter {
 		if (key.isForward()) 
 			buf.append(key.getTargetTableName(sc, getOptions() != null && getOptions().isQualifiedTables()));
 		else
-			emitTable(sc,key.getTargetTable(sc),key.getTable(sc).getPEDatabase(sc),buf);
+			emitTable(sc,cv,key.getTargetTable(sc),key.getTable(sc).getPEDatabase(sc),buf);
 		buf.append(" (");
 		first = true;
 		for(PEKeyColumnBase pekc : key.getKeyColumns()) {
@@ -798,9 +799,9 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitDeclaration(SchemaContext sc, PEKey key, StringBuilder buf) {
+	public void emitDeclaration(SchemaContext sc, ConnectionValues cv, PEKey key, StringBuilder buf) {
 		if (key.isForeign()) {
-			emitDeclaration(sc, (PEForeignKey)key, buf);
+			emitDeclaration(sc, cv, (PEForeignKey)key, buf);
 			return;
 		}
 		if (key.getConstraint() != null) {
@@ -920,7 +921,7 @@ public abstract class Emitter {
 		buf.append(what);
 	}
 			
-	public void emitSelectStatement(SchemaContext sc, SelectStatement s, StringBuilder buf, int indent) {
+	public void emitSelectStatement(SchemaContext sc, ConnectionValues cv, SelectStatement s, StringBuilder buf, int indent) {
 		emitIndent(buf,indent, "SELECT ");
 		if (s.getSetQuantifier() != null)
 			buf.append(s.getSetQuantifier().getSQL()).append(" ");
@@ -929,29 +930,29 @@ public abstract class Emitter {
 				buf.append(mso.toString()).append(" ");
 			}
 		}
-		emitExpressions(sc,s.getProjection(),buf, indent);
+		emitExpressions(sc,cv,s.getProjection(),buf, indent);
 		if (!s.getTables().isEmpty()) {
 			emitIndent(buf,indent, "FROM ");
-			emitFromTableReferences(sc,s.getTables(), buf, indent);
+			emitFromTableReferences(sc,cv,s.getTables(), buf, indent);
 		}
 		if (s.getWhereClause() != null) {
 			emitIndent(buf,indent,"WHERE ");
-			emitExpression(sc,s.getWhereClause(), buf, indent);
+			emitExpression(sc,cv,s.getWhereClause(), buf, indent);
 		}
 		if (!s.getGroupBys().isEmpty()) {
 			emitIndent(buf, indent, "GROUP BY ");
-			emitSortingSpecifications(sc, s.getGroupBys(), buf, indent);
+			emitSortingSpecifications(sc, cv,s.getGroupBys(), buf, indent);
 		}
 		if (s.getHavingEdge().has()) {
 			emitIndent(buf, indent, "HAVING ");
-			emitExpression(sc, s.getHavingExpression(),buf, indent);
+			emitExpression(sc, cv,s.getHavingExpression(),buf, indent);
 		}
 		if (!s.getOrderBys().isEmpty()) {
 			emitIndent(buf, indent, "ORDER BY ");
-			emitSortingSpecifications(sc, s.getOrderBys(), buf, indent);
+			emitSortingSpecifications(sc, cv,s.getOrderBys(), buf, indent);
 		}
 		if (s.getLimit() != null) { 
-			emitLimitSpecification(sc, s.getLimit(), buf, indent);
+			emitLimitSpecification(sc, cv,s.getLimit(), buf, indent);
 		}
 		if (s.isLocking()) {
 			buf.append(" FOR UPDATE");
@@ -959,59 +960,59 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitUpdateStatement(SchemaContext sc, UpdateStatement update, StringBuilder buf, int indent) {
+	public void emitUpdateStatement(SchemaContext sc, ConnectionValues cv, UpdateStatement update, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,"UPDATE ");
 		if (update.getIgnore()) {
 			buf.append("IGNORE ");
 		}
 		if (!update.getTables().isEmpty()) 
-			emitFromTableReferences(sc, update.getTables(), buf, indent);
+			emitFromTableReferences(sc, cv, update.getTables(), buf, indent);
 		emitIndent(buf,indent,"SET ");
-		emitExpressions(sc, update.getUpdateExpressions(), buf, indent);
+		emitExpressions(sc, cv, update.getUpdateExpressions(), buf, indent);
 		if (update.getWhereClause() != null) {
 			emitIndent(buf,indent,"WHERE ");
-			emitExpression(sc,update.getWhereClause(), buf, indent);
+			emitExpression(sc,cv, update.getWhereClause(), buf, indent);
 		}
 		if (!update.getOrderBys().isEmpty()) {
 			emitIndent(buf,indent,"ORDER BY ");
-			emitSortingSpecifications(sc, update.getOrderBys(), buf, indent);
+			emitSortingSpecifications(sc, cv, update.getOrderBys(), buf, indent);
 			buf.append(" ");
 		}
 		if (update.getLimit() != null) 
-			emitLimitSpecification(sc, update.getLimit(), buf, indent);
+			emitLimitSpecification(sc, cv, update.getLimit(), buf, indent);
 	}
 
-	public void emitDeleteStatement(SchemaContext sc, DeleteStatement delete, StringBuilder buf, int indent) {
+	public void emitDeleteStatement(SchemaContext sc, ConnectionValues cv, DeleteStatement delete, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,"DELETE ");
 		if (delete.getTargetDeleteEdge().has() && delete.getOrderBysEdge().isEmpty() && delete.getLimit() == null)
-			emitTableInstance(sc,delete.getTargetDeleteEdge().get(),buf,TableInstanceContext.NAKED);
+			emitTableInstance(sc,cv, delete.getTargetDeleteEdge().get(),buf,TableInstanceContext.NAKED);
 		emitIndent(buf,indent,"FROM ");
-		emitFromTableReferences(sc,delete.getTables(), buf, indent);
+		emitFromTableReferences(sc,cv, delete.getTables(), buf, indent);
 		if (delete.getWhereClause() != null) {
 			emitIndent(buf,indent,"WHERE ");
-			emitExpression(sc,delete.getWhereClause(), buf, indent);
+			emitExpression(sc,cv, delete.getWhereClause(), buf, indent);
 		}
 		if (!delete.getOrderBys().isEmpty()) {
 			emitIndent(buf,indent,"ORDER BY ");
-			emitSortingSpecifications(sc, delete.getOrderBys(), buf, indent);
+			emitSortingSpecifications(sc, cv, delete.getOrderBys(), buf, indent);
 			buf.append(" ");
 		}
 		if (delete.getLimit() != null) {
-			emitLimitSpecification(sc, delete.getLimit(), buf,indent);
+			emitLimitSpecification(sc, cv, delete.getLimit(), buf,indent);
 		}
 	}
 	
-	public void emitTruncateStatement(SchemaContext sc, TruncateStatement ts, StringBuilder buf) {
+	public void emitTruncateStatement(SchemaContext sc, ConnectionValues cv, TruncateStatement ts, StringBuilder buf) {
 		buf.append("TRUNCATE ");
-		emitExpression(sc,ts.getTruncatedTable(), buf, -1);
+		emitExpression(sc,cv,ts.getTruncatedTable(), buf, -1);
 	}
 	
-	public void emitInsertValues(SchemaContext sc, List<List<ExpressionNode>> values, StringBuilder buf) {
+	public void emitInsertValues(SchemaContext sc, ConnectionValues cv, List<List<ExpressionNode>> values, StringBuilder buf) {
 		buf.append(" VALUES ");
 		for(Iterator<List<ExpressionNode>> rowiter = values.iterator(); rowiter.hasNext();) {
 			List<ExpressionNode> row = rowiter.next();
 			buf.append("(");
-			emitExpressions(sc,row, buf, -1);
+			emitExpressions(sc,cv,row, buf, -1);
 			buf.append(")");
 			if (rowiter.hasNext()) {
 				buf.append(",");
@@ -1019,7 +1020,7 @@ public abstract class Emitter {
 		}		
 	}
 	
-	public void emitInsertPrefix(SchemaContext sc, InsertStatement s, StringBuilder buf) {
+	public void emitInsertPrefix(SchemaContext sc, ConnectionValues cv, InsertStatement s, StringBuilder buf) {
 		buf.append((s.isReplace() ? "REPLACE " : "INSERT "));
 		if (s.getModifier() != null) {
 			buf.append(s.getModifier().getSQL() + " ");
@@ -1028,25 +1029,25 @@ public abstract class Emitter {
 			buf.append("IGNORE ");
 		}
 		buf.append("INTO ");
-		emitExpression(sc,s.getTableInstance(),buf, -1);
+		emitExpression(sc,cv,s.getTableInstance(),buf, -1);
 		if (s.getColumnSpecification() != null) {
 			buf.append(" (");
-			emitExpressions(sc, s.getColumnSpecification(), buf, -1);
+			emitExpressions(sc, cv,s.getColumnSpecification(), buf, -1);
 			buf.append(")");
 		}		
 	}
 	
-	public void emitInsertSuffix(SchemaContext sc, InsertStatement s, StringBuilder buf) {
+	public void emitInsertSuffix(SchemaContext sc, ConnectionValues cv, InsertStatement s, StringBuilder buf) {
 		List<ExpressionNode> onDupValues = s.getOnDuplicateKey();
-		emitInsertSuffix(sc,onDupValues,buf);
+		emitInsertSuffix(sc,cv, onDupValues,buf);
 	}
 	
-	public void emitInsertSuffix(SchemaContext sc, List<ExpressionNode> onDupValues, StringBuilder buf) {
+	public void emitInsertSuffix(SchemaContext sc, ConnectionValues cv, List<ExpressionNode> onDupValues, StringBuilder buf) {
 		if (onDupValues != null && onDupValues.size() > 0) {
 			buf.append(" ON DUPLICATE KEY UPDATE ");
 			for(Iterator<ExpressionNode> rowiter = onDupValues.iterator(); rowiter.hasNext();) {
 				ExpressionNode row = rowiter.next();
-				emitExpression(sc, row, buf, -1);
+				emitExpression(sc, cv, row, buf, -1);
 				if (rowiter.hasNext())
 					buf.append(",");
 			}
@@ -1054,23 +1055,23 @@ public abstract class Emitter {
 		
 	}
 	
-	public void emitInsertStatement(SchemaContext sc, InsertIntoValuesStatement s, StringBuilder buf) {
-		emitInsertPrefix(sc,s,buf);
+	public void emitInsertStatement(SchemaContext sc, ConnectionValues cv, InsertIntoValuesStatement s, StringBuilder buf) {
+		emitInsertPrefix(sc,cv,s,buf);
 		if (s.getValues() != null) 
-			emitInsertValues(sc,s.getValues(),buf);
-		emitInsertSuffix(sc,s,buf);
+			emitInsertValues(sc,cv,s.getValues(),buf);
+		emitInsertSuffix(sc,cv,s,buf);
 	}
 	
-	public void emitInsertIntoSelectStatement(SchemaContext sc, InsertIntoSelectStatement iiss, StringBuilder buf, int pretty) {
-		emitInsertPrefix(sc,iiss,buf);
-		emitDMLStatement(sc,iiss.getSource(), buf, bumpIndent(pretty));
-		emitInsertSuffix(sc,iiss,buf);
+	public void emitInsertIntoSelectStatement(SchemaContext sc, ConnectionValues cv, InsertIntoSelectStatement iiss, StringBuilder buf, int pretty) {
+		emitInsertPrefix(sc,cv,iiss,buf);
+		emitDMLStatement(sc,cv,iiss.getSource(), buf, bumpIndent(pretty));
+		emitInsertSuffix(sc,cv,iiss,buf);
 	}
 	
-	public void emitUnionStatement(SchemaContext sc, UnionStatement us, StringBuilder buf, int pretty) {
+	public void emitUnionStatement(SchemaContext sc, ConnectionValues cv, UnionStatement us, StringBuilder buf, int pretty) {
 		boolean grouped = us.getFromEdge().get().isGrouped();
 		if (grouped) buf.append(" (");
-		emitDMLStatement(sc, us.getFromEdge().get(), buf, pretty);
+		emitDMLStatement(sc, cv, us.getFromEdge().get(), buf, pretty);
 		if (grouped) buf.append(")");
 		if (us.isUnionAll())
 			emitIndent(buf,pretty+1, "UNION ALL ");
@@ -1078,75 +1079,76 @@ public abstract class Emitter {
 			emitIndent(buf,pretty+1, "UNION");
 		grouped = us.getToEdge().get().isGrouped();
 		if (grouped) buf.append(" (");
-		emitDMLStatement(sc, us.getToEdge().get(), buf, pretty);
+		emitDMLStatement(sc, cv, us.getToEdge().get(), buf, pretty);
 		if (grouped) buf.append(") ");
 		if (us.getOrderBysEdge().has()) {
 			emitIndent(buf,pretty,"ORDER BY ");
-			emitSortingSpecifications(sc, us.getOrderBys(), buf, pretty);
+			emitSortingSpecifications(sc, cv, us.getOrderBys(), buf, pretty);
 		}
 		if (us.getLimit() != null) 
-			emitLimitSpecification(sc, us.getLimit(), buf, pretty);
+			emitLimitSpecification(sc, cv, us.getLimit(), buf, pretty);
 	}
 	
-	public void emitFromTableReferences(SchemaContext sc, List<FromTableReference> tables, StringBuilder buf, int pretty) {
+	public void emitFromTableReferences(SchemaContext sc, ConnectionValues cv, List<FromTableReference> tables, StringBuilder buf, int pretty) {
 		for(Iterator<FromTableReference> iter = tables.iterator(); iter.hasNext();) {
-			emitFromTableReference(sc, iter.next(), buf, pretty);
+			emitFromTableReference(sc, cv, iter.next(), buf, pretty);
 			if (iter.hasNext())
 				buf.append(", ");
 		}
 	}
 	
-	public void emitSortingSpecifications(final SchemaContext sc, Collection<SortingSpecification> specs, StringBuilder buf, final int prefix) {
+	public void emitSortingSpecifications(final SchemaContext sc, final ConnectionValues cv, 
+			Collection<SortingSpecification> specs, StringBuilder buf, final int prefix) {
 		final Emitter me = this;
 		Functional.join(specs, buf, ", ", new BinaryProcedure<SortingSpecification, StringBuilder>() {
 
 			@Override
 			public void execute(SortingSpecification aobj, StringBuilder bobj) {
-				me.emitOrderBySpecification(sc, aobj, bobj, prefix);
+				me.emitOrderBySpecification(sc, cv, aobj, bobj, prefix);
 			}
 			
 		});
 	}
 		
-	public void emitTableFactor(SchemaContext sc, ExpressionNode targ, StringBuilder buf, int pretty) {
+	public void emitTableFactor(SchemaContext sc, ConnectionValues cv, ExpressionNode targ, StringBuilder buf, int pretty) {
 		if (targ instanceof Subquery) {
 			Subquery q = (Subquery) targ;
 			buf.append(" ( ");
-			emitDMLStatement(sc,q.getStatement(), buf, bumpIndent(pretty));
+			emitDMLStatement(sc,cv,q.getStatement(), buf, bumpIndent(pretty));
 			buf.append(" ) ").append(q.getAlias().getSQL());
 		} else if (targ instanceof TableInstance) {
-			emitTableInstance(sc, (TableInstance)targ, buf, TableInstanceContext.TABLE_FACTOR);
+			emitTableInstance(sc, cv,(TableInstance)targ, buf, TableInstanceContext.TABLE_FACTOR);
 		} else if (targ instanceof TableJoin) {
-			emitTableJoin(sc,(TableJoin)targ,buf, pretty);
+			emitTableJoin(sc,cv,(TableJoin)targ,buf, pretty);
 		} else {
 			throw new SchemaException(Pass.EMITTER, "Unknown table factor kind: " + targ.getClass().getSimpleName());
 		}		
 	}
 	
-	public void emitFromTableReference(SchemaContext sc, FromTableReference ftr, StringBuilder buf, int pretty) {
-		emitTableFactor(sc, ftr.getTarget(), buf, pretty);
+	public void emitFromTableReference(SchemaContext sc, ConnectionValues cv, FromTableReference ftr, StringBuilder buf, int pretty) {
+		emitTableFactor(sc, cv, ftr.getTarget(), buf, pretty);
 	}
 
-	public void emitTableJoin(SchemaContext sc, TableJoin targ, StringBuilder buf, int pretty) {
+	public void emitTableJoin(SchemaContext sc, ConnectionValues cv, TableJoin targ, StringBuilder buf, int pretty) {
 		if (targ.isGrouped()) buf.append("( ");
-		emitTableFactor(sc,targ.getFactor(), buf, pretty);
+		emitTableFactor(sc,cv,targ.getFactor(), buf, pretty);
 		for(JoinedTable jt : targ.getJoins()) {
-			emitJoinedTable(sc,jt,buf, pretty);
+			emitJoinedTable(sc,cv,jt,buf, pretty);
 		}
 		if (targ.isGrouped()) buf.append(" )");
 	}
 	
-	public void emitJoinedTable(SchemaContext sc, JoinedTable jt, StringBuilder buf, int pretty) {
+	public void emitJoinedTable(SchemaContext sc, ConnectionValues cv, JoinedTable jt, StringBuilder buf, int pretty) {
 		emitIndent(buf,bumpIndent(pretty),jt.getJoinType().getSQL() + " JOIN ");
 		if (jt.getJoinedToTable() != null)
-			emitTableInstance(sc,jt.getJoinedToTable(), buf, TableInstanceContext.TABLE_FACTOR);
+			emitTableInstance(sc,cv,jt.getJoinedToTable(), buf, TableInstanceContext.TABLE_FACTOR);
 		else if (jt.getJoinedToQuery() != null) {
-			emitSubquery(sc,jt.getJoinedToQuery(),buf, pretty);
+			emitSubquery(sc,cv,jt.getJoinedToQuery(),buf, pretty);
 		} else 
 			throw new SchemaException(Pass.EMITTER, "What kind of table join is this?");
 		if (jt.getJoinOnEdge().has()) {
 			buf.append(" ON ");
-			emitExpression(sc,jt.getJoinOn(), buf, pretty);
+			emitExpression(sc,cv,jt.getJoinOn(), buf, pretty);
 		} else if (jt.getUsingColSpec() != null && !jt.getUsingColSpec().isEmpty()) {
 			buf.append(" USING (");
 			Functional.join(jt.getUsingColSpec(), buf, ", ", new BinaryProcedure<Name, StringBuilder>() {
@@ -1161,24 +1163,24 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitExpressions(SchemaContext sc, Collection<? extends ExpressionNode> exprs, StringBuilder buf, int indent) {
-		emitExpressions(sc,exprs.iterator(), buf, indent);
+	public void emitExpressions(SchemaContext sc, ConnectionValues cv, Collection<? extends ExpressionNode> exprs, StringBuilder buf, int indent) {
+		emitExpressions(sc,cv,exprs.iterator(), buf, indent);
 	}	
 	
-	public void emitExpressions(SchemaContext sc, Iterator<? extends ExpressionNode> iter, StringBuilder buf, int indent) {
+	public void emitExpressions(SchemaContext sc, ConnectionValues cv, Iterator<? extends ExpressionNode> iter, StringBuilder buf, int indent) {
 		while(iter.hasNext()) {
 			ExpressionNode e = iter.next();
-			emitExpression(sc,e, buf, indent);
+			emitExpression(sc,cv,e, buf, indent);
 			if (iter.hasNext())
 				buf.append(",");
 		}
 	}
 	
-	public void emitExpression(SchemaContext sc, ExpressionNode e, StringBuilder buf) {
-		emitExpression(sc,e,buf,-1);
+	public void emitExpression(SchemaContext sc, ConnectionValues cv, ExpressionNode e, StringBuilder buf) {
+		emitExpression(sc,cv,e,buf,-1);
 	}
 	
-	public void emitExpression(SchemaContext sc, ExpressionNode e, StringBuilder buf, int indent) {
+	public void emitExpression(SchemaContext sc, ConnectionValues cv, ExpressionNode e, StringBuilder buf, int indent) {
 		if (isResultSetMetadata() && e.getSourceLocation() != null && getEmitContext() != null) {
 			String maybe = getEmitContext().getOriginalText(e.getSourceLocation());
 			if (maybe != null) {
@@ -1192,19 +1194,19 @@ public abstract class Emitter {
 			buf.append(" (");
 		
 		if (e instanceof ColumnInstance) {
-			emitColumnInstance(sc,(ColumnInstance)e, buf);
+			emitColumnInstance(sc,cv,(ColumnInstance)e, buf);
 		} else if (e instanceof FunctionCall) {
-			emitFunctionCall(sc, (FunctionCall)e, buf, indent);
+			emitFunctionCall(sc, cv,(FunctionCall)e, buf, indent);
 		} else if (e instanceof TableInstance) {
-			emitTableInstance(sc,(TableInstance)e, buf, TableInstanceContext.COLUMN);
+			emitTableInstance(sc,cv,(TableInstance)e, buf, TableInstanceContext.COLUMN);
 		} else if (e instanceof IdentifierLiteralExpression) {
 			emitIdentifierLiteral(sc,(IdentifierLiteralExpression)e, buf);
 		} else if (e instanceof LiteralExpression) {
-			emitLiteral(sc,(LiteralExpression)e, buf);
+			emitLiteral(cv,(LiteralExpression)e, buf);
 		} else if (e instanceof Wildcard) {
 			emitWildcard((Wildcard)e, buf);
 		} else if (e instanceof ExpressionAlias) {
-			emitDerivedColumn(sc,(ExpressionAlias)e, buf, indent);
+			emitDerivedColumn(sc,cv,(ExpressionAlias)e, buf, indent);
 		} else if (e instanceof VariableInstance) {
 			emitVariable((VariableInstance)e, buf);
 		} else if (e instanceof AliasInstance) {
@@ -1212,22 +1214,22 @@ public abstract class Emitter {
 		} else if (e instanceof Default) {
 			emitDefault((Default)e, buf);
 		} else if (e instanceof IParameter) {
-			emitParameter(sc,(IParameter)e, buf);
+			emitParameter(sc,cv,(IParameter)e, buf);
 		} else if (e instanceof ExpressionSet) {
-			emitExpressionSet(sc, (ExpressionSet) e, buf, indent);
+			emitExpressionSet(sc, cv,(ExpressionSet) e, buf, indent);
 		} else if (e instanceof Subquery) {
-			emitSubquery(sc,(Subquery)e, buf, indent);
+			emitSubquery(sc,cv,(Subquery)e, buf, indent);
 		} else if (e instanceof CaseExpression) {
-			emitCaseExpression(sc, (CaseExpression)e, buf, indent);
+			emitCaseExpression(sc, cv,(CaseExpression)e, buf, indent);
 		} else if (e instanceof NameInstance) {
 			// shouldn't see these - (well except for some tests)
 			buf.append(((NameInstance)e).getName().getSQL());
 		} else if (e instanceof IntervalExpression) {
-			emitIntervalExpression(sc, (IntervalExpression)e, buf, indent);
+			emitIntervalExpression(sc, cv,(IntervalExpression)e, buf, indent);
 		} else if (e instanceof LateResolvingVariableExpression) {
 			emitLateResolvingVariableExpression(sc, (LateResolvingVariableExpression)e, buf);
 		} else if (e instanceof LateBindingConstantExpression) {
-			emitLateBindingConstantExpression(sc, (LateBindingConstantExpression)e, buf);
+			emitLateBindingConstantExpression(sc.getValues(), (LateBindingConstantExpression)e, buf);
 		} else {
 			error("Unsupported expression for emit: " + e.getClass().getName());
 		}
@@ -1235,13 +1237,13 @@ public abstract class Emitter {
 			buf.append(") ");
 	}
 	
-	public void emitColumnInstance(SchemaContext sc,ColumnInstance cr, StringBuilder buf) {
+	public void emitColumnInstance(SchemaContext sc,ConnectionValues cv, ColumnInstance cr, StringBuilder buf) {
 		// in order for the plan cache to work correctly, need to emit the table instance separately
 		if (!this.hasOptions() || (!getOptions().isResultSetMetadata())) {
 			if (cr.getColumn() == null)
 				buf.append(cr.getSpecifiedAs().getSQL());
 			else if (cr.getSpecifiedAs() == null || !cr.getSpecifiedAs().isQualified()) {
-				emitTableInstance(sc,cr.getTableInstance(),buf,TableInstanceContext.COLUMN);
+				emitTableInstance(sc,cv, cr.getTableInstance(),buf,TableInstanceContext.COLUMN);
 				buf.append(".").append(cr.getColumn().getName().getUnqualified());
 			} else if (cr.getTableInstance().isMT()) {
 				// if the table is aliased, use that; otherwise use the mangled name
@@ -1258,7 +1260,7 @@ public abstract class Emitter {
 					buf.append(cr.getSpecifiedAs().getSQL());
 			} else {
 				if (this.hasOptions() && getOptions().isGenericSQL()) {
-					emitTableInstance(sc,cr.getTableInstance(),buf,TableInstanceContext.COLUMN);
+					emitTableInstance(sc,cv,cr.getTableInstance(),buf,TableInstanceContext.COLUMN);
 					buf.append(".").append(cr.getColumn().getName().getUnqualified());
 				} else {
 					buf.append(cr.getSpecifiedAs());
@@ -1287,10 +1289,10 @@ public abstract class Emitter {
 		buf.append("default");
 	}
 	
-	public void emitParameter(SchemaContext sc, IParameter p, StringBuilder buf) {
+	public void emitParameter(SchemaContext sc, ConnectionValues cv, IParameter p, StringBuilder buf) {
 		EmitOptions opts = getOptions();
 		if (opts != null && opts.isForceParamValues()) {
-			buf.append(sc.getValueManager().getValue(sc, p));
+			buf.append(cv.getParameterValue(p.getPosition()));
 		} else {
 			boolean decorate = this.hasOptions() && getOptions().isGenericSQL();
 			String tok = null;
@@ -1305,10 +1307,10 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitExpressionSet(SchemaContext sc, ExpressionSet set, StringBuilder buf, int prefix) {
+	public void emitExpressionSet(SchemaContext sc, ConnectionValues cv, ExpressionSet set, StringBuilder buf, int prefix) {
 		buf.append("(");
 		for (final ExpressionNode value : set.getSubExpressions()) {
-			emitExpression(sc, value, buf, prefix);
+			emitExpression(sc, cv, value, buf, prefix);
 			buf.append(", ");
 		}
 		buf.delete(buf.length() - 2, buf.length() - 1).append(")");
@@ -1336,50 +1338,50 @@ public abstract class Emitter {
 		buf.append(tok);
 	}
 	
-	public void emitSubquery(SchemaContext sc, Subquery sq, StringBuilder buf, int indent) {
+	public void emitSubquery(SchemaContext sc, ConnectionValues cv, Subquery sq, StringBuilder buf, int indent) {
 		DMLStatement ss = sq.getStatement();
 		buf.append("(");
-		emitDMLStatement(sc, ss,buf, bumpIndent(indent));
+		emitDMLStatement(sc, cv, ss,buf, bumpIndent(indent));
 		buf.append(")");
 		if (sq.getAlias() != null)
 			buf.append(" AS ").append(sq.getAlias().getSQL());
 	}
 	
-	public void emitCaseExpression(SchemaContext sc, CaseExpression ce, StringBuilder buf, int prefix) {
+	public void emitCaseExpression(SchemaContext sc, ConnectionValues cv, CaseExpression ce, StringBuilder buf, int prefix) {
 		buf.append("CASE ");
 		if (ce.getTestExpression() != null)
-			emitExpression(sc, ce.getTestExpression(), buf, prefix);
+			emitExpression(sc, cv, ce.getTestExpression(), buf, prefix);
 		for(WhenClause wc : ce.getWhenClauses()) {
 			buf.append(" WHEN ");
-			emitExpression(sc, wc.getTestExpression(), buf, prefix);
+			emitExpression(sc, cv, wc.getTestExpression(), buf, prefix);
 			buf.append(" THEN ");
-			emitExpression(sc, wc.getResultExpression(), buf, prefix);
+			emitExpression(sc, cv, wc.getResultExpression(), buf, prefix);
 		}
 		if (ce.getElseExpression() != null) {
 			buf.append(" ELSE ");
-			emitExpression(sc, ce.getElseExpression(), buf, prefix);
+			emitExpression(sc, cv, ce.getElseExpression(), buf, prefix);
 		}
 		buf.append(" END");
 	}
 
-	public void emitFunctionCall(SchemaContext sc, FunctionCall fc, StringBuilder buf, int prefix) {
+	public void emitFunctionCall(SchemaContext sc, ConnectionValues cv, FunctionCall fc, StringBuilder buf, int prefix) {
 		if (fc.isOperator())
-			emitOperatorFunctionCall(sc, fc, buf, prefix);
+			emitOperatorFunctionCall(sc, cv, fc, buf, prefix);
 		else
-			emitRegularFunctionCall(sc, fc, buf, prefix);
+			emitRegularFunctionCall(sc, cv,fc, buf, prefix);
 	}
 	
-	public void emitRegularFunctionCall(SchemaContext sc, FunctionCall fc, StringBuilder buf, int prefix) {
+	public void emitRegularFunctionCall(SchemaContext sc, ConnectionValues cv, FunctionCall fc, StringBuilder buf, int prefix) {
 		if (fc.getFunctionName().isCast()) {
 			CastFunctionCall cfc = (CastFunctionCall) fc;
 			buf.append(cfc.getFunctionName().get()).append("(");
-			emitExpressions(sc, fc.getParameters(), buf, prefix);
+			emitExpressions(sc, cv,fc.getParameters(), buf, prefix);
 			buf.append(" ").append(cfc.getAsText()).append(" ");
 			buf.append(cfc.getTypeName().getSQL());
 			buf.append(")");
 		} else if (fc.getFunctionName().isChar()) {
 			buf.append("CHAR (");
-			emitExpressions(sc, fc.getParameters(), buf, prefix);
+			emitExpressions(sc, cv,fc.getParameters(), buf, prefix);
 			CharFunctionCall cfc = (CharFunctionCall) fc;
 			final Name outputEncoding = cfc.getOutputEncoding();
 			if (outputEncoding != null) {
@@ -1392,20 +1394,20 @@ public abstract class Emitter {
 			if (rfc.hasSeed()) {
 				final ExpressionNode seed = rfc.getSeed();
 				final int offset = buf.length();
-				emitExpression(sc, seed, buf);
+				emitExpression(sc, cv, seed, buf);
 				builder.withRandomSeed(offset, buf.substring(offset), seed);
 			}
 			buf.append(")");
 		} else if (fc.getFunctionName().isConvert()) {
 			buf.append("CONVERT( ");
-			emitExpressions(sc,fc.getParameters(), buf, prefix);
+			emitExpressions(sc,cv,fc.getParameters(), buf, prefix);
 			ConvertFunctionCall cfc = (ConvertFunctionCall) fc;
 			buf.append(cfc.isTranscoding() ? " USING " : ",");
 			buf.append(cfc.getTypeName().getSQL()).append(" ) ");
 		} else if (fc.getFunctionName().isGroupConcat()) {
 			GroupConcatCall gcc = (GroupConcatCall) fc;
 			buf.append(gcc.getFunctionName().get()).append("(");
-			emitExpressions(sc,fc.getParameters(), buf, prefix);
+			emitExpressions(sc,cv,fc.getParameters(), buf, prefix);
 			if (gcc.getSeparator() != null)
 				buf.append(" SEPARATOR ").append(gcc.getSeparator());
 			buf.append(")");
@@ -1413,29 +1415,29 @@ public abstract class Emitter {
 			buf.append(fc.getFunctionName().getSQL()).append("( ");
 			if (fc.getSetQuantifier() != null)
 				buf.append(fc.getSetQuantifier().getSQL()).append(" ");
-			emitExpressions(sc, fc.getParameters(), buf, prefix);
+			emitExpressions(sc, cv,fc.getParameters(), buf, prefix);
 			buf.append(" ) ");
 		}
 	}
 	
-	public void emitOperatorFunctionCall(final SchemaContext sc, FunctionCall fc, StringBuilder buf, final int prefix) {
+	public void emitOperatorFunctionCall(final SchemaContext sc, final ConnectionValues cv, FunctionCall fc, StringBuilder buf, final int prefix) {
 		if (fc.getFunctionName().isIn() || fc.getFunctionName().isNotIn()) {
-			emitInOperatorCall(sc, fc, buf, prefix);
+			emitInOperatorCall(sc, cv, fc, buf, prefix);
 			return;
 		} else if (fc.getFunctionName().isBetween() || fc.getFunctionName().isNotBetween()) {
-			emitExpression(sc, fc.getParametersEdge().get(0), buf, prefix);
+			emitExpression(sc, cv, fc.getParametersEdge().get(0), buf, prefix);
 			if (fc.getFunctionName().isNotBetween())
 				buf.append(" NOT BETWEEN ");
 			else
 				buf.append(" BETWEEN ");
-			emitExpression(sc, fc.getParametersEdge().get(1), buf, prefix);
+			emitExpression(sc, cv, fc.getParametersEdge().get(1), buf, prefix);
 			buf.append(" AND ");
-			emitExpression(sc, fc.getParametersEdge().get(2), buf, prefix);
+			emitExpression(sc, cv, fc.getParametersEdge().get(2), buf, prefix);
 			return;
 		}
 		if (fc.getParameters().size() == 1) {
 			buf.append(fc.getFunctionName().getSQL()).append(" ");
-			emitExpression(sc, fc.getParameters().get(0), buf, prefix);
+			emitExpression(sc, cv, fc.getParameters().get(0), buf, prefix);
 		} else {
 			String fn = fc.getFunctionName().getSQL();
 			if (fc.getFunctionName().isNotLike())
@@ -1451,26 +1453,26 @@ public abstract class Emitter {
 						@Override
 						public void execute(ExpressionNode aobj,
 								StringBuilder bobj) {
-							emitExpression(sc, aobj,bobj, prefix);
+							emitExpression(sc, cv, aobj,bobj, prefix);
 						}
 				
 			});
 		}
 	}
 	
-	public void emitInOperatorCall(SchemaContext sc, FunctionCall fc, StringBuilder buf, int indent) {
-		emitExpression(sc, fc.getParameters().get(0), buf, indent);
+	public void emitInOperatorCall(SchemaContext sc, ConnectionValues cv, FunctionCall fc, StringBuilder buf, int indent) {
+		emitExpression(sc, cv, fc.getParameters().get(0), buf, indent);
 		String fn = (fc.getFunctionName().isIn() ? fc.getFunctionName().getSQL() : "NOT IN");
 		buf.append(" ").append(fn).append(" ");
 		buf.append("( ");
 		Iterator<ExpressionNode> iter = fc.getParameters().iterator();
 		iter.next();
-		emitExpressions(sc, iter, buf, indent);
+		emitExpressions(sc, cv, iter, buf, indent);
 		buf.append(" )");
 	}
 	
 	@SuppressWarnings("null")
-	public void emitLiteral(SchemaContext sc, ILiteralExpression le, StringBuilder buf) {
+	public void emitLiteral(ConnectionValues cv, ILiteralExpression le, StringBuilder buf) {
 		// null literals are invisible to late resolution
 		if (le.isNullLiteral()) {
 			buf.append("NULL");
@@ -1494,7 +1496,7 @@ public abstract class Emitter {
 		if (deltoken) {
 			tok = "_e" + dle.getPosition();
 		} else {
-			Object v = le.getValue((sc == null ? null : sc.getValues()));
+			Object v = le.getValue(cv);
 			if (le.getCharsetHint() != null)
 				buf.append(le.getCharsetHint().getUnquotedName().get());
 			if (v instanceof String) {
@@ -1519,7 +1521,7 @@ public abstract class Emitter {
 		buf.append(ile.getValue(sc.getValues()));
 	}
 	
-	public void emitLateBindingConstantExpression(SchemaContext sc, LateBindingConstantExpression expr, StringBuilder buf) {
+	public void emitLateBindingConstantExpression(ConnectionValues cv, LateBindingConstantExpression expr, StringBuilder buf) {
 		boolean gsql = this.hasOptions() && getOptions().isGenericSQL();
 		
 		int offset = -1;
@@ -1581,20 +1583,21 @@ public abstract class Emitter {
 		buf.append(vi.getVariableName().getSQL());		
 	}
 	
-	public void emitSessionSetVariableStatement(final SchemaContext sc, 
+	public void emitSessionSetVariableStatement(final SchemaContext sc,
+			final ConnectionValues cv,
 			SessionSetVariableStatement ssvs, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,"SET ");
 		Functional.join(ssvs.getSetExpressions(), buf, ", ", new BinaryProcedure<SetExpression, StringBuilder>() {
 
 			@Override
 			public void execute(SetExpression aobj, StringBuilder bobj) {
-				emitSetExpression(sc, aobj, bobj, -1);
+				emitSetExpression(sc, cv,aobj, bobj, -1);
 			}
 			
 		});
 	}
 
-	public void emitSetExpression(SchemaContext sc, SetExpression se, StringBuilder buf, int pretty) {
+	public void emitSetExpression(SchemaContext sc, ConnectionValues cv, SetExpression se, StringBuilder buf, int pretty) {
 		if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION) {
 			emitSetTransactionIsolation((SetTransactionIsolationExpression)se, buf);
 		} else if (se.getKind() == SetExpression.Kind.VARIABLE) {
@@ -1602,13 +1605,13 @@ public abstract class Emitter {
 			emitVariable(sve.getVariable(),buf);
 			buf.append(" ");
 			if (sve.getVariable().getVariableName().get().equalsIgnoreCase("names")) {
-				emitExpression(sc,sve.getValue().get(0),buf);
+				emitExpression(sc,cv, sve.getValue().get(0),buf);
 				if (sve.getValue().size() > 1) {
 					buf.append(" COLLATE ");
-					emitExpression(sc,sve.getValue().get(1),buf);
+					emitExpression(sc,cv,sve.getValue().get(1),buf);
 				}
 			} else {
-				emitExpressions(sc,sve.getValue(), buf, pretty);
+				emitExpressions(sc,cv,sve.getValue(), buf, pretty);
 			}
 		}
 	}
@@ -1621,7 +1624,7 @@ public abstract class Emitter {
 
 	
 	// for ddl
-	public void emitTable(SchemaContext sc, PEAbstractTable<?> pet, Database<?> defaultDB, StringBuilder buf) {
+	public void emitTable(SchemaContext sc, ConnectionValues cv, PEAbstractTable<?> pet, Database<?> defaultDB, StringBuilder buf) {
 		Database<?> tblDb = pet.getDatabase(sc);
 		if ((getOptions() != null && getOptions().isQualifiedTables())
 				|| ((defaultDB == null && tblDb != null) || 
@@ -1632,7 +1635,7 @@ public abstract class Emitter {
 			buf.append(toAdd).append("`.");
 			builder.withDBName(offset, toAdd);
 		}
-		buf.append(pet.getName(sc).getSQL());
+		buf.append(pet.getName(sc,cv).getSQL());
 	}
 	
 	public void emitTable(SchemaContext sc, Name n, StringBuilder buf) {
@@ -1657,7 +1660,7 @@ public abstract class Emitter {
 		
 	}
 	
-	public void emitTableInstance(SchemaContext sc, TableInstance tr, StringBuilder buf, TableInstanceContext context) {
+	public void emitTableInstance(SchemaContext sc, ConnectionValues cv, TableInstance tr, StringBuilder buf, TableInstanceContext context) {
 		Table<?> tab = tr.getTable();
 		if (tab == null) {
 			buf.append(tr.getSpecifiedAs(sc).getSQL());			
@@ -1690,7 +1693,7 @@ public abstract class Emitter {
 			boolean prohibitAlias = false;
 			if (pet.isTempTable()) {
 				int offset= buf.length();
-				String toAdd = pet.getName(sc).getSQL();
+				String toAdd = pet.getName(sc,cv).getSQL();
 				buf.append(toAdd);
 				builder.withTempTable(offset, toAdd, (TempTable)pet);
 				// we never emit aliases with temp tables
@@ -1701,7 +1704,7 @@ public abstract class Emitter {
 				} else {
 					// table name
 					if (pet.getPEDatabase(sc).getMTMode() == MultitenantMode.ADAPTIVE) {
-						buf.append(tr.getTable().getName(sc).getSQL());
+						buf.append(tr.getTable().getName(sc,cv).getSQL());
 					} else {
 						buf.append(tr.getSpecifiedAs(sc).getQuotedName().getSQL());
 					}
@@ -1733,18 +1736,18 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitLimitSpecification(SchemaContext sc, LimitSpecification ls, StringBuilder buf, int indent) {
+	public void emitLimitSpecification(SchemaContext sc, ConnectionValues cv, LimitSpecification ls, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,"LIMIT ");
 		if (ls.getOffset() != null) {
-			emitExpression(sc, ls.getOffset(), buf, indent);
+			emitExpression(sc, cv, ls.getOffset(), buf, indent);
 			buf.append(", ");
 		}
-		emitExpression(sc, ls.getRowcount(), buf, indent);
+		emitExpression(sc, cv, ls.getRowcount(), buf, indent);
 		builder.withLimit();
 	}
 	
-	public void emitOrderBySpecification(SchemaContext sc, SortingSpecification obs, StringBuilder buf, int indent) {
-		emitExpression(sc, obs.getTarget(), buf, indent);
+	public void emitOrderBySpecification(SchemaContext sc, ConnectionValues cv, SortingSpecification obs, StringBuilder buf, int indent) {
+		emitExpression(sc, cv, obs.getTarget(), buf, indent);
 		buf.append(" ").append(obs.isAscending() ? "ASC" : "DESC");
 	}
 	
@@ -1760,8 +1763,8 @@ public abstract class Emitter {
 		buf.append(wct.getTableName().getSQL()).append(".*");
 	}
 	
-	public void emitDerivedColumn(SchemaContext sc, ExpressionAlias dc, StringBuilder buf, int indent) {
-		emitExpression(sc, dc.getTarget(), buf, indent);
+	public void emitDerivedColumn(SchemaContext sc, ConnectionValues cv, ExpressionAlias dc, StringBuilder buf, int indent) {
+		emitExpression(sc, cv, dc.getTarget(), buf, indent);
 		buf.append(" AS ");
 		buf.append(dc.getAlias().getSQL());
 	}
@@ -1774,11 +1777,11 @@ public abstract class Emitter {
 	}
 	
 	@SuppressWarnings("rawtypes")
-	public void emitCreateStatement(SchemaContext sc, PECreateStatement pecs, StringBuilder buf) {
+	public void emitCreateStatement(SchemaContext sc, ConnectionValues cv, PECreateStatement pecs, StringBuilder buf) {
 		if (!emitExtensions() && pecs.isDVEOnly())
 			return;
 		buf.append("CREATE ");
-		emitDeclaration(sc, pecs.getCreated(), pecs, buf);
+		emitDeclaration(sc, cv, pecs.getCreated(), pecs, buf);
 	}
 			
 	public void emitDeclaration(SchemaContext sc, DistributionVector dv, StringBuilder buf) {
@@ -1845,7 +1848,7 @@ public abstract class Emitter {
 						StringBuilder bobj) {
 					bobj.append(aobj.getFirst().getName().getSQL());
 					bobj.append("=");
-					emitLiteral(sc,aobj.getSecond(),bobj);
+					emitLiteral(sc.getValues(),aobj.getSecond(),bobj);
 				}
 				
 			});
@@ -1857,11 +1860,11 @@ public abstract class Emitter {
 	}
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public void emitDropStatement(SchemaContext sc, PEDropStatement dts, StringBuilder buf) {
+	public void emitDropStatement(SchemaContext sc, ConnectionValues cv, PEDropStatement dts, StringBuilder buf) {
 		if (PEDatabase.class.equals(dts.getTargetClass())) {
 			emitDropDatabaseStatement(dts,buf);
 		} else if (PETable.class.equals(dts.getTargetClass())) {
-			emitDropTableStatement(sc, (PEDropTableStatement) dts,buf);
+			emitDropTableStatement(sc, cv,(PEDropTableStatement) dts,buf);
 		} else if (PEViewTable.class.equals(dts.getTargetClass())) {
 			emitDropViewStatement(dts,buf);
 		} else if (PETrigger.class.equals(dts.getTargetClass())) {
@@ -1893,7 +1896,7 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitDropTableStatement(final SchemaContext sc, PEDropTableStatement peds, StringBuilder buf) {
+	public void emitDropTableStatement(final SchemaContext sc, ConnectionValues cv, PEDropTableStatement peds, StringBuilder buf) {
 		buf.append("DROP ");
 		if (peds.isTemporary())
 			buf.append("TEMPORARY ");
@@ -1908,7 +1911,7 @@ public abstract class Emitter {
 			if (tk.isUserlandTemporaryTable()) {
 				tabName = new QualifiedName(tk.getAbstractTable().getDatabaseName(sc).getUnqualified(),tk.getAbstractTable().getName().getUnqualified());
 			} else {
-				tabName = tk.getAbstractTable().getName(sc);
+				tabName = tk.getAbstractTable().getName(sc,cv);
 			}
 			emitTable(sc,tabName,buf);
 		}		
@@ -1945,7 +1948,7 @@ public abstract class Emitter {
 			buf.append(ds.getTarget().getName().getSQL());
 	}
 	
-	public void emitAlterStatement(SchemaContext sc, AlterStatement as, StringBuilder buf) {
+	public void emitAlterStatement(SchemaContext sc, ConnectionValues cv, AlterStatement as, StringBuilder buf) {
 		if (as instanceof AddStorageSiteStatement) {
 			emitAddStoragesiteStatement((AddStorageSiteStatement)as, buf);
 		} else if (as instanceof PEAlterPersistentSite) {
@@ -1957,7 +1960,7 @@ public abstract class Emitter {
 		} else if (as instanceof PEAlterTenantStatement) {
 			emitAlterTenantStatement((PEAlterTenantStatement)as, buf);
 		} else if (as instanceof PEAlterTableStatement) {
-			emitAlterTableStatement(sc, (PEAlterTableStatement)as, buf);
+			emitAlterTableStatement(sc, cv,(PEAlterTableStatement)as, buf);
 		} else if (as instanceof PEAlterPolicyStatement) {
 			// nothing to do yet
 		} else if (as instanceof PEAlterExternalServiceStatement) {
@@ -2013,8 +2016,8 @@ public abstract class Emitter {
 		buf.append(Functional.join(opts, ", "));
 	}
 	
-	public void emitDirectInfoSchemaStatement(SchemaContext sc, DirectInfoSchemaStatement diss, StringBuilder buf) {
-		emitSelectStatement(sc,diss.getCatalogQuery(), buf, 1);
+	public void emitDirectInfoSchemaStatement(SchemaContext sc, ConnectionValues cv, DirectInfoSchemaStatement diss, StringBuilder buf) {
+		emitSelectStatement(sc,cv, diss.getCatalogQuery(), buf, 1);
 	}
 	
 	public void emitAlterTableDistributionStatement(SchemaContext sc, AlterTableDistributionStatement atds, StringBuilder buf) {
@@ -2104,7 +2107,7 @@ public abstract class Emitter {
 		buf.append(ss.getSavepointName().getSQL());
 	}
 	
-	public void emitLockStatement(SchemaContext sc, LockStatement ls, StringBuilder buf, int indent) {
+	public void emitLockStatement(SchemaContext sc, ConnectionValues cv, LockStatement ls, StringBuilder buf, int indent) {
 		if (ls.isUnlock()) {
 			emitIndent(buf,indent,"UNLOCK TABLES");
 			buf.append("UNLOCK TABLES");
@@ -2113,7 +2116,7 @@ public abstract class Emitter {
 			ArrayList<String> locks = new ArrayList<String>();
 			for(Pair<TableInstance, LockType> p : ls.getLocks()) {
 				StringBuilder temp = new StringBuilder();
-				emitExpression(sc,p.getFirst(), temp, -1);
+				emitExpression(sc,cv,p.getFirst(), temp, -1);
 				temp.append(" ").append(p.getSecond().getSQL());
 				locks.add(temp.toString());
 			}
@@ -2184,10 +2187,10 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitAlterTableStatement(SchemaContext sc, PEAlterTableStatement peats, StringBuilder buf) {
+	public void emitAlterTableStatement(SchemaContext sc, ConnectionValues cv, PEAlterTableStatement peats, StringBuilder buf) {
 		if (peats.hasSQL(sc)) {
 			buf.append("ALTER TABLE ");
-			emitTable(sc,peats.getTarget(),sc.getCurrentDatabase(false),buf);
+			emitTable(sc,cv,peats.getTarget(),sc.getCurrentDatabase(false),buf);
 			buf.append(" ");
 			boolean first = true;
 			for(Iterator<AlterTableAction> iter = peats.getActions().iterator(); iter.hasNext();) {
@@ -2196,22 +2199,22 @@ public abstract class Emitter {
 					if (!first) {
 						buf.append(", ");
 					}
-					emitAlterAction(sc, ata, buf);
+					emitAlterAction(sc, cv, ata, buf);
 					first = false;
 				}
 			}
 		}
 	}
 
-	public void emitAlterAction(SchemaContext sc, AlterTableAction aa, StringBuilder buf) {
+	public void emitAlterAction(SchemaContext sc, ConnectionValues cv, AlterTableAction aa, StringBuilder buf) {
 		if (aa instanceof AddColumnAction) {
-			emitAddColumnAction(sc,(AddColumnAction)aa,buf);
+			emitAddColumnAction(sc,cv,(AddColumnAction)aa,buf);
 		} else if (aa instanceof AddIndexAction) {
-			emitAddIndexAction(sc,(AddIndexAction)aa,buf);
+			emitAddIndexAction(sc,cv,(AddIndexAction)aa,buf);
 		} else if (aa instanceof AlterColumnAction) {
-			emitAlterColumnAction(sc,(AlterColumnAction)aa, buf);
+			emitAlterColumnAction(sc,cv,(AlterColumnAction)aa, buf);
 		} else if (aa instanceof ChangeColumnAction) {
-			emitChangeColumnAction(sc,(ChangeColumnAction)aa, buf);
+			emitChangeColumnAction(sc,cv,(ChangeColumnAction)aa, buf);
 		} else if (aa instanceof DropColumnAction) {
 			emitDropColumnAction((DropColumnAction)aa, buf);
 		} else if (aa instanceof DropIndexAction) {
@@ -2248,9 +2251,9 @@ public abstract class Emitter {
 		emitTableModifiers(sc, null, mods, buf);
 	}
 	
-	public void emitAddIndexAction(SchemaContext sc, AddIndexAction aia, StringBuilder buf) {
+	public void emitAddIndexAction(SchemaContext sc, ConnectionValues cv, AddIndexAction aia, StringBuilder buf) {
 		buf.append("ADD ");
-		emitDeclaration(sc, aia.getNewIndex(), buf);
+		emitDeclaration(sc, cv, aia.getNewIndex(), buf);
 	}
 	
 	public void emitDropIndexAction(DropIndexAction dia, StringBuilder buf) {
@@ -2263,11 +2266,11 @@ public abstract class Emitter {
 			buf.append(dia.getIndexName());
 	}
 
-	public void emitAddColumnAction(SchemaContext sc, AddColumnAction aca, StringBuilder buf) {
+	public void emitAddColumnAction(SchemaContext sc, ConnectionValues cv, AddColumnAction aca, StringBuilder buf) {
 		buf.append("ADD ");
 		if (aca.getNewColumns().size() > 1)
 			buf.append("(");
-		emitColumnDeclarations(sc,aca.getNewColumns(),"", false,buf);
+		emitColumnDeclarations(sc,cv,aca.getNewColumns(),"", false,buf);
 		if (aca.getNewColumns().size() > 1)
 			buf.append(")");
 		if (aca.getFirstOrAfterSpec() != null) {
@@ -2282,9 +2285,9 @@ public abstract class Emitter {
 		buf.append("DROP ").append(dca.getDroppedColumn().getName().getSQL());
 	}
 		
-	public void emitChangeColumnAction(SchemaContext sc, ChangeColumnAction stmt, StringBuilder buf) {
+	public void emitChangeColumnAction(SchemaContext sc, ConnectionValues cv, ChangeColumnAction stmt, StringBuilder buf) {
 		buf.append(" CHANGE ").append(stmt.getOldDefinition().getName().getSQL()).append(" ");
-		emitDeclaration(sc, stmt.getNewDefinition(), buf);
+		emitDeclaration(sc, cv, stmt.getNewDefinition(), buf);
 		final Pair<String, Name> firstOrAfterSpec = stmt.getFirstOrAfterSpec();
 		if (firstOrAfterSpec != null) {
 			final Name afterColumn = firstOrAfterSpec.getSecond();
@@ -2295,13 +2298,13 @@ public abstract class Emitter {
 		}
 	}
 	
-	public void emitAlterColumnAction(SchemaContext sc, AlterColumnAction stmt, StringBuilder buf) {
+	public void emitAlterColumnAction(SchemaContext sc, ConnectionValues cv, AlterColumnAction stmt, StringBuilder buf) {
 		buf.append(" ALTER COLUMN ").append(stmt.getAlteredColumn().getName().getSQL());
 		if (stmt.isDropDefault())
 			buf.append(" DROP DEFAULT");
 		else {
 			buf.append(" SET DEFAULT ");
-			emitExpression(sc, stmt.getNewDefault(), buf, -1);
+			emitExpression(sc, cv, stmt.getNewDefault(), buf, -1);
 		}
 	}
 	
@@ -2325,7 +2328,7 @@ public abstract class Emitter {
 		emitIndent(buf,indent,"SHOW " + stmt.getLevel().getSQLName() + " ");
 	}
 	
-	public void emitTableMaintenanceStatement(SchemaContext sc, TableMaintenanceStatement stmt, StringBuilder buf, int indent) {
+	public void emitTableMaintenanceStatement(SchemaContext sc, ConnectionValues cv, TableMaintenanceStatement stmt, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,stmt.getCommand().getSqlCommand() + " ");
 		buf.append(stmt.getOption().getSql());
 		buf.append(" TABLE ");
@@ -2336,7 +2339,7 @@ public abstract class Emitter {
 				buf.append(",");
 			}
 			first = false;
-			emitTableInstance(sc, table, buf, TableInstanceContext.NAKED);
+			emitTableInstance(sc, cv, table, buf, TableInstanceContext.NAKED);
 		}
 	}
 	
@@ -2349,9 +2352,9 @@ public abstract class Emitter {
 		buf.append("EXTERNAL SERVICE ").append(p.getExternalServiceName()).append(" USING ").append(p.getOptions());
 	}
 	
-	public void emitIntervalExpression(SchemaContext sc, IntervalExpression e, StringBuilder buf, int indent) {
+	public void emitIntervalExpression(SchemaContext sc, ConnectionValues cv, IntervalExpression e, StringBuilder buf, int indent) {
 		buf.append(" INTERVAL ");
-		emitExpression(sc, e.getExpr_unit(), buf, indent);
+		emitExpression(sc, cv, e.getExpr_unit(), buf, indent);
 		buf.append(" " + e.getUnit());
 	}
 
@@ -2368,7 +2371,7 @@ public abstract class Emitter {
 		buf.append(pet.getDefinition()).append("'");
 	}
 	
-	public void emitViewDeclaration(SchemaContext sc, PEView view, PECreateViewStatement pecs, StringBuilder buf) {
+	public void emitViewDeclaration(SchemaContext sc, ConnectionValues cv, PEView view, PECreateViewStatement pecs, StringBuilder buf) {
 		if (pecs != null && pecs.isCreateOrReplace()) 
 			buf.append(" OR REPLACE");
 		buf.append(" ALGORITHM = ").append(view.getAlgorithm());
@@ -2380,7 +2383,7 @@ public abstract class Emitter {
 		}
 		buf.append(" SQL SECURITY ").append(view.getSecurity());
 		buf.append(" VIEW ").append(view.getName().getSQL()).append(" AS ");
-		emitDMLStatement(sc,view.getViewDefinition(sc, (pecs == null ? null : pecs.getViewTable()),false),buf, -1);
+		emitDMLStatement(sc,cv, view.getViewDefinition(sc, (pecs == null ? null : pecs.getViewTable()),false),buf, -1);
 		if (!"NONE".equals(view.getCheckOption())) {
 			buf.append(" WITH ").append(view.getCheckOption()).append(" CHECK OPTION");
 		}
@@ -2388,8 +2391,8 @@ public abstract class Emitter {
 
 
 	// this is for errors
-	public void emitDebugViewDeclaration(SchemaContext sc, PEViewTable viewTable, StringBuilder buf) {
-		emitViewDeclaration(sc, viewTable.getView(sc), null, buf);
+	public void emitDebugViewDeclaration(SchemaContext sc, ConnectionValues cv, PEViewTable viewTable, StringBuilder buf) {
+		emitViewDeclaration(sc, cv, viewTable.getView(sc), null, buf);
 		buf.append(" TABLE ");
 		// turn omit dist vect now
 		EmitOptions was = options;
@@ -2398,13 +2401,13 @@ public abstract class Emitter {
 				options = EmitOptions.TEST_TABLE_DECLARATION;
 			else
 				options = options.addOmitDistVect();
-			emitTableDeclaration(sc, viewTable,buf);
+			emitTableDeclaration(sc, cv, viewTable,buf);
 		} finally {
 			options = was;
 		}
 	}
 	
-	public void emitTriggerDeclaration(SchemaContext sc, PETrigger trigger, PECreateTriggerStatement pecs, StringBuilder buf) {
+	public void emitTriggerDeclaration(SchemaContext sc, ConnectionValues cv, PETrigger trigger, PECreateTriggerStatement pecs, StringBuilder buf) {
 		if (!trigger.getDefiner(sc).isRoot()) {
 			// TODO:
 			// having some issues getting this right for root
@@ -2417,19 +2420,19 @@ public abstract class Emitter {
 		else
 			buf.append("AFTER");
 		buf.append(" ").append(trigger.getEvent().name()).append(" ON ");
-		emitTable(sc,trigger.getTargetTable(),sc.getCurrentDatabase(false),buf);
+		emitTable(sc,cv,trigger.getTargetTable(),sc.getCurrentDatabase(false),buf);
 		buf.append(" FOR EACH ROW ");
 		buf.append(trigger.getBodySource());
 	}
 
 	
-	public void emitAnalyzeKeysStatement(final SchemaContext sc, AnalyzeKeysStatement aks, StringBuilder buf, int indent) {
+	public void emitAnalyzeKeysStatement(final SchemaContext sc, final ConnectionValues cv, AnalyzeKeysStatement aks, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,"ANALYZE KEYS ");
 		Functional.join(aks.getTables(), buf, ",", new BinaryProcedure<TableInstance,StringBuilder>() {
 
 			@Override
 			public void execute(TableInstance aobj, StringBuilder bobj) {
-				emitTableInstance(sc,aobj,bobj,TableInstanceContext.NAKED);
+				emitTableInstance(sc,cv,aobj,bobj,TableInstanceContext.NAKED);
 			}
 			
 		});
@@ -2442,53 +2445,53 @@ public abstract class Emitter {
 	public abstract void emitUserDeclaration(PEUser peu, StringBuilder buf);
 	public abstract void emitSetPasswordStatement(SetPasswordStatement sps, StringBuilder buf);
 	
-	public abstract void emitLoadDataInfileStatement(SchemaContext sc, LoadDataInfileStatement s, StringBuilder buf, int indent);
+	public abstract void emitLoadDataInfileStatement(SchemaContext sc, ConnectionValues cv, LoadDataInfileStatement s, StringBuilder buf, int indent);
 	
 
-	public void emitCompoundStatement(SchemaContext sc, CompoundStatement s, StringBuilder buf) {
-		emitCompoundStatement(sc,s,buf,0);
+	public void emitCompoundStatement(SchemaContext sc,ConnectionValues cv, CompoundStatement s, StringBuilder buf) {
+		emitCompoundStatement(sc,cv,s,buf,0);
 	}
 		
-	public void emitCompoundStatement(SchemaContext sc, CompoundStatement s, StringBuilder buf, int indent) {
+	public void emitCompoundStatement(SchemaContext sc, ConnectionValues cv, CompoundStatement s, StringBuilder buf, int indent) {
 		if (s instanceof CompoundStatementList) {
-			emitCompoundStatementList(sc, (CompoundStatementList)s, buf, indent);
+			emitCompoundStatementList(sc, cv,(CompoundStatementList)s, buf, indent);
 		} else if (s instanceof CaseStatement) {
-			emitCaseStatement(sc, (CaseStatement)s, buf, indent);
+			emitCaseStatement(sc, cv,(CaseStatement)s, buf, indent);
 		} else {
 			error("Unknown Compound statement kind for emitter: " + s.getClass().getName());
 		}
 	}
 
-	public void emitStatementForCompoundStatement(SchemaContext sc, Statement stmt, StringBuilder buf, int indent) {
+	public void emitStatementForCompoundStatement(SchemaContext sc, ConnectionValues cv, Statement stmt, StringBuilder buf, int indent) {
 		if (stmt instanceof CompoundStatement) {
-			emitCompoundStatement(sc,(CompoundStatement)stmt,buf,indent);
+			emitCompoundStatement(sc,cv,(CompoundStatement)stmt,buf,indent);
 		} else {
-			emitDMLStatement(sc,(DMLStatement)stmt,buf,indent);
+			emitDMLStatement(sc,cv,(DMLStatement)stmt,buf,indent);
 		}	
 		buf.append("; ");
 	}
 	
-	public void emitCompoundStatementList(SchemaContext sc, CompoundStatementList s, StringBuilder buf, int indent) {
+	public void emitCompoundStatementList(SchemaContext sc, ConnectionValues cv, CompoundStatementList s, StringBuilder buf, int indent) {
 		emitIndent(buf,indent, "BEGIN ");
 		for(Statement stmt : s.getStatementsEdge()) {
 			// let's try to preserve the indentation junk
-			emitStatementForCompoundStatement(sc,stmt,buf,indent);
+			emitStatementForCompoundStatement(sc,cv,stmt,buf,indent);
 		}
 		emitIndent(buf,indent," END");	
 	}
 
-	public void emitCaseStatement(SchemaContext sc, CaseStatement stmt, StringBuilder buf, int indent) {
+	public void emitCaseStatement(SchemaContext sc, ConnectionValues cv, CaseStatement stmt, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,"CASE ");
-		emitExpression(sc,stmt.getTestExpression(),buf,indent);
+		emitExpression(sc,cv,stmt.getTestExpression(),buf,indent);
 		for(StatementWhenClause swc : stmt.getWhenClausesEdge()) {
 			emitIndent(buf,indent," WHEN ");
-			emitExpression(sc,swc.getTestExpression(),buf,indent);
+			emitExpression(sc,cv,swc.getTestExpression(),buf,indent);
 			emitIndent(buf,indent," THEN ");
-			emitStatementForCompoundStatement(sc,swc.getResultStatement(),buf,indent);
+			emitStatementForCompoundStatement(sc,cv,swc.getResultStatement(),buf,indent);
 		}
 		if (stmt.getElseResult() != null) {
 			emitIndent(buf,indent," ELSE ");
-			emitStatementForCompoundStatement(sc,stmt.getElseResult(),buf,indent);
+			emitStatementForCompoundStatement(sc,cv,stmt.getElseResult(),buf,indent);
 		}
 		emitIndent(buf,indent," END CASE");
 	}

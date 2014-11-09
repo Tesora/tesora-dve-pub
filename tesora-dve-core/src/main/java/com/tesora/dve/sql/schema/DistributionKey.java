@@ -158,7 +158,7 @@ public class DistributionKey implements PlanningConstraint {
 	}
 
 
-	public IKeyValue getDetachedKey(SchemaContext sc) {
+	public IKeyValue getDetachedKey(SchemaContext sc, ConnectionValues cv) {
 		// actualize the dist key so that it can be used without a context
 		LinkedHashMap<PEColumn, TColumnDatumBase> vals = new LinkedHashMap<PEColumn, TColumnDatumBase>();
 		boolean late = false;
@@ -169,7 +169,7 @@ public class DistributionKey implements PlanningConstraint {
 				value = new DeferredTColumnDatum(me.getKey(),(LateBindingConstantExpression) me.getValue());
 			} else {
 				value = new TColumnDatum(me.getKey(),
-						me.getValue().convert(sc.getValues(), me.getKey().getType()));
+						me.getValue().convert(cv, me.getKey().getType()));
 			}
 			vals.put(me.getKey(), value);
 		}
@@ -286,7 +286,7 @@ public class DistributionKey implements PlanningConstraint {
 
 		@Override
 		public String toString() {
-			return PEStringUtils.toString(table.getName(context).getUnquotedName().get(), getValues());
+			return PEStringUtils.toString(table.getName(context,context.getValues()).getUnquotedName().get(), getValues());
 		}
 
 		@Override

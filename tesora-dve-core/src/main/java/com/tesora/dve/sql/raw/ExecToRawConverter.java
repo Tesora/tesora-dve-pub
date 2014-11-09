@@ -57,7 +57,7 @@ import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.transform.execution.AbstractProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
@@ -67,18 +67,18 @@ import com.tesora.dve.sql.util.UnaryProcedure;
 
 public final class ExecToRawConverter {
 
-	public static IntermediateResultSet convertForRawExplain(SchemaContext sc, ExecutionPlan ep, Statement orig, String origSQL) {
+	public static IntermediateResultSet convertForRawExplain(SchemaContext sc, RootExecutionPlan ep, Statement orig, String origSQL) {
 		return RawUtils.buildRawExplainResults(convert(sc, ep,orig,origSQL));
 	}
 
-	public static Rawplan convert(SchemaContext sc, ExecutionPlan ep, Statement orig, String origSQL) {
+	public static Rawplan convert(SchemaContext sc, RootExecutionPlan ep, Statement orig, String origSQL) {
 		if (origSQL == null)
 			throw new SchemaException(Pass.PLANNER,"Raw plan conversion requires original sql");
 		ExecToRawConverter c = new ExecToRawConverter(sc, ep,orig,origSQL);
 		return c.getRaw();
 	}
 	
-	private final ExecutionPlan thePlan;
+	private final RootExecutionPlan thePlan;
 	private final String originalSQL;
 	private final SchemaContext sc;
 
@@ -87,7 +87,7 @@ public final class ExecToRawConverter {
 	private HashMap<IDelegatingLiteralExpression, ParameterType> parameters;
 	private LinkedHashMap<PEStorageGroup,DynamicGroupType> dynGroups;
 	
-	public ExecToRawConverter(SchemaContext pc, ExecutionPlan ep, Statement orig, String origSQL) {
+	public ExecToRawConverter(SchemaContext pc, RootExecutionPlan ep, Statement orig, String origSQL) {
 		raw = new Rawplan();
 		thePlan = ep;
 		sc = pc;
@@ -171,7 +171,7 @@ public final class ExecToRawConverter {
 			maybeAccDynGroup(src);
 			if (es instanceof RedistributionExecutionStep) {
 				RedistributionExecutionStep pes = (RedistributionExecutionStep) es;
-				maybeAccDynGroup(pes.getTargetGroup(sc));
+				maybeAccDynGroup(pes.getTargetGroup(sc,sc.getValues()));
 			}
 		}
 		for(DynamicGroupType dgt : dynGroups.values()) {
@@ -201,7 +201,7 @@ public final class ExecToRawConverter {
 	private void maybeAccDynGroup(PEStorageGroup g) {
 		if (g == null) return;
 		if (!g.isTempGroup()) return;
-		PEDynamicGroup dynGroup = (PEDynamicGroup) g.getPEStorageGroup(sc);
+		PEDynamicGroup dynGroup = (PEDynamicGroup) g.getPEStorageGroup(sc,sc.getValues());
 		DynamicGroupType e = dynGroups.get(dynGroup);
 		if (e == null) {
 			e = new DynamicGroupType();
@@ -232,7 +232,7 @@ public final class ExecToRawConverter {
 	private void fillDML(DMLStepType dmlt, DirectExecutionStep des, DMLType action) throws PEException {
 		dmlt.setAction(action);
 		PEStorageGroup src = des.getPEStorageGroup();
-		PEStorageGroup actual = src.getPEStorageGroup(sc);
+		PEStorageGroup actual = src.getPEStorageGroup(sc,sc.getValues());
 		dmlt.setSrcgrp(getGroupName(actual));
 		DistributionVector dv = des.getDistributionVector();
 		if (dv != null)
@@ -243,10 +243,10 @@ public final class ExecToRawConverter {
 	
 	private TargetTableType buildTargetTable(PETable tab) {
 		TargetTableType out = new TargetTableType();
-		out.setName(tab.getName(sc).getUnquotedName().get());
+		out.setName(tab.getName(sc,sc.getValues()).getUnquotedName().get());
 		out.setTemp(tab.isTempTable());
 		PEStorageGroup ofGroup = tab.getStorageGroup(sc);
-		PEStorageGroup actual = ofGroup.getPEStorageGroup(sc);
+		PEStorageGroup actual = ofGroup.getPEStorageGroup(sc,sc.getValues());
 		out.setGroup(getGroupName(actual));
 		if (tab.isTempTable())
 			out.setDistvect(buildDistributionType(tab.getDistributionVector(sc)));
@@ -260,7 +260,7 @@ public final class ExecToRawConverter {
 				throw new SchemaException(Pass.PLANNER, "Internal error: unknown dynamic group");
 			return dgt.getName();
 		} else {
-			return actual.getPersistent(sc).getName();
+			return actual.getPersistent(sc,sc.getValues()).getName();
 		}
 	}
 	
@@ -286,7 +286,7 @@ public final class ExecToRawConverter {
 		for (Map.Entry<IDelegatingLiteralExpression, ParameterType> me : parameters.entrySet()) {
 			mapping.put(me.getKey().getPosition(), "@" + me.getValue().getName());
 		}
-		GenericSQLCommand p = in.resolveRawEntries(mapping, sc);
+		GenericSQLCommand p = in.resolveRawEntries(mapping, sc.getValues());
 		return p.getDecoded();
 	}
 }

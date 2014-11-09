@@ -397,11 +397,11 @@ public class DistributionVector extends Persistable<DistributionVector, Distribu
 	}
 	
 	
-	public String describe(SchemaContext sc) {
+	public String describe(SchemaContext sc,ConnectionValues cv) {
 		StringBuffer buf = new StringBuffer(32);
 		buf.append("Distribution model ").append(model.getSQL());
 		if (ofTable != null)
-			buf.append(" on table ").append(ofTable.getName(sc));
+			buf.append(" on table ").append(ofTable.getName(sc,cv));
 		if (usesColumns(sc)) {
 			buf.append(" columns { ");
 			buf.append(Functional.join(getColumns(sc), ",", new UnaryFunction<String,PEColumn>() {

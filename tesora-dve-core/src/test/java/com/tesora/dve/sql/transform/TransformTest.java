@@ -46,9 +46,12 @@ import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.queryplan.TempTableDeclHints;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.parser.InitialInputState;
+import com.tesora.dve.sql.parser.InputState;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
+import com.tesora.dve.sql.parser.PlanningResult;
 import com.tesora.dve.sql.parser.PreparePlanningResult;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.DistributionKeyTemplate;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
@@ -57,6 +60,7 @@ import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
+import com.tesora.dve.sql.schema.cache.PlanCacheUtils.PlanCacheCallback;
 import com.tesora.dve.sql.schema.mt.AdaptiveMultitenantSchemaPolicyContext;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.TransientSchemaTest;
@@ -66,7 +70,7 @@ import com.tesora.dve.sql.transform.execution.AdhocResultsSessionStep;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
@@ -83,6 +87,7 @@ import com.tesora.dve.sql.transform.execution.UpdateExecutionSequence;
 import com.tesora.dve.sql.transform.execution.UpdateExecutionStep;
 import com.tesora.dve.sql.util.BinaryProcedure;
 import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.UnaryProcedure;
 
 public abstract class TransformTest extends TransientSchemaTest {
@@ -105,22 +110,22 @@ public abstract class TransformTest extends TransientSchemaTest {
 		return InvokeParser.parseOneLine(InvokeParser.buildInputState(in,null), ParserOptions.TEST.setFailEarly());
 	}
 	
-	protected ExecutionPlan stmtTest(SchemaContext db, String in, Class<?> stmtClass, ExpectedSequence expected) throws Exception {
+	protected RootExecutionPlan stmtTest(SchemaContext db, String in, Class<?> stmtClass, ExpectedSequence expected) throws Exception {
 		return stmtTest(db,in,null,stmtClass, expected);
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected ExecutionPlan stmtTest(SchemaContext db, String in, List<Object> params, Class<?> stmtClass, ExpectedSequence expected)  throws Exception {
+	protected RootExecutionPlan stmtTest(SchemaContext db, String in, List<Object> params, Class<?> stmtClass, ExpectedSequence expected)  throws Exception {
 		List<Object> actualParams = Collections.EMPTY_LIST;
 		if (params != null) actualParams = params;
 		List<Statement> stmts = parse(db, in, actualParams);
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first,stmtClass);
-		ExecutionPlan ep = Statement.getExecutionPlan(db,first);
+		RootExecutionPlan ep = Statement.getExecutionPlan(db,first);
 		if (isNoisy()) {
 			System.out.println("In: '" + in + "'");
-			ep.display(db,System.out,null);
+			ep.display(db,db.getValues(),System.out,null);
 		}
 		if (expected != null) {
 			List<ExpectedStep> expectedExecOrder = new ArrayList<ExpectedStep>();
@@ -137,7 +142,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			});
 			assertEquals("should have same number of steps",expectedExecOrder.size(), actualExecOrder.size());
 			for(int i = 0; i < expectedExecOrder.size(); i++)
-				expectedExecOrder.get(i).verify(db,actualExecOrder.get(i));
+				expectedExecOrder.get(i).verify(db,db.getValues(),actualExecOrder.get(i));
 		} else {
 			if (printVerifyBlock) {
 				if (!isNoisy()) {
@@ -148,7 +153,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 						System.out.println("From test " + e.getStackTrace()[2].getMethodName());
 					}
 				}
-				printExecutionPlanVerify(db,ep);
+				printExecutionPlanVerify(db,db.getValues(),ep);
 			}
 			if (failOnUnsetExpected)
 				fail("Fill in expected result");
@@ -158,25 +163,27 @@ public abstract class TransformTest extends TransientSchemaTest {
 
 	protected void cachePlanTest(SchemaContext db, String in, boolean hit, ExpectedSequence expected) throws Exception {
 		db.refresh(true);
-		List<ExecutionPlan> plans = InvokeParser.buildPlan(db, InvokeParser.buildInputState(in,db), ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly(),
-				new VerifyingPlanCacheCallback(hit)).getPlans();
+		PlanningResult results = InvokeParser.buildPlan(db, InvokeParser.buildInputState(in,db), ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly(),
+				new VerifyingPlanCacheCallback(hit));
+		List<RootExecutionPlan> plans = results.getPlans();
+		ConnectionValues cv = results.getValues();
 		assertEquals(plans.size(),1);
-		ExecutionPlan ep = plans.get(0);
+		RootExecutionPlan ep = plans.get(0);
 		if (isNoisy()) {
 			System.out.println("In: '" + in + "'");
-			ep.display(db,System.out,null);
+			ep.display(db,cv,System.out,null);
 		}
 		if (expected != null)
-			expected.verify(db, ep.getSequence());
+			expected.verify(db, cv, ep.getSequence());
 		else {
 			if (printVerifyBlock)
-				printExecutionPlanVerify(db, ep);
+				printExecutionPlanVerify(db, cv, ep);
 			if (failOnUnsetExpected)
 				fail("Fill in expected result");
 		}
 	}
 	
-	protected ExecutionPlan prepareTest(SchemaContext db, String in, int numParams, ExpectedSequence expected)  throws Exception {
+	protected RootExecutionPlan prepareTest(SchemaContext db, String in, int numParams, ExpectedSequence expected)  throws Exception {
 		SchemaSourceFactory.reset();
 		db.refresh(true);
 		PreparePlanningResult ppr = 
@@ -185,16 +192,18 @@ public abstract class TransformTest extends TransientSchemaTest {
 		List<Object> fakeParams = new ArrayList<Object>();
 		for(int i = 0; i < numParams; i++)
 			fakeParams.add("fp" + i);
-		ExecutionPlan ep = ppr.getCachedPlan().rebuildPlan(db, fakeParams);
+		Pair<RootExecutionPlan,ConnectionValues> res = ppr.getCachedPlan().rebuildPlan(db, fakeParams);
+		RootExecutionPlan ep = res.getFirst();
+		ConnectionValues cv = res.getSecond();
 		if (isNoisy()) {
 			System.out.println("In: '" + in + "'");
-			ep.display(db,System.out,null);
+			ep.display(db,cv,System.out,null);
 		}
 		if (expected != null)
-			expected.verify(db,ep.getSequence());
+			expected.verify(db,cv,ep.getSequence());
 		else {
 			if (printVerifyBlock)
-				printExecutionPlanVerify(db,ep);
+				printExecutionPlanVerify(db,cv,ep);
 			if (failOnUnsetExpected)
 				fail("Fill in expected result");
 		}
@@ -206,9 +215,9 @@ public abstract class TransformTest extends TransientSchemaTest {
 			List<Statement> stmts = parse(db, in);
 			assertEquals(stmts.size(), 1);
 			Statement first = stmts.get(0);
-			ExecutionPlan ep = Statement.getExecutionPlan(db,first);
+			RootExecutionPlan ep = Statement.getExecutionPlan(db,first);
 			// exercise the plan slightly
-			ep.getUpdateCount(db);
+			ep.getUpdateCount(db,db.getValues());
 		}
 	}
 	
@@ -259,7 +268,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		return "'" + in + "' (" + (in == null ? "null" : in.getClass().getSimpleName()) + ")";
 	}
 
-	protected static void printExecutionStepVerify(SchemaContext pc, HasPlanning hp, int nesting, boolean hasNext, StringBuilder buf) {
+	protected static void printExecutionStepVerify(SchemaContext pc, ConnectionValues cv, HasPlanning hp, int nesting, boolean hasNext, StringBuilder buf) {
 		StringBuffer prefix = new StringBuffer();
 		for(int i = 0; i < nesting; i++)
 			prefix.append("\t");		
@@ -267,14 +276,14 @@ public abstract class TransformTest extends TransientSchemaTest {
 			buf.append(prefix).append("bes(").append(PEConstants.LINE_SEPARATOR);
 			ExecutionSequence es = (ExecutionSequence) hp;
 			for(Iterator<HasPlanning> iter = es.getSteps().iterator(); iter.hasNext();) {
-				printExecutionStepVerify(pc,iter.next(),nesting+1,iter.hasNext(),buf);
+				printExecutionStepVerify(pc,cv,iter.next(),nesting+1,iter.hasNext(),buf);
 			}
 			buf.append(prefix).append(")");
 		} else if (hp instanceof ParallelExecutionStep) {
 			buf.append(prefix).append("bpes(").append(PEConstants.LINE_SEPARATOR);
 			ParallelExecutionStep pes = (ParallelExecutionStep) hp;
 			for(Iterator<ExecutionSequence> iter = pes.getSequences().iterator(); iter.hasNext();) {
-				printExecutionStepVerify(pc,iter.next(),nesting+1,iter.hasNext(),buf);
+				printExecutionStepVerify(pc,cv,iter.next(),nesting+1,iter.hasNext(),buf);
 			}
 			buf.append(prefix).append(")");
 		} else if (hp instanceof AbstractProjectingExecutionStep) {
@@ -289,8 +298,8 @@ public abstract class TransformTest extends TransientSchemaTest {
 				buf.append(prefix).append("\tnull,").append(PEConstants.LINE_SEPARATOR);
 			} else {
 				RedistributionExecutionStep redist = (RedistributionExecutionStep) aes;
-				buf.append(prefix).append("\t").append(characterizeGroup(redist.getPEStorageGroup().getPEStorageGroup(pc))).append(",");
-				buf.append('"').append(redist.getRedistTable(pc)).append('"').append(",").append(characterizeGroup(redist.getTargetGroup(pc).getPEStorageGroup(pc))).append(",");				
+				buf.append(prefix).append("\t").append(characterizeGroup(redist.getPEStorageGroup().getPEStorageGroup(pc,cv))).append(",");
+				buf.append('"').append(redist.getRedistTable(pc,cv)).append('"').append(",").append(characterizeGroup(redist.getTargetGroup(pc,cv).getPEStorageGroup(pc,cv))).append(",");				
 				Model targDistModel = redist.getDistKey().getModel(pc);
 				buf.append(targDistModel.getCodeName()).append(".MODEL_NAME,").append(PEConstants.LINE_SEPARATOR);
 				buf.append(prefix).append("\t");
@@ -341,7 +350,7 @@ public abstract class TransformTest extends TransientSchemaTest {
                 }
 
 			}
-            appendSQL(aes,buf,pc,prefix);
+            appendSQL(aes,buf,pc,cv,prefix);
             if (aes instanceof ProjectingExecutionStep) {
             	ProjectingExecutionStep pes = (ProjectingExecutionStep) aes;
             	appendInMemoryLimit(pes,buf,pc,prefix);
@@ -350,38 +359,38 @@ public abstract class TransformTest extends TransientSchemaTest {
             addExplainHint(aes.getExplainHint(),buf,pc,prefix);
 		} else if (hp instanceof DeleteExecutionStep) {
 			DeleteExecutionStep des = (DeleteExecutionStep) hp;
-			appendDirectExpectedStepParams("DeleteExpectedStep",des,buf,prefix,pc);
+			appendDirectExpectedStepParams("DeleteExpectedStep",des,buf,prefix,pc,cv);
 		} else if (hp instanceof UpdateExecutionStep) {
 			UpdateExecutionStep ues = (UpdateExecutionStep) hp;
-			appendDirectExpectedStepParams("UpdateExpectedStep",ues,buf,prefix,pc);
+			appendDirectExpectedStepParams("UpdateExpectedStep",ues,buf,prefix,pc,cv);
 		} else if (hp instanceof SetVariableExecutionStep) {
 			SetVariableExecutionStep sves = (SetVariableExecutionStep) hp;
 			VariableValueSource vvs = sves.getValueSource();
 			String value = null;
 			if (vvs.isConstant())
-				value = vvs.getConstantValue(pc.getValues());
+				value = vvs.getConstantValue(cv);
 			buf.append("new SessionVariableExpectedStep(\"" + sves.getScopeName() + "\",\"" + sves.getVariableName() + "\"," + (value == null ? "null" : "\"" + value + "\"") + ")");
 		} else if (hp instanceof TransactionExecutionStep) {
 			TransactionExecutionStep tes = (TransactionExecutionStep) hp;
-			buf.append("new TransactionExpectedStep(group,\"" + tes.getSQL(pc, null) + "\")");
+			buf.append("new TransactionExpectedStep(group,\"" + tes.getSQL(pc, cv,null) + "\")");
 		} else if (hp instanceof FilterExecutionStep) {
 			FilterExecutionStep fes = (FilterExecutionStep) hp;
 			buf.append("new FilterExpectedStep(\"").append(fes.getFilter().describe()).append("\",");
-			printExecutionStepVerify(pc,fes.getSource(),0,false,buf);
+			printExecutionStepVerify(pc,cv,fes.getSource(),0,false,buf);
 			buf.append(")");
 		} else if (hp instanceof TriggerExecutionStep) {
 			TriggerExecutionStep tes = (TriggerExecutionStep) hp;
 			buf.append(prefix).append("new TriggerExpectedStep(group,").append(PEConstants.LINE_SEPARATOR);
-			printExecutionStepVerify(pc,tes.getRowQuery(),nesting+1,true,buf);
-			printExecutionStepVerify(pc,tes.getActualStep(),nesting+1,true,buf);
+			printExecutionStepVerify(pc,cv,tes.getRowQuery(),nesting+1,true,buf);
+			printExecutionStepVerify(pc,cv,tes.getActualStep(),nesting+1,true,buf);
 			if (tes.getBeforeStep() == null)
 				buf.append(prefix).append("  null,").append(PEConstants.LINE_SEPARATOR);
 			else
-				printExecutionStepVerify(pc,tes.getBeforeStep(),nesting+1,true,buf);
+				printExecutionStepVerify(pc,cv,tes.getBeforeStep(),nesting+1,true,buf);
 			if (tes.getActualStep() == null)
 				buf.append(prefix).append("  null").append(PEConstants.LINE_SEPARATOR);
 			else
-				printExecutionStepVerify(pc,tes.getAfterStep(),nesting+1,false,buf);
+				printExecutionStepVerify(pc,cv,tes.getAfterStep(),nesting+1,false,buf);
 			buf.append(")");
 		} else {
 			buf.append("null");
@@ -392,15 +401,15 @@ public abstract class TransformTest extends TransientSchemaTest {
 		buf.append(PEConstants.LINE_SEPARATOR);
 	}
 	
-	private static void appendDirectExpectedStepParams(String execClass, DirectExecutionStep des, StringBuilder buf, StringBuffer prefix, SchemaContext pc) {
+	private static void appendDirectExpectedStepParams(String execClass, DirectExecutionStep des, StringBuilder buf, StringBuffer prefix, SchemaContext pc, ConnectionValues cv) {
 		buf.append(prefix).append("new ").append(execClass).append("(").append(PEConstants.LINE_SEPARATOR);
-		buf.append(prefix).append("\t").append(characterizeGroup(des.getPEStorageGroup().getPEStorageGroup(pc))).append(",").append(PEConstants.LINE_SEPARATOR);
-		appendSQL(des,buf,pc,prefix);
+		buf.append(prefix).append("\t").append(characterizeGroup(des.getPEStorageGroup().getPEStorageGroup(pc,cv))).append(",").append(PEConstants.LINE_SEPARATOR);
+		appendSQL(des,buf,pc,cv,prefix);
 	}
 
-	private static void appendSQL(ExecutionStep es, StringBuilder buf, SchemaContext pc, StringBuffer prefix) {
+	private static void appendSQL(ExecutionStep es, StringBuilder buf, SchemaContext pc, ConnectionValues cv, StringBuffer prefix) {
         List<String> parts = new ArrayList<String>();
-        es.displaySQL(pc, parts, " ", null);
+        es.displaySQL(pc, cv,parts, " ", null);
         for(Iterator<String> iter = parts.iterator(); iter.hasNext();) {
         	buf.append(prefix).append("  ").append('"').append(iter.next().trim()).append('"');
         	if (iter.hasNext()) buf.append(",");
@@ -438,9 +447,9 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 	}
 	
-	protected static void printExecutionPlanVerify(SchemaContext pc, ExecutionPlan ep) {
+	protected static void printExecutionPlanVerify(SchemaContext pc, ConnectionValues cv, RootExecutionPlan ep) {
 		StringBuilder buf = new StringBuilder();
-		printExecutionStepVerify(pc, ep.getSequence(),0,false,buf);
+		printExecutionStepVerify(pc, cv, ep.getSequence(),0,false,buf);
 		System.out.println(buf.toString());
 	}
 	
@@ -454,11 +463,11 @@ public abstract class TransformTest extends TransientSchemaTest {
 			this.steps = steps;
 		}
 		
-		public void verify(SchemaContext sc, ExecutionSequence es) {
+		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionSequence es) {
 			List<HasPlanning> actualSteps = es.getSteps();
 			assertEquals(steps.length, actualSteps.size());
 			for(int i = 0; i < steps.length; i++) {
-				steps[i].verify(sc,(ExecutionStep)actualSteps.get(i));
+				steps[i].verify(sc,cv,(ExecutionStep)actualSteps.get(i));
 			}
 		}
 		
@@ -477,10 +486,10 @@ public abstract class TransformTest extends TransientSchemaTest {
 		
 		// doesn't have any of it's own sql - is here for grouping
 		@Override
-		public void verify(SchemaContext sc, ExecutionStep es) {
+		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
 			SchemaTest.assertInstanceOf(es,UpdateExecutionSequence.class);
 			UpdateExecutionSequence ues = (UpdateExecutionSequence) es;
-			verify(sc,ues);
+			verify(sc,cv,ues);
 		}
 	}
 	
@@ -500,25 +509,25 @@ public abstract class TransformTest extends TransientSchemaTest {
 			return what + " '" + sql + "'";
 		}
 
-		protected void verifySQL(SchemaContext sc, ExecutionStep es) {
+		protected void verifySQL(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
 			if (sql.length == 1) {
-				String gen = es.getSQL(sc,null).trim();
+				String gen = es.getSQL(sc,cv,null).trim();
 				assertEquals("expect same sql",this.sql[0], gen);
 			} else {
 				ArrayList<String> parts = new ArrayList<String>();
-				es.displaySQL(sc, parts, "", null);
-				assertEquals("expect same number of pretty printed parts for '" + es.getSQL(sc, null) + "'",sql.length,parts.size());
+				es.displaySQL(sc, cv,parts, "", null);
+				assertEquals("expect same number of pretty printed parts for '" + es.getSQL(sc,cv,null) + "'",sql.length,parts.size());
 				for(int i = 0; i < sql.length; i++) {
 					assertEquals("expect same sql for part " + i,sql[i],parts.get(i).trim());
 				}
 			}
 		}
 		
-		public void verify(SchemaContext sc, ExecutionStep es) {
+		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
 			SchemaTest.assertInstanceOf(es, stepClass);
-			verifySQL(sc,es);
+			verifySQL(sc,cv, es);
 			if (sourceGroup != null) {
-				PEStorageGroup gs = es.getPEStorageGroup().getPEStorageGroup(sc);
+				PEStorageGroup gs = es.getPEStorageGroup().getPEStorageGroup(sc,cv);
 				if (!sourceGroup.equals(gs)) {
 					fail("Expected source group " + sourceGroup 
 							+ " (" + sourceGroup.getClass().getSimpleName() 
@@ -527,7 +536,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 							+ " (" + gs.getClass().getSimpleName()
 							+ "@" + System.identityHashCode(gs)
 							+ ") at sql "
-							+ es.getSQL(sc, null)
+							+ es.getSQL(sc, cv,null)
 							
 							);
 				}
@@ -554,11 +563,11 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 		
 		@Override
-		public void verify(SchemaContext sc, ExecutionStep es) {
-			super.verify(sc, es);
+		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
+			super.verify(sc, cv, es);
 			DirectExecutionStep des = (DirectExecutionStep) es;
 			if (fakeKey != null) {
-				IKeyValue ikv = des.getKeyValue(sc);
+				IKeyValue ikv = des.getKeyValue(sc,cv);
 				if (fakeKey == NULL_FAKE_KEY)
 					assertNull("no key value should be specified",ikv);
 				else
@@ -664,8 +673,8 @@ public abstract class TransformTest extends TransientSchemaTest {
         }
         
 		@Override
-		public void verify(SchemaContext sc, ExecutionStep es) {
-			super.verify(sc,es);
+		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
+			super.verify(sc,cv, es);
 			AbstractProjectingExecutionStep ses = (AbstractProjectingExecutionStep) es;
 			/*
 			 * hint testing disabled for now
@@ -682,12 +691,12 @@ public abstract class TransformTest extends TransientSchemaTest {
 				RedistributionExecutionStep redist = (RedistributionExecutionStep) ses;
 				if (redistTable == null)
 					fail("Found RedistributionExecutionStep but expecting ProjectingExecutionStep");
-				assertEquals(buildAssertTag("redist table should match"),redist.getRedistTable(sc), redistTable);
+				assertEquals(buildAssertTag("redist table should match"),redist.getRedistTable(sc,cv), redistTable);
 				if (target != null) {
-					PEStorageGroup targ = redist.getTargetGroup(sc).getPEStorageGroup(sc);
+					PEStorageGroup targ = redist.getTargetGroup(sc,cv).getPEStorageGroup(sc,cv);
 					assertNotNull("target group must exist", targ);
 					if (!target.equals(targ)) {
-						fail("Expected " + target + " but found " + targ + " on step " + es.getSQL(sc, null));
+						fail("Expected " + target + " but found " + targ + " on step " + es.getSQL(sc, cv,null));
 					}
 				} else {
 					// no checking
@@ -706,9 +715,9 @@ public abstract class TransformTest extends TransientSchemaTest {
                     if (tab instanceof TempTable){
 						TempTableDeclHints hints = ((TempTable) tab).finalizeHints(sc);
 						List<List<String>> sesIndices = hints.getIndexes();
-                        assertEquals("should have same number of index hints for sql '" + es.getSQL(sc, null) + "'",indices.size(),sesIndices.size());
+                        assertEquals("should have same number of index hints for sql '" + es.getSQL(sc, cv,null) + "'",indices.size(),sesIndices.size());
                         for (int i=0;i< indices.size();i++){
-							assertEquals("should have same index hint for sql '" + es.getSQL(sc, null) + "'", Arrays.asList(indices.get(i)), sesIndices.get(i));
+							assertEquals("should have same index hint for sql '" + es.getSQL(sc, cv,null) + "'", Arrays.asList(indices.get(i)), sesIndices.get(i));
                         }
                     }
                 }
@@ -717,7 +726,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 				ProjectingExecutionStep pes = (ProjectingExecutionStep) ses;
 				if (redistTable != null)
 					fail("Found ProjectingExecutionStep but expecting RedistributionExecutionStep");
-				assertEquals("should have same in mem limit flag for step '" + es.getSQL(sc, null) + "'", this.usesInMemoryLimit, pes.usesInMemoryLimit());				
+				assertEquals("should have same in mem limit flag for step '" + es.getSQL(sc, cv,null) + "'", this.usesInMemoryLimit, pes.usesInMemoryLimit());				
 			}			
 		}
 	}
@@ -729,7 +738,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 
 		@Override
-		public void verify(SchemaContext db, ExecutionStep es) {
+		public void verify(SchemaContext db, ConnectionValues cv, ExecutionStep es) {
 			SchemaTest.assertInstanceOf(es, stepClass);
 		}
 	}
@@ -759,13 +768,13 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 		
 		@Override
-		public void verify(SchemaContext sc, ExecutionStep es) {
+		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
 			SchemaTest.assertInstanceOf(es, stepClass);
 			ParallelExecutionStep pes = (ParallelExecutionStep) es;
 			List<ExecutionSequence> sequences = pes.getSequences();
 			assertEquals(parts.length, sequences.size());
 			for(int i = 0; i < parts.length; i++)
-				parts[i].verify(sc,sequences.get(i));
+				parts[i].verify(sc,cv,sequences.get(i));
 		}
 		
 		public void accumulateExecutionOrder(List<ExpectedStep> acc) {
@@ -788,18 +797,19 @@ public abstract class TransformTest extends TransientSchemaTest {
 			this.constantValue = constant;
 		}
 
-		protected void verifySQL(SchemaContext sc, ExecutionStep es) {
+		@Override
+		protected void verifySQL(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
 		}
 
 		@Override
-		public void verify(SchemaContext db, ExecutionStep es) {
-			super.verify(db,es);
+		public void verify(SchemaContext db, ConnectionValues cv, ExecutionStep es) {
+			super.verify(db,cv,es);
 			SetVariableExecutionStep sves = (SetVariableExecutionStep) es;
 			assertEquals("should have same scope name",scopeName,sves.getScopeName());
 			assertEquals("should have same variable name",variableName,sves.getVariableName());
 			VariableValueSource vvs = sves.getValueSource();
 			assertTrue("should be a constant source",vvs.isConstant());
-			String value = vvs.getConstantValue(db.getValues());
+			String value = vvs.getConstantValue(cv);
 			assertEquals("should have same constant value",constantValue,value);
 		}
 		
@@ -825,16 +835,17 @@ public abstract class TransformTest extends TransientSchemaTest {
 			this.filterDescription = filterDescription;
 		}
 		
-		protected void verifySQL(SchemaContext sc, ExecutionStep es) {
+		@Override
+		protected void verifySQL(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
 		}
 
 		@Override
-		public void verify(SchemaContext db, ExecutionStep es) {
-			super.verify(db,es);
+		public void verify(SchemaContext db, ConnectionValues cv, ExecutionStep es) {
+			super.verify(db,cv,es);
 			FilterExecutionStep fes = (FilterExecutionStep) es;
 			assertEquals("should have same filter description",filterDescription, fes.getFilter().describe());
 			ExecutionStep haveSrc = fes.getSource();
-			source.verify(db, haveSrc);
+			source.verify(db, cv,haveSrc);
 		}
 	}
 	
@@ -861,22 +872,23 @@ public abstract class TransformTest extends TransientSchemaTest {
 		protected void verifySQL(SchemaContext sc, ExecutionStep es) {
 		}
 
-		public void verify(SchemaContext sc, ExecutionStep es) {
-			super.verify(sc, es);
+		@Override
+		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
+			super.verify(sc, cv, es);
 			TriggerExecutionStep trigStep = (TriggerExecutionStep) es;
-			rowQuery.verify(sc, trigStep.getRowQuery());
-			actual.verify(sc, trigStep.getActualStep());
-			verifyTriggerBody(sc,"before",before,trigStep.getBeforeStep());
-			verifyTriggerBody(sc,"after",after,trigStep.getAfterStep());
+			rowQuery.verify(sc, cv, trigStep.getRowQuery());
+			actual.verify(sc, cv, trigStep.getActualStep());
+			verifyTriggerBody(sc,cv,"before",before,trigStep.getBeforeStep());
+			verifyTriggerBody(sc,cv,"after",after,trigStep.getAfterStep());
 		}
 		
-		private void verifyTriggerBody(SchemaContext sc, String which, ExpectedStep expected, ExecutionStep actual) {
+		private void verifyTriggerBody(SchemaContext sc, ConnectionValues cv, String which, ExpectedStep expected, ExecutionStep actual) {
 			if (expected == null && actual != null)
 				fail("Found " + which + " step, but none expected");
 			else if (actual == null && expected != null)
 				fail("Missing " + which + " step");
 			else if (actual != null && expected != null)
-				expected.verify(sc, actual);
+				expected.verify(sc, cv, actual);
 		}
 
 		public void accumulateExecutionOrder(List<ExpectedStep> acc) {

@@ -33,6 +33,7 @@ import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepSelectAllOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -53,13 +54,14 @@ public class SessionExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv)
 			throws PEException {
-		qsteps.add(new QueryStepSelectAllOperation(getStorageGroup(sc),getPersistentDatabase(), distributionModel, getSQLCommand(sc)));
+		qsteps.add(new QueryStepSelectAllOperation(getStorageGroup(sc,cv),getPersistentDatabase(), distributionModel, getSQLCommand(sc)));
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
 		buf.add(sql);
 	}
 

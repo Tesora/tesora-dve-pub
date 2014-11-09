@@ -122,7 +122,7 @@ public class FromTableReference extends StructuralNode {
 	
 	public String toString(SchemaContext sc) {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitFromTableReference(sc, this, buf,-1);
+        Singletons.require(HostService.class).getDBNative().getEmitter().emitFromTableReference(sc, sc.getValues(),this, buf,-1);
 		return buf.toString();		
 	}
 

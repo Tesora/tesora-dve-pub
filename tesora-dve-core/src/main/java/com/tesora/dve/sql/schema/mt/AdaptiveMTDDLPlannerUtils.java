@@ -760,7 +760,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			ds.plan(sc,es, sc.getBehaviorConfiguration());
 			
 			List<QueryStepOperation> allsteps = new ArrayList<QueryStepOperation>();
-			es.schedule(null, allsteps, null, sc);
+			es.schedule(null, allsteps, null, sc, sc.getValues());
 			if (isCanonical)
 				canonicalStep = allsteps.get(0);
 			return allsteps;
@@ -1017,7 +1017,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			ExecutionSequence es = new ExecutionSequence(null);
 			DeleteStatement ds = AdaptiveMultitenantSchemaPolicyContext.buildTenantDeleteFromTableStatement(sc, actualScope.getTable(sc), actualScope);
 			ds.plan(sc,es, sc.getBehaviorConfiguration());
-			es.schedule(null, dml, null, sc);
+			es.schedule(null, dml, null, sc, sc.getValues());
 			
 			sc.beginSaveContext();
 			try {
@@ -1192,8 +1192,8 @@ public final class AdaptiveMTDDLPlannerUtils {
 					new SessionExecutionStep(enclosing.getDatabase(sc),enclosing.getStorageGroup(sc),dropCurrentSQL);
 			SessionExecutionStep add =
 					new SessionExecutionStep(enclosing.getDatabase(sc),enclosing.getStorageGroup(sc),addNewSQL);
-			drop.schedule(null, steps, null, sc);
-			add.schedule(null, steps, null, sc);
+			drop.schedule(null, steps, null, sc, sc.getValues());
+			add.schedule(null, steps, null, sc, sc.getValues());
 		}
 
 		@Override
@@ -1295,7 +1295,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			
 			SessionExecutionStep ses = new SessionExecutionStep(finalDefinition.getPEDatabase(sc),finalDefinition.getStorageGroup(sc),
 					modded.getSQL(sc));
-			ses.schedule(null, ddl, null, sc);
+			ses.schedule(null, ddl, null, sc, sc.getValues());
 			if (isCanonical)
 				canonicalStep = ddl.get(0);
 		}

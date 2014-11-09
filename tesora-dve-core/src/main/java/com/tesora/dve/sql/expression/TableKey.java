@@ -139,8 +139,10 @@ public class TableKey extends RewriteKey implements AutoIncrement {
 		String tn = null;
 		if (backingTable instanceof PEAbstractTable) {
 			PEAbstractTable<?> pet = (PEAbstractTable<?>) backingTable;
-			if (pet.isTempTable())
-				tn = pet.getName(SchemaContext.threadContext.get()).get();
+			if (pet.isTempTable()) {
+				SchemaContext sc = SchemaContext.threadContext.get(); 
+				tn = pet.getName(sc,sc.getValues()).get();
+			}
 			else
 				tn = pet.getName().get();
 		} else {
@@ -152,7 +154,7 @@ public class TableKey extends RewriteKey implements AutoIncrement {
 	
 	public String describe(SchemaContext sc) {
 		StringBuilder buf = new StringBuilder();
-		buf.append("TableKey{").append(backingTable.getName(sc).get());
+		buf.append("TableKey{").append(backingTable.getName(sc,sc.getValues()).get());
 		if (instance != null && instance.getAlias() != null) 
 			buf.append("(").append(instance.getAlias().get()).append(")");
 		buf.append(":").append(node).append("}");

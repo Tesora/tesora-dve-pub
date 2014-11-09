@@ -221,15 +221,20 @@ public final class TempTable extends PETable {
 	}
 	
 	@Override
-	public Name getName(SchemaContext sc) {
-		return sc.getValues().getTempTableName(index);
+	public Name getName(SchemaContext sc, ConnectionValues cv) {
+		return cv.getTempTableName(index);
 	}
 	
 	@Override
 	public String toString() {
-		return getName(SchemaContext.threadContext.get()).get();
+		SchemaContext sc = SchemaContext.threadContext.get();
+		return getName(sc,sc.getValues()).get();
 	}
 
+	public int getValuesIndex() {
+		return index;
+	}
+	
 	public void noteJoinedColumns(SchemaContext sc, List<PEColumn> pec) {
 		ListSet<PEColumn> uniqued = new ListSet<PEColumn>(pec);
 		addKey(sc,uniqued);
@@ -465,7 +470,7 @@ public final class TempTable extends PETable {
 	
 	@Override
 	protected UserTable createEmptyNew(SchemaContext pc) throws PEException {
-		String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, this);
+		String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, pc.getValues(), this);
 		UserDatabase pdb = (getPEDatabase(pc) != null ? getPEDatabase(pc).persistTree(pc) : null);
 		DistributionModel dm = getDistributionVector(pc).persistTree(pc);
 		UserTable ut = pc.getCatalog().createTempTable(pdb, persistName, dm);

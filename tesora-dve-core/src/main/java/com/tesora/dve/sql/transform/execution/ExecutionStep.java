@@ -29,6 +29,7 @@ import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -63,9 +64,9 @@ public abstract class ExecutionStep implements HasPlanning {
 		return database.getPersistent(sc);
 	}
 	
-	public StorageGroup getStorageGroup(SchemaContext sc) {
+	public StorageGroup getStorageGroup(SchemaContext sc, ConnectionValues cv) {
 		if (sg == null) return null;
-		StorageGroup out = sg.getScheduledGroup(sc);
+		StorageGroup out = sg.getScheduledGroup(sc, cv);
 		return out;
 	}
 	
@@ -73,7 +74,7 @@ public abstract class ExecutionStep implements HasPlanning {
 		return sg;
 	}
 	
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
 		
 	}
 
@@ -86,19 +87,19 @@ public abstract class ExecutionStep implements HasPlanning {
 		return getExecutionType();
 	}
 	
-	public String getSQL(SchemaContext sc, EmitOptions opts) {
+	public String getSQL(SchemaContext sc, ConnectionValues cv, EmitOptions opts) {
 		ArrayList<String> buf = new ArrayList<String>();
-		getSQL(sc,buf, opts);
+		getSQL(sc,cv, buf, opts);
 		return Functional.join(buf,";");
 	}
 		
-	public void displaySQL(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
+	public void displaySQL(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
 		buf.add(indent + "  sql:");
-		buf.add(getSQL(sc,opts));
+		buf.add(getSQL(sc,cv,opts));
 	}
 	
 	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
+	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
 		String execType = null;
 		if (getEffectiveExecutionType() != getExecutionType()) {
 			execType = getEffectiveExecutionType().name() + " (" + getExecutionType().name() + ")";
@@ -107,21 +108,21 @@ public abstract class ExecutionStep implements HasPlanning {
 		}
 		buf.add(indent + execType + " on " 
 				+ (getDatabase() == null ? "null" : getDatabase().getName().get()) 
-				+ "/" + getStorageGroup(sc));
-		if (opts == null) buf.add(indent + "  sql: '" + getSQL(sc,opts) + "'");
-		else displaySQL(sc, buf, indent, opts);
+				+ "/" + getStorageGroup(sc,cv));
+		if (opts == null) buf.add(indent + "  sql: '" + getSQL(sc,cv,opts) + "'");
+		else displaySQL(sc, cv, buf, indent, opts);
 	}
 	
 	@Override
-	public void explain(SchemaContext sc, List<ResultRow> rows, ExplainOptions opts) {
+	public void explain(SchemaContext sc, ConnectionValues cv, List<ResultRow> rows, ExplainOptions opts) {
 		ResultRow rr = new ResultRow();
-		addExplainColumns(sc,rr,opts);
+		addExplainColumns(sc,cv,rr,opts);
 		// add any nulls that are needed
-		int width = ExecutionPlan.basicExplainColumns.length + (opts.isStatistics() ? StepExecutionStatistics.statsExplainColumns.length : 0); 
+		int width = RootExecutionPlan.basicExplainColumns.length + (opts.isStatistics() ? StepExecutionStatistics.statsExplainColumns.length : 0); 
 		int diff = width - 1 - rr.getRow().size();
 		for(int i = 0; i < diff; i++)
 			rr.addResultColumn(null,true);
-		rr.addResultColumn(getSQL(sc,null), false);
+		rr.addResultColumn(getSQL(sc,cv,null), false);
 		rows.add(rr);
 	}
 	
@@ -132,20 +133,20 @@ public abstract class ExecutionStep implements HasPlanning {
 			rr.addResultColumn(v, false);
 	}
 	
-	protected String explainStorageGroup(SchemaContext sc, PEStorageGroup storageGroup) {
+	protected String explainStorageGroup(SchemaContext sc, PEStorageGroup storageGroup, ConnectionValues cv) {
 		if (storageGroup == null) return null;
-		return storageGroup.getPersistent(sc).getName();
+		return storageGroup.getPersistent(sc,cv).getName();
 	}
 	
 	protected String explainStepType() {
 		return getExecutionType().toString();
 	}
 	
-	protected String explainSourceGroup(SchemaContext sc) {
-		return explainStorageGroup(sc,getPEStorageGroup());
+	protected String explainSourceGroup(SchemaContext sc, ConnectionValues cv) {
+		return explainStorageGroup(sc,getPEStorageGroup(),cv);
 	}
 
-	protected void addExplainColumns(SchemaContext sc,ResultRow rr,ExplainOptions opts) {
+	protected void addExplainColumns(SchemaContext sc, ConnectionValues cv, ResultRow rr,ExplainOptions opts) {
 		addStringResult(rr, explainStepType());
 	}
 		
@@ -155,13 +156,13 @@ public abstract class ExecutionStep implements HasPlanning {
 	}	
 	
 	@Override
-	public Long getlastInsertId(ValueManager vm, SchemaContext sc) {
+	public Long getlastInsertId(ValueManager vm, SchemaContext sc, ConnectionValues cv) {
 		return null;
 	}
 
 
 	@Override
-	public Long getUpdateCount(SchemaContext sc) {
+	public Long getUpdateCount(SchemaContext sc, ConnectionValues cv) {
 		return null;
 	}
 

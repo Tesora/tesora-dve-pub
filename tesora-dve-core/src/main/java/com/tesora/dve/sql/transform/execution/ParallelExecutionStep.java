@@ -31,6 +31,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -68,18 +69,18 @@ public class ParallelExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
 	}
 	
 	@Override
-	public void display(final SchemaContext sc, final List<String> buf, String indent, final EmitOptions opts) {
+	public void display(final SchemaContext sc, final ConnectionValues cv, final List<String> buf, String indent, final EmitOptions opts) {
 		buf.add(indent + "PARALLEL {");
 		final String subindent = indent + "  ";
 		apply(true, new UnaryProcedure<ExecutionSequence>() {
 
 			@Override
 			public void execute(ExecutionSequence object) {
-				object.display(sc, buf, subindent,opts);
+				object.display(sc, cv,buf, subindent,opts);
 			}
 			
 		});
@@ -88,44 +89,45 @@ public class ParallelExecutionStep extends ExecutionStep {
 
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv)
 			throws PEException {
 		for(ExecutionSequence es : parallel)
-			es.schedule(opts, qsteps, projection, sc);
+			es.schedule(opts, qsteps, projection, sc, cv);
 	}
 
 	@Override
-	public void explain(final SchemaContext sc, final List<ResultRow> rows, final ExplainOptions opts) {
+	public void explain(final SchemaContext sc, final ConnectionValues cv, final List<ResultRow> rows, final ExplainOptions opts) {
 		apply(true, new UnaryProcedure<ExecutionSequence>() {
 
 			@Override
 			public void execute(ExecutionSequence object) {
-				object.explain(sc,rows,opts);
+				object.explain(sc,cv,rows,opts);
 			}
 			
 		});
 	}
 	
 	@Override
-	public Long getlastInsertId(final ValueManager vm, final SchemaContext sc) {
+	public Long getlastInsertId(final ValueManager vm, final SchemaContext sc, final ConnectionValues cv) {
 		return getLastExisting(new UnaryFunction<Long, ExecutionSequence>() {
 
 			@Override
 			public Long evaluate(ExecutionSequence object) {
-				return object.getlastInsertId(vm,sc);
+				return object.getlastInsertId(vm,sc,cv);
 			}
 			
 		});
 	}
 	
 	@Override
-	public Long getUpdateCount(final SchemaContext sc) {
+	public Long getUpdateCount(final SchemaContext sc, final ConnectionValues cv) {
 		final Long[] summed = new Long[1];
 		apply(true, new UnaryProcedure<ExecutionSequence>() {
 
 			@Override
 			public void execute(ExecutionSequence object) {
-				Long uc = object.getUpdateCount(sc);
+				Long uc = object.getUpdateCount(sc, cv);
 				if (uc != null) {
 					if (summed[0] == null)
 						summed[0] = uc;

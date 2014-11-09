@@ -44,6 +44,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.DistributionKeyTemplate;
@@ -148,7 +149,8 @@ public final class RedistributionExecutionStep extends
 		requiresReferenceTimestamp = sql.getDerivedInfo().doSetTimestampVariable();
 		if (onDupKey != null && !onDupKey.isEmpty()) {
 			StringBuilder buf = new StringBuilder();
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitInsertSuffix(sc, onDupKey, buf);
+            Singletons.require(HostService.class).getDBNative().getEmitter().emitInsertSuffix(sc, sc.getValues(), onDupKey, buf);
+            // should think about moving this into schedule
 			redistOnDupKey = new SQLCommand(sc, buf.toString());
 		}
 		this.enforceScalarValue = mustEnforceScalarValue;
@@ -175,13 +177,14 @@ public final class RedistributionExecutionStep extends
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps,
-			ProjectionInfo projection, SchemaContext sc) throws PEException {
+			ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv) throws PEException {
 		QueryStepMultiTupleRedistOperation qsrdo = null;
 		
-		StorageGroup sg = getStorageGroup(sc);
+		StorageGroup sg = getStorageGroup(sc,cv);
 		
 		if (targetTable.mustBeCreated()) {
-			qsrdo = new QueryStepMultiTupleRedistOperation(sg, getPersistentDatabase(), getCommand(sc),	getDistributionModel(sc));
+			qsrdo = new QueryStepMultiTupleRedistOperation(sg, getPersistentDatabase(), getCommand(sc,cv),	getDistributionModel(sc));
 			if (targetTable.isExplicitlyDeclared()) {
 				// need to create a new context to avoid leaking
 				SchemaContext mutableContext = SchemaContext.makeMutableIndependentContext(sc);
@@ -189,12 +192,12 @@ public final class RedistributionExecutionStep extends
 				mutableContext.beginSaveContext();
 				try {
 					UserTable ut = targetTable.getPersistent(mutableContext);
-					qsrdo.toUserTable(targetGroup.getPersistent(sc), ut, declarationHints, true);
+					qsrdo.toUserTable(targetGroup.getPersistent(sc,cv), ut, declarationHints, true);
 				} finally {
 					mutableContext.endSaveContext();
 				}
 			} else {
-				qsrdo.toTempTable(targetGroup.getPersistent(sc), getPersistentDatabase(), targetTable.getName(sc).get(), true);
+				qsrdo.toTempTable(targetGroup.getPersistent(sc,cv), getPersistentDatabase(), targetTable.getName(sc,cv).get(), true);
 			}
 			if (distKey.usesColumns(sc)) {
 				if (Model.RANGE.equals(distKey.getModel(sc)))
@@ -221,7 +224,7 @@ public final class RedistributionExecutionStep extends
 					hints.withExistingAutoIncs(new Pair<Integer, HasAutoIncrementTracker>(offsetOfExistingAutoinc, hait));
 				}
 					
-				qsrdo = new QueryStepMultiTupleRedistOperation(sg, getPersistentDatabase(), getCommand(sc), getDistributionModel(sc))
+				qsrdo = new QueryStepMultiTupleRedistOperation(sg, getPersistentDatabase(), getCommand(sc,cv), getDistributionModel(sc))
 						.toUserTable(targetTable.getPersistentStorage(sc).getPersistent(sc), targetTable.getPersistentTable(sc), hints, true);
 			} finally {
 				sc.endSaveContext();
@@ -231,7 +234,7 @@ public final class RedistributionExecutionStep extends
 		}
 		DistributionKey dk = getDistributionKey();
 		if (dk != null)
-			qsrdo.setSpecifiedDistKeyValue(dk.getDetachedKey(sc));
+			qsrdo.setSpecifiedDistKeyValue(dk.getDetachedKey(sc,cv));
 		qsrdo.setEnforceScalarValue(enforceScalarValue);
 		qsrdo.setInsertIgnore(insertIgnore);
 		if (generator != null)
@@ -243,18 +246,18 @@ public final class RedistributionExecutionStep extends
 
 	}
 
-	public PEStorageGroup getTargetGroup(SchemaContext sc) {
+	public PEStorageGroup getTargetGroup(SchemaContext sc, ConnectionValues cv) {
 		if (targetGroup == null) return null;
-		return targetGroup.getPEStorageGroup(sc);
+		return targetGroup.getPEStorageGroup(sc,cv);
 	}
 	
 	public PETable getTargetTable() {
 		return targetTable;
 	}
 
-	public String getRedistTable(SchemaContext sc) {
+	public String getRedistTable(SchemaContext sc, ConnectionValues cv) {
 		if (targetTable == null) return null;
-		return targetTable.getName(sc).get();
+		return targetTable.getName(sc,cv).get();
 	}
 	
 	public DistributionKeyTemplate getDistKey() {
@@ -272,9 +275,9 @@ public final class RedistributionExecutionStep extends
 	}
 
 	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, buf, indent, opts);
-		buf.add(indent + "  redist to (" + targetTable.getName(sc).get() + ") using model " + describeTargetModel(sc) + " on " + targetGroup.getPEStorageGroup(sc).getPersistent(sc));
+	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cv,buf, indent, opts);
+		buf.add(indent + "  redist to (" + targetTable.getName(sc,cv).get() + ") using model " + describeTargetModel(sc,cv) + " on " + targetGroup.getPEStorageGroup(sc,cv).getPersistent(sc,cv));
 		if (declarationHints != null) {
 			List<List<String>> indices = declarationHints.getIndexes();
 			if (!indices.isEmpty()) {
@@ -293,29 +296,29 @@ public final class RedistributionExecutionStep extends
 		}
 	}	
 
-	private String describeTargetModel(SchemaContext sc) {
-		if (distKey == null) return targetTable.getDistributionVector(sc).describe(sc);
+	private String describeTargetModel(SchemaContext sc, ConnectionValues cv) {
+		if (distKey == null) return targetTable.getDistributionVector(sc).describe(sc, cv);
 		return distKey.describe(sc);
 	}
 	
 	@Override
-	protected void addStepExplainColumns(SchemaContext sc, ResultRow rr, ExplainOptions opts) {
-		super.addStepExplainColumns(sc, rr, opts);
-		addStringResult(rr,explainTargetGroup(sc));
-		addStringResult(rr,explainTargetTable(sc));
+	protected void addStepExplainColumns(SchemaContext sc, ConnectionValues cv, ResultRow rr, ExplainOptions opts) {
+		super.addStepExplainColumns(sc, cv, rr, opts);
+		addStringResult(rr,explainTargetGroup(sc,cv));
+		addStringResult(rr,explainTargetTable(sc, cv));
 		addStringResult(rr,explainTargetDist(sc));
         addStringResult(rr,explainTargetHints(sc));
         addStringResult(rr,explainExplainHint(sc));
 	}
 
-	protected String explainTargetGroup(SchemaContext sc) {
+	protected String explainTargetGroup(SchemaContext sc,ConnectionValues cv) {
 		if (targetGroup == null) return null;
-		return explainStorageGroup(sc,targetGroup);
+		return explainStorageGroup(sc,targetGroup,cv);
 	}
 	
-	protected String explainTargetTable(SchemaContext sc) {
+	protected String explainTargetTable(SchemaContext sc, ConnectionValues cv) {
 		if (targetTable == null) return null;
-		return targetTable.getName(sc).get();
+		return targetTable.getName(sc,cv).get();
 	}
 		
 	protected String explainTargetDist(SchemaContext sc) {

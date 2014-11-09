@@ -23,32 +23,39 @@ package com.tesora.dve.sql.parser;
 
 import java.util.List;
 
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 
 public class PlanningResult {
 
-	private final List<ExecutionPlan> plans;
+	private final List<RootExecutionPlan> plans;
+	private final ConnectionValues values;
 	// when the state is null - the whole input was consumed
 	private final InputState state;
 	// we may need to track the input sql
 	private final String originalSQL;
 	
-	public PlanningResult(List<ExecutionPlan> plans, InputState state, String origSQL) {
+	public PlanningResult(List<RootExecutionPlan> plans, ConnectionValues values, InputState state, String origSQL) {
 		this.plans = plans;
 		this.state = state;
 		this.originalSQL = origSQL;
+		this.values = values;
 	}
 	
 	public boolean hasMore() {
 		return this.state != null;
 	}
 	
-	public List<ExecutionPlan> getPlans() {
+	public List<RootExecutionPlan> getPlans() {
 		return plans;
 	}
 	
 	public InputState getInputState() {
 		return this.state;
+	}
+	
+	public ConnectionValues getValues() {
+		return this.values;
 	}
 	
 	public boolean isPrepare() {

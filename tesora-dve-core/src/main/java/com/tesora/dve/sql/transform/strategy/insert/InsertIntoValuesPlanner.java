@@ -142,7 +142,7 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 				final LateSortedInsert lsi = new LateSortedInsert(iivs, parts);
 				context.getContext().getValueManager().registerLateSortedInsert(lsi);
 				if (!context.getContext().getOptions().isPrepare())
-					context.getContext().getValueManager().handleLateSortedInsert(context.getContext());
+					context.getContext().getValueManager().handleLateSortedInsert(context.getContext(),context.getContext().getValues());
 
 				out = new LateSortedInsertFeatureStep(iivs,planner,
 						tk.getAbstractTable().asTable().getStorageGroup(context.getContext()),

@@ -92,7 +92,7 @@ import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
@@ -569,7 +569,7 @@ public class SelectStatement extends ProjectingStatement {
 						aliasName = PEStringUtils.dequote(aname.getSQL());
 					ExpressionNode cname = ea.getTarget();
 					StringBuilder buf = new StringBuilder();
-					emitter.emitExpression(pc,cname, buf);
+					emitter.emitExpression(pc,pc.getValues(),cname, buf);
 					columnName = buf.toString();
 					if (cname instanceof ColumnInstance) {
 						ci = (ColumnInstance) cname;
@@ -580,7 +580,7 @@ public class SelectStatement extends ProjectingStatement {
 				} else if (e instanceof ColumnInstance) {
 					ci = (ColumnInstance) e;
 					StringBuilder buf = new StringBuilder();
-					emitter.emitExpression(pc, e, buf);
+					emitter.emitExpression(pc, pc.getValues(),e, buf);
 					aliasName = PEStringUtils.dequote(buf.toString());
 					// always use the column name
 					columnName = ci.getColumn().getName().getUnquotedName().get();
@@ -590,7 +590,7 @@ public class SelectStatement extends ProjectingStatement {
 						columnName = aliasName;
 					} else {
 						StringBuilder buf = new StringBuilder(); 
-						emitter.emitExpression(pc,e, buf); 
+						emitter.emitExpression(pc,pc.getValues(),e, buf); 
 						columnName = (e instanceof LiteralExpression) ? PEStringUtils.dequote(buf.toString()) : buf.toString(); 
 						aliasName = columnName;
 					}
@@ -630,7 +630,7 @@ public class SelectStatement extends ProjectingStatement {
 								dbName = tabDb.getName().getUnqualified().getUnquotedName().get();
 							}
 						}
-						tblName = tab.getName(pc).getUnqualified().getUnquotedName().get();
+						tblName = tab.getName(pc,pc.getValues()).getUnqualified().getUnquotedName().get();
 					}
 					if (tblName != null)
 						colInfo.setDatabaseAndTable(dbName, tblName);
@@ -684,7 +684,7 @@ public class SelectStatement extends ProjectingStatement {
 	}
 
 	@Override
-	protected ExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
+	protected RootExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
 		boolean noplan = 
 				explain.hasSetting(ExplainOption.NOPLAN);		
 		if (noplan) {
@@ -692,7 +692,7 @@ public class SelectStatement extends ProjectingStatement {
 			ProjectingExecutionStep ses = ProjectingExecutionStep.build(sc,getDatabase(sc), getStorageGroups(sc).get(0), 
 					EngineConstant.BROADEST_DISTRIBUTION_VECTOR.getValue(this,sc), null,
 					this, DMLExplainReason.EXPLAIN_NOPLAN.makeRecord());
-			ExecutionPlan expep = new ExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
+			RootExecutionPlan expep = new RootExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
 			expep.getSequence().append(ses);
 			return expep;
 		}

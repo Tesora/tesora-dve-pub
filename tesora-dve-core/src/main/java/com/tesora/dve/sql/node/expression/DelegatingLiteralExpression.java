@@ -36,14 +36,19 @@ public class DelegatingLiteralExpression extends LiteralExpression implements ID
 	protected Boolean hasValue = null;
 	
 	public  DelegatingLiteralExpression(int tt, SourceLocation sloc, ValueSource vs, int position, UnqualifiedName charsetHint) {
+		this(tt,sloc,vs,position,charsetHint,false);
+	}
+
+	protected DelegatingLiteralExpression(int tt, SourceLocation sloc, ValueSource vs, int position, UnqualifiedName charsetHint, 
+			boolean nullSrcOk) {
 		super(tt,sloc,charsetHint);
 		this.position = position;
 		source = vs;
-		if (source == null) 
+		if (source == null && !nullSrcOk) 
 			throw new IllegalStateException("should be created with source");
-		if (sloc != null && sloc.getPositionInLine() == -1) throw new IllegalStateException("Invalid source position");
+		if (sloc != null && sloc.getPositionInLine() == -1) throw new IllegalStateException("Invalid source position");		
 	}
-
+	
 	protected DelegatingLiteralExpression(DelegatingLiteralExpression dle) {
 		super(dle);
 		position = dle.position;

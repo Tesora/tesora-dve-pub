@@ -25,6 +25,7 @@ import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.SSContext;
+import com.tesora.dve.sql.schema.ConnectionValues;
 
 public class ExecutionState {
 
@@ -32,18 +33,28 @@ public class ExecutionState {
 	
 	private final SSConnection connection;
 	private final LateBoundConstants constants;
+	private final ConnectionValues values;
 	
 	public ExecutionState(SSConnection conn) {
-		this(conn,emptyConstants);
+		this(conn,null);
 	}
 	
-	protected ExecutionState(SSConnection conn, LateBoundConstants constants) {
+	public ExecutionState(SSConnection conn, ConnectionValues values) {
+		this(conn,values,emptyConstants);
+	}
+	
+	protected ExecutionState(SSConnection conn, ConnectionValues values, LateBoundConstants constants) {
 		this.connection = conn;
+		this.values = values;
 		this.constants = constants;
 	}
 	
 	public SSConnection getConnection() {
 		return this.connection;
+	}
+	
+	public ConnectionValues getValues() {
+		return values;
 	}
 	
 	public boolean hasActiveTransaction() {
@@ -59,7 +70,7 @@ public class ExecutionState {
 	}
 	
 	public ExecutionState pushConstants(LateBoundConstants constants) {
-		return new ExecutionState(connection,constants);
+		return new ExecutionState(connection,values,constants);
 	}
 	
 	public LateBoundConstants getBoundConstants() {

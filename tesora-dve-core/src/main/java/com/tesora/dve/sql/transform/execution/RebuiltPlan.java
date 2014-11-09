@@ -22,22 +22,25 @@ package com.tesora.dve.sql.transform.execution;
  */
 
 import com.tesora.dve.lockmanager.LockType;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 
 public class RebuiltPlan {
-	protected ExecutionPlan ep;
+	protected RootExecutionPlan ep;
 	protected boolean clearCache = true;
 	protected final SchemaCacheKey<?>[] cacheKeys;
 	protected final LockType lockType;
+	protected final ConnectionValues boundValues;
 	
-	public RebuiltPlan(ExecutionPlan ep, boolean clearCache, SchemaCacheKey<?>[] keys, LockType lt) {
+	public RebuiltPlan(RootExecutionPlan ep, ConnectionValues boundValues, boolean clearCache, SchemaCacheKey<?>[] keys, LockType lt) {
 		this.ep = ep;
 		this.clearCache = clearCache;
 		this.cacheKeys = keys;
 		this.lockType = lt;
+		this.boundValues = boundValues;
 	}
 
-	public ExecutionPlan getEp() {
+	public RootExecutionPlan getEp() {
 		return ep;
 	}
 
@@ -51,5 +54,9 @@ public class RebuiltPlan {
 	
 	public LockType getLockType() {
 		return lockType;
+	}
+	
+	public ConnectionValues getBoundValues() {
+		return boundValues;
 	}
 }

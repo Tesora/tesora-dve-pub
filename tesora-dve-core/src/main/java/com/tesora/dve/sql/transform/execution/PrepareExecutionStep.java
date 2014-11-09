@@ -32,6 +32,7 @@ import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepOperationPrepareStatement;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -43,26 +44,27 @@ public class PrepareExecutionStep extends DirectExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc) throws PEException {
-		qsteps.add(new QueryStepOperationPrepareStatement(getStorageGroup(sc),getDatabase(),getCommand(sc),projection));
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv) throws PEException {
+		qsteps.add(new QueryStepOperationPrepareStatement(getStorageGroup(sc,cv),getDatabase(),getCommand(sc,cv),projection));
 	}
 
 	// we need our own version of getCommand so that we don't attempt to resolve the parameters
 	@Override
-	public SQLCommand getCommand(SchemaContext sc) {
-		GenericSQLCommand gen = sql.resolve(sc,true,null);
+	public SQLCommand getCommand(SchemaContext sc, ConnectionValues cv) {
+		GenericSQLCommand gen = sql.resolve(cv,true,null);
 		return new SQLCommand(gen);
 	}
 
 	@Override
-	public String getSQL(SchemaContext sc, EmitOptions opts) {
-		return sql.resolve(sc,true,null).getDecoded();
+	public String getSQL(SchemaContext sc, ConnectionValues cv, EmitOptions opts) {
+		return sql.resolve(cv,true,null).getDecoded();
 	}
 
 	@Override
-	public void displaySQL(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
+	public void displaySQL(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
 		ArrayList<String> sub = new ArrayList<String>();
-		sql.resolveAsTextLines(sc, true, "  ", sub);
+		sql.resolveAsTextLines(cv, true, "  ", sub);
 		for(String s : sub) {
 			buf.add(indent + "    " + s);
 		}

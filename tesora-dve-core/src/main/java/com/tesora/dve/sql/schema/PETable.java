@@ -256,7 +256,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	public void setDeclaration(SchemaContext sc, PETable basedOn) {
 		super.setDeclaration(sc,basedOn);
-        tableDefinition = new MysqlEmitter().emitTableDefinition(sc,basedOn); 
+        tableDefinition = new MysqlEmitter().emitTableDefinition(sc,sc.getValues(),basedOn); 
 	}
 	
 	public String getDefinition() {
@@ -1042,7 +1042,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 			if (tab.getPersistentStorage(sc) == null)
 				this.pg = null;
 			else
-				this.pg = tab.getPersistentStorage(sc).getScheduledGroup(sc);
+				this.pg = tab.getPersistentStorage(sc).getScheduledGroup(sc,sc.getValues());
 			rangeID = tab.getDistributionVector(sc).getRangeID(sc);
 		}
 		

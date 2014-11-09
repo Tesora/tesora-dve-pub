@@ -44,7 +44,7 @@ import com.tesora.dve.sql.statement.dml.DeleteStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
@@ -69,14 +69,14 @@ public class ExplicitKeyValueTest extends TransformTest {
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first, statementClass);
-		ExecutionPlan ep = Statement.getExecutionPlan(db,first); 
+		RootExecutionPlan ep = Statement.getExecutionPlan(db,first); 
 		List<HasPlanning> steps = ep.getSequence().getSteps();
 		assertEquals(steps.size(), 1);
 		DirectExecutionStep firstStep = (DirectExecutionStep) steps.get(0);
-		echo(firstStep.getSQL(db,"  ").resolve(db,"  ").getDecoded());
+		echo(firstStep.getSQL(db,db.getValues(),"  ").resolve(db.getValues(),"  ").getDecoded());
 		assertEquals(type,firstStep.getExecutionType());
 		if (fakeKey != null) {
-			IKeyValue kv = firstStep.getDistributionKey().getDetachedKey(db);
+			IKeyValue kv = firstStep.getDistributionKey().getDetachedKey(db,db.getValues());
 			verifyKey(fakeKey, kv);
 		} else {
 			assertNull(firstStep.getDistributionKey());
@@ -98,9 +98,9 @@ public class ExplicitKeyValueTest extends TransformTest {
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first, statementClass);
-		ExecutionPlan ep = Statement.getExecutionPlan(db,first);
+		RootExecutionPlan ep = Statement.getExecutionPlan(db,first);
 		if (isNoisy())
-			ep.display(db,System.out,null);
+			ep.display(db,db.getValues(),System.out,null);
 		List<HasPlanning> steps = ep.getSequence().getSteps();	
 		if (fakes == null) {
 			assertEquals(steps.size(), 1);
@@ -112,7 +112,7 @@ public class ExplicitKeyValueTest extends TransformTest {
 				DirectExecutionStep des = (DirectExecutionStep)es;
 				DistributionKey kv = des.getDistributionKey();
 				assertNotNull(kv);
-				Map<String,Object> fkv = buildFakeKey(kv.getDetachedKey(db));
+				Map<String,Object> fkv = buildFakeKey(kv.getDetachedKey(db,db.getValues()));
 				assertTrue(fakeSet.contains(fkv));
 			}
 		}

@@ -234,14 +234,15 @@ public class ValueManager {
 		return getValues(sc).getLastInsertId();
 	}
 
-	public void resetForNewPStmtExec(SchemaContext sc, List<Object> params) throws PEException {
+	public ConnectionValues resetForNewPStmtExec(SchemaContext sc, List<Object> params) throws PEException {
 		ConnectionValues cv = basicReset(sc);
 		cv.setParameters(params);		
 		cv.handleAutoincrementValues(sc);
-		handleLateSortedInsert(sc);
+		handleLateSortedInsert(sc,cv);
+		return cv;
 	}
 	
-	public void resetForNewPlan(SchemaContext sc, List<ExtractedLiteral> literalValues) throws PEException {
+	public ConnectionValues resetForNewPlan(SchemaContext sc, List<ExtractedLiteral> literalValues) throws PEException {
 		ConnectionValues cv = basicReset(sc);
 		for(int i = 0; i < literalValues.size(); i++) {
 			IDelegatingLiteralExpression dle = literals.get(i);
@@ -249,7 +250,8 @@ public class ValueManager {
 			cv.setLiteralValue(i, intermediate);
 		}
 		cv.handleAutoincrementValues(sc);
-		handleLateSortedInsert(sc);
+		handleLateSortedInsert(sc,cv);
+		return cv;
 	}	
 
 	private ConnectionValues basicReset(SchemaContext sc) throws PEException {
@@ -262,8 +264,6 @@ public class ValueManager {
 			}
 		}
 		ConnectionValues cv = (values == null ? new ConnectionValues(this,sc.getConnection()) : values.makeCopy(sc.getConnection()));
-		sc.setValues(cv);
-		sc.setValueManager(this);
 		cv.setTenantID(sc.getPolicyContext().getTenantID(false),container);
 		cv.resetTempTables(sc);
 		cv.resetTempGroups();
@@ -277,10 +277,10 @@ public class ValueManager {
 		getValues(sc,false).handleAutoincrementValues(sc);
 	}
 	
-	public void handleLateSortedInsert(SchemaContext sc) throws PEException {
+	public void handleLateSortedInsert(SchemaContext sc,ConnectionValues cv) throws PEException {
 		if (lsi == null) return;
-		List<JustInTimeInsert> computed = lsi.resolve(sc); 
-		getValues(sc,false).setLateSortedInsert(computed);
+		List<JustInTimeInsert> computed = lsi.resolve(sc,cv);
+		cv.setLateSortedInsert(computed);
 	}
 	
 	public List<JustInTimeInsert> getLateSortedInsert(SchemaContext sc) {
@@ -303,5 +303,9 @@ public class ValueManager {
 	
 	public long getCurrentTimestamp(SchemaContext sc) {
 		return getValues(sc).getCurrentTimestamp();
+	}
+	
+	public ConnectionValues getTemplateValues() {
+		return values;
 	}
 }

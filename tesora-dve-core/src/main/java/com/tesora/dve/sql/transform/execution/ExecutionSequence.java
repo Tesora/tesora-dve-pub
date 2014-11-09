@@ -33,6 +33,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.ValueManager;
@@ -46,9 +47,9 @@ public class ExecutionSequence extends ExecutionStep {
 
 	protected LinkedList<HasPlanning> steps;  //NOPMD
 	// backward links, good for getting to the plan during construction
-	protected ExecutionPlan plan;
+	protected RootExecutionPlan plan;
 	
-	public ExecutionSequence(ExecutionPlan p) {
+	public ExecutionSequence(RootExecutionPlan p) {
 		super(null,null,ExecutionType.SEQUENCE);
 		steps = new LinkedList<HasPlanning>();
 		plan = p;
@@ -59,7 +60,7 @@ public class ExecutionSequence extends ExecutionStep {
 		steps.add(es);
 	}
 	
-	public ExecutionPlan getPlan() {
+	public RootExecutionPlan getPlan() {
 		return plan;
 	}
 
@@ -68,7 +69,7 @@ public class ExecutionSequence extends ExecutionStep {
 	}
 	
 	@Override
-	public void display(final SchemaContext sc, final List<String> sb, String indent, final EmitOptions opts) {
+	public void display(final SchemaContext sc, final ConnectionValues cv, final List<String> sb, String indent, final EmitOptions opts) {
 		if (steps.isEmpty()) return;
 		sb.add(indent + sequenceName() + " {");
 		final String subindent = indent + "  ";
@@ -76,7 +77,7 @@ public class ExecutionSequence extends ExecutionStep {
 
 			@Override
 			public void execute(HasPlanning object) {
-				object.display(sc, sb, subindent, opts);
+				object.display(sc, cv, sb, subindent, opts);
 			}
 			
 		});
@@ -84,13 +85,13 @@ public class ExecutionSequence extends ExecutionStep {
 	}
 	
 	@Override
-	public void explain(final SchemaContext sc, final List<ResultRow> rows, final ExplainOptions opts) {
+	public void explain(final SchemaContext sc, final ConnectionValues cv, final List<ResultRow> rows, final ExplainOptions opts) {
 		if (steps.isEmpty()) return;
 		apply(true,new UnaryProcedure<HasPlanning>() {
 
 			@Override
 			public void execute(HasPlanning object) {
-				object.explain(sc, rows, opts);
+				object.explain(sc, cv, rows, opts);
 			}
 			
 		});
@@ -110,25 +111,25 @@ public class ExecutionSequence extends ExecutionStep {
 	}
 	
 	@Override
-	public Long getlastInsertId(final ValueManager vm, final SchemaContext sc) {
+	public Long getlastInsertId(final ValueManager vm, final SchemaContext sc, final ConnectionValues cv) {
 		return getLastExisting(new UnaryFunction<Long, HasPlanning>() {
 
 			@Override
 			public Long evaluate(HasPlanning object) {
-				return object.getlastInsertId(vm,sc);
+				return object.getlastInsertId(vm,sc, cv);
 			}
 			
 		});
 	}
 
 	@Override
-	public Long getUpdateCount(final SchemaContext sc) {
+	public Long getUpdateCount(final SchemaContext sc, final ConnectionValues cv) {
 		final Long[] summed = new Long[1];
 		apply(true, new UnaryProcedure<HasPlanning>() {
 
 			@Override
 			public void execute(HasPlanning object) {
-				Long uc = object.getUpdateCount(sc);
+				Long uc = object.getUpdateCount(sc,cv);
 				if (uc != null) {
 					if (summed[0] == null)
 						summed[0] = uc;
@@ -187,11 +188,12 @@ public class ExecutionSequence extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValues cv)
 			throws PEException {
 		if (steps.isEmpty()) return;
 		for(HasPlanning hp : steps)
-			hp.schedule(opts, qsteps, projection, sc);
+			hp.schedule(opts, qsteps, projection, sc, cv);
 	}
 
 	@Override
