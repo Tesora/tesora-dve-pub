@@ -21,6 +21,7 @@ package com.tesora.dve.tools.aitemplatebuilder;
  * #L%
  */
 
+import java.util.Set;
 import java.util.SortedSet;
 
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
@@ -36,8 +37,9 @@ public final class Broadcast extends FuzzyTableDistributionModel {
 		super(FCL_BLOCK_NAME);
 	}
 
-	public Broadcast(final TableStats match, final SortedSet<Long> sortedCardinalities, final boolean isRowWidthWeightingEnabled) {
-		super(FCL_BLOCK_NAME, match, sortedCardinalities, isRowWidthWeightingEnabled);
+	public Broadcast(final TableStats match, final Set<Long> uniqueOperationFrequencies, final SortedSet<Long> sortedCardinalities,
+			final boolean isRowWidthWeightingEnabled) {
+		super(FCL_BLOCK_NAME, match, uniqueOperationFrequencies, sortedCardinalities, isRowWidthWeightingEnabled);
 	}
 
 	protected Broadcast(final double pcOrderBy, final double pcWrites, final double pcCardinality) {

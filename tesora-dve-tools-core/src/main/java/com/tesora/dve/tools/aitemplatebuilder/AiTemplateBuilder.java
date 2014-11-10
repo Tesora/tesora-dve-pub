@@ -980,8 +980,10 @@ public final class AiTemplateBuilder {
 
 	private void identifyCandidateModels(final Collection<TableStats> tables, final boolean isRowWidthWeightingEnabled) throws Exception {
 		final SortedSet<Long> sortedCardinalities = new TreeSet<Long>();
+		final Set<Long> uniqueOperationFrequencies = new HashSet<Long>();
 		for (final TableStats table : tables) {
 			sortedCardinalities.add(table.getPredictedFutureSize(isRowWidthWeightingEnabled));
+			uniqueOperationFrequencies.add(table.getTotalStatementCount());
 		}
 
 		for (final TableStats table : tables) {
@@ -997,8 +999,8 @@ public final class AiTemplateBuilder {
 						);
 				final List<FuzzyTableDistributionModel> modelsSortedByScore = FuzzyLinguisticVariable
 						.evaluateDistributionModels(ruleWeights,
-								new Broadcast(table, sortedCardinalities, isRowWidthWeightingEnabled),
-								new Range(table, sortedCardinalities, isRowWidthWeightingEnabled));
+								new Broadcast(table, uniqueOperationFrequencies, sortedCardinalities, isRowWidthWeightingEnabled),
+								new Range(table, uniqueOperationFrequencies, sortedCardinalities, isRowWidthWeightingEnabled));
 
 				table.setTableDistributionModel(Collections.max(modelsSortedByScore,
 						FuzzyLinguisticVariable.getScoreComparator()));

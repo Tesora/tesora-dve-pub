@@ -21,15 +21,23 @@ package com.tesora.dve.tools.aitemplatebuilder;
  * #L%
  */
 
+import java.util.Set;
 import java.util.SortedSet;
 
 import com.google.common.collect.ImmutableMap;
+import com.tesora.dve.common.MathUtils;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.StatementType;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 
 public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariable implements TemplateModelItem {
 	
 	public enum Variables implements FlvName {
+		OPERATIONS_FLV_NAME {
+			@Override
+			public String get() {
+				return "operations";
+			}
+		},
 		SORTS_FLV_NAME {
 			@Override
 			public String get() {
@@ -54,30 +62,37 @@ public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariabl
 		super(fclBlockName);
 	}
 
-	protected FuzzyTableDistributionModel(final String fclBlockName, final TableStats match,
-			final SortedSet<Long> sortedCardinalities, final boolean isRowWidthWeightingEnabled) {
+	protected FuzzyTableDistributionModel(final String fclBlockName,
+			final TableStats match,
+			final Set<Long> uniqueOperationFrequencies,
+			final SortedSet<Long> sortedCardinalities,
+			final boolean isRowWidthWeightingEnabled) {
 		super(fclBlockName);
 
 		final long totalOrderBy = match.getStatementCounts(StatementType.ORDERBY);
-		final long totalOperations = Math.max(match.getTotalStatementCount(), 1);
+		final long totalOperations = MathUtils.getOneAtLeast(match.getTotalStatementCount());
 		final double pcOrderBy = FuzzyLinguisticVariable.toPercent(totalOrderBy, totalOperations);
+
+		final double averageNumberOfOperations = MathUtils.getOneAtLeast(MathUtils.mean(uniqueOperationFrequencies));
+		final double pcOperations = FuzzyLinguisticVariable.toPercent(match.getTotalStatementCount(), averageNumberOfOperations);
 
 		final long cardinality = match.getPredictedFutureSize(isRowWidthWeightingEnabled);
 		final double pcCardinality = FuzzyLinguisticVariable.toPercent(
 				CommonRange.findPositionFor(cardinality, sortedCardinalities), sortedCardinalities.size());
 
-		initializeVariables(pcOrderBy, match.getWritePercentage(), pcCardinality);
+		initializeVariables(pcOperations, pcOrderBy, match.getWritePercentage(), pcCardinality);
 	}
 
 	protected FuzzyTableDistributionModel(final String fclBlockName,
 			final double pcOrderBy,
 			final double pcWrites, final double pcCardinality) {
 		super(fclBlockName);
-		initializeVariables(pcOrderBy, pcWrites, pcCardinality);
+		initializeVariables(100.0, pcOrderBy, pcWrites, pcCardinality);
 	}
 
-	private void initializeVariables(final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+	private void initializeVariables(final double pcOperations, final double pcOrderBy, final double pcWrites, final double pcCardinality) {
 		setVariables(ImmutableMap.<FlvName, Double> of(
+				Variables.OPERATIONS_FLV_NAME, pcOperations,
 				Variables.SORTS_FLV_NAME, pcOrderBy,
 				Variables.WRITES_FLV_NAME, pcWrites,
 				Variables.CARDINALITY_FLV_NAME, pcCardinality
