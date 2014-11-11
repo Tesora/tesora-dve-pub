@@ -28,6 +28,7 @@ import java.util.Map;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.schema.SchemaContext;
 
 // due to nested plans, there could be more than one set of connection values
 // for a plan.
@@ -55,5 +56,12 @@ public class ConnectionValuesMap {
 				return me.getValue();
 		}
 		return null;
+	}
+	
+	// testing constructor
+	public ConnectionValuesMap(RootExecutionPlan root, SchemaContext sc) {
+		this();
+		addValues(root,sc.getValues());
+		root.collectNonRootValueTemplates(sc, this);
 	}
 }

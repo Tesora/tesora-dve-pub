@@ -182,5 +182,10 @@ public abstract class ExecutionStep implements HasPlanning {
 	public void visitInExecutionOrder(UnaryProcedure<HasPlanning> proc) {
 		proc.execute(this);
 	}
+
+	@Override
+	public void visitInTestVerificationOrder(UnaryProcedure<HasPlanning> proc) {
+		proc.execute(this);
+	}
 	
 }

@@ -138,6 +138,5 @@ public class TriggerExecutionStep extends ExecutionStep {
 		if (after != null)
 			after.visitInExecutionOrder(proc);
 	}
-	
 
 }

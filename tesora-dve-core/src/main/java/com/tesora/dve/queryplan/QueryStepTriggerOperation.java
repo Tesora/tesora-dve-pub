@@ -21,6 +21,7 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.log4j.Logger;
@@ -67,6 +68,7 @@ public class QueryStepTriggerOperation extends QueryStepOperation {
 				before.execute(childState, DBEmptyTextResultConsumer.INSTANCE);
 			LateBoundConstants targetValues = columnHandlers.onTarget(estate,beforeValues);
 			childState = estate.pushConstants(targetValues);
+			estate.getValues().setRuntimeConstants(Arrays.asList(targetValues.getValues()));
 			actual.execute(childState, resultConsumer);
 			if (after != null) {
 				LateBoundConstants afterValues = columnHandlers.onAfter(targetValues); 

@@ -71,6 +71,7 @@ import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.NestedExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
@@ -123,9 +124,12 @@ public abstract class TransformTest extends TransientSchemaTest {
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first,stmtClass);
-		ExecutionPlan ep = Statement.getExecutionPlan(db,first);
-		ConnectionValuesMap cvm = new ConnectionValuesMap();
-		cvm.addValues(ep, db.getValues());
+		RootExecutionPlan ep = (RootExecutionPlan) Statement.getExecutionPlan(db,first);
+		ConnectionValuesMap cvm = new ConnectionValuesMap(ep,db);
+		if (isNoisy()) {
+			System.out.println("In: '" + in + "'");
+			ep.display(db, cvm, System.out, null);
+		}
 		verifyExecutionPlan(db,cvm,ep,expected);
 		return ep;
 	}
@@ -135,7 +139,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			List<ExpectedStep> expectedExecOrder = new ArrayList<ExpectedStep>();
 			expected.accumulateExecutionOrder(expectedExecOrder);
 			final List<ExecutionStep> actualExecOrder = new ArrayList<ExecutionStep>();
-			toVerify.getSequence().visitInExecutionOrder(new UnaryProcedure<HasPlanning>() {
+			toVerify.getSequence().visitInTestVerificationOrder(new UnaryProcedure<HasPlanning>() {
 
 				@Override
 				public void execute(HasPlanning object) {
@@ -396,6 +400,9 @@ public abstract class TransformTest extends TransientSchemaTest {
 			else
 				printExecutionStepVerify(pc,cvm,containing,tes.getAfterStep(),nesting+1,false,buf);
 			buf.append(")");
+		} else if (hp instanceof NestedExecutionPlan) {
+			NestedExecutionPlan nep = (NestedExecutionPlan) hp;
+			printExecutionPlanVerify(pc,cvm,nep,nesting+1,hasNext,buf);
 		} else {
 			buf.append("null");
 			//			throw new IllegalArgumentException("Unsupported step kind for emit verify check: " + hp.getClass().getName());
@@ -455,8 +462,12 @@ public abstract class TransformTest extends TransientSchemaTest {
 	
 	protected static void printExecutionPlanVerify(SchemaContext pc, ConnectionValuesMap cvm, ExecutionPlan ep) {
 		StringBuilder buf = new StringBuilder();
-		printExecutionStepVerify(pc, cvm, ep, ep.getSequence(),0,false,buf);
+		printExecutionPlanVerify(pc,cvm,ep,0,false,buf);
 		System.out.println(buf.toString());
+	}
+	
+	protected static void printExecutionPlanVerify(SchemaContext pc, ConnectionValuesMap cvm, ExecutionPlan ep, int nesting, boolean hasNext, StringBuilder buf) {
+		printExecutionStepVerify(pc,cvm,ep,ep.getSequence(),nesting,false,buf);
 	}
 	
 	public static class ExpectedSequence extends ExpectedStep {
@@ -876,7 +887,8 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 
 		// no sql
-		protected void verifySQL(SchemaContext sc, ExecutionStep es) {
+		@Override
+		protected void verifySQL(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containing, ExecutionStep es) {
 		}
 
 		@Override
@@ -902,6 +914,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			}
 		}
 
+		/*
 		public void accumulateExecutionOrder(List<ExpectedStep> acc) {
 			if (before != null)
 				before.accumulateExecutionOrder(acc);
@@ -909,7 +922,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			if (after != null)
 				after.accumulateExecutionOrder(acc);
 		}
-
+	*/
 		
 	}
 	

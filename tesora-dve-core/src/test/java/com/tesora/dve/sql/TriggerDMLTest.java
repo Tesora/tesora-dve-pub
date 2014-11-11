@@ -147,9 +147,6 @@ public class TriggerDMLTest extends SchemaTest {
 		
 		conn.execute("insert into targ (subj) values ('boom!')");
 		
-		System.out.println(conn.printResults("select * from targ where id = 1"));
-		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(8)) from targ order by id"));
-		
 		conn.assertResults("select * from targ where id = 1",
 				br(nr,1,"boom!"));
 		conn.assertResults("select * from alog where id = 1",

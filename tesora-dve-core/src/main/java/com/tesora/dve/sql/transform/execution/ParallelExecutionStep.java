@@ -200,4 +200,11 @@ public class ParallelExecutionStep extends ExecutionStep {
 		for(ExecutionSequence es : parallel)
 			es.visitInExecutionOrder(proc);		
 	}
+	
+	@Override
+	public void visitInTestVerificationOrder(UnaryProcedure<HasPlanning> proc) {
+		for(ExecutionSequence es : parallel)
+			es.visitInTestVerificationOrder(proc);		
+	}
+
 }

@@ -244,4 +244,12 @@ public class ExecutionSequence extends ExecutionStep {
 			hp.visitInExecutionOrder(proc);
 	}
 
+	@Override
+	public void visitInTestVerificationOrder(UnaryProcedure<HasPlanning> proc) {
+		if (steps.isEmpty()) return;
+		for(HasPlanning hp : steps)
+			hp.visitInTestVerificationOrder(proc);
+	}
+
+	
 }

@@ -87,6 +87,11 @@ public abstract class ExecutionPlan implements HasPlanning {
 	}
 
 	@Override
+	public void visitInTestVerificationOrder(UnaryProcedure<HasPlanning> proc) {
+		steps.visitInTestVerificationOrder(proc);
+	}
+	
+	@Override
 	public void prepareForCache() {
 		steps.prepareForCache();
 	}

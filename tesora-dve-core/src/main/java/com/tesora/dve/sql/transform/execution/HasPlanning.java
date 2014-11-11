@@ -57,4 +57,6 @@ public interface HasPlanning {
 	void prepareForCache();
 	
 	void visitInExecutionOrder(UnaryProcedure<HasPlanning> proc);	
+	
+	void visitInTestVerificationOrder(UnaryProcedure<HasPlanning> proc);
 }
