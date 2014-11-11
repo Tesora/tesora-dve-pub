@@ -30,6 +30,7 @@ import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.ValueManager;
@@ -61,9 +62,15 @@ public class NestedExecutionPlan extends ExecutionPlan {
 			throws PEException {
 		// we're going to wrap our entire plan inside a special qso that caches our (mostly constant) connection values
 		List<QueryStepOperation> mySteps = new ArrayList<QueryStepOperation>();
-		super.schedule(new ExecutionPlanOptions(),mySteps,null,sc,cv,this);
-		QueryStepOperation flattened = collapseOperationList(mySteps);
-		qsteps.add(new QueryStepNestedOperation(flattened,this));
+		ParserOptions was = sc.getOptions();
+		try {
+			sc.setOptions(was.setNestedPlan());
+			super.schedule(new ExecutionPlanOptions(),mySteps,null,sc,cv,this);
+			QueryStepOperation flattened = collapseOperationList(mySteps);
+			qsteps.add(new QueryStepNestedOperation(flattened,this));
+		} finally {
+			sc.setOptions(was);
+		}
 	}
 	
 }

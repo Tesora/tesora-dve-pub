@@ -133,7 +133,7 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 
 		// now, we're going to build the single row insert
 		InsertIntoValuesStatement singleRowInsert = buildOneTupleInsert(context, intoTable, rowTableColumnOrder); 
-
+		
 		FeatureStep singleRowStep = 
 				InsertIntoValuesPlanner.buildInsertIntoValuesFeatureStep(context,this,singleRowInsert);
 
@@ -254,21 +254,11 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			PETable intoTable, List<ColumnKey> rowTableColumnOrder) throws PEException {
 		final TableInstance nti = new TableInstance(intoTable,intoTable.getName(),
 				null, context.getContext().getNextTable(),false);
-		List<ColumnKey> flattenedColumns = new ArrayList<ColumnKey>();
-		for(ColumnKey ck : rowTableColumnOrder) {
-			PEColumn pec = ck.getPEColumn();
-			if (pec.isAutoIncrement()) {
-				TriggerTableKey ttk = (TriggerTableKey) ck.getTableKey();
-				if (ttk.getTime() == TriggerTime.BEFORE)
-					continue;
-			}
-			flattenedColumns.add(ck);
-		}
 		final HashMap<ColumnKey,Integer> rowOffsets = new HashMap<ColumnKey,Integer>();
 		for(ColumnKey ck : rowTableColumnOrder) 
 			rowOffsets.put(ck,rowOffsets.size());
 		
-		List<ExpressionNode> colSpec = Functional.apply(flattenedColumns, new UnaryFunction<ExpressionNode,ColumnKey>() {
+		List<ExpressionNode> colSpec = Functional.apply(rowTableColumnOrder, new UnaryFunction<ExpressionNode,ColumnKey>() {
 
 			@Override
 			public ExpressionNode evaluate(ColumnKey object) {
@@ -277,7 +267,7 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			 
 		});
 
-		List<ExpressionNode> values = Functional.apply(flattenedColumns, new UnaryFunction<ExpressionNode,ColumnKey>() {
+		List<ExpressionNode> values = Functional.apply(rowTableColumnOrder, new UnaryFunction<ExpressionNode,ColumnKey>() {
 
 			@Override
 			public ExpressionNode evaluate(ColumnKey object) {

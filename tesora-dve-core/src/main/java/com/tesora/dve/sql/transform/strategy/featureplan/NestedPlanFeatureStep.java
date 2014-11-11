@@ -24,6 +24,7 @@ package com.tesora.dve.sql.transform.strategy.featureplan;
 import java.util.HashSet;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
@@ -49,9 +50,16 @@ public class NestedPlanFeatureStep extends FeatureStep {
 		// so for this we build a new nested plan and add that to the sequence
 		// and also register ourselves with the parent plan
 		NestedExecutionPlan nep = new NestedExecutionPlan(vm);
-		nested.schedule(sc, nep.getSequence(), new HashSet<FeatureStep>());
-		es.append(nep);
-		es.getPlan().addNestedPlan(nep);
+		ParserOptions was = sc.getContext().getOptions();
+		try {
+			ParserOptions now = was.setNestedPlan().setTriggerPlanning();
+			sc.getContext().setOptions(now);
+			nested.schedule(sc, nep.getSequence(), new HashSet<FeatureStep>());
+			es.append(nep);
+			es.getPlan().addNestedPlan(nep);
+		} finally {
+			sc.getContext().setOptions(was);
+		}
 	}
 
 	@Override

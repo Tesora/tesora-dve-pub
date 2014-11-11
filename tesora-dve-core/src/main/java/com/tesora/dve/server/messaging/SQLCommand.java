@@ -172,7 +172,7 @@ public class SQLCommand implements Serializable {
 	}
 
 	public SQLCommand getLateResolvedCommand(ExecutionState estate) {
-		final SQLCommand newCommand = new SQLCommand(sql.resolveLateConstants(estate.getBoundConstants()));
+		final SQLCommand newCommand = new SQLCommand(sql.resolveLateConstants(estate.getValues()));
 		return copyFields(newCommand);
 	}
 	

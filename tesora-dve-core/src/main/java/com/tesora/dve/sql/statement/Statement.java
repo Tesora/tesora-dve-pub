@@ -150,7 +150,9 @@ public abstract class Statement extends StatementNode {
 		if (opts == null)
 			opts = EmitOptions.GENERIC_SQL;
 		else
-			opts = opts.addGenericSQL();		
+			opts = opts.addGenericSQL();	
+		if (sc.getOptions() != null && (sc.getOptions().isNestedPlan() || sc.getOptions().isTriggerPlanning()))
+			opts = opts.addTriggerBody();
 		emitter.setOptions(opts);
 		emitter.startGenericCommand();
 		StringBuilder buf = new StringBuilder();

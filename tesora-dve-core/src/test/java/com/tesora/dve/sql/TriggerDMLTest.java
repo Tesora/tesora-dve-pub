@@ -231,4 +231,66 @@ public class TriggerDMLTest extends SchemaTest {
 		conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.2));
 	}
 
+	// specifically about handling autoincrements in trigger bodies
+	@Test
+	public void testF() throws Throwable {
+		conn.execute("create range arange (int) persistent group " + checkDDL.getPersistentGroup().getName());
+		conn.execute("create table targ (id int auto_increment, diffs varchar(64), primary key (id)) range distribute on (id) using arange");
+		conn.execute("create table subj (id int auto_increment, firstname varchar(16), lastname varchar(16), primary key (id)) range distribute on (id) using arange");
+	
+		// stuff I want to test:
+		// before insert: test that autoinc is generated in body
+		// after insert: test that target autoinc is propagated to body
+		// before update: test that body generates autoincs
+		
+		conn.execute("create trigger `subj_bef_insert` before insert on `subj` for each row "
+				+"begin insert into targ (diffs) values (concat('bef_ins-f:',NEW.firstname,',l:',NEW.lastname,',id:',NEW.ID)); END;");
+		
+		conn.execute("insert into subj (firstname,lastname) values ('abraham','lincoln'),('james','madison')");
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from subj order by id"));
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from targ order by id"));
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from subj order by id",
+				br(nr,1,"abraham","lincoln","check1",
+				   nr,2,"james","madison","check2"));
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from targ order by id",
+				br(nr,1,"bef_ins-f:abraham,l:lincoln,id:0","check1",
+				   nr,2,"bef_ins-f:james,l:madison,id:0","check2"));
+
+		conn.execute("drop trigger subj_bef_insert");
+		conn.execute("truncate subj");
+		conn.execute("truncate targ");
+		
+		conn.execute("create trigger `subj_aft_insert` after insert on `subj` for each row "
+				+"begin insert into targ (id,diffs) values (NEW.ID,concat('aft_ins-f:',NEW.firstname,',l:',NEW.lastname,',id:',NEW.ID)); END;");
+		conn.execute("insert into subj (firstname,lastname) values ('abraham','lincoln'),('james','madison')");
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from subj order by id"));
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from targ order by id"));
+
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from subj order by id",
+				br(nr,1,"abraham","lincoln","check1",
+				   nr,2,"james","madison","check2"));
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from targ order by id",
+				br(nr,1,"aft_ins-f:abraham,l:lincoln,id:1","check1",
+				   nr,2,"aft_ins-f:james,l:madison,id:2","check2"));
+
+		conn.execute("create trigger `subj_bef_update` before update on `subj` for each row "
+				+"begin insert into targ (diffs) values (concat('bef_update_a-f:',OLD.firstname,'/',NEW.firstname)), (concat('bef_update_b-l:',OLD.lastname,'/',NEW.lastname)); END;");
+
+		conn.execute("update subj set lastname = 'brown' where id = 2");
+
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from subj order by id"));
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from targ order by id"));
+		
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from subj order by id",
+				br(nr,1,"abraham","lincoln","check1",
+				   nr,2,"james","brown","check2"));
+
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from targ order by id",
+				br(nr,1,"aft_ins-f:abraham,l:lincoln,id:1","check1",
+				   nr,2,"aft_ins-f:james,l:madison,id:2","check2",
+				   nr,3,"bef_update_a-f:james/james","check0",
+				   nr,4,"bef_update_b-l:madison/brown","check1"));
+		
+	}
+	
 }

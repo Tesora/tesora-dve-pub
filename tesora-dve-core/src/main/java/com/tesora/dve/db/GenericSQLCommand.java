@@ -47,6 +47,7 @@ import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.TempTable;
+import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
@@ -655,15 +656,13 @@ public class GenericSQLCommand {
 				} else {
 					resolvedFragments.replace(oe, new CommandFragment(this.encoding, Tokens.NULL));
 				}
-			}
+			} 
 		}
 
 		return new GenericSQLCommand(this.encoding, resolvedFragments, this.type, this.isUpdate, this.hasLimit);
 	}
 
-	public GenericSQLCommand resolveLateConstants(LateBoundConstants lbc) {
-		if (lbc.isEmpty())
-			return this;
+	public GenericSQLCommand resolveLateConstants(ConnectionValues cv) {
 		if (!this.commandFragments.hasIndexEntries()) {
 			return this;
 		}
@@ -674,9 +673,13 @@ public class GenericSQLCommand {
 		for (final OffsetEntry oe : resolvedFragments.viewIndexEntries()) {
 			if (oe.getKind() == EntryKind.LATE_CONSTANT) {
 				final LateBindingConstantOffsetEntry lbcoe = (LateBindingConstantOffsetEntry) oe;
-				String value = emitter.emitConstantExprValue(lbcoe.getExpression(), lbc.getConstantValue(lbcoe.getExpression().getPosition()));
+				String value = emitter.emitConstantExprValue(lbcoe.getExpression(), lbcoe.getExpression().getValue(cv)); 
 				resolvedFragments.replace(oe, new CommandFragment(this.encoding,value));
-			} 		
+			} else if (oe.getKind() == EntryKind.LATE_AUTOINC) {
+				final LateAutoincOffsetEntry laoe = (LateAutoincOffsetEntry) oe;
+				String value = emitter.emitConstantExprValue(laoe.getLiteral(), laoe.getLiteral().getValue(cv));
+				resolvedFragments.replace(oe, new CommandFragment(this.encoding,value));
+			}
 		}
 
 		return new GenericSQLCommand(this.encoding, resolvedFragments, this.type, this.isUpdate, this.hasLimit);		
@@ -797,7 +800,8 @@ public class GenericSQLCommand {
 		LATEVAR(false),
 		PRETTY(false),
 		RANDOM_SEED(true),
-		LATE_CONSTANT(false);
+		LATE_CONSTANT(false),
+		LATE_AUTOINC(false);
 
 		private final boolean late;
 
@@ -856,6 +860,26 @@ public class GenericSQLCommand {
 
 	}
 
+	public static class LateAutoincOffsetEntry extends OffsetEntry {
+		
+		protected final IAutoIncrementLiteralExpression literal;
+		
+		public LateAutoincOffsetEntry(int off, String tok, IAutoIncrementLiteralExpression expr) {
+			super(off,tok);
+			this.literal = expr;
+		}
+		
+		@Override
+		public EntryKind getKind() {
+			return EntryKind.LATE_AUTOINC;
+		}
+		
+		public IAutoIncrementLiteralExpression getLiteral() {
+			return this.literal;
+		}
+		
+	}
+	
 	public static class PrettyOffsetEntry extends OffsetEntry {
 
 		private final short indent;
@@ -1006,6 +1030,11 @@ public class GenericSQLCommand {
 
 		public Builder withLiteral(int offset, String tok, DelegatingLiteralExpression dle) {
 			this.entries.add(new LiteralOffsetEntry(offset, tok, dle.getCacheExpression()));
+			return this;
+		}
+		
+		public Builder withLateAutoinc(int offset, String tok, IAutoIncrementLiteralExpression ile) {
+			this.entries.add(new LateAutoincOffsetEntry(offset, tok, (IAutoIncrementLiteralExpression) ile.getCacheExpression()));
 			return this;
 		}
 

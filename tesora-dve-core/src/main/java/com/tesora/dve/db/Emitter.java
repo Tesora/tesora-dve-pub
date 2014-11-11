@@ -121,6 +121,8 @@ import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.VariableScopeKind;
+import com.tesora.dve.sql.schema.cache.ConstantType;
+import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
@@ -1485,9 +1487,14 @@ public abstract class Emitter {
 		}
 		
 		DelegatingLiteralExpression dle = null;
-		if (le instanceof DelegatingLiteralExpression)
+		boolean autoinc = false;
+		if (le instanceof DelegatingLiteralExpression) {
 			dle = (DelegatingLiteralExpression) le;
+			if (hasOptions() && getOptions().isTriggerBody() && dle.getConstantType() == ConstantType.AUTOINCREMENT_LITERAL)
+				autoinc = true;
+		}
 		boolean deltoken = (dle != null) && this.hasOptions() && getOptions().isGenericSQL();
+		
 		
 		int offset = -1;
 		if (dle != null)
@@ -1512,8 +1519,12 @@ public abstract class Emitter {
 		}
 		
 		buf.append(tok);
-		if (dle != null) 
-			builder.withLiteral(offset, tok, dle);
+		if (dle != null) {
+			if (autoinc)
+				builder.withLateAutoinc(offset, tok, (IAutoIncrementLiteralExpression) dle);
+			else
+				builder.withLiteral(offset, tok, dle);
+		}
 
 	}
 		
@@ -2606,13 +2617,14 @@ public abstract class Emitter {
 			return hasSetting(EmitOption.CATALOG);
 		}
 		
-		public EmitOptions addResolveLateConstants() {
-			return this.add(EmitOption.RESOLVE_LATE_CONSTANTS,Boolean.TRUE);
+		public EmitOptions addTriggerBody() {
+			return this.add(EmitOption.TRIGGER_BODY,Boolean.TRUE);
 		}
 		
-		public boolean isResolveLateConstants() {
-			return hasSetting(EmitOption.RESOLVE_LATE_CONSTANTS);
+		public boolean isTriggerBody() {
+			return hasSetting(EmitOption.TRIGGER_BODY);
 		}
+		
 	}
 	
 	public enum EmitOption {
@@ -2642,8 +2654,8 @@ public abstract class Emitter {
 		CATALOG,
 		// if set, then all table refs should be fully qualified - used in storage gen add
 		QUALIFIED_TABLES,
-		// trigger support - if set then late constants should resolve, otherwise they should not
-		RESOLVE_LATE_CONSTANTS
+		// if set, we are generating for a trigger body
+		TRIGGER_BODY
 	}
 	
 	public static class EmitContext {
