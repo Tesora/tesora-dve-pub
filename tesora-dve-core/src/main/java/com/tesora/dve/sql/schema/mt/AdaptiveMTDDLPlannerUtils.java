@@ -92,6 +92,7 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -760,7 +761,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			ds.plan(sc,es, sc.getBehaviorConfiguration());
 			
 			List<QueryStepOperation> allsteps = new ArrayList<QueryStepOperation>();
-			es.schedule(null, allsteps, null, sc, sc.getValues());
+			es.schedule(null, allsteps, null, sc, new IdentityConnectionValuesMap(sc.getValues()),null);
 			if (isCanonical)
 				canonicalStep = allsteps.get(0);
 			return allsteps;
@@ -1017,7 +1018,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			ExecutionSequence es = new ExecutionSequence(null);
 			DeleteStatement ds = AdaptiveMultitenantSchemaPolicyContext.buildTenantDeleteFromTableStatement(sc, actualScope.getTable(sc), actualScope);
 			ds.plan(sc,es, sc.getBehaviorConfiguration());
-			es.schedule(null, dml, null, sc, sc.getValues());
+			es.schedule(null, dml, null, sc, new IdentityConnectionValuesMap(sc.getValues()),null);
 			
 			sc.beginSaveContext();
 			try {
@@ -1192,8 +1193,9 @@ public final class AdaptiveMTDDLPlannerUtils {
 					new SessionExecutionStep(enclosing.getDatabase(sc),enclosing.getStorageGroup(sc),dropCurrentSQL);
 			SessionExecutionStep add =
 					new SessionExecutionStep(enclosing.getDatabase(sc),enclosing.getStorageGroup(sc),addNewSQL);
-			drop.schedule(null, steps, null, sc, sc.getValues());
-			add.schedule(null, steps, null, sc, sc.getValues());
+			IdentityConnectionValuesMap cvm = new IdentityConnectionValuesMap(sc.getValues());
+			drop.schedule(null, steps, null, sc, cvm, null);
+			add.schedule(null, steps, null, sc, cvm, null);
 		}
 
 		@Override
@@ -1295,7 +1297,7 @@ public final class AdaptiveMTDDLPlannerUtils {
 			
 			SessionExecutionStep ses = new SessionExecutionStep(finalDefinition.getPEDatabase(sc),finalDefinition.getStorageGroup(sc),
 					modded.getSQL(sc));
-			ses.schedule(null, ddl, null, sc, sc.getValues());
+			ses.schedule(null, ddl, null, sc, new IdentityConnectionValuesMap(sc.getValues()),null);
 			if (isCanonical)
 				canonicalStep = ddl.get(0);
 		}

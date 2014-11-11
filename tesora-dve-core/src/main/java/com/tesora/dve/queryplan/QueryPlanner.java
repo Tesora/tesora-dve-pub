@@ -41,6 +41,7 @@ import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.PlanningResult;
 import com.tesora.dve.sql.parser.PreparePlanningResult;
 import com.tesora.dve.sql.parser.SqlStatistics;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
@@ -48,6 +49,7 @@ import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.CachedPreparedStatement;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils;
 import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.util.Pair;
@@ -197,10 +199,10 @@ public class QueryPlanner {
 	private static QueryPlan buildPlan(PlanningResult planningResult,
 			SSConnection connMgr, SchemaContext sc) throws PEException {
 		if (planningResult == null) {
-			return new QueryPlan();
+			return new QueryPlan((ConnectionValuesMap)null);
 		}
 		final List<RootExecutionPlan> plans = planningResult.getPlans();
-		final QueryPlan plan = new QueryPlan();
+		final QueryPlan plan = new QueryPlan(planningResult.getValues());
 		plan.setInputStatement(planningResult.getOriginalSQL());
 		final ExecutionPlanOptions opts = new ExecutionPlanOptions();
 		final int lastExecutionPlanIndex = plans.size() - 1;
@@ -215,7 +217,7 @@ public class QueryPlanner {
 				plan.addStep(qs);
 			}
 
-			Long anyUpdate = ep.getUpdateCount(sc,planningResult.getValues());
+			Long anyUpdate = ep.getUpdateCount(sc,planningResult.getValues().getRootValues());
 			if (anyUpdate != null) 
 				accUpdateCount = anyUpdate;
 			

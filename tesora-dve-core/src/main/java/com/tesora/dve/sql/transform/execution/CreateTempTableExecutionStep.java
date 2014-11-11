@@ -48,10 +48,11 @@ public class CreateTempTableExecutionStep extends ExecutionStep {
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv) throws PEException {
+			ConnectionValuesMap cvm, ExecutionPlan containing) throws PEException {
 		// we need to persist out the table each time rather than caching it due to the generated names.  avoid leaking
 		// persistent entities by using a new ddl context.
 		SchemaContext tsc = SchemaContext.makeMutableIndependentContext(sc);
+		ConnectionValues cv = cvm.getValues(containing);
 		// set the values so that we get the updated table name
 		tsc.setValues(cv);
 		UserTable ut = theTable.getPersistent(tsc);
@@ -60,7 +61,7 @@ public class CreateTempTableExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 		buf.add("EXPLICIT TEMP TABLE: " +	Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(sc, sc.getValues(), theTable));
 	}
 

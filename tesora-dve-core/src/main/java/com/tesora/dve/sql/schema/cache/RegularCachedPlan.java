@@ -26,7 +26,6 @@ import java.util.List;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.parser.ExtractedLiteral;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RebuiltPlan;
 
 public interface RegularCachedPlan extends CachedPlan {

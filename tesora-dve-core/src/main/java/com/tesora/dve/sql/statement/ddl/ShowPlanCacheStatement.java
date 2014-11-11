@@ -117,7 +117,7 @@ public class ShowPlanCacheStatement extends SchemaQueryStatement {
 				throw new SchemaException(Pass.PLANNER, "Unable to build show plan", pe);
 			}
 			ArrayList<ResultRow> planRows = new ArrayList<ResultRow>();
-			rp.getEp().explain(sc, rp.getBoundValues(), planRows, opts);
+			rp.getEp().explain(sc, rp.getBoundValues(), rp.getEp(), planRows, opts);
 			for(ResultRow rr : planRows) {
 				ResultRow nr = new ResultRow();
 				nr.addResultColumn(dbName);

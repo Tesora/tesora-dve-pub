@@ -34,6 +34,8 @@ import com.tesora.dve.common.logutil.LogSubject;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.transform.execution.LateBindingUpdateCountFilter.RuntimeUpdateCounter;
 
@@ -60,6 +62,7 @@ public class QueryPlan implements LogSubject {
 
 
     QueryStepOperation root;
+    final ConnectionValuesMap cv;
     
 	SSConnection ssCon;
 	
@@ -77,10 +80,17 @@ public class QueryPlan implements LogSubject {
 	/**
 	 * Constructs an empty <b>QueryPlan</b>
 	 */
+	public QueryPlan(ConnectionValuesMap cv) {
+		this.cv = cv;
+	}
+	
+	// compatibility constructor
 	public QueryPlan() {
+		this((ConnectionValuesMap)null);
 	}
 	
 	public QueryPlan(QueryStepOperation op) throws PEException {
+		this();
 		addStep(op);
 	}
 	
@@ -145,7 +155,7 @@ public class QueryPlan implements LogSubject {
 		beforeLogger.end();
         preStep.end();
 		try {
-			root.execute(new ExecutionState(ssCon1), resultConsumer);
+			root.execute(new ExecutionState(ssCon1,cv), resultConsumer);
 			if (trueUpdateCount != null) 
 				resultConsumer.setNumRowsAffected(trueUpdateCount);
 			// for certain operations we have to accumulate the update count from dependent steps (i.e. REPLACE INTO)

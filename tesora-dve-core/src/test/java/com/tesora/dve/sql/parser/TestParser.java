@@ -51,9 +51,10 @@ import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.ddl.DDLStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.statement.session.SessionStatement;
-import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.standalone.PETest;
 
 public abstract class TestParser {
@@ -243,12 +244,12 @@ public abstract class TestParser {
 			for(Statement s : stmts) {
 				CorrectnessVisitor.verifyCorrectness(s);
 				features.visit(s);
-				RootExecutionPlan ep = Statement.getExecutionPlan(tee.getPersistenceContext(),s);
+				ExecutionPlan ep = Statement.getExecutionPlan(tee.getPersistenceContext(),s);
 				boolean first = true;
 				// make sure that we get sql back out without a problem!
 				for(HasPlanning hp : ep.getSequence().getSteps()) {
 					ExecutionStep es = (ExecutionStep) hp;
-					String sql = es.getSQL(tee.getPersistenceContext(),tee.getPersistenceContext().getValues(),null);
+					String sql = es.getSQL(tee.getPersistenceContext(),new IdentityConnectionValuesMap(tee.getPersistenceContext().getValues()),ep,null);
 					if ("".equals(sql) || sql == null)
 						fail("No sql generated");
 					if (first)

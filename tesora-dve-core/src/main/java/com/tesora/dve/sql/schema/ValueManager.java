@@ -22,8 +22,10 @@ package com.tesora.dve.sql.schema;
  */
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -108,6 +110,7 @@ public class ValueManager {
 	public ConnectionValues getValues(SchemaContext sc, boolean check) {
 		ConnectionValues cv = sc.getValues();
 		if (cv == null) {
+			ConnectionValues was = values;
 			values = new ConnectionValues(this,sc.getConnection());
 			cv = values;
 			sc.setValues(values);
@@ -254,6 +257,17 @@ public class ValueManager {
 		return cv;
 	}	
 
+	public ConnectionValues resetForNewNestedPlan(SchemaContext sc) throws PEException {
+		ConnectionValues cv = basicReset(sc);
+		return cv;
+	}
+
+	public void resetForRuntimePlan(SchemaContext sc, ConnectionValues cv, LateBoundConstants rtc) throws PEException {
+		cv.setRuntimeConstants(Arrays.asList(rtc.getValues()));
+		cv.handleAutoincrementValues(sc);
+		handleLateSortedInsert(sc,cv);
+	}
+	
 	private ConnectionValues basicReset(SchemaContext sc) throws PEException {
 		SchemaCacheKey<PEContainer> container = null;
 		if (sc.getPolicyContext().isContainerContext()) {

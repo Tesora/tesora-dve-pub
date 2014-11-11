@@ -44,8 +44,9 @@ import com.tesora.dve.sql.statement.dml.UpdateStatement;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
-import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.TestName;
 import com.tesora.dve.sql.util.TimestampVariableTestUtils;
@@ -379,7 +380,7 @@ public class UpdateTransformTest extends TransformTest {
 		tsVarSetTest(dbMulti, "delete from " + tableName + " where unix_timestamp(ts) < unix_timestamp()", DeleteStatement.class, true, descKern + 12);
 	}
 
-	protected RootExecutionPlan tsVarSetTest(SchemaContext db, String in,
+	protected ExecutionPlan tsVarSetTest(SchemaContext db, String in,
 			Class<?> stmtClass, boolean expected, String test) throws Exception {
 		List<Statement> stmts = parse(db, in);
 		assertEquals(stmts.size(), 1);
@@ -388,10 +389,10 @@ public class UpdateTransformTest extends TransformTest {
 		assertTrue("Expected timestamp variable to be set to " + expected + " in " + test + " for stmt " + first.getSQL(db),
 				((DMLStatement) first).getDerivedInfo()
 						.doSetTimestampVariable() == expected);
-		RootExecutionPlan ep = Statement.getExecutionPlan(db,first);
+		ExecutionPlan ep = Statement.getExecutionPlan(db,first);
 		if (isNoisy()) {
 			System.out.println("In: '" + in + "'");
-			ep.display(db,db.getValues(),System.out,null);
+			ep.display(db,new IdentityConnectionValuesMap(db.getValues()),System.out,null);
 		}
 		return ep;
 	}

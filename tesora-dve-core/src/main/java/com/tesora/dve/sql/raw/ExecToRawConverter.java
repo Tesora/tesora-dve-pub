@@ -57,7 +57,7 @@ import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.transform.execution.AbstractProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
-import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
@@ -67,18 +67,18 @@ import com.tesora.dve.sql.util.UnaryProcedure;
 
 public final class ExecToRawConverter {
 
-	public static IntermediateResultSet convertForRawExplain(SchemaContext sc, RootExecutionPlan ep, Statement orig, String origSQL) {
+	public static IntermediateResultSet convertForRawExplain(SchemaContext sc, ExecutionPlan ep, Statement orig, String origSQL) {
 		return RawUtils.buildRawExplainResults(convert(sc, ep,orig,origSQL));
 	}
 
-	public static Rawplan convert(SchemaContext sc, RootExecutionPlan ep, Statement orig, String origSQL) {
+	public static Rawplan convert(SchemaContext sc, ExecutionPlan ep, Statement orig, String origSQL) {
 		if (origSQL == null)
 			throw new SchemaException(Pass.PLANNER,"Raw plan conversion requires original sql");
 		ExecToRawConverter c = new ExecToRawConverter(sc, ep,orig,origSQL);
 		return c.getRaw();
 	}
 	
-	private final RootExecutionPlan thePlan;
+	private final ExecutionPlan thePlan;
 	private final String originalSQL;
 	private final SchemaContext sc;
 
@@ -87,7 +87,7 @@ public final class ExecToRawConverter {
 	private HashMap<IDelegatingLiteralExpression, ParameterType> parameters;
 	private LinkedHashMap<PEStorageGroup,DynamicGroupType> dynGroups;
 	
-	public ExecToRawConverter(SchemaContext pc, RootExecutionPlan ep, Statement orig, String origSQL) {
+	public ExecToRawConverter(SchemaContext pc, ExecutionPlan ep, Statement orig, String origSQL) {
 		raw = new Rawplan();
 		thePlan = ep;
 		sc = pc;

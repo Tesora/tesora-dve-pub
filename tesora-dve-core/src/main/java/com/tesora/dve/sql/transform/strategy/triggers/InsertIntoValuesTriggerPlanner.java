@@ -43,7 +43,9 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TempTableInstance;
 import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
+import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEColumn;
+import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
 import com.tesora.dve.sql.schema.TempTable;
@@ -61,6 +63,8 @@ import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilt
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder;
 import com.tesora.dve.sql.transform.execution.CreateTempTableExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.ExecutionStep;
+import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.sql.transform.execution.TriggerExecutionStep;
 import com.tesora.dve.sql.transform.strategy.ExecutionCost;
 import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
@@ -321,10 +325,10 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			populateStep.schedule(sc,es,scheduled);
 			TriggerExecutionStep step = new TriggerExecutionStep(onTable.getPEDatabase(sc.getContext()),
 					onTable.getStorageGroup(sc.getContext()),
-					buildSubSequence(sc,actualStep,es.getPlan()),
+					(ExecutionStep)buildSubSequence(sc,actualStep,es.getPlan()),
 					(beforeStep == null ? null : buildSubSequence(sc,beforeStep,es.getPlan())),
 					(afterStep == null ? null : buildSubSequence(sc,afterStep,es.getPlan())),
-					buildSubSequence(sc,rowQuery,es.getPlan()),
+					(ExecutionStep)buildSubSequence(sc,rowQuery,es.getPlan()),
 					handlers);
 			es.append(step);
 		}

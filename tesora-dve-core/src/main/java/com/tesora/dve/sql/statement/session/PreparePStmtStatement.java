@@ -38,6 +38,7 @@ import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -60,7 +61,7 @@ public class PreparePStmtStatement extends PStmtStatement {
 		final PreparePlanningResult prepResult = 
 				(PreparePlanningResult) InvokeParser.preparePlan(indep, new InitialInputState(stmt), sc.getOptions(), getName().get());
 		final String pstmtId = getName().get();
-		final ConnectionValues cv = prepResult.getValues();
+		final ConnectionValuesMap cvm = prepResult.getValues();
 
 		// the effective group is the one from the embedded plan
 		final RootExecutionPlan ep = prepResult.getPlans().get(0);
@@ -73,7 +74,7 @@ public class PreparePStmtStatement extends PStmtStatement {
 					DBResultConsumer resultConsumer) throws Throwable {
 				// convert to a plan
 				SSConnection ssCon = estate.getConnection();
-				List<QueryStepOperation> steps = ep.schedule(new ExecutionPlanOptions(), ssCon, indep,cv);
+				List<QueryStepOperation> steps = ep.schedule(new ExecutionPlanOptions(), ssCon, indep,cvm);
 				QueryStepOperation qso = steps.get(0);
 				MysqlPrepareStatementDiscarder discarder = new MysqlPrepareStatementDiscarder();
 				qso.executeSelf(estate, wg, discarder);

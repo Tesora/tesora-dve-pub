@@ -64,7 +64,7 @@ public class DDLQueryExecutionStep extends ExecutionStep {
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
 		if (populatedResults != null) {
 			qsteps.add(new QueryStepAdhocResultSetOperation(populatedResults));
@@ -78,11 +78,11 @@ public class DDLQueryExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 	}
 
 	@Override
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+	public void display(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
 		buf.add(indent + getExecutionType().name() + " schema query " + tag);
 	}
 

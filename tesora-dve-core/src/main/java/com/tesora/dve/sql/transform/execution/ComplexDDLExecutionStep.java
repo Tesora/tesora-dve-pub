@@ -51,10 +51,10 @@ public class ComplexDDLExecutionStep extends CatalogModificationExecutionStep {
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
 		QueryStepDDLGeneralOperation qso = null;
-		StorageGroup sg = getStorageGroup(sc,cv);
+		StorageGroup sg = getStorageGroup(sc,cvm.getValues(containing));
 		if (cb instanceof NestedOperationDDLCallback) {
 			qso = new QueryStepDDLNestedOperation(sg,getPersistentDatabase(),(NestedOperationDDLCallback)cb);
 		} else {

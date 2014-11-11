@@ -34,7 +34,7 @@ import com.tesora.dve.sql.schema.SchemaContext;
 
 public class UpdateExecutionSequence extends ExecutionSequence {
 
-	public UpdateExecutionSequence(RootExecutionPlan p) {
+	public UpdateExecutionSequence(ExecutionPlan p) {
 		super(p);
 	}
 
@@ -45,11 +45,12 @@ public class UpdateExecutionSequence extends ExecutionSequence {
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
 		if (steps.isEmpty()) return;
 		ArrayList<QueryStepOperation> mine = new ArrayList<QueryStepOperation>();
 		// can only be used if they all use the same storage group
+		ConnectionValues cv = cvm.getValues(containing);
 		StorageGroup sg = null;
 		for(HasPlanning hp : steps) {
 			if (hp instanceof ExecutionStep) {
@@ -59,7 +60,7 @@ public class UpdateExecutionSequence extends ExecutionSequence {
 				else if (!sg.equals(es.getStorageGroup(sc,cv)))
 					throw new PEException("UpdateExecutionSequence created with multiple groups");
 			}
-			hp.schedule(opts, mine, projection, sc, cv);
+			hp.schedule(opts, mine, projection, sc, cvm,containing);
 		}
 		QueryStepUpdateSequenceOperation uo = new QueryStepUpdateSequenceOperation(sg);
 		for(QueryStepOperation qs : mine) {

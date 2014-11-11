@@ -31,6 +31,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PERawPlan;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.Pair;
@@ -158,7 +159,7 @@ public abstract class PlanCache {
     	sc.getSource().clearPreparedStatement(sc.getConnection().getConnectionId(),stmtID);
     }
 
-    public static Pair<RootExecutionPlan,ConnectionValues> bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
+    public static Pair<RootExecutionPlan,ConnectionValuesMap> bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
     	CachedPreparedStatement cps = sc.getSource().getPreparedStatement(sc, sc.getConnection().getConnectionId(), stmtID);    	
     	return cps.rebuildPlan(sc, params);
     }

@@ -69,6 +69,7 @@ import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilt
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.NonDMLFeatureStep;
 import com.tesora.dve.sql.util.Functional;
@@ -314,7 +315,7 @@ public class ContainerBaseTableRewriteTransformFactory extends TransformFactory 
 				ExecutionSequence subseq = new ExecutionSequence(null);
 				getSelfChildren().get(0).schedule(sc, subseq, scheduled);
 				ArrayList<QueryStepOperation> substeps = new ArrayList<QueryStepOperation>();
-				subseq.schedule(null, substeps, null, sc.getContext(), sc.getContext().getValues());
+				subseq.schedule(null, substeps, null, sc.getContext(), new IdentityConnectionValuesMap(sc.getContext().getValues()),null);
 				Database<?> db = childStep.getDatabase(sc);
 				
 				es.append(new ComplexDDLExecutionStep((PEDatabase)db,

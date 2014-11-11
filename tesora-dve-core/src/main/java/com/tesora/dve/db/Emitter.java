@@ -2414,11 +2414,7 @@ public abstract class Emitter {
 			buf.append(" DEFINER = ");
 			emitUserSpec(trigger.getDefiner(sc),buf);
 		}
-		buf.append(" TRIGGER ").append(trigger.getName()).append(" ");
-		if (trigger.isBefore())
-			buf.append("BEFORE");
-		else
-			buf.append("AFTER");
+		buf.append(" TRIGGER ").append(trigger.getName()).append(" ").append(trigger.getTime().name());
 		buf.append(" ").append(trigger.getEvent().name()).append(" ON ");
 		emitTable(sc,cv,trigger.getTargetTable(),sc.getCurrentDatabase(false),buf);
 		buf.append(" FOR EACH ROW ");

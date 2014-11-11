@@ -83,9 +83,9 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 	}
 	
 	@Override
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, cv, buf, indent, opts);
-		long lim = getInMemLimit(cv);
+	public void display(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cv, containing, buf, indent, opts);
+		long lim = getInMemLimit(cv.getValues(containing));
 		if (lim > -1)
 			buf.add(indent + "  limit " + lim);
 	}	
@@ -99,9 +99,10 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
 		QueryStepDMLOperation qso = null;
+		ConnectionValues cv = cvm.getValues(containing);
 		long inMem = getInMemLimit(cv);
 		IKeyValue ikv = getKeyValue(sc,cv);
 		SQLCommand sqlCommand = getCommand(sc,cv)

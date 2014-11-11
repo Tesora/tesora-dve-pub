@@ -55,13 +55,14 @@ public class SessionExecutionStep extends ExecutionStep {
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
+		ConnectionValues cv = cvm.getValues(containing);
 		qsteps.add(new QueryStepSelectAllOperation(getStorageGroup(sc,cv),getPersistentDatabase(), distributionModel, getSQLCommand(sc)));
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 		buf.add(sql);
 	}
 

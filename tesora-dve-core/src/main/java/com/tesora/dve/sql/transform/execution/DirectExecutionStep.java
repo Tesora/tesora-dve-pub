@@ -100,8 +100,8 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public String getSQL(SchemaContext sc, ConnectionValues cv, EmitOptions opts) {
-		return sql.resolve(cv, (opts == null ? null : opts.getMultilinePretty())).getDecoded();
+	public String getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, EmitOptions opts) {
+		return sql.resolve(cvm.getValues(containing), (opts == null ? null : opts.getMultilinePretty())).getDecoded();
 	}
 
 	public SQLCommand getCommand(SchemaContext sc, ConnectionValues cv) {
@@ -130,14 +130,14 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
-		buf.add(getSQL(sc,cv,opts));
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
+		buf.add(getSQL(sc,cvm,containing,opts));
 	}
 
 	@Override
-	public void displaySQL(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+	public void displaySQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
 		ArrayList<String> sub = new ArrayList<String>();
-		sql.resolveAsTextLines(cv, false, "  ", sub);
+		sql.resolveAsTextLines(cvm.getValues(containing), false, "  ", sub);
 		for(String s : sub) {
 			buf.add(indent + "    " + s);
 		}
@@ -174,12 +174,12 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	
 	
 	@Override
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, cv, buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cv, containing, buf, indent, opts);
 		if (distributionKey != null) {
-			buf.add(indent + "  dist key: " + distributionKey.describe(cv));
+			buf.add(indent + "  dist key: " + distributionKey.describe(cv.getValues(containing)));
 		} else if (distributionVector != null) {
-			buf.add(indent + "  dist on: " + distributionVector.describe(sc,cv));
+			buf.add(indent + "  dist on: " + distributionVector.describe(sc,cv.getValues(containing)));
 		}
 		if (explainHelp != null)
 			buf.add(indent + "  reason: " + explainHelp);

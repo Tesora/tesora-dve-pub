@@ -22,6 +22,7 @@ package com.tesora.dve.sql.node.expression;
  */
 
 import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 
 public class CachedTenantIDLiteral extends CachedDelegatingLiteralExpression {
 
@@ -34,4 +35,9 @@ public class CachedTenantIDLiteral extends CachedDelegatingLiteralExpression {
 		return cv.getTenantID();
 	}
 	
+	@Override
+	public ConstantType getConstantType() {
+		return ConstantType.TENANT_LITERAL;
+	}
+
 }

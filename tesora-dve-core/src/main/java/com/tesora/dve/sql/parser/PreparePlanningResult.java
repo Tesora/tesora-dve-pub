@@ -25,6 +25,7 @@ import java.util.Collections;
 
 import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.cache.CachedPreparedStatement;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 
 public class PreparePlanningResult extends PlanningResult {
@@ -32,7 +33,7 @@ public class PreparePlanningResult extends PlanningResult {
 	// we get the cache all ready to go - if something goes wrong we'll just toss it later
 	private final CachedPreparedStatement cachedPlan;
 	
-	public PreparePlanningResult(RootExecutionPlan prepareMetadata, CachedPreparedStatement actualPlan, ConnectionValues boundValues, String origSQL) {
+	public PreparePlanningResult(RootExecutionPlan prepareMetadata, CachedPreparedStatement actualPlan, ConnectionValuesMap boundValues, String origSQL) {
 		super(Collections.singletonList(prepareMetadata),boundValues,null,origSQL);
 		cachedPlan = actualPlan;
 	}

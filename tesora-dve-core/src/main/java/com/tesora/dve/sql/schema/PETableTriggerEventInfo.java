@@ -30,40 +30,34 @@ import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 
 public class PETableTriggerEventInfo {
 
-	private PETrigger before;
-	private PETrigger after;
+	private PETrigger[] triggers;
 	
 	public PETableTriggerEventInfo() {
-		before = null;
-		after = null;
+		triggers = new PETrigger[2];
 	}
 	
 	public void set(PETrigger trig) {
-		if (trig.isBefore())
-			before = trig;
-		else
-			after = trig;
+		triggers[trig.getTime().ordinal()] = trig;
 	}
 	
 	public void remove(PETrigger trig) {
-		if (trig.isBefore())
-			before = null;
-		else
-			after = null;
+		triggers[trig.getTime().ordinal()] = null;
 	}
 	
 	public PETrigger getBefore() {
-		return before;
+		return triggers[TriggerTime.BEFORE.ordinal()];
 	}
 
 	public PETrigger getAfter() {
-		return after;
+		return triggers[TriggerTime.AFTER.ordinal()];
 	}
 
 	public Collection<PETrigger> get() {
 		ArrayList<PETrigger> out = new ArrayList<PETrigger>();
-		if (before != null) out.add(before);
-		if (after != null) out.add(after);
+		for(PETrigger t : triggers) {
+			if (t == null) continue;
+			out.add(t);
+		}
 		return out;
 	}
 	

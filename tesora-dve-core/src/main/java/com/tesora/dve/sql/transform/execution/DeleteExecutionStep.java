@@ -63,9 +63,10 @@ public final class DeleteExecutionStep extends DirectExecutionStep {
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan currentPlan)
 			throws PEException {
 		QueryStepOperation qso = null;
+		ConnectionValues cv = cvm.getValues(currentPlan);
 		IKeyValue kv = getKeyValue(sc,cv);
 		SQLCommand sqlCommand = getCommand(sc,cv).withReferenceTime(getReferenceTimestamp(cv));
 		StorageGroup sg = getStorageGroup(sc,cv);
@@ -90,8 +91,8 @@ public final class DeleteExecutionStep extends DirectExecutionStep {
 	}
 	
 	@Override
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, cv, buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cvm, containing, buf, indent, opts);
 	}
 
 }

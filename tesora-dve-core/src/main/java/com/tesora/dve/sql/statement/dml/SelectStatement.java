@@ -92,6 +92,7 @@ import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
@@ -684,7 +685,7 @@ public class SelectStatement extends ProjectingStatement {
 	}
 
 	@Override
-	protected RootExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
+	protected ExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
 		boolean noplan = 
 				explain.hasSetting(ExplainOption.NOPLAN);		
 		if (noplan) {
@@ -692,7 +693,7 @@ public class SelectStatement extends ProjectingStatement {
 			ProjectingExecutionStep ses = ProjectingExecutionStep.build(sc,getDatabase(sc), getStorageGroups(sc).get(0), 
 					EngineConstant.BROADEST_DISTRIBUTION_VECTOR.getValue(this,sc), null,
 					this, DMLExplainReason.EXPLAIN_NOPLAN.makeRecord());
-			RootExecutionPlan expep = new RootExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
+			ExecutionPlan expep = new RootExecutionPlan(null, sc.getValueManager(), StatementType.EXPLAIN); 
 			expep.getSequence().append(ses);
 			return expep;
 		}

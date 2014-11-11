@@ -58,11 +58,11 @@ public class SetVariableExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 		String sn = getScopeName();
 		String prefix = "set " + sn + " " + variableName + " = ";
 		if (valueSource.isConstant()) {
-			buf.add(prefix + " " + valueSource.getConstantValue(cv));
+			buf.add(prefix + " " + valueSource.getConstantValue(cvm.getValues(containing)));
 		} else {
 			buf.add(prefix + " <callback>");
 		}
@@ -70,7 +70,8 @@ public class SetVariableExecutionStep extends ExecutionStep {
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv) throws PEException {
+			ConnectionValuesMap cvm, ExecutionPlan containing) throws PEException {
+		ConnectionValues cv = cvm.getValues(containing);
 		StorageGroup sg = getStorageGroup(sc,cv);
 		qsteps.add(new QueryStepSetScopedVariableOperation(sg,scope, variableName, valueSource.buildAccessor(cv), sg != null));
 	}

@@ -41,12 +41,12 @@ import com.tesora.dve.common.catalog.PersistentColumn;
 import com.tesora.dve.common.catalog.PersistentTable;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.distribution.compare.ComparatorCache;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.util.UnaryFunction;
 
 @SuppressWarnings("restriction")
@@ -310,9 +310,8 @@ public class KeyValue extends LinkedHashMap<String, ColumnDatum> implements IKey
 	}
 
 	@Override
-	public IKeyValue rebind(LateBoundConstants constants) {
-		// so when would this happen?  scary!
-		throw new PECodingException("Direct key values cannot be rebound");
+	public IKeyValue rebind(ConnectionValues cv) {
+		return this;
 	}
 
 }

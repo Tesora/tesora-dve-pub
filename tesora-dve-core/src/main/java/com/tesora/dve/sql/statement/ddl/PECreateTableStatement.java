@@ -78,6 +78,7 @@ import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.A
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
 import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.TransientSessionExecutionStep;
@@ -565,7 +566,7 @@ public class PECreateTableStatement extends
 			}
 			tab.setDeclaration(sc,tab);
 			ddl = new ArrayList<QueryStepOperation>();
-			es.schedule(null, ddl, null, sc, sc.getValues());
+			es.schedule(null, ddl, null, sc, new IdentityConnectionValuesMap(sc.getValues()),null);
 			sc.beginSaveContext();
 			try {
 				// the 'right' way to do this would be to put the persisted flag into the differs map

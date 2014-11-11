@@ -43,16 +43,16 @@ public class TriggerExecutionStep extends ExecutionStep {
 	private ExecutionStep rowQuery;
 	private TriggerValueHandlers handlers;
 	// any before step
-	private ExecutionStep before;
+	private HasPlanning before;
 	// the actual step
 	private ExecutionStep actual;
 	// any after step
-	private ExecutionStep after;
+	private HasPlanning after;
 	
 	public TriggerExecutionStep(Database<?> db, PEStorageGroup storageGroup, 
 			ExecutionStep actual,
-			ExecutionStep before,
-			ExecutionStep after,
+			HasPlanning before,
+			HasPlanning after,
 			ExecutionStep rowQuery,
 			TriggerValueHandlers handlers) {
 		super(db, storageGroup, ExecutionType.TRIGGER);
@@ -72,46 +72,47 @@ public class TriggerExecutionStep extends ExecutionStep {
 		return actual;
 	}
 	
-	public ExecutionStep getBeforeStep() {
+	public HasPlanning getBeforeStep() {
 		return before;
 	}
 	
-	public ExecutionStep getAfterStep() {
+	public HasPlanning getAfterStep() {
 		return after;
 	}
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps,
-			ProjectionInfo projection, SchemaContext sc,ConnectionValues cv) throws PEException {
+			ProjectionInfo projection, SchemaContext sc,ConnectionValuesMap cvm, ExecutionPlan containing) throws PEException {
 		QueryStepTriggerOperation trigOp = new QueryStepTriggerOperation(handlers,
-				buildOperation(opts,sc,cv,rowQuery),
-				(before == null ? null : buildOperation(opts,sc,cv,before)),
-				buildOperation(opts,sc,cv,actual),
-				(after == null ? null : buildOperation(opts,sc,cv,after)));
+				buildOperation(opts,sc,cvm,containing,rowQuery),
+				(before == null ? null : buildOperation(opts,sc,cvm,containing,before)),
+				buildOperation(opts,sc,cvm,containing,actual),
+				(after == null ? null : buildOperation(opts,sc,cvm,containing,after)));
 		qsteps.add(trigOp);
 	}
 
-	private QueryStepOperation buildOperation(ExecutionPlanOptions opts, SchemaContext sc, ConnectionValues cv, ExecutionStep toSchedule) throws PEException {
+	private QueryStepOperation buildOperation(ExecutionPlanOptions opts, SchemaContext sc, 
+			ConnectionValuesMap cvm, ExecutionPlan containing, HasPlanning toSchedule) throws PEException {
 		List<QueryStepOperation> sub = new ArrayList<QueryStepOperation>();
-		toSchedule.schedule(opts,sub,null,sc,cv);
+		toSchedule.schedule(opts,sub,null,sc,cvm,containing);
 		return 	RootExecutionPlan.collapseOperationList(sub);
 	}
 	
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, cv,buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cvm,containing,buf, indent, opts);
 		String sub1 = indent + "  ";
 		String sub2 = sub1 + "  ";
 		buf.add(sub1 + "Row query");
-		rowQuery.display(sc,cv,buf,sub2,opts);
+		rowQuery.display(sc,cvm,containing,buf,sub2,opts);
 		if (before != null) {
 			buf.add(sub1 + "Before");
-			before.display(sc,cv,buf,sub2,opts);
+			before.display(sc,cvm,containing,buf,sub2,opts);
 		}
 		buf.add(sub1 + "Actual");
-		actual.display(sc,cv,buf,sub2,opts);
+		actual.display(sc,cvm,containing,buf,sub2,opts);
 		if (after != null) {
 			buf.add(sub1 + "After");
-			after.display(sc,cv,buf,sub2,opts);
+			after.display(sc,cvm,containing,buf,sub2,opts);
 		}
 	}
 	

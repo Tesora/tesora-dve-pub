@@ -53,7 +53,7 @@ public class GroupProviderExecutionStep extends
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 	}
 	
 }

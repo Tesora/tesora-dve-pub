@@ -1,4 +1,4 @@
-package com.tesora.dve.db;
+package com.tesora.dve.sql.transform.execution;
 
 /*
  * #%L
@@ -21,29 +21,28 @@ package com.tesora.dve.db;
  * #L%
  */
 
+import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.schema.ConnectionValues;
 
+public class IdentityConnectionValuesMap extends ConnectionValuesMap {
 
-public class LateBoundConstants {
-
-	private final Object[] values;
+	private final ConnectionValues single;
 	
-	public LateBoundConstants() {
-		values = null;
+	public IdentityConnectionValuesMap(ConnectionValues cv) {
+		super();
+		single = cv;
 	}
 	
-	public boolean isEmpty() {
-		return values == null;
+	public ConnectionValues getValues(ExecutionPlan ep) {
+		return single;
 	}
 	
-	public LateBoundConstants(Object[] vals) {
-		values = vals;
+	public ConnectionValues getRootValues() {
+		return single;
 	}
 	
-	public Object getConstantValue(int index) {
-		return values[index];
-	}
-	
-	public Object[] getValues() {
-		return values;
+	public void addValues(ExecutionPlan ep, ConnectionValues cv) {
+		throw new SchemaException(Pass.PLANNER, "Invalid call to IdentityConnectionValuesMap.addValues");
 	}
 }

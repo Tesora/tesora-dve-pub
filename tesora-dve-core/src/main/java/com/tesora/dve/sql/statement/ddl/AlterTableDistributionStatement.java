@@ -64,6 +64,7 @@ import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.UnaryFunction;
@@ -232,7 +233,7 @@ public class AlterTableDistributionStatement extends PEAlterStatement<PETable> {
 			ExecutionSequence es = new ExecutionSequence(null);
 			iiss.plan(sc,es, sc.getBehaviorConfiguration());
 			List<QueryStepOperation> steps = new ArrayList<QueryStepOperation>();
-			es.schedule(null, steps, null, sc, sc.getValues());
+			es.schedule(null, steps, null, sc, new IdentityConnectionValuesMap(sc.getValues()),null);
 			dml = steps;
 		}
 

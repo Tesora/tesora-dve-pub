@@ -80,7 +80,7 @@ import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
-import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.ListSet;
@@ -211,7 +211,7 @@ public class PECreateViewStatement extends
 			try {
 				ParserOptions npm = pm.setInhibitSingleSiteOptimization();
 				sc.setOptions(npm);
-				RootExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
+				ExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
 				if (ep.getSequence().getSteps().size() > 1)
 					vm = ViewMode.EMULATE;
 				else

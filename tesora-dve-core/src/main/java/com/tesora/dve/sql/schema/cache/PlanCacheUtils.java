@@ -27,8 +27,10 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockSpecification;
+import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.PlannerStatisticType;
 import com.tesora.dve.sql.PlannerStatistics;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.MTTableKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.CandidateParser;
@@ -38,6 +40,8 @@ import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaPolicyContext;
 import com.tesora.dve.sql.statement.CacheableStatement;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RebuiltPlan;
 import com.tesora.dve.sql.util.Pair;
@@ -58,10 +62,13 @@ public abstract class PlanCacheUtils {
 			logger.debug(m);
 	}
 	
-	public static CachedPlan maybeCachePlan(SchemaContext sc, SchemaSourcePlanCache toCache, CacheableStatement origStatement, RootExecutionPlan thePlan,
+	public static CachedPlan maybeCachePlan(SchemaContext sc, SchemaSourcePlanCache toCache, CacheableStatement origStatement, ExecutionPlan plan,
 			String theSQL,
 			CandidateParser precomputed) {
 		if (sc.getSource().getType() == CacheType.MUTABLE) return null;
+		if (!plan.isRoot())
+			throw new SchemaException(Pass.PLANNER, "Unable to cache nested plan");
+		RootExecutionPlan thePlan = (RootExecutionPlan) plan;
 		if (!thePlan.isCacheable() || !thePlan.getValueManager().isCacheable()) {
             switch (thePlan.getValueManager().getCacheStatus()){
                 case NOCACHE_TOO_MANY_LITERALS:
@@ -141,7 +148,7 @@ public abstract class PlanCacheUtils {
 		return results;
 	}
 	
-	public static boolean isValidParameterization(String theSQL, CandidateParser cp, RootExecutionPlan ep) {
+	public static boolean isValidParameterization(String theSQL, CandidateParser cp, ExecutionPlan ep) {
 		List<ExtractedLiteral> literals = cp.getLiterals();
 		if (literals.size() != ep.getValueManager().getNumberOfLiterals()) {
 			if (isDebugEnabled())
@@ -250,7 +257,7 @@ public abstract class PlanCacheUtils {
     	sc.getSource().clearPreparedStatement(sc.getConnection().getConnectionId(),stmtID);
     }
 
-    public static Pair<RootExecutionPlan,ConnectionValues> bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
+    public static Pair<RootExecutionPlan,ConnectionValuesMap> bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
     	CachedPreparedStatement cps = sc.getSource().getPreparedStatement(sc, sc.getConnection().getConnectionId(), stmtID);    	
     	return cps.rebuildPlan(sc, params);
     }

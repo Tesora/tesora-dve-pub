@@ -47,9 +47,9 @@ public class ExecutionSequence extends ExecutionStep {
 
 	protected LinkedList<HasPlanning> steps;  //NOPMD
 	// backward links, good for getting to the plan during construction
-	protected RootExecutionPlan plan;
+	protected ExecutionPlan plan;
 	
-	public ExecutionSequence(RootExecutionPlan p) {
+	public ExecutionSequence(ExecutionPlan p) {
 		super(null,null,ExecutionType.SEQUENCE);
 		steps = new LinkedList<HasPlanning>();
 		plan = p;
@@ -60,7 +60,7 @@ public class ExecutionSequence extends ExecutionStep {
 		steps.add(es);
 	}
 	
-	public RootExecutionPlan getPlan() {
+	public ExecutionPlan getPlan() {
 		return plan;
 	}
 
@@ -69,7 +69,7 @@ public class ExecutionSequence extends ExecutionStep {
 	}
 	
 	@Override
-	public void display(final SchemaContext sc, final ConnectionValues cv, final List<String> sb, String indent, final EmitOptions opts) {
+	public void display(final SchemaContext sc, final ConnectionValuesMap cv, final ExecutionPlan containing, final List<String> sb, String indent, final EmitOptions opts) {
 		if (steps.isEmpty()) return;
 		sb.add(indent + sequenceName() + " {");
 		final String subindent = indent + "  ";
@@ -77,7 +77,7 @@ public class ExecutionSequence extends ExecutionStep {
 
 			@Override
 			public void execute(HasPlanning object) {
-				object.display(sc, cv, sb, subindent, opts);
+				object.display(sc, cv, containing, sb, subindent, opts);
 			}
 			
 		});
@@ -85,13 +85,13 @@ public class ExecutionSequence extends ExecutionStep {
 	}
 	
 	@Override
-	public void explain(final SchemaContext sc, final ConnectionValues cv, final List<ResultRow> rows, final ExplainOptions opts) {
+	public void explain(final SchemaContext sc, final ConnectionValuesMap cv, final ExecutionPlan containing, final List<ResultRow> rows, final ExplainOptions opts) {
 		if (steps.isEmpty()) return;
 		apply(true,new UnaryProcedure<HasPlanning>() {
 
 			@Override
 			public void execute(HasPlanning object) {
-				object.explain(sc, cv, rows, opts);
+				object.explain(sc, cv, containing, rows, opts);
 			}
 			
 		});
@@ -189,11 +189,11 @@ public class ExecutionSequence extends ExecutionStep {
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cv, ExecutionPlan containingPlan)
 			throws PEException {
 		if (steps.isEmpty()) return;
 		for(HasPlanning hp : steps)
-			hp.schedule(opts, qsteps, projection, sc, cv);
+			hp.schedule(opts, qsteps, projection, sc, cv, containingPlan);
 	}
 
 	@Override

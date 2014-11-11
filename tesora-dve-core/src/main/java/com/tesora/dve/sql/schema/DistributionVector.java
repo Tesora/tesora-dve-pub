@@ -37,7 +37,6 @@ import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.distribution.ContainerDistributionModel;
@@ -636,7 +635,7 @@ public class DistributionVector extends Persistable<DistributionVector, Distribu
 		}
 
 		@Override
-		public IKeyValue rebind(LateBoundConstants constants)
+		public IKeyValue rebind(ConnectionValues cv)
 				throws PEException {
 			return this;
 		}

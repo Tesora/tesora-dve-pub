@@ -53,7 +53,7 @@ public class TransactionExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 		buf.add(stmt.getSQL(sc,opts, false));
 	}
 
@@ -74,9 +74,10 @@ public class TransactionExecutionStep extends ExecutionStep {
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv) throws PEException {
+			ConnectionValuesMap cvm, ExecutionPlan containing) throws PEException {
 		QueryStepOperation qso = null;
 		Kind txn = stmt.getKind();
+		ConnectionValues cv = cvm.getValues(containing);
 		StorageGroup sg = getStorageGroup(sc,cv);
 		if (txn == Kind.START) {
 			QueryStepBeginTransactionOperation qsbto = new QueryStepBeginTransactionOperation(sg);

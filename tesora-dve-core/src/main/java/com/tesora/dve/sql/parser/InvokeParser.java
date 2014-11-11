@@ -55,6 +55,7 @@ import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.session.TransactionStatement;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.util.ListOfPairs;
 import com.tesora.dve.sql.util.Pair;
@@ -357,7 +358,7 @@ public class InvokeParser {
 	public static PlanningResult buildPlan(SchemaContext pc, InputState input, ParserOptions options, PlanCacheCallback ipcb) throws PEException {
 		PlanCacheCallback pcb = (ipcb == null ? logCacheCallback : ipcb);
 		List<RootExecutionPlan> plans = null;
-		ConnectionValues values = null;
+		ConnectionValuesMap values = null;
 		boolean tryCache = pc.getSource().canCachePlans(pc) && !pc.getIntraStmtState().isUnderLockTable();
 		CandidateCachedPlan ccp = null;
 		if (!pc.getSource().isPlanCacheEmpty() && input.getCommand() != null) {
@@ -377,16 +378,23 @@ public class InvokeParser {
 			boolean explain = false;
 			for (Statement s : pr.getStatements()) {
 				if (first == null) first = s;
+				RootExecutionPlan builtPlan = null;
 				if (s.isExplain()) {
 					explain = true;
-					plans.add(buildExplainPlan(pc,s,input.getCommand()));
+					builtPlan = buildExplainPlan(pc,s,input.getCommand()); 
 				} else {
-					plans.add(Statement.getExecutionPlan(pc,s,pc.getBehaviorConfiguration(),input.getCommand()));
+					builtPlan = (RootExecutionPlan) Statement.getExecutionPlan(pc,s,pc.getBehaviorConfiguration(),input.getCommand()); 
 				}
+				plans.add(builtPlan);
 			}
-			values = pc.getValues();
-			if (values == null)
-				values = pc.getValueManager().getValues(pc);
+			ConnectionValues cv = pc.getValues();
+			if (cv == null)
+				cv = pc.getValueManager().getValues(pc);
+			values = new ConnectionValuesMap();
+			for(RootExecutionPlan rep : plans) {
+				values.addValues(rep,cv);
+				rep.collectNonRootValueTemplates(pc, values);
+			}
 			if (pcb != null && input.getCommand() != null && !explain)
 				pcb.onMiss(input.getCommand());
 			if (!explain && input.getCommand() != null && plans.size() == 1 && tryCache && first instanceof CacheableStatement) {
@@ -424,7 +432,7 @@ public class InvokeParser {
 			}
 		}
 		// if we're still here - we have to build the old fashioned way
-		return Statement.getExecutionPlan(sc,s,sc.getBehaviorConfiguration(),origSQL);
+		return (RootExecutionPlan) Statement.getExecutionPlan(sc,s,sc.getBehaviorConfiguration(),origSQL);
 	}
 	
 	// continuation version
@@ -460,10 +468,13 @@ public class InvokeParser {
 			ParseResult pr = parameterizeAndParse(pc, options, line, cs);
 			List<Statement> stmts = pr.getStatements();
 			List<RootExecutionPlan> plans = new ArrayList<RootExecutionPlan>();
+			ConnectionValuesMap cvm = new ConnectionValuesMap();
 			for (Statement s : stmts) {
-				plans.add(Statement.getExecutionPlan(pc,s,pc.getBehaviorConfiguration(),lineStr));
+				RootExecutionPlan ep = (RootExecutionPlan) Statement.getExecutionPlan(pc,s,pc.getBehaviorConfiguration(),lineStr);
+				cvm.addValues(ep, pc.getValues());
+				plans.add(ep);
 			}
-			result = new PlanningResult(plans, pc.getValues(),pr.getInputState(),lineStr);
+			result = new PlanningResult(plans, cvm,pr.getInputState(),lineStr);
 		} else {
 			lineStr = StringUtils.strip(lineStr, new String(Character.toString(Character.MIN_VALUE)));
 
@@ -486,7 +497,7 @@ public class InvokeParser {
 	public static PlanningResult bindPreparedStatement(SchemaContext sc, String stmtID, List<Object> params) throws PEException {
 		// make sure we clear the options
 		sc.setOptions(ParserOptions.NONE);
-		Pair<RootExecutionPlan,ConnectionValues> bound = PlanCacheUtils.bindPreparedStatement(sc, stmtID, params);
+		Pair<RootExecutionPlan,ConnectionValuesMap> bound = PlanCacheUtils.bindPreparedStatement(sc, stmtID, params);
 		SqlStatistics.incrementCounter(bound.getFirst().getStatementType());
 		return new PlanningResult(Collections.singletonList(bound.getFirst()),bound.getSecond(),null,null);
 	}

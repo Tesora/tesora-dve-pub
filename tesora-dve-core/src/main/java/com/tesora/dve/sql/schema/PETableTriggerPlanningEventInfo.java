@@ -21,6 +21,7 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
+
 import java.util.Collection;
 import java.util.LinkedHashMap;
 
@@ -38,13 +39,17 @@ import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.parser.TokenTypes;
+import com.tesora.dve.sql.parser.TranslatorInitCallback;
+import com.tesora.dve.sql.parser.TranslatorUtils;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.ProjectingStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.NestedPlanFeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 
 public class PETableTriggerPlanningEventInfo extends PETableTriggerEventInfo {
@@ -52,12 +57,8 @@ public class PETableTriggerPlanningEventInfo extends PETableTriggerEventInfo {
 	// the key iteration order defines the temp table result set
 	private LinkedHashMap<ColumnKey,Integer> connValueOffsets;
 
-	// the before body, with trigger cols replaced by runtime constants
-	private Statement beforeBody;
 	// the feature step that represents the before body
 	private FeatureStep beforeStep;
-	// the after body, with trigger cols replaced by runtime constants
-	private Statement afterBody;
 	// the after step that represents the after body
 	private FeatureStep afterStep;
 	
@@ -70,41 +71,42 @@ public class PETableTriggerPlanningEventInfo extends PETableTriggerEventInfo {
 		if (connValueOffsets == null) {
 			TriggerEvent event = (getBefore() != null ? getBefore().getEvent() : getAfter().getEvent());
 			TriggerColumnTraversal trav = new TriggerColumnTraversal(event);
-			Statement beforeStmt = null;
-			Statement afterStmt = null;
 			FeatureStep beforeStep = null;
 			FeatureStep afterStep = null;
-			ParserOptions was = sc.getOptions();
-			ParserOptions now = was.setTriggerPlanning();
-			try {
-				sc.setOptions(now);
-				if (getBefore() != null) {
-					beforeStmt = getBefore().getBody(sc);
-					trav.setTime(TriggerTime.BEFORE);
-					trav.traverse(beforeStmt);
-					beforeStep = beforeStmt.plan(sc, sc.getBehaviorConfiguration());
-				}
-				if (getAfter() != null) {
-					afterStmt = getAfter().getBody(sc);
-					trav.setTime(TriggerTime.AFTER);
-					trav.traverse(afterStmt);
-					afterStep = afterStmt.plan(sc, sc.getBehaviorConfiguration());
-				}
-			} finally {
-				sc.setOptions(was);
-			}
+			if (getBefore() != null)
+				beforeStep = buildStep(sc,trav,getBefore());
+			if (getAfter() != null)
+				afterStep = buildStep(sc,trav,getAfter());
 			if (connValueOffsets == null) {
 				synchronized(this) {
 					if (connValueOffsets == null) {
 						connValueOffsets = trav.getTriggerColumnOffsets();
-						beforeBody = beforeStmt;
-						afterBody = afterStmt;
 						this.beforeStep = beforeStep;
 						this.afterStep = afterStep;
 					}
 				}
 			}
 		}
+	}
+	
+	private FeatureStep buildStep(SchemaContext context, TriggerColumnTraversal tct, PETrigger trigger) throws PEException {
+		// we always make a new context now, because we will build a nested plan
+		SchemaContext sc = SchemaContext.makeImmutableIndependentContext(context);
+		sc.setCurrentDatabase(trigger.getTargetTable().getPEDatabase(sc));
+		// reparse to get the right schema objects, and force all literals to be actual literals
+		ParserOptions originalOptions = sc.getOptions();
+
+		ParserOptions myOpts = originalOptions;
+		if (myOpts == null)
+			myOpts = context.getOptions();
+		if (myOpts == null)
+			myOpts = ParserOptions.NONE;
+		myOpts = myOpts.setActualLiterals().setResolve().setIgnoreLocking().setTriggerPlanning().setNestedPlan();
+		Statement body = InvokeParser.parseTriggerBody(trigger.getBodySource(), sc, myOpts, new ScopeInjector(trigger.getTargetTable())).get(0);
+		tct.setTime(trigger.getTime());
+		tct.traverse(body);
+		FeatureStep planned = body.plan(sc,sc.getBehaviorConfiguration());
+		return new NestedPlanFeatureStep(planned,sc.getValueManager());
 	}
 	
 	@Override
@@ -243,4 +245,18 @@ public class PETableTriggerPlanningEventInfo extends PETableTriggerEventInfo {
 		
 	}
 	
+	private static class ScopeInjector extends TranslatorInitCallback {
+		
+		private final PETable target;
+		
+		public ScopeInjector(PETable targ) {
+			this.target = targ;
+		}
+		
+		public void onInit(TranslatorUtils utils) {
+			utils.pushTriggerTable(target);
+		}
+
+	}
+
 }

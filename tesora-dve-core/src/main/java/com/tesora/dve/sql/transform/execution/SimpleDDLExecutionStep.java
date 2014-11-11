@@ -90,8 +90,9 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
+		ConnectionValues cv = cvm.getValues(containing);
 		StorageGroup sg = getStorageGroup(sc,cv);
 		if (rootEntity instanceof PEDatabase) {
 			PEDatabase db = (PEDatabase)rootEntity;
@@ -134,8 +135,8 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 	}
 		
 	@Override
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, cv, buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cvm, containing, buf, indent, opts);
 		// drops might not have a root entity
 		if (rootEntity == null)
 			buf.add(indent + "  DDL " + action.name());
@@ -148,7 +149,7 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 		buf.add(sql.getRawSQL());
 	}
 

@@ -45,7 +45,8 @@ public class PrepareExecutionStep extends DirectExecutionStep {
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv) throws PEException {
+			ConnectionValuesMap cvm, ExecutionPlan containing) throws PEException {
+		ConnectionValues cv = cvm.getValues(containing);
 		qsteps.add(new QueryStepOperationPrepareStatement(getStorageGroup(sc,cv),getDatabase(),getCommand(sc,cv),projection));
 	}
 
@@ -57,14 +58,14 @@ public class PrepareExecutionStep extends DirectExecutionStep {
 	}
 
 	@Override
-	public String getSQL(SchemaContext sc, ConnectionValues cv, EmitOptions opts) {
-		return sql.resolve(cv,true,null).getDecoded();
+	public String getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, EmitOptions opts) {
+		return sql.resolve(cvm.getValues(containing),true,null).getDecoded();
 	}
 
 	@Override
-	public void displaySQL(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+	public void displaySQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
 		ArrayList<String> sub = new ArrayList<String>();
-		sql.resolveAsTextLines(cv, true, "  ", sub);
+		sql.resolveAsTextLines(cvm.getValues(containing), true, "  ", sub);
 		for(String s : sub) {
 			buf.add(indent + "    " + s);
 		}

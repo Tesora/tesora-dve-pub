@@ -178,9 +178,10 @@ public final class RedistributionExecutionStep extends
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps,
 			ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv) throws PEException {
+			ConnectionValuesMap cvm, ExecutionPlan containing) throws PEException {
 		QueryStepMultiTupleRedistOperation qsrdo = null;
 		
+		ConnectionValues cv = cvm.getValues(containing);
 		StorageGroup sg = getStorageGroup(sc,cv);
 		
 		if (targetTable.mustBeCreated()) {
@@ -275,8 +276,9 @@ public final class RedistributionExecutionStep extends
 	}
 
 	@Override
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, cv,buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cvm,containing,buf, indent, opts);
+		ConnectionValues cv = cvm.getValues(containing);
 		buf.add(indent + "  redist to (" + targetTable.getName(sc,cv).get() + ") using model " + describeTargetModel(sc,cv) + " on " + targetGroup.getPEStorageGroup(sc,cv).getPersistent(sc,cv));
 		if (declarationHints != null) {
 			List<List<String>> indices = declarationHints.getIndexes();

@@ -48,6 +48,7 @@ import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.schema.mt.TableScope.ScopeCacheKey;
 import com.tesora.dve.sql.statement.CacheableStatement;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RebuiltPlan;
 import com.tesora.dve.sql.util.Functional;
@@ -274,13 +275,13 @@ public class MTCachedPlan implements RegularCachedPlan {
 		@Override
 		public RebuiltPlan rebuildPlan(SchemaContext sc,
 				List<ExtractedLiteral> literals) throws PEException {
-			ConnectionValues cv = thePlan.getValueManager().resetForNewPlan(sc, literals);
+			ConnectionValuesMap cv = thePlan.resetForNewPlan(sc, literals);
 			return new RebuiltPlan(thePlan, cv, false,null,parent.lockType);
 		}
 
 		public RebuiltPlan rebuildPlan(SchemaContext sc, 
 				List<ExtractedLiteral> literals, List<SchemaCacheKey<?>> scopes) throws PEException {
-			ConnectionValues cv = thePlan.getValueManager().resetForNewPlan(sc, literals);
+			ConnectionValuesMap cv = thePlan.resetForNewPlan(sc, literals);
 			return new RebuiltPlan(thePlan, cv, false,scopes.toArray(new SchemaCacheKey<?>[0]),parent.lockType);
 		}
 		

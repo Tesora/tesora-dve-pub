@@ -21,36 +21,49 @@ package com.tesora.dve.sql.transform.execution;
  * #L%
  */
 
+import java.util.ArrayList;
 import java.util.List;
 
-import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStepAdhocResultsOperation;
+import com.tesora.dve.queryplan.QueryStepNestedOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
-import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
+import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.ValueManager;
 
-public class AdhocResultsSessionStep extends ExecutionStep {
+public class NestedExecutionPlan extends ExecutionPlan {
 
-	protected IntermediateResultSet results;
-	
-	public AdhocResultsSessionStep(IntermediateResultSet irs) {
-		super(null,null,ExecutionType.SESSION);
-		results = irs;
+	public NestedExecutionPlan(ValueManager valueManager) {
+		super(valueManager);
+		// TODO Auto-generated constructor stub
 	}
-	
+
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
-		buf.add("ad hoc results");
+	public boolean isRoot() {
+		return false;
+	}
+
+	@Override
+	public void setCacheable(boolean v) {
+	}
+
+	@Override
+	public boolean isCacheable() {
+		return true;
 	}
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
 			ConnectionValuesMap cv, ExecutionPlan currentPlan)
 			throws PEException {
-		qsteps.add(new QueryStepAdhocResultsOperation(results));
+		// we're going to wrap our entire plan inside a special qso that caches our (mostly constant) connection values
+		List<QueryStepOperation> mySteps = new ArrayList<QueryStepOperation>();
+		super.schedule(new ExecutionPlanOptions(),mySteps,null,sc,cv,this);
+		QueryStepOperation flattened = collapseOperationList(mySteps);
+		qsteps.add(new QueryStepNestedOperation(flattened,this));
 	}
-
+	
 }

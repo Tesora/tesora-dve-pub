@@ -245,7 +245,7 @@ public abstract class QueryStepOperation implements LogSubject {
 	}
 	
 	private static IKeyValue bindKey(ExecutionState estate, IKeyValue ikv) throws PEException {
-		return (estate.getBoundConstants().isEmpty() ? ikv : ikv.rebind(estate.getBoundConstants()));
+		return ikv.rebind(estate.getValues());
 	}
 	
 	public static WorkerGroup.MappingSolution mapKeyForUpdate(ExecutionState estate, StorageGroup wg, IKeyValue inkey) throws PEException {		

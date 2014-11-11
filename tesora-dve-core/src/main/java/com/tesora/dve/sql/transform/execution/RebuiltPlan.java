@@ -30,9 +30,9 @@ public class RebuiltPlan {
 	protected boolean clearCache = true;
 	protected final SchemaCacheKey<?>[] cacheKeys;
 	protected final LockType lockType;
-	protected final ConnectionValues boundValues;
+	protected final ConnectionValuesMap boundValues;
 	
-	public RebuiltPlan(RootExecutionPlan ep, ConnectionValues boundValues, boolean clearCache, SchemaCacheKey<?>[] keys, LockType lt) {
+	public RebuiltPlan(RootExecutionPlan ep, ConnectionValuesMap boundValues, boolean clearCache, SchemaCacheKey<?>[] keys, LockType lt) {
 		this.ep = ep;
 		this.clearCache = clearCache;
 		this.cacheKeys = keys;
@@ -56,7 +56,7 @@ public class RebuiltPlan {
 		return lockType;
 	}
 	
-	public ConnectionValues getBoundValues() {
+	public ConnectionValuesMap getBoundValues() {
 		return boundValues;
 	}
 }

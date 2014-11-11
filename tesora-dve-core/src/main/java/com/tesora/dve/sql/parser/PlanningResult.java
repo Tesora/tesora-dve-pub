@@ -24,18 +24,19 @@ package com.tesora.dve.sql.parser;
 import java.util.List;
 
 import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 
 public class PlanningResult {
 
 	private final List<RootExecutionPlan> plans;
-	private final ConnectionValues values;
+	private final ConnectionValuesMap values;
 	// when the state is null - the whole input was consumed
 	private final InputState state;
 	// we may need to track the input sql
 	private final String originalSQL;
 	
-	public PlanningResult(List<RootExecutionPlan> plans, ConnectionValues values, InputState state, String origSQL) {
+	public PlanningResult(List<RootExecutionPlan> plans, ConnectionValuesMap values, InputState state, String origSQL) {
 		this.plans = plans;
 		this.state = state;
 		this.originalSQL = origSQL;
@@ -54,7 +55,7 @@ public class PlanningResult {
 		return this.state;
 	}
 	
-	public ConnectionValues getValues() {
+	public ConnectionValuesMap getValues() {
 		return this.values;
 	}
 	

@@ -24,6 +24,7 @@ package com.tesora.dve.sql.node.expression;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.TokenTypes;
 import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
 import com.tesora.dve.sql.transform.CopyContext;
 
@@ -53,5 +54,9 @@ public class TenantIDLiteral extends DelegatingLiteralExpression {
 		return new CachedTenantIDLiteral(getValueType());
 	}
 
+	@Override
+	public ConstantType getConstantType() {
+		return ConstantType.TENANT_LITERAL;
+	}
 	
 }

@@ -62,13 +62,13 @@ public class TransientSessionExecutionStep extends ExecutionStep {
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
-		qsteps.add(new QueryStepGeneralOperation(getStorageGroup(sc,cv),op,txn,workers));
+		qsteps.add(new QueryStepGeneralOperation(getStorageGroup(sc,cvm.getValues(containing)),op,txn,workers));
 	}
 	
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 		buf.add(sql);
 	}
 

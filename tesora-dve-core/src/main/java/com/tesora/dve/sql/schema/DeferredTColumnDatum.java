@@ -21,16 +21,17 @@ package com.tesora.dve.sql.schema;
  * #L%
  */
 
-import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
-import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
+import com.tesora.dve.sql.schema.cache.IConstantExpression;
 
 public class DeferredTColumnDatum extends TColumnDatumBase {
 
-	private final LateBindingConstantExpression deferred;
+	// by doing a constant expression we can handle both autoincrements and 
+	// trigger columns
+	private final IConstantExpression deferred;
 	
-	protected DeferredTColumnDatum(PEColumn pec, LateBindingConstantExpression expr) {
+	protected DeferredTColumnDatum(PEColumn pec, IConstantExpression expr) {
 		super(pec);
 		this.deferred = expr;
 	}
@@ -51,8 +52,8 @@ public class DeferredTColumnDatum extends TColumnDatumBase {
 	}
 
 	@Override
-	public TColumnDatumBase bind(LateBoundConstants constants) {
-		Object value = constants.getConstantValue(deferred.getPosition());
+	public TColumnDatumBase bind(ConnectionValues cv) {
+		Object value = deferred.getValue(cv);
 		return new TColumnDatum(column,value);
 	}
 

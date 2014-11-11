@@ -66,8 +66,9 @@ public final class UpdateExecutionStep extends DirectExecutionStep {
 	
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv) throws PEException {
+			ConnectionValuesMap cvm, ExecutionPlan containing) throws PEException {
 		QueryStepDMLOperation qso = null;
+		ConnectionValues cv = cvm.getValues(containing);
 		IKeyValue ikv = getKeyValue(sc,cv);
 		SQLCommand sqlCommand = getCommand(sc,cv).withReferenceTime(cv.getCurrentTimestamp());
 		StorageGroup sg = getStorageGroup(sc,cv);

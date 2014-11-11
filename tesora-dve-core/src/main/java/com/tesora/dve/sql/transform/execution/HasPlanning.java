@@ -37,9 +37,9 @@ import com.tesora.dve.sql.util.UnaryProcedure;
 
 public interface HasPlanning {
 
-	void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts);
+	void display(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containingPlan, List<String> buf, String indent, EmitOptions opts);
 	
-	void explain(SchemaContext sc, ConnectionValues cv, List<ResultRow> rows, ExplainOptions opts);
+	void explain(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containingPlan, List<ResultRow> rows, ExplainOptions opts);
 	
 	Long getlastInsertId(ValueManager vm, SchemaContext sc, ConnectionValues cv);
 	
@@ -48,7 +48,7 @@ public interface HasPlanning {
 	boolean useRowCount();
 	
 	void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, 
-			SchemaContext sc, ConnectionValues cv) throws PEException;
+			SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containingPlan) throws PEException;
 	
 	ExecutionType getExecutionType();
 	
@@ -56,6 +56,5 @@ public interface HasPlanning {
 
 	void prepareForCache();
 	
-	void visitInExecutionOrder(UnaryProcedure<HasPlanning> proc);
-	
+	void visitInExecutionOrder(UnaryProcedure<HasPlanning> proc);	
 }

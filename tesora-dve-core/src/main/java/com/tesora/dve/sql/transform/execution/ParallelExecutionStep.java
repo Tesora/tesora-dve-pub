@@ -69,18 +69,18 @@ public class ParallelExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 	}
 	
 	@Override
-	public void display(final SchemaContext sc, final ConnectionValues cv, final List<String> buf, String indent, final EmitOptions opts) {
+	public void display(final SchemaContext sc, final ConnectionValuesMap cvm, final ExecutionPlan containing, final List<String> buf, String indent, final EmitOptions opts) {
 		buf.add(indent + "PARALLEL {");
 		final String subindent = indent + "  ";
 		apply(true, new UnaryProcedure<ExecutionSequence>() {
 
 			@Override
 			public void execute(ExecutionSequence object) {
-				object.display(sc, cv,buf, subindent,opts);
+				object.display(sc, cvm,containing,buf, subindent,opts);
 			}
 			
 		});
@@ -90,19 +90,19 @@ public class ParallelExecutionStep extends ExecutionStep {
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
 		for(ExecutionSequence es : parallel)
-			es.schedule(opts, qsteps, projection, sc, cv);
+			es.schedule(opts, qsteps, projection, sc, cvm, containing);
 	}
 
 	@Override
-	public void explain(final SchemaContext sc, final ConnectionValues cv, final List<ResultRow> rows, final ExplainOptions opts) {
+	public void explain(final SchemaContext sc, final ConnectionValuesMap cvm, final ExecutionPlan containing, final List<ResultRow> rows, final ExplainOptions opts) {
 		apply(true, new UnaryProcedure<ExecutionSequence>() {
 
 			@Override
 			public void execute(ExecutionSequence object) {
-				object.explain(sc,cv,rows,opts);
+				object.explain(sc,cvm,containing,rows,opts);
 			}
 			
 		});

@@ -39,7 +39,7 @@ import com.tesora.dve.sql.schema.cache.SchemaSourcePlanCache;
 import com.tesora.dve.sql.statement.EmptyStatement;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
-import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 
 /**
  * The emulator just replays statements from a source.
@@ -158,7 +158,7 @@ public class Emulator extends Analyzer {
 					}
 				}
 			}
-			final RootExecutionPlan ep = Statement.getExecutionPlan(tee.getPersistenceContext(), dmls);
+			final ExecutionPlan ep = Statement.getExecutionPlan(tee.getPersistenceContext(), dmls);
 			if (tryDups) {
 				PlanCacheUtils.maybeCachePlan(tee.getPersistenceContext(), planCache, dmls, ep, sql, cp);
 			}
@@ -181,7 +181,7 @@ public class Emulator extends Analyzer {
 		cb.onResult(new AnalyzerPlanningNotice(tee.getPersistenceContext(), sql, sp, null, message));
 	}
 
-	private boolean passesRedistCut(RootExecutionPlan ep) {
+	private boolean passesRedistCut(ExecutionPlan ep) {
 		final int redistStepCutoff = this.getOptions().getRedistributionCutoff();
 		if (redistStepCutoff < 0) {
 			return true;

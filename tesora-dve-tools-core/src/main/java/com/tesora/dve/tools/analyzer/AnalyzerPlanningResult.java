@@ -26,18 +26,19 @@ import java.util.ArrayList;
 
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
-import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 
 public class AnalyzerPlanningResult extends AnalyzerResult {
 
-	private final RootExecutionPlan plan;
+	private final ExecutionPlan plan;
 
-	public AnalyzerPlanningResult(final SchemaContext sc, final String sql, final SourcePosition pos, final DMLStatement s, final RootExecutionPlan plan) {
+	public AnalyzerPlanningResult(final SchemaContext sc, final String sql, final SourcePosition pos, final DMLStatement s, final ExecutionPlan plan) {
 		super(sc, sql, pos, s);
 		this.plan = plan;
 	}
 
-	public RootExecutionPlan getPlan() {
+	public ExecutionPlan getPlan() {
 		return this.plan;
 	}
 
@@ -48,7 +49,8 @@ public class AnalyzerPlanningResult extends AnalyzerResult {
 	public void printPlan(final PrintStream ps) {
 		ps.println("Execution Plan:");
 		final ArrayList<String> buf = new ArrayList<String>();
-		this.plan.getSequence().display(this.getSchemaContext(), this.getSchemaContext().getValues(), buf, "  ", null);
+		this.plan.getSequence().display(this.getSchemaContext(), 
+				new IdentityConnectionValuesMap(this.getSchemaContext().getValues()), null, buf, "  ", null);
 		for (final String s : buf) {
 			ps.println(s);
 		}

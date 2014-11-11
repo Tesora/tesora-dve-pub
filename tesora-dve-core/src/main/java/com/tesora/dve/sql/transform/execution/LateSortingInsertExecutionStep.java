@@ -70,8 +70,9 @@ public class LateSortingInsertExecutionStep extends DirectExecutionStep {
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, 
-			SchemaContext sc, ConnectionValues cv)
+			SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
+		ConnectionValues cv = cvm.getValues(containing);
 		List<JustInTimeInsert> late = cv.getLateSortedInserts(); 
 
 		QueryStepMultiInsertByKeyOperation qso = new QueryStepMultiInsertByKeyOperation(getStorageGroup(sc,cv),getPersistentDatabase());
@@ -85,9 +86,10 @@ public class LateSortingInsertExecutionStep extends DirectExecutionStep {
 	}
 	
 	@Override
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+	public void display(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
 		String execType = getEffectiveExecutionType().name();
 		StringBuilder prefix = new StringBuilder();
+		ConnectionValues cv = cvm.getValues(containing);
 		prefix.append(indent).append(execType).append(" on ").append((getDatabase() == null ? "null" : getDatabase().getName().get()))
 			.append("/").append(getStorageGroup(sc,cv));
 		for(JustInTimeInsert jti : cv.getLateSortedInserts()) {

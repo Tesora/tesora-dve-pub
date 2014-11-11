@@ -56,7 +56,8 @@ public class ExecutePStmtStatement extends PStmtStatement {
 				values.add(DBTypeBasedUtils.escape(v));
 		}
 		PlanningResult pr = InvokeParser.bindPreparedStatement(sc, getName().get(), values);
-		sc.setValues(pr.getValues());
+		// this is not the right way to do this at all
+		sc.setValues(pr.getValues().getRootValues());
 		RootExecutionPlan ep = pr.getPlans().get(0);
 		es.setSteps(ep.getSequence().getSteps());
 	}

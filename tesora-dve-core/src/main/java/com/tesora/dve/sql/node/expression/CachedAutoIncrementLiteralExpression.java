@@ -22,6 +22,7 @@ package com.tesora.dve.sql.node.expression;
  */
 
 import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 
 public class CachedAutoIncrementLiteralExpression extends
@@ -34,6 +35,11 @@ public class CachedAutoIncrementLiteralExpression extends
 	@Override
 	public Object getValue(ConnectionValues cv) {
 		return cv.getAutoincValue(this);
+	}
+
+	@Override
+	public ConstantType getConstantType() {
+		return ConstantType.AUTOINCREMENT_LITERAL;
 	}
 
 }

@@ -69,8 +69,9 @@ public final class InsertExecutionStep extends DirectExecutionStep {
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv)
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
+		ConnectionValues cv = cvm.getValues(containing);
 		SQLCommand sqlCommand = getCommand(sc,cv).withReferenceTime(getReferenceTimestamp(cv));
 		QueryStepInsertByKeyOperation qso = 
 				new QueryStepInsertByKeyOperation(getStorageGroup(sc,cv),getPersistentDatabase(), 

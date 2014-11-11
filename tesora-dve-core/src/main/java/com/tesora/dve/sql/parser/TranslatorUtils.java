@@ -4390,7 +4390,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				collation,
 				charset,
 				collationDB,
-				isBefore,
+				isBefore ? TriggerTime.BEFORE : TriggerTime.AFTER,
 				sqlMode,rawSQL);
 		popScope();
 		opts = opts.setResolve();

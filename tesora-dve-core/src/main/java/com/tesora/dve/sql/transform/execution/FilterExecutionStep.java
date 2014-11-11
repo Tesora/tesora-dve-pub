@@ -54,9 +54,9 @@ public class FilterExecutionStep extends ExecutionStep {
 
 	@Override
 	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-			ConnectionValues cv) throws PEException {
+			ConnectionValuesMap cvm, ExecutionPlan containing) throws PEException {
 		ArrayList<QueryStepOperation> sub = new ArrayList<QueryStepOperation>();
-		source.schedule(opts, sub,projection,sc, cv);
+		source.schedule(opts, sub,projection,sc, cvm, containing);
 		for(int i = 0; i < sub.size() - 1; i++) {
 			qsteps.add(sub.get(i));
 		}
@@ -70,13 +70,13 @@ public class FilterExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
-		source.display(sc, cv, buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
+		source.display(sc, cvm, containing, buf, indent, opts);
 	}
 	
 	@Override
-	public void explain(SchemaContext sc, ConnectionValues cv, List<ResultRow> rows, ExplainOptions opts) {
-		source.explain(sc,cv,rows, opts);
+	public void explain(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<ResultRow> rows, ExplainOptions opts) {
+		source.explain(sc,cvm,containing,rows, opts);
 	}
 		
 	public OperationFilter getFilter() {

@@ -29,6 +29,7 @@ import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.util.Pair;
 
@@ -61,16 +62,16 @@ public class CachedPreparedStatement implements CachedPlan {
 		return false;
 	}
 
-	public Pair<RootExecutionPlan,ConnectionValues> rebuildPlan(SchemaContext sc, List<Object> params) throws PEException {
+	public Pair<RootExecutionPlan,ConnectionValuesMap> rebuildPlan(SchemaContext sc, List<Object> params) throws PEException {
 		if (thePlan.getValueManager().getNumberOfParameters() != params.size()) {
 			throw new PEException("Invalid prep. stmt. execute: require " + thePlan.getValueManager().getNumberOfParameters() + " parameters but have " + params.size());
 		}
-		ConnectionValues cv = thePlan.getValueManager().resetForNewPStmtExec(sc, params);
+		ConnectionValuesMap cv = thePlan.resetForNewPStmtExec(sc, params);
 		if (InvokeParser.isSqlLoggingEnabled()) {
-			GenericSQLCommand resolved = logFormat.resolve(cv, false, "  ");
+			GenericSQLCommand resolved = logFormat.resolve(cv.getRootValues(), false, "  ");
 			InvokeParser.logSql(sc, resolved.getDecoded());
 		}
-		return new Pair<RootExecutionPlan,ConnectionValues>(thePlan,cv);
+		return new Pair<RootExecutionPlan,ConnectionValuesMap>(thePlan,cv);
 	}
 
 	public int getNumberOfParameters() {

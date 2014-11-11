@@ -46,7 +46,6 @@ import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.queryplan.TempTableDeclHints;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.parser.InitialInputState;
-import com.tesora.dve.sql.parser.InputState;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.parser.PlanningResult;
@@ -60,16 +59,18 @@ import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
-import com.tesora.dve.sql.schema.cache.PlanCacheUtils.PlanCacheCallback;
 import com.tesora.dve.sql.schema.mt.AdaptiveMultitenantSchemaPolicyContext;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.TransientSchemaTest;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.transform.execution.AbstractProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.AdhocResultsSessionStep;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
@@ -110,39 +111,42 @@ public abstract class TransformTest extends TransientSchemaTest {
 		return InvokeParser.parseOneLine(InvokeParser.buildInputState(in,null), ParserOptions.TEST.setFailEarly());
 	}
 	
-	protected RootExecutionPlan stmtTest(SchemaContext db, String in, Class<?> stmtClass, ExpectedSequence expected) throws Exception {
+	protected ExecutionPlan stmtTest(SchemaContext db, String in, Class<?> stmtClass, ExpectedSequence expected) throws Exception {
 		return stmtTest(db,in,null,stmtClass, expected);
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected RootExecutionPlan stmtTest(SchemaContext db, String in, List<Object> params, Class<?> stmtClass, ExpectedSequence expected)  throws Exception {
+	protected ExecutionPlan stmtTest(SchemaContext db, String in, List<Object> params, Class<?> stmtClass, ExpectedSequence expected)  throws Exception {
 		List<Object> actualParams = Collections.EMPTY_LIST;
 		if (params != null) actualParams = params;
 		List<Statement> stmts = parse(db, in, actualParams);
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first,stmtClass);
-		RootExecutionPlan ep = Statement.getExecutionPlan(db,first);
-		if (isNoisy()) {
-			System.out.println("In: '" + in + "'");
-			ep.display(db,db.getValues(),System.out,null);
-		}
+		ExecutionPlan ep = Statement.getExecutionPlan(db,first);
+		ConnectionValuesMap cvm = new ConnectionValuesMap();
+		cvm.addValues(ep, db.getValues());
+		verifyExecutionPlan(db,cvm,ep,expected);
+		return ep;
+	}
+
+	protected static void verifyExecutionPlan(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan toVerify, ExpectedSequence expected) {
 		if (expected != null) {
 			List<ExpectedStep> expectedExecOrder = new ArrayList<ExpectedStep>();
 			expected.accumulateExecutionOrder(expectedExecOrder);
 			final List<ExecutionStep> actualExecOrder = new ArrayList<ExecutionStep>();
-			ep.getSequence().visitInExecutionOrder(new UnaryProcedure<HasPlanning>() {
+			toVerify.getSequence().visitInExecutionOrder(new UnaryProcedure<HasPlanning>() {
 
 				@Override
 				public void execute(HasPlanning object) {
 					if (object instanceof ExecutionStep)
 						actualExecOrder.add((ExecutionStep)object);
 				}
-				
+
 			});
 			assertEquals("should have same number of steps",expectedExecOrder.size(), actualExecOrder.size());
 			for(int i = 0; i < expectedExecOrder.size(); i++)
-				expectedExecOrder.get(i).verify(db,db.getValues(),actualExecOrder.get(i));
+				expectedExecOrder.get(i).verify(sc,cvm,toVerify,actualExecOrder.get(i));
 		} else {
 			if (printVerifyBlock) {
 				if (!isNoisy()) {
@@ -153,20 +157,19 @@ public abstract class TransformTest extends TransientSchemaTest {
 						System.out.println("From test " + e.getStackTrace()[2].getMethodName());
 					}
 				}
-				printExecutionPlanVerify(db,db.getValues(),ep);
+				printExecutionPlanVerify(sc,cvm,toVerify);
 			}
 			if (failOnUnsetExpected)
-				fail("Fill in expected result");
+				fail("Fill in expected result");			
 		}
-		return ep;
 	}
-
+	
 	protected void cachePlanTest(SchemaContext db, String in, boolean hit, ExpectedSequence expected) throws Exception {
 		db.refresh(true);
 		PlanningResult results = InvokeParser.buildPlan(db, InvokeParser.buildInputState(in,db), ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly(),
 				new VerifyingPlanCacheCallback(hit));
 		List<RootExecutionPlan> plans = results.getPlans();
-		ConnectionValues cv = results.getValues();
+		ConnectionValuesMap cv = results.getValues();
 		assertEquals(plans.size(),1);
 		RootExecutionPlan ep = plans.get(0);
 		if (isNoisy()) {
@@ -174,7 +177,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			ep.display(db,cv,System.out,null);
 		}
 		if (expected != null)
-			expected.verify(db, cv, ep.getSequence());
+			expected.verify(db, cv, ep, ep.getSequence());
 		else {
 			if (printVerifyBlock)
 				printExecutionPlanVerify(db, cv, ep);
@@ -192,15 +195,15 @@ public abstract class TransformTest extends TransientSchemaTest {
 		List<Object> fakeParams = new ArrayList<Object>();
 		for(int i = 0; i < numParams; i++)
 			fakeParams.add("fp" + i);
-		Pair<RootExecutionPlan,ConnectionValues> res = ppr.getCachedPlan().rebuildPlan(db, fakeParams);
+		Pair<RootExecutionPlan,ConnectionValuesMap> res = ppr.getCachedPlan().rebuildPlan(db, fakeParams);
 		RootExecutionPlan ep = res.getFirst();
-		ConnectionValues cv = res.getSecond();
+		ConnectionValuesMap cv = res.getSecond();
 		if (isNoisy()) {
 			System.out.println("In: '" + in + "'");
 			ep.display(db,cv,System.out,null);
 		}
 		if (expected != null)
-			expected.verify(db,cv,ep.getSequence());
+			expected.verify(db,cv,ep,ep.getSequence());
 		else {
 			if (printVerifyBlock)
 				printExecutionPlanVerify(db,cv,ep);
@@ -215,7 +218,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			List<Statement> stmts = parse(db, in);
 			assertEquals(stmts.size(), 1);
 			Statement first = stmts.get(0);
-			RootExecutionPlan ep = Statement.getExecutionPlan(db,first);
+			ExecutionPlan ep = Statement.getExecutionPlan(db,first);
 			// exercise the plan slightly
 			ep.getUpdateCount(db,db.getValues());
 		}
@@ -268,7 +271,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		return "'" + in + "' (" + (in == null ? "null" : in.getClass().getSimpleName()) + ")";
 	}
 
-	protected static void printExecutionStepVerify(SchemaContext pc, ConnectionValues cv, HasPlanning hp, int nesting, boolean hasNext, StringBuilder buf) {
+	protected static void printExecutionStepVerify(SchemaContext pc, ConnectionValuesMap cvm, ExecutionPlan containing, HasPlanning hp, int nesting, boolean hasNext, StringBuilder buf) {
 		StringBuffer prefix = new StringBuffer();
 		for(int i = 0; i < nesting; i++)
 			prefix.append("\t");		
@@ -276,14 +279,14 @@ public abstract class TransformTest extends TransientSchemaTest {
 			buf.append(prefix).append("bes(").append(PEConstants.LINE_SEPARATOR);
 			ExecutionSequence es = (ExecutionSequence) hp;
 			for(Iterator<HasPlanning> iter = es.getSteps().iterator(); iter.hasNext();) {
-				printExecutionStepVerify(pc,cv,iter.next(),nesting+1,iter.hasNext(),buf);
+				printExecutionStepVerify(pc,cvm,containing,iter.next(),nesting+1,iter.hasNext(),buf);
 			}
 			buf.append(prefix).append(")");
 		} else if (hp instanceof ParallelExecutionStep) {
 			buf.append(prefix).append("bpes(").append(PEConstants.LINE_SEPARATOR);
 			ParallelExecutionStep pes = (ParallelExecutionStep) hp;
 			for(Iterator<ExecutionSequence> iter = pes.getSequences().iterator(); iter.hasNext();) {
-				printExecutionStepVerify(pc,cv,iter.next(),nesting+1,iter.hasNext(),buf);
+				printExecutionStepVerify(pc,cvm,containing,iter.next(),nesting+1,iter.hasNext(),buf);
 			}
 			buf.append(prefix).append(")");
 		} else if (hp instanceof AbstractProjectingExecutionStep) {
@@ -297,6 +300,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			if (aes instanceof ProjectingExecutionStep) {
 				buf.append(prefix).append("\tnull,").append(PEConstants.LINE_SEPARATOR);
 			} else {
+				ConnectionValues cv = cvm.getValues(containing);
 				RedistributionExecutionStep redist = (RedistributionExecutionStep) aes;
 				buf.append(prefix).append("\t").append(characterizeGroup(redist.getPEStorageGroup().getPEStorageGroup(pc,cv))).append(",");
 				buf.append('"').append(redist.getRedistTable(pc,cv)).append('"').append(",").append(characterizeGroup(redist.getTargetGroup(pc,cv).getPEStorageGroup(pc,cv))).append(",");				
@@ -350,7 +354,7 @@ public abstract class TransformTest extends TransientSchemaTest {
                 }
 
 			}
-            appendSQL(aes,buf,pc,cv,prefix);
+            appendSQL(aes,buf,pc,cvm,containing,prefix);
             if (aes instanceof ProjectingExecutionStep) {
             	ProjectingExecutionStep pes = (ProjectingExecutionStep) aes;
             	appendInMemoryLimit(pes,buf,pc,prefix);
@@ -359,38 +363,38 @@ public abstract class TransformTest extends TransientSchemaTest {
             addExplainHint(aes.getExplainHint(),buf,pc,prefix);
 		} else if (hp instanceof DeleteExecutionStep) {
 			DeleteExecutionStep des = (DeleteExecutionStep) hp;
-			appendDirectExpectedStepParams("DeleteExpectedStep",des,buf,prefix,pc,cv);
+			appendDirectExpectedStepParams("DeleteExpectedStep",des,buf,prefix,pc,cvm,containing);
 		} else if (hp instanceof UpdateExecutionStep) {
 			UpdateExecutionStep ues = (UpdateExecutionStep) hp;
-			appendDirectExpectedStepParams("UpdateExpectedStep",ues,buf,prefix,pc,cv);
+			appendDirectExpectedStepParams("UpdateExpectedStep",ues,buf,prefix,pc,cvm,containing);
 		} else if (hp instanceof SetVariableExecutionStep) {
 			SetVariableExecutionStep sves = (SetVariableExecutionStep) hp;
 			VariableValueSource vvs = sves.getValueSource();
 			String value = null;
 			if (vvs.isConstant())
-				value = vvs.getConstantValue(cv);
+				value = vvs.getConstantValue(cvm.getValues(containing));
 			buf.append("new SessionVariableExpectedStep(\"" + sves.getScopeName() + "\",\"" + sves.getVariableName() + "\"," + (value == null ? "null" : "\"" + value + "\"") + ")");
 		} else if (hp instanceof TransactionExecutionStep) {
 			TransactionExecutionStep tes = (TransactionExecutionStep) hp;
-			buf.append("new TransactionExpectedStep(group,\"" + tes.getSQL(pc, cv,null) + "\")");
+			buf.append("new TransactionExpectedStep(group,\"" + tes.getSQL(pc, cvm,containing,null) + "\")");
 		} else if (hp instanceof FilterExecutionStep) {
 			FilterExecutionStep fes = (FilterExecutionStep) hp;
 			buf.append("new FilterExpectedStep(\"").append(fes.getFilter().describe()).append("\",");
-			printExecutionStepVerify(pc,cv,fes.getSource(),0,false,buf);
+			printExecutionStepVerify(pc,cvm,containing,fes.getSource(),0,false,buf);
 			buf.append(")");
 		} else if (hp instanceof TriggerExecutionStep) {
 			TriggerExecutionStep tes = (TriggerExecutionStep) hp;
 			buf.append(prefix).append("new TriggerExpectedStep(group,").append(PEConstants.LINE_SEPARATOR);
-			printExecutionStepVerify(pc,cv,tes.getRowQuery(),nesting+1,true,buf);
-			printExecutionStepVerify(pc,cv,tes.getActualStep(),nesting+1,true,buf);
+			printExecutionStepVerify(pc,cvm,containing,tes.getRowQuery(),nesting+1,true,buf);
+			printExecutionStepVerify(pc,cvm,containing,tes.getActualStep(),nesting+1,true,buf);
 			if (tes.getBeforeStep() == null)
 				buf.append(prefix).append("  null,").append(PEConstants.LINE_SEPARATOR);
 			else
-				printExecutionStepVerify(pc,cv,tes.getBeforeStep(),nesting+1,true,buf);
+				printExecutionStepVerify(pc,cvm,containing,tes.getBeforeStep(),nesting+1,true,buf);
 			if (tes.getActualStep() == null)
 				buf.append(prefix).append("  null").append(PEConstants.LINE_SEPARATOR);
 			else
-				printExecutionStepVerify(pc,cv,tes.getAfterStep(),nesting+1,false,buf);
+				printExecutionStepVerify(pc,cvm,containing,tes.getAfterStep(),nesting+1,false,buf);
 			buf.append(")");
 		} else {
 			buf.append("null");
@@ -401,15 +405,17 @@ public abstract class TransformTest extends TransientSchemaTest {
 		buf.append(PEConstants.LINE_SEPARATOR);
 	}
 	
-	private static void appendDirectExpectedStepParams(String execClass, DirectExecutionStep des, StringBuilder buf, StringBuffer prefix, SchemaContext pc, ConnectionValues cv) {
+	private static void appendDirectExpectedStepParams(String execClass, DirectExecutionStep des, StringBuilder buf, StringBuffer prefix, SchemaContext pc, ConnectionValuesMap cvm, ExecutionPlan containing) {
 		buf.append(prefix).append("new ").append(execClass).append("(").append(PEConstants.LINE_SEPARATOR);
-		buf.append(prefix).append("\t").append(characterizeGroup(des.getPEStorageGroup().getPEStorageGroup(pc,cv))).append(",").append(PEConstants.LINE_SEPARATOR);
-		appendSQL(des,buf,pc,cv,prefix);
+		buf.append(prefix).append("\t")
+			.append(characterizeGroup(des.getPEStorageGroup().getPEStorageGroup(pc,cvm.getValues(containing))))
+			.append(",").append(PEConstants.LINE_SEPARATOR);
+		appendSQL(des,buf,pc,cvm,containing,prefix);
 	}
 
-	private static void appendSQL(ExecutionStep es, StringBuilder buf, SchemaContext pc, ConnectionValues cv, StringBuffer prefix) {
+	private static void appendSQL(ExecutionStep es, StringBuilder buf, SchemaContext pc, ConnectionValuesMap cvm, ExecutionPlan containing, StringBuffer prefix) {
         List<String> parts = new ArrayList<String>();
-        es.displaySQL(pc, cv,parts, " ", null);
+        es.displaySQL(pc, cvm,containing,parts, " ", null);
         for(Iterator<String> iter = parts.iterator(); iter.hasNext();) {
         	buf.append(prefix).append("  ").append('"').append(iter.next().trim()).append('"');
         	if (iter.hasNext()) buf.append(",");
@@ -447,9 +453,9 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 	}
 	
-	protected static void printExecutionPlanVerify(SchemaContext pc, ConnectionValues cv, RootExecutionPlan ep) {
+	protected static void printExecutionPlanVerify(SchemaContext pc, ConnectionValuesMap cvm, ExecutionPlan ep) {
 		StringBuilder buf = new StringBuilder();
-		printExecutionStepVerify(pc, cv, ep.getSequence(),0,false,buf);
+		printExecutionStepVerify(pc, cvm, ep, ep.getSequence(),0,false,buf);
 		System.out.println(buf.toString());
 	}
 	
@@ -463,11 +469,11 @@ public abstract class TransformTest extends TransientSchemaTest {
 			this.steps = steps;
 		}
 		
-		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionSequence es) {
+		public void verify(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, ExecutionSequence es) {
 			List<HasPlanning> actualSteps = es.getSteps();
 			assertEquals(steps.length, actualSteps.size());
 			for(int i = 0; i < steps.length; i++) {
-				steps[i].verify(sc,cv,(ExecutionStep)actualSteps.get(i));
+				steps[i].verify(sc,cvm,containing,(ExecutionStep)actualSteps.get(i));
 			}
 		}
 		
@@ -486,10 +492,10 @@ public abstract class TransformTest extends TransientSchemaTest {
 		
 		// doesn't have any of it's own sql - is here for grouping
 		@Override
-		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
+		public void verify(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing,ExecutionStep es) {
 			SchemaTest.assertInstanceOf(es,UpdateExecutionSequence.class);
 			UpdateExecutionSequence ues = (UpdateExecutionSequence) es;
-			verify(sc,cv,ues);
+			verify(sc,cvm,containing,ues);
 		}
 	}
 	
@@ -509,25 +515,25 @@ public abstract class TransformTest extends TransientSchemaTest {
 			return what + " '" + sql + "'";
 		}
 
-		protected void verifySQL(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
+		protected void verifySQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing,  ExecutionStep es) {
 			if (sql.length == 1) {
-				String gen = es.getSQL(sc,cv,null).trim();
+				String gen = es.getSQL(sc,cvm,containing,null).trim();
 				assertEquals("expect same sql",this.sql[0], gen);
 			} else {
 				ArrayList<String> parts = new ArrayList<String>();
-				es.displaySQL(sc, cv,parts, "", null);
-				assertEquals("expect same number of pretty printed parts for '" + es.getSQL(sc,cv,null) + "'",sql.length,parts.size());
+				es.displaySQL(sc, cvm,containing,parts, "", null);
+				assertEquals("expect same number of pretty printed parts for '" + es.getSQL(sc,cvm,containing,null) + "'",sql.length,parts.size());
 				for(int i = 0; i < sql.length; i++) {
 					assertEquals("expect same sql for part " + i,sql[i],parts.get(i).trim());
 				}
 			}
 		}
 		
-		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
+		public void verify(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, ExecutionStep es) {
 			SchemaTest.assertInstanceOf(es, stepClass);
-			verifySQL(sc,cv, es);
+			verifySQL(sc,cvm, containing, es);
 			if (sourceGroup != null) {
-				PEStorageGroup gs = es.getPEStorageGroup().getPEStorageGroup(sc,cv);
+				PEStorageGroup gs = es.getPEStorageGroup().getPEStorageGroup(sc,cvm.getValues(containing));
 				if (!sourceGroup.equals(gs)) {
 					fail("Expected source group " + sourceGroup 
 							+ " (" + sourceGroup.getClass().getSimpleName() 
@@ -536,7 +542,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 							+ " (" + gs.getClass().getSimpleName()
 							+ "@" + System.identityHashCode(gs)
 							+ ") at sql "
-							+ es.getSQL(sc, cv,null)
+							+ es.getSQL(sc, cvm,containing,null)
 							
 							);
 				}
@@ -563,11 +569,11 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 		
 		@Override
-		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
-			super.verify(sc, cv, es);
+		public void verify(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, ExecutionStep es) {
+			super.verify(sc, cvm, containing, es);
 			DirectExecutionStep des = (DirectExecutionStep) es;
 			if (fakeKey != null) {
-				IKeyValue ikv = des.getKeyValue(sc,cv);
+				IKeyValue ikv = des.getKeyValue(sc,cvm.getValues(containing));
 				if (fakeKey == NULL_FAKE_KEY)
 					assertNull("no key value should be specified",ikv);
 				else
@@ -673,8 +679,8 @@ public abstract class TransformTest extends TransientSchemaTest {
         }
         
 		@Override
-		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
-			super.verify(sc,cv, es);
+		public void verify(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, ExecutionStep es) {
+			super.verify(sc,cvm, containing, es);
 			AbstractProjectingExecutionStep ses = (AbstractProjectingExecutionStep) es;
 			/*
 			 * hint testing disabled for now
@@ -687,6 +693,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 			}
 			*/
 			
+			ConnectionValues cv = cvm.getValues(containing);
 			if (ses instanceof RedistributionExecutionStep) {
 				RedistributionExecutionStep redist = (RedistributionExecutionStep) ses;
 				if (redistTable == null)
@@ -696,7 +703,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 					PEStorageGroup targ = redist.getTargetGroup(sc,cv).getPEStorageGroup(sc,cv);
 					assertNotNull("target group must exist", targ);
 					if (!target.equals(targ)) {
-						fail("Expected " + target + " but found " + targ + " on step " + es.getSQL(sc, cv,null));
+						fail("Expected " + target + " but found " + targ + " on step " + es.getSQL(sc, cvm,containing,null));
 					}
 				} else {
 					// no checking
@@ -715,9 +722,9 @@ public abstract class TransformTest extends TransientSchemaTest {
                     if (tab instanceof TempTable){
 						TempTableDeclHints hints = ((TempTable) tab).finalizeHints(sc);
 						List<List<String>> sesIndices = hints.getIndexes();
-                        assertEquals("should have same number of index hints for sql '" + es.getSQL(sc, cv,null) + "'",indices.size(),sesIndices.size());
+                        assertEquals("should have same number of index hints for sql '" + es.getSQL(sc, cvm,containing,null) + "'",indices.size(),sesIndices.size());
                         for (int i=0;i< indices.size();i++){
-							assertEquals("should have same index hint for sql '" + es.getSQL(sc, cv,null) + "'", Arrays.asList(indices.get(i)), sesIndices.get(i));
+							assertEquals("should have same index hint for sql '" + es.getSQL(sc, cvm,containing,null) + "'", Arrays.asList(indices.get(i)), sesIndices.get(i));
                         }
                     }
                 }
@@ -726,7 +733,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 				ProjectingExecutionStep pes = (ProjectingExecutionStep) ses;
 				if (redistTable != null)
 					fail("Found ProjectingExecutionStep but expecting RedistributionExecutionStep");
-				assertEquals("should have same in mem limit flag for step '" + es.getSQL(sc, cv,null) + "'", this.usesInMemoryLimit, pes.usesInMemoryLimit());				
+				assertEquals("should have same in mem limit flag for step '" + es.getSQL(sc, cvm,containing,null) + "'", this.usesInMemoryLimit, pes.usesInMemoryLimit());				
 			}			
 		}
 	}
@@ -738,7 +745,7 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 
 		@Override
-		public void verify(SchemaContext db, ConnectionValues cv, ExecutionStep es) {
+		public void verify(SchemaContext db, ConnectionValuesMap cvm, ExecutionPlan containing, ExecutionStep es) {
 			SchemaTest.assertInstanceOf(es, stepClass);
 		}
 	}
@@ -768,13 +775,13 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 		
 		@Override
-		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
+		public void verify(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, ExecutionStep es) {
 			SchemaTest.assertInstanceOf(es, stepClass);
 			ParallelExecutionStep pes = (ParallelExecutionStep) es;
 			List<ExecutionSequence> sequences = pes.getSequences();
 			assertEquals(parts.length, sequences.size());
 			for(int i = 0; i < parts.length; i++)
-				parts[i].verify(sc,cv,sequences.get(i));
+				parts[i].verify(sc,cvm,containing,sequences.get(i));
 		}
 		
 		public void accumulateExecutionOrder(List<ExpectedStep> acc) {
@@ -798,18 +805,18 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 
 		@Override
-		protected void verifySQL(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
+		protected void verifySQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, ExecutionStep es) {
 		}
 
 		@Override
-		public void verify(SchemaContext db, ConnectionValues cv, ExecutionStep es) {
-			super.verify(db,cv,es);
+		public void verify(SchemaContext db, ConnectionValuesMap cvm, ExecutionPlan containing, ExecutionStep es) {
+			super.verify(db,cvm,containing,es);
 			SetVariableExecutionStep sves = (SetVariableExecutionStep) es;
 			assertEquals("should have same scope name",scopeName,sves.getScopeName());
 			assertEquals("should have same variable name",variableName,sves.getVariableName());
 			VariableValueSource vvs = sves.getValueSource();
 			assertTrue("should be a constant source",vvs.isConstant());
-			String value = vvs.getConstantValue(cv);
+			String value = vvs.getConstantValue(cvm.getValues(containing));
 			assertEquals("should have same constant value",constantValue,value);
 		}
 		
@@ -836,16 +843,16 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 		
 		@Override
-		protected void verifySQL(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
+		protected void verifySQL(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containing, ExecutionStep es) {
 		}
 
 		@Override
-		public void verify(SchemaContext db, ConnectionValues cv, ExecutionStep es) {
-			super.verify(db,cv,es);
+		public void verify(SchemaContext db, ConnectionValuesMap cv, ExecutionPlan containing, ExecutionStep es) {
+			super.verify(db,cv,containing,es);
 			FilterExecutionStep fes = (FilterExecutionStep) es;
 			assertEquals("should have same filter description",filterDescription, fes.getFilter().describe());
 			ExecutionStep haveSrc = fes.getSource();
-			source.verify(db, cv,haveSrc);
+			source.verify(db, cv,containing,haveSrc);
 		}
 	}
 	
@@ -873,22 +880,26 @@ public abstract class TransformTest extends TransientSchemaTest {
 		}
 
 		@Override
-		public void verify(SchemaContext sc, ConnectionValues cv, ExecutionStep es) {
-			super.verify(sc, cv, es);
+		public void verify(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containing,ExecutionStep es) {
+			super.verify(sc, cv, containing, es);
 			TriggerExecutionStep trigStep = (TriggerExecutionStep) es;
-			rowQuery.verify(sc, cv, trigStep.getRowQuery());
-			actual.verify(sc, cv, trigStep.getActualStep());
-			verifyTriggerBody(sc,cv,"before",before,trigStep.getBeforeStep());
-			verifyTriggerBody(sc,cv,"after",after,trigStep.getAfterStep());
+			rowQuery.verify(sc, cv, containing, trigStep.getRowQuery());
+			actual.verify(sc, cv, containing, trigStep.getActualStep());
+			verifyTriggerBody(sc,cv,containing, "before",before,trigStep.getBeforeStep());
+			verifyTriggerBody(sc,cv,containing,"after",after,trigStep.getAfterStep());
 		}
 		
-		private void verifyTriggerBody(SchemaContext sc, ConnectionValues cv, String which, ExpectedStep expected, ExecutionStep actual) {
+		private void verifyTriggerBody(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, String which, ExpectedStep expected, HasPlanning actual) {
 			if (expected == null && actual != null)
 				fail("Found " + which + " step, but none expected");
 			else if (actual == null && expected != null)
 				fail("Missing " + which + " step");
-			else if (actual != null && expected != null)
-				expected.verify(sc, cv, actual);
+			else if (actual != null && expected != null) {
+				if (actual instanceof ExecutionPlan) 
+					verifyExecutionPlan(sc,cvm,(ExecutionPlan)actual,(ExpectedSequence) expected);
+				else
+					expected.verify(sc, cvm, containing, (ExecutionStep) actual);
+			}
 		}
 
 		public void accumulateExecutionOrder(List<ExpectedStep> acc) {

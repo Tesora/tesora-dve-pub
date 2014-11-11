@@ -77,6 +77,7 @@ import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.FilterExecutionStep;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
 import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
@@ -425,7 +426,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			es.append(metadataFilter.getCollectorExecutionStep(sc));
 			es.append(new SessionExecutionStep(null, sg, dropSampleTable.getSQL(sc)));
 
-			es.schedule(null, this.plan, null, sc, cv);
+			es.schedule(null, this.plan, null, sc, new IdentityConnectionValuesMap(cv), null);
 		}
 
 		@Override
@@ -441,7 +442,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			es.append(new SessionExecutionStep(this.alterTarget.getDatabase(sc), this.alterTarget.getStorageGroup(sc), this.alterTargetTableStatement
 					.getSQL(sc)));
 
-			es.schedule(null, this.plan, null, sc, sc.getValues());
+			es.schedule(null, this.plan, null, sc, new IdentityConnectionValuesMap(sc.getValues()),null);
 		}
 
 		@Override

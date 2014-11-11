@@ -116,7 +116,6 @@ import com.tesora.dve.sql.statement.ddl.PECreateDatabaseStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTenantTableStatement;
-import com.tesora.dve.sql.statement.ddl.PECreateTriggerStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateViewStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropStatement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;

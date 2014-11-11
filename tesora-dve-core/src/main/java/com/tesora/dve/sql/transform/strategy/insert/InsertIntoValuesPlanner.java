@@ -141,7 +141,7 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 			} else {
 				final LateSortedInsert lsi = new LateSortedInsert(iivs, parts);
 				context.getContext().getValueManager().registerLateSortedInsert(lsi);
-				if (!context.getContext().getOptions().isPrepare())
+				if (!context.getContext().getOptions().isPrepare() && !context.getContext().getOptions().isTriggerPlanning())
 					context.getContext().getValueManager().handleLateSortedInsert(context.getContext(),context.getContext().getValues());
 
 				out = new LateSortedInsertFeatureStep(iivs,planner,

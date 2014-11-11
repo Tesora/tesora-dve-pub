@@ -43,8 +43,9 @@ import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
-import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
@@ -69,7 +70,7 @@ public class ExplicitKeyValueTest extends TransformTest {
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first, statementClass);
-		RootExecutionPlan ep = Statement.getExecutionPlan(db,first); 
+		ExecutionPlan ep = Statement.getExecutionPlan(db,first); 
 		List<HasPlanning> steps = ep.getSequence().getSteps();
 		assertEquals(steps.size(), 1);
 		DirectExecutionStep firstStep = (DirectExecutionStep) steps.get(0);
@@ -98,9 +99,11 @@ public class ExplicitKeyValueTest extends TransformTest {
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first, statementClass);
-		RootExecutionPlan ep = Statement.getExecutionPlan(db,first);
+		ExecutionPlan ep = Statement.getExecutionPlan(db,first);
+		ConnectionValuesMap cvm = new ConnectionValuesMap();
+		cvm.addValues(ep, db.getValues());
 		if (isNoisy())
-			ep.display(db,db.getValues(),System.out,null);
+			ep.display(db,cvm,System.out,null);
 		List<HasPlanning> steps = ep.getSequence().getSteps();	
 		if (fakes == null) {
 			assertEquals(steps.size(), 1);

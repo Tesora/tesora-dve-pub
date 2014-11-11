@@ -74,7 +74,7 @@ public abstract class ExecutionStep implements HasPlanning {
 		return sg;
 	}
 	
-	public void getSQL(SchemaContext sc, ConnectionValues cv, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 		
 	}
 
@@ -87,42 +87,44 @@ public abstract class ExecutionStep implements HasPlanning {
 		return getExecutionType();
 	}
 	
-	public String getSQL(SchemaContext sc, ConnectionValues cv, EmitOptions opts) {
+	public String getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, EmitOptions opts) {
 		ArrayList<String> buf = new ArrayList<String>();
-		getSQL(sc,cv, buf, opts);
+		getSQL(sc,cvm, containing, buf, opts);
 		return Functional.join(buf,";");
 	}
 		
-	public void displaySQL(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+	public void displaySQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
 		buf.add(indent + "  sql:");
-		buf.add(getSQL(sc,cv,opts));
+		buf.add(getSQL(sc,cvm,containing,opts));
 	}
 	
 	@Override
-	public void display(SchemaContext sc, ConnectionValues cv, List<String> buf, String indent, EmitOptions opts) {
+	public void display(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containingPlan, List<String> buf, String indent, EmitOptions opts) {
 		String execType = null;
 		if (getEffectiveExecutionType() != getExecutionType()) {
 			execType = getEffectiveExecutionType().name() + " (" + getExecutionType().name() + ")";
 		} else {
 			execType = getEffectiveExecutionType().name();
 		}
+		ConnectionValues cv = cvm.getValues(containingPlan);
 		buf.add(indent + execType + " on " 
 				+ (getDatabase() == null ? "null" : getDatabase().getName().get()) 
 				+ "/" + getStorageGroup(sc,cv));
-		if (opts == null) buf.add(indent + "  sql: '" + getSQL(sc,cv,opts) + "'");
-		else displaySQL(sc, cv, buf, indent, opts);
+		if (opts == null) buf.add(indent + "  sql: '" + getSQL(sc,cvm,containingPlan,opts) + "'");
+		else displaySQL(sc, cvm, containingPlan, buf, indent, opts);
 	}
 	
 	@Override
-	public void explain(SchemaContext sc, ConnectionValues cv, List<ResultRow> rows, ExplainOptions opts) {
+	public void explain(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<ResultRow> rows, ExplainOptions opts) {
 		ResultRow rr = new ResultRow();
+		ConnectionValues cv = cvm.getValues(containing);
 		addExplainColumns(sc,cv,rr,opts);
 		// add any nulls that are needed
 		int width = RootExecutionPlan.basicExplainColumns.length + (opts.isStatistics() ? StepExecutionStatistics.statsExplainColumns.length : 0); 
 		int diff = width - 1 - rr.getRow().size();
 		for(int i = 0; i < diff; i++)
 			rr.addResultColumn(null,true);
-		rr.addResultColumn(getSQL(sc,cv,null), false);
+		rr.addResultColumn(getSQL(sc,cvm,containing,null), false);
 		rows.add(rr);
 	}
 	

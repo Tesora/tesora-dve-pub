@@ -66,7 +66,11 @@ import com.tesora.dve.sql.schema.cache.PlanCacheKey;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.PrePlanner;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.NestedExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PrepareExecutionStep;
@@ -205,8 +209,12 @@ public abstract class Statement extends StatementNode {
 			logFormat = new GenericSQLCommand(sc, s.getSQL(sc));
 		}
 		RootExecutionPlan currentPlan = new RootExecutionPlan(projection,sc.getValueManager(),StatementType.PREPARE);
-		if (s.filterStatement(sc))
-			return new PlanningResult(Collections.singletonList(buildFilteredPlan(currentPlan)), sc.getValues(), null,origSQL);
+		if (s.filterStatement(sc)) {
+			RootExecutionPlan fp = buildFilteredPlan(currentPlan);
+			ConnectionValuesMap cvm = new ConnectionValuesMap();
+			cvm.addValues(fp, sc.getValues());
+			return new PlanningResult(Collections.singletonList(fp), cvm, null,origSQL);
+		}
 		// we will build two execution plans here - the first is the one we're going to push down for the prepare
 		// and the second is the one for the actual stmt
 		List<TableKey> tableKeys = null;
@@ -229,9 +237,11 @@ public abstract class Statement extends StatementNode {
 		// look up the execution plan in the plan cache; if it doesn't exist then we'll go ahead and plan, otherwise not so much.
 		CachedPreparedStatement pstmtPlan = sc.getSource().getPreparedStatement(pck);
 		if (pstmtPlan == null) {
-			pstmtPlan = new CachedPreparedStatement(pck, getExecutionPlan(sc, s, config, origSQL), tableKeys, logFormat);
+			pstmtPlan = new CachedPreparedStatement(pck, (RootExecutionPlan) getExecutionPlan(sc, s, config, origSQL), tableKeys, logFormat);
 		}
-		return new PreparePlanningResult(currentPlan, pstmtPlan, sc.getValues(),origSQL);		
+		ConnectionValuesMap cvm = new ConnectionValuesMap();
+		cvm.addValues(currentPlan, sc.getValues());
+		return new PreparePlanningResult(currentPlan, pstmtPlan, cvm,origSQL);		
 	}
 	
 	protected static RootExecutionPlan buildFilteredPlan(RootExecutionPlan ep) {
@@ -241,35 +251,42 @@ public abstract class Statement extends StatementNode {
 		return ep;
 	}
 	
-	public static RootExecutionPlan getExecutionPlan(SchemaContext sc, Statement s) throws PEException {
+	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s) throws PEException {
 		return getExecutionPlan(sc, s, sc.getBehaviorConfiguration());
 	}
 	
-	public static RootExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config) throws PEException {
+	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config) throws PEException {
 		return getExecutionPlan(sc, s,config,null);
 	}
 	
-	public static RootExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config, String origSQL) throws PEException {
+	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config, String origSQL) throws PEException {
 		ProjectionInfo projection = s.getProjectionMetadata(sc);
-		RootExecutionPlan ep = new RootExecutionPlan(projection,sc.getValueManager(), s.getStatementType());
+		ExecutionPlan ep = null;
+		if (sc.getOptions().isNestedPlan())
+			ep = new NestedExecutionPlan(sc.getValueManager());
+		else
+			ep = new RootExecutionPlan(projection,sc.getValueManager(), s.getStatementType()); 
 
 		s.clearWarnings(sc);
 		
-		if (s.filterStatement(sc)) 
-			return buildFilteredPlan(ep);
+		if (s.filterStatement(sc)) {
+			if (sc.getOptions().isNestedPlan())
+				throw new PEException("Unable to filter nested plans (yet)");
+			return buildFilteredPlan((RootExecutionPlan) ep);
+		}
 
 		Statement ps = PrePlanner.transform(sc,s);
 		if (ps.isExplain()) {
-			RootExecutionPlan expep = ps.buildExplain(sc, config);
-			ep.getSequence().append(expep.generateExplain(sc,sc.getValues(),ps,origSQL));
+			ExecutionPlan expep = ps.buildExplain(sc, config);
+			ep.getSequence().append(expep.generateExplain(sc,new IdentityConnectionValuesMap(sc.getValues()),ps,origSQL));
 		} else {
 			ps.planStmt(sc, ep.getSequence(), config, false);
 		}
 		return ep;
 	}
 	
-	protected RootExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
-		RootExecutionPlan expep = new RootExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
+	protected ExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
+		ExecutionPlan expep = new RootExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
 		planStmt(sc, expep.getSequence(),config, true);
 		return expep;
 	}

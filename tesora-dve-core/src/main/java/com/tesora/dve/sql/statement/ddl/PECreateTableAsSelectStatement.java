@@ -102,6 +102,7 @@ import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.A
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.transform.strategy.AdhocFeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
@@ -213,7 +214,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 		
 		ArrayList<QueryStepOperation> steps = new ArrayList<QueryStepOperation>();
-		subes.schedule(null, steps, null, pc, pc.getValues());
+		subes.schedule(null, steps, null, pc, new IdentityConnectionValuesMap(pc.getValues()),null);
 		int redistOffset = steps.size() - 1;
 
 		boolean mustRebuildCTS = false;

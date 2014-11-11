@@ -39,6 +39,8 @@ import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
@@ -146,8 +148,9 @@ public class TableMaintenanceStatement extends SessionStatement {
 
 		@Override
 		public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
-				ConnectionValues cv)
+				ConnectionValuesMap cvm, ExecutionPlan containing)
 				throws PEException {
+			ConnectionValues cv = cvm.getValues(containing);
 			qsteps.add(new QueryStepSelectAllOperation(getStorageGroup(sc,cv),
 					getPersistentDatabase(), StaticDistributionModel.SINGLETON, getSQLCommand(sc)));
 		}
