@@ -63,7 +63,7 @@ public abstract class TransformFactory implements FeaturePlanner {
 		}
 	}	
 	
-	protected final boolean emitState = Boolean.getBoolean(getFeaturePlannerID().toString()); 
+	protected final boolean emitState = Boolean.getBoolean(getFeaturePlannerID().toString());
 
 	public void emit(String what) {
 		if (emitState) {

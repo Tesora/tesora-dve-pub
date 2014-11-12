@@ -180,7 +180,6 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	}
 	
 	// placeholder table ctor
-	@SuppressWarnings("unchecked")
 	public PETable(SchemaContext pc, Name name, List<PEColumn> cols, DistributionVector distVect, PEStorageGroup group, PEDatabase pdb) {
 		super(pc,name,cols,distVect,group,pdb);
 		loaded = true;
@@ -194,7 +193,6 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 		cached = null;
 	}
 	
-	@SuppressWarnings("unchecked")
 	protected PETable(UserTable table, SchemaContext lc) {
 		super(table,lc);
 		loaded = false;
@@ -258,7 +256,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	public void setDeclaration(SchemaContext sc, PETable basedOn) {
 		super.setDeclaration(sc,basedOn);
-        tableDefinition = new MysqlEmitter().emitTableDefinition(sc,basedOn); 
+        tableDefinition = new MysqlEmitter().emitTableDefinition(sc,sc.getValues(),basedOn); 
 	}
 	
 	public String getDefinition() {
@@ -756,7 +754,8 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 	
 	@Override
 	public String toString() {
-		return getName().get();
+		final Name n = getName();
+		return (n != null) ? n.get() : String.valueOf(n);
 	}
 
 	@Override
@@ -1044,7 +1043,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 			if (tab.getPersistentStorage(sc) == null)
 				this.pg = null;
 			else
-				this.pg = tab.getPersistentStorage(sc).getScheduledGroup(sc);
+				this.pg = tab.getPersistentStorage(sc).getScheduledGroup(sc,sc.getValues());
 			rangeID = tab.getDistributionVector(sc).getRangeID(sc);
 		}
 		

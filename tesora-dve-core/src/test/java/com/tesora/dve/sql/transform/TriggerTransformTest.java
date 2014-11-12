@@ -70,8 +70,8 @@ public class TriggerTransformTest extends TransformTest {
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							TransientExecutionEngine.LARGE,"temp6",group,BroadcastDistributionModel.MODEL_NAME,
 							emptyDV,
-							new String[][] {{"t8l0"} },
-						  "SELECT DISTINCT temp5.lt2_2 AS t8l0",
+							new String[][] {{"t3l0"} },
+						  "SELECT DISTINCT temp5.lt2_2 AS t3l0",
 						  "FROM temp5"
 						)
 						.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE)),
@@ -81,14 +81,14 @@ public class TriggerTransformTest extends TransformTest {
 							new String[][] {{"si0_7"} },
 						  "SELECT s.`action` AS sa1_6,s.`id` AS si0_7",
 						  "FROM `subj` AS s, temp6",
-						  "WHERE s.`id` = temp6.t8l0"
+						  "WHERE s.`id` = temp6.t3l0"
 						)
 						.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN)),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							TransientExecutionEngine.LARGE,"temp8",TransientExecutionEngine.AGGREGATION,BroadcastDistributionModel.MODEL_NAME,
 							emptyDV,
 							emptyIndexes,
-						  "SELECT 'firsttest' AS litex,temp7.sa1_6 AS t10s0_8,temp7.si0_7 AS t10s1_9",
+						  "SELECT 'firsttest' AS litex,temp7.sa1_6 AS t5s0_8,temp7.si0_7 AS t5s1_9",
 						  "FROM temp7",
 						  "INNER JOIN temp5 ON temp7.si0_7 = temp5.lt2_2"
 						)
@@ -96,7 +96,7 @@ public class TriggerTransformTest extends TransformTest {
 						new TriggerExpectedStep(group,
 							new ProjectingExpectedStep(ExecutionType.SELECT,
 								null,
-							  "SELECT temp8.litex,temp8.t10s0_8,temp8.t10s1_9",
+							  "SELECT temp8.litex,temp8.t5s0_8,temp8.t5s1_9",
 							  "FROM temp8"
 							),
 							new UpdateExpectedStep(
@@ -106,53 +106,55 @@ public class TriggerTransformTest extends TransformTest {
 							  "WHERE s.`id` = _lbc2"
 							),
 						  null,
-							bes(
-								new ProjectingExpectedStep(ExecutionType.SELECT,
-									group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
-									new String[] {"lt2_2" },
-									new String[][] {{"lt2_2"} },
-								  "SELECT l.`targ` AS lt2_2",
-								  "FROM `lookup` AS l",
-								  "WHERE l.`kind` = 5"
+								bes(
+									new ProjectingExpectedStep(ExecutionType.SELECT,
+										group,"temp9",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
+										new String[] {"lt2_2" },
+										new String[][] {{"lt2_2"} },
+									  "SELECT l.`targ` AS lt2_2",
+									  "FROM `lookup` AS l",
+									  "WHERE l.`kind` = 5"
+									)
+									.withExplain(new DMLExplainRecord(DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT)),
+									new ProjectingExpectedStep(ExecutionType.SELECT,
+										TransientExecutionEngine.LARGE,"temp10",group,BroadcastDistributionModel.MODEL_NAME,
+										emptyDV,
+										new String[][] {{"t3l0"} },
+									  "SELECT DISTINCT temp9.lt2_2 AS t3l0",
+									  "FROM temp9"
+									)
+									.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE)),
+									new ProjectingExpectedStep(ExecutionType.SELECT,
+										group,"temp11",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
+										new String[] {"ri0_4" },
+										new String[][] {{"ri0_4"} },
+									  "SELECT r.`id` AS ri0_4",
+									  "FROM `ref` AS r, temp10",
+									  "WHERE r.`id` = temp10.t3l0"
+									)
+									.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN)),
+									new ProjectingExpectedStep(ExecutionType.SELECT,
+										TransientExecutionEngine.LARGE,"temp12",group,BroadcastDistributionModel.MODEL_NAME,
+										emptyDV,
+										emptyIndexes,
+									  "SELECT temp11.ri0_4 AS t5r0_5",
+									  "FROM temp11",
+									  "INNER JOIN temp9 ON temp11.ri0_4 = temp9.lt2_2",
+									  "WHERE _lbc1 like '%whatevs%'"
+									)
+									.withExplain(new DMLExplainRecord(DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT)),
+									new UpdateExpectedStep(
+										group,
+									  "UPDATE `ref` AS r",
+									  "INNER JOIN temp12 ON r.`id` = temp12.t5r0_5",
+									  "SET r.`subject` = _lbc0"
+									)
 								)
-								.withExplain(new DMLExplainRecord(DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT)),
-								new ProjectingExpectedStep(ExecutionType.SELECT,
-									TransientExecutionEngine.LARGE,"temp2",group,BroadcastDistributionModel.MODEL_NAME,
-									emptyDV,
-									new String[][] {{"t3l0"} },
-								  "SELECT DISTINCT temp1.lt2_2 AS t3l0",
-								  "FROM temp1"
-								)
-								.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE)),
-								new ProjectingExpectedStep(ExecutionType.SELECT,
-									group,"temp3",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
-									new String[] {"ri0_4" },
-									new String[][] {{"ri0_4"} },
-								  "SELECT r.`id` AS ri0_4",
-								  "FROM `ref` AS r, temp2",
-								  "WHERE r.`id` = temp2.t3l0"
-								)
-								.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN)),
-								new ProjectingExpectedStep(ExecutionType.SELECT,
-									TransientExecutionEngine.LARGE,"temp4",group,BroadcastDistributionModel.MODEL_NAME,
-									emptyDV,
-									emptyIndexes,
-								  "SELECT temp3.ri0_4 AS t5r0_5",
-								  "FROM temp3",
-								  "INNER JOIN temp1 ON temp3.ri0_4 = temp1.lt2_2",
-								  "WHERE _lbc1 like '%whatevs%'"
-								)
-								.withExplain(new DMLExplainRecord(DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT)),
-								new UpdateExpectedStep(
-									group,
-								  "UPDATE `ref` AS r",
-								  "INNER JOIN temp4 ON r.`id` = temp4.t5r0_5",
-								  "SET r.`subject` = _lbc0"
-								)
-							)
+
 					)
 					)
-					);
+
+				);
 		
 	}
 	
@@ -187,8 +189,8 @@ public class TriggerTransformTest extends TransformTest {
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							TransientExecutionEngine.LARGE,"temp6",group,BroadcastDistributionModel.MODEL_NAME,
 							emptyDV,
-							new String[][] {{"t8l0"} },
-						  "SELECT DISTINCT temp5.lt2_2 AS t8l0",
+							new String[][] {{"t3l0"} },
+						  "SELECT DISTINCT temp5.lt2_2 AS t3l0",
 						  "FROM temp5"
 						)
 						.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE)),
@@ -198,14 +200,14 @@ public class TriggerTransformTest extends TransformTest {
 							new String[][] {{"si0_7"} },
 						  "SELECT s.`action` AS sa1_6,s.`id` AS si0_7",
 						  "FROM `subj` AS s, temp6",
-						  "WHERE s.`id` = temp6.t8l0"
+						  "WHERE s.`id` = temp6.t3l0"
 						)
 						.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN)),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							TransientExecutionEngine.LARGE,"temp8",TransientExecutionEngine.AGGREGATION,BroadcastDistributionModel.MODEL_NAME,
 							emptyDV,
 							emptyIndexes,
-						  "SELECT temp7.sa1_6 AS t10s0_7,temp7.si0_7 AS t10s1_8",
+						  "SELECT temp7.sa1_6 AS t5s0_7,temp7.si0_7 AS t5s1_8",
 						  "FROM temp7",
 						  "INNER JOIN temp5 ON temp7.si0_7 = temp5.lt2_2"
 						)
@@ -213,7 +215,7 @@ public class TriggerTransformTest extends TransformTest {
 						new TriggerExpectedStep(group,
 							new ProjectingExpectedStep(ExecutionType.SELECT,
 								null,
-							  "SELECT temp8.t10s0_7,temp8.t10s1_8",
+							  "SELECT temp8.t5s0_7,temp8.t5s1_8",
 							  "FROM temp8"
 							),
 							new DeleteExpectedStep(
@@ -223,52 +225,54 @@ public class TriggerTransformTest extends TransformTest {
 							  "WHERE s.`id` = _lbc1"
 							),
 						  null,
-							bes(
-								new ProjectingExpectedStep(ExecutionType.SELECT,
-									group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
-									new String[] {"lt2_2" },
-									new String[][] {{"lt2_2"} },
-								  "SELECT l.`targ` AS lt2_2",
-								  "FROM `lookup` AS l",
-								  "WHERE l.`kind` = 5"
+								bes(
+									new ProjectingExpectedStep(ExecutionType.SELECT,
+										group,"temp9",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
+										new String[] {"lt2_2" },
+										new String[][] {{"lt2_2"} },
+									  "SELECT l.`targ` AS lt2_2",
+									  "FROM `lookup` AS l",
+									  "WHERE l.`kind` = 5"
+									)
+									.withExplain(new DMLExplainRecord(DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT)),
+									new ProjectingExpectedStep(ExecutionType.SELECT,
+										TransientExecutionEngine.LARGE,"temp10",group,BroadcastDistributionModel.MODEL_NAME,
+										emptyDV,
+										new String[][] {{"t3l0"} },
+									  "SELECT DISTINCT temp9.lt2_2 AS t3l0",
+									  "FROM temp9"
+									)
+									.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE)),
+									new ProjectingExpectedStep(ExecutionType.SELECT,
+										group,"temp11",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
+										new String[] {"ri0_4" },
+										new String[][] {{"ri0_4"} },
+									  "SELECT r.`id` AS ri0_4",
+									  "FROM `ref` AS r, temp10",
+									  "WHERE r.`id` = temp10.t3l0"
+									)
+									.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN)),
+									new ProjectingExpectedStep(ExecutionType.SELECT,
+										TransientExecutionEngine.LARGE,"temp12",group,BroadcastDistributionModel.MODEL_NAME,
+										emptyDV,
+										emptyIndexes,
+									  "SELECT temp11.ri0_4 AS t5r0_5",
+									  "FROM temp11",
+									  "INNER JOIN temp9 ON temp11.ri0_4 = temp9.lt2_2",
+									  "WHERE _lbc1 % 2 = 0"
+									)
+									.withExplain(new DMLExplainRecord(DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT)),
+									new UpdateExpectedStep(
+										group,
+									  "UPDATE `ref` AS r",
+									  "INNER JOIN temp12 ON r.`id` = temp12.t5r0_5",
+									  "SET r.`subject` = _lbc0"
+									)
 								)
-								.withExplain(new DMLExplainRecord(DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT)),
-								new ProjectingExpectedStep(ExecutionType.SELECT,
-									TransientExecutionEngine.LARGE,"temp2",group,BroadcastDistributionModel.MODEL_NAME,
-									emptyDV,
-									new String[][] {{"t3l0"} },
-								  "SELECT DISTINCT temp1.lt2_2 AS t3l0",
-								  "FROM temp1"
-								)
-								.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE)),
-								new ProjectingExpectedStep(ExecutionType.SELECT,
-									group,"temp3",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
-									new String[] {"ri0_4" },
-									new String[][] {{"ri0_4"} },
-								  "SELECT r.`id` AS ri0_4",
-								  "FROM `ref` AS r, temp2",
-								  "WHERE r.`id` = temp2.t3l0"
-								)
-								.withExplain(new DMLExplainRecord(DMLExplainReason.LOOKUP_JOIN)),
-								new ProjectingExpectedStep(ExecutionType.SELECT,
-									TransientExecutionEngine.LARGE,"temp4",group,BroadcastDistributionModel.MODEL_NAME,
-									emptyDV,
-									emptyIndexes,
-								  "SELECT temp3.ri0_4 AS t5r0_5",
-								  "FROM temp3",
-								  "INNER JOIN temp1 ON temp3.ri0_4 = temp1.lt2_2",
-								  "WHERE _lbc1 % 2 = 0"
-								)
-								.withExplain(new DMLExplainRecord(DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT)),
-								new UpdateExpectedStep(
-									group,
-								  "UPDATE `ref` AS r",
-								  "INNER JOIN temp4 ON r.`id` = temp4.t5r0_5",
-								  "SET r.`subject` = _lbc0"
-								)
-							)
+
 					)
-					));
+					)
+				);
 
 		
 	}
@@ -306,15 +310,34 @@ public class TriggerTransformTest extends TransformTest {
 							  "SET `src`.`value` = _lbc1",
 							  "WHERE `src`.`id` = _lbc0"
 							),
-							new UpdateExpectedStep(
-								group,
-							  "UPDATE `no_ai_src`",
-							  "SET `no_ai_src`.`id` = _lbc0,`no_ai_src`.`value` = _lbc1"
-							),
+								bes(
+									new UpdateExpectedStep(
+										group,
+									  "UPDATE `no_ai_src`",
+									  "SET `no_ai_src`.`id` = _lbc0,`no_ai_src`.`value` = _lbc1"
+									)
+								)
+					,
 					null
 					)
 					)
 				);
+	}
+
+	@Test
+	public void testTriggerWithCase() throws Throwable {
+		final SchemaContext db = buildSchema(
+				TestName.MULTI,
+				"CREATE RANGE arange (int) PERSISTENT GROUP g1",
+				"CREATE TABLE `data_point` (`id` int(11) NOT NULL AUTO_INCREMENT, `gid` int(11) NOT NULL, `value` double NOT NULL, PRIMARY KEY (`id`)) RANGE DISTRIBUTE ON (`id`) USING arange",
+				"CREATE TABLE `data_stats` (`gid` int(11) NOT NULL, `sum` double NOT NULL) RANGE DISTRIBUTE ON (`gid`) USING arange",
+				"CREATE TRIGGER `add_on_insert` AFTER UPDATE ON `data_point` FOR EACH ROW BEGIN CASE (SELECT (COUNT(*) > 0) FROM `data_stats` WHERE `gid` = NEW.gid) WHEN FALSE THEN INSERT INTO `data_stats` (`gid`, `sum`) VALUES (NEW.gid, 0); ELSE UPDATE `data_stats` SET `sum` = `sum` + NEW.value WHERE `gid` = NEW.gid; END CASE; END;"
+				);
+
+		// INSERT INTO `data_point` (`gid`, `value`) VALUES (1, 1.0), (1, 2.0), (1, 3.0), (1, 4.0), (1, 5.5)
+		final String sql = "UPDATE `data_point` SET `value` = 5.0 WHERE `id` = 5";
+		final PEStorageGroup group = getGroup(db);
+		stmtTest(db, sql, UpdateStatement.class, null);
 	}
 
 }

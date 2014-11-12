@@ -21,17 +21,15 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.ColumnSet;
-import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -70,6 +68,7 @@ public class QueryStepTriggerOperation extends QueryStepOperation {
 				before.execute(childState, DBEmptyTextResultConsumer.INSTANCE);
 			LateBoundConstants targetValues = columnHandlers.onTarget(estate,beforeValues);
 			childState = estate.pushConstants(targetValues);
+			estate.getValues().setRuntimeConstants(Arrays.asList(targetValues.getValues()));
 			actual.execute(childState, resultConsumer);
 			if (after != null) {
 				LateBoundConstants afterValues = columnHandlers.onAfter(targetValues); 
@@ -83,7 +82,6 @@ public class QueryStepTriggerOperation extends QueryStepOperation {
 	@Override
 	public void executeSelf(ExecutionState estate, WorkerGroup wg,
 			DBResultConsumer resultConsumer) throws Throwable {
-		
 		actual.executeSelf(estate, wg, resultConsumer);
 
 	}

@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -422,7 +423,7 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 	
 	@Override
 	public String toString() {
-		return ofTable.toString() + "." + getName().get();
+		return String.valueOf(ofTable).concat(".").concat(getName().get());
 	}
 
 	@Override
@@ -482,7 +483,7 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 			if (le.isNullLiteral()) {
 				uc.setDefaultValue(null);
 			} else {
-				uc.setDefaultValue(le.getValue(sc).toString());
+				uc.setDefaultValue(le.getValue(sc.getValues()).toString());
 			}
 		}		
 	}

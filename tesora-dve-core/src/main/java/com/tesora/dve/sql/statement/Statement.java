@@ -34,16 +34,16 @@ import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
-import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.db.GenericSQLCommand;
+import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -66,8 +66,12 @@ import com.tesora.dve.sql.schema.cache.PlanCacheKey;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.PrePlanner;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.NestedExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.PrepareExecutionStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
@@ -103,7 +107,7 @@ public abstract class Statement extends StatementNode {
 	
 	public String getSQL(SchemaContext sc, Emitter emitter, EmitOptions opts, boolean preserveParamMarkers) {
 		GenericSQLCommand gsql = getGenericSQL(sc,emitter,opts);
-		return gsql.resolve(sc, preserveParamMarkers, (opts == null ? null : opts.getMultilinePretty())).getDecoded(); 
+		return gsql.resolve(sc.getValues(), preserveParamMarkers, (opts == null ? null : opts.getMultilinePretty())).getDecoded(); 
 	}
 	
 	public String getSQL(SchemaContext sc, boolean withExtensions, boolean preserveParamMarkers) {
@@ -146,14 +150,16 @@ public abstract class Statement extends StatementNode {
 		if (opts == null)
 			opts = EmitOptions.GENERIC_SQL;
 		else
-			opts = opts.addGenericSQL();		
+			opts = opts.addGenericSQL();	
+		if (sc.getOptions() != null && (sc.getOptions().isNestedPlan() || sc.getOptions().isTriggerPlanning()))
+			opts = opts.addTriggerBody();
 		emitter.setOptions(opts);
 		emitter.startGenericCommand();
 		StringBuilder buf = new StringBuilder();
 		try {
 			if (sc != null)
 				emitter.pushContext(sc.getTokens());
-			emitter.emitStatement(sc,this, buf);
+			emitter.emitStatement(sc,sc.getValues(), this, buf);
 		} finally {
 			if (sc != null)
 				emitter.popContext();
@@ -204,9 +210,13 @@ public abstract class Statement extends StatementNode {
 		} else {
 			logFormat = new GenericSQLCommand(sc, s.getSQL(sc));
 		}
-		ExecutionPlan currentPlan = new ExecutionPlan(projection,sc.getValueManager(),StatementType.PREPARE);
-		if (s.filterStatement(sc))
-			return new PlanningResult(Collections.singletonList(buildFilteredPlan(currentPlan)), null,origSQL);
+		RootExecutionPlan currentPlan = new RootExecutionPlan(projection,sc.getValueManager(),StatementType.PREPARE);
+		if (s.filterStatement(sc)) {
+			RootExecutionPlan fp = buildFilteredPlan(currentPlan);
+			ConnectionValuesMap cvm = new ConnectionValuesMap();
+			cvm.addValues(fp, sc.getValues());
+			return new PlanningResult(Collections.singletonList(fp), cvm, null,origSQL);
+		}
 		// we will build two execution plans here - the first is the one we're going to push down for the prepare
 		// and the second is the one for the actual stmt
 		List<TableKey> tableKeys = null;
@@ -229,12 +239,14 @@ public abstract class Statement extends StatementNode {
 		// look up the execution plan in the plan cache; if it doesn't exist then we'll go ahead and plan, otherwise not so much.
 		CachedPreparedStatement pstmtPlan = sc.getSource().getPreparedStatement(pck);
 		if (pstmtPlan == null) {
-			pstmtPlan = new CachedPreparedStatement(pck, getExecutionPlan(sc, s, config, origSQL), tableKeys, logFormat);
+			pstmtPlan = new CachedPreparedStatement(pck, (RootExecutionPlan) getExecutionPlan(sc, s, config, origSQL), tableKeys, logFormat);
 		}
-		return new PreparePlanningResult(currentPlan, pstmtPlan, origSQL);		
+		ConnectionValuesMap cvm = new ConnectionValuesMap();
+		cvm.addValues(currentPlan, sc.getValues());
+		return new PreparePlanningResult(currentPlan, pstmtPlan, cvm,origSQL);		
 	}
 	
-	protected static ExecutionPlan buildFilteredPlan(ExecutionPlan ep) {
+	protected static RootExecutionPlan buildFilteredPlan(RootExecutionPlan ep) {
 		ep.getSequence().append(new EmptyExecutionStep(0,"filtered statement")); 
 		ep.setCacheable(true);
 		ep.setIsEmptyPlan(true);
@@ -251,17 +263,24 @@ public abstract class Statement extends StatementNode {
 	
 	public static ExecutionPlan getExecutionPlan(SchemaContext sc, Statement s, BehaviorConfiguration config, String origSQL) throws PEException {
 		ProjectionInfo projection = s.getProjectionMetadata(sc);
-		ExecutionPlan ep = new ExecutionPlan(projection,sc.getValueManager(), s.getStatementType());
+		ExecutionPlan ep = null;
+		if (sc.getOptions().isNestedPlan())
+			ep = new NestedExecutionPlan(sc.getValueManager());
+		else
+			ep = new RootExecutionPlan(projection,sc.getValueManager(), s.getStatementType()); 
 
 		s.clearWarnings(sc);
 		
-		if (s.filterStatement(sc)) 
-			return buildFilteredPlan(ep);
+		if (s.filterStatement(sc)) {
+			if (sc.getOptions().isNestedPlan())
+				throw new PEException("Unable to filter nested plans (yet)");
+			return buildFilteredPlan((RootExecutionPlan) ep);
+		}
 
 		Statement ps = PrePlanner.transform(sc,s);
 		if (ps.isExplain()) {
 			ExecutionPlan expep = ps.buildExplain(sc, config);
-			ep.getSequence().append(expep.generateExplain(sc,ps,origSQL));
+			ep.getSequence().append(expep.generateExplain(sc,new IdentityConnectionValuesMap(sc.getValues()),ps,origSQL));
 		} else {
 			ps.planStmt(sc, ep.getSequence(), config, false);
 		}
@@ -269,7 +288,7 @@ public abstract class Statement extends StatementNode {
 	}
 	
 	protected ExecutionPlan buildExplain(SchemaContext sc, BehaviorConfiguration config) throws PEException {
-		ExecutionPlan expep = new ExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
+		ExecutionPlan expep = new RootExecutionPlan(null,sc.getValueManager(), StatementType.EXPLAIN);
 		planStmt(sc, expep.getSequence(),config, true);
 		return expep;
 	}
@@ -317,12 +336,13 @@ public abstract class Statement extends StatementNode {
 	}
 	
 	public PEStorageGroup getSingleGroup(SchemaContext sc) throws PEException {
-		List<PEStorageGroup> groups = getStorageGroups(sc);
+		final List<PEStorageGroup> groups = getStorageGroups(sc);
+		if (groups.isEmpty())
+			throw new PEException("No persistent group present, invalid planning");
 		if (groups.size() > 1) {
 			throw new PEException("More than one persistent group present, more planning needed");
 		}
-		if (groups.size() == 0)
-			throw new PEException("No persistent group present, invalid planning");
+
 		return groups.get(0);		
 	}
 		
@@ -392,7 +412,7 @@ public abstract class Statement extends StatementNode {
 				if (le.isStringLiteral()) {
 					// le is a string - we're going to flip it back into bytes and try it against the target character set
 					// if that fails, then we replace it, otherwise not so much
-                    byte[] bytes =	Singletons.require(HostService.class).getDBNative().getValueConverter().convertBinaryLiteral(le.getValue(pc));
+                    byte[] bytes =	Singletons.require(HostService.class).getDBNative().getValueConverter().convertBinaryLiteral(le.getValue(pc.getValues()));
 					// String raw = (String) le.getValue();
 					String maybe = PECharsetUtils.getString(bytes, targ, true);
 					if (maybe != null)

@@ -26,13 +26,10 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.sql.util.ColumnChecker;
-import com.tesora.dve.sql.util.ComparisonOptions;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProjectDDL;
@@ -176,7 +173,6 @@ public class TriggerDMLTest extends SchemaTest {
 	
 	// waiting for runtime support of insert and delete triggers
 	// the test keeps an up-to-date table (`data_stats`) of sums of values stored in the `data_point` table.
-    @Ignore
     @Test
     public void testD() throws Throwable {
             conn.execute("CREATE RANGE arange (int) PERSISTENT GROUP " + checkDDL.getPersistentGroup().getName());
@@ -184,24 +180,24 @@ public class TriggerDMLTest extends SchemaTest {
             conn.execute("CREATE TABLE `data_point` (`id` int(11) NOT NULL AUTO_INCREMENT, `gid` int(11) NOT NULL, `value` double NOT NULL, PRIMARY KEY (`id`)) RANGE DISTRIBUTE ON (`id`) USING arange");
             conn.execute("CREATE TABLE `data_stats` (`gid` int(11) NOT NULL, `sum` double NOT NULL) RANGE DISTRIBUTE ON (`gid`) USING arange");
 
-            //              conn.execute("CREATE TRIGGER `add_on_insert` AFTER INSERT ON `data_point` FOR EACH ROW BEGIN CASE (SELECT (COUNT(*) > 0) FROM `data_stats` WHERE `gid` = NEW.gid) WHEN FALSE THEN BEGIN INSERT INTO `data_stats` (`gid`, `sum`) VALUES (NEW.gid, 0) ; END; ELSE BEGIN UPDATE `data_stats` SET `sum` = `sum` + NEW.value WHERE `gid` = NEW.gid; END; END CASE; END;");
-            conn.execute("CREATE TRIGGER `update_on_change` AFTER UPDATE ON `data_point` FOR EACH ROW BEGIN UPDATE `data_stats` SET `sum` = `sum` + (NEW.value - OLD.value) WHERE `gid` = OLD.gid; END;");
-            //              conn.execute("CREATE TRIGGER `subtract_on_delete` AFTER DELETE ON `data_point` FOR EACH ROW BEGIN UPDATE `data_stats` SET `sum` = `sum` - OLD.value WHERE `gid` = OLD.gid; END;");
-
-            conn.execute("INSERT INTO `data_point` (`gid`, `value`) VALUES (1, 1.0), (1, 2.0), (1, 3.0), (1, 4.0), (1, 5.5)");
-            conn.execute("INSERT INTO `data_point` (`gid`, `value`) VALUES (2, 0.1), (2, 0.2), (2, 0.3), (2, 0.4), (2, 0.5)");
+		//		conn.execute("CREATE TRIGGER `add_on_insert` AFTER INSERT ON `data_point` FOR EACH ROW BEGIN CASE (SELECT (COUNT(*) > 0) FROM `data_stats` WHERE `gid` = NEW.gid) WHEN FALSE THEN BEGIN INSERT INTO `data_stats` (`gid`, `sum`) VALUES (NEW.gid, 0) ; END; ELSE BEGIN UPDATE `data_stats` SET `sum` = `sum` + NEW.value WHERE `gid` = NEW.gid; END; END CASE; END;");
+		conn.execute("CREATE TRIGGER `add_on_insert` AFTER INSERT ON `data_point` FOR EACH ROW BEGIN CASE (SELECT (COUNT(*) > 0) FROM `data_stats` WHERE `gid` = NEW.gid) WHEN FALSE THEN INSERT INTO `data_stats` (`gid`, `sum`) VALUES (NEW.gid, 0); ELSE UPDATE `data_stats` SET `sum` = `sum` + NEW.value WHERE `gid` = NEW.gid; END CASE; END;");
+		//            conn.execute("CREATE TRIGGER `update_on_change` AFTER UPDATE ON `data_point` FOR EACH ROW BEGIN UPDATE `data_stats` SET `sum` = `sum` + (NEW.value - OLD.value) WHERE `gid` = OLD.gid; END;");
+		//		            conn.execute("CREATE TRIGGER `subtract_on_delete` AFTER DELETE ON `data_point` FOR EACH ROW BEGIN UPDATE `data_stats` SET `sum` = `sum` - OLD.value WHERE `gid` = OLD.gid; END;");
+		conn.execute("INSERT INTO `data_point` (`gid`, `value`) VALUES (1, 1.0), (1, 2.0), (1, 3.0), (1, 4.0), (1, 5.5)");
+		//            conn.execute("INSERT INTO `data_point` (`gid`, `value`) VALUES (2, 0.1), (2, 0.2), (2, 0.3), (2, 0.4), (2, 0.5)");
 
             //              conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 15.5));
             //              conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.5));
 
-            conn.execute("UPDATE `data_point` SET `value` = 5.0 WHERE `id` = 5");
-
-            conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 15.0));
+		//            conn.execute("UPDATE `data_point` SET `value` = 5.0 WHERE `id` = 5");
+		//
+		//            conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 15.0));
             //              conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.5));
 
             //              conn.execute("DELETE FROM `data_stats` WHERE `id` = 3");
 
-            conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 12.0));
+		//            conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 12.0));
             //              conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.5));
     }
 
@@ -233,4 +229,66 @@ public class TriggerDMLTest extends SchemaTest {
 		conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.2));
 	}
 
+	// specifically about handling autoincrements in trigger bodies
+	@Test
+	public void testF() throws Throwable {
+		conn.execute("create range arange (int) persistent group " + checkDDL.getPersistentGroup().getName());
+		conn.execute("create table targ (id int auto_increment, diffs varchar(64), primary key (id)) range distribute on (id) using arange");
+		conn.execute("create table subj (id int auto_increment, firstname varchar(16), lastname varchar(16), primary key (id)) range distribute on (id) using arange");
+	
+		// stuff I want to test:
+		// before insert: test that autoinc is generated in body
+		// after insert: test that target autoinc is propagated to body
+		// before update: test that body generates autoincs
+		
+		conn.execute("create trigger `subj_bef_insert` before insert on `subj` for each row "
+				+"begin insert into targ (diffs) values (concat('bef_ins-f:',NEW.firstname,',l:',NEW.lastname,',id:',NEW.ID)); END;");
+		
+		conn.execute("insert into subj (firstname,lastname) values ('abraham','lincoln'),('james','madison')");
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from subj order by id"));
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from targ order by id"));
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from subj order by id",
+				br(nr,1,"abraham","lincoln","check1",
+				   nr,2,"james","madison","check2"));
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from targ order by id",
+				br(nr,1,"bef_ins-f:abraham,l:lincoln,id:0","check1",
+				   nr,2,"bef_ins-f:james,l:madison,id:0","check2"));
+
+		conn.execute("drop trigger subj_bef_insert");
+		conn.execute("truncate subj");
+		conn.execute("truncate targ");
+		
+		conn.execute("create trigger `subj_aft_insert` after insert on `subj` for each row "
+				+"begin insert into targ (id,diffs) values (NEW.ID,concat('aft_ins-f:',NEW.firstname,',l:',NEW.lastname,',id:',NEW.ID)); END;");
+		conn.execute("insert into subj (firstname,lastname) values ('abraham','lincoln'),('james','madison')");
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from subj order by id"));
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from targ order by id"));
+
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from subj order by id",
+				br(nr,1,"abraham","lincoln","check1",
+				   nr,2,"james","madison","check2"));
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from targ order by id",
+				br(nr,1,"aft_ins-f:abraham,l:lincoln,id:1","check1",
+				   nr,2,"aft_ins-f:james,l:madison,id:2","check2"));
+
+		conn.execute("create trigger `subj_bef_update` before update on `subj` for each row "
+				+"begin insert into targ (diffs) values (concat('bef_update_a-f:',OLD.firstname,'/',NEW.firstname)), (concat('bef_update_b-l:',OLD.lastname,'/',NEW.lastname)); END;");
+
+		conn.execute("update subj set lastname = 'brown' where id = 2");
+
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from subj order by id"));
+//		System.out.println(conn.printResults("select *, cast(@dve_sitename as char(16)) as site from targ order by id"));
+		
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from subj order by id",
+				br(nr,1,"abraham","lincoln","check1",
+				   nr,2,"james","brown","check2"));
+
+		conn.assertResults("select *,  cast(@dve_sitename as char(16)) as site from targ order by id",
+				br(nr,1,"aft_ins-f:abraham,l:lincoln,id:1","check1",
+				   nr,2,"aft_ins-f:james,l:madison,id:2","check2",
+				   nr,3,"bef_update_a-f:james/james","check0",
+				   nr,4,"bef_update_b-l:madison/brown","check1"));
+		
+	}
+	
 }

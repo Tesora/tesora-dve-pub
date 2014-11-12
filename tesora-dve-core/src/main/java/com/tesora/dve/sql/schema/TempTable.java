@@ -40,8 +40,8 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.TempTableDeclHints;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionKey;
 import com.tesora.dve.sql.expression.TableKey;
@@ -227,7 +227,9 @@ public final class TempTable extends PETable {
 	
 	@Override
 	public String toString() {
-		return getName(SchemaContext.threadContext.get()).get();
+		final SchemaContext sc = SchemaContext.threadContext.get();
+		final Name n = getName(sc, sc.getValues());
+		return (n != null) ? n.get() : String.valueOf(n);
 	}
 
 	public void noteJoinedColumns(SchemaContext sc, List<PEColumn> pec) {
