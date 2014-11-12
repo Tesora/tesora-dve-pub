@@ -39,13 +39,11 @@ public class QueryStepNestedOperation extends QueryStepOperation {
 		super(actual.sg);
 		this.plan = plan;
 		this.target = actual;
-		this.reqs.addAll(actual.reqs);
 	}
 
 	@Override
 	public void executeSelf(ExecutionState execState, WorkerGroup wg,
 			DBResultConsumer resultConsumer) throws Throwable {
-		target.executeSelf(execState,wg,resultConsumer);
 	}
 
 	@Override
@@ -56,8 +54,7 @@ public class QueryStepNestedOperation extends QueryStepOperation {
 		ConnectionValues myValues = state.getValuesMap().getValues(plan);
 		plan.getValueManager().resetForRuntimePlan(state.getConnection().getSchemaContext(), myValues, rtc);
 		ExecutionState childState = state.pushValues(myValues);
-		executeRequirements(childState);
-		executeOperation(childState,resultConsumer);
+		target.execute(childState, resultConsumer);
 	}
 
 	

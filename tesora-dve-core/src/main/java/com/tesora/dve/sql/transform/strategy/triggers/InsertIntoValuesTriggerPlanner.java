@@ -246,8 +246,10 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			orderedValues.add(newTuple);
 		}
 		
-		return new InsertIntoValuesStatement(tti,columnSpec,orderedValues,
+		InsertIntoValuesStatement iivs = new InsertIntoValuesStatement(tti,columnSpec,orderedValues,
 				Collections.<ExpressionNode> emptyList(),new AliasInformation(),null);
+		iivs.getDerivedInfo().addLocalTable(tti.getTableKey());
+		return iivs;
 	}
 	
 	private InsertIntoValuesStatement buildOneTupleInsert(PlannerContext context, 
@@ -276,8 +278,10 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			
 		});
 		
-		return new InsertIntoValuesStatement(nti,colSpec,Collections.singletonList(values),
+		InsertIntoValuesStatement iivs = new InsertIntoValuesStatement(nti,colSpec,Collections.singletonList(values),
 				Collections.<ExpressionNode> emptyList(),new AliasInformation(),null);
+		iivs.getDerivedInfo().addLocalTable(nti.getTableKey());
+		return iivs;
 	}
 	
 	protected static class InsertIntoValuesTriggerFeatureStep extends AbstractTriggerFeatureStep {
