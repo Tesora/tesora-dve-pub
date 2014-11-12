@@ -57,7 +57,7 @@
 		<PEMysqlProtocolConverter.port>3306</PEMysqlProtocolConverter.port>
 		<jdbc.portal.url>jdbc:mysql://localhost:${PEMysqlProtocolConverter.port}</jdbc.portal.url>
 		
-		<jdbc.mysql.version>5.1.33</jdbc.mysql.version>
+		<jdbc.mysql.version>5.1.34</jdbc.mysql.version>
 
 		<jdbc.mysql.url>jdbc:mysql://localhost:3307</jdbc.mysql.url>
 		<jdbc.mysql.user>root</jdbc.mysql.user>

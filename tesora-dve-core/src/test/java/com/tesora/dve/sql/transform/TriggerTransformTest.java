@@ -21,6 +21,7 @@ package com.tesora.dve.sql.transform;
  * #L%
  */
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.distribution.BroadcastDistributionModel;
@@ -324,6 +325,7 @@ public class TriggerTransformTest extends TransformTest {
 				);
 	}
 
+	@Ignore
 	@Test
 	public void testTriggerWithCase() throws Throwable {
 		final SchemaContext db = buildSchema(

@@ -26,6 +26,7 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.resultset.ResultRow;
@@ -173,6 +174,7 @@ public class TriggerDMLTest extends SchemaTest {
 	
 	// waiting for runtime support of insert and delete triggers
 	// the test keeps an up-to-date table (`data_stats`) of sums of values stored in the `data_point` table.
+	@Ignore
     @Test
     public void testD() throws Throwable {
             conn.execute("CREATE RANGE arange (int) PERSISTENT GROUP " + checkDDL.getPersistentGroup().getName());
