@@ -35,7 +35,6 @@ import com.tesora.dve.sql.node.SingleEdge;
 import com.tesora.dve.sql.node.expression.CaseExpression;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
-import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.WhenClause;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -43,11 +42,10 @@ import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
-import com.tesora.dve.sql.transform.TableInstanceCollector;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
-import com.tesora.dve.sql.transform.execution.ExecutionStep;
+import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.sql.transform.execution.TriggerBranchExecutionStep;
 import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
@@ -55,7 +53,6 @@ import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.MultiFeatureStep;
 import com.tesora.dve.sql.transform.strategy.triggers.TriggerPlanner;
-import com.tesora.dve.sql.util.ListSet;
 
 public class CaseStatement extends CompoundStatement implements FeaturePlanner {
 
@@ -133,8 +130,8 @@ public class CaseStatement extends CompoundStatement implements FeaturePlanner {
 		final SelectStatement caseEvaluationStmt = new SelectStatement(new AliasInformation());
 
 		// TODO: the FROM clause is not strictly necessary, but having it avoids future issues with partitions
-		final ListSet<TableInstance> fromTables = TableInstanceCollector.getInstances(this.testExpression.get());
-		caseEvaluationStmt.setTables(fromTables);
+		//		final ListSet<TableInstance> fromTables = TableInstanceCollector.getInstances(this.testExpression.get());
+		//		caseEvaluationStmt.setTables(fromTables);
 
 		final List<Statement> branchStmts = new ArrayList<Statement>(numCases);
 		final List<WhenClause> whens = new ArrayList<WhenClause>(numCases);
@@ -165,8 +162,8 @@ public class CaseStatement extends CompoundStatement implements FeaturePlanner {
 				schedulePrefix(pc, es, scheduled);
 
 				final ExecutionPlan parentPlan = es.getPlan();
-				final ExecutionStep caseEvaluationStep = TriggerPlanner.buildSubSequence(pc, getSelfChildren().get(0), parentPlan); // CASE branch evaluation
-				final List<ExecutionStep> branchOperationSteps = new ArrayList<ExecutionStep>(numCases);
+				final HasPlanning caseEvaluationStep = TriggerPlanner.buildSubSequence(pc, getSelfChildren().get(0), parentPlan); // CASE branch evaluation
+				final List<HasPlanning> branchOperationSteps = new ArrayList<HasPlanning>(numCases);
 				final int numChildren = getSelfChildren().size();
 				for (int i = 1; i < numChildren; i++) {
 					branchOperationSteps.add(TriggerPlanner.buildSubSequence(pc, getSelfChildren().get(i), parentPlan));

@@ -36,12 +36,12 @@ import com.tesora.dve.sql.schema.SchemaContext;
 
 public class TriggerBranchExecutionStep extends ExecutionStep {
 
-	private final ExecutionStep caseEvaluationStep;
-	private final List<ExecutionStep> branchOperationSteps;
+	private final HasPlanning caseEvaluationStep;
+	private final List<HasPlanning> branchOperationSteps;
 
 	public TriggerBranchExecutionStep(final Database<?> db, final PEStorageGroup storageGroup,
-			final ExecutionStep caseEvaluationStep,
-			final List<ExecutionStep> branchOperationSteps) {
+			final HasPlanning caseEvaluationStep,
+			final List<HasPlanning> branchOperationSteps) {
 		super(db, storageGroup, ExecutionType.TRIGGER);
 
 		this.caseEvaluationStep = caseEvaluationStep;
@@ -53,7 +53,7 @@ public class TriggerBranchExecutionStep extends ExecutionStep {
 			final ProjectionInfo projection, final SchemaContext sc, final ConnectionValuesMap cvm, final ExecutionPlan containing) throws PEException {
 		final QueryStepOperation caseEvaluationOperation = buildOperation(opts, sc, cvm, containing, this.caseEvaluationStep);
 		final List<QueryStepOperation> branchOperations = new ArrayList<QueryStepOperation>(this.branchOperationSteps.size());
-		for (final ExecutionStep step : this.branchOperationSteps) {
+		for (final HasPlanning step : this.branchOperationSteps) {
 			branchOperations.add(buildOperation(opts, sc, cvm, containing, step));
 		}
 
@@ -72,8 +72,8 @@ public class TriggerBranchExecutionStep extends ExecutionStep {
 		final int numBranches = this.branchOperationSteps.size();
 		for (int branchIndex = 0; branchIndex < numBranches; ++branchIndex) {
 			final List<String> lines = new ArrayList<String>(numBranches);
-			final ExecutionStep step = this.branchOperationSteps.get(branchIndex);
-			step.display(sc, cvm, containingPlan, buf, indent, opts);
+			final HasPlanning step = this.branchOperationSteps.get(branchIndex);
+			step.display(sc, cvm, containingPlan, lines, sub2, opts);
 			buf.addAll(prependIndexToFirst(branchIndex, sub2, lines));
 		}
 	}

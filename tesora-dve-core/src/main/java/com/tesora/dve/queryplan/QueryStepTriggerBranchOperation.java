@@ -66,7 +66,7 @@ public class QueryStepTriggerBranchOperation extends QueryStepOperation {
 
 	@Override
 	public void executeSelf(final ExecutionState estate, final WorkerGroup wg, final DBResultConsumer resultConsumer) throws Throwable {
-		this.targetOperation.executeSelf(estate, wg, resultConsumer);
+		//		this.targetOperation.executeSelf(estate, wg, resultConsumer);
 	}
 
 }

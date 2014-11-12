@@ -55,6 +55,7 @@ import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
+import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.sql.transform.execution.TriggerExecutionStep;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.TransformFactory;
@@ -68,11 +69,11 @@ import com.tesora.dve.sql.util.ListSet;
 
 public abstract class TriggerPlanner extends TransformFactory {
 
-	public static ExecutionStep buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
+	public static HasPlanning buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
 		final ExecutionSequence sub = new ExecutionSequence(parentPlan);
 		step.schedule(pc, sub, new HashSet<FeatureStep>());
 		if (sub.getSteps().size() == 1)
-			return (ExecutionStep) sub.getSteps().get(0);
+			return sub.getSteps().get(0);
 		return sub;
 	}
 

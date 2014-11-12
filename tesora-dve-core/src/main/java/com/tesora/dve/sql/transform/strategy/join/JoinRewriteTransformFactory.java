@@ -196,6 +196,8 @@ public class JoinRewriteTransformFactory extends TransformFactory {
 			throws PEException {
 		if (!(stmt instanceof SelectStatement))
 			return null;
+		if (stmt.getDerivedInfo().getLocalTableKeys().isEmpty())
+			return null;
 		// have to consider the single storage site rewrite override
 		JoinGraph jg = EngineConstant.PARTITIONS.getValue(stmt,ipc.getContext());
 		if (!jg.requiresRedistribution())
