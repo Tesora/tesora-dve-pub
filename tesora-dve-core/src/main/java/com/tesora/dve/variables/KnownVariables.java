@@ -76,8 +76,6 @@ public class KnownVariables implements VariableConstants {
 	public static final EnumSet<VariableOption> nullable = EnumSet.of(VariableOption.NULLABLE);
 	public static final EnumSet<VariableOption> readonly = EnumSet.of(VariableOption.READONLY);
 
-	private static final String DEFAULT_KEYWORD = "DEFAULT";
-
 	@SuppressWarnings("rawtypes")
 	static final ValueMetadata[] defaultConverters = new ValueMetadata[] {
 			integralConverter,
@@ -208,15 +206,13 @@ public class KnownVariables implements VariableConstants {
 					new IntegralValueConverter() {
 						@Override
 						public Long convertToInternal(String varName, String in) throws PEException {
-							if (DEFAULT_KEYWORD.equalsIgnoreCase(in))
-								return null;
 							return super.convertToInternal(varName, in);
 						}
 
 						@Override
 						public String convertToExternal(Long in) {
 							if (in == null)
-								return DEFAULT_KEYWORD;
+								return VariableHandler.DEFAULT_KEYWORD;
 							return Long.toString(in);
 						}
 
@@ -262,9 +258,6 @@ public class KnownVariables implements VariableConstants {
 			/* As of MySQL 5.6.4, timestamp is a DOUBLE. */ new IntegralValueConverter() {
 		@Override
 		public Long convertToInternal(String varName, String in) throws PEException {
-			if (DEFAULT_KEYWORD.equalsIgnoreCase(in)) {
-				return 0L;
-			}
 			return super.convertToInternal(varName, in);
 		}
 	},

@@ -51,7 +51,8 @@ import com.tesora.dve.sql.util.UnaryPredicate;
 
 public class VariableHandler<Type> {
 
-	public static final String NULL_VALUE = new String("NULL");
+	public static final String DEFAULT_KEYWORD = "DEFAULT";
+	public static final String NULL_VALUE = "NULL";
 		
 	// name of the variable
 	private final String variableName;
@@ -373,11 +374,16 @@ public class VariableHandler<Type> {
 	}
 	
 	public Type toInternal(String in) throws PEException {
-		if (in == null || NULL_VALUE.equals(in)) {
-			if (options.contains(VariableOption.NULLABLE)) 
+		if (DEFAULT_KEYWORD.equalsIgnoreCase(in)) {
+			return this.getDefaultOnMissing();
+		} else if ((in == null) || NULL_VALUE.equals(in)) {
+			if (options.contains(VariableOption.NULLABLE)) {
 				return null;
+			}
+
 			throw new SchemaException(new ErrorInfo(AvailableErrors.WRONG_VALUE_FOR_VARIABLE, this.getName(), "NULL"));
 		}
+
 		return getMetadata().convertToInternal(getName(),in);
 	}
 

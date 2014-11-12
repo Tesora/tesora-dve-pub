@@ -68,6 +68,7 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.NameAlias;
 import com.tesora.dve.sql.parser.ParserOptions;
+import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.ComplexPETable;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.PEColumn;
@@ -329,23 +330,26 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 			return PEColumn.buildColumn(pc, new UnqualifiedName(info.getAlias()), ctype, modifiers, null, Collections.<ColumnKeyModifier> emptyList());
 		} else if (target instanceof ColumnInstance) {
 			ColumnInstance ci = (ColumnInstance) target;
-			PEColumn pec = ci.getPEColumn();
-			PEColumn copy = (PEColumn) pec.copy(pc, null);
-			if (copy.isAutoIncrement()) {
-				copy.clearAutoIncrement();
-				copy.setDefaultValue(LiteralExpression.makeStringLiteral("0"));
-			} else if (pec.isPrimaryKeyPart()) {
-				if (copy.getDefaultValue() == null)
+			Column<?> c = ci.getColumn();
+			if (c instanceof PEColumn) {
+				PEColumn pec = ci.getPEColumn();
+				PEColumn copy = (PEColumn) pec.copy(pc, null);
+				if (copy.isAutoIncrement()) {
+					copy.clearAutoIncrement();
 					copy.setDefaultValue(LiteralExpression.makeStringLiteral("0"));
+				} else if (pec.isPrimaryKeyPart()) {
+					if (copy.getDefaultValue() == null)
+						copy.setDefaultValue(LiteralExpression.makeStringLiteral("0"));
+				}
+				copy.normalize();
+				copy.setName(new UnqualifiedName(info.getAlias()));
+				return copy;
 			}
-			copy.normalize();
-			copy.setName(new UnqualifiedName(info.getAlias()));
-			return copy;
-		} else {
-			// we have to defer, use a placeholder type
-			PEColumn pec = new PEColumn(pc,new UnqualifiedName(info.getAlias()), TempColumnType.TEMP_TYPE);
-			return pec;
 		}
+
+		// we have to defer, use a placeholder type
+		PEColumn pec = new PEColumn(pc, new UnqualifiedName(info.getAlias()), TempColumnType.TEMP_TYPE);
+		return pec;
 	}
 
 	private class FinalStepTransformer implements FeaturePlanTransformerBehavior {
@@ -600,6 +604,8 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 					existing.setType(pec.getType());
 			}
 
+			// refresh column type definitions
+			target.setDeclaration(context, target);
 			context.beginSaveContext();
 			try {
 				// need a different overload here

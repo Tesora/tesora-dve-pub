@@ -24,6 +24,7 @@ package com.tesora.dve.db.mysql;
 import java.nio.charset.Charset;
 import java.sql.ParameterMetaData;
 import java.sql.SQLException;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -522,10 +523,20 @@ public class MysqlNative extends DBNative {
 			throws PEException {
 		super.convertColumnMetadataToUserColumn(cm, uc);
 		NativeType nt = this.findType(uc.getTypeName());
-		if ( uc.getPrecision() > nt.getMaxPrecision() )
-			uc.setPrecision((int) nt.getMaxPrecision());
-		if ( uc.getSize() > nt.getMaxPrecision() )
-			uc.setSize((int) nt.getMaxPrecision());
+		if (nt.isNumericType()) {
+			if (uc.getPrecision() > nt.getMaxPrecision()) {
+				uc.setPrecision((int) nt.getMaxPrecision());
+			}
+			if (uc.getSize() > nt.getMaxPrecision()) {
+				uc.setSize((int) nt.getMaxPrecision());
+			}
+		} else {
+			// A non-numeric type with scale/precision may be returned.
+			// @see coallesce(VARCHAR, VARCHAR)
+			// Clear the properties.
+			uc.setPrecision(0);
+			uc.setScale(0);
+		}
 	}
 
 	@Override

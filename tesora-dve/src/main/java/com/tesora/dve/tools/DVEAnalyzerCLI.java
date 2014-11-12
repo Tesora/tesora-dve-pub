@@ -760,7 +760,7 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 		final File outputFile = scanFile(scanner);
 
 		final DbAnalyzerCorpus corpus = loadCorpus(corpusFile);
-		final CorpusStats corpusStats = new CorpusStats(corpus.getDescription(), this.options.getCorpusScaleFactor());
+		final CorpusStats corpusStats = new CorpusStats(corpus.getDescription(), this.options.getCorpusScaleFactor(), this.options.getDefaultStorageEngine());
 		final Template baseTemplate = PEXmlUtils.unmarshalJAXB(baseTemplateFile, Template.class);
 		final Template comparedTemplate = PEXmlUtils.unmarshalJAXB(comparedTemplateFile, Template.class);
 
@@ -1276,7 +1276,7 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 	private void generateBroadcastCutoffTemplates(final long broadcastCardinalityCutoff, final File baseTemplateFile) throws Exception {
 		final CorpusStats corpusStats = new CorpusStats(
 				EMPTY_FREQUENCY_CORPUS.getDescription(),
-				this.options.getCorpusScaleFactor());
+				this.options.getCorpusScaleFactor(), this.options.getDefaultStorageEngine());
 		final Template baseTemplate = (baseTemplateFile != null) ? PEXmlUtils.unmarshalJAXB(baseTemplateFile, Template.class) : null;
 		try {
 
@@ -1293,6 +1293,7 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 			templateBuilder.setVerbose(this.options.isVerboseGeneratorEnabled());
 			templateBuilder.setForeignKeysAsJoins(this.options.isForeignKeysAsJoinsEnabled());
 			templateBuilder.setUseIdentTuples(this.options.isIdentTuplesEnabled());
+			templateBuilder.setAvoidAllWriteBroadcasting(this.options.isAvoidAllWriteBroadcastingEnabled());
 
 			reloadTemplates(templateBuilder.buildBroadcastCutoffTemplates(databases, broadcastCardinalityCutoff, isRowWidthWeightingEnabled));
 
@@ -1317,7 +1318,7 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 			/* Analyze the static report. */
 			final CorpusStats corpusStats = new CorpusStats(
 					corpus.getDescription(),
-					this.options.getCorpusScaleFactor());
+					this.options.getCorpusScaleFactor(), this.options.getDefaultStorageEngine());
 			final StatementAnalyzer analyzer = new StatementAnalyzer(this.options, corpusStats);
 			loadSchema(analyzer);
 			loadCorpusStats(analyzer, corpusStats);
@@ -1339,6 +1340,7 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 			ai.setVerbose(this.options.isVerboseGeneratorEnabled());
 			ai.setForeignKeysAsJoins(this.options.isForeignKeysAsJoinsEnabled());
 			ai.setUseIdentTuples(this.options.isIdentTuplesEnabled());
+			ai.setAvoidAllWriteBroadcasting(this.options.isAvoidAllWriteBroadcastingEnabled());
 			final List<Template> builtTemplates = ai.buildTemplates(this.databases, broadcastCardinalityCutoff, followForeignKeys, isSafeMode,
 					isRowWidthWeightingEnabled);
 

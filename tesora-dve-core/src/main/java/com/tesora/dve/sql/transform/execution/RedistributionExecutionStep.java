@@ -198,7 +198,8 @@ public final class RedistributionExecutionStep extends
 					mutableContext.endSaveContext();
 				}
 			} else {
-				qsrdo.toTempTable(targetGroup.getPersistent(sc,cv), getPersistentDatabase(), targetTable.getName(sc,cv).get(), true);
+				final Database<?> targetDb = targetTable.getDatabase(sc);
+				qsrdo.toTempTable(targetGroup.getPersistent(sc,cv), (targetDb != null) ? targetDb : getPersistentDatabase(), targetTable.getName(sc,cv).get(), true);
 			}
 			if (distKey.usesColumns(sc)) {
 				if (Model.RANGE.equals(distKey.getModel(sc)))

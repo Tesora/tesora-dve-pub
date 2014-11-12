@@ -36,14 +36,17 @@ public class BoundedIntegralConverter extends IntegralValueConverter {
 	
 	@Override
 	public Long convertToInternal(String varName, String in) throws PEException {
-		Long number = super.convertToInternal(varName, in);
-		if (number == null) return number;
-		if (minimum != null && number.longValue() < minimum.longValue()) {
-			throw new PEException(String.format("Invalid value '%s' must be at least %d for variable '%s'",in,minimum,varName));
+		final Long number = super.convertToInternal(varName, in);
+
+		// Out-of-range values should be replaced by the nearest limit.
+		if (number != null) {
+			if ((minimum != null) && (number < minimum)) {
+				return minimum;
+			} else if ((maximum != null) && (number > maximum)) {
+				return maximum;
+			}
 		}
-		if (maximum != null && number.longValue() > maximum.longValue()) {
-			throw new PEException(String.format("Invalid value '%s' must be no more than %d for variable '%s'",in,maximum, varName));
-		}
+
 		return number;
 	}
 	

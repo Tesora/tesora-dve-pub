@@ -28,29 +28,29 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.NativeType;
-import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
-import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.InformationSchemaException;
 import com.tesora.dve.sql.infoschema.InformationSchemaTable;
-import com.tesora.dve.sql.infoschema.direct.DirectVariablesTable;
 import com.tesora.dve.sql.infoschema.direct.DirectInformationSchemaColumn;
+import com.tesora.dve.sql.infoschema.direct.DirectVariablesTable;
 import com.tesora.dve.sql.infoschema.direct.ViewInformationSchemaTable;
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.Traversal;
@@ -59,7 +59,10 @@ import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.test.EngineConstant;
+import com.tesora.dve.sql.schema.DistributionVector;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.PEColumn;
+import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
@@ -242,8 +245,8 @@ public class LogicalSchemaQueryEngine {
 	
 	public static FeatureStep buildStep(SchemaContext sc, LogicalQuery lq, FeaturePlanner planner, final ProjectionInfo pi) {
 		SelectStatement toExecute = lq.getQuery();
-		
-		final GenericSQLCommand gsql = toExecute.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), EmitOptions.NONE.addCatalog());
+		final PEDatabase catalogSchema = Singletons.require(HostService.class).getInformationSchema().getCatalogSchema();
+		final GenericSQLCommand gsql = toExecute.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), EmitOptions.NONE);
 				
 		// look up the system group now - we have to use the actual item
 		final PEPersistentGroup sg = sc.findStorageGroup(new UnqualifiedName(PEConstants.SYSTEM_GROUP_NAME));
@@ -262,9 +265,9 @@ public class LogicalSchemaQueryEngine {
 				log("no projection info");
 			}
 		}
-		
-		return new ProjectingFeatureStep(null, planner, toExecute, new ExecutionCost(true,true,null,-1),
-				sg,null,null,null) {
+
+		return new ProjectingFeatureStep(null, planner, toExecute, new ExecutionCost(true, true, null, -1),
+				sg, null, catalogSchema, DistributionVector.buildDistributionVector(sc, Model.BROADCAST, null, null)) {
 			
 			@Override
 			public void scheduleSelf(PlannerContext pc, ExecutionSequence es)
@@ -272,7 +275,7 @@ public class LogicalSchemaQueryEngine {
 				
 				ProjectingExecutionStep pes =
 						ProjectingExecutionStep.build(
-								null, sg,
+								catalogSchema, sg,
 							gsql);
 				if (pi != null)
 					pes.setProjectionOverride(pi);

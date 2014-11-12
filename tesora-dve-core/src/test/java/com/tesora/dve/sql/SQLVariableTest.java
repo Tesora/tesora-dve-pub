@@ -403,20 +403,6 @@ public class SQLVariableTest extends SchemaTest {
 	public void testPE1619() throws Throwable {
 		assertVariableValue("div_precision_increment", "4");
 
-		new ExpectedExceptionTester() {
-			@Override
-			public void test() throws Throwable {
-				conn.execute("set session div_precision_increment = 31");
-			}
-		}.assertException(PEException.class, "Invalid value '31' must be no more than 30 for variable 'div_precision_increment'");
-
-		new ExpectedExceptionTester() {
-			@Override
-			public void test() throws Throwable {
-				conn.execute("set session div_precision_increment = -1");
-			}
-		}.assertException(PEException.class, "Invalid value '-1' must be at least 0 for variable 'div_precision_increment'");
-
 		conn.assertResults("SELECT 1/7", br(nr, BigDecimal.valueOf(0.1429)));
 
 		conn.execute("set session div_precision_increment = 12");
@@ -427,20 +413,6 @@ public class SQLVariableTest extends SchemaTest {
 	@Test
 	public void testPE1620() throws Throwable {
 		assertVariableValue("default_week_format", "0");
-
-		new ExpectedExceptionTester() {
-			@Override
-			public void test() throws Throwable {
-				conn.execute("set session default_week_format = 8");
-			}
-		}.assertException(PEException.class, "Invalid value '8' must be no more than 7 for variable 'default_week_format'");
-
-		new ExpectedExceptionTester() {
-			@Override
-			public void test() throws Throwable {
-				conn.execute("set session default_week_format = -1");
-			}
-		}.assertException(PEException.class, "Invalid value '-1' must be at least 0 for variable 'default_week_format'");
 
 		conn.assertResults("SELECT WEEK('2008-02-20')", br(nr, 7L));
 
@@ -629,6 +601,21 @@ public class SQLVariableTest extends SchemaTest {
 				conn.execute("set global tx_isolation = NULL");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.wrongValueForVariable, "tx_isolation", "NULL");
+
+		// Test out-of-range value handling.
+		// They should be replaced by the nearest limit.
+		// Valid 'div_precision_increment' values are: 0 - 30
+		assertVariableValue("div_precision_increment", "4");
+
+		conn.execute("set div_precision_increment = -1");
+		assertVariableValue("div_precision_increment", "0");
+
+		conn.execute("set div_precision_increment = 35");
+		assertVariableValue("div_precision_increment", "30");
+
+		conn.execute("set div_precision_increment = DEFAULT");
+		assertVariableValue("div_precision_increment", "4");
+
 	}
 
 	@Test

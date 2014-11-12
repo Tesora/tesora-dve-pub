@@ -41,6 +41,8 @@
 		<compile.version>1.7</compile.version>
 		<compile.jdkpath>${java.home}../bin/javac</compile.jdkpath>
 		<compile.fork>false</compile.fork>
+		
+		<maven.surefire.opts>-Xmx2G -XX:+UseG1GC</maven.surefire.opts>
 
 		<skipJUnit>false</skipJUnit>
 		<skipTestNG>true</skipTestNG>
@@ -150,6 +152,9 @@
 				<plugin>
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>2.13</version>
+					<configuration>
+						<argLine>${maven.surefire.opts}</argLine>
+					</configuration>
 					<executions>
 						<execution>
 							<id>TestNG-tests</id>

@@ -1688,9 +1688,9 @@ public abstract class Emitter {
 			Database<?> curDb = sc.getCurrentDatabase(false);
 			Database<?> tblDb = pet.getDatabase(sc);
 			if (context == TableInstanceContext.TABLE_FACTOR) {
-				if ((curDb == null && tblDb != null) || 
-						((curDb != null && tblDb != null) && (curDb.getId() != tblDb.getId()))) {
-					if (getOptions() == null || !getOptions().isCatalog()) { 
+				if (((curDb == null) && (tblDb != null)) ||
+						(((curDb != null) && (tblDb != null)) && (curDb.getId() != tblDb.getId()))) {
+					if (tblDb.hasNameManglingEnabled()) {
 						int offset = buf.length();
 						String toAdd = pet.getDatabase(sc).getName().getUnqualified().getSQL();
 						buf.append(toAdd).append(".");

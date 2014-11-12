@@ -213,6 +213,7 @@ public final class AiTemplateBuilder {
 	private static final Logger logger = Logger.getLogger(AiTemplateBuilder.class);
 	private static final double LOWER_CORPUS_COVERAGE_THRESHOLD_PC = 40.0;
 	private static final double UPPER_CORPUS_COVERAGE_THRESHOLD_PC = 60.0;
+	private static final double MOSTLY_WRITTEN_THRESHOLD_PC = 80.0;
 	private static int TABLE_NAME_MIN_PREFIX_LENGTH = 4;
 	private static String TABLE_NAME_WILDCARD = ".*";
 
@@ -435,12 +436,12 @@ public final class AiTemplateBuilder {
 	}
 
 	private static String getTableNameAndDistributionModel(final TableStats table) {
-		final ColorStringBuilder value = new ColorStringBuilder();
+		final StringBuilder value = new StringBuilder();
 		value.append(table).append(": ").append(table.getTableDistributionModel());
 		if (table.hasDistributionModelFreezed()) {
-			value.append(" (").append("user defined", MessageSeverity.ALERT.getColor()).append(")");
+			value.append(" (").append("user defined").append(")");
 		}
-
+		
 		return value.toString();
 	}
 
@@ -604,10 +605,17 @@ public final class AiTemplateBuilder {
 	 * Frequent writes to a broadcast table without granular locking support may
 	 * lead to excessive table locking within XA transactions.
 	 */
-	public static boolean mayCauseExcessiveLocking(final TableStats table) {
+	public static boolean hasExcessiveBroadcastLocking(final TableStats table, final boolean avoidAllWriteBroadcasting) {
 		return (table.getTableDistributionModel().isBroadcast()
-				&& !table.supportsRowLocking()
-				&& (table.getWriteToReadRatio() >= 1.0));
+		&& hasExcessiveLocking(table, avoidAllWriteBroadcasting));
+	}
+
+	public static boolean hasExcessiveLocking(final TableStats table, final boolean avoidAllWriteBroadcasting) {
+		return (avoidAllWriteBroadcasting || !table.supportsRowLocking()) && isMostlyWritten(table);
+	}
+
+	public static boolean isMostlyWritten(final TableStats table) {
+		return table.getWritePercentage() >= MOSTLY_WRITTEN_THRESHOLD_PC;
 	}
 
 	public static boolean isFkCompatibleJoin(final JoinStats join) {
@@ -653,6 +661,7 @@ public final class AiTemplateBuilder {
 	private boolean isVerbose;
 	private boolean enableFksAsJoins;
 	private boolean enableIdentTuples;
+	private boolean avoidAllWriteBroadcasting;
 	private TemplateModelItem fallbackModel;
 
 	public AiTemplateBuilder(final CorpusStats schemaStats, final Template base, final TemplateModelItem fallbackModel, final PrintStream outputStream)
@@ -687,6 +696,10 @@ public final class AiTemplateBuilder {
 
 	public void setUseIdentTuples(final boolean enableIdentTuples) {
 		this.enableIdentTuples = enableIdentTuples;
+	}
+
+	public void setAvoidAllWriteBroadcasting(final boolean avoidAllWriteBroadcasting) {
+		this.avoidAllWriteBroadcasting = avoidAllWriteBroadcasting;
 	}
 
 	public void setFallbackModel(final TemplateModelItem model) {
@@ -731,6 +744,16 @@ public final class AiTemplateBuilder {
 			identifyCandidateModels(this.tableStatistics, broadcastCardinalityCutoff, isRowWidthWeightingEnabled);
 		} else {
 			identifyCandidateModels(this.tableStatistics, isRowWidthWeightingEnabled);
+		}
+
+		for (final TableStats table : this.tableStatistics) {
+			if (hasExcessiveBroadcastLocking(table, this.avoidAllWriteBroadcasting)) {
+				table.setTableDistributionModel(Range.SINGLETON_TEMPLATE_ITEM);
+				final StringBuilder logMessage = new StringBuilder();
+				logMessage.append(getTableNameAndDistributionModel(table))
+						.append(" (model override: broadcasting may cause excessive locking)");
+				log(logMessage.toString(), MessageSeverity.ALERT);
+			}
 		}
 	}
 
@@ -836,7 +859,7 @@ public final class AiTemplateBuilder {
 			}
 		}
 
-		log(getTableNameAndDistributionModel(table));
+		logTableDistributionModel(table, MessageSeverity.ALERT);
 	}
 
 	private Template getTemplate(final String databaseName,
@@ -969,7 +992,7 @@ public final class AiTemplateBuilder {
 			if (baseModel != null) {
 				table.setTableDistributionModel(baseModel);
 				table.setDistributionModelFreezed(true);
-				log(getTableNameAndDistributionModel(table));
+				logTableDistributionModel(table, MessageSeverity.ALERT);
 			} else {
 				final List<FuzzyTableDistributionModel> modelsSortedByScore = FuzzyLinguisticVariable
 						.evaluateDistributionModels(
@@ -1074,7 +1097,7 @@ public final class AiTemplateBuilder {
 			if ((model instanceof Range) && !hasRangeForTable(topRangeToRangeTopRanges, table)) {
 
 				final ColorStringBuilder logMessage = new ColorStringBuilder();
-				logMessage.append(table).append(": ").append(model).append(" (");
+				logMessage.append(getTableNameAndDistributionModel(table)).append(" (");
 
 				/*
 				 * Try to range on OUTER JOIN columns if to a Broadcast
@@ -1087,7 +1110,7 @@ public final class AiTemplateBuilder {
 				}
 
 				final boolean hasRedistOperations = !getRedistOperations(table, joins, topRangeToRangeTopRanges).isEmpty();
-				final boolean mayCauseExcessiveLocking = mayCauseExcessiveLocking(table);
+				final boolean mayCauseExcessiveLocking = hasExcessiveLocking(table, this.avoidAllWriteBroadcasting);
 				if (!this.fallbackModel.isBroadcast()
 						|| !hasRedistOperations
 						|| mayCauseExcessiveLocking) {
@@ -1158,7 +1181,8 @@ public final class AiTemplateBuilder {
 
 				/* Fall back. */
 				if (newRange == null) {
-					table.setTableDistributionModel(this.fallbackModel.isBroadcast() ? Broadcast.SINGLETON_TEMPLATE_ITEM : Random.SINGLETON_TEMPLATE_ITEM);
+					table.setTableDistributionModel((this.fallbackModel.isBroadcast() && !mayCauseExcessiveLocking) ? Broadcast.SINGLETON_TEMPLATE_ITEM
+							: Random.SINGLETON_TEMPLATE_ITEM);
 					logMessage.append("no suitable range columns found", MessageSeverity.WARNING.getColor());
 				}
 
@@ -1204,8 +1228,8 @@ public final class AiTemplateBuilder {
 				}
 			}
 
-			if (mayCauseExcessiveLocking(table)) {
-				log("Table locking on a frequently written broadcast table " + table.toString() + " may lead to reduced concurrency.", MessageSeverity.WARNING);
+			if (hasExcessiveBroadcastLocking(table, this.avoidAllWriteBroadcasting)) {
+				log("Locking on a frequently written broadcast table " + table.toString() + " may lead to reduced concurrency.", MessageSeverity.WARNING);
 			}
 
 			final MultiMap<RedistCause, Object> operations = getRedistOperations(table, joins, ranges);
@@ -1504,6 +1528,10 @@ public final class AiTemplateBuilder {
 		}
 
 		return value;
+	}
+
+	private void logTableDistributionModel(final TableStats table, final MessageSeverity severity) {
+		log(getTableNameAndDistributionModel(table), severity);
 	}
 
 	private void log(final String message) {

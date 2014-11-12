@@ -76,7 +76,11 @@ public final class InformationSchemas {
 	public InformationSchema getInfoSchema() {
 		return infoSchema;
 	}
-	
+
+	public PEDatabase getCatalogSchema() {
+		return this.catalog;
+	}
+
 	public ShowView getShowSchema() {
 		return this.show;
 	}
@@ -164,6 +168,7 @@ public final class InformationSchemas {
 			}
 		}
 				
+		pdb.setNameMangling(false);
 		return pdb;
 	}
 }

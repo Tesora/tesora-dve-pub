@@ -418,7 +418,7 @@ public class BasicType implements Type {
 		if (MysqlType.ENUM.equals(mnType.getMysqlType()) || MysqlType.SET.equals(mnType.getMysqlType()))
 			return DBEnumType.buildType(uc, types);
 		List<TypeModifier> modifiers = buildModifiers(uc);
-		if (uc.getPrecision() != 0 || uc.getScale() != 0) {
+		if ((uc.getPrecision() > 0) || (uc.getScale() > 0)) {
 			return buildType(mnType,uc.getSize(),uc.getPrecision(),uc.getScale(),modifiers);
 		}
 		return buildType(mnType,uc.getSize(),modifiers);

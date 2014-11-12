@@ -55,6 +55,9 @@ public class PEDatabase extends Persistable<PEDatabase, UserDatabase> implements
 	private String charSet;
 	private String collation;
 	
+	// This enables late (on-site) name resolution.
+	private boolean hasNameManglingEnabled = true;
+
 	protected PESchema schema;
 		
 	@SuppressWarnings("unchecked")
@@ -269,8 +272,22 @@ public class PEDatabase extends Persistable<PEDatabase, UserDatabase> implements
 	}
 
 	@Override
+	public boolean hasNameManglingEnabled() {
+		return this.hasNameManglingEnabled;
+	}
+
+	public void setNameMangling(final boolean enabled) {
+		this.hasNameManglingEnabled = enabled;
+	}
+
+	@Override
 	public String getNameOnSite(StorageSite site) {
-		return UserDatabase.getNameOnSite(getName().get(), site);
+		final String baseName = getName().get();
+		if (this.hasNameManglingEnabled) {
+			return UserDatabase.getNameOnSite(baseName, site);
+		}
+
+		return baseName;
 	}
 
 	@Override
