@@ -111,7 +111,7 @@ public class AnalyzeKeysStatement extends SessionStatement {
 				ListOfPairs<SchemaCacheKey<?>,InvalidationScope> toInvalidate = new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
 				for(Iterator<PETable> iter = curset.iterator(); iter.hasNext();) {
 					PETable tab = iter.next();
-					buf.append("'").append(tab.getName(pc).getUnqualified().getUnquotedName().get()).append("'");
+					buf.append("'").append(tab.getName(pc,pc.getValues()).getUnqualified().getUnquotedName().get()).append("'");
 					if (iter.hasNext()) buf.append(",");
 					toInvalidate.add(tab.getCacheKey(),InvalidationScope.LOCAL);
 				}

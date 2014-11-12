@@ -117,7 +117,7 @@ public class PEPersistentGroup extends Persistable<PEPersistentGroup, Persistent
 		if (other instanceof PEPersistentGroup) {
 			if (sc.getCatalog().isPersistent()) {
 				PersistentGroup backing = getPersistent(sc);
-				PersistentGroup otherBacking = (PersistentGroup) other.getPersistent(sc);
+				PersistentGroup otherBacking = (PersistentGroup) other.getPersistent(sc,sc.getValues());
 				if (backing == null && otherBacking == null) {
 					return name.equals(((PEPersistentGroup)other).name);
 				} else if (backing != null && otherBacking != null) {
@@ -190,6 +190,11 @@ public class PEPersistentGroup extends Persistable<PEPersistentGroup, Persistent
 	public PersistentGroup getPersistent(SchemaContext pc, boolean create) {
 		if (tempGroup != null) return tempGroup;
 		return super.getPersistent(pc, false);
+	}
+	
+	@Override
+	public PersistentGroup getPersistent(SchemaContext sc, ConnectionValues unused) {
+		return getPersistent(sc);
 	}
 	
 	public PEPersistentGroup aSite(SchemaContext pc, int mem) throws PEException {
@@ -278,7 +283,7 @@ public class PEPersistentGroup extends Persistable<PEPersistentGroup, Persistent
 	}
 
 	@Override
-	public PEStorageGroup getPEStorageGroup(SchemaContext sc) {
+	public PEStorageGroup getPEStorageGroup(SchemaContext sc,ConnectionValues cv) {
 		return this;
 	}
 	
@@ -336,7 +341,7 @@ public class PEPersistentGroup extends Persistable<PEPersistentGroup, Persistent
 	private static final boolean caching = !Boolean.getBoolean("com.tesora.dve.sql.schema.tcache.storagegroup.disable");
 	
 	@Override
-	public StorageGroup getScheduledGroup(SchemaContext sc) {
+	public StorageGroup getScheduledGroup(SchemaContext sc, ConnectionValues cv) {
 		if (caching) {
 			return new TStorageGroup(this,getSites(sc));
 		} else

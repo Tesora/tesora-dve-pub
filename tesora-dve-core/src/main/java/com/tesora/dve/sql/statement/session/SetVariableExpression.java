@@ -74,7 +74,7 @@ public class SetVariableExpression extends SetExpression {
 		if (e instanceof LiteralExpression) {
 			LiteralExpression le = (LiteralExpression) e;
 			if (le.isNullLiteral()) return null;
-			return le.getValue(sc);
+			return le.getValue(sc.getValues());
 		} else {
 			throw new SchemaException(Pass.PLANNER, "Unable to convert variable value to literal: " + e);
 		}

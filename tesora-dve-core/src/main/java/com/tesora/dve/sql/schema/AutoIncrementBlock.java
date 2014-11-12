@@ -74,8 +74,8 @@ public class AutoIncrementBlock {
 		return new AutoIncrementBlock(this);
 	}
 	
-	public AutoIncrementLiteralExpression allocateAutoIncrementExpression() {
-		AutoIncrementLiteralExpression aile = new AutoIncrementLiteralExpression(containing,generated.size());
+	public AutoIncrementLiteralExpression allocateAutoIncrementExpression(ConnectionValues cv) {
+		AutoIncrementLiteralExpression aile = new AutoIncrementLiteralExpression(cv,generated.size());
 		generated.add(aile);
 		inorder.add(aile);
 		return aile;
@@ -87,7 +87,7 @@ public class AutoIncrementBlock {
 
 	public void compute(SchemaContext sc, ConnectionValues cv) {
 		SQLMode mode = 
-				KnownVariables.SQL_MODE.getSessionValue(sc.getConnection().getVariableSource());
+				KnownVariables.SQL_MODE.getSessionValue(cv.getConnection().getVariableSource());
 		cv.setLastInsertId(null);
 		// examine the values in order to determine whether insert id is illegal
 		long max = -1;
@@ -96,11 +96,11 @@ public class AutoIncrementBlock {
 			if (dle instanceof IAutoIncrementLiteralExpression) {
 				toAllocate.add(dle);
 			} else {
-				if (requiresAllocation(dle,sc,mode)) {
+				if (requiresAllocation(dle,cv,mode)) {
 					toAllocate.add(dle);
 				} else {
 					Long value = null;
-					Object object = dle.getValue(sc);
+					Object object = dle.getValue(cv);
 					if (object instanceof String) {
 						value = Long.valueOf((String)object);
 					} else {
@@ -111,7 +111,7 @@ public class AutoIncrementBlock {
 			}
 		}
 		Long insertIdFromVar = 
-				KnownVariables.REPL_INSERT_ID.getValue(sc.getConnection().getVariableSource());
+				KnownVariables.REPL_INSERT_ID.getValue(cv.getConnection().getVariableSource());
 		
 		if (max > -1 && insertIdFromVar != null)
 			throw new SchemaException(Pass.SECOND, "Cannot specify both the autoincrement column value and " + VariableConstants.REPL_SLAVE_INSERT_ID_NAME);
@@ -152,16 +152,16 @@ public class AutoIncrementBlock {
 			tk.removeValue(sc, max);
 	}
 	
-	public static boolean requiresAllocation(IConstantExpression in, SchemaContext sc, SQLMode mode) {
+	public static boolean requiresAllocation(IConstantExpression in, ConnectionValues cv, SQLMode mode) {
 		if (in instanceof ILiteralExpression) {
 			ILiteralExpression ile = (ILiteralExpression) in;
 			if (ile.isNullLiteral())
 				return true;
-			Object rv = ile.getValue(sc);
+			Object rv = ile.getValue(cv);
 			return requiresAutoIncAllocation(rv,!ile.isStringLiteral(),mode);
 		} else if (in.getConstantType() == ConstantType.PARAMETER) { 
 			IParameter ip = (IParameter) in;
-			Object v = ip.getValue(sc);
+			Object v = ip.getValue(cv);
 			return requiresAutoIncAllocation(v,true,mode);			
 		} 
 		return false;

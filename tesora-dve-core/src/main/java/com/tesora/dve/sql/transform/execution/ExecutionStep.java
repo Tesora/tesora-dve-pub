@@ -190,9 +190,10 @@ public abstract class ExecutionStep implements HasPlanning {
 		proc.execute(this);
 	}
 	
-	protected QueryStepOperation buildOperation(ExecutionPlanOptions opts, SchemaContext sc, ExecutionStep toSchedule) throws PEException {
+	protected QueryStepOperation buildOperation(ExecutionPlanOptions opts, SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing,
+			HasPlanning toSchedule) throws PEException {
 		List<QueryStepOperation> sub = new ArrayList<QueryStepOperation>();
-		toSchedule.schedule(opts, sub, null, sc);
+		toSchedule.schedule(opts, sub, null, sc, cvm, containing);
 		return ExecutionPlan.collapseOperationList(sub);
 	}
 

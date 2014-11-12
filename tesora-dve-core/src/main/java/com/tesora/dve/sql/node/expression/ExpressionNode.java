@@ -83,7 +83,7 @@ public abstract class ExpressionNode extends LanguageNode {
 	
 	public String toString(SchemaContext sc) {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitExpression(sc,this, buf);
+        Singletons.require(HostService.class).getDBNative().getEmitter().emitExpression(sc,(sc == null ? null : sc.getValues()),this, buf);
 		return buf.toString();		
 	}
 	

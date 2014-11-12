@@ -262,8 +262,8 @@ public class SchemaPolicyContext {
 	public LiteralExpression getTenantIDLiteral(boolean mustExist) {
 		Long value = getTenantID(mustExist);
 		if (value == null) return null;
-		sc.getValueManager().setTenantID(sc,value);
-		return new TenantIDLiteral(sc.getValueManager());
+		sc.getValueManager().setTenantID(sc,value,null);
+		return new TenantIDLiteral(sc.getValues());
 	}
 	
 	public Long getTenantID(boolean mustExist) {

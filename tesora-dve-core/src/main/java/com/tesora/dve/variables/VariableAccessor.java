@@ -27,15 +27,18 @@ import com.tesora.dve.sql.schema.VariableScopeKind;
 
 public class VariableAccessor extends AbstractVariableAccessor {
 
+	@SuppressWarnings("rawtypes")
 	private final VariableHandler handler;
 	private final VariableScope scope;
 	
+	@SuppressWarnings("rawtypes")
 	public VariableAccessor(VariableHandler theHandler, VariableScope theScope) {
 		super();
 		this.handler = theHandler;
 		this.scope = theScope;
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	public String getValue(VariableStoreSource conn) throws PEException {
 		return handler.toExternal(handler.getValue(conn, scope.getKind()));

@@ -53,7 +53,7 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 		super();
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public <Type> ValueReference<Type> getReference(VariableHandler<Type> vh) {
 		ValueReference vr = cache.get(vh);
@@ -62,6 +62,7 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 		return vr;
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private <Type> ValueReference<Type> readValue(VariableHandler<Type> vh) {
 		ClusterLock lock = getLock();
 		try {
@@ -90,6 +91,7 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 		setValueInternal(vh,t,true);
 	}
 
+	@SuppressWarnings("unchecked")
 	private <Type> void setValueInternal(VariableHandler<Type> vh, Type t, boolean added) {
 		// in the write scenario, we lock first, then write through to the group manager map
 		String newValue = vh.toMap(t);
@@ -115,11 +117,13 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 		return "GlobalVariableManager";
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	public void invalidate(VariableHandler vh) {
 		cache.remove(vh);
 	}
 	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public LocalVariableStore buildNewLocalStore() {
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
 		LocalVariableStore out = new LocalVariableStore();

@@ -26,7 +26,6 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.comms.client.messages.MessageType;
 import com.tesora.dve.comms.client.messages.MessageVersion;
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.global.HostService;

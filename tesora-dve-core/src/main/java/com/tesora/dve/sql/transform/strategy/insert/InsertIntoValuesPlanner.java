@@ -78,7 +78,12 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 
 		// first time planning, get the value manager to allocate values now - well, unless this is prepare - in which case not so much
 		// also, we don't do it if we only have late binding constants
-		if (!context.getContext().getOptions().isPrepare() && !context.getContext().getOptions().isTriggerPlanning()) 
+		boolean allocateAutoIncs = true;
+		if (context.getContext().getOptions().isPrepare() || context.getContext().getOptions().isTriggerPlanning()
+				|| context.getApplied().contains(FeaturePlannerIdentifier.INSERT_INTO_VALUES_TRIGGER))
+			allocateAutoIncs = false;
+		
+		if (allocateAutoIncs)
 			context.getContext().getValueManager().handleAutoincrementValues(context.getContext());
 		
 		return buildInsertIntoValuesFeatureStep(context,this,iivs);
@@ -141,8 +146,8 @@ public class InsertIntoValuesPlanner extends TransformFactory {
 			} else {
 				final LateSortedInsert lsi = new LateSortedInsert(iivs, parts);
 				context.getContext().getValueManager().registerLateSortedInsert(lsi);
-				if (!context.getContext().getOptions().isPrepare())
-					context.getContext().getValueManager().handleLateSortedInsert(context.getContext());
+				if (!context.getContext().getOptions().isPrepare() && !context.getContext().getOptions().isTriggerPlanning())
+					context.getContext().getValueManager().handleLateSortedInsert(context.getContext(),context.getContext().getValues());
 
 				out = new LateSortedInsertFeatureStep(iivs,planner,
 						tk.getAbstractTable().asTable().getStorageGroup(context.getContext()),

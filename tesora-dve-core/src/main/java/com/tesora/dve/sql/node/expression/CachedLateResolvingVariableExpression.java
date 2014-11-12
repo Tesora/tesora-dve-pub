@@ -24,7 +24,7 @@ package com.tesora.dve.sql.node.expression;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.variables.AbstractVariableAccessor;
@@ -38,9 +38,9 @@ public class CachedLateResolvingVariableExpression implements IConstantExpressio
 	}
 	
 	@Override
-	public Object getValue(SchemaContext sc) {
+	public Object getValue(ConnectionValues cv) {
 		try {
-			return accessor.getValue(sc.getConnection().getVariableSource());
+			return accessor.getValue(cv.getConnection().getVariableSource());
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.PLANNER, "Unable to obtain variable value",pe);
 		}

@@ -38,6 +38,7 @@ import com.tesora.dve.sql.expression.MTTableKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.ExtractedLiteral;
 import com.tesora.dve.sql.parser.ExtractedLiteral.Type;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PETable;
@@ -47,7 +48,8 @@ import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.schema.mt.TableScope.ScopeCacheKey;
 import com.tesora.dve.sql.statement.CacheableStatement;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RebuiltPlan;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
@@ -110,7 +112,7 @@ public class MTCachedPlan implements RegularCachedPlan {
 
 	
 	@SuppressWarnings("unchecked")
-	public void take(SchemaContext sc, CacheableStatement originalStatement, ExecutionPlan thePlan) {
+	public void take(SchemaContext sc, CacheableStatement originalStatement, RootExecutionPlan thePlan) {
 		// first build the CachedTSPlan and then try to merge it in.
 		// we seek to minimize the time within the lock.
 		List<VisibilityRecord> visible = new ArrayList<VisibilityRecord>();
@@ -166,7 +168,7 @@ public class MTCachedPlan implements RegularCachedPlan {
 	}
 
 	@Override
-	public ExecutionPlan showPlan(SchemaContext sc,
+	public RebuiltPlan showPlan(SchemaContext sc,
 			List<ExtractedLiteral> literals) throws PEException {
 		return null;
 	}
@@ -175,15 +177,15 @@ public class MTCachedPlan implements RegularCachedPlan {
 	@Override
 	public RebuiltPlan rebuildPlan(SchemaContext sc,
 			List<ExtractedLiteral> literals) throws PEException {
-		if (!isValidLiterals(literals)) return new RebuiltPlan(null, true,null,lockType);
+		if (!isValidLiterals(literals)) return new RebuiltPlan(null, null, true,null,lockType);
 
 		IPETenant currentTenant = sc.getCurrentTenant().get(sc);
 		if (currentTenant == null)
-			return new RebuiltPlan(null, true,null,lockType);
+			return new RebuiltPlan(null, null, true,null,lockType);
 		
 		MatchResult candidate = findMatching(sc, (PETenant)currentTenant);
 		if (candidate == null)
-			return new RebuiltPlan(null, true,null,lockType);
+			return new RebuiltPlan(null, null, true,null,lockType);
 		
 		return candidate.getPlan().rebuildPlan(sc, literals, 
 				Functional.apply(candidate.getScopes(), new UnaryFunction<SchemaCacheKey<?>,SchemaCacheKey<TableScope>>() {
@@ -243,12 +245,12 @@ public class MTCachedPlan implements RegularCachedPlan {
 	
 	public static class CachedTSPlan implements RegularCachedPlan {
 		
-		private final ExecutionPlan thePlan;
+		private final RootExecutionPlan thePlan;
 		private final List<VisibilityRecord> mapping;		
 		private final MTCachedPlan parent;
 		private final AtomicInteger refCount;
 		
-		public CachedTSPlan(MTCachedPlan mtcp, ExecutionPlan thePlan, List<VisibilityRecord> theMapping) {
+		public CachedTSPlan(MTCachedPlan mtcp, RootExecutionPlan thePlan, List<VisibilityRecord> theMapping) {
 			parent = mtcp;
 			this.thePlan = thePlan;
 			this.thePlan.setOwningCache(this);
@@ -273,14 +275,14 @@ public class MTCachedPlan implements RegularCachedPlan {
 		@Override
 		public RebuiltPlan rebuildPlan(SchemaContext sc,
 				List<ExtractedLiteral> literals) throws PEException {
-			thePlan.getValueManager().resetForNewPlan(sc, literals);
-			return new RebuiltPlan(thePlan, false,null,parent.lockType);
+			ConnectionValuesMap cv = thePlan.resetForNewPlan(sc, literals);
+			return new RebuiltPlan(thePlan, cv, false,null,parent.lockType);
 		}
 
 		public RebuiltPlan rebuildPlan(SchemaContext sc, 
 				List<ExtractedLiteral> literals, List<SchemaCacheKey<?>> scopes) throws PEException {
-			thePlan.getValueManager().resetForNewPlan(sc, literals);
-			return new RebuiltPlan(thePlan, false,scopes.toArray(new SchemaCacheKey<?>[0]),parent.lockType);
+			ConnectionValuesMap cv = thePlan.resetForNewPlan(sc, literals);
+			return new RebuiltPlan(thePlan, cv, false,scopes.toArray(new SchemaCacheKey<?>[0]),parent.lockType);
 		}
 		
 		@Override
@@ -325,7 +327,7 @@ public class MTCachedPlan implements RegularCachedPlan {
 		}
 
 		@Override
-		public ExecutionPlan showPlan(SchemaContext sc,
+		public RebuiltPlan showPlan(SchemaContext sc,
 				List<ExtractedLiteral> literals) throws PEException {
 			return null;
 		}

@@ -44,9 +44,9 @@ public class TempTableSanity {
 			PETable pet = (PETable) tk.getTable();
 			if (!pet.isTempTable()) continue;
 			if (!scheduled.contains(pet)) {
-				throw new PEException("Internal error: use of temp table " + pet.getName(sc) + " before definition");
+				throw new PEException("Internal error: use of temp table " + pet.getName(sc,sc.getValues()) + " before definition");
 			} else if (!pet.hasDatabase(sc)) {
-				throw new PEException("Internal error: temp table " + pet.getName(sc) + " has no database");
+				throw new PEException("Internal error: temp table " + pet.getName(sc,sc.getValues()) + " has no database");
 			}
 		}
 	}

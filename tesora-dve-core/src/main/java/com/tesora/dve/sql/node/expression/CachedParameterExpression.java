@@ -21,7 +21,7 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
-import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IConstantExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
@@ -35,8 +35,8 @@ public class CachedParameterExpression implements IParameter {
 	}
 
 	@Override
-	public Object getValue(SchemaContext sc) {
-		return sc.getValueManager().getValue(sc, this);
+	public Object getValue(ConnectionValues cv) {
+		return cv.getParameterValue(getPosition());
 	}
 
 	@Override

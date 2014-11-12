@@ -63,6 +63,7 @@ import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.schema.CatalogContext;
 import com.tesora.dve.sql.schema.ConnectionContext;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.Capability;
@@ -381,7 +382,7 @@ public class LogFileContext implements ConnectionContext, CatalogContext, Variab
 
 	@Override
 	public MappingSolution mapKey(SchemaContext sc, IKeyValue dk, Model model,
-			DistKeyOpType op, PEStorageGroup pesg) throws PEException {
+			DistKeyOpType op, PEStorageGroup pesg, ConnectionValues cv) throws PEException {
 		// TODO Auto-generated method stub
 		return null;
 	}

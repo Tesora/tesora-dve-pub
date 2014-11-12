@@ -35,6 +35,7 @@ import com.tesora.dve.sql.infoschema.persist.CatalogColumnEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogDatabaseEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
 import com.tesora.dve.sql.infoschema.persist.CatalogTableEntity;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
@@ -132,7 +133,7 @@ public class DirectInformationSchemaTable implements InformationSchemaTable {
 	}
 	
 	@Override
-	public Name getName(SchemaContext sc) {
+	public Name getName(SchemaContext sc,ConnectionValues cv) {
 		return name;
 	}
 

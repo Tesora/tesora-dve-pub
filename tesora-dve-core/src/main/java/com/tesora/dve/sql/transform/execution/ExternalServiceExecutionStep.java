@@ -28,6 +28,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepDDLOperation;
 import com.tesora.dve.queryplan.QueryStepExternalServiceOperation;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEExternalService;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -44,8 +45,8 @@ public class ExternalServiceExecutionStep extends SimpleDDLExecutionStep {
 	}
 
 	@Override
-	protected QueryStepDDLOperation buildOperation(SchemaContext sc) throws PEException {
-		return new QueryStepExternalServiceOperation(getStorageGroup(sc),getPersistentDatabase(), sql,
+	protected QueryStepDDLOperation buildOperation(SchemaContext sc,ConnectionValues cv) throws PEException {
+		return new QueryStepExternalServiceOperation(getStorageGroup(sc,cv),getPersistentDatabase(), sql,
 				action, (PEExternalService) rootEntity);
 	}
 

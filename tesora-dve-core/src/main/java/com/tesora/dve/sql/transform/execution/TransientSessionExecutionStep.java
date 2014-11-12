@@ -31,6 +31,7 @@ import com.tesora.dve.queryplan.QueryStepGeneralOperation;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -60,13 +61,14 @@ public class TransientSessionExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
-		qsteps.add(new QueryStepGeneralOperation(getStorageGroup(sc),op,txn,workers));
+		qsteps.add(new QueryStepGeneralOperation(getStorageGroup(sc,cvm.getValues(containing)),op,txn,workers));
 	}
 	
 	@Override
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 		buf.add(sql);
 	}
 

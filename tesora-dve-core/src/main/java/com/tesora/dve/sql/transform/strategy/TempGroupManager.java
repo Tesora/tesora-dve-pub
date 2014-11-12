@@ -30,6 +30,7 @@ import com.tesora.dve.common.catalog.StorageGroup.GroupScale;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PEDynamicGroup;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -142,15 +143,15 @@ public class TempGroupManager {
 		}
 		
 		@Override
-		public PEStorageGroup getPEStorageGroup(SchemaContext sc) {
-			return sc.getValueManager().getPlaceholderGroup(sc, index);
+		public PEStorageGroup getPEStorageGroup(SchemaContext sc, ConnectionValues cv) {
+			return cv.getPlaceholderGroup(index);
 		}
 		
 		@Override
-		public StorageGroup getPersistent(SchemaContext sc) {
+		public StorageGroup getPersistent(SchemaContext sc, ConnectionValues cv) {
 			if (index == -1)
 				throw new SchemaException(Pass.PLANNER, "Attempt to obtain temp group before planning complete");
-			return sc.getValueManager().getPlaceholderGroup(sc, index).getPersistent(sc);
+			return cv.getPlaceholderGroup(index).getPersistent(sc, cv);
 		}
 
 		@Override
@@ -158,8 +159,8 @@ public class TempGroupManager {
 			return null;
 		}
 		@Override
-		public StorageGroup getScheduledGroup(SchemaContext sc) {
-			return getPersistent(sc);
+		public StorageGroup getScheduledGroup(SchemaContext sc, ConnectionValues cv) {
+			return getPersistent(sc, cv);
 		}
 		
 		@Override

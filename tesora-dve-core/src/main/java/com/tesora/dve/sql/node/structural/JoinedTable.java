@@ -131,7 +131,7 @@ public class JoinedTable extends StructuralNode {
 	
 	public String toString(SchemaContext sc) {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitJoinedTable(sc, this, buf,-1);
+        Singletons.require(HostService.class).getDBNative().getEmitter().emitJoinedTable(sc, sc.getValues(),this, buf,-1);
 		return buf.toString();		
 	}
 

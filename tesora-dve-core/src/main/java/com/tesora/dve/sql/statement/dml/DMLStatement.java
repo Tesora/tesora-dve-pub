@@ -274,8 +274,7 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 			emitter.setOptions(EmitOptions.PEMETADATA);
 			PEAbstractTable<?> peat = tk.getAbstractTable();
 			if (peat.isView() && peat.asView().getView(sc).isMerge(sc,peat.asView())) {
-				emitter.emitDebugViewDeclaration(sc, peat.asView(), buf);
-//				emitter.emitDeclaration(sc, peat.getDistributionVector(sc), buf);
+				emitter.emitDebugViewDeclaration(sc, sc.getValues(), peat.asView(), buf);
 				buf.append(PEConstants.LINE_SEPARATOR);
 				ProjectingStatement viewDef = peat.asView().getView(sc).getViewDefinition(sc, peat.asView(),false);
 				emitTables(sc,viewDef.getAllTableKeys(),tabs,buf);

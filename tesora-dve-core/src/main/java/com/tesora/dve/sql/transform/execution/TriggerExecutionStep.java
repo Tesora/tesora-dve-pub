@@ -30,7 +30,6 @@ import com.tesora.dve.queryplan.QueryStepTriggerOperation;
 import com.tesora.dve.queryplan.TriggerValueHandlers;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.PEStorageGroup;

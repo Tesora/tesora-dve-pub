@@ -23,7 +23,6 @@ package com.tesora.dve.db;
 
 import io.netty.channel.EventLoopGroup;
 
-import java.nio.charset.Charset;
 import java.util.Map;
 
 import com.tesora.dve.common.catalog.StorageSite;

@@ -55,7 +55,7 @@ public class PEDynamicGroup implements PEStorageGroup {
 	}
 	
 	@Override
-	public StorageGroup getPersistent(SchemaContext sc) {
+	public StorageGroup getPersistent(SchemaContext sc, ConnectionValues cv) {
 		if (group == null) try {
 			if (scale == null)
 				throw new SchemaException(Pass.PLANNER, "Scale not set on dynamic group prior to creation");
@@ -78,8 +78,8 @@ public class PEDynamicGroup implements PEStorageGroup {
 	}
 
 	@Override
-	public StorageGroup getScheduledGroup(SchemaContext sc) {
-		return getPersistent(sc);
+	public StorageGroup getScheduledGroup(SchemaContext sc, ConnectionValues cv) {
+		return getPersistent(sc,cv);
 	}
 	
 	@Override
@@ -130,7 +130,7 @@ public class PEDynamicGroup implements PEStorageGroup {
 	}
 
 	@Override
-	public PEStorageGroup getPEStorageGroup(SchemaContext sc) {
+	public PEStorageGroup getPEStorageGroup(SchemaContext sc, ConnectionValues cv) {
 		return this;
 	}
 	

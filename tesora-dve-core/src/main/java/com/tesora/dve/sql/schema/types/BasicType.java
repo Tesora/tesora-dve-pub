@@ -536,7 +536,7 @@ public class BasicType implements Type {
             return BasicType.buildType(java.sql.Types.BIGINT, 21, Singletons.require(HostService.class).getDBNative());
 		}
 		// get the length of the string
-		String value = (String)(literal.getValue(sc));
+		String value = (String)(literal.getValue(sc.getValues()));
         return BasicType.buildType(java.sql.Types.VARCHAR, value.length(), Singletons.require(HostService.class).getDBNative());
 	}
 	

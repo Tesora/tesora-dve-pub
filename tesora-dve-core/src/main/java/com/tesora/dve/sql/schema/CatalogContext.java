@@ -128,7 +128,7 @@ public interface CatalogContext {
 	public void removeNextIncrementValue(SchemaContext sc, TableScope scope, long value);
 	public void removeNextIncrementValue(SchemaContext sc, PETable tab, long value);
 	
-	public MappingSolution mapKey(SchemaContext sc, IKeyValue dk, Model model, DistKeyOpType op, PEStorageGroup pesg) throws PEException;
+	public MappingSolution mapKey(SchemaContext sc, IKeyValue dk, Model model, DistKeyOpType op, PEStorageGroup pesg, ConnectionValues cv) throws PEException;
 	
 	public List<CatalogEntity> query(String query, Map<String, Object> params);
 	

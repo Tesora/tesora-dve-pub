@@ -77,7 +77,7 @@ public class PEDropTableStatement extends
 	
 	public PEDropTableStatement(SchemaContext sc, List<TableKey> tks, List<Name> unknownTbls, Boolean ifExists, boolean temporary) {
 		super(PETable.class, ifExists, false,
-				(tks.isEmpty() ? unknownTbls.get(0) : tks.get(0).getAbstractTable().getName(sc)),
+				(tks.isEmpty() ? unknownTbls.get(0) : tks.get(0).getAbstractTable().getName(sc,sc.getValues())),
 						"TABLE");
 		this.tableKeys = new ArrayList<TableKey>(tks);
 		this.unknownTables = unknownTbls;

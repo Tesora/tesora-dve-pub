@@ -30,7 +30,6 @@ import java.util.Map;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentGroup;
-import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.distribution.IColumnDatum;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.distribution.KeyValue;
@@ -44,7 +43,6 @@ import com.tesora.dve.sql.expression.ExpressionPath;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
-import com.tesora.dve.sql.node.expression.LateBindingConstantExpression;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.transform.MatchableKey;
@@ -142,12 +140,12 @@ public class DistributionKey implements PlanningConstraint {
 		return false;
 	}
 	
-	public String describe(final SchemaContext sc) {
+	public String describe(final ConnectionValues cv) {
 		return "{" + Functional.join(columnOrder, ", ", new UnaryFunction<String, PEColumn>() {
 			@Override
 			public String evaluate(PEColumn object) {
 				ConstantExpression ce = values.get(object);
-				return object.getName().get() + "='" + (ce == null ? "unset" : ce.getValue(sc)) + "'";
+				return object.getName().get() + "='" + (ce == null ? "unset" : ce.getValue(cv)) + "'";
 			}
 		}) + "}";
 	}
@@ -158,18 +156,21 @@ public class DistributionKey implements PlanningConstraint {
 	}
 
 
-	public IKeyValue getDetachedKey(SchemaContext sc) {
+	public IKeyValue getDetachedKey(SchemaContext sc, ConnectionValues cv) {
 		// actualize the dist key so that it can be used without a context
+		// we use late binding if there are runtime constants or we are under trigger planning
+		// otherwise we'll use the actual value.
 		LinkedHashMap<PEColumn, TColumnDatumBase> vals = new LinkedHashMap<PEColumn, TColumnDatumBase>();
 		boolean late = false;
 		for(Map.Entry<PEColumn, ConstantExpression> me : values.entrySet()) {
 			TColumnDatumBase value = null;
-			if (me.getValue().getConstantType() == ConstantType.RUNTIME) {
+			if (me.getValue().getConstantType() == ConstantType.RUNTIME
+					|| (sc.getOptions() != null && sc.getOptions().isNestedPlan())) {
 				late = true;
-				value = new DeferredTColumnDatum(me.getKey(),(LateBindingConstantExpression) me.getValue());
+				value = new DeferredTColumnDatum(me.getKey(),me.getValue());				
 			} else {
 				value = new TColumnDatum(me.getKey(),
-						me.getValue().convert(sc, me.getKey().getType()));
+						me.getValue().convert(cv, me.getKey().getType()));				
 			}
 			vals.put(me.getKey(), value);
 		}
@@ -286,7 +287,7 @@ public class DistributionKey implements PlanningConstraint {
 
 		@Override
 		public String toString() {
-			return PEStringUtils.toString(table.getName(context).getUnquotedName().get(), getValues());
+			return PEStringUtils.toString(table.getName(context,context.getValues()).getUnquotedName().get(), getValues());
 		}
 
 		@Override
@@ -295,13 +296,13 @@ public class DistributionKey implements PlanningConstraint {
 		}
 
 		@Override
-		public IKeyValue rebind(LateBoundConstants constants)
+		public IKeyValue rebind(ConnectionValues cv)
 				throws PEException {
 			if (!hasDeferredValues)
 				return this;
 			LinkedHashMap<PEColumn,TColumnDatumBase> boundVals = new LinkedHashMap<PEColumn,TColumnDatumBase>();
 			for(Map.Entry<PEColumn,TColumnDatumBase> me : values.entrySet()) 
-				boundVals.put(me.getKey(),me.getValue().bind(constants));
+				boundVals.put(me.getKey(),me.getValue().bind(cv));
 			return new DetachedKeyValue(context,table,boundVals,false,columnOrder,null);
 		}
 		

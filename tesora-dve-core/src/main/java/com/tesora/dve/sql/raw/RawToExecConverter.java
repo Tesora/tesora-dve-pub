@@ -91,7 +91,7 @@ import com.tesora.dve.sql.transform.VariableInstanceCollector;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.RedistributionExecutionStep;
@@ -121,7 +121,7 @@ public class RawToExecConverter {
 	private final RawDB rawdb;
 	
 	private DMLStatement stmt;
-	private ExecutionPlan plan;
+	private RootExecutionPlan plan;
 	private String shrunk;
 	private List<ExtractedLiteral.Type> types;
 	private HashMap<String,TempGroupPlaceholder> declaredDynGroups;
@@ -149,7 +149,7 @@ public class RawToExecConverter {
 		SchemaContext cc = SchemaContext.makeImmutableIndependentContext(immutableContext);
 		if (origManager != null) {
 			cc.setValueManager(origManager);
-			cc.setValues(variablesContext._getValues());
+			cc.setValues(variablesContext.getValues());
 		}
 		cc.setCurrentDatabase(rawdb);
 		ParserOptions options = ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly().setActualLiterals();
@@ -172,7 +172,7 @@ public class RawToExecConverter {
 		return stmt;
 	}
 	
-	public ExecutionPlan getPlan() {
+	public RootExecutionPlan getPlan() {
 		return plan;
 	}
 	
@@ -232,7 +232,9 @@ public class RawToExecConverter {
 		if (stmt instanceof SelectStatement) {
 			pi = ((SelectStatement)stmt).getProjectionMetadata(variablesContext);
 		}
-		plan = new ExecutionPlan(pi, variablesContext.getValueManager(), stmt.getStatementType());	
+		if (variablesContext.getValues() == null) 
+			variablesContext.getValueManager().getValues(variablesContext, false);
+		plan = new RootExecutionPlan(pi, variablesContext.getValueManager(), stmt.getStatementType());	
 		origManager = plan.getValueManager();
 		List<VariableInstance> variables = VariableInstanceCollector.getVariables(stmt);
 		TreeMap<SourceLocation,VariableInstance> sorted = new TreeMap<SourceLocation,VariableInstance>();
@@ -245,7 +247,8 @@ public class RawToExecConverter {
 			int tokType = EnumConverter.literalTypeToTokenType(type);
 			int position = literalsForParameters.size();
 			DelegatingLiteralExpression dle = new DelegatingLiteralExpression(tokType,
-					vi.getSourceLocation(),origManager,position,null);
+					vi.getSourceLocation(),variablesContext.getValues(),position,null);
+			dle.setPosition(position, true);
 			literalsForParameters.put(name, dle);
 			origManager.addLiteralValue(variablesContext,position,null,dle);
 		}

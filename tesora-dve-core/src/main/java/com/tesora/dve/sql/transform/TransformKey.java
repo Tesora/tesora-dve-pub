@@ -27,8 +27,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
-import com.tesora.dve.common.catalog.PersistentColumn;
-import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -200,13 +198,5 @@ public abstract class TransformKey {
 			return literal instanceof IParameter;
 		}
 		
-		public Object getValue(SchemaContext sc) {
-			return literal.convert(sc, column.getColumn().getType());
-		}
-			
-		public ColumnDatum getColumnDatum(SchemaContext sc) {
-			PersistentColumn c = column.getPEColumn();
-			return new ColumnDatum(c, getValue(sc));
-		}
 	}
 }

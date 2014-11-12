@@ -22,6 +22,7 @@ package com.tesora.dve.sql.transform.execution;
  */
 
 import com.tesora.dve.common.catalog.StorageGroup;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.Persistable;
@@ -51,19 +52,19 @@ public abstract class CatalogModificationExecutionStep extends ExecutionStep {
 	}
 		
 	@Override
-	public StorageGroup getStorageGroup(SchemaContext sc) {
+	public StorageGroup getStorageGroup(SchemaContext sc, ConnectionValues cv) {
 		if (sg == null) return null;
-		return sg.getPersistent(sc);
+		return sg.getPersistent(sc, cv);
 	}
 
 	@Override
 	public abstract CacheInvalidationRecord getCacheInvalidation(SchemaContext sc);
 
 	@Override
-	public Long getUpdateCount(SchemaContext sc) {
+	public Long getUpdateCount(SchemaContext sc, ConnectionValues cv) {
 		if (updateCountOverride != null) 
 			return updateCountOverride;
-		return super.getUpdateCount(sc);
+		return super.getUpdateCount(sc, cv);
 	}
 
 	public void setUpdateCountOverride(Long v) {

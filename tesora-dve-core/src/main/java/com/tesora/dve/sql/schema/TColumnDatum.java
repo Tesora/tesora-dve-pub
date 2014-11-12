@@ -23,8 +23,6 @@ package com.tesora.dve.sql.schema;
 
 import org.apache.commons.lang.ArrayUtils;
 
-import com.tesora.dve.common.catalog.PersistentColumn;
-import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.db.ValueConverter;
 import com.tesora.dve.distribution.ColumnDatum;
 import com.tesora.dve.distribution.IColumnDatum;
@@ -83,7 +81,7 @@ public class TColumnDatum extends TColumnDatumBase {
 	}
 
 	@Override
-	public TColumnDatumBase bind(LateBoundConstants constants) {
+	public TColumnDatumBase bind(ConnectionValues cv) {
 		return this;
 	}
 

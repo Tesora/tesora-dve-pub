@@ -21,8 +21,6 @@ package com.tesora.dve.sql.transform.execution;
  * #L%
  */
 
-
-
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.sql.Types;
@@ -38,81 +36,117 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.raw.ExecToRawConverter;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
-import com.tesora.dve.sql.schema.cache.CachedPlan;
 import com.tesora.dve.sql.statement.Statement;
-import com.tesora.dve.sql.statement.StatementType;
+import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryProcedure;
 
-public class ExecutionPlan implements HasPlanning {
+public abstract class ExecutionPlan implements HasPlanning {
 
-	private static final Logger logger = Logger.getLogger( ExecutionPlan.class );
+	private static final Logger logger = Logger.getLogger( RootExecutionPlan.class );
+		
+	protected final ExecutionSequence steps;
+	protected final ValueManager values;
+	protected final ListSet<ExecutionPlan> nested;
 	
-	private ExecutionSequence steps;
-	private ProjectionInfo projection;
-	// cacheable only if true
-	private Boolean cacheable;
-	@SuppressWarnings("unused")
-	private CachedPlan owner;
-	
-	private final ValueManager values;
-	
-	// com_* stats are populated via this when there is a plan cache hit
-	private final StatementType originalStatementType;
-	
-	private boolean isEmptyPlan = false;
-	
-	public ExecutionPlan(ProjectionInfo pi, ValueManager vm, StatementType stmtType) {
-		steps = new ExecutionSequence(this);
-		projection = pi;
-		values = vm;
-		originalStatementType = stmtType;
+	public ExecutionPlan(ValueManager valueManager) {
+		this.values = valueManager;
+		this.nested = new ListSet<ExecutionPlan>();
+		this.steps = new ExecutionSequence(this);
 	}
 	
-	public List<QueryStepOperation> schedule(ExecutionPlanOptions opts, SSConnection connection, SchemaContext sc) throws PEException {
-		List<QueryStepOperation> buf = new ArrayList<QueryStepOperation>();
-		schedule(opts, buf,projection,sc);
-		Long lastInsertId = steps.getlastInsertId(values,sc);
-		if (lastInsertId != null)
-			connection.setLastInsertedId(lastInsertId.longValue());
-		else 
-			connection.setLastInsertedId(0);
-		return buf;
-	}
-
 	public ExecutionSequence getSequence() {
 		return steps;
 	}
 	
-	public void display(SchemaContext sc, PrintStream ps, EmitOptions opts) {
-		display(sc, ps,"",opts);
+	public abstract boolean isRoot();
+
+	public abstract void setCacheable(boolean v);
+	public abstract boolean isCacheable();
+
+	public ListSet<ExecutionPlan> getNestedPlans() {
+		return nested;
 	}
 	
-	public void display(SchemaContext sc, PrintStream ps, String cntxt, EmitOptions opts) {
-		ps.println();
-		boolean prepared = values.getNumberOfParameters() > 0 && !values.hasPassDownParams();
-		ps.println("--- Execution Plan " + cntxt + (prepared ? " (prepared stmt) " : "") + " ---");
-		ArrayList<String> buf = new ArrayList<String>();
-		steps.display(sc, buf,"  ",(opts == null ? EmitOptions.NONE.addMultilinePretty("  ") : opts.addMultilinePretty("  "))); 
-		for(String s : buf)
-			ps.println(s);
-		ps.println("--- End Execution Plan ---");
+	public void addNestedPlan(ExecutionPlan ep) {
+		nested.add(ep);
 	}
 	
-	public void logPlan(SchemaContext sc, String cntxt, EmitOptions opts) {
-		if (!logger.isInfoEnabled())
-			return;
-		ByteArrayOutputStream buf = new ByteArrayOutputStream();
-		PrintStream ps = new PrintStream(buf);
-		display(sc, ps,cntxt,opts);
-		ps.flush();
-		ps.close();
-		logger.info(buf.toString());
+	public ValueManager getValueManager() {
+		return values;
+	}
+	
+	@Override
+	public void visitInExecutionOrder(UnaryProcedure<HasPlanning> proc) {
+		steps.visitInExecutionOrder(proc);		
+	}
+
+	@Override
+	public void visitInTestVerificationOrder(UnaryProcedure<HasPlanning> proc) {
+		steps.visitInTestVerificationOrder(proc);
+	}
+	
+	@Override
+	public void prepareForCache() {
+		steps.prepareForCache();
+	}
+	
+	@Override
+	public ExecutionType getExecutionType() {
+		return null;
+	}
+
+	// the plan is represented by a tree - of which the sequence is the root.
+	// convert the tree such that the last execution step is the single query step
+	// and all others are dependent steps.
+	protected static QueryStepOperation collapseOperationList(List<QueryStepOperation> ops) {
+		QueryStepOperation end = ops.remove(ops.size() - 1);
+		for(QueryStepOperation qs : ops)
+			end.addRequirement(qs);
+		return end;
+	}
+	
+	@Override
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValuesMap cv, ExecutionPlan currentPlan)
+			throws PEException {
+		ArrayList<QueryStepOperation> buf = new ArrayList<QueryStepOperation>();
+		steps.schedule(opts, buf,projection, sc, cv, this);
+		if (buf.isEmpty()) return;
+
+		qsteps.add(collapseOperationList(buf));
+	}
+
+	@Override
+	public void display(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan currentPlan,
+			List<String> buf, String indent, EmitOptions opts) {
+		steps.display(sc, cv, this, buf,"  ",(opts == null ? EmitOptions.NONE.addMultilinePretty("  ") : opts.addMultilinePretty("  "))); 
+	}
+
+	@Override
+	public Long getlastInsertId(ValueManager vm, SchemaContext sc, ConnectionValues cv) {
+		return steps.getlastInsertId(vm, sc, cv);
+	}
+
+	@Override
+	public Long getUpdateCount(SchemaContext sc, ConnectionValues cv) {
+		return steps.getUpdateCount(sc, cv);
+	}
+	
+	@Override
+	public boolean useRowCount() {
+		return steps.useRowCount();
+	}
+
+	@Override
+	public void explain(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan currentPlan, List<ResultRow> rows,
+			ExplainOptions opts) {
+		steps.explain(sc,  cv, this, rows, opts);		
 	}
 	
 	@Override
@@ -128,18 +162,18 @@ public class ExecutionPlan implements HasPlanning {
 			cs.addColumn(s,255,"varchar",Types.VARCHAR);		
 	}
 	
-	private IntermediateResultSet generateExplain(SchemaContext sc, ExplainOptions opts) {
+	private IntermediateResultSet generateExplain(SchemaContext sc, ConnectionValuesMap cv, ExplainOptions opts) {
 		ColumnSet cs = new ColumnSet();
 		addExplainColumnHeaders(cs);
 		if (opts.isStatistics()) 
 			StepExecutionStatistics.addColumnHeaders(cs);
 		List<ResultRow> rows = new ArrayList<ResultRow>();
-		explain(sc,rows,opts);
+		explain(sc,cv, this, rows,opts);
 		return new IntermediateResultSet(cs,rows);
 	}
 	
 	
-	public DDLQueryExecutionStep generateExplain(SchemaContext sc, Statement sp, String origSQL) {
+	public DDLQueryExecutionStep generateExplain(SchemaContext sc, ConnectionValuesMap cv, Statement sp, String origSQL) {
 		boolean standard = true;
 		if (sp.getExplain() == null)
 			standard = true;
@@ -147,109 +181,45 @@ public class ExecutionPlan implements HasPlanning {
 			standard = !sp.getExplain().isRaw();
 		}
 		if (standard)
-			return new DDLQueryExecutionStep("explain", generateExplain(sc,sp.getExplain()));
+			return new DDLQueryExecutionStep("explain", generateExplain(sc,cv,sp.getExplain()));
 		else {
 			return new DDLQueryExecutionStep("rawexplain",ExecToRawConverter.convertForRawExplain(sc, this, sp, origSQL));
 		}
 	}
-	
-	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
-	}
 
-	@Override
-	public Long getlastInsertId(ValueManager vm, SchemaContext sc) {
-		return steps.getlastInsertId(vm, sc);
-	}
-
-	@Override
-	public Long getUpdateCount(SchemaContext sc) {
-		return steps.getUpdateCount(sc);
+	public void display(SchemaContext sc, ConnectionValuesMap cv, PrintStream ps, EmitOptions opts) {
+		display(sc, cv, ps,"",opts);
 	}
 	
-	@Override
-	public boolean useRowCount() {
-		return steps.useRowCount();
-	}
-
-	@Override
-	public void explain(SchemaContext sc, List<ResultRow> rows,
-			ExplainOptions opts) {
-		steps.explain(sc,  rows, opts);		
-	}
-
-
-	
-	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
-			throws PEException {
-		ArrayList<QueryStepOperation> buf = new ArrayList<QueryStepOperation>();
-		steps.schedule(opts, buf,projection, sc);
-		if (buf.isEmpty()) return;
-
-		qsteps.add(collapseOperationList(buf));
-	}
-
-	// the plan is represented by a tree - of which the sequence is the root.
-	// convert the tree such that the last execution step is the single query step
-	// and all others are dependent steps.
-	protected static QueryStepOperation collapseOperationList(List<QueryStepOperation> ops) {
-		QueryStepOperation end = ops.remove(ops.size() - 1);
-		for(QueryStepOperation qs : ops)
-			end.addRequirement(qs);
-		return end;
+	public void display(SchemaContext sc, ConnectionValuesMap cv, PrintStream ps, String cntxt, EmitOptions opts) {
+		ps.println();
+		boolean prepared = values.getNumberOfParameters() > 0 && !values.hasPassDownParams();
+		ps.println("--- Execution Plan " + cntxt + (prepared ? " (prepared stmt) " : "") + " ---");
+		ArrayList<String> buf = new ArrayList<String>();
+		steps.display(sc, cv, this, buf,"  ",(opts == null ? EmitOptions.NONE.addMultilinePretty("  ") : opts.addMultilinePretty("  "))); 
+		for(String s : buf)
+			ps.println(s);
+		ps.println("--- End Execution Plan ---");
 	}
 	
-	@Override
-	public ExecutionType getExecutionType() {
-		return null;
+	public void logPlan(SchemaContext sc, ConnectionValuesMap cv, String cntxt, EmitOptions opts) {
+		if (!logger.isInfoEnabled())
+			return;
+		ByteArrayOutputStream buf = new ByteArrayOutputStream();
+		PrintStream ps = new PrintStream(buf);
+		display(sc, cv,ps,cntxt,opts);
+		ps.flush();
+		ps.close();
+		logger.info(buf.toString());
 	}
 	
-	public void setCacheable(boolean v) {
-		// i.e. peg not cacheable
-		if (Boolean.FALSE.equals(cacheable)) return;
-		else if (!v) cacheable = false;
-		else cacheable = v;
-	}
-	
-	public boolean isCacheable() {
-		return Boolean.TRUE.equals(cacheable);
-	}
-
-	public void setOwningCache(CachedPlan cp) {
-		owner = cp;
-		values.setFrozen();
-		prepareForCache();
-	}
-	
-	@Override
-	public void prepareForCache() {
-		steps.prepareForCache();
-	}
-	
-	public ValueManager getValueManager() {
-		return values;
-	}	
-	
-	public ProjectionInfo getProjectionInfo() {
-		return projection;
-	}
-	
-	public StatementType getStatementType() {
-		return originalStatementType;
-	}
-
-	public boolean isEmptyPlan() {
-		return isEmptyPlan;
-	}
-
-	public void setIsEmptyPlan(boolean isEmptyPlan) {
-		this.isEmptyPlan = isEmptyPlan;
-	}
-
-	@Override
-	public void visitInExecutionOrder(UnaryProcedure<HasPlanning> proc) {
-		steps.visitInExecutionOrder(proc);		
+	public void traverseExecutionPlans(UnaryProcedure<ExecutionPlan> proc) {
+		// visit self
+		proc.execute(this);
+		// and now my nested plans
+		for(ExecutionPlan ep : getNestedPlans()) {
+			ep.traverseExecutionPlans(proc);
+		}
 	}
 
 }

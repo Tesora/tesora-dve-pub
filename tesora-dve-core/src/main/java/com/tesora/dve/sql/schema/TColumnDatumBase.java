@@ -22,7 +22,6 @@ package com.tesora.dve.sql.schema;
  */
 
 import com.tesora.dve.common.catalog.PersistentColumn;
-import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.distribution.IColumnDatum;
 
 public abstract class TColumnDatumBase implements IColumnDatum {
@@ -59,6 +58,6 @@ public abstract class TColumnDatumBase implements IColumnDatum {
 	@Override
 	public abstract int hashCode();
 
-	public abstract TColumnDatumBase bind(LateBoundConstants constants);
+	public abstract TColumnDatumBase bind(ConnectionValues constants);
 	
 }

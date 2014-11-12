@@ -30,6 +30,7 @@ import com.tesora.dve.sql.node.expression.IndexHint;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.WhenClause;
 import com.tesora.dve.sql.schema.Comment;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Lookup;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
@@ -52,8 +53,8 @@ public class MysqlEmitter extends Emitter {
 	// implement mysql's fun case insensitivity
 	
 	@Override
-	public String getPersistentName(SchemaContext sc, PEAbstractTable<?> t) {
-		return getPersistentName(t.getName(sc));
+	public String getPersistentName(SchemaContext sc, ConnectionValues cv, PEAbstractTable<?> t) {
+		return getPersistentName(t.getName(sc, cv));
 	}
 
 	@Override
@@ -71,22 +72,22 @@ public class MysqlEmitter extends Emitter {
 	}
 	
 	@Override
-	public void emitOperatorFunctionCall(SchemaContext sc, FunctionCall fc, StringBuilder buf, int pretty) {
+	public void emitOperatorFunctionCall(SchemaContext sc, ConnectionValues cv, FunctionCall fc, StringBuilder buf, int pretty) {
 		if (fc.getFunctionName().getCapitalized().get().equals("LIKE")) {
 			// mysql has that weird escape syntax - do it here if there are three params
 			if (fc.getParameters().size() == 3) {
-				emitExpression(sc,fc.getParameters().get(0), buf);
+				emitExpression(sc,cv,fc.getParameters().get(0), buf);
 				if (fc.getFunctionName().isNotLike()) {
 					buf.append(" NOT");
 				}
 				buf.append(" LIKE ");
-				emitExpression(sc,fc.getParameters().get(1), buf);
+				emitExpression(sc,cv,fc.getParameters().get(1), buf);
 				buf.append(" ESCAPE ");
-				emitExpression(sc,fc.getParameters().get(2), buf);
+				emitExpression(sc,cv,fc.getParameters().get(2), buf);
 				return;
 			}
 		}
-		super.emitOperatorFunctionCall(sc,fc, buf, pretty);
+		super.emitOperatorFunctionCall(sc,cv,fc, buf, pretty);
 	}
 
 	
@@ -112,7 +113,7 @@ public class MysqlEmitter extends Emitter {
 	}
 
 	@Override
-	public void emitColumnInstance(SchemaContext sc, ColumnInstance cr, StringBuilder buf) {
+	public void emitColumnInstance(SchemaContext sc, ConnectionValues cv, ColumnInstance cr, StringBuilder buf) {
 		if (this.hasOptions() && getOptions().isResultSetMetadata()) {
 			boolean useSpecified = (cr.getParent() instanceof FunctionCall || cr.getParent() instanceof WhenClause || cr.getParent() instanceof CaseExpression);
 			Name specified = cr.getSpecifiedAs();
@@ -121,14 +122,14 @@ public class MysqlEmitter extends Emitter {
 			else
 				buf.append(cr.getColumn().getName().get());
 		} else {
-			super.emitColumnInstance(sc,cr, buf);
+			super.emitColumnInstance(sc,cv, cr, buf);
 		}
 	}
 
 	
 	@Override
-	public void emitTableInstance(SchemaContext sc, TableInstance tr, StringBuilder buf, TableInstanceContext context) {
-		super.emitTableInstance(sc, tr, buf, context);
+	public void emitTableInstance(SchemaContext sc, ConnectionValues cv, TableInstance tr, StringBuilder buf, TableInstanceContext context) {
+		super.emitTableInstance(sc, cv, tr, buf, context);
 		if (context == TableInstanceContext.TABLE_FACTOR) {
 			if (tr.getHints() != null) {
 				for(IndexHint ih : tr.getHints()) {
@@ -190,7 +191,7 @@ public class MysqlEmitter extends Emitter {
 	}
 
 	@Override
-	public void emitLoadDataInfileStatement(SchemaContext sc, LoadDataInfileStatement stmt, StringBuilder buf, int indent) {
+	public void emitLoadDataInfileStatement(SchemaContext sc, ConnectionValues cv, LoadDataInfileStatement stmt, StringBuilder buf, int indent) {
 		emitIndent(buf,indent,"LOAD DATA ");
 		if (stmt.getModifier() != null) {
 			buf.append(stmt.getModifier().getSQL() + " ");
@@ -251,7 +252,7 @@ public class MysqlEmitter extends Emitter {
 		}
 		if ((stmt.getUpdateExprs() != null) && (stmt.getUpdateExprs().size() > 0)) {
 			buf.append("SET ");
-			emitExpressions(sc, stmt.getUpdateExprs(), buf, -1);
+			emitExpressions(sc, cv, stmt.getUpdateExprs(), buf, -1);
 		}
 	}
 

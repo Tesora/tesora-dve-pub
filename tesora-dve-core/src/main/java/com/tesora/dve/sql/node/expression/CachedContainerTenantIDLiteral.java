@@ -21,23 +21,17 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
-import com.tesora.dve.sql.schema.PEContainer;
-import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
+import com.tesora.dve.sql.schema.ConnectionValues;
 
 public class CachedContainerTenantIDLiteral extends CachedTenantIDLiteral {
 
-	private SchemaCacheKey<PEContainer> container;
-	
-	public CachedContainerTenantIDLiteral(int type, SchemaCacheKey<PEContainer> cont) {
+	public CachedContainerTenantIDLiteral(int type) {
 		super(type);
-		container = cont;
 	}
 	
 	@Override
-	public Object getValue(SchemaContext sc) {
-		ContainerTenantIDLiteral.validate(container,sc);
-		return sc.getValueManager().getTenantID(sc);
+	public Object getValue(ConnectionValues cv) {
+		return cv.getTenantID();
 	}
 
 }

@@ -49,29 +49,31 @@ public class TriggerBranchExecutionStep extends ExecutionStep {
 	}
 
 	@Override
-	public void schedule(final ExecutionPlanOptions opts, final List<QueryStepOperation> qsteps, final ProjectionInfo projection, final SchemaContext sc) throws PEException {
-		final QueryStepOperation caseEvaluationOperation = buildOperation(opts, sc, this.caseEvaluationStep);
+	public void schedule(final ExecutionPlanOptions opts, final List<QueryStepOperation> qsteps,
+			final ProjectionInfo projection, final SchemaContext sc, final ConnectionValuesMap cvm, final ExecutionPlan containing) throws PEException {
+		final QueryStepOperation caseEvaluationOperation = buildOperation(opts, sc, cvm, containing, this.caseEvaluationStep);
 		final List<QueryStepOperation> branchOperations = new ArrayList<QueryStepOperation>(this.branchOperationSteps.size());
 		for (final ExecutionStep step : this.branchOperationSteps) {
-			branchOperations.add(buildOperation(opts, sc, step));
+			branchOperations.add(buildOperation(opts, sc, cvm, containing, step));
 		}
 
 		qsteps.add(new QueryStepTriggerBranchOperation(caseEvaluationOperation, branchOperations));
 	}
 
 	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, buf, indent, opts);
+	public void display(final SchemaContext sc, final ConnectionValuesMap cvm, final ExecutionPlan containingPlan, final List<String> buf, final String indent,
+			final EmitOptions opts) {
+		super.display(sc, cvm, containingPlan, buf, indent, opts);
 		final String sub1 = PEStringUtils.getIndented(indent);
 		final String sub2 = PEStringUtils.getIndented(indent, 2);
 		buf.add(sub1 + "Branch evaluation");
-		this.caseEvaluationStep.display(sc, buf, sub2, opts);
+		this.caseEvaluationStep.display(sc, cvm, containingPlan, buf, indent, opts);
 		buf.add(sub1 + "Branches by index");
 		final int numBranches = this.branchOperationSteps.size();
 		for (int branchIndex = 0; branchIndex < numBranches; ++branchIndex) {
 			final List<String> lines = new ArrayList<String>(numBranches);
 			final ExecutionStep step = this.branchOperationSteps.get(branchIndex);
-			step.display(sc, lines, sub2, opts);
+			step.display(sc, cvm, containingPlan, buf, indent, opts);
 			buf.addAll(prependIndexToFirst(branchIndex, sub2, lines));
 		}
 	}

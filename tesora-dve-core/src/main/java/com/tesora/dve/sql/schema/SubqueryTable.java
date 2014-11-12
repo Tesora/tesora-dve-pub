@@ -83,7 +83,7 @@ public class SubqueryTable extends PETable {
 				newColumns.add(new TempColumn(sc,ci.getColumn().getName(),ci.getColumn().getType()));
 			} else if ((en instanceof LiteralExpression) || (en instanceof FunctionCall)) {
 				StringBuilder buf = new StringBuilder();
-                Singletons.require(HostService.class).getDBNative().getEmitter().emitExpression(sc, en, buf);
+                Singletons.require(HostService.class).getDBNative().getEmitter().emitExpression(sc, sc.getValues(), en, buf);
 				Name name = new UnqualifiedName(buf.toString());
 				newColumns.add(new TempColumn(sc,name.getQuotedName(),TempColumnType.TEMP_TYPE));
 			} else if (en instanceof WildcardTable) {
@@ -122,7 +122,7 @@ public class SubqueryTable extends PETable {
 	private static final PEStorageGroup virtualTableStorageGroup = new PEStorageGroup() {
 		
 		@Override
-		public StorageGroup getPersistent(SchemaContext sc) {
+		public StorageGroup getPersistent(SchemaContext sc, ConnectionValues cv) {
 			return null;
 		}
 
@@ -161,12 +161,12 @@ public class SubqueryTable extends PETable {
 		}
 
 		@Override
-		public PEStorageGroup getPEStorageGroup(SchemaContext sc) {
+		public PEStorageGroup getPEStorageGroup(SchemaContext sc, ConnectionValues cv) {
 			return null;
 		}
 
 		@Override
-		public StorageGroup getScheduledGroup(SchemaContext sc) {
+		public StorageGroup getScheduledGroup(SchemaContext sc, ConnectionValues cv) {
 			return null;
 		}
 	};

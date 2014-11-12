@@ -1733,7 +1733,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			DelegatingLiteralExpression dle = (DelegatingLiteralExpression) integLit;
 			lv = literals.get(dle.getPosition()).getSecond();
 		} else {
-			lv = integLit.getValue(pc);
+			lv = integLit.getValue(pc.getValues());
 		}
 		if (lv instanceof Long) {
 			return ((Long) lv).intValue();
@@ -2502,7 +2502,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				if (le.isNullLiteral()) {
 					throw new SchemaException(Pass.FIRST, "Must specify a character set");
 				}
-				String value = (String)le.getValue(pc);
+				String value = (String)le.getValue(pc.getValues());
 				if (Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(value) == null) {
 					// character set not supported
 					throw new SchemaException(Pass.FIRST, "Cannot set an unsupported character set: " + value);
@@ -2533,6 +2533,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new SessionSetVariableStatement(sets);
 	}
 
+	@SuppressWarnings("rawtypes")
 	public Statement buildAddVariable(Name newName, List<Pair<Name,LiteralExpression>> options) {
 		pc.getPolicyContext().checkRootPermission("create a new system variable");
 		String varName = newName.getUnqualified().getUnquotedName().get();
@@ -2565,7 +2566,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public TableModifier buildAutoincTableModifier(ExpressionNode litval) {
 		LiteralExpression lit = (LiteralExpression) litval;
-		Object value = lit.getValue(pc);
+		Object value = lit.getValue(pc.getValues());
 		if (value instanceof Number) {
 			Number n = (Number)value;
 			return new AutoincTableModifier(n.longValue());
@@ -2612,7 +2613,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	public TableModifier buildMaxRowsModifier(ExpressionNode en) {
 		LiteralExpression litex = asLiteral(en);
-		Object v = litex.getValue(pc);
+		Object v = litex.getValue(pc.getValues());
 		if (v instanceof Number) {
 			Number n = (Number) v;
 			return new MaxRowsModifier(n.longValue());
@@ -2910,7 +2911,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				ExplainOption opt = ExplainOption.find(p.getFirst().getUnqualified());
 				if (opt == null)
 					throw new SchemaException(Pass.FIRST, "No such explain option: " + p.getFirst().getSQL());
-				opts = opts.addSetting(opt, p.getSecond().getValue(pc));
+				opts = opts.addSetting(opt, p.getSecond().getValue(pc.getValues()));
 			}
 		}
 		in.setExplain(opts);
@@ -3435,10 +3436,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				.hasNext();) {
 			Pair<Name, LiteralExpression> p = iter.next();
 			if (p.getFirst().getCapitalized().equals(pluginKey)) {
-				plugin = p.getSecond().asString(pc);
+				plugin = p.getSecond().asString(pc.getValues());
 				iter.remove();
 			} else if (p.getFirst().getCapitalized().equals(activeKey)) {
-				isActive = (Boolean) p.getSecond().getValue(pc);
+				isActive = (Boolean) p.getSecond().getValue(pc.getValues());
 				iter.remove();
 			}
 		}
@@ -3535,12 +3536,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		String theProvider = null;
 		String thePool = null;
 		if (poolLiteral instanceof LiteralExpression)
-			thePool = (String) ((LiteralExpression)poolLiteral).getValue(pc);
+			thePool = (String) ((LiteralExpression)poolLiteral).getValue(pc.getValues());
 		if (providerLiteral instanceof LiteralExpression)
-			theProvider = (String) ((LiteralExpression)providerLiteral).getValue(pc);
+			theProvider = (String) ((LiteralExpression)providerLiteral).getValue(pc.getValues());
 		if (countLiteral instanceof LiteralExpression) {
 			LiteralExpression litex = (LiteralExpression) countLiteral;
-			Number n = (Number) litex.getValue(pc);
+			Number n = (Number) litex.getValue(pc.getValues());
 			theCount = n.intValue();
 		}
 		return new PEPolicyClassConfig(theClass, theProvider, thePool, (theCount == null ? 0 : theCount));
@@ -3847,9 +3848,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public ExpressionNode maybeBuildExprAlias(ExpressionNode targ, Name alias, String stringAlias,
-			Object tree) {
-		SourceLocation sloc = SourceLocation.make(tree);
-		
+			Object tree) {		
 		if (alias == null && stringAlias == null)
 			return targ;
 
@@ -3999,7 +3998,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		Name persistentGroup = tblInstances.get(0).getAbstractTable().getPersistentStorage(pc).getName();
 		for (TableInstance tableInstance : tblInstances) {
 			if (! persistentGroup.equals(tableInstance.getAbstractTable().getPersistentStorage(pc).getName())) {
-				throw new SchemaException(Pass.FIRST, "Table '" + tableInstance.getAbstractTable().getName(pc).get()
+				throw new SchemaException(Pass.FIRST, "Table '" + tableInstance.getAbstractTable().getName(pc,pc.getValues()).get()
 						+ "' in maintenance command is not in Persistent Group '" + persistentGroup.get() + "'");
 			}
 		}
@@ -4049,22 +4048,22 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	@Override
-	public Object getValue(SchemaContext sc, IParameter p) {
+	public Object getValue(IParameter p) {
 		throw new SchemaException(Pass.SECOND, "Attempt to access parameter value from non value source");
 	}
 
 	@Override
-	public Object getLiteral(SchemaContext sc, IDelegatingLiteralExpression dle) {
+	public Object getLiteral(IDelegatingLiteralExpression dle) {
 		return literals.get(dle.getPosition()).getSecond();
 	}
 
 	@Override
-	public Object getTenantID(SchemaContext sc) {
+	public Object getTenantID() {
 		throw new SchemaException(Pass.SECOND, "Attempt to access tenant id value from non tenant id source");
 	}
 
 	@Override
-	public Object getAutoincValue(SchemaContext sc, IAutoIncrementLiteralExpression exp) {
+	public Object getAutoincValue(IAutoIncrementLiteralExpression exp) {
 		throw new SchemaException(Pass.SECOND, "Attempt to access autoinc value before planning");
 	}
 	
@@ -4391,7 +4390,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				collation,
 				charset,
 				collationDB,
-				isBefore,
+				isBefore ? TriggerTime.BEFORE : TriggerTime.AFTER,
 				sqlMode,rawSQL);
 		popScope();
 		opts = opts.setResolve();

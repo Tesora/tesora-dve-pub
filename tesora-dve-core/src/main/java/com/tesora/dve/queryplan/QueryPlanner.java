@@ -41,6 +41,7 @@ import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.PlanningResult;
 import com.tesora.dve.sql.parser.PreparePlanningResult;
 import com.tesora.dve.sql.parser.SqlStatistics;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.QualifiedName;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
@@ -48,7 +49,8 @@ import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.CachedPreparedStatement;
 import com.tesora.dve.sql.schema.cache.PlanCacheUtils;
 import com.tesora.dve.sql.statement.StatementType;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.util.Pair;
 
@@ -197,25 +199,25 @@ public class QueryPlanner {
 	private static QueryPlan buildPlan(PlanningResult planningResult,
 			SSConnection connMgr, SchemaContext sc) throws PEException {
 		if (planningResult == null) {
-			return new QueryPlan();
+			return new QueryPlan((ConnectionValuesMap)null);
 		}
-		final List<ExecutionPlan> plans = planningResult.getPlans();
-		final QueryPlan plan = new QueryPlan();
+		final List<RootExecutionPlan> plans = planningResult.getPlans();
+		final QueryPlan plan = new QueryPlan(planningResult.getValues());
 		plan.setInputStatement(planningResult.getOriginalSQL());
 		final ExecutionPlanOptions opts = new ExecutionPlanOptions();
 		final int lastExecutionPlanIndex = plans.size() - 1;
 		Long accUpdateCount = null;
 		for (int epIdx = 0; epIdx <= lastExecutionPlanIndex; ++epIdx) {
-			final ExecutionPlan ep = plans.get(epIdx);
-			ep.logPlan(sc, "on conn " + connMgr.getName(), null);			
-			final List<QueryStepOperation> steps = ep.schedule(opts, connMgr, sc);
+			final RootExecutionPlan ep = plans.get(epIdx);
+			ep.logPlan(sc, planningResult.getValues(),"on conn " + connMgr.getName(), null);			
+			final List<QueryStepOperation> steps = ep.schedule(opts, connMgr, sc,planningResult.getValues());
 			final int numQuerySteps = steps.size();
 			for (int qsIdx = 0; qsIdx < numQuerySteps; ++qsIdx) {
 				final QueryStepOperation qs = steps.get(qsIdx);
 				plan.addStep(qs);
 			}
 
-			Long anyUpdate = ep.getUpdateCount(sc);
+			Long anyUpdate = ep.getUpdateCount(sc,planningResult.getValues().getRootValues());
 			if (anyUpdate != null) 
 				accUpdateCount = anyUpdate;
 			

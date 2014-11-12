@@ -273,14 +273,17 @@ public class AdaptiveMultitenantSchemaPolicyContext extends SchemaPolicyContext 
 		String passthroughSQL = null;
 		if (passthrough != null) {
 			StringBuilder buf = new StringBuilder();
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitAlterAction(getSchemaContext(), passthrough, buf);
+            Singletons.require(HostService.class).getDBNative().getEmitter().emitAlterAction(getSchemaContext(),
+            		getSchemaContext().getValues(),passthrough, buf);
 			passthroughSQL = buf.toString();
 		}
 			
 		if (passthrough != null && actionable != null) {
 			StringBuilder buf = new StringBuilder();
 			buf.append("Currently unable to execute ");
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitAlterAction(getSchemaContext(), actionable, buf);
+            Singletons.require(HostService.class).getDBNative().getEmitter().emitAlterAction(getSchemaContext(),
+            		getSchemaContext().getValues(),
+            		actionable, buf);
 			buf.append(" and ").append(passthroughSQL).append(" in the same alter statement");
 			throw new SchemaException(Pass.PLANNER, buf.toString());
 		}

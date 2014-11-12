@@ -83,6 +83,7 @@ import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.CatalogContext;
 import com.tesora.dve.sql.schema.ConnectionContext;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
 import com.tesora.dve.sql.schema.Capability;
@@ -115,7 +116,6 @@ import com.tesora.dve.sql.statement.ddl.PECreateDatabaseStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTenantTableStatement;
-import com.tesora.dve.sql.statement.ddl.PECreateTriggerStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateViewStatement;
 import com.tesora.dve.sql.statement.ddl.PEDropStatement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
@@ -320,7 +320,6 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		boolean tenantCreate = pecs instanceof PECreateTenantTableStatement;
 		boolean tableCreate = pecs instanceof PECreateTableStatement;
 		boolean viewCreate = pecs instanceof PECreateViewStatement;
-		boolean trigCreate = pecs instanceof PECreateTriggerStatement;
 		Set<PEForeignKey> postPass = null;
 		if (tableCreate) {
 			pecs.normalize(tpc);
@@ -587,18 +586,18 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	}
 
 	@Override
-	public MappingSolution mapKey(SchemaContext sc, IKeyValue dk, Model model, DistKeyOpType op, PEStorageGroup onGroup) throws PEException {
+	public MappingSolution mapKey(SchemaContext sc, IKeyValue dk, Model model, DistKeyOpType op, PEStorageGroup onGroup, ConnectionValues cv) throws PEException {
 		// we don't do anything different by op type, but the persistent version does.
 		if (Model.RANDOM == model )
-			return RandomDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc), dk, op);
+			return RandomDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc, cv), dk, op);
 		if (Model.BROADCAST == model)
-			return BroadcastDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc), dk, op);
+			return BroadcastDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc, cv), dk, op);
 		if (Model.STATIC == model )
-			return StaticDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc), dk, op);
+			return StaticDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc, cv), dk, op);
 		if (Model.RANGE == model) 
 			// we use static dist model in place of range for the trans exec engine since range
 			// does a catalog lookup and there is no catalog
-			return StaticDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc), dk, op);
+			return StaticDistributionModel.SINGLETON.mapKeyForQuery(null, onGroup.getPersistent(sc, cv), dk, op);
 
 		throw new PEException("Unknown dist model kind: " + model.getPersistentName());
 	}

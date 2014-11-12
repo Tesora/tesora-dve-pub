@@ -32,12 +32,15 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
@@ -100,7 +103,7 @@ public class TableMaintenanceStatement extends SessionStatement {
 	@Override
 	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitTableMaintenanceStatement(pc, this, buf, -1);
+        Singletons.require(HostService.class).getDBNative().getEmitter().emitTableMaintenanceStatement(pc, pc.getValues(), this, buf, -1);
 		// we only allow on a single Persistent Group, so grab the first one
 		PEPersistentGroup sg = tableInstanceList.get(0).getAbstractTable().getPersistentStorage(pc);
 		es.append(new TableMaintenanceExecutionStep(pc.getCurrentDatabase(), sg, buf.toString()));
@@ -144,9 +147,11 @@ public class TableMaintenanceStatement extends SessionStatement {
 		}
 
 		@Override
-		public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+		public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+				ConnectionValuesMap cvm, ExecutionPlan containing)
 				throws PEException {
-			qsteps.add(new QueryStepSelectAllOperation(getStorageGroup(sc),
+			ConnectionValues cv = cvm.getValues(containing);
+			qsteps.add(new QueryStepSelectAllOperation(getStorageGroup(sc,cv),
 					getPersistentDatabase(), StaticDistributionModel.SINGLETON, getSQLCommand(sc)));
 		}
 

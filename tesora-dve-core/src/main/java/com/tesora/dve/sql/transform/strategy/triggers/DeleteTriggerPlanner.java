@@ -45,7 +45,6 @@ import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
 import com.tesora.dve.sql.schema.TriggerEvent;
-import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.DeleteStatement;

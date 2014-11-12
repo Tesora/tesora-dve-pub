@@ -40,6 +40,7 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.DistributionVector;
@@ -82,9 +83,9 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 	}
 	
 	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, buf, indent, opts);
-		long lim = getInMemLimit(sc);
+	public void display(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cv, containing, buf, indent, opts);
+		long lim = getInMemLimit(cv.getValues(containing));
 		if (lim > -1)
 			buf.add(indent + "  limit " + lim);
 	}	
@@ -97,14 +98,18 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
 		QueryStepDMLOperation qso = null;
-		long inMem = getInMemLimit(sc);
-		IKeyValue ikv = getKeyValue(sc);
-		SQLCommand sqlCommand = getCommand(sc).withProjection((projectionOverride == null ? projection : projectionOverride)).withReferenceTime(getReferenceTimestamp(sc));
+		ConnectionValues cv = cvm.getValues(containing);
+		long inMem = getInMemLimit(cv);
+		IKeyValue ikv = getKeyValue(sc,cv);
+		SQLCommand sqlCommand = getCommand(sc,cv)
+				.withProjection((projectionOverride == null ? projection : projectionOverride))
+				.withReferenceTime(cv.getCurrentTimestamp());
 		QueryStepResultsOperation qsro = null;
-		StorageGroup sg = getStorageGroup(sc);
+		StorageGroup sg = getStorageGroup(sc,cv);
 		if (ikv != null) {
 			qsro = new QueryStepSelectByKeyOperation(sg, getPersistentDatabase(), ikv, sqlCommand);
 		} else {
@@ -132,9 +137,9 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 		return inMemLimit != null;
 	}
 	
-	private long getInMemLimit(SchemaContext sc) {
+	private long getInMemLimit(ConnectionValues cv) {
 		if (inMemLimit == null) return -1;
-		Object value = inMemLimit.getValue(sc);
+		Object value = inMemLimit.getValue(cv);
 		long lim = -1;
 		if (value instanceof Number) {
 			lim = ((Number)value).longValue();
@@ -147,8 +152,8 @@ public final class ProjectingExecutionStep extends AbstractProjectingExecutionSt
 	}
 	
 	@Override
-	protected void addStepExplainColumns(SchemaContext sc, ResultRow rr, ExplainOptions opts) {
-		super.addStepExplainColumns(sc, rr, opts);
+	protected void addStepExplainColumns(SchemaContext sc, ConnectionValues cv, ResultRow rr, ExplainOptions opts) {
+		super.addStepExplainColumns(sc, cv, rr, opts);
 		addStringResult(rr,null); // target group
 		addStringResult(rr,null); // target table
 		addStringResult(rr,""); // target dist

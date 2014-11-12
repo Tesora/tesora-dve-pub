@@ -65,15 +65,15 @@ public class PEExternalService extends Persistable<PEExternalService, ExternalSe
 		if (options != null) {
 			for(Pair<Name,LiteralExpression> option : options) {
 				if (option.getFirst().get().equalsIgnoreCase(OPTION_PLUGIN)) {
-					es.setPlugin(plugin = option.getSecond().asString(pc));
+					es.setPlugin(plugin = option.getSecond().asString(pc.getValues()));
 				} else if (option.getFirst().get().equalsIgnoreCase(OPTION_CONNECT_USER)) {
-					es.setConnectUser(connectUser = option.getSecond().asString(pc));
+					es.setConnectUser(connectUser = option.getSecond().asString(pc.getValues()));
 				} else if (option.getFirst().get().equalsIgnoreCase(OPTION_CONFIG)) {
-					es.setConfig(config = option.getSecond().asString(pc));
+					es.setConfig(config = option.getSecond().asString(pc.getValues()));
 				} else if (option.getFirst().get().equalsIgnoreCase(OPTION_AUTOSTART)) {
-					es.setAutoStart(autoStart = Boolean.parseBoolean(option.getSecond().asString(pc)));
+					es.setAutoStart(autoStart = Boolean.parseBoolean(option.getSecond().asString(pc.getValues())));
 				} else if (option.getFirst().get().equalsIgnoreCase(OPTION_USE_DATASTORE)) {
-					es.setUsesDataStore(usesDataStore = Boolean.parseBoolean(option.getSecond().asString(pc)));
+					es.setUsesDataStore(usesDataStore = Boolean.parseBoolean(option.getSecond().asString(pc.getValues())));
 				}
 			} 
 		}
@@ -180,15 +180,15 @@ public class PEExternalService extends Persistable<PEExternalService, ExternalSe
 		
 		for(Pair<Name,LiteralExpression> option : options) {
 			if (option.getFirst().get().equalsIgnoreCase(OPTION_PLUGIN)) {
-				plugin = option.getSecond().asString(pc);
+				plugin = option.getSecond().asString(pc.getValues());
 			} else if (option.getFirst().get().equalsIgnoreCase(OPTION_CONNECT_USER)) {
-				connectUser = option.getSecond().asString(pc);
+				connectUser = option.getSecond().asString(pc.getValues());
 			} else if (option.getFirst().get().equalsIgnoreCase(OPTION_CONFIG)) {
-				config = option.getSecond().asString(pc);
+				config = option.getSecond().asString(pc.getValues());
 			} else if (option.getFirst().get().equalsIgnoreCase(OPTION_AUTOSTART)) {
-				autoStart = Boolean.parseBoolean(option.getSecond().asString(pc));
+				autoStart = Boolean.parseBoolean(option.getSecond().asString(pc.getValues()));
 			} else if (option.getFirst().get().equalsIgnoreCase(OPTION_USE_DATASTORE)) {
-				usesDataStore = Boolean.parseBoolean(option.getSecond().asString(pc));
+				usesDataStore = Boolean.parseBoolean(option.getSecond().asString(pc.getValues()));
 			}
 		} 
 	}

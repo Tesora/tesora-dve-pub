@@ -27,7 +27,6 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageGroup;
@@ -47,7 +46,6 @@ import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryPredicate;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerManager;
-import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 
 /**
  * Baseclass of <b>QueryStep</b> operations, which include, but are not limited to 
@@ -247,7 +245,7 @@ public abstract class QueryStepOperation implements LogSubject {
 	}
 	
 	private static IKeyValue bindKey(ExecutionState estate, IKeyValue ikv) throws PEException {
-		return (estate.getBoundConstants().isEmpty() ? ikv : ikv.rebind(estate.getBoundConstants()));
+		return ikv.rebind(estate.getValues());
 	}
 	
 	public static WorkerGroup.MappingSolution mapKeyForUpdate(ExecutionState estate, StorageGroup wg, IKeyValue inkey) throws PEException {		

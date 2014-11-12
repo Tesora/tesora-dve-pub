@@ -346,7 +346,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 		private SQLCommand getCommand(SchemaContext sc, Statement s) {
 			EmitOptions opts = EmitOptions.NONE.addQualifiedTables();
 	        GenericSQLCommand gsql = s.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), opts);
-			return gsql.resolve(sc,null).getSQLCommand();			
+			return gsql.resolve(sc.getValues(),null).getSQLCommand();			
 		}
 
 		@Override

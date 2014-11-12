@@ -22,7 +22,6 @@ package com.tesora.dve.db.mysql.libmy;
  */
 
 import com.tesora.dve.db.mysql.MyFieldType;
-import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.common.DBTypeBasedUtils;
 import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
 import io.netty.buffer.ByteBuf;

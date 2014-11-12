@@ -205,6 +205,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		es.append(new SetVariableExecutionStep(stie.getScope(),VariableConstants.TRANSACTION_ISOLATION_LEVEL_NAME,nva, pc.getPersistentGroup()));
 	}
 
+	@SuppressWarnings("rawtypes")
 	private void assertPrivilege(SchemaContext pc, VariableHandler handler, VariableScope requestedScope) throws PEException {
 		PEUser currentUser = pc.getCurrentUser().get(pc);
 		if (currentUser.isRoot()) return; // root has all privileges
@@ -228,7 +229,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 						ExpressionNode value = sve.getValue().get(0);
 						if (value instanceof LiteralExpression) {
 							LiteralExpression litex = (LiteralExpression) value;
-							String strval = litex.getValue(pc).toString();
+							String strval = litex.getValue(pc.getValues()).toString();
 							if ("1".equals(strval.trim())) {
 								throw new SchemaException(Pass.PLANNER, "No support for " + VariableConstants.SQL_AUTO_IS_NULL_NAME + " = 1 (planned)");
 							}

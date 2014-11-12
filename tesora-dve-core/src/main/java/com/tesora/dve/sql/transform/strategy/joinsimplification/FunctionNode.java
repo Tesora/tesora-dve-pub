@@ -33,8 +33,8 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.parser.TokenTypes;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.FunctionName;
-import com.tesora.dve.sql.schema.SchemaContext;
 
 public class FunctionNode extends NRNode {
 
@@ -42,11 +42,11 @@ public class FunctionNode extends NRNode {
 	FunctionName fn;
 	ExpressionNode simplified;
 	
-	public FunctionNode(SchemaContext sc, FunctionCall fc, List<NRNode> chilluns) {
+	public FunctionNode(ConnectionValues cv, FunctionCall fc, List<NRNode> chilluns) {
 		super(fc);
 		fn = fc.getFunctionName();
 		children = chilluns;
-		simplified = buildSimplified(sc);
+		simplified = buildSimplified(cv);
 	}
 	
 	public ExpressionNode getSimplifiedValue() {
@@ -103,12 +103,12 @@ public class FunctionNode extends NRNode {
 		return (children.get(0).required(tab));
 	}
 	
-	private ExpressionNode buildSimplified(SchemaContext sc) {
+	private ExpressionNode buildSimplified(ConnectionValues cv) {
 		// we can only simplifiy if all params are literals and we understand the function
 		FunctionCall fc = (FunctionCall) wrapping;
 		GeneralFunctionSimplifier gfs = simplifiers.get(fn.getTokenID());
 		if (gfs != null)
-			return gfs.compute(sc, fc.getParameters());
+			return gfs.compute(cv, fc.getParameters());
 		return null;
 	}
 
@@ -119,27 +119,27 @@ public class FunctionNode extends NRNode {
 			handles = fn;
 		}
 		
-		public Number asNumber(SchemaContext sc, ExpressionNode en) {
+		public Number asNumber(ConnectionValues cv, ExpressionNode en) {
 			if (en instanceof LiteralExpression) {
 				LiteralExpression l = (LiteralExpression) en;
-				Object o = l.getValue(sc);
+				Object o = l.getValue(cv);
 				if (o instanceof Number)
 					return (Number)o;
 			}
 			return null;
 		}
 		
-		public Boolean asBoolean(SchemaContext sc, ExpressionNode en) {
+		public Boolean asBoolean(ConnectionValues cv, ExpressionNode en) {
 			if (en instanceof LiteralExpression) {
 				LiteralExpression l = (LiteralExpression) en;
-				Object o = l.getValue(sc);
+				Object o = l.getValue(cv);
 				if (o instanceof Boolean)
 					return (Boolean)o;
 			}
 			return null;
 		}
 
-		public abstract ExpressionNode compute(SchemaContext sc, List<ExpressionNode> params);
+		public abstract ExpressionNode compute(ConnectionValues cv, List<ExpressionNode> params);
 	}
 	
 	private static abstract class FunctionSimplifier extends GeneralFunctionSimplifier {
@@ -148,12 +148,12 @@ public class FunctionNode extends NRNode {
 			super(fn);
 		}
 		
-		abstract ExpressionNode computeResult(SchemaContext sc, ExpressionNode litex, ExpressionNode ritex);
+		abstract ExpressionNode computeResult(ConnectionValues cv, ExpressionNode litex, ExpressionNode ritex);
 		
-		public ExpressionNode compute(SchemaContext sc, List<ExpressionNode> params) {
+		public ExpressionNode compute(ConnectionValues cv, List<ExpressionNode> params) {
 			if (params.isEmpty())
 				return null;
-			return computeResult(sc, params.get(0), params.get(1));
+			return computeResult(cv, params.get(0), params.get(1));
 		}
 		
 	}
@@ -161,10 +161,10 @@ public class FunctionNode extends NRNode {
 	private static final FunctionSimplifier equalsOperator = new FunctionSimplifier("=") {
 
 		@Override
-		public ExpressionNode computeResult(SchemaContext sc, ExpressionNode litex,
+		public ExpressionNode computeResult(ConnectionValues cv, ExpressionNode litex,
 				ExpressionNode ritex) {
-			Number ln = asNumber(sc,litex);
-			Number rn = asNumber(sc,ritex);
+			Number ln = asNumber(cv,litex);
+			Number rn = asNumber(cv,ritex);
 			if (ln != null && rn != null)
 				return LiteralExpression.makeBooleanLiteral(ln.equals(rn));
 			return null;
@@ -175,10 +175,10 @@ public class FunctionNode extends NRNode {
 	private static final FunctionSimplifier notEqualsOperator = new FunctionSimplifier("<>") {
 
 		@Override
-		public ExpressionNode computeResult(SchemaContext sc, ExpressionNode litex,
+		public ExpressionNode computeResult(ConnectionValues cv, ExpressionNode litex,
 				ExpressionNode ritex) {
-			Number ln = asNumber(sc,litex);
-			Number rn = asNumber(sc,ritex);
+			Number ln = asNumber(cv,litex);
+			Number rn = asNumber(cv,ritex);
 			if (ln != null && rn != null)
 				return LiteralExpression.makeBooleanLiteral(!ln.equals(rn));
 			return null;
@@ -191,10 +191,10 @@ public class FunctionNode extends NRNode {
 	private static final FunctionSimplifier andOperator = new FunctionSimplifier("and") {
 
 		@Override
-		ExpressionNode computeResult(SchemaContext sc, ExpressionNode litex,
+		ExpressionNode computeResult(ConnectionValues cv, ExpressionNode litex,
 				ExpressionNode ritex) {
-			Boolean lb = asBoolean(sc,litex);
-			Boolean rb = asBoolean(sc,ritex);
+			Boolean lb = asBoolean(cv,litex);
+			Boolean rb = asBoolean(cv,ritex);
 			if (lb != null && rb == null) { 
 				if (lb.booleanValue())
 					return ritex;
@@ -218,10 +218,10 @@ public class FunctionNode extends NRNode {
 	private static final FunctionSimplifier orOperator = new FunctionSimplifier("or") {
 
 		@Override
-		ExpressionNode computeResult(SchemaContext sc, ExpressionNode litex,
+		ExpressionNode computeResult(ConnectionValues cv, ExpressionNode litex,
 				ExpressionNode ritex) {
-			Boolean lb = asBoolean(sc,litex);
-			Boolean rb = asBoolean(sc,ritex);
+			Boolean lb = asBoolean(cv,litex);
+			Boolean rb = asBoolean(cv,ritex);
 			if (lb != null && rb == null) {
 				if (lb.booleanValue())
 					return LiteralExpression.makeBooleanLiteral(true);
@@ -245,7 +245,7 @@ public class FunctionNode extends NRNode {
 	private static final GeneralFunctionSimplifier ifFunction = new GeneralFunctionSimplifier("if") {
 
 		@Override
-		public ExpressionNode compute(SchemaContext sc,
+		public ExpressionNode compute(ConnectionValues cv,
 				List<ExpressionNode> params) {
 			// orig if(test,true-expr,false-expr)
 			// if true-expr == false-expr, then we can reduce this down to true-expr

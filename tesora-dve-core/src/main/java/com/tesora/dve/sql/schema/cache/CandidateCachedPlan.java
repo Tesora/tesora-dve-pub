@@ -22,21 +22,26 @@ package com.tesora.dve.sql.schema.cache;
  */
 
 import com.tesora.dve.sql.parser.CandidateParser;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 
 public class CandidateCachedPlan {
 
-	private final ExecutionPlan ep;
+	private final RootExecutionPlan ep;
+	private final ConnectionValuesMap boundValues;
 	private final boolean cacheIfNotFound;
 	private final CandidateParser shrunk;
 	
-	public CandidateCachedPlan(CandidateParser cp, ExecutionPlan ep, boolean encache) {
+	public CandidateCachedPlan(CandidateParser cp, RootExecutionPlan ep, ConnectionValuesMap boundValues, boolean encache) {
 		this.ep = ep;
 		this.shrunk = cp;
 		this.cacheIfNotFound = encache;
+		this.boundValues = boundValues;
 	}
 	
-	public ExecutionPlan getPlan() { return ep; }
+	public RootExecutionPlan getPlan() { return ep; }
+	public ConnectionValuesMap getValues() { return boundValues; }
 	public boolean tryCaching() { return cacheIfNotFound; }
 	public CandidateParser getShrunk() { return shrunk; }
 	

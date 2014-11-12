@@ -47,7 +47,7 @@ public class UnknownTableModifier extends TableModifier {
 			if (first) first = false;
 			else
 				buf.append(" ");
-			emitter.emitExpression(sc,e, buf);
+			emitter.emitExpression(sc,sc.getValues(),e, buf);
 		}
 	}
 
