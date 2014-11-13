@@ -51,11 +51,12 @@ public class QueryStepTriggerBranchOperation extends QueryStepOperation {
 
 		// There should be exactly one value - index of the target branch.
 		final List<ArrayList<String>> targetBranchIndices = branchConditionEvalResult.getRowData();
-		if (targetBranchIndices.size() == 1) {
+		if (!targetBranchIndices.isEmpty()) {
 			final ArrayList<String> indexValues = targetBranchIndices.get(0);
 			if (indexValues.size() == 1) {
 				final int branchIndex = Integer.parseInt(indexValues.get(0));
 				this.targetOperation = this.branchOperations.get(branchIndex);
+				this.targetOperation.execute(estate, resultConsumer);
 				return;
 			}
 		}

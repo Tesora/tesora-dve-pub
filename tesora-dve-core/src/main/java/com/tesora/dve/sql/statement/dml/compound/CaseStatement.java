@@ -35,6 +35,7 @@ import com.tesora.dve.sql.node.SingleEdge;
 import com.tesora.dve.sql.node.expression.CaseExpression;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
+import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.WhenClause;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -42,6 +43,7 @@ import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.transform.TableInstanceCollector;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -53,6 +55,7 @@ import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.MultiFeatureStep;
 import com.tesora.dve.sql.transform.strategy.triggers.TriggerPlanner;
+import com.tesora.dve.sql.util.ListSet;
 
 public class CaseStatement extends CompoundStatement implements FeaturePlanner {
 

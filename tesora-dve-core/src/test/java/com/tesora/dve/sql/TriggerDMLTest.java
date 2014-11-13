@@ -175,30 +175,30 @@ public class TriggerDMLTest extends SchemaTest {
 	// the test keeps an up-to-date table (`data_stats`) of sums of values stored in the `data_point` table.
     @Test
     public void testD() throws Throwable {
-            conn.execute("CREATE RANGE arange (int) PERSISTENT GROUP " + checkDDL.getPersistentGroup().getName());
+		conn.execute("CREATE RANGE arange (int) PERSISTENT GROUP " + checkDDL.getPersistentGroup().getName());
 
-            conn.execute("CREATE TABLE `data_point` (`id` int(11) NOT NULL AUTO_INCREMENT, `gid` int(11) NOT NULL, `value` double NOT NULL, PRIMARY KEY (`id`)) RANGE DISTRIBUTE ON (`id`) USING arange");
-            conn.execute("CREATE TABLE `data_stats` (`gid` int(11) NOT NULL, `sum` double NOT NULL) RANGE DISTRIBUTE ON (`gid`) USING arange");
+		conn.execute("CREATE TABLE `data_point` (`id` int(11) NOT NULL AUTO_INCREMENT, `gid` int(11) NOT NULL, `value` double NOT NULL, PRIMARY KEY (`id`)) RANGE DISTRIBUTE ON (`id`) USING arange");
+		conn.execute("CREATE TABLE `data_stats` (`gid` int(11) NOT NULL, `sum` double NOT NULL) RANGE DISTRIBUTE ON (`gid`) USING arange");
 
-		//		conn.execute("CREATE TRIGGER `add_on_insert` AFTER INSERT ON `data_point` FOR EACH ROW BEGIN CASE (SELECT (COUNT(*) > 0) FROM `data_stats` WHERE `gid` = NEW.gid) WHEN FALSE THEN BEGIN INSERT INTO `data_stats` (`gid`, `sum`) VALUES (NEW.gid, 0) ; END; ELSE BEGIN UPDATE `data_stats` SET `sum` = `sum` + NEW.value WHERE `gid` = NEW.gid; END; END CASE; END;");
-		conn.execute("CREATE TRIGGER `add_on_insert` AFTER INSERT ON `data_point` FOR EACH ROW BEGIN CASE (SELECT (COUNT(*) > 0) FROM `data_stats` WHERE `gid` = NEW.gid) WHEN FALSE THEN INSERT INTO `data_stats` (`gid`, `sum`) VALUES (NEW.gid, 0); ELSE UPDATE `data_stats` SET `sum` = `sum` + NEW.value WHERE `gid` = NEW.gid; END CASE; END;");
-		//            conn.execute("CREATE TRIGGER `update_on_change` AFTER UPDATE ON `data_point` FOR EACH ROW BEGIN UPDATE `data_stats` SET `sum` = `sum` + (NEW.value - OLD.value) WHERE `gid` = OLD.gid; END;");
-		//		            conn.execute("CREATE TRIGGER `subtract_on_delete` AFTER DELETE ON `data_point` FOR EACH ROW BEGIN UPDATE `data_stats` SET `sum` = `sum` - OLD.value WHERE `gid` = OLD.gid; END;");
+		conn.execute("CREATE TRIGGER `add_on_insert` AFTER INSERT ON `data_point` FOR EACH ROW BEGIN CASE (SELECT (COUNT(*) > 0) FROM `data_stats` WHERE `gid` = NEW.gid) WHEN FALSE THEN BEGIN INSERT INTO `data_stats` (`gid`, `sum`) VALUES (NEW.gid, NEW.value) ; END; ELSE BEGIN UPDATE `data_stats` SET `sum` = `sum` + NEW.value WHERE `gid` = NEW.gid; END; END CASE; END;");
+		conn.execute("CREATE TRIGGER `update_on_change` AFTER UPDATE ON `data_point` FOR EACH ROW BEGIN UPDATE `data_stats` SET `sum` = `sum` + (NEW.value - OLD.value) WHERE `gid` = OLD.gid; END;");
+		conn.execute("CREATE TRIGGER `subtract_on_delete` AFTER DELETE ON `data_point` FOR EACH ROW BEGIN UPDATE `data_stats` SET `sum` = `sum` - OLD.value WHERE `gid` = OLD.gid; END;");
+
 		conn.execute("INSERT INTO `data_point` (`gid`, `value`) VALUES (1, 1.0), (1, 2.0), (1, 3.0), (1, 4.0), (1, 5.5)");
-		//            conn.execute("INSERT INTO `data_point` (`gid`, `value`) VALUES (2, 0.1), (2, 0.2), (2, 0.3), (2, 0.4), (2, 0.5)");
+		conn.execute("INSERT INTO `data_point` (`gid`, `value`) VALUES (2, 0.1), (2, 0.2), (2, 0.3), (2, 0.4), (2, 0.5)");
 
-            //              conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 15.5));
-            //              conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.5));
+		conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 15.5));
+		conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.5));
 
-		//            conn.execute("UPDATE `data_point` SET `value` = 5.0 WHERE `id` = 5");
-		//
-		//            conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 15.0));
-            //              conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.5));
+		conn.execute("UPDATE `data_point` SET `value` = 5.0 WHERE `id` = 5");
 
-            //              conn.execute("DELETE FROM `data_stats` WHERE `id` = 3");
+		conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 15.0));
+		conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.5));
 
-		//            conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 12.0));
-            //              conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.5));
+		conn.execute("DELETE FROM `data_point` WHERE `id` = 3");
+
+		conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 1", br(nr, 12.0));
+		conn.assertResults("SELECT `sum` FROM `data_stats` WHERE `gid` = 2", br(nr, 1.5));
     }
 
     // simpler version of D
