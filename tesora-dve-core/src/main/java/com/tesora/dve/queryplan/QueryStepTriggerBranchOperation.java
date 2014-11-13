@@ -34,8 +34,6 @@ public class QueryStepTriggerBranchOperation extends QueryStepOperation {
 	private final QueryStepOperation branchEvaluation;
 	private final List<QueryStepOperation> branchOperations;
 
-	private QueryStepOperation targetOperation;
-
 	public QueryStepTriggerBranchOperation(final QueryStepOperation branchEvaluation, final List<QueryStepOperation> branchOperations) throws PEException {
 		super(branchEvaluation.getStorageGroup());
 		this.branchEvaluation = branchEvaluation;
@@ -51,12 +49,13 @@ public class QueryStepTriggerBranchOperation extends QueryStepOperation {
 
 		// There should be exactly one value - index of the target branch.
 		final List<ArrayList<String>> targetBranchIndices = branchConditionEvalResult.getRowData();
+		// TODO: We should really get just a single row here, but currently aggregate the results from all sites.
 		if (!targetBranchIndices.isEmpty()) {
 			final ArrayList<String> indexValues = targetBranchIndices.get(0);
 			if (indexValues.size() == 1) {
 				final int branchIndex = Integer.parseInt(indexValues.get(0));
-				this.targetOperation = this.branchOperations.get(branchIndex);
-				this.targetOperation.execute(estate, resultConsumer);
+				final QueryStepOperation targetOperation = this.branchOperations.get(branchIndex);
+				targetOperation.execute(estate, resultConsumer);
 				return;
 			}
 		}
