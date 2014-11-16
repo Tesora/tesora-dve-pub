@@ -199,7 +199,7 @@ public abstract class PEBaseTest {
 			if (expectedExceptionClass.isAssignableFrom(e.getClass())) {
 				String msg = e.getMessage();
 
-				if ((expectedExceptionMessage != null) && !msg.equals(expectedExceptionMessage)) {
+				if ((expectedExceptionMessage != null) && !expectedExceptionMessage.equals(msg)) {
 					return Event.WRONG_MSG;
 				} else {
 					return Event.OK;

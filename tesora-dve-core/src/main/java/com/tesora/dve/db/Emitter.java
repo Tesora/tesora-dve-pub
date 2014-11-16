@@ -710,9 +710,10 @@ public abstract class Emitter {
 		// the order of modifiers is important
 //		if (t.isBinaryText()) 
 //			buf.append(" BINARY");
-		if (t.getCharset() != null && (t.isBinaryText() || c == null || c.getCharset() != null))
+		if (((c != null) && c.shouldEmitCharset()) || ((c == null) && (t.isBinaryText() && (t.getCharset() != null)))) {
 			buf.append(" CHARACTER SET ").append(t.getCharset().getSQL());
-		if (t.getCollation() != null && (c == null || c.getCollation() != null)) {
+		}
+		if (((c != null) && c.shouldEmitCollation()) || ((c == null) && (t.getCollation() != null))) {
 			buf.append(" COLLATE ").append(t.getCollation().getSQL());
 		}
 		if (t.isUnsigned())

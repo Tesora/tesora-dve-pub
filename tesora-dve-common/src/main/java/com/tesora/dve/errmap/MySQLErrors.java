@@ -86,6 +86,11 @@ public final class MySQLErrors {
 					"Unknown collation: '%s'",
 					1273,
 					"HY000");
+	public static final TwoParamErrorCodeFormatter<String, String> collationCharsetMismatchFormatter =
+			new TwoParamErrorCodeFormatter<String, String>(AvailableErrors.COLLATION_CHARSET_MISMATCH,
+					"COLLATION '%s' is not valid for CHARACTER SET '%s'",
+					1253,
+					"42000");
 	public static final TwoParamErrorCodeFormatter<String, String> wrongValueForVariable =
 			new TwoParamErrorCodeFormatter<String, String>(AvailableErrors.WRONG_VALUE_FOR_VARIABLE,
 					"Variable '%s' can't be set to the value of '%s'",
@@ -127,6 +132,7 @@ public final class MySQLErrors {
 		nonUniqueTableFormatter,
 		unknownCharacterSetFormatter,
 		unknownCollationFormatter,
+		collationCharsetMismatchFormatter,
 		wrongValueForVariable,
 		wrongTypeForVariable,
 		trgAlreadyExists,

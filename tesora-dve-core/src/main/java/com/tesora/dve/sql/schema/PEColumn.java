@@ -518,6 +518,28 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 		return null;
 	}
 	
+	public boolean shouldEmitCharset() {
+		if (type instanceof TextType) {
+			final TextType tt = (TextType) type;
+			final UnqualifiedName charset = tt.getCharset();
+			if (charset != null) {
+				if (tt.isBinaryText()) {
+					return true;
+				}
+
+				final PEAbstractTable<?> parent = this.getTable();
+				if (parent != null) {
+					final CharsetTableModifier tableCharset = parent.getCharset();
+					if (tableCharset != null) {
+						return !charset.equals(tableCharset.getCharset());
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
 	public UnqualifiedName getCollation() {
 		if (type instanceof TextType) {
 			TextType tt = (TextType)type;
@@ -530,6 +552,24 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 		return null;
 	}
 	
+	public boolean shouldEmitCollation() {
+		if (type instanceof TextType) {
+			final TextType tt = (TextType) type;
+			final UnqualifiedName collation = tt.getCollation();
+			if (collation != null) {
+				final PEAbstractTable<?> parent = this.getTable();
+				if (parent != null) {
+					final CollationTableModifier tableCharset = parent.getCollation();
+					if (tableCharset != null) {
+						return !collation.equals(tableCharset.getCollation());
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
 	public void makeBinaryText() {
 		if (type instanceof TextType) {
 			TextType tt = (TextType) type;
