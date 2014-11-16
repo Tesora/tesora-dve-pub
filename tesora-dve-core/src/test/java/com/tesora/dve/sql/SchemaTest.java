@@ -31,11 +31,14 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+import com.tesora.dve.charset.NativeCharSet;
+import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.errmap.MySQLErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultColumn;
@@ -57,6 +60,7 @@ import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.MirrorApply;
 import com.tesora.dve.sql.util.MirrorFun;
 import com.tesora.dve.sql.util.MirrorProc;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.TestResource;
@@ -592,5 +596,44 @@ public class SchemaTest extends PETest {
 
 	public static String buildAlterTemplateModeStmt(final TemplateMode mode) {
 		return "alter dve set " + VariableConstants.TEMPLATE_MODE_NAME + " = '" + mode + "'";
+	}
+
+	protected static Pair<String, String> buildAndEmitCharSetCollateModifiers(final String charSetName, final String collationName, final StringBuilder stmt) {
+		if ((charSetName == null) && (collationName == null)) {
+			return getDefaultCharSetAndCollationNames();
+		}
+
+		final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
+		NativeCharSet expectedCharSet = null;
+		if (charSetName != null) {
+			expectedCharSet = supportedCharsets.findCharSetByName(charSetName);
+			stmt.append(" CHARACTER SET ").append(charSetName);
+		} else {
+			if (collationName != null) {
+				expectedCharSet = supportedCharsets.findCharSetByCollation(collationName);
+			}
+		}
+
+		String expectedCollationName = null;
+		if (collationName != null) {
+			expectedCollationName = collationName;
+			stmt.append(" COLLATE ").append(collationName);
+		} else {
+			if (expectedCharSet != null) {
+				expectedCollationName = Singletons.require(HostService.class).getDBNative().getSupportedCollations()
+						.findDefaultCollationForCharSet(expectedCharSet.getName()).getName();
+			}
+		}
+
+		final String expectedCharSetName = (expectedCharSet != null) ? expectedCharSet.getName() : null;
+		return new Pair<String, String>(expectedCharSetName, expectedCollationName);
+	}
+
+	protected static Pair<String, String> getDefaultCharSetAndCollationNames() {
+		final DBNative dbHost = Singletons.require(HostService.class).getDBNative();
+		final String defaultCharSetName = dbHost.getDefaultServerCharacterSet();
+		final String defaultCollationName = dbHost.getDefaultServerCollation();
+
+		return new Pair<String, String>(defaultCharSetName, defaultCollationName);
 	}
 }

@@ -45,6 +45,7 @@ tokens {
 package com.tesora.dve.sql.parser;
 
 import java.util.Collections;
+import java.util.Collection;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -136,6 +137,12 @@ import com.tesora.dve.worker.*;
 
   public void unsupported(String desc) {
     utils.unsupported(desc);
+  }
+  
+  public void addIfNotNull(Object element, Collection container) {
+	  if (element != null) {
+	    container.add(element);
+	  }
   }
 
 }
@@ -241,12 +248,20 @@ alterable_target returns [Statement s] options {k=1;}:
     | (templ=template_declaration_kern { $s = utils.buildAlterDatabaseStatement($dbn.n, $templ.p); })
   )
   | (TABLE altered_table { ArrayList acts = new ArrayList(); Name tableName = $altered_table.tk.getTable().getName(); } 
-      ((lata=alter_table_action[tableName] { acts.addAll($lata.l); }) (Comma tata=alter_table_action[tableName] { acts.addAll($tata.l); })*)
+      (
+      | (alter_table_actions[tableName] { acts.addAll($alter_table_actions.l); })
+      | (db_table_options[tableName] { acts.addAll(utils.buildAlterTableOptionActions($db_table_options.l)); })
+      )
       { $s = utils.buildAlterTableStatement($altered_table.tk, acts); utils.popScope(); })       
   ;
   
 altered_table returns [TableKey tk] options {k=1;}:
   qualified_identifier { $tk = utils.lookupAlteredTable($qualified_identifier.n); }
+  ;
+  
+alter_table_actions [Name tableName] returns [List l] options {k=1;}:
+  { $l = new ArrayList(); }
+  (lata=alter_table_action[tableName] { $l.addAll($lata.l); }) (Comma tata=alter_table_action[tableName] { $l.addAll($tata.l); })*
   ;
 
 alter_table_action [Name tableName] returns [List l] options {k=1;}:
@@ -265,7 +280,6 @@ alter_table_action [Name tableName] returns [List l] options {k=1;}:
   | (DROP drop_target_action { $l = $drop_target_action.l; }) 
   | (DISABLE KEYS { $l = utils.buildDisableKeysAction(); })
   | (ENABLE KEYS { $l = utils.buildEnableKeysAction(); })
-  | (mysql_table_option[tableName] { $l = utils.buildTableOptionAction($mysql_table_option.t); })
   | (MODIFY COLUMN? mfs=field_specification add_col_first_or_after_spec? { $l = utils.buildModifyColumnAction($mfs.l, $add_col_first_or_after_spec.p); })
   | distribution_declaration_target { $l = utils.buildModifyDistributionAction($distribution_declaration_target.dv); }
   ;  
@@ -514,24 +528,31 @@ field_default_value returns [ExpressionNode expr] options {k=1;}:
     )
     ;
 
-db_table_options [Name tableName] returns [List l] options {k=1;}:
+db_table_options [Name tableName] returns [List l] options {k=1;}
+  @init{ final CharsetCollationModifierBuilder charsetBuilder = new CharsetCollationModifierBuilder(); }
+  :
   { $l = new ArrayList(); }
-  lto=mysql_table_option[tableName] { $l.add($lto.t); } (Comma? tto=mysql_table_option[tableName] { $l.add($tto.t);} )* 
+  (lto=mysql_table_option[tableName, charsetBuilder] { addIfNotNull($lto.t, $l); } (Comma? tto=mysql_table_option[tableName, charsetBuilder] { addIfNotNull($tto.t, $l); } )*)
+  { $l.addAll(utils.buildCharsetCollationModifiers(charsetBuilder)); }
   ;
 
-mysql_table_option [Name tableName] returns [TableModifier t] options {k=1;}:
+mysql_table_option [Name tableName, CharsetCollationModifierBuilder charsetBuilder] returns [TableModifier t] options {k=1;}:
   engine_modifier { $t = $engine_modifier.t; }
   | (FIELD_COMMENT Equals_Operator? Character_String_Literal { $t = utils.buildCommentTableModifier($tableName, $Character_String_Literal.text); })
-  | (DEFAULT? 
-    ((COLLATE Equals_Operator? cn=unqualified_identifier { $t = utils.buildCollationTableModifier($cn.n); })
-    |(charset_expr_tag (cseq=Equals_Operator)? charset_type { $t = utils.buildCharsetTableModifier($charset_type.n); })
-    ))
+  | charset_or_collation_option[charsetBuilder] {}
   | (AUTOINCREMENT Equals_Operator ai=unsigned_integral_literal { $t = utils.buildAutoincTableModifier($ai.expr); })
   | (ROW_FORMAT Equals_Operator? fn=unqualified_identifier { $t = utils.buildRowFormatTableModifier($fn.n); })
   | (MAX_ROWS Equals_Operator? mr=unsigned_integral_literal { $t = utils.buildMaxRowsModifier($mr.expr); })
   | (CHECKSUM Equals_Operator? cs=unsigned_integral_literal { $t = utils.buildChecksumModifier($cs.expr); })
   | (DELAY_KEY_WRITE Equals_Operator? dkw=unsigned_integral_literal { $t = utils.buildDelayKeyWriteTableModifier($dkw.expr); })
   ;
+  
+charset_or_collation_option [CharsetCollationModifierBuilder charsetBuilder] returns [] options {k=1;}:
+  (DEFAULT? 
+    ((COLLATE Equals_Operator? cn=unqualified_identifier { $charsetBuilder.setCollation($cn.n); })
+    |(charset_expr_tag (cseq=Equals_Operator)? charset_type { $charsetBuilder.setCharset($charset_type.n); })
+    ))
+;
 
 engine_modifier returns [TableModifier t] options {k=1;}:
   ENGINE Equals_Operator? unqualified_identifier
@@ -906,7 +927,7 @@ collate_spec returns [Name n] options {k=1;}:
   COLLATE collate_type 
   { $n = $collate_type.n; }
   ;
-
+  
 collate_type returns [Name n] options {k=1;}: 
   collation_identifier { $n = $collation_identifier.n; } 
   | DEFAULT { $n = bkn($DEFAULT); }
