@@ -21,7 +21,6 @@ package com.tesora.dve.sql.transform.execution;
  * #L%
  */
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -44,6 +43,12 @@ public class ConnectionValuesMap {
 		ConnectionValues any = values.put(ep,cv);
 		if (any != null)
 			throw new SchemaException(Pass.PLANNER, "Duplicate connection values for plan " + ep);
+		if (cv == null)
+			throw new SchemaException(Pass.PLANNER, "Null conn values");
+	}
+	
+	public void take(ConnectionValuesMap other) {
+		values.putAll(other.values);
 	}
 	
 	public ConnectionValues getValues(ExecutionPlan ep) {

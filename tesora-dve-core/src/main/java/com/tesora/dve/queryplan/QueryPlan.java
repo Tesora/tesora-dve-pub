@@ -34,7 +34,6 @@ import com.tesora.dve.common.logutil.LogSubject;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.ExecutionPlanOptions;
 import com.tesora.dve.sql.transform.execution.LateBindingUpdateCountFilter.RuntimeUpdateCounter;

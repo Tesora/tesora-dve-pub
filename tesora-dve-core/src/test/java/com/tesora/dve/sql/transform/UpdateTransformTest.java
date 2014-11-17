@@ -33,6 +33,7 @@ import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.RangeDistributionModel;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.sql.SchemaTest;
+import com.tesora.dve.sql.parser.PlanningResult;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;
@@ -389,7 +390,8 @@ public class UpdateTransformTest extends TransformTest {
 		assertTrue("Expected timestamp variable to be set to " + expected + " in " + test + " for stmt " + first.getSQL(db),
 				((DMLStatement) first).getDerivedInfo()
 						.doSetTimestampVariable() == expected);
-		ExecutionPlan ep = Statement.getExecutionPlan(db,first);
+		PlanningResult pr = Statement.getExecutionPlan(db,first); 
+		ExecutionPlan ep = pr.getPlans().get(0); 
 		if (isNoisy()) {
 			System.out.println("In: '" + in + "'");
 			ep.display(db,new IdentityConnectionValuesMap(db.getValues()),System.out,null);

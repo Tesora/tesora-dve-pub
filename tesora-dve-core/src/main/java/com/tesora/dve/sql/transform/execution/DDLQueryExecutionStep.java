@@ -33,7 +33,6 @@ import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.queryplan.QueryStepShowCatalogEntityOperation;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.variables.KnownVariables;
 

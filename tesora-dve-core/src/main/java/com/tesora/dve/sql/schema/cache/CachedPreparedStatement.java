@@ -27,7 +27,6 @@ import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.InvokeParser;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;

@@ -22,7 +22,6 @@ package com.tesora.dve.sql.transform.execution;
  */
 
 import com.tesora.dve.lockmanager.LockType;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 
 public class RebuiltPlan {

@@ -21,12 +21,10 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
-import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.worker.WorkerGroup;
 

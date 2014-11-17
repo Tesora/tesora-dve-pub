@@ -31,7 +31,6 @@ import com.tesora.dve.queryplan.QueryStepGeneralOperation;
 import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;

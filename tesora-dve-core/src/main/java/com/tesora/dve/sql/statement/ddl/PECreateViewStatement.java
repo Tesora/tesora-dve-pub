@@ -55,6 +55,7 @@ import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.structural.LimitSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.parser.ParserOptions;
+import com.tesora.dve.sql.parser.PlanningResult;
 import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEAbstractTable;
@@ -211,7 +212,8 @@ public class PECreateViewStatement extends
 			try {
 				ParserOptions npm = pm.setInhibitSingleSiteOptimization();
 				sc.setOptions(npm);
-				ExecutionPlan ep = Statement.getExecutionPlan(sc, copy);
+				PlanningResult pr = Statement.getExecutionPlan(sc, copy);
+				ExecutionPlan ep = pr.getPlans().get(0);
 				if (ep.getSequence().getSteps().size() > 1)
 					vm = ViewMode.EMULATE;
 				else

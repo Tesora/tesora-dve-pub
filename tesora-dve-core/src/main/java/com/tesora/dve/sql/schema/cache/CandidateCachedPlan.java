@@ -22,7 +22,6 @@ package com.tesora.dve.sql.schema.cache;
  */
 
 import com.tesora.dve.sql.parser.CandidateParser;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 

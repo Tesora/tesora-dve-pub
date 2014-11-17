@@ -35,7 +35,6 @@ import com.tesora.dve.sql.expression.MTTableKey;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.CandidateParser;
 import com.tesora.dve.sql.parser.ExtractedLiteral;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaPolicyContext;

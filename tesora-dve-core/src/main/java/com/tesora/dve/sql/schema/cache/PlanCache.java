@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.cache.CacheStats;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PERawPlan;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;

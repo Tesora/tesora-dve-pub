@@ -35,7 +35,6 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;

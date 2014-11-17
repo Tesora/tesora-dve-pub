@@ -36,6 +36,7 @@ import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.raw.ExecToRawConverter;
 import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.ExplainOptions;
@@ -181,9 +182,9 @@ public abstract class ExecutionPlan implements HasPlanning {
 			standard = !sp.getExplain().isRaw();
 		}
 		if (standard)
-			return new DDLQueryExecutionStep("explain", generateExplain(sc,cv,sp.getExplain()));
+			return new ExplainExecutionStep("explain", this, generateExplain(sc,cv,sp.getExplain()));
 		else {
-			return new DDLQueryExecutionStep("rawexplain",ExecToRawConverter.convertForRawExplain(sc, this, sp, origSQL));
+			return new ExplainExecutionStep("rawexplain",this, ExecToRawConverter.convertForRawExplain(sc, this, sp, origSQL));
 		}
 	}
 
@@ -221,5 +222,9 @@ public abstract class ExecutionPlan implements HasPlanning {
 			ep.traverseExecutionPlans(proc);
 		}
 	}
+
+	// should only be called on root exec plans
+	public abstract List<QueryStepOperation> 
+		schedule(ExecutionPlanOptions opts, SSConnection connection, SchemaContext sc, ConnectionValuesMap cv) throws PEException;
 
 }

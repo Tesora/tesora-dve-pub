@@ -37,6 +37,7 @@ import java.util.Map;
 import org.junit.Test;
 
 import com.tesora.dve.distribution.IKeyValue;
+import com.tesora.dve.sql.parser.PlanningResult;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;
@@ -70,7 +71,8 @@ public class ExplicitKeyValueTest extends TransformTest {
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first, statementClass);
-		ExecutionPlan ep = Statement.getExecutionPlan(db,first); 
+		PlanningResult pr = Statement.getExecutionPlan(db,first);
+		ExecutionPlan ep = pr.getPlans().get(0);
 		List<HasPlanning> steps = ep.getSequence().getSteps();
 		assertEquals(steps.size(), 1);
 		DirectExecutionStep firstStep = (DirectExecutionStep) steps.get(0);
@@ -99,9 +101,9 @@ public class ExplicitKeyValueTest extends TransformTest {
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first, statementClass);
-		ExecutionPlan ep = Statement.getExecutionPlan(db,first);
-		ConnectionValuesMap cvm = new ConnectionValuesMap();
-		cvm.addValues(ep, db.getValues());
+		PlanningResult pr = Statement.getExecutionPlan(db,first); 
+		ExecutionPlan ep = pr.getPlans().get(0);
+		ConnectionValuesMap cvm = pr.getValues();
 		if (isNoisy())
 			ep.display(db,cvm,System.out,null);
 		List<HasPlanning> steps = ep.getSequence().getSteps();	

@@ -54,7 +54,6 @@ import com.tesora.dve.sql.statement.session.SessionStatement;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.HasPlanning;
-import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.standalone.PETest;
 
 public abstract class TestParser {
@@ -244,12 +243,13 @@ public abstract class TestParser {
 			for(Statement s : stmts) {
 				CorrectnessVisitor.verifyCorrectness(s);
 				features.visit(s);
-				ExecutionPlan ep = Statement.getExecutionPlan(tee.getPersistenceContext(),s);
+				PlanningResult pr = Statement.getExecutionPlan(tee.getPersistenceContext(),s); 
+				ExecutionPlan ep = pr.getPlans().get(0);
 				boolean first = true;
 				// make sure that we get sql back out without a problem!
 				for(HasPlanning hp : ep.getSequence().getSteps()) {
 					ExecutionStep es = (ExecutionStep) hp;
-					String sql = es.getSQL(tee.getPersistenceContext(),new IdentityConnectionValuesMap(tee.getPersistenceContext().getValues()),ep,null);
+					String sql = es.getSQL(tee.getPersistenceContext(),pr.getValues(),ep,null);
 					if ("".equals(sql) || sql == null)
 						fail("No sql generated");
 					if (first)

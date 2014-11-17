@@ -27,6 +27,7 @@ import java.util.Map;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.parser.CandidateParser;
 import com.tesora.dve.sql.parser.ParserInvoker.LineInfo;
+import com.tesora.dve.sql.parser.PlanningResult;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.CacheLimits;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
@@ -158,7 +159,8 @@ public class Emulator extends Analyzer {
 					}
 				}
 			}
-			final ExecutionPlan ep = Statement.getExecutionPlan(tee.getPersistenceContext(), dmls);
+			final PlanningResult pr = Statement.getExecutionPlan(tee.getPersistenceContext(), dmls);
+			ExecutionPlan ep = pr.getPlans().get(0);
 			if (tryDups) {
 				PlanCacheUtils.maybeCachePlan(tee.getPersistenceContext(), planCache, dmls, ep, sql, cp);
 			}

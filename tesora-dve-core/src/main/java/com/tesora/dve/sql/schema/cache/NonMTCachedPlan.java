@@ -31,12 +31,9 @@ import org.apache.commons.collections.CollectionUtils;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
-import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.ExtractedLiteral;
 import com.tesora.dve.sql.parser.ExtractedLiteral.Type;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.CacheableStatement;
 import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;

@@ -32,7 +32,7 @@ import com.tesora.dve.sql.parser.PlanningResult;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
-import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 
 public class ExecutePStmtStatement extends PStmtStatement {
@@ -58,7 +58,7 @@ public class ExecutePStmtStatement extends PStmtStatement {
 		PlanningResult pr = InvokeParser.bindPreparedStatement(sc, getName().get(), values);
 		// this is not the right way to do this at all
 		sc.setValues(pr.getValues().getRootValues());
-		RootExecutionPlan ep = pr.getPlans().get(0);
+		ExecutionPlan ep = pr.getPlans().get(0);
 		es.setSteps(ep.getSequence().getSteps());
 	}
 }

@@ -33,7 +33,6 @@ import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.parser.ExtractedLiteral;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.schema.cache.CachedPlan;

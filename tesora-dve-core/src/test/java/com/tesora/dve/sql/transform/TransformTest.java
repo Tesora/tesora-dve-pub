@@ -70,7 +70,6 @@ import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.DeleteExecutionStep;
 import com.tesora.dve.sql.transform.execution.DirectExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
-import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.NestedExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
@@ -124,8 +123,9 @@ public abstract class TransformTest extends TransientSchemaTest {
 		assertEquals(stmts.size(), 1);
 		Statement first = stmts.get(0);
 		assertInstanceOf(first,stmtClass);
-		RootExecutionPlan ep = (RootExecutionPlan) Statement.getExecutionPlan(db,first);
-		ConnectionValuesMap cvm = new ConnectionValuesMap(ep,db);
+		PlanningResult pr = Statement.getExecutionPlan(db,first);
+		RootExecutionPlan ep = (RootExecutionPlan) pr.getPlans().get(0);
+		ConnectionValuesMap cvm = pr.getValues();
 		if (isNoisy()) {
 			System.out.println("In: '" + in + "'");
 			ep.display(db, cvm, System.out, null);
@@ -172,10 +172,10 @@ public abstract class TransformTest extends TransientSchemaTest {
 		db.refresh(true);
 		PlanningResult results = InvokeParser.buildPlan(db, InvokeParser.buildInputState(in,db), ParserOptions.NONE.setDebugLog(true).setResolve().setFailEarly(),
 				new VerifyingPlanCacheCallback(hit));
-		List<RootExecutionPlan> plans = results.getPlans();
+		List<ExecutionPlan> plans = results.getPlans();
 		ConnectionValuesMap cv = results.getValues();
 		assertEquals(plans.size(),1);
-		RootExecutionPlan ep = plans.get(0);
+		ExecutionPlan ep = plans.get(0);
 		if (isNoisy()) {
 			System.out.println("In: '" + in + "'");
 			ep.display(db,cv,System.out,null);
@@ -222,7 +222,8 @@ public abstract class TransformTest extends TransientSchemaTest {
 			List<Statement> stmts = parse(db, in);
 			assertEquals(stmts.size(), 1);
 			Statement first = stmts.get(0);
-			ExecutionPlan ep = Statement.getExecutionPlan(db,first);
+			PlanningResult pr = Statement.getExecutionPlan(db,first);
+			ExecutionPlan ep = pr.getPlans().get(0);
 			// exercise the plan slightly
 			ep.getUpdateCount(db,db.getValues());
 		}

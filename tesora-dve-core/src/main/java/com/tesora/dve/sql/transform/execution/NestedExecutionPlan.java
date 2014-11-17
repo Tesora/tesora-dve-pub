@@ -24,14 +24,13 @@ package com.tesora.dve.sql.transform.execution;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepNestedOperation;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
-import com.tesora.dve.sql.ParserException.Pass;
-import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.sql.parser.ParserOptions;
-import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.ValueManager;
 
@@ -71,6 +70,13 @@ public class NestedExecutionPlan extends ExecutionPlan {
 		} finally {
 			sc.setOptions(was);
 		}
+	}
+
+	@Override
+	public List<QueryStepOperation> schedule(ExecutionPlanOptions opts,
+			SSConnection connection, SchemaContext sc, ConnectionValuesMap cv)
+			throws PEException {
+		throw new PECodingException("Invalid call to nested exec plan.schedule");
 	}
 	
 }
