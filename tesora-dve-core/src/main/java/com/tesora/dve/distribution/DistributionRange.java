@@ -41,7 +41,6 @@ import javax.persistence.OneToMany;
 import javax.persistence.OrderBy;
 import javax.persistence.Table;
 
-import com.tesora.dve.worker.WorkerGroup;
 import org.hibernate.annotations.ForeignKey;
 
 import org.apache.commons.lang.StringUtils;

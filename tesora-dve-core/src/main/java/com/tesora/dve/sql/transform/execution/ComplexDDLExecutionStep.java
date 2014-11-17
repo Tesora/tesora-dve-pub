@@ -31,6 +31,7 @@ import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation.DDLCallback;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.Persistable;
@@ -49,10 +50,11 @@ public class ComplexDDLExecutionStep extends CatalogModificationExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
 		QueryStepDDLGeneralOperation qso = null;
-		StorageGroup sg = getStorageGroup(sc);
+		StorageGroup sg = getStorageGroup(sc,cvm.getValues(containing));
 		if (cb instanceof NestedOperationDDLCallback) {
 			qso = new QueryStepDDLNestedOperation(sg,getPersistentDatabase(),(NestedOperationDDLCallback)cb);
 		} else {

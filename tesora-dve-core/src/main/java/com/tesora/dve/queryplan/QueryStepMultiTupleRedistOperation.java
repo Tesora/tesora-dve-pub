@@ -511,7 +511,6 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			query.append(" ").append(insertOptions.getRawSQL());
 		}
 		SQLCommand out = new SQLCommand(connectionCharset, query.toString());
-		out.setWidth(targetTableColumns.size());
 		return out;
 	}
 

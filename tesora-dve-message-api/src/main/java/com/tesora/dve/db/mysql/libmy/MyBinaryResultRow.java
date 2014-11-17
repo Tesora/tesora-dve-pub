@@ -21,7 +21,6 @@ package com.tesora.dve.db.mysql.libmy;
  * #L%
  */
 
-import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import io.netty.buffer.ByteBuf;

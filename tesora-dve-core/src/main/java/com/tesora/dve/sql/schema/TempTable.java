@@ -40,8 +40,8 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.TempTableDeclHints;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionKey;
 import com.tesora.dve.sql.expression.TableKey;
@@ -221,15 +221,21 @@ public final class TempTable extends PETable {
 	}
 	
 	@Override
-	public Name getName(SchemaContext sc) {
-		return sc._getValues().getTempTableName(index);
+	public Name getName(SchemaContext sc, ConnectionValues cv) {
+		return cv.getTempTableName(index);
 	}
 	
 	@Override
 	public String toString() {
-		return getName(SchemaContext.threadContext.get()).get();
+		final SchemaContext sc = SchemaContext.threadContext.get();
+		final Name n = getName(sc, sc.getValues());
+		return (n != null) ? n.get() : String.valueOf(n);
 	}
 
+	public int getValuesIndex() {
+		return index;
+	}
+	
 	public void noteJoinedColumns(SchemaContext sc, List<PEColumn> pec) {
 		ListSet<PEColumn> uniqued = new ListSet<PEColumn>(pec);
 		addKey(sc,uniqued);
@@ -271,7 +277,7 @@ public final class TempTable extends PETable {
     protected void forceDefinitions(SchemaContext sc, Collection<PEColumn> columns) {
         if (columns.size() > 0){
             SchemaContext mutable = SchemaContext.makeMutableIndependentContext(sc);
-            mutable.setValues(sc._getValues());
+            mutable.setValues(sc.getValues());
             for(PEColumn p : columns) {
                 UserColumn uc = p.getPersistent(mutable);
                 declHint.addOverrideDecl(p.getName().getUnquotedName().get(), uc);
@@ -465,7 +471,7 @@ public final class TempTable extends PETable {
 	
 	@Override
 	protected UserTable createEmptyNew(SchemaContext pc) throws PEException {
-		String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, this);
+		String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, pc.getValues(), this);
 		UserDatabase pdb = (getPEDatabase(pc) != null ? getPEDatabase(pc).persistTree(pc) : null);
 		DistributionModel dm = getDistributionVector(pc).persistTree(pc);
 		UserTable ut = pc.getCatalog().createTempTable(pdb, persistName, dm);

@@ -55,6 +55,7 @@ public class LocalVariableStore extends AbstractVariableStore {
 		vr.set(t);
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void setInternal(VariableHandler<?> vh, Object o) {
 		ValueReference<?> vr = new ValueReference(vh,o);
 		values.put(vh.getName(),vr);
@@ -66,6 +67,7 @@ public class LocalVariableStore extends AbstractVariableStore {
 		setValue(vh,t);
 	}
 	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public Map<String,String> getView() {
 		HashMap<String,String> out = new HashMap<String,String>();
 		VariableManager vm = Singletons.require(HostService.class).getVariableManager();

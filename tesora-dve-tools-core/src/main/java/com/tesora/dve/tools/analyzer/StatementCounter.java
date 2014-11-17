@@ -274,7 +274,7 @@ public class StatementCounter extends Analyzer {
 
 		if (dmls instanceof InsertIntoValuesStatement) {
 			final InsertIntoValuesStatement iivs = (InsertIntoValuesStatement) dmls;
-			emitter.emitInsertPrefix(tee.getPersistenceContext(), iivs, buf);
+			emitter.emitInsertPrefix(tee.getPersistenceContext(), tee.getPersistenceContext().getValues(),iivs, buf);
 			final String prefix = buf.toString();
 			InsertEntry ie = inserts.get(prefix);
 			if (ie == null) {
@@ -285,7 +285,7 @@ public class StatementCounter extends Analyzer {
 			}
 			ie.bump(iivs.getValues().size());
 		} else {
-			emitter.emitStatement(tee.getPersistenceContext(), dmls, buf);
+			emitter.emitStatement(tee.getPersistenceContext(), tee.getPersistenceContext().getValues(),dmls, buf);
 			final String p = buf.toString();
 			NonInsertEntry se = byParam.get(p);
 			if (se == null) {

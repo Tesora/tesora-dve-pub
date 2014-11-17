@@ -52,7 +52,7 @@ public abstract class RebalanceInfo {
 	protected SQLCommand getCommand(Statement stmt) {
 		EmitOptions opts = EmitOptions.NONE.addQualifiedTables();
         GenericSQLCommand gsql = stmt.getGenericSQL(cntxt, Singletons.require(HostService.class).getDBNative().getEmitter(), opts);
-		return gsql.resolve(cntxt,true,null).getSQLCommand();			
+		return gsql.resolve(cntxt.getValues(),true,null).getSQLCommand();			
 	}
 	
 	protected SQLCommand getInsertPrefix(final InsertIntoValuesStatement iivs) {
@@ -63,10 +63,10 @@ public abstract class RebalanceInfo {
 			final GenericSQLCommand prefix = new EmitterInvoker(emitter) {
 				@Override
 				protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
-					getEmitter().emitInsertPrefix(sc, iivs, buf);
+					getEmitter().emitInsertPrefix(sc, sc.getValues(),iivs, buf);
 				}
 			}.buildGenericCommand(cntxt);
-			return prefix.resolve(cntxt,null).getSQLCommand();
+			return prefix.resolve(cntxt.getValues(),null).getSQLCommand();
 		} catch (PEException pe) {
 			throw new SchemaException(Pass.PLANNER, "Unable to build insert prefix",pe);
 		}

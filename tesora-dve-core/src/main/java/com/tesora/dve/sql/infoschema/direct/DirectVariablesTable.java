@@ -96,7 +96,7 @@ public class DirectVariablesTable extends DirectInformationSchemaTable {
 				FunctionCall fc = (FunctionCall) decompAnd.get(0);
 				if (fc.getFunctionName().isLike()) {
 					LiteralExpression likeArg = (LiteralExpression) fc.getParametersEdge().get(1);
-					likeExpr = (String) likeArg.getValue(sc);
+					likeExpr = (String) likeArg.getValue(sc.getValues());
 				}
 			}	
 		}

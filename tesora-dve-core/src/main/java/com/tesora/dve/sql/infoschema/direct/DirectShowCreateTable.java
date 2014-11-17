@@ -144,19 +144,6 @@ public class DirectShowCreateTable extends DirectShowSchemaTable {
 
 			}
 
-			/* Make sure we do not emit implicit default values. */
-			/*
-			if (ut != null) {
-				for (final UserColumn uc : ut.getUserColumns()) {
-					if (!uc.hasDefault()) {
-						final PEColumn tc = tschema.lookup(sc, uc.getName());
-						if (tc != null) {
-							tc.setDefaultValue(null);
-						}
-					}
-				}
-			}
-*/
 			if (tk.getAbstractTable().isTable()) {
 				long nextVal = -1;
 				if (tk.getAbstractTable().asTable().hasAutoInc())
@@ -169,10 +156,10 @@ public class DirectShowCreateTable extends DirectShowSchemaTable {
 					KnownVariables.OMIT_DIST_COMMENTS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 			
 			if (tschema.isTable())
-                buf.append(Singletons.require(HostService.class).getDBNative().getEmitter().emitExternalCreateTableStatement(sc,tschema.asTable(),omitDistVect));
+                buf.append(Singletons.require(HostService.class).getDBNative().getEmitter().emitExternalCreateTableStatement(sc,sc.getValues(),tschema.asTable(),omitDistVect));
 			else {
 				buf.append("CREATE ");
-                Singletons.require(HostService.class).getDBNative().getEmitter().emitViewDeclaration(sc, tschema.asView().getView(sc), null, buf);
+                Singletons.require(HostService.class).getDBNative().getEmitter().emitViewDeclaration(sc, sc.getValues(), tschema.asView().getView(sc), null, buf);
 			}
 				
 			ColumnSet cs = new ColumnSet();

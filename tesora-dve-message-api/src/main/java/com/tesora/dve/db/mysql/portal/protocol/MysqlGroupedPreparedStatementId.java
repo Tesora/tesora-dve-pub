@@ -21,8 +21,6 @@ package com.tesora.dve.db.mysql.portal.protocol;
  * #L%
  */
 
-import io.netty.channel.Channel;
-
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;

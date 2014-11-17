@@ -67,7 +67,7 @@ public abstract class PEGroupProviderDDLStatement extends DDLStatement {
 	public static ListOfPairs<String,Object> convertOptions(SchemaContext sc, List<Pair<Name,LiteralExpression>> in) {
 		ListOfPairs<String,Object> out = new ListOfPairs<String,Object>();
 		for(Pair<Name, LiteralExpression> p : in) {
-			out.add(p.getFirst().get(), (p.getSecond().isNullLiteral() ? null : p.getSecond().getValue(sc)));
+			out.add(p.getFirst().get(), (p.getSecond().isNullLiteral() ? null : p.getSecond().getValue(sc.getValues())));
 		}
 		return out;
 		

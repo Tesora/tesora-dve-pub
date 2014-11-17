@@ -104,7 +104,7 @@ public class DistributionKeyExecuteTransformFactory extends TransformFactory {
 	}
 
 	private static MappingSolution mapKey(SchemaContext sc, DMLStatement stmt, DistributionKey dk) throws PEException {
-		return sc.getCatalog().mapKey(sc,dk.getDetachedKey(sc), dk.getModel(sc), stmt.getKeyOpType(), stmt.getSingleGroup(sc));
+		return sc.getCatalog().mapKey(sc,dk.getDetachedKey(sc,sc.getValues()), dk.getModel(sc), stmt.getKeyOpType(), stmt.getSingleGroup(sc),sc.getValues());
 	}
 
 	private static class MappedKeyEntry {

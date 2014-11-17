@@ -21,20 +21,28 @@ package com.tesora.dve.sql.transform.execution;
  * #L%
  */
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.tesora.dve.db.Emitter.EmitOptions;
+import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepMultiInsertByKeyOperation;
+import com.tesora.dve.queryplan.QueryStepMultiInsertByKeyOperation.StatementSource;
 import com.tesora.dve.queryplan.QueryStepOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.parser.ParserOptions;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.JustInTimeInsert;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.ValueManager;
+import com.tesora.dve.sql.util.Functional;
+import com.tesora.dve.sql.util.Pair;
+import com.tesora.dve.sql.util.UnaryFunction;
 
 public class LateSortingInsertExecutionStep extends DirectExecutionStep {
 
@@ -52,19 +60,15 @@ public class LateSortingInsertExecutionStep extends DirectExecutionStep {
 	}
 	
 	@Override
-	public Long getlastInsertId(ValueManager vm, SchemaContext sc) {
-		return vm.getLastInsertId(sc);
-	}
-	
-	private List<JustInTimeInsert> getLateInserts(SchemaContext sc) {
-		return sc.getValueManager().getLateSortedInsert(sc);
+	public Long getlastInsertId(ValueManager vm, SchemaContext sc, ConnectionValues cv) {
+		return cv.getLastInsertId();
 	}
 	
 	@Override
-	public Long getUpdateCount(SchemaContext sc) {
+	public Long getUpdateCount(SchemaContext sc, ConnectionValues cv) {
 		if (ignoreUpdateCount)
 			return null;
-		List<JustInTimeInsert> late = getLateInserts(sc);
+		List<JustInTimeInsert> late = cv.getLateSortedInserts();
 		long uc = 0;
 		for(JustInTimeInsert jti : late)
 			uc += jti.getUpdateCount();
@@ -72,27 +76,44 @@ public class LateSortingInsertExecutionStep extends DirectExecutionStep {
 	}
 
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, 
+			SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing)
 			throws PEException {
-		List<JustInTimeInsert> late = getLateInserts(sc);
+		ConnectionValues cv = cvm.getValues(containing);
+		StatementSource src = null;
+		if (containing.isRoot()) {
+			List<JustInTimeInsert> late = cv.getLateSortedInserts(); 
 
-		QueryStepMultiInsertByKeyOperation qso = new QueryStepMultiInsertByKeyOperation(getStorageGroup(sc),getPersistentDatabase());
-		for(JustInTimeInsert jti : late) {
-			SQLCommand sqlc = jti.getSQL();
-			sqlc.withReferenceTime(sc.getValueManager().getCurrentTimestamp(sc));
-			qso.addStatement(jti.getKey().getDetachedKey(sc), sqlc);
+			List<Pair<IKeyValue,SQLCommand>> computed = new ArrayList<Pair<IKeyValue,SQLCommand>>();
+			for(JustInTimeInsert jti : late) {
+				SQLCommand sqlc = jti.getSQL();
+				sqlc.withReferenceTime(cv.getCurrentTimestamp());
+				computed.add(new Pair<IKeyValue,SQLCommand>(jti.getKey().getDetachedKey(sc, cv),sqlc));
+			}
+		
+			src = new PlannerTimeInserts(computed);
+		} else {
+			src = new RunTimeInserts();
 		}
+		QueryStepMultiInsertByKeyOperation qso = new QueryStepMultiInsertByKeyOperation(getStorageGroup(sc,cv),getPersistentDatabase(),src);
 		qso.setStatistics(getStepStatistics(sc));
 		qsteps.add(qso);
 	}
+
+	
 	
 	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
+	public void display(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
 		String execType = getEffectiveExecutionType().name();
 		StringBuilder prefix = new StringBuilder();
+		ConnectionValues cv = cvm.getValues(containing);
 		prefix.append(indent).append(execType).append(" on ").append((getDatabase() == null ? "null" : getDatabase().getName().get()))
-			.append("/").append(getStorageGroup(sc));
-		for(JustInTimeInsert jti : getLateInserts(sc)) {
+			.append("/").append(getStorageGroup(sc,cv));
+		if (!containing.isRoot()) {
+			buf.add("inserts not available at planning time");
+			return;
+		}
+		for(JustInTimeInsert jti : cv.getLateSortedInserts()) {
 			buf.add(prefix.toString());
 			if (opts == null)
 				buf.add(indent + "  sql: '" + jti.getSQL() + "'");
@@ -100,7 +121,51 @@ public class LateSortingInsertExecutionStep extends DirectExecutionStep {
 				buf.add(indent + "  sql:");
 				buf.add(jti.getSQL().getRawSQL());
 			}
-			buf.add(indent + " dist key: " + jti.getKey().describe(sc));
+			buf.add(indent + " dist key: " + jti.getKey().describe(cv));
 		}
+	}
+	
+	private static class RunTimeInserts implements StatementSource {
+
+		@Override
+		public List<Pair<IKeyValue, SQLCommand>> generate(final SchemaContext sc,
+				final ConnectionValues cv) {
+			ParserOptions was = sc.getOptions();
+			try {
+				sc.setOptions(was.setNestedPlan());
+				return Functional.apply(cv.getLateSortedInserts(), new UnaryFunction<Pair<IKeyValue,SQLCommand>,JustInTimeInsert>() {
+
+					@Override
+					public Pair<IKeyValue, SQLCommand> evaluate(
+							JustInTimeInsert object) {
+						SQLCommand sqlc = object.getSQL();
+						sqlc.withReferenceTime(cv.getCurrentTimestamp());
+						return new Pair<IKeyValue,SQLCommand>(object.getKey().getDetachedKey(sc, cv),sqlc);
+					}
+
+				});
+			} finally {
+				sc.setOptions(was);
+			}
+		}
+		
+	}
+	
+	private static class PlannerTimeInserts implements StatementSource {
+
+		private final List<Pair<IKeyValue,SQLCommand>> stmts;
+		
+		public PlannerTimeInserts(List<Pair<IKeyValue,SQLCommand>> stmts) {
+			this.stmts = stmts;
+		}
+	
+		
+		@Override
+		public List<Pair<IKeyValue, SQLCommand>> generate(SchemaContext sc,
+				ConnectionValues cv) {
+			return stmts;
+		}
+		
+		
 	}
 }

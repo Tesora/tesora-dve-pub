@@ -27,6 +27,10 @@ public enum ConstantType {
 
 	// i.e. 1, 'foo'
 	LITERAL,  
+	// gets filled in each time
+	TENANT_LITERAL,
+	// allocated each time (maybe)
+	AUTOINCREMENT_LITERAL,
 	// originally '?', then gets bound upon execute
 	PARAMETER,
 	// originally a column reference or expression, this is a value that is bound

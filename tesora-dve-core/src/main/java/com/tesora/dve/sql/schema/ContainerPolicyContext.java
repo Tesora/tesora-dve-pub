@@ -161,8 +161,8 @@ public class ContainerPolicyContext extends SchemaPolicyContext {
 	public LiteralExpression getTenantIDLiteral(boolean mustExist, PEContainer cont) {
 		Long value = getTenantID(mustExist);
 		if (value == null) return null;
-		sc.getValueManager().setTenantID(sc,value);
-		return new ContainerTenantIDLiteral(sc.getValueManager(), (SchemaCacheKey<PEContainer>) cont.getCacheKey());
+		sc.getValueManager().setTenantID(sc,value,(SchemaCacheKey<PEContainer>) cont.getCacheKey());
+		return new ContainerTenantIDLiteral(sc.getValues());
 	}
 
 	
@@ -218,7 +218,7 @@ public class ContainerPolicyContext extends SchemaPolicyContext {
 				for(PEColumn pec : discriminatorColumns) {
 					ordered.add(new Pair<PEColumn,LiteralExpression>(pec,values.get(pec)));
 				}
-				String disc = PEContainerTenant.buildDiscriminantValue(sc, ordered);
+				String disc = PEContainerTenant.buildDiscriminantValue(sc, sc.getValues(), ordered);
 				Long nv = context.allocateNewTenant(container,disc);
 				return LiteralExpression.makeLongLiteral(nv.longValue());
 			}

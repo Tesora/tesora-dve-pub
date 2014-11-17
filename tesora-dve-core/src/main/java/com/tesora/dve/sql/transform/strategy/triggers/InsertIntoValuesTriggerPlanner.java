@@ -43,7 +43,9 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TempTableInstance;
 import com.tesora.dve.sql.node.expression.TriggerTableInstance;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
+import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.PEColumn;
+import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.PETableTriggerPlanningEventInfo;
 import com.tesora.dve.sql.schema.TempTable;
@@ -53,7 +55,6 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.modifiers.ColumnKeyModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnModifierKind;
-import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.statement.dml.AliasInformation;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.InsertIntoValuesStatement;
@@ -62,6 +63,8 @@ import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilt
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder;
 import com.tesora.dve.sql.transform.execution.CreateTempTableExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.ExecutionStep;
+import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.sql.transform.execution.TriggerExecutionStep;
 import com.tesora.dve.sql.transform.strategy.ExecutionCost;
 import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
@@ -130,7 +133,7 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 
 		// now, we're going to build the single row insert
 		InsertIntoValuesStatement singleRowInsert = buildOneTupleInsert(context, intoTable, rowTableColumnOrder); 
-
+		
 		FeatureStep singleRowStep = 
 				InsertIntoValuesPlanner.buildInsertIntoValuesFeatureStep(context,this,singleRowInsert);
 
@@ -243,29 +246,21 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			orderedValues.add(newTuple);
 		}
 		
-		return new InsertIntoValuesStatement(tti,columnSpec,orderedValues,
+		InsertIntoValuesStatement iivs = new InsertIntoValuesStatement(tti,columnSpec,orderedValues,
 				Collections.<ExpressionNode> emptyList(),new AliasInformation(),null);
+		iivs.getDerivedInfo().addLocalTable(tti.getTableKey());
+		return iivs;
 	}
 	
 	private InsertIntoValuesStatement buildOneTupleInsert(PlannerContext context, 
 			PETable intoTable, List<ColumnKey> rowTableColumnOrder) throws PEException {
 		final TableInstance nti = new TableInstance(intoTable,intoTable.getName(),
 				null, context.getContext().getNextTable(),false);
-		List<ColumnKey> flattenedColumns = new ArrayList<ColumnKey>();
-		for(ColumnKey ck : rowTableColumnOrder) {
-			PEColumn pec = ck.getPEColumn();
-			if (pec.isAutoIncrement()) {
-				TriggerTableKey ttk = (TriggerTableKey) ck.getTableKey();
-				if (ttk.getTime() == TriggerTime.BEFORE)
-					continue;
-			}
-			flattenedColumns.add(ck);
-		}
 		final HashMap<ColumnKey,Integer> rowOffsets = new HashMap<ColumnKey,Integer>();
 		for(ColumnKey ck : rowTableColumnOrder) 
 			rowOffsets.put(ck,rowOffsets.size());
 		
-		List<ExpressionNode> colSpec = Functional.apply(flattenedColumns, new UnaryFunction<ExpressionNode,ColumnKey>() {
+		List<ExpressionNode> colSpec = Functional.apply(rowTableColumnOrder, new UnaryFunction<ExpressionNode,ColumnKey>() {
 
 			@Override
 			public ExpressionNode evaluate(ColumnKey object) {
@@ -274,7 +269,7 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			 
 		});
 
-		List<ExpressionNode> values = Functional.apply(flattenedColumns, new UnaryFunction<ExpressionNode,ColumnKey>() {
+		List<ExpressionNode> values = Functional.apply(rowTableColumnOrder, new UnaryFunction<ExpressionNode,ColumnKey>() {
 
 			@Override
 			public ExpressionNode evaluate(ColumnKey object) {
@@ -283,8 +278,10 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			
 		});
 		
-		return new InsertIntoValuesStatement(nti,colSpec,Collections.singletonList(values),
+		InsertIntoValuesStatement iivs = new InsertIntoValuesStatement(nti,colSpec,Collections.singletonList(values),
 				Collections.<ExpressionNode> emptyList(),new AliasInformation(),null);
+		iivs.getDerivedInfo().addLocalTable(nti.getTableKey());
+		return iivs;
 	}
 	
 	protected static class InsertIntoValuesTriggerFeatureStep extends AbstractTriggerFeatureStep {
@@ -322,10 +319,10 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			populateStep.schedule(sc,es,scheduled);
 			TriggerExecutionStep step = new TriggerExecutionStep(onTable.getPEDatabase(sc.getContext()),
 					onTable.getStorageGroup(sc.getContext()),
-					buildSubSequence(sc,actualStep,es.getPlan()),
+					(ExecutionStep)buildSubSequence(sc,actualStep,es.getPlan()),
 					(beforeStep == null ? null : buildSubSequence(sc,beforeStep,es.getPlan())),
 					(afterStep == null ? null : buildSubSequence(sc,afterStep,es.getPlan())),
-					buildSubSequence(sc,rowQuery,es.getPlan()),
+					(ExecutionStep)buildSubSequence(sc,rowQuery,es.getPlan()),
 					handlers);
 			es.append(step);
 		}

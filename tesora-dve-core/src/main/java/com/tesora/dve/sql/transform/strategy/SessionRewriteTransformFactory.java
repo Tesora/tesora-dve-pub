@@ -232,8 +232,8 @@ public class SessionRewriteTransformFactory extends TransformFactory {
 						ColumnMetadata cmd = md.getColumn(i+1);
 						cmd.setAliasName(projInfo.getColumnInfo(i+1).getAlias());
 						row.addResultColumn(litex.isStringLiteral() 
-								? StringEscapeUtils.unescapeJava((String) litex.getValue(pc.getContext())) 
-										: litex.getValue(pc.getContext()));
+								? StringEscapeUtils.unescapeJava((String) litex.getValue(pc.getContext().getValues())) 
+										: litex.getValue(pc.getContext().getValues()));
 					}
 					es.append(new AdhocResultsSessionStep(new IntermediateResultSet(md,row)));
 				}					

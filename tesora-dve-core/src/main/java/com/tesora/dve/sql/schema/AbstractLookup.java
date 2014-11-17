@@ -38,7 +38,6 @@ public abstract class AbstractLookup<T extends Object> {
 		mapper = mapBy;
 	}
 	
-	@SuppressWarnings("unchecked")
 	public void add(T obj) {
 		refreshBacking(Arrays.asList(obj), true);
 	}

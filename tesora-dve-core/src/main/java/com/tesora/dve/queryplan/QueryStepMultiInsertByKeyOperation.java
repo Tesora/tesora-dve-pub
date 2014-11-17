@@ -37,6 +37,8 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.server.messaging.WorkerRequest;
+import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.worker.WorkerGroup;
 
@@ -44,25 +46,21 @@ public class QueryStepMultiInsertByKeyOperation extends QueryStepDMLOperation {
 
 	static Logger logger = Logger.getLogger( QueryStepMultiInsertByKeyOperation	.class );
 
-	List<Pair<IKeyValue, SQLCommand>> insertList = new ArrayList<Pair<IKeyValue, SQLCommand>>();
-	
-	public QueryStepMultiInsertByKeyOperation(StorageGroup sg, PersistentDatabase execCtxDBName) throws PEException {
+	final StatementSource src;
+		
+	public QueryStepMultiInsertByKeyOperation(StorageGroup sg, PersistentDatabase execCtxDBName, StatementSource src) throws PEException {
 		super(sg, execCtxDBName);
+		this.src = src;
 	}
 	
-	public void addStatement(IKeyValue key, SQLCommand sql) throws PEException {
-		if (sql.isEmpty())
-			throw new PEException("Cannot create QueryStep with empty SQL command");
-
-		insertList.add(new Pair<IKeyValue, SQLCommand>(key, sql));
-	}
-
 	@Override
 	public void executeSelf(ExecutionState estate, WorkerGroup wg, DBResultConsumer resultConsumer) throws Throwable {
 
 		MultiMap<StorageSite, SQLCommand> mappedInserts = new MultiMap<StorageSite, SQLCommand>();
 
 		SSConnection ssCon = estate.getConnection();
+
+		List<Pair<IKeyValue,SQLCommand>> insertList = src.generate(estate.getConnection().getSchemaContext(), estate.getValues());
 		
 		// note that all the key/cmd pairs in the insertList must be of the same DistributionModel
 		DistributionModel dm = insertList.get(0).getFirst().getDistributionModel();
@@ -85,4 +83,10 @@ public class QueryStepMultiInsertByKeyOperation extends QueryStepDMLOperation {
 		endExecution(resultConsumer.getUpdateCount());
 	}
 
+	public interface StatementSource {
+		
+		public List<Pair<IKeyValue,SQLCommand>> generate(SchemaContext sc, ConnectionValues cv);
+		
+	}
+	
 }

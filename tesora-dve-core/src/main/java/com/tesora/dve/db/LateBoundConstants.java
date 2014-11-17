@@ -43,4 +43,7 @@ public class LateBoundConstants {
 		return values[index];
 	}
 	
+	public Object[] getValues() {
+		return values;
+	}
 }

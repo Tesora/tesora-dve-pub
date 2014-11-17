@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -39,9 +40,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 
-import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.NativeCharSetCatalog;
-import com.tesora.dve.charset.NativeCollation;
 import com.tesora.dve.charset.NativeCollationCatalog;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -62,7 +61,6 @@ import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.db.ValueConverter;
 import com.tesora.dve.distribution.DistributionRange;
@@ -203,9 +201,8 @@ import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
 import com.tesora.dve.sql.schema.modifiers.AutoincTableModifier;
-import com.tesora.dve.sql.schema.modifiers.CharsetTableModifier;
+import com.tesora.dve.sql.schema.modifiers.CharsetCollationModifierBuilder;
 import com.tesora.dve.sql.schema.modifiers.ChecksumModifier;
-import com.tesora.dve.sql.schema.modifiers.CollationTableModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnKeyModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnModifier;
 import com.tesora.dve.sql.schema.modifiers.ColumnModifierKind;
@@ -1292,8 +1289,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			throw new SchemaException(Pass.FIRST, MISSING_UNQUALIFIED_IDENTIFIER_ERROR_MSG);
 		}
 
-		String charSetValue = null;
-		String collationValue = null;
+		Name charSetValue = null;
+		Name collationValue = null;
 		Name pgName = null;
 		FKMode fkMode = null;
 		Pair<Name, TemplateMode> templateDecl = null;
@@ -1306,9 +1303,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				}
 				Name value = (Name)p.getSecond();
 				if ("charset".equals(key)) {
-					charSetValue = value.get();
+					charSetValue = value;
 				} else if ("collate".equals(key)) {
-					collationValue = value.get();
+					collationValue = value;
 				} else if ("pers_group".equals(key)) {
 					pgName = value;
 				} else {
@@ -1323,7 +1320,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			templateDecl = new Pair<Name, TemplateMode>(null, TemplateMode.getCurrentDefault(pc.getConnection()));
 		}
 
-		final Pair<String, String> charSetCollationPair = getCharSetCollationPair(charSetValue, collationValue);
+		final Pair<String, String> charSetCollationPair = getCharsetCollationPair(charSetValue, collationValue);
 
 		if (pc.getCapability() == Capability.PARSING_ONLY) {
 			PEDatabase pdb = new PEDatabase(null, dbName.getUnquotedName(), null, templateDecl, mm, fkMode, charSetCollationPair.getFirst(),
@@ -1340,14 +1337,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public Statement buildAlterDatabaseStatement(final Name dbName, final Name charSetName, final Name collationName) {
-		final PEDatabase db = getAlterDatabase(dbName);
-
 		if ((charSetName == null) && (collationName == null)) {
 			throw new SchemaException(Pass.SECOND, "Can't alter database '" + dbName.getSQL() + "'; syntax error");
 		}
 
-		final Pair<String, String> charSetCollationPair = getCharSetCollationPair(charSetName, collationName);
-
+		final Pair<String, String> charSetCollationPair = getCharsetCollationPair(charSetName, collationName);
+		final PEDatabase db = getAlterDatabase(dbName);
 		return new AlterDatabaseStatement(db, charSetCollationPair.getFirst(), charSetCollationPair.getSecond());
 	}
 
@@ -1394,62 +1389,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return (PEDatabase) db;
 	}
 
-	private Pair<String, String> getCharSetCollationPair(final Name charSetName, final Name collationName) {
-		final String charSetValue = (charSetName != null) ? charSetName.get() : null;
-		final String collationValue = (collationName != null) ? collationName.get() : null;
-		return getCharSetCollationPair(charSetValue, collationValue);
-	}
-
-	/**
-	 * Find a valid charset-collation combination.
-	 * 
-	 * CASES:
-	 * a) Both values left unspecified => use server-wide defaults.
-	 * b) Charset, but no collation => use default collation for the charset.
-	 * c) Collation, but no charset => find charset the collation belongs to.
-	 * d) Both values specified => just validate they are compatible.
-	 */
-	private Pair<String, String> getCharSetCollationPair(final String charSetValue, final String collationValue) {
-        final DBNative db = Singletons.require(HostService.class).getDBNative();
-		if ((charSetValue == null) && (collationValue == null)) { // Use server defaults.
-			String defaultCharSet;
-			try {
-				defaultCharSet = db.getDefaultServerCharacterSet();
-			} catch (final Exception e) {
-				throw new SchemaException(Pass.FIRST, "No default server character set");
-			}
-			
-			String defaultCollation;
-			try {
-				defaultCollation = db.getDefaultServerCollation();
-			} catch (final Exception e) {
-				throw new SchemaException(Pass.FIRST, "No default server collation set");
-			}
-			
-			return new Pair<String, String>(defaultCharSet, defaultCollation);
-		}
-		
-		if ((charSetValue != null) && (collationValue == null)) {  // Use default for the charset.
-			final NativeCollation nc = getNativeCollationCatalog().findDefaultCollationForCharSet(charSetValue);
-			if (nc == null) {
-				throw new SchemaException(Pass.FIRST, "Unsupported CHARACTER SET " + charSetValue);
-			}
-			return new Pair<String, String>(charSetValue, nc.getName());
-		} else if ((charSetValue == null) && (collationValue != null)) {  // Use an appropriate charset.
-			final NativeCharSet charSet = getNativeCharSetCatalog().findCharSetByCollation(collationValue);
-			if (charSet == null) {
-				throw new SchemaException(Pass.FIRST, "Unsupported COLLATION '" + collationValue + "'");
-			}
-			return new Pair<String, String>(charSet.getName(), collationValue);
-		} else { // Just check the values for mutual compatibility.
-			final NativeCharSet charSet = getNativeCharSetCatalog().findCharSetByName(charSetValue);
-			if (charSet == null) {
-				throw new SchemaException(Pass.FIRST, "Unsupported CHARACTER SET '" + charSetValue + "'");
-			} else if (charSet.isCompatibleWith(collationValue)) {
-				return new Pair<String, String>(charSetValue, collationValue);
-			}
-			throw new SchemaException(Pass.FIRST, "COLLATION '" + collationValue + "' is not valid for CHARACTER SET '" + charSetValue + "'");
-		}
+	private Pair<String, String> getCharsetCollationPair(final Name charSetName, final Name collationName) {
+		return CharsetCollationModifierBuilder.buildCharsetCollationNamePair(charSetName, collationName,
+				getNativeCharSetCatalog(), getNativeCollationCatalog());
 	}
 
 	public Statement buildCreatePersistentInstance(Name persistentInstanceName,
@@ -1683,6 +1625,13 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new StringTypeModifier(TypeModifierKind.CHARSET,spec.getUnquotedName().get());
 	}
 
+	public Set<TableModifier> buildCharsetCollationModifiers(final CharsetCollationModifierBuilder builder) {
+		if (builder.hasValues()) {
+			return builder.buildModifiers(getNativeCharSetCatalog(), getNativeCollationCatalog());
+		}
+		return Collections.EMPTY_SET;
+	}
+
 	public ColumnModifier buildOnUpdate() {
 		return new ColumnModifier(ColumnModifierKind.ONUPDATE);
 //				buildIdentifierLiteral("CURRENT_TIMESTAMP"));
@@ -1733,7 +1682,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			DelegatingLiteralExpression dle = (DelegatingLiteralExpression) integLit;
 			lv = literals.get(dle.getPosition()).getSecond();
 		} else {
-			lv = integLit.getValue(pc);
+			lv = integLit.getValue(pc.getValues());
 		}
 		if (lv instanceof Long) {
 			return ((Long) lv).intValue();
@@ -2502,7 +2451,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				if (le.isNullLiteral()) {
 					throw new SchemaException(Pass.FIRST, "Must specify a character set");
 				}
-				String value = (String)le.getValue(pc);
+				String value = (String)le.getValue(pc.getValues());
 				if (Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(value) == null) {
 					// character set not supported
 					throw new SchemaException(Pass.FIRST, "Cannot set an unsupported character set: " + value);
@@ -2533,6 +2482,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return new SessionSetVariableStatement(sets);
 	}
 
+	@SuppressWarnings("rawtypes")
 	public Statement buildAddVariable(Name newName, List<Pair<Name,LiteralExpression>> options) {
 		pc.getPolicyContext().checkRootPermission("create a new system variable");
 		String varName = newName.getUnqualified().getUnquotedName().get();
@@ -2565,7 +2515,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public TableModifier buildAutoincTableModifier(ExpressionNode litval) {
 		LiteralExpression lit = (LiteralExpression) litval;
-		Object value = lit.getValue(pc);
+		Object value = lit.getValue(pc.getValues());
 		if (value instanceof Number) {
 			Number n = (Number)value;
 			return new AutoincTableModifier(n.longValue());
@@ -2597,14 +2547,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 		return buildComment(s);
 	}
-
-	public TableModifier buildCollationTableModifier(Name collationName) {
-		return new CollationTableModifier(collationName.getUnqualified());
-	}
-	
-	public TableModifier buildCharsetTableModifier(Name charsetName) {
-		return new CharsetTableModifier(charsetName.getUnqualified());
-	}
 	
 	public TableModifier buildRowFormatTableModifier(Name n) {
 		return new RowFormatTableModifier(n.getUnqualified());
@@ -2612,7 +2554,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	public TableModifier buildMaxRowsModifier(ExpressionNode en) {
 		LiteralExpression litex = asLiteral(en);
-		Object v = litex.getValue(pc);
+		Object v = litex.getValue(pc.getValues());
 		if (v instanceof Number) {
 			Number n = (Number) v;
 			return new MaxRowsModifier(n.longValue());
@@ -2910,7 +2852,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				ExplainOption opt = ExplainOption.find(p.getFirst().getUnqualified());
 				if (opt == null)
 					throw new SchemaException(Pass.FIRST, "No such explain option: " + p.getFirst().getSQL());
-				opts = opts.addSetting(opt, p.getSecond().getValue(pc));
+				opts = opts.addSetting(opt, p.getSecond().getValue(pc.getValues()));
 			}
 		}
 		in.setExplain(opts);
@@ -3061,7 +3003,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	 * collation for the character set is used.
 	 */
 	public List<AlterTableAction> buildTableConvertToAction(final Name charSet, final Name collation) {
-		final Pair<String, String> charSetCollationPair = getCharSetCollationPair(charSet, collation);
+		final Pair<String, String> charSetCollationPair = getCharsetCollationPair(charSet, collation);
 		return wrapAlterAction(new ConvertToAction(charSetCollationPair.getFirst(), charSetCollationPair.getSecond()));
 	}
 
@@ -3159,8 +3101,13 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		return actions;
 	}
 
-	public List<AlterTableAction> buildTableOptionAction(TableModifier tm) {
-		return wrapAlterAction(new ChangeTableModifierAction(tm));
+	public List<AlterTableAction> buildAlterTableOptionActions(List<TableModifier> tm) {
+		final List<AlterTableAction> actions = new ArrayList<AlterTableAction>(tm.size());
+		for (final TableModifier modifier : tm) {
+			actions.add(new ChangeTableModifierAction(modifier));
+		}
+
+		return actions;
 	}
 	
 	public List<AlterTableAction> buildModifyDistributionAction(UnresolvedDistributionVector ndv) {
@@ -3435,10 +3382,10 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				.hasNext();) {
 			Pair<Name, LiteralExpression> p = iter.next();
 			if (p.getFirst().getCapitalized().equals(pluginKey)) {
-				plugin = p.getSecond().asString(pc);
+				plugin = p.getSecond().asString(pc.getValues());
 				iter.remove();
 			} else if (p.getFirst().getCapitalized().equals(activeKey)) {
-				isActive = (Boolean) p.getSecond().getValue(pc);
+				isActive = (Boolean) p.getSecond().getValue(pc.getValues());
 				iter.remove();
 			}
 		}
@@ -3535,12 +3482,12 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		String theProvider = null;
 		String thePool = null;
 		if (poolLiteral instanceof LiteralExpression)
-			thePool = (String) ((LiteralExpression)poolLiteral).getValue(pc);
+			thePool = (String) ((LiteralExpression)poolLiteral).getValue(pc.getValues());
 		if (providerLiteral instanceof LiteralExpression)
-			theProvider = (String) ((LiteralExpression)providerLiteral).getValue(pc);
+			theProvider = (String) ((LiteralExpression)providerLiteral).getValue(pc.getValues());
 		if (countLiteral instanceof LiteralExpression) {
 			LiteralExpression litex = (LiteralExpression) countLiteral;
-			Number n = (Number) litex.getValue(pc);
+			Number n = (Number) litex.getValue(pc.getValues());
 			theCount = n.intValue();
 		}
 		return new PEPolicyClassConfig(theClass, theProvider, thePool, (theCount == null ? 0 : theCount));
@@ -3847,9 +3794,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 
 	public ExpressionNode maybeBuildExprAlias(ExpressionNode targ, Name alias, String stringAlias,
-			Object tree) {
-		SourceLocation sloc = SourceLocation.make(tree);
-		
+			Object tree) {		
 		if (alias == null && stringAlias == null)
 			return targ;
 
@@ -3999,7 +3944,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		Name persistentGroup = tblInstances.get(0).getAbstractTable().getPersistentStorage(pc).getName();
 		for (TableInstance tableInstance : tblInstances) {
 			if (! persistentGroup.equals(tableInstance.getAbstractTable().getPersistentStorage(pc).getName())) {
-				throw new SchemaException(Pass.FIRST, "Table '" + tableInstance.getAbstractTable().getName(pc).get()
+				throw new SchemaException(Pass.FIRST, "Table '" + tableInstance.getAbstractTable().getName(pc,pc.getValues()).get()
 						+ "' in maintenance command is not in Persistent Group '" + persistentGroup.get() + "'");
 			}
 		}
@@ -4049,22 +3994,22 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	@Override
-	public Object getValue(SchemaContext sc, IParameter p) {
+	public Object getValue(IParameter p) {
 		throw new SchemaException(Pass.SECOND, "Attempt to access parameter value from non value source");
 	}
 
 	@Override
-	public Object getLiteral(SchemaContext sc, IDelegatingLiteralExpression dle) {
+	public Object getLiteral(IDelegatingLiteralExpression dle) {
 		return literals.get(dle.getPosition()).getSecond();
 	}
 
 	@Override
-	public Object getTenantID(SchemaContext sc) {
+	public Object getTenantID() {
 		throw new SchemaException(Pass.SECOND, "Attempt to access tenant id value from non tenant id source");
 	}
 
 	@Override
-	public Object getAutoincValue(SchemaContext sc, IAutoIncrementLiteralExpression exp) {
+	public Object getAutoincValue(IAutoIncrementLiteralExpression exp) {
 		throw new SchemaException(Pass.SECOND, "Attempt to access autoinc value before planning");
 	}
 	
@@ -4391,7 +4336,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				collation,
 				charset,
 				collationDB,
-				isBefore,
+				isBefore ? TriggerTime.BEFORE : TriggerTime.AFTER,
 				sqlMode,rawSQL);
 		popScope();
 		opts = opts.setResolve();

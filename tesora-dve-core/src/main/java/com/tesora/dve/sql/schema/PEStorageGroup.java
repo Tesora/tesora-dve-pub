@@ -27,7 +27,7 @@ import com.tesora.dve.exceptions.PEException;
 
 public interface PEStorageGroup {
 
-	StorageGroup getPersistent(SchemaContext sc);
+	StorageGroup getPersistent(SchemaContext sc, ConnectionValues cv);
 
 	PersistentGroup persistTree(SchemaContext sc) throws PEException;
 
@@ -43,8 +43,8 @@ public interface PEStorageGroup {
 	
 	boolean isTempGroup();	
 	
-	PEStorageGroup getPEStorageGroup(SchemaContext sc);
+	PEStorageGroup getPEStorageGroup(SchemaContext sc, ConnectionValues cv);
 	
-	StorageGroup getScheduledGroup(SchemaContext sc);
+	StorageGroup getScheduledGroup(SchemaContext sc, ConnectionValues cv);
 	
 }

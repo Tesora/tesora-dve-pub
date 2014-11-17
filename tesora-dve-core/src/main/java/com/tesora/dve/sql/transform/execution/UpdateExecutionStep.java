@@ -33,6 +33,7 @@ import com.tesora.dve.queryplan.QueryStepUpdateAllOperation;
 import com.tesora.dve.queryplan.QueryStepUpdateByKeyOperation;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.PEStorageGroup;
@@ -64,12 +65,13 @@ public final class UpdateExecutionStep extends DirectExecutionStep {
 	}
 	
 	@Override
-	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc)
-			throws PEException {
+	public void schedule(ExecutionPlanOptions opts, List<QueryStepOperation> qsteps, ProjectionInfo projection, SchemaContext sc,
+			ConnectionValuesMap cvm, ExecutionPlan containing) throws PEException {
 		QueryStepDMLOperation qso = null;
-		IKeyValue ikv = getKeyValue(sc);
-		SQLCommand sqlCommand = getCommand(sc).withReferenceTime(getReferenceTimestamp(sc));
-		StorageGroup sg = getStorageGroup(sc);
+		ConnectionValues cv = cvm.getValues(containing);
+		IKeyValue ikv = getKeyValue(sc,cv);
+		SQLCommand sqlCommand = getCommand(sc,cv).withReferenceTime(cv.getCurrentTimestamp());
+		StorageGroup sg = getStorageGroup(sc,cv);
 		if (ikv != null)
 			qso = new QueryStepUpdateByKeyOperation(sg, getPersistentDatabase(), ikv, sqlCommand);
 		else {

@@ -25,10 +25,6 @@ import com.tesora.dve.concurrent.CompletionTarget;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.nio.charset.Charset;
-
-import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;
-import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 
 public class MysqlStmtCloseCommand extends MysqlCommand {

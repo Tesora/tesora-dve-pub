@@ -266,6 +266,7 @@ public class TestCatalogHelper extends CatalogHelper {
 		return createTestCatalog(c, getCatalogUser(), getCatalogPassword()).getFirst();
 	}
 
+	@SuppressWarnings("rawtypes")
 	private Pair<Project,Map<VariableHandler,VariableConfig>> createTestCatalog(CatalogDAO c, String user, String password) throws PEException {
 		Pair<Project,Map<VariableHandler,VariableConfig>> minimal = 
 				createMinimalCatalog(c,user,password);
@@ -310,6 +311,7 @@ public class TestCatalogHelper extends CatalogHelper {
 		createTestCatalogWithDB(numStorageSites, withDB, getCatalogUser(), getCatalogPassword());
 	}
 
+	@SuppressWarnings("rawtypes")
 	public void createTestCatalogWithDB(int numStorageSites, boolean withDB, String user, String password) throws PEException {
 		recreateCatalogDB();
 		CatalogDAO c = CatalogDAOFactory.newInstance(catalogProperties);
@@ -338,6 +340,7 @@ public class TestCatalogHelper extends CatalogHelper {
 
 	private int siteCount = 5;
 
+	@SuppressWarnings("rawtypes")
 	private DynamicPolicy addTestDefaultDynamicPolicy(Pair<Project,Map<VariableHandler,VariableConfig>> minimal, CatalogDAO c) throws PEException {
 		try {
 			DynamicPolicy policy = generatePolicyConfig(siteCount, OnPremiseSiteProvider.DEFAULT_NAME);

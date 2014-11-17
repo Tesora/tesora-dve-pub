@@ -34,17 +34,21 @@ import com.tesora.dve.variables.AbstractVariableStore;
 public class TransientGlobalVariableStore extends AbstractVariableStore implements
 		GlobalVariableStore {
 
+	@SuppressWarnings("rawtypes")
 	private ConcurrentHashMap<VariableHandler,ValueReference> values;
 	
+	@SuppressWarnings("rawtypes")
 	public TransientGlobalVariableStore() {
 		values = new ConcurrentHashMap<VariableHandler,ValueReference>();
 	}
 	
+	@SuppressWarnings("rawtypes")
 	@Override
 	public void invalidate(VariableHandler vh) {
 		// does nothing
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	public LocalVariableStore buildNewLocalStore() {
 		// we can't use singletons here since this is now part of the infoschema
@@ -61,6 +65,7 @@ public class TransientGlobalVariableStore extends AbstractVariableStore implemen
 		return false;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <Type> ValueReference<Type> getReference(VariableHandler<Type> vh) {
 		return values.get(vh);

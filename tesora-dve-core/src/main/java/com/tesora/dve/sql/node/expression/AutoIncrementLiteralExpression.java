@@ -23,16 +23,16 @@ package com.tesora.dve.sql.node.expression;
 
 import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.parser.TokenTypes;
-import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.ValueManager;
+import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.ILiteralExpression;
 import com.tesora.dve.sql.transform.CopyContext;
 
 public class AutoIncrementLiteralExpression extends DelegatingLiteralExpression implements IAutoIncrementLiteralExpression {
 
-	public AutoIncrementLiteralExpression(ValueManager vm, int position) {
-		super(TokenTypes.Unsigned_Large_Integer,null,vm,position,null);
+	public AutoIncrementLiteralExpression(ConnectionValues cv, int position) {
+		super(TokenTypes.Unsigned_Large_Integer,null,cv,position,null);
 	}
 	
 	protected AutoIncrementLiteralExpression(DelegatingLiteralExpression dle) {
@@ -40,8 +40,8 @@ public class AutoIncrementLiteralExpression extends DelegatingLiteralExpression 
 	}
 	
 	@Override
-	public Object getValue(SchemaContext sc) {
-		return source.getAutoincValue(sc, this);
+	public Object getValue(ConnectionValues cv) {
+		return cv.getAutoincValue(this);
 	}
 
 	@Override
@@ -52,6 +52,11 @@ public class AutoIncrementLiteralExpression extends DelegatingLiteralExpression 
 	@Override
 	public ILiteralExpression getCacheExpression() {
 		return new CachedAutoIncrementLiteralExpression(getValueType(), position);
+	}
+	
+	@Override
+	public ConstantType getConstantType() {
+		return ConstantType.AUTOINCREMENT_LITERAL;
 	}
 
 }

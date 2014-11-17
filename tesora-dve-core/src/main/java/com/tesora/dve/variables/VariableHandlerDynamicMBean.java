@@ -44,6 +44,7 @@ import com.tesora.dve.sql.schema.VariableScopeKind;
 
 public class VariableHandlerDynamicMBean implements DynamicMBean {
 
+	@SuppressWarnings("rawtypes")
 	private Map<String, VariableHandler> variables = 
 			new HashMap<String, VariableHandler>();
 
@@ -51,6 +52,7 @@ public class VariableHandlerDynamicMBean implements DynamicMBean {
 		variables.put(name, variable);
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public String getAttribute(String name) throws AttributeNotFoundException {
 
@@ -92,6 +94,7 @@ public class VariableHandlerDynamicMBean implements DynamicMBean {
 		}
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
 	public AttributeList getAttributes(String[] names) {
 		CatalogDAO c = CatalogDAOFactory.newInstance();
@@ -147,6 +150,7 @@ public class VariableHandlerDynamicMBean implements DynamicMBean {
 		throw new ReflectionException(new NoSuchMethodException(name));
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	public MBeanInfo getMBeanInfo() {
 

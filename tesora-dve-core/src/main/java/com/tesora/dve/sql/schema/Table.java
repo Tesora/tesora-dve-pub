@@ -32,7 +32,7 @@ public interface Table<T extends Column<?>> extends HasName, HasTable {
 	
 	public T lookup(SchemaContext sc, Name n);
 	
-	public Name getName(SchemaContext sc);
+	public Name getName(SchemaContext sc, ConnectionValues cv);
 
 	public boolean isInfoSchema();
 	

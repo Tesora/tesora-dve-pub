@@ -50,7 +50,6 @@ import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SQLMode;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
-import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.statement.StatementType;
 import com.tesora.dve.sql.transform.strategy.featureplan.InsertValuesFeatureStep.UpdateCountAdjuster;
 import com.tesora.dve.sql.util.Functional;
@@ -312,7 +311,7 @@ public class InsertIntoValuesStatement extends InsertStatement implements Update
 				ConstantExpression ce = (ConstantExpression)v;
 				if (ce instanceof LiteralExpression) {
 					LiteralExpression litex = (LiteralExpression) ce;
-					if (AutoIncrementBlock.requiresAllocation(litex,sc, mode))
+					if (AutoIncrementBlock.requiresAllocation(litex,sc.getValues(), mode))
 						return handleMissing(sc);
 				} 
 				sc.getValueManager().registerSpecifiedAutoinc(sc,ce);

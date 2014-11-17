@@ -29,6 +29,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepDDLOperation;
 import com.tesora.dve.queryplan.QueryStepGroupProviderDDLOperation;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.PEProvider;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.worker.SiteManagerCommand;
@@ -47,12 +48,12 @@ public class GroupProviderExecutionStep extends
 	}
 
 	@Override
-	protected QueryStepDDLOperation buildOperation(SchemaContext sc) throws PEException {
-		return new QueryStepGroupProviderDDLOperation(getStorageGroup(sc),smc);
+	protected QueryStepDDLOperation buildOperation(SchemaContext sc, ConnectionValues cv) throws PEException {
+		return new QueryStepGroupProviderDDLOperation(getStorageGroup(sc,cv),smc);
 	}
 
 	@Override
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
 	}
 	
 }

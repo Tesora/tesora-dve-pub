@@ -33,6 +33,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
@@ -55,20 +56,20 @@ public class UniqueKeyCollectorTest extends TransformTest {
 		"create table CA (`fid` integer not null, `sid` integer not null, `blight` int, primary key(`fid`,`sid`))"		
 	};
 
-	private void collectKeyPart(SchemaContext sc, Map<String, Object> into, EqualityPart ep) {
-		into.put(ep.getColumn().getPEColumn().get().getName().get(), ep.getLiteral().getValue(sc));
+	private void collectKeyPart(ConnectionValues cv, Map<String, Object> into, EqualityPart ep) {
+		into.put(ep.getColumn().getPEColumn().get().getName().get(), ep.getLiteral().getValue(cv));
 	}
 	
-	private Map<String, Object> buildFakeKey(SchemaContext sc, Part p) throws Throwable {
+	private Map<String, Object> buildFakeKey(ConnectionValues cv, Part p) throws Throwable {
 		HashMap<String, Object> out = new HashMap<String,Object>();
 		if (p instanceof OredParts)
 			throw new Throwable("Cannot build fake key off of ored part");
 		if (p instanceof EqualityPart) {
-			collectKeyPart(sc,out, (EqualityPart)p);
+			collectKeyPart(cv,out, (EqualityPart)p);
 		} else if (p instanceof AndedParts) {
 			AndedParts ap = (AndedParts) p;
 			for(Part sp : ap.getParts()) {
-				collectKeyPart(sc,out, (EqualityPart)sp);
+				collectKeyPart(cv,out, (EqualityPart)sp);
 			}
 		}
 		return out;
@@ -109,13 +110,13 @@ public class UniqueKeyCollectorTest extends TransformTest {
 			if (keys.length > 1) { 
 				assertTrue(pahts.get(0) instanceof OredParts);
 				for(Part p : pahts.get(0).getParts()) {
-					Map<String,Object> hm = buildFakeKey(db,p);
+					Map<String,Object> hm = buildFakeKey(db.getValues(),p);
 					assertTrue(given.contains(hm));
 				}
 			} else {
 				assertEquals(pahts.size(), keys.length);
 				for(Part p : pahts) {
-					Map<String,Object> hm = buildFakeKey(db,p);
+					Map<String,Object> hm = buildFakeKey(db.getValues(),p);
 					assertTrue("should have key " + hm, given.contains(hm));
 				}
 			}

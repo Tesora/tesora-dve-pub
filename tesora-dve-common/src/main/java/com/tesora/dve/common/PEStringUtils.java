@@ -41,6 +41,7 @@ public final class PEStringUtils {
 	private static final String SINGLE_QUOTE = "'";
 	private static final String DOUBLE_QUOTE = "\"";
 	private static final String BACK_QUOTE = "`";
+	private static final String DEFAULT_INDENT = "\t";
 	
 	private PEStringUtils() {
 	}
@@ -256,6 +257,26 @@ public final class PEStringUtils {
 
 	public static boolean isHexNumber(final String value) {
 		return HEX_MATCH_REGEX.matcher(value).matches();
+	}
+
+	public static String getIndented(final String value) {
+		return getIndented(value, 1);
+	}
+
+	public static String getIndented(final String value, final int numIndents) {
+		return getIndented(value, DEFAULT_INDENT, numIndents);
+	}
+
+	public static String getIndented(final String value, final String indent, final int numIndents) {
+		return buildIndent(indent, numIndents).concat(value);
+	}
+
+	public static String buildIndent(final int numIndents) {
+		return StringUtils.repeat(DEFAULT_INDENT, numIndents);
+	}
+
+	public static String buildIndent(final String indent, final int numIndents) {
+		return StringUtils.repeat(indent, numIndents);
 	}
 
 }

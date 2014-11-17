@@ -35,6 +35,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.TransformException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.Database;
 import com.tesora.dve.sql.schema.DistributionKey;
 import com.tesora.dve.sql.schema.DistributionVector;
@@ -94,23 +95,23 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 		return sql;
 	}
 	
-	public GenericSQLCommand getSQL(SchemaContext sc, String pretty) {
-		return sql.resolve(sc, pretty);
+	public GenericSQLCommand getSQL(SchemaContext sc, ConnectionValues cv, String pretty) {
+		return sql.resolve(cv, pretty);
 	}
 	
 	@Override
-	public String getSQL(SchemaContext sc, EmitOptions opts) {
-		return sql.resolve(sc, (opts == null ? null : opts.getMultilinePretty())).getDecoded();
+	public String getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, EmitOptions opts) {
+		return sql.resolve(cvm.getValues(containing), (opts == null ? null : opts.getMultilinePretty())).getDecoded();
 	}
 
-	public SQLCommand getCommand(SchemaContext sc) {
-		GenericSQLCommand gen = getSQL(sc,(String)null);
+	public SQLCommand getCommand(SchemaContext sc, ConnectionValues cv) {
+		GenericSQLCommand gen = getSQL(sc,cv,(String)null);
 		List<Object> actualParams = sql.getFinalParams(sc);
 		return new SQLCommand(gen,actualParams);
 	}
 
-	public IKeyValue getKeyValue(SchemaContext sc) {
-		if (distributionKey != null) return distributionKey.getDetachedKey(sc);
+	public IKeyValue getKeyValue(SchemaContext sc,ConnectionValues cv) {
+		if (distributionKey != null) return distributionKey.getDetachedKey(sc,cv);
 		if (distributionVector != null) return (distributionVector.usesColumns(sc) ? null : distributionVector.getKeyValue(sc));			
 		return null;
 	}
@@ -129,14 +130,14 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	}
 	
 	@Override
-	public void getSQL(SchemaContext sc, List<String> buf, EmitOptions opts) {
-		buf.add(getSQL(sc,opts));
+	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
+		buf.add(getSQL(sc,cvm,containing,opts));
 	}
 
 	@Override
-	public void displaySQL(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
+	public void displaySQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
 		ArrayList<String> sub = new ArrayList<String>();
-		sql.resolveAsTextLines(sc, false, "  ", sub);
+		sql.resolveAsTextLines(cvm.getValues(containing), false, "  ", sub);
 		for(String s : sub) {
 			buf.add(indent + "    " + s);
 		}
@@ -173,12 +174,12 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	
 	
 	@Override
-	public void display(SchemaContext sc, List<String> buf, String indent, EmitOptions opts) {
-		super.display(sc, buf, indent, opts);
+	public void display(SchemaContext sc, ConnectionValuesMap cv, ExecutionPlan containing, List<String> buf, String indent, EmitOptions opts) {
+		super.display(sc, cv, containing, buf, indent, opts);
 		if (distributionKey != null) {
-			buf.add(indent + "  dist key: " + distributionKey.describe(sc));
+			buf.add(indent + "  dist key: " + distributionKey.describe(cv.getValues(containing)));
 		} else if (distributionVector != null) {
-			buf.add(indent + "  dist on: " + distributionVector.describe(sc));
+			buf.add(indent + "  dist on: " + distributionVector.describe(sc,cv.getValues(containing)));
 		}
 		if (explainHelp != null)
 			buf.add(indent + "  reason: " + explainHelp);
@@ -191,7 +192,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	
 	protected String explainSourceDistKey(SchemaContext sc) {
 		if (distributionKey == null) return null;
-		return distributionKey.describe(sc);
+		return distributionKey.describe(sc.getValues());
 	}
 	
 	@Override
@@ -208,8 +209,8 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 		this.requiresReferenceTimestamp = requiresReferenceTimestamp;
 	}
 	
-	public long getReferenceTimestamp(SchemaContext sc) {
-		return (requiresReferenceTimestamp ? sc.getValueManager().getCurrentTimestamp(sc) : 0);
+	public long getReferenceTimestamp(ConnectionValues cv) {
+		return (requiresReferenceTimestamp ? cv.getCurrentTimestamp() : 0);
 	}
 	
 	public StepExecutionStatistics getReportStatistics() {
@@ -230,12 +231,12 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 		return explainHelp;
 	}
 	
-	protected void addStepExplainColumns(SchemaContext sc, ResultRow rr, ExplainOptions opts) {
+	protected void addStepExplainColumns(SchemaContext sc, ConnectionValues cv, ResultRow rr, ExplainOptions opts) {
 	}
 	
-	protected void addExplainColumns(SchemaContext sc,ResultRow rr,ExplainOptions opts) {
-		super.addExplainColumns(sc, rr, opts);
-		addStepExplainColumns(sc,rr, opts);
+	protected void addExplainColumns(SchemaContext sc, ConnectionValues cv, ResultRow rr,ExplainOptions opts) {
+		super.addExplainColumns(sc, cv, rr, opts);
+		addStepExplainColumns(sc,cv, rr, opts);
 		if (opts.isStatistics()) {
 			StepExecutionStatistics t = stats;
 			if (t != null) 

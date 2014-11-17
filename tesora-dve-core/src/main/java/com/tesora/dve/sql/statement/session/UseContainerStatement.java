@@ -66,7 +66,7 @@ public class UseContainerStatement extends SessionStatement {
 		} else {
 			this.container = container;
 			values = normalizeKey(sc, baseTable,discCols,keyvals);
-			String lookup = PEContainerTenant.buildDiscriminantValue(sc, values);
+			String lookup = PEContainerTenant.buildDiscriminantValue(sc, sc.getValues(), values);
 			tenant = sc.findContainerTenant(container,lookup);
 			if (tenant == null)
 				throw new SchemaException(Pass.SECOND, "No such container for discriminant " + lookup);
@@ -81,7 +81,7 @@ public class UseContainerStatement extends SessionStatement {
 			if (p.getSecond() != null) {
 				dc = bt.lookup(pc, p.getSecond());
 				if (dc == null)
-					throw new SchemaException(Pass.SECOND, "No such column in table " + bt.getName(pc).getSQL());
+					throw new SchemaException(Pass.SECOND, "No such column in table " + bt.getName(pc,pc.getValues()).getSQL());
 			} else {
 				dc = discCols.get(i);
 			}

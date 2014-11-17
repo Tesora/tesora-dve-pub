@@ -306,16 +306,16 @@ public class DAOContext implements CatalogContext {
 
 	@Override
 	public MappingSolution mapKey(SchemaContext sc, IKeyValue kv, Model model,
-			DistKeyOpType op, PEStorageGroup onGroup) throws PEException {
+			DistKeyOpType op, PEStorageGroup onGroup, ConnectionValues cv) throws PEException {
 		MappingSolution mappingSolution = null;
 		DistributionModel dm = null;
 		dm = kv.getDistributionModel();
 		if (op == DistKeyOpType.QUERY || op == DistKeyOpType.SELECT_FOR_UPDATE) {
-			mappingSolution= dm.mapKeyForQuery(getDAO(), onGroup.getPersistent(sc), kv, op);
+			mappingSolution= dm.mapKeyForQuery(getDAO(), onGroup.getPersistent(sc,cv), kv, op);
 		} else if (op == DistKeyOpType.INSERT) {
-			mappingSolution= dm.mapKeyForInsert(getDAO(), onGroup.getPersistent(sc), kv);
+			mappingSolution= dm.mapKeyForInsert(getDAO(), onGroup.getPersistent(sc,cv), kv);
 		} else if (op == DistKeyOpType.UPDATE) {
-			mappingSolution= dm.mapKeyForInsert(getDAO(), onGroup.getPersistent(sc), kv);
+			mappingSolution= dm.mapKeyForInsert(getDAO(), onGroup.getPersistent(sc,cv), kv);
 		} else
 			throw new PEException("Unknown mapKey operation type: " + op);
 		return mappingSolution;			

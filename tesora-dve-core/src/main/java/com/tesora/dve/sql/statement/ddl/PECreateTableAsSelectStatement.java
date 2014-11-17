@@ -103,6 +103,7 @@ import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.A
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.EmptyExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.transform.strategy.AdhocFeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
@@ -214,7 +215,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 		
 		ArrayList<QueryStepOperation> steps = new ArrayList<QueryStepOperation>();
-		subes.schedule(null, steps, null, pc);
+		subes.schedule(null, steps, null, pc, new IdentityConnectionValuesMap(pc.getValues()),null);
 		int redistOffset = steps.size() - 1;
 
 		boolean mustRebuildCTS = false;
@@ -289,7 +290,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 				ctype = BasicType.buildType("BINARY", 0, Collections.<TypeModifier> emptyList(),pc.getTypes());
 				modifiers.add(new DefaultValueModifier(litex));
 			} else if (litex.isStringLiteral()) {
-				String str = litex.asString(pc);
+				String str = litex.asString(pc.getValues());
 				ctype = BasicType.buildType("VARCHAR",str.length(),
 						Arrays.asList(new TypeModifier[] { new StringTypeModifier(TypeModifierKind.CHARSET,"utf8")}),pc.getTypes());
 				modifiers.add(notNullableModifier);
@@ -616,7 +617,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 		
 		public String buildCreateTableStatement(UserTable theTable, boolean useSystemTempTable) throws PEException {
-			String out = Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(context, getTable());
+			String out = Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(context, context.getValues(), getTable());
 			return out;
 		}
 		

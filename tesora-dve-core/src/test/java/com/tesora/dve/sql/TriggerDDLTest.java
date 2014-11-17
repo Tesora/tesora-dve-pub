@@ -26,7 +26,6 @@ import java.sql.SQLException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.errmap.InternalErrors;

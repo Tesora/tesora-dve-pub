@@ -53,6 +53,7 @@ import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.ComplexPETable;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.LockInfo;
 import com.tesora.dve.sql.schema.Name;
 import com.tesora.dve.sql.schema.PEDatabase;
@@ -76,6 +77,7 @@ import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
 import com.tesora.dve.sql.transform.execution.FilterExecutionStep;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.transform.execution.ProjectingExecutionStep;
 import com.tesora.dve.sql.transform.execution.SessionExecutionStep;
 import com.tesora.dve.sql.transform.execution.SimpleDDLExecutionStep;
@@ -264,11 +266,14 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			super.plan(sc, es, config);
 		}
 
+		if (sc.getValues() == null)
+			sc.getValueManager().getValues(sc);
+		
 		for (final ConvertToAction convertAction : complexPlanningActions) {
 			if (!convertAction.isTransientOnly()) {
 				final PETable targetTable = this.getTarget();
 				final ComplexAlterTableActionCallback actionCallback = new ComplexAlterTableActionCallback(targetTable, convertAction,
-						convertAction.getColumnMetadataContainer());
+						convertAction.getColumnMetadataContainer(),sc.getValues());
 				es.append(new ComplexDDLExecutionStep(targetTable.getPEDatabase(sc), targetTable.getStorageGroup(sc), targetTable, Action.ALTER, actionCallback));
 			}
 		}
@@ -348,14 +353,17 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 		private final ClonableAlterTableAction alterAction;
 		private final List<QueryStepOperation> plan = new ArrayList<QueryStepOperation>();
 		private final Map<String, Type> metadata;
+		private final ConnectionValues cv;
 
 		private PEAlterTableStatement alterTargetTableStatement;
 
 		protected ComplexAlterTableActionCallback(final PETable target, final ClonableAlterTableAction action,
-				final Map<String, Type> metadataContainer) {
+				final Map<String, Type> metadataContainer,
+				ConnectionValues cv) {
 			this.alterTarget = target;
 			this.alterAction = action;
 			this.metadata = metadataContainer;
+			this.cv = cv;
 		}
 
 		@Override
@@ -418,7 +426,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			es.append(metadataFilter.getCollectorExecutionStep(sc));
 			es.append(new SessionExecutionStep(null, sg, dropSampleTable.getSQL(sc)));
 
-			es.schedule(null, this.plan, null, sc);
+			es.schedule(null, this.plan, null, sc, new IdentityConnectionValuesMap(cv), null);
 		}
 
 		@Override
@@ -434,7 +442,7 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 			es.append(new SessionExecutionStep(this.alterTarget.getDatabase(sc), this.alterTarget.getStorageGroup(sc), this.alterTargetTableStatement
 					.getSQL(sc)));
 
-			es.schedule(null, this.plan, null, sc);
+			es.schedule(null, this.plan, null, sc, new IdentityConnectionValuesMap(sc.getValues()),null);
 		}
 
 		@Override

@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 
 public class AnalyzerPlanningResult extends AnalyzerResult {
 
@@ -48,7 +49,8 @@ public class AnalyzerPlanningResult extends AnalyzerResult {
 	public void printPlan(final PrintStream ps) {
 		ps.println("Execution Plan:");
 		final ArrayList<String> buf = new ArrayList<String>();
-		this.plan.getSequence().display(this.getSchemaContext(), buf, "  ", null);
+		this.plan.getSequence().display(this.getSchemaContext(), 
+				new IdentityConnectionValuesMap(this.getSchemaContext().getValues()), null, buf, "  ", null);
 		for (final String s : buf) {
 			ps.println(s);
 		}

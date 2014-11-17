@@ -159,7 +159,7 @@ public class RangeDistribution extends Persistable<RangeDistribution, Distributi
 				StringBuilder buf = new StringBuilder();
                 Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
 				buf.append("Column ");
-				emitter.emitDeclaration(sc, c, buf);
+				emitter.emitDeclaration(sc,sc.getValues(), c, buf);
 				buf.append(" cannot be used with range ").append(getName().getSQL()).append(", incompatible type: ");
 				emitter.emitDeclaration(t, null, buf, true);
 				throw new SchemaException(Pass.SECOND, buf.toString());

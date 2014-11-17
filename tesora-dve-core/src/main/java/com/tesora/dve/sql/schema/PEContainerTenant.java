@@ -160,7 +160,7 @@ public class PEContainerTenant extends
 		return null;
 	}
 	
-	public static String buildDiscriminantValue(SchemaContext sc, List<Pair<PEColumn,LiteralExpression>> orderedValues) { 
+	public static String buildDiscriminantValue(SchemaContext sc, ConnectionValues cv, List<Pair<PEColumn,LiteralExpression>> orderedValues) { 
 		StringBuilder buf = new StringBuilder();
         Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
 		for(Pair<PEColumn,LiteralExpression> p : orderedValues) {
@@ -168,7 +168,7 @@ public class PEContainerTenant extends
 				buf.append(",");
 			LiteralExpression litex = p.getSecond();
 			buf.append(p.getFirst().getName().get()).append(":");
-			emitter.emitLiteral(sc, litex, buf);
+			emitter.emitLiteral(cv, litex, buf);
 		}
 		return buf.toString();
 	}

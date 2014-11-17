@@ -75,6 +75,8 @@ public final class AvailableErrors {
 			new OneParamErrorCode<String>("UNKNOWN_CHARACTER_SET", false);
 	public static final OneParamErrorCode<String> UNKNOWN_COLLATION =
 			new OneParamErrorCode<String>("UNKNOWN_COLLATION", false);
+	public static final TwoParamErrorCode<String, String> COLLATION_CHARSET_MISMATCH =
+			new TwoParamErrorCode<String, String>("COLLATION_CHARSET_MISMATCH", false);
 
 	// variable related errors
 	public static final TwoParamErrorCode<String, String> WRONG_VALUE_FOR_VARIABLE =
@@ -102,6 +104,7 @@ public final class AvailableErrors {
 		NON_UNIQUE_TABLE,
 		UNKNOWN_CHARACTER_SET,
 		UNKNOWN_COLLATION,
+		COLLATION_CHARSET_MISMATCH,
 		WRONG_VALUE_FOR_VARIABLE,
 		WRONG_TYPE_FOR_VARIABLE,
 		TRG_ALREADY_EXISTS,

@@ -40,7 +40,8 @@ import com.tesora.dve.sql.schema.cache.SchemaCache;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.DDLQueryExecutionStep;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.RebuiltPlan;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.StepExecutionStatistics;
 import com.tesora.dve.sql.util.UnaryProcedure;
@@ -64,7 +65,7 @@ public class ShowPlanCacheStatement extends SchemaQueryStatement {
 		cs.addColumn("Database",255,"varchar",Types.VARCHAR);
 		cs.addColumn("Query",255,"varchar",Types.VARCHAR);
 
-		ExecutionPlan.addExplainColumnHeaders(cs);
+		RootExecutionPlan.addExplainColumnHeaders(cs);
 		if (stats)
 			StepExecutionStatistics.addColumnHeaders(cs);
 		es.append(new DDLQueryExecutionStep("PLAN CACHE",new IntermediateResultSet(cs,rows)));
@@ -109,14 +110,14 @@ public class ShowPlanCacheStatement extends SchemaQueryStatement {
 					throw new SchemaException(Pass.PLANNER, "Unknown extracted literal type: " + t);
 				}
 			}
-			ExecutionPlan ep = null;
+			RebuiltPlan rp = null;
 			try {
-				ep = object.showPlan(sc, fakes);
+				rp = object.showPlan(sc, fakes);
 			} catch (PEException pe) {
 				throw new SchemaException(Pass.PLANNER, "Unable to build show plan", pe);
 			}
 			ArrayList<ResultRow> planRows = new ArrayList<ResultRow>();
-			ep.explain(sc, planRows, opts);
+			rp.getEp().explain(sc, rp.getBoundValues(), rp.getEp(), planRows, opts);
 			for(ResultRow rr : planRows) {
 				ResultRow nr = new ResultRow();
 				nr.addResultColumn(dbName);

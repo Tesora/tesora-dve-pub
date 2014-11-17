@@ -21,8 +21,6 @@ package com.tesora.dve.sql;
  * #L%
  */
 
-
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -41,7 +39,6 @@ import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.catalog.TemplateMode;
-import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.errmap.InternalErrors;
@@ -61,6 +58,7 @@ import com.tesora.dve.sql.template.jaxb.TableTemplateType;
 import com.tesora.dve.sql.template.jaxb.Template;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
+import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
 import com.tesora.dve.sql.util.StorageGroupDDL;
@@ -419,21 +417,26 @@ public class AlterTest extends SchemaTest {
 		executeAlterCharsetCollateTest("pe1276_collate", null, Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 		executeAlterCharsetCollateTest("pe1276_both", latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				executeAlterCharsetCollateTest("pe1276_ex1", utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
 			}
-		}.assertException(SchemaException.class, "COLLATION 'latin1_swedish_ci' is not valid for CHARACTER SET 'utf8'");
+		}.assertError(SchemaException.class, MySQLErrors.collationCharsetMismatchFormatter, "latin1_swedish_ci", "utf8");
 
-		new ExpectedExceptionTester() {
+		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
 				executeAlterCharsetCollateTest("pe1276_ex2", "big5", null);
 			}
-		}.assertException(SchemaException.class, "Unsupported CHARACTER SET big5");
+		}.assertError(SchemaException.class, MySQLErrors.unknownCharacterSetFormatter, "big5");
 
-		executeAlterCharsetCollateTest("pe1276_ex3", null, "utf8_unicode_ci");
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				executeAlterCharsetCollateTest("pe1276_ex3", null, "latin2_czech_cs");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.unknownCollationFormatter, "latin2_czech_cs");
 
 		new ExpectedExceptionTester() {
 			@Override
@@ -444,42 +447,81 @@ public class AlterTest extends SchemaTest {
 	}
 
 	private void executeAlterCharsetCollateTest(final String dbName, final String charSetName, final String collationName) throws Throwable {
-        final DBNative dbHost = Singletons.require(HostService.class).getDBNative();
-		final String defaultCharSetName = dbHost.getDefaultServerCharacterSet();
-		final String defaultCollationName = dbHost.getDefaultServerCollation();
-        final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
 		final StringBuilder alterStmt = new StringBuilder("alter database ").append(dbName);
 
-		NativeCharSet expectedCharSet = null;
-		if (charSetName != null) {
-			expectedCharSet = supportedCharsets.findCharSetByName(charSetName);
-			alterStmt.append(" CHARACTER SET ").append(charSetName);
-		} else {
-			if (collationName != null) {
-				expectedCharSet = supportedCharsets.findCharSetByCollation(collationName);
-			}
-		}
-
-		String expectedCollationName = null;
-		if (collationName != null) {
-			expectedCollationName = collationName;
-			alterStmt.append(" COLLATE ").append(collationName);
-		} else {
-			if (expectedCharSet != null) {
-				expectedCollationName = Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(expectedCharSet.getName()).getName();
-			}
-		}
+		final Pair<String, String> defaults = getDefaultCharSetAndCollationNames();
+		final Pair<String, String> expected = buildAndEmitCharSetCollateModifiers(charSetName, collationName, alterStmt);
 		
 		final String verifySql = "select schema_name, default_character_set_name, default_collation_name "
 				+ "from information_schema.schemata where schema_name = '" + dbName + "'";
 		conn.execute("create database " + dbName + " default persistent group " + sg.getName() + " using template " + TemplateMode.OPTIONAL);
 		try {
-			conn.assertResults(verifySql, br(nr, dbName, defaultCharSetName, defaultCollationName));
+			conn.assertResults(verifySql, br(nr, dbName, defaults.getFirst(), defaults.getSecond()));
 			conn.execute(alterStmt.toString());
-			conn.assertResults(verifySql, br(nr, dbName, expectedCharSet.getName(), expectedCollationName));
+			conn.assertResults(verifySql, br(nr, dbName, expected.getFirst(), expected.getSecond()));
 		} finally {
 			try {
 				conn.execute("drop database " + dbName);
+			} catch (final Exception e) {
+				// don't worry about this
+			}
+		}
+	}
+
+	@Test
+	public void testPE1501() throws Throwable {
+		final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
+		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8");
+		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII");
+		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1");
+
+		final String db = checkDDL.getDatabaseName();
+		executeAlterCharsetCollateTest(db, "pe1501_charset", ascii.getName(), null);
+		executeAlterCharsetCollateTest(db, "pe1501_collate", null, Singletons.require(HostService.class).getDBNative().getSupportedCollations()
+				.findDefaultCollationForCharSet(latin1.getName()).getName());
+		executeAlterCharsetCollateTest(db, "pe1501_both", latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations()
+				.findDefaultCollationForCharSet(latin1.getName()).getName());
+		executeAlterCharsetCollateTest(db, "pe1501_nothing", null, null);
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				executeAlterCharsetCollateTest(db, "pe1501_ex1", utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations()
+						.findDefaultCollationForCharSet(latin1.getName()).getName());
+			}
+		}.assertError(SchemaException.class, MySQLErrors.collationCharsetMismatchFormatter, "latin1_swedish_ci", "utf8");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				executeAlterCharsetCollateTest(db, "pe1501_ex2", "big5", null);
+			}
+		}.assertError(SchemaException.class, MySQLErrors.unknownCharacterSetFormatter, "big5");
+
+		new ExpectedSqlErrorTester() {
+			@Override
+			public void test() throws Throwable {
+				executeAlterCharsetCollateTest(db, "pe1501_ex3", null, "latin2_czech_cs");
+			}
+		}.assertError(SchemaException.class, MySQLErrors.unknownCollationFormatter, "latin2_czech_cs");
+	}
+
+	private void executeAlterCharsetCollateTest(final String dbName, final String tableName, final String charSetName, final String collationName) throws Throwable {
+		final StringBuilder alterStmt = new StringBuilder("alter table ").append(tableName);
+
+		final Pair<String, String> defaults = getDefaultCharSetAndCollationNames();
+		final Pair<String, String> expected = buildAndEmitCharSetCollateModifiers(charSetName, collationName, alterStmt);
+		
+		final String verifySql = "select table_schema, table_name, table_collation "
+				+ "from information_schema.tables where table_schema = '" + dbName + "' and table_name = '" + tableName + "'";
+		conn.execute("create table `" + dbName + "`.`" + tableName + "` (id int not null auto_increment, value text not null)");
+		try {
+			conn.assertResults(verifySql, br(nr, dbName, tableName, defaults.getSecond()));
+			conn.execute(alterStmt.toString());
+			conn.assertResults(verifySql, br(nr, dbName, tableName, expected.getSecond()));
+		} finally {
+			try {
+				conn.execute("drop table `" + dbName + "`.`" + tableName + "`");
 			} catch (final Exception e) {
 				// don't worry about this
 			}

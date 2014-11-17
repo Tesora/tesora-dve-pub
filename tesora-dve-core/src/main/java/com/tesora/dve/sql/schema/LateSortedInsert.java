@@ -56,7 +56,7 @@ public class LateSortedInsert {
 		this.parts = parts;
 	}
 	
-	public List<JustInTimeInsert> resolve(SchemaContext sc) throws PEException {
+	public List<JustInTimeInsert> resolve(SchemaContext sc, ConnectionValues cv) throws PEException {
 		// sort by persistent site
 		DistributionVector dv = this.stmt.getTable().getDistributionVector(sc);
 		LinkedHashMap<MappingSolution, DistributionKey> repKeys = new LinkedHashMap<MappingSolution, DistributionKey>();
@@ -64,7 +64,7 @@ public class LateSortedInsert {
 		for (Pair<List<ExpressionNode>, DistributionKey> p : this.parts) {
 			DistributionKey dk = p.getSecond();
 			MappingSolution ms = 
-					sc.getCatalog().mapKey(sc, dk.getDetachedKey(sc), dk.getModel(sc), this.stmt.getKeyOpType(), this.stmt.getSingleGroup(sc));
+					sc.getCatalog().mapKey(sc, dk.getDetachedKey(sc,cv), dk.getModel(sc), this.stmt.getKeyOpType(), this.stmt.getSingleGroup(sc), cv);
 
 			if (MappingSolution.AllWorkers == ms) {
 				throw new SchemaException(Pass.PLANNER, "Unable to sort inserts, key for model " + dk.getModel(sc) + " apparently not deterministic");
@@ -86,32 +86,32 @@ public class LateSortedInsert {
 			}
 			Collection<List<ExpressionNode>> values = bySite.get(onSite);
 			List<List<ExpressionNode>> asList = Functional.toList(values);
-			emitJITInsert(sc, out, dk, asList);
+			emitJITInsert(sc, cv, out, dk, asList);
 		}
 
 		return out;
 	}
 	
-	private void emitJITInsert(final SchemaContext sc, final List<JustInTimeInsert> out, final DistributionKey dk, final List<List<ExpressionNode>> asList) throws PEException {
+	private void emitJITInsert(final SchemaContext sc, final ConnectionValues cv, final List<JustInTimeInsert> out, final DistributionKey dk, final List<List<ExpressionNode>> asList) throws PEException {
 		Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
 		final GenericSQLCommand prefix = new EmitterInvoker(emitter) {
 			@Override
 			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
-				getEmitter().emitInsertPrefix(sc, LateSortedInsert.this.stmt, buf);
+				getEmitter().emitInsertPrefix(sc, cv,LateSortedInsert.this.stmt, buf);
 			}
 		}.buildGenericCommand(sc);
 
 		final GenericSQLCommand suffix = new EmitterInvoker(emitter) {
 			@Override
 			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
-				getEmitter().emitInsertSuffix(sc, LateSortedInsert.this.stmt, buf);
+				getEmitter().emitInsertSuffix(sc, cv,LateSortedInsert.this.stmt, buf);
 			}
 		}.buildGenericCommand(sc);
 		
 		final EmitterInvoker valueEmitter = new EmitterInvoker(emitter) {
 			@Override
 			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {
-				getEmitter().emitInsertValues(sc, asList, buf);
+				getEmitter().emitInsertValues(sc, cv,asList, buf);
 			}
 		};
 
@@ -121,7 +121,7 @@ public class LateSortedInsert {
 		valueEmitter.getEmitter().startGenericCommand();
 		valueEmitter.getEmitter().pushContext(sc.getTokens());
 		try {
-			final GenericSQLCommand valuesClause = valueEmitter.buildGenericCommand(sc).resolve(sc, null);
+			final GenericSQLCommand valuesClause = valueEmitter.buildGenericCommand(sc).resolve(cv, null);
 
 			final SQLCommand sqlc = reconstructSQLCommand(sc, prefix, valuesClause, suffix);
 

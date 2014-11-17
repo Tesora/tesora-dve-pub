@@ -29,6 +29,7 @@ import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.IdentifierLiteralExpression;
 import com.tesora.dve.sql.node.expression.LiteralExpression;
+import com.tesora.dve.sql.schema.ConnectionContext;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
@@ -183,7 +184,7 @@ public abstract class TimestampVariableUtils {
 				} else {
 					Object o = column.getDefaultValue();
 					if (o instanceof IdentifierLiteralExpression) {
-						if (StringUtils.equals(((IdentifierLiteralExpression)o).asString(sc), "0")) {
+						if (StringUtils.equals(((IdentifierLiteralExpression)o).asString(sc.getValues()), "0")) {
 							// do nothing
 						} else {
 							// for a timestamp column only other choice is current_timestamp
@@ -274,13 +275,13 @@ public abstract class TimestampVariableUtils {
 	 * 
 	 * @return The current time in seconds.
 	 */
-	public static long getCurrentUnixTime(SchemaContext sc) {
-		final Long replicationSlaveTimestamp = KnownVariables.REPL_TIMESTAMP.getValue(sc.getConnection().getVariableSource());
+	public static long getCurrentUnixTime(ConnectionContext cc) {
+		final Long replicationSlaveTimestamp = KnownVariables.REPL_TIMESTAMP.getValue(cc.getVariableSource());
 		if ((replicationSlaveTimestamp != null) && (replicationSlaveTimestamp.longValue() != 0L)) {
 			return replicationSlaveTimestamp;
 		}
 
-		return KnownVariables.TIMESTAMP.getValue(sc.getConnection().getVariableSource());
+		return KnownVariables.TIMESTAMP.getValue(cc.getVariableSource());
 	}
 
 	/**

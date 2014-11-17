@@ -101,7 +101,7 @@ public class TableInstance extends ExpressionNode {
 	public UnqualifiedName getReferenceName(SchemaContext sc) {
 		if (alias != null)
 			return alias;
-		return schemaTable.getName(sc).getUnqualified();
+		return schemaTable.getName(sc,sc.getValues()).getUnqualified();
 	}
 	
 	@Override
@@ -122,7 +122,7 @@ public class TableInstance extends ExpressionNode {
 	@Override
 	public NameAlias buildAlias(SchemaContext sc) {
 		if (alias == null) {
-			String fl = schemaTable.getName(sc).getUnquotedName().get().substring(0,1);
+			String fl = schemaTable.getName(sc,sc.getValues()).getUnquotedName().get().substring(0,1);
 			return new NameAlias(new UnqualifiedName(fl + node));
 		}
 		return new NameAlias(alias);

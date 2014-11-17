@@ -46,6 +46,7 @@ import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
+import com.tesora.dve.sql.transform.execution.IdentityConnectionValuesMap;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.TestName;
 import com.tesora.dve.sql.util.TimestampVariableTestUtils;
@@ -391,7 +392,7 @@ public class UpdateTransformTest extends TransformTest {
 		ExecutionPlan ep = Statement.getExecutionPlan(db,first);
 		if (isNoisy()) {
 			System.out.println("In: '" + in + "'");
-			ep.display(db,System.out,null);
+			ep.display(db,new IdentityConnectionValuesMap(db.getValues()),System.out,null);
 		}
 		return ep;
 	}

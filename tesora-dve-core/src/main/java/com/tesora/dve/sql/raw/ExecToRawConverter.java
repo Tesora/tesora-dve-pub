@@ -171,7 +171,7 @@ public final class ExecToRawConverter {
 			maybeAccDynGroup(src);
 			if (es instanceof RedistributionExecutionStep) {
 				RedistributionExecutionStep pes = (RedistributionExecutionStep) es;
-				maybeAccDynGroup(pes.getTargetGroup(sc));
+				maybeAccDynGroup(pes.getTargetGroup(sc,sc.getValues()));
 			}
 		}
 		for(DynamicGroupType dgt : dynGroups.values()) {
@@ -201,7 +201,7 @@ public final class ExecToRawConverter {
 	private void maybeAccDynGroup(PEStorageGroup g) {
 		if (g == null) return;
 		if (!g.isTempGroup()) return;
-		PEDynamicGroup dynGroup = (PEDynamicGroup) g.getPEStorageGroup(sc);
+		PEDynamicGroup dynGroup = (PEDynamicGroup) g.getPEStorageGroup(sc,sc.getValues());
 		DynamicGroupType e = dynGroups.get(dynGroup);
 		if (e == null) {
 			e = new DynamicGroupType();
@@ -232,7 +232,7 @@ public final class ExecToRawConverter {
 	private void fillDML(DMLStepType dmlt, DirectExecutionStep des, DMLType action) throws PEException {
 		dmlt.setAction(action);
 		PEStorageGroup src = des.getPEStorageGroup();
-		PEStorageGroup actual = src.getPEStorageGroup(sc);
+		PEStorageGroup actual = src.getPEStorageGroup(sc,sc.getValues());
 		dmlt.setSrcgrp(getGroupName(actual));
 		DistributionVector dv = des.getDistributionVector();
 		if (dv != null)
@@ -243,10 +243,10 @@ public final class ExecToRawConverter {
 	
 	private TargetTableType buildTargetTable(PETable tab) {
 		TargetTableType out = new TargetTableType();
-		out.setName(tab.getName(sc).getUnquotedName().get());
+		out.setName(tab.getName(sc,sc.getValues()).getUnquotedName().get());
 		out.setTemp(tab.isTempTable());
 		PEStorageGroup ofGroup = tab.getStorageGroup(sc);
-		PEStorageGroup actual = ofGroup.getPEStorageGroup(sc);
+		PEStorageGroup actual = ofGroup.getPEStorageGroup(sc,sc.getValues());
 		out.setGroup(getGroupName(actual));
 		if (tab.isTempTable())
 			out.setDistvect(buildDistributionType(tab.getDistributionVector(sc)));
@@ -260,7 +260,7 @@ public final class ExecToRawConverter {
 				throw new SchemaException(Pass.PLANNER, "Internal error: unknown dynamic group");
 			return dgt.getName();
 		} else {
-			return actual.getPersistent(sc).getName();
+			return actual.getPersistent(sc,sc.getValues()).getName();
 		}
 	}
 	
@@ -286,7 +286,7 @@ public final class ExecToRawConverter {
 		for (Map.Entry<IDelegatingLiteralExpression, ParameterType> me : parameters.entrySet()) {
 			mapping.put(me.getKey().getPosition(), "@" + me.getValue().getName());
 		}
-		GenericSQLCommand p = in.resolveRawEntries(mapping, sc);
+		GenericSQLCommand p = in.resolveRawEntries(mapping, sc.getValues());
 		return p.getDecoded();
 	}
 }

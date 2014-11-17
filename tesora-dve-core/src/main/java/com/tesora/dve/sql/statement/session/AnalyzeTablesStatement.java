@@ -70,13 +70,13 @@ public class AnalyzeTablesStatement extends TableMaintenanceStatement {
 			// build the sql
 			AnalyzeTablesStatement temp = new AnalyzeTablesStatement(option, tabs);
 			StringBuilder buf = new StringBuilder();
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitTableMaintenanceStatement(pc, temp, buf, -1);
+            Singletons.require(HostService.class).getDBNative().getEmitter().emitTableMaintenanceStatement(pc, pc.getValues(), temp, buf, -1);
 			// we only allow on a single Persistent Group, so grab the first one
 			PEPersistentGroup sg = tabs.get(0).getAbstractTable().getPersistentStorage(pc);
 			final String sql = buf.toString();
 			buf = new StringBuilder();
 			AnalyzeKeysStatement aks = new AnalyzeKeysStatement(tabs);
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitAnalyzeKeysStatement(pc, aks, buf, -1);
+            Singletons.require(HostService.class).getDBNative().getEmitter().emitAnalyzeKeysStatement(pc, pc.getValues(), aks, buf, -1);
 			final String aksStmt = buf.toString();
 			es.append(new TransientSessionExecutionStep(db, sg, sql, false, true, new AdhocOperation() {
 

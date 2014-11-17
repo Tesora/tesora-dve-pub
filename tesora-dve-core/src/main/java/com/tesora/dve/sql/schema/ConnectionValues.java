@@ -26,23 +26,32 @@ import java.util.EnumMap;
 import java.util.List;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.AutoIncrementLiteralExpression;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
+import com.tesora.dve.sql.node.expression.ValueSource;
 import com.tesora.dve.sql.parser.TimestampVariableUtils;
 import com.tesora.dve.sql.schema.cache.ConstantType;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
+import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
+import com.tesora.dve.sql.schema.cache.IParameter;
+import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
+import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.sql.util.ResizableArray;
 
-public class ConnectionValues {
+public class ConnectionValues implements ValueSource {
 
 	private EnumMap<ConstantType,ResizableArray<Object>> constantValues = new EnumMap<ConstantType,ResizableArray<Object>>(ConstantType.class);
 	
 	private AutoIncrementBlock autoincs = null;
 
 	private Long tenantID = null;
+	// set if this tenant id represents a container tenant.
+	private SchemaCacheKey<PEContainer> containerTenant = null;
 
 	private List<UnqualifiedName> tempTables = new ArrayList<UnqualifiedName>();
 	
@@ -56,10 +65,15 @@ public class ConnectionValues {
 	
 	private final boolean original;
 	
+	private final ValueManager types;
+	private final ConnectionContext connection;
+	
 	private long currentTimestamp = 0;
 
-	public ConnectionValues() {
+	public ConnectionValues(ValueManager vm, ConnectionContext cc) {
 		original = true;
+		types = vm;
+		connection = cc;
 		for(ConstantType ct : ConstantType.values()) {
 			if (ct == ConstantType.PARAMETER)
 				constantValues.put(ct,  null);
@@ -68,7 +82,9 @@ public class ConnectionValues {
 		}
 	}
 	
-	private ConnectionValues(ConnectionValues other) {
+	private ConnectionValues(ConnectionValues other, ConnectionContext cc) {
+		connection = cc;
+		types = other.types;
 		for(ConstantType ct : ConstantType.values()) {
 			ResizableArray<Object> ovals = other.constantValues.get(ct);
 			if (ct == ConstantType.PARAMETER) {
@@ -87,16 +103,16 @@ public class ConnectionValues {
 		lateSortedInsert = null;
 	}
 	
-	public ConnectionValues makeCopy() {
-		return new ConnectionValues(this);
+	public ConnectionValues makeCopy(ConnectionContext cc) {
+		return new ConnectionValues(this,cc);
 	}
 	
 	public boolean isOriginal() {
 		return original;
 	}
 	
-	public int allocateTempTableName(SchemaContext sc) {
-		UnqualifiedName nn = new UnqualifiedName(sc.getCatalog().getTempTableName());
+	public int allocateTempTableName(String tempTableName) {
+		UnqualifiedName nn = new UnqualifiedName(tempTableName);
 		int index = tempTables.size();
 		tempTables.add(nn);
 		return index;
@@ -114,7 +130,7 @@ public class ConnectionValues {
 			tempTables.add(new UnqualifiedName(sc.getCatalog().getTempTableName()));
 	}
 	
-	public void resetTempGroups(SchemaContext sc) throws PEException {
+	public void resetTempGroups() throws PEException {
 		ArrayList<PEStorageGroup> ng = new ArrayList<PEStorageGroup>();
 		for(PEStorageGroup pg : placeholderGroups) {
 			if (pg.isTempGroup()) {
@@ -127,8 +143,14 @@ public class ConnectionValues {
 		placeholderGroups = ng;
 	}
 	
-	public void resetTenantID(SchemaContext sc) throws PEException {
-		tenantID = sc.getPolicyContext().getTenantID(false);
+	public void resetTenantID(Long id, SchemaCacheKey<PEContainer> onContainer) throws PEException {
+		tenantID = id; 
+		if (containerTenant != null && onContainer == null)
+			throw new PEException("Expect a container tenant, not a schema tenant");
+		else if (containerTenant == null && onContainer != null)
+			throw new PEException("Expect a schema tenant, not a container tenant");
+		else if (containerTenant != null && onContainer != null && !containerTenant.equals(onContainer))
+			throw new PEException("Wrong container tenant");
 	}
 
 	public Object getLiteralValue(int index) {
@@ -172,19 +194,19 @@ public class ConnectionValues {
 		return tenantID;
 	}
 
-	public void setTenantID(Long v) {
+	public void setTenantID(Long v, SchemaCacheKey<PEContainer> expectedContainer) {
 		tenantID = v;
+		containerTenant = expectedContainer;
 	}
 	
-	public void allocateAutoIncBlock(ValueManager vm, TableKey tk) {
-		if (autoincs != null) 
-			throw new SchemaException(Pass.SECOND, "Duplicate autoinc block");
-		autoincs = new AutoIncrementBlock(vm,tk);
+	public void allocateAutoIncBlock(TableKey tk) {
+		if (autoincs != null) throw new SchemaException(Pass.SECOND, "Duplicate autoinc block");
+		autoincs = new AutoIncrementBlock(types,tk);
 	}
 
 	public AutoIncrementLiteralExpression allocateAutoInc() {
 		if (autoincs == null) throw new SchemaException(Pass.SECOND, "Missing autoinc block");
-		return autoincs.allocateAutoIncrementExpression();
+		return autoincs.allocateAutoIncrementExpression(this);
 	}
 	
 	public void registerSpecifiedAutoinc(ConstantExpression dle) {
@@ -224,9 +246,9 @@ public class ConnectionValues {
 		return placeholderGroups.get(index);
 	}
 
-	public long getCurrentTimestamp(SchemaContext sc) {
+	public long getCurrentTimestamp() {
 		if (currentTimestamp == 0) {
-			resetCurrentTimestamp(sc);
+			resetCurrentTimestamp();
 		}
 		return currentTimestamp;
 	}
@@ -243,7 +265,33 @@ public class ConnectionValues {
 		this.currentTimestamp = 0;
 	}
 
-	private void resetCurrentTimestamp(SchemaContext sc) {
-		this.currentTimestamp = TimestampVariableUtils.getCurrentUnixTime(sc);
+	private void resetCurrentTimestamp() {
+		this.currentTimestamp = TimestampVariableUtils.getCurrentUnixTime(connection);
+	}
+
+	@Override
+	public Object getValue(IParameter p) {
+		return getParameterValue(p.getPosition());
+	}
+
+	@Override
+	public Object getLiteral(IDelegatingLiteralExpression dle) {
+		try {
+			Type any = types.getLiteralType(dle);
+			Object value = getLiteralValue(dle.getPosition());
+			if (any != null && value != null)
+                return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(value, any);
+			return value;
+		} catch (Throwable t) {
+			throw new SchemaException(Pass.PLANNER, "Literal for index " + dle.getPosition() + " is invalid",t);
+		}
+	}
+	
+	public ConnectionContext getConnection() {
+		return connection;
+	}
+	
+	public boolean hasAutoIncs() {
+		return autoincs != null;
 	}
 }

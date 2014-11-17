@@ -33,6 +33,7 @@ import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepGetSessionVariableOperation extends QueryStepOperation {
 	
+	@SuppressWarnings("rawtypes")
 	VariableHandler handler;
 	private String alias;
 

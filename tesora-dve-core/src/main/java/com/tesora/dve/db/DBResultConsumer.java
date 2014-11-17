@@ -23,14 +23,9 @@ package com.tesora.dve.db;
 
 
 import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.db.mysql.MysqlCommand;
 import com.tesora.dve.exceptions.PECodingException;
-import com.tesora.dve.exceptions.PECommunicationsException;
-import io.netty.channel.Channel;
-
 import java.util.List;
 
-import com.tesora.dve.common.catalog.StorageSite;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;

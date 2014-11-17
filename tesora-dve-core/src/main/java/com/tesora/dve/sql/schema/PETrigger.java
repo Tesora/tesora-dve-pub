@@ -24,10 +24,6 @@ package com.tesora.dve.sql.schema;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.parser.InvokeParser;
-import com.tesora.dve.sql.parser.ParserOptions;
-import com.tesora.dve.sql.parser.TranslatorInitCallback;
-import com.tesora.dve.sql.parser.TranslatorUtils;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
@@ -44,7 +40,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	private String rawSQL;
 	private SchemaEdge<PEUser> definer;
 	
-	private final boolean before;
+	private final TriggerTime when;
 	private final SQLMode sqlMode;
 	
 	private final String collationConnection;
@@ -53,14 +49,14 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	
 	public PETrigger(SchemaContext sc, Name name, PETable targetTable, Statement body, TriggerEvent triggerOn,
 			PEUser user, String collationConnection, String charsetConnection, String collationDatabase,
-			boolean before, SQLMode sqlMode, String rawSQL) {
+			TriggerTime when, SQLMode sqlMode, String rawSQL) {
 		super(buildCacheKey(name,targetTable));
 		setName(name.getUnqualified());
 		this.bodySrc = body.getSQL(sc);
 		this.triggerTable = targetTable;
 		this.triggerType = triggerOn;
 		this.definer = StructuralUtils.buildEdge(sc,user,false);
-		this.before = before;
+		this.when = when;
 		this.sqlMode = sqlMode;
 		this.collationConnection = collationConnection;
 		this.charsetConnection = charsetConnection;
@@ -72,9 +68,9 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 	public PEUser getDefiner(SchemaContext sc) {
 		return definer.get(sc);
 	}
-	
-	public boolean isBefore() {
-		return before;
+
+	public TriggerTime getTime() {
+		return when;
 	}
 	
 	public TriggerEvent getEvent() {
@@ -87,32 +83,6 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 
 	public String getBodySource() {
 		return bodySrc;
-	}
-	
-	public Statement getBody(SchemaContext context) {		
-		SchemaContext sc = context;
-		if (!sc.isMutableSource()) 
-			sc = SchemaContext.makeImmutableIndependentContext(context);
-		PEDatabase cdb = sc.getCurrentPEDatabase(false);
-		sc.setCurrentDatabase(triggerTable.getPEDatabase(sc));
-		// reparse to get the right schema objects, and force all literals to be actual literals
-		ParserOptions originalOptions = sc.getOptions();
-
-		ParserOptions myOpts = originalOptions;
-		if (myOpts == null)
-			myOpts = context.getOptions();
-		if (myOpts == null)
-			myOpts = ParserOptions.NONE;
-		myOpts = myOpts.setActualLiterals().setResolve();
-		myOpts = myOpts.setIgnoreLocking();
-		Statement out = null;
-		try {
-			out = InvokeParser.parseTriggerBody(bodySrc, sc, myOpts, new ScopeInjector(triggerTable)).get(0);
-		} finally {
-			sc.setOptions(originalOptions);
-			sc.setCurrentDatabase(cdb);
-		}
-		return out;
 	}
 	
 	public static PETrigger load(UserTrigger ut, SchemaContext sc, PETable onTable) {
@@ -149,7 +119,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 		PETable ttab = (onTable == null ? PETable.load(ut.getTable(), sc).asTable() : onTable);
 		triggerTable = ttab;
 		// do something with the body
-		this.before = "BEFORE".equals(ut.getWhen());
+		this.when = TriggerTime.valueOf(ut.getWhen());
 		this.triggerType = TriggerEvent.valueOf(ut.getEvent());
 		this.charsetConnection = ut.getCharsetConnection();
 		this.collationConnection = ut.getCollationConnection();
@@ -188,7 +158,7 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 				bodySrc,
 				triggerTable.persistTree(sc),
 				triggerType.name(),
-				before ? "BEFORE" : "AFTER",
+				when.name(),
 				(sqlMode == null ? "" : sqlMode.toString()),
 				charsetConnection,
 				collationConnection,
@@ -266,17 +236,4 @@ public class PETrigger extends Persistable<PETrigger, UserTrigger> {
 		
 	}
 	
-	private static class ScopeInjector extends TranslatorInitCallback {
-		
-		private final PETable target;
-		
-		public ScopeInjector(PETable targ) {
-			this.target = targ;
-		}
-		
-		public void onInit(TranslatorUtils utils) {
-			utils.pushTriggerTable(target);
-		}
-
-	}
 }

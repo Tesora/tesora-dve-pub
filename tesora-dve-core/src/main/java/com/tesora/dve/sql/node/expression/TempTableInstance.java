@@ -35,7 +35,7 @@ public class TempTableInstance extends TableInstance {
 	}
 	
 	public TempTableInstance(SchemaContext sc, TempTable tt, UnqualifiedName alias) {
-		super(tt,tt.getName(sc),alias,sc.getNextTable(),true);
+		super(tt,tt.getName(sc,sc.getValues()),alias,sc.getNextTable(),true);
 	}
 	
 	private TempTableInstance(TempTableInstance tti) {
@@ -45,7 +45,7 @@ public class TempTableInstance extends TableInstance {
 	@Override
 	public Name getSpecifiedAs(SchemaContext sc) {
 		// always specified as itself, since it is by definition unique
-		return schemaTable.getName(sc);
+		return schemaTable.getName(sc,sc.getValues());
 	}
 
 	@Override

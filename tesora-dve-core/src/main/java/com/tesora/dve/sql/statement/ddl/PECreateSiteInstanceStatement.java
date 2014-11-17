@@ -64,8 +64,8 @@ public class PECreateSiteInstanceStatement extends
 			Pair<Name,LiteralExpression> p = iter.next();
 			String n = p.getFirst().getUnquotedName().get();
 			if (PESiteInstance.OPTION_STATUS.equalsIgnoreCase(n)) {
-				if (p.getSecond().isStringLiteral() && SiteInstanceStatus.isValidUserOption(p.getSecond().asString(pc))) {
-					status = p.getSecond().asString(pc);
+				if (p.getSecond().isStringLiteral() && SiteInstanceStatus.isValidUserOption(p.getSecond().asString(pc.getValues()))) {
+					status = p.getSecond().asString(pc.getValues());
 				} else {
 					throw new SchemaException(Pass.SECOND, "Invalid value specified for option '" + p.getFirst().get() + "'.  Value = " + p.getSecond().toString());
 				}				

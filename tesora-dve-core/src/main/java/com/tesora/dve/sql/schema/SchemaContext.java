@@ -122,7 +122,6 @@ public class SchemaContext {
 	
 	private ValueManager valueManager;
 	private ConnectionValues values;
-	private boolean usedCachedPlan = false;
 	
 	private final TransientSessionState tss;
 	
@@ -285,7 +284,6 @@ public class SchemaContext {
 			setValues(null);
 		}
 		perms = null;
-		usedCachedPlan = false;
 	}
 	
 	public long getNextTable() {
@@ -353,7 +351,7 @@ public class SchemaContext {
 		valueManager = vm;
 	}
 	
-	public ConnectionValues _getValues() {
+	public ConnectionValues getValues() {
 		return values;
 	}
 	
@@ -361,15 +359,6 @@ public class SchemaContext {
 		values = cv;
 	}
 	
-	public void setUsedCachedPlan() {
-		usedCachedPlan = true;
-	}
-	
-	public boolean getUsedCachedPlan() {
-		return usedCachedPlan;
-	}
-
-
 	public TransientSessionState getIntraStmtState() {
 		return tss;
 	}

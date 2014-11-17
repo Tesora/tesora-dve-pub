@@ -31,12 +31,16 @@ import org.apache.commons.collections.CollectionUtils;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockType;
+import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.ExtractedLiteral;
 import com.tesora.dve.sql.parser.ExtractedLiteral.Type;
+import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.CacheableStatement;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
+import com.tesora.dve.sql.transform.execution.ConnectionValuesMap;
+import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RebuiltPlan;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
@@ -70,19 +74,19 @@ public class NonMTCachedPlan implements RegularCachedPlan {
 	@Override
 	public RebuiltPlan rebuildPlan(SchemaContext sc, List<ExtractedLiteral> literals) throws PEException {
 		if (!isValid(sc, literals))
-			return new RebuiltPlan(null, true, tks, lockType);
+			return new RebuiltPlan(null, null, true, tks, lockType);
 		
 		SpecificCachedPlan nmtcp = specificCachedPlanMap.get(sc.getConnection().getCacheName() == null ? GLOBAL_CACHE_NAME : sc.getConnection().getCacheName());
 		if (nmtcp != null) {
 			return nmtcp.rebuildPlan(sc, literals);
 		} else {
 			// could not find the plan for the specified cache but don't clear this plan from the cache
-			return new RebuiltPlan(null, false, tks, lockType);
+			return new RebuiltPlan(null, null, false, tks, lockType);
 		}
 	}
 	
 	@Override
-	public ExecutionPlan showPlan(SchemaContext sc, List<ExtractedLiteral> literals) throws PEException {
+	public RebuiltPlan showPlan(SchemaContext sc, List<ExtractedLiteral> literals) throws PEException {
 		return specificCachedPlanMap.get(GLOBAL_CACHE_NAME).showPlan(sc,literals);
 	}
 	
@@ -113,7 +117,7 @@ public class NonMTCachedPlan implements RegularCachedPlan {
 		return false;
 	}
 
-	public boolean take(SchemaContext sc, CacheableStatement originalStatement, ExecutionPlan thePlan) {
+	public boolean take(SchemaContext sc, CacheableStatement originalStatement, RootExecutionPlan thePlan) {
 		boolean ret = true;
 
 		if (!keysMatch(originalStatement.getAllTableKeys()) && !thePlan.isEmptyPlan()) {
@@ -145,9 +149,9 @@ public class NonMTCachedPlan implements RegularCachedPlan {
 	public static class SpecificCachedPlan implements RegularCachedPlan {
 
 		private final NonMTCachedPlan parent;
-		private final ExecutionPlan thePlan;
+		private final RootExecutionPlan thePlan;
 		
-		public SpecificCachedPlan(NonMTCachedPlan nmtcp, ExecutionPlan ep) {
+		public SpecificCachedPlan(NonMTCachedPlan nmtcp, RootExecutionPlan ep) {
 			parent = nmtcp;
 			thePlan = ep;
 			thePlan.setOwningCache(parent);
@@ -159,23 +163,23 @@ public class NonMTCachedPlan implements RegularCachedPlan {
 		}
 
 		@Override
-		public ExecutionPlan showPlan(SchemaContext sc, List<ExtractedLiteral> literals) throws PEException {
-			thePlan.getValueManager().resetForNewPlan(sc, literals);
-			return thePlan;
+		public RebuiltPlan showPlan(SchemaContext sc, List<ExtractedLiteral> literals) throws PEException {
+			ConnectionValuesMap cvs = thePlan.resetForNewPlan(sc, literals);
+			return new RebuiltPlan(thePlan, cvs, false,null, null);
 		}
 		
 		@Override
 		public RebuiltPlan rebuildPlan(SchemaContext sc,
 				List<ExtractedLiteral> literals) throws PEException {
 			if (!isValid(sc, literals))
-				return new RebuiltPlan(null, true, parent.tks, parent.lockType);
+				return new RebuiltPlan(null, null, true, parent.tks, parent.lockType);
 
 			if (thePlan.isEmptyPlan()) {
-				return new RebuiltPlan(thePlan, false, parent.tks, parent.lockType);
+				return new RebuiltPlan(thePlan, null, false, parent.tks, parent.lockType);
 			}
 			
-			thePlan.getValueManager().resetForNewPlan(sc, literals);
-			return new RebuiltPlan(thePlan, false, parent.tks, parent.lockType);
+			ConnectionValuesMap cv = thePlan.resetForNewPlan(sc, literals);
+			return new RebuiltPlan(thePlan, cv, false, parent.tks, parent.lockType);
 		}
 		
 		@Override

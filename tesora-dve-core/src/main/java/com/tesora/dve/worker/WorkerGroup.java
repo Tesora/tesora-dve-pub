@@ -77,7 +77,6 @@ import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.SSContext;
 import com.tesora.dve.server.connectionmanager.WorkerSetSessionVariableRequest;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.CloneWorkerRequest;
 import com.tesora.dve.server.messaging.GetWorkerRequest;
 import com.tesora.dve.server.messaging.GetWorkerResponse;
@@ -85,11 +84,9 @@ import com.tesora.dve.server.messaging.ResetWorkerRequest;
 import com.tesora.dve.server.messaging.ReturnWorkerRequest;
 import com.tesora.dve.server.messaging.WorkerCreateDatabaseRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
-import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
-import com.tesora.dve.worker.agent.Agent;
 import com.tesora.dve.worker.agent.Envelope;
 
 public class WorkerGroup {

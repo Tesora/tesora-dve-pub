@@ -70,7 +70,7 @@ public class DirectShowStatusInformation extends DirectShowSchemaTable {
 			throw new InformationSchemaException("show table status where ... not supported");
 		String likeExpr = null;
 		if (likeExprNode != null) {
-			likeExpr = (String)((LiteralExpression)likeExprNode).getValue(sc);
+			likeExpr = (String)((LiteralExpression)likeExprNode).getValue(sc.getValues());
 		}
 		List<ResultRow> rows = new ArrayList<ResultRow>();
 

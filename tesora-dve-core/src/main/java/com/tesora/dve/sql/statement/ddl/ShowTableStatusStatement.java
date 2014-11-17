@@ -91,7 +91,7 @@ public class ShowTableStatusStatement extends DelegatingDDLStatement {
 		if (likeClause != null) {
 			StringBuilder buf = new StringBuilder();
 			buf.append("SHOW TABLE STATUS LIKE ");
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitExpression(sc, likeClause, buf, -1);
+            Singletons.require(HostService.class).getDBNative().getEmitter().emitExpression(sc, sc.getValues(),likeClause, buf, -1);
 			return buf.toString();
 		} else 
 			return "show table status ...";

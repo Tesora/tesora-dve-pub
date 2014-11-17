@@ -21,9 +21,6 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.clock.Timer;
-import com.tesora.dve.clock.TimingService;
-import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.mysql.libmy.MyMessage;
 import io.netty.channel.ChannelHandlerContext;
 
