@@ -21,6 +21,7 @@ package com.tesora.dve.tools.aitemplatebuilder;
  * #L%
  */
 
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -84,19 +85,36 @@ public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariabl
 	}
 
 	protected FuzzyTableDistributionModel(final String fclBlockName,
-			final double pcOrderBy,
-			final double pcWrites, final double pcCardinality) {
+			final double pcOperations,
+			final double pcOrderBy, final double pcWrites, final double pcCardinality) {
 		super(fclBlockName);
-		initializeVariables(100.0, pcOrderBy, pcWrites, pcCardinality);
+		initializeVariables(pcOperations, pcOrderBy, pcWrites, pcCardinality);
+	}
+
+	protected FuzzyTableDistributionModel(final String fclBlockName, final Map<FlvName, Double> variables) {
+		super(fclBlockName);
+		this.setVariables(variables);
 	}
 
 	private void initializeVariables(final double pcOperations, final double pcOrderBy, final double pcWrites, final double pcCardinality) {
-		setVariables(ImmutableMap.<FlvName, Double> of(
+		setVariables(this.buildVariableMap(pcOperations, pcOrderBy, pcWrites, pcCardinality));
+	}
+
+	public Map<FlvName, Double> getVariables() {
+		return this.buildVariableMap(
+				this.getVariableValue(Variables.OPERATIONS_FLV_NAME),
+				this.getVariableValue(Variables.SORTS_FLV_NAME),
+				this.getVariableValue(Variables.WRITES_FLV_NAME),
+				this.getVariableValue(Variables.CARDINALITY_FLV_NAME));
+	}
+
+	private Map<FlvName, Double> buildVariableMap(final double pcOperations, final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+		return ImmutableMap.<FlvName, Double> of(
 				Variables.OPERATIONS_FLV_NAME, pcOperations,
 				Variables.SORTS_FLV_NAME, pcOrderBy,
 				Variables.WRITES_FLV_NAME, pcWrites,
 				Variables.CARDINALITY_FLV_NAME, pcCardinality
-				));
+				);
 	}
 
 	@Override

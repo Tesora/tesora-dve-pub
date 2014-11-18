@@ -67,6 +67,7 @@ import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.ForeignRelationship;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.TableColumn;
 import com.tesora.dve.tools.aitemplatebuilder.FuzzyLinguisticVariable.FlvName;
+import com.tesora.dve.tools.aitemplatebuilder.FuzzyTableDistributionModel.Variables;
 
 public final class AiTemplateBuilder {
 
@@ -216,7 +217,7 @@ public final class AiTemplateBuilder {
 	private static final Logger logger = Logger.getLogger(AiTemplateBuilder.class);
 	private static final double LOWER_CORPUS_COVERAGE_THRESHOLD_PC = 40.0;
 	private static final double UPPER_CORPUS_COVERAGE_THRESHOLD_PC = 60.0;
-	private static final double MOSTLY_WRITTEN_THRESHOLD_PC = 80.0;
+	private static final double MOSTLY_WRITTEN_THRESHOLD_SCORE = 60.0;
 	private static int TABLE_NAME_MIN_PREFIX_LENGTH = 4;
 	private static String TABLE_NAME_WILDCARD = ".*";
 
@@ -609,8 +610,7 @@ public final class AiTemplateBuilder {
 	 * lead to excessive table locking within XA transactions.
 	 */
 	public static boolean hasExcessiveBroadcastLocking(final TableStats table, final boolean avoidAllWriteBroadcasting) {
-		return (table.getTableDistributionModel().isBroadcast()
-		&& hasExcessiveLocking(table, avoidAllWriteBroadcasting));
+		return (table.getTableDistributionModel().isBroadcast() && hasExcessiveLocking(table, avoidAllWriteBroadcasting));
 	}
 
 	public static boolean hasExcessiveLocking(final TableStats table, final boolean avoidAllWriteBroadcasting) {
@@ -622,7 +622,19 @@ public final class AiTemplateBuilder {
 	}
 
 	public static boolean isMostlyWritten(final TableStats table) {
-		return table.getWritePercentage() >= MOSTLY_WRITTEN_THRESHOLD_PC;
+		if (table.hasStatements() && (table.getWritePercentage() > 0.0)) {
+			// Make a copy of the table's current distribution model.
+			final Broadcast asBroadcast = new Broadcast((FuzzyTableDistributionModel) table.getTableDistributionModel());
+	
+			// Disable unwanted scoring parameters.
+			asBroadcast.setWeightOnRule(Variables.SORTS_FLV_NAME, 0.0);
+			asBroadcast.setWeightOnRule(Variables.CARDINALITY_FLV_NAME, 0.0);
+	
+			asBroadcast.evaluate();
+			return (asBroadcast.getScore() < MOSTLY_WRITTEN_THRESHOLD_SCORE);
+		}
+		
+		return false;
 	}
 
 	public static boolean isFkCompatibleJoin(final JoinStats join) {
@@ -1063,9 +1075,10 @@ public final class AiTemplateBuilder {
 
 			/* All Range tables with FK and without a range -> Broadcast. */
 			for (final TableStats table : tables) {
-				if ((table.getTableDistributionModel() instanceof Range) && !table.getBackwardRelationships().isEmpty()
+				final FuzzyTableDistributionModel tableModel = (FuzzyTableDistributionModel) table.getTableDistributionModel();
+				if ((tableModel instanceof Range) && !table.getBackwardRelationships().isEmpty()
 						&& !hasRangeForTable(topRangeToRangeTopRanges, table)) {
-					table.setTableDistributionModel(Broadcast.SINGLETON_TEMPLATE_ITEM);
+					table.setTableDistributionModel(new Broadcast(tableModel));
 				}
 			}
 
@@ -1461,11 +1474,11 @@ public final class AiTemplateBuilder {
 			if (!(table.getTableDistributionModel() instanceof Range)) {
 				traversedNodes.add(table);
 				/* Change model first, then recurse to avoid cycles. */
-				table.setTableDistributionModel(Range.SINGLETON_TEMPLATE_ITEM);
+				table.setTableDistributionModel(new Range((FuzzyTableDistributionModel) table.getTableDistributionModel()));
 				makeBackwardTableTreeRange(table, traversedNodes);
 			}
 		}
-		root.setTableDistributionModel(Range.SINGLETON_TEMPLATE_ITEM);
+		root.setTableDistributionModel(new Range((FuzzyTableDistributionModel) root.getTableDistributionModel()));
 	}
 
 	private Set<TableStats> makeForwardTableTreeBroadcast(final TableStats root)
@@ -1482,11 +1495,11 @@ public final class AiTemplateBuilder {
 			if (!(table.getTableDistributionModel() instanceof Broadcast)) {
 				traversedNodes.add(table);
 				/* Change model first, then recurse to avoid cycles. */
-				table.setTableDistributionModel(Broadcast.SINGLETON_TEMPLATE_ITEM);
+				table.setTableDistributionModel(new Broadcast((FuzzyTableDistributionModel) table.getTableDistributionModel()));
 				makeForwardTableTreeBroadcast(table, traversedNodes);
 			}
 		}
-		root.setTableDistributionModel(Broadcast.SINGLETON_TEMPLATE_ITEM);
+		root.setTableDistributionModel(new Broadcast((FuzzyTableDistributionModel) root.getTableDistributionModel()));
 	}
 
 	private String toStringOfDelimitedColumnNames(final Set<TableColumn> columns) {

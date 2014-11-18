@@ -32,6 +32,7 @@ import java.util.Map;
 import net.sourceforge.jFuzzyLogic.FIS;
 import net.sourceforge.jFuzzyLogic.FunctionBlock;
 import net.sourceforge.jFuzzyLogic.rule.Rule;
+import net.sourceforge.jFuzzyLogic.rule.Variable;
 
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.log4j.Logger;
@@ -163,11 +164,15 @@ public abstract class FuzzyLinguisticVariable implements TemplateItem {
 	}
 
 	public double getScore() {
-		return getVariable(Variables.SCORE_FLV_NAME);
+		return this.getVariable(Variables.SCORE_FLV_NAME).getLatestDefuzzifiedValue();
 	}
 
-	protected double getVariable(final FlvName name) {
-		return ai.getVariable(name.get()).getLatestDefuzzifiedValue();
+	public double getVariableValue(final FlvName name) {
+		return this.getVariable(name).getValue();
+	}
+
+	private Variable getVariable(final FlvName name) {
+		return this.ai.getVariable(name.get());
 	}
 
 	@Override

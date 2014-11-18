@@ -1404,4 +1404,5 @@ public class CorpusStats implements StatsVisitor {
 
 		return initialCardinality + (growthRate * this.corpusScaleFactor);
 	}
+
 }
