@@ -35,11 +35,13 @@ import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.AutoIncrementLiteralExpression;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
 import com.tesora.dve.sql.node.expression.DelegatingLiteralExpression;
+import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.Parameter;
 import com.tesora.dve.sql.parser.ExtractedLiteral;
 import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IDelegatingLiteralExpression;
 import com.tesora.dve.sql.schema.cache.IParameter;
+import com.tesora.dve.sql.schema.cache.IUUIDLiteralExpression;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.sql.schema.types.Type;
@@ -110,7 +112,6 @@ public class ValueManager {
 	public ConnectionValues getValues(SchemaContext sc, boolean check) {
 		ConnectionValues cv = sc.getValues();
 		if (cv == null) {
-			ConnectionValues was = values;
 			values = new ConnectionValues(this,sc.getConnection());
 			cv = values;
 			sc.setValues(values);
@@ -176,6 +177,7 @@ public class ValueManager {
 	public void setLiteralType(DelegatingLiteralExpression dle, Type t) {
 		checkFrozen("set literal type");
 		if (dle instanceof AutoIncrementLiteralExpression) {
+		} else if (dle instanceof IUUIDLiteralExpression) {
 		} else {
 			literalTypes.set(dle.getPosition(), t);
 		}
@@ -237,6 +239,11 @@ public class ValueManager {
 		return getValues(sc).getLastInsertId();
 	}
 
+	public LiteralExpression allocateUUID(SchemaContext sc) {
+		checkFrozen("allocate uuid");
+		return getValues(sc).allocateUUID();
+	}
+	
 	public ConnectionValues resetForNewPStmtExec(SchemaContext sc, List<Object> params) throws PEException {
 		ConnectionValues cv = basicReset(sc);
 		cv.setParameters(params);		
@@ -281,6 +288,7 @@ public class ValueManager {
 		cv.setTenantID(sc.getPolicyContext().getTenantID(false),container);
 		cv.resetTempTables(sc);
 		cv.resetTempGroups();
+		cv.resetUUIDs();
 		cv.resetTenantID(sc.getPolicyContext().getTenantID(false),container);
 		cv.clearCurrentTimestamp();
 

@@ -24,10 +24,6 @@ package com.tesora.dve.standalone;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import io.netty.buffer.ByteBuf;
-//SMG:
-//import io.netty.util.ResourceLeakDetector;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.ResultSet;

@@ -24,7 +24,9 @@ package com.tesora.dve.sql.schema;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.UUID;
 
+import com.fasterxml.uuid.impl.TimeBasedGenerator;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -33,6 +35,8 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.expression.AutoIncrementLiteralExpression;
 import com.tesora.dve.sql.node.expression.ConstantExpression;
+import com.tesora.dve.sql.node.expression.LiteralExpression;
+import com.tesora.dve.sql.node.expression.UUIDLiteralExpression;
 import com.tesora.dve.sql.node.expression.ValueSource;
 import com.tesora.dve.sql.parser.TimestampVariableUtils;
 import com.tesora.dve.sql.schema.cache.ConstantType;
@@ -58,6 +62,9 @@ public class ConnectionValues implements ValueSource {
 	private List<PEStorageGroup> placeholderGroups = new ArrayList<PEStorageGroup>();
 
 	private ResizableArray<Long> autoincValues = new ResizableArray<Long>();
+	
+	// left to right, used in inserts
+	private List<String> uuids = new ArrayList<String>();
 	
 	private Long lastInsertId;
 	
@@ -98,6 +105,7 @@ public class ConnectionValues implements ValueSource {
 		autoincs = (other.autoincs == null ? null : other.autoincs.makeCopy());
 		autoincValues = new ResizableArray<Long>(other.autoincValues.size());
 		placeholderGroups = new ArrayList<PEStorageGroup>(other.placeholderGroups);
+		uuids = new ArrayList<String>(other.uuids);
 		original = false;
 		lastInsertId = null;
 		lateSortedInsert = null;
@@ -141,6 +149,17 @@ public class ConnectionValues implements ValueSource {
 			}
 		}
 		placeholderGroups = ng;
+	}
+	
+	public void resetUUIDs() throws PEException {
+		int size = uuids.size();
+		ArrayList<String> out = new ArrayList<String>(size);
+		TimeBasedGenerator generator = Singletons.require(HostService.class).getUuidGenerator(); 
+		for(int i = 0; i < size; i++) {
+	        UUID uuid = generator.generate();
+	        out.add(uuid.toString());
+		}
+		uuids = out;
 	}
 	
 	public void resetTenantID(Long id, SchemaCacheKey<PEContainer> onContainer) throws PEException {
@@ -226,6 +245,17 @@ public class ConnectionValues implements ValueSource {
 	
 	public void resetAutoIncValue(int position, Long value) {
 		autoincValues.set(position, value);
+	}
+	
+	public LiteralExpression allocateUUID() {
+        UUID uuid = Singletons.require(HostService.class).getUuidGenerator().generate();
+        int offset = uuids.size();
+        uuids.add(uuid.toString());
+        return new UUIDLiteralExpression(offset);
+	}
+	
+	public String getUUID(int offset) {
+		return uuids.get(offset);
 	}
 	
 	public Long getLastInsertId() {

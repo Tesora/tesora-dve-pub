@@ -21,7 +21,11 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+import static org.junit.Assert.fail;
+
 import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -29,12 +33,14 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.tesora.dve.errmap.MySQLErrors;
+import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.ProjectDDL;
 import com.tesora.dve.sql.util.ProxyConnectionResource;
+import com.tesora.dve.sql.util.ResourceResponse;
 import com.tesora.dve.sql.util.StorageGroupDDL;
 import com.tesora.dve.standalone.PETest;
 
@@ -373,5 +379,38 @@ public class SelectTest extends SchemaTest {
 				conn.execute("SELECT * FROM pe1648 NATURAL LEFT JOIN pe1648");
 			}
 		}.assertError(SchemaException.class, MySQLErrors.nonUniqueTableFormatter, "pe1648");
+	}
+	
+	@Test
+	public void testPE1668A() throws Throwable {
+		conn.execute("drop table if exists pe1668");
+		conn.execute("create table pe1668 (id int, fid int, primary key (id)) random distribute");
+		conn.execute("insert into pe1668 (id,fid) values (1,1),(2,2),(3,3),(4,4),(5,5)");
+		ResourceResponse rr = conn.execute("select UUID() as pid, id fid from pe1668 order by id");
+		verifyNoDuplicates(rr.getResults());
+	}
+	
+	private void verifyNoDuplicates(List<ResultRow> rows) {
+		HashSet<Object> uuids = new HashSet<Object>();
+		for(ResultRow r : rows) {
+			Object id =  r.getResultColumn(1).getColumnValue();
+			if (!uuids.add(id)) {
+				fail("Duplicate uuid: " + id);
+			}
+		}		
+	}
+	
+	@Test 
+	public void testPE1668B() throws Throwable {
+		conn.execute("drop table if exists pe1668");
+		conn.execute("create range pe1668range (varchar(36)) persistent group " + checkDDL.getPersistentGroup().getName());
+		conn.execute("create table pe1668 (id varchar(36), fid int, primary key (id)) range distribute on (id) using pe1668range");
+		// this insert would fail if the UUID was the same for each tuple
+		String format = "insert into pe1668 (id, fid) values (UUID(),%d),(UUID(),%d),(UUID(),%d),(UUID(),%d)";
+		conn.execute(String.format(format,1,2,3,4));
+		verifyNoDuplicates(conn.execute("select * from pe1668 order by id").getResults());
+		// cache hit
+		conn.execute(String.format(format,5,6,7,8));
+		verifyNoDuplicates(conn.execute("select * from pe1668 order by id").getResults());
 	}
 }

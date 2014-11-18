@@ -31,8 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.UUID;
-
 import org.antlr.runtime.Lexer;
 import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.CommonTree;
@@ -2043,12 +2041,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				return LiteralExpression.makeNullLiteral();
 			// not entirely correct
 			return LiteralExpression.makeStringLiteral(peu.getUserScope().getSQL());
-		} else if (EngineConstant.FUNCTION.has(fc, EngineConstant.UUID)) {
-			forceUncacheable(ValueManager.CacheStatus.NOCACHE_DYNAMIC_FUNCTION);
-			// rewrite the function with a literal
-            UUID uuid = Singletons.require(HostService.class).getUuidGenerator().generate();
-			return LiteralExpression
-					.makeStringLiteral(uuid.toString());
 		} else if (EngineConstant.FUNCTION.has(fc, EngineConstant.LAST_INSERT_ID)) {
 			forceUncacheable(ValueManager.CacheStatus.NOCACHE_DYNAMIC_FUNCTION);
 			return LiteralExpression

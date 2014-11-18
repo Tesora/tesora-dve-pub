@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.schema.cache;
+package com.tesora.dve.sql.node.expression;
 
 /*
  * #%L
@@ -21,12 +21,19 @@ package com.tesora.dve.sql.schema.cache;
  * #L%
  */
 
-public interface IDelegatingLiteralExpression extends ILiteralExpression {
+import com.tesora.dve.sql.parser.TokenTypes;
+import com.tesora.dve.sql.schema.ConnectionValues;
+import com.tesora.dve.sql.schema.cache.IUUIDLiteralExpression;
+
+public class CachedUUIDLiteralExpression extends CachedDelegatingLiteralExpression implements IUUIDLiteralExpression {
+
+	public CachedUUIDLiteralExpression(int offset) {
+		super(TokenTypes.Character_String_Literal, offset, null);
+	}
 
 	@Override
-	public int getPosition();
-	
-	@Override
-	public ILiteralExpression getCacheExpression();
-	
+	public Object getValue(ConnectionValues cv) {
+		return cv.getUUID(position);
+	}
+
 }

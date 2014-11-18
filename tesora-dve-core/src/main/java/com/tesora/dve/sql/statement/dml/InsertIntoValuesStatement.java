@@ -44,6 +44,7 @@ import com.tesora.dve.sql.node.expression.LiteralExpression;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.VariableInstance;
 import com.tesora.dve.sql.node.expression.Wildcard;
+import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.parser.SourceLocation;
 import com.tesora.dve.sql.schema.AutoIncrementBlock;
 import com.tesora.dve.sql.schema.PEColumn;
@@ -233,6 +234,8 @@ public class InsertIntoValuesStatement extends InsertStatement implements Update
 							} catch (PEException pe) {
 								throw new SchemaException(Pass.SECOND, "Unable to sub in value for variable " + vi);
 							}
+						} else if (EngineConstant.FUNCTION.has(current, EngineConstant.UUID)) {
+							actual = sc.getValueManager().allocateUUID(sc);
 						}
 						ExpressionNode fixed = vh.handle(sc, sqlMode, columnSpec,rc,trailing,actual);
 						if (current != fixed) {

@@ -21,12 +21,6 @@ package com.tesora.dve.sql.schema.cache;
  * #L%
  */
 
-public interface IDelegatingLiteralExpression extends ILiteralExpression {
+public interface IUUIDLiteralExpression extends IDelegatingLiteralExpression {
 
-	@Override
-	public int getPosition();
-	
-	@Override
-	public ILiteralExpression getCacheExpression();
-	
 }
