@@ -25,7 +25,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.ResourceLeakDetector;
+//SMG:
+//import io.netty.util.ResourceLeakDetector;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -94,11 +95,9 @@ public class PETest extends PEBaseTest {
 	protected static BootstrapHost bootHost = null;
 	// kindly leave this public - sometimes it is used for not yet committed tests
 	public static Class<?> resourceRoot = PETest.class;
-	
-	// TODO: This should really be zero, but test clean-up sometimes
-	// does not happen fast enough causing failure of some test jobs.
-	private static final long NETTY_LEAK_COUNT_BASE = 3;
-	private static long initialNettyLeakCount;
+
+	private static final long NETTY_LEAK_COUNT_BASE = 0;//number of netty buffer leaks the test harness will tolerate.  If tests won't pass unless this is greater than zero, we need to track down a netty buffer leak.
+    private static NettyLeakIntercept.LeakCounter leakCount;
 
 	private static GlobalVariableState stateUndoer = null;
 
@@ -116,13 +115,18 @@ public class PETest extends PEBaseTest {
 
 		applicationName = "PETest";
 
-		System.setProperty(ResourceLeakDetector.SYSTEM_ENABLE_LEAK_DETECTION, "true");
-		System.setProperty(ResourceLeakDetector.SYSTEM_LEAK_DETECTION_INTERVAL, "1");
-		System.setProperty(ResourceLeakDetector.SYSTEM_REPORT_ALL, "true");
 
-		ResourceLeakDetector<?> detector = ResourceLeakDetector.getDetector(ByteBuf.class);
-		if (detector != null)
-			initialNettyLeakCount = detector.getLeakCount();
+        //SMG:
+//		System.setProperty(ResourceLeakDetector.SYSTEM_ENABLE_LEAK_DETECTION, "true");
+//		System.setProperty(ResourceLeakDetector.SYSTEM_LEAK_DETECTION_INTERVAL, "1");
+//		System.setProperty(ResourceLeakDetector.SYSTEM_REPORT_ALL, "true");
+//
+        leakCount = NettyLeakIntercept.installLeakTrap();
+        System.gc();
+        long leaks = leakCount.clearEmittedLeakCount();
+        if (leaks != 0) {
+            throw new Exception("Starting subclass of PETest, and initial buffer leak counter was non-zero ==> " + leaks + ".  Inspect slf4j output for netty leak errors, and consider re-running tests with -Dio.netty.leakDetectionLevel=PARANOID");
+        }
 
 		logger = Logger.getLogger(PETest.class);
 		
@@ -187,13 +191,11 @@ public class PETest extends PEBaseTest {
 			bootHost = null;
 		}
 
-		ResourceLeakDetector<?> detector = ResourceLeakDetector.getDetector(ByteBuf.class);
-		if (detector != null) {
-			final long numOfLeaksDetected = detector.getLeakCount();
-			if (numOfLeaksDetected > (initialNettyLeakCount + NETTY_LEAK_COUNT_BASE)) {
-				finalThrows.add(new Exception("Total of '" + numOfLeaksDetected + "' Netty ByteBuf leaks detected!"));
-			}
-		}
+        System.gc();//request garbage collection run, to try and force unreferenced buffers to get collected.
+        final long numOfLeaksDetected = leakCount.clearEmittedLeakCount();
+        if (numOfLeaksDetected > NETTY_LEAK_COUNT_BASE) {
+            finalThrows.add(new Exception("Total of '" + numOfLeaksDetected + "' Netty ByteBuf leaks detected!  Inspect slf4j output for netty leak errors, and consider re-running tests with -Dio.netty.leakDetectionLevel=PARANOID"));
+        }
 
 		if (finalThrows.size() > 0) {
 			if (logger.isDebugEnabled()) {
@@ -204,6 +206,8 @@ public class PETest extends PEBaseTest {
 			throw finalThrows.get(0);
 		}
 	}
+
+
 
     private static void checkForLeakedLocks(LockManager mgr) throws Exception {
         String lockCheck = mgr.assertNoLocks();

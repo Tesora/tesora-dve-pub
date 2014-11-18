@@ -87,7 +87,7 @@ public class MysqlClientAuthenticationHandler extends ByteToMessageDecoder {
 	}
 
 	protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out, boolean isLastBytes) throws Exception {
-		ByteBuf leBuf = in.order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuf leBuf = in.order(ByteOrder.LITTLE_ENDIAN);
 
 		leBuf.markReaderIndex();
 		boolean messageProcessed = false;
@@ -110,8 +110,12 @@ public class MysqlClientAuthenticationHandler extends ByteToMessageDecoder {
 				}
 			}
 
-		} finally {
-			if (!messageProcessed)
+		} catch (Throwable t){
+            enterState(AuthenticationState.FAILURE);
+            log.warn("Unexpected problem on outbound mysql connection.",t);
+            throw t;
+        } finally {
+            if (!messageProcessed)
 				leBuf.resetReaderIndex();
 
             if (isLastBytes && (state == AuthenticationState.AWAIT_ACKNOWLEGEMENT || state == AuthenticationState.AWAIT_GREETING) ){
@@ -161,10 +165,6 @@ public class MysqlClientAuthenticationHandler extends ByteToMessageDecoder {
 			processErrorPacket(ctx, payload);
 		} else {
 			ctx.pipeline().remove(this);
-
-			// By removing this handler from the pipeline then normal release processing will
-			// not happen on the payload ByteBuf. Therefore release it here
-			payload.release();
 
 			enterState(AuthenticationState.AUTHENTICATED);
 		}
