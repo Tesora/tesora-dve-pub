@@ -48,4 +48,12 @@ public final class MathUtils {
 		return value == Math.rint(value);
 	}
 
+	public static double getOneAtLeast(final double value) {
+		return Math.max(value, 1);
+	}
+
+	public static long getOneAtLeast(final long value) {
+		return Math.max(value, 1);
+	}
+
 }

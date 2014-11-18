@@ -36,12 +36,17 @@ public final class Broadcast extends FuzzyTableDistributionModel {
 		super(FCL_BLOCK_NAME);
 	}
 
-	public Broadcast(final TableStats match, final SortedSet<Long> sortedCardinalities, final boolean isRowWidthWeightingEnabled) {
-		super(FCL_BLOCK_NAME, match, sortedCardinalities, isRowWidthWeightingEnabled);
+	public Broadcast(final FuzzyTableDistributionModel other) {
+		super(FCL_BLOCK_NAME, other.getVariables());
 	}
 
-	protected Broadcast(final double pcOrderBy, final double pcCardinality) {
-		super(FCL_BLOCK_NAME, pcOrderBy, pcCardinality);
+	public Broadcast(final TableStats match, final SortedSet<Long> sortedWriteFrequencies, final SortedSet<Long> sortedCardinalities,
+			final boolean isRowWidthWeightingEnabled) {
+		super(FCL_BLOCK_NAME, match, sortedWriteFrequencies, sortedCardinalities, isRowWidthWeightingEnabled);
+	}
+
+	protected Broadcast(final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+		super(FCL_BLOCK_NAME, pcOrderBy, pcWrites, pcCardinality);
 	}
 
 	@Override

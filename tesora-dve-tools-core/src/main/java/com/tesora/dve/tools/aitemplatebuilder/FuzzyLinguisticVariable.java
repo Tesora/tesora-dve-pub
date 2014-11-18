@@ -27,10 +27,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 import net.sourceforge.jFuzzyLogic.FIS;
 import net.sourceforge.jFuzzyLogic.FunctionBlock;
+import net.sourceforge.jFuzzyLogic.rule.Rule;
+import net.sourceforge.jFuzzyLogic.rule.Variable;
 
+import org.apache.commons.lang.math.DoubleRange;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.MathUtils;
@@ -59,8 +63,24 @@ public abstract class FuzzyLinguisticVariable implements TemplateItem {
 		}
 	};
 
+	protected interface FlvName {
+		public String get();
+	}
+
+	private enum Variables implements FlvName {
+		SCORE_FLV_NAME {
+			@Override
+			public String get() {
+				return "desirability";
+			}
+		};
+	}
+
+	private static final String RULE_NAME_PREFIX_SEPARATOR = "_";
 	private static final String FCL_SCHEMA_FILE_NAME = "DistributionModels.fcl";
-	private static final String SCORE_FLV_NAME = "desirability";
+	private static final DoubleRange VALID_RULE_WEIGHT_RANGE = new DoubleRange(0, 1);
+	private static final double DEFAULT_RULE_WEIGHT = 1.0;
+
 	private final FunctionBlock ai;
 
 	public static double toPercent(final double value, final double total) {
@@ -72,9 +92,14 @@ public abstract class FuzzyLinguisticVariable implements TemplateItem {
 	}
 
 	public static List<FuzzyTableDistributionModel> evaluateDistributionModels(final FuzzyTableDistributionModel... distributionModels) {
+		return evaluateDistributionModels(Collections.EMPTY_MAP, distributionModels);
+	}
 
+	public static List<FuzzyTableDistributionModel> evaluateDistributionModels(final Map<FlvName, Double> ruleWeights,
+			final FuzzyTableDistributionModel... distributionModels) {
 		final List<FuzzyTableDistributionModel> sortedDistributionModels = Arrays.asList(distributionModels);
 		for (final FuzzyLinguisticVariable distributionModel : sortedDistributionModels) {
+			distributionModel.setRuleWeights(ruleWeights);
 			distributionModel.evaluate();
 		}
 
@@ -95,8 +120,43 @@ public abstract class FuzzyLinguisticVariable implements TemplateItem {
 		}
 	}
 
-	protected void setVariable(final String name, final double value) {
-		ai.setVariable(name, value);
+	protected void setVariable(final FlvName name, final double value) {
+		ai.setVariable(name.get(), value);
+	}
+
+	protected void setVariables(final Map<FlvName, Double> variables) {
+		if (variables != null) {
+			for (final Map.Entry<FlvName, Double> var : variables.entrySet()) {
+				this.setVariable(var.getKey(), var.getValue());
+			}
+		}
+	}
+
+	protected void setRuleWeights(final Map<FlvName, Double> weights) {
+		if (weights != null) {
+			for (final Map.Entry<FlvName, Double> weight : weights.entrySet()) {
+				this.setWeightOnRule(weight.getKey(), weight.getValue());
+			}
+		}
+	}
+
+	/**
+	 * Set a given weight on all rules named 'prefix_*'.
+	 * 
+	 * @param ruleWeight
+	 *            A number from interval [0.0, 1.0] or 1.0 if null.
+	 */
+	protected void setWeightOnRule(final FlvName ruleNamePrefix, final Double ruleWeight) {
+		final double weight = (ruleWeight != null) ? ruleWeight : DEFAULT_RULE_WEIGHT;
+		if (!VALID_RULE_WEIGHT_RANGE.containsDouble(weight)) {
+			throw new PECodingException("Weight (" + weight + ") for rule(s) '" + ruleNamePrefix + "*' is out of range.");
+		}
+
+		for (final Rule rule : this.ai.getFuzzyRuleBlock(null).getRules()) {
+			if (rule.getName().startsWith(ruleNamePrefix.get().concat(RULE_NAME_PREFIX_SEPARATOR))) {
+				rule.setWeight(weight);
+			}
+		}
 	}
 
 	public void evaluate() {
@@ -104,11 +164,15 @@ public abstract class FuzzyLinguisticVariable implements TemplateItem {
 	}
 
 	public double getScore() {
-		return ai.getVariable(SCORE_FLV_NAME).getLatestDefuzzifiedValue();
+		return this.getVariable(Variables.SCORE_FLV_NAME).getLatestDefuzzifiedValue();
 	}
 
-	public void plotScoreFuzzyManifold() {
-		ai.getVariable(SCORE_FLV_NAME).chartDefuzzifier(true);
+	public double getVariableValue(final FlvName name) {
+		return this.getVariable(name).getValue();
+	}
+
+	private Variable getVariable(final FlvName name) {
+		return this.ai.getVariable(name.get());
 	}
 
 	@Override

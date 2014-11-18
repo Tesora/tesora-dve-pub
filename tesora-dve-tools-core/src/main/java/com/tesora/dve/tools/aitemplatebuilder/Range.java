@@ -36,12 +36,17 @@ public final class Range extends FuzzyTableDistributionModel {
 		super(FCL_BLOCK_NAME);
 	}
 
-	public Range(final TableStats match, final SortedSet<Long> sortedCardinalities, final boolean isRowWidthWeightingEnabled) {
-		super(FCL_BLOCK_NAME, match, sortedCardinalities, isRowWidthWeightingEnabled);
+	public Range(final FuzzyTableDistributionModel other) {
+		super(FCL_BLOCK_NAME, other.getVariables());
 	}
 
-	protected Range(final double pcOrderBy, final double pcCardinality) {
-		super(FCL_BLOCK_NAME, pcOrderBy, pcCardinality);
+	public Range(final TableStats match, final SortedSet<Long> sortedWriteFrequencies, final SortedSet<Long> sortedCardinalities,
+			final boolean isRowWidthWeightingEnabled) {
+		super(FCL_BLOCK_NAME, match, sortedWriteFrequencies, sortedCardinalities, isRowWidthWeightingEnabled);
+	}
+
+	protected Range(final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+		super(FCL_BLOCK_NAME, pcOrderBy, pcWrites, pcCardinality);
 	}
 
 	@Override

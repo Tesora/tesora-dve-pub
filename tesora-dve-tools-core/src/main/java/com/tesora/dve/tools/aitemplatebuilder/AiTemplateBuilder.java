@@ -36,10 +36,12 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.tesora.dve.common.MathUtils;
@@ -64,6 +66,8 @@ import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableSizeComparator;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.ForeignRelationship;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats.TableColumn;
+import com.tesora.dve.tools.aitemplatebuilder.FuzzyLinguisticVariable.FlvName;
+import com.tesora.dve.tools.aitemplatebuilder.FuzzyTableDistributionModel.Variables;
 
 public final class AiTemplateBuilder {
 
@@ -213,7 +217,7 @@ public final class AiTemplateBuilder {
 	private static final Logger logger = Logger.getLogger(AiTemplateBuilder.class);
 	private static final double LOWER_CORPUS_COVERAGE_THRESHOLD_PC = 40.0;
 	private static final double UPPER_CORPUS_COVERAGE_THRESHOLD_PC = 60.0;
-	private static final double MOSTLY_WRITTEN_THRESHOLD_PC = 80.0;
+	private static final double MOSTLY_WRITTEN_THRESHOLD_SCORE = 60.0;
 	private static int TABLE_NAME_MIN_PREFIX_LENGTH = 4;
 	private static String TABLE_NAME_WILDCARD = ".*";
 
@@ -441,7 +445,7 @@ public final class AiTemplateBuilder {
 		if (table.hasDistributionModelFreezed()) {
 			value.append(" (").append("user defined").append(")");
 		}
-		
+
 		return value.toString();
 	}
 
@@ -606,16 +610,31 @@ public final class AiTemplateBuilder {
 	 * lead to excessive table locking within XA transactions.
 	 */
 	public static boolean hasExcessiveBroadcastLocking(final TableStats table, final boolean avoidAllWriteBroadcasting) {
-		return (table.getTableDistributionModel().isBroadcast()
-		&& hasExcessiveLocking(table, avoidAllWriteBroadcasting));
+		return (table.getTableDistributionModel().isBroadcast() && hasExcessiveLocking(table, avoidAllWriteBroadcasting));
 	}
 
 	public static boolean hasExcessiveLocking(final TableStats table, final boolean avoidAllWriteBroadcasting) {
-		return (avoidAllWriteBroadcasting || !table.supportsRowLocking()) && isMostlyWritten(table);
+		return isUsingWrites(table, avoidAllWriteBroadcasting) && isMostlyWritten(table);
+	}
+
+	public static boolean isUsingWrites(final TableStats table, final boolean avoidAllWriteBroadcasting) {
+		return (avoidAllWriteBroadcasting || !table.supportsRowLocking());
 	}
 
 	public static boolean isMostlyWritten(final TableStats table) {
-		return table.getWritePercentage() >= MOSTLY_WRITTEN_THRESHOLD_PC;
+		if (table.hasStatements() && (table.getWritePercentage() > 0.0)) {
+			// Make a copy of the table's current distribution model.
+			final Broadcast asBroadcast = new Broadcast((FuzzyTableDistributionModel) table.getTableDistributionModel());
+
+			// Disable unwanted scoring parameters.
+			asBroadcast.setWeightOnRule(Variables.SORTS_FLV_NAME, 0.0);
+			asBroadcast.setWeightOnRule(Variables.CARDINALITY_FLV_NAME, 0.0);
+
+			asBroadcast.evaluate();
+			return (asBroadcast.getScore() < MOSTLY_WRITTEN_THRESHOLD_SCORE);
+		}
+
+		return false;
 	}
 
 	public static boolean isFkCompatibleJoin(final JoinStats join) {
@@ -661,7 +680,7 @@ public final class AiTemplateBuilder {
 	private boolean isVerbose;
 	private boolean enableFksAsJoins;
 	private boolean enableIdentTuples;
-	private boolean avoidAllWriteBroadcasting;
+	private boolean enableUsingWrites;
 	private TemplateModelItem fallbackModel;
 
 	public AiTemplateBuilder(final CorpusStats schemaStats, final Template base, final TemplateModelItem fallbackModel, final PrintStream outputStream)
@@ -698,8 +717,8 @@ public final class AiTemplateBuilder {
 		this.enableIdentTuples = enableIdentTuples;
 	}
 
-	public void setAvoidAllWriteBroadcasting(final boolean avoidAllWriteBroadcasting) {
-		this.avoidAllWriteBroadcasting = avoidAllWriteBroadcasting;
+	public void setUseWrites(final boolean enableUsingWrites) {
+		this.enableUsingWrites = enableUsingWrites;
 	}
 
 	public void setFallbackModel(final TemplateModelItem model) {
@@ -744,16 +763,6 @@ public final class AiTemplateBuilder {
 			identifyCandidateModels(this.tableStatistics, broadcastCardinalityCutoff, isRowWidthWeightingEnabled);
 		} else {
 			identifyCandidateModels(this.tableStatistics, isRowWidthWeightingEnabled);
-		}
-
-		for (final TableStats table : this.tableStatistics) {
-			if (hasExcessiveBroadcastLocking(table, this.avoidAllWriteBroadcasting)) {
-				table.setTableDistributionModel(Range.SINGLETON_TEMPLATE_ITEM);
-				final StringBuilder logMessage = new StringBuilder();
-				logMessage.append(getTableNameAndDistributionModel(table))
-						.append(" (model override: broadcasting may cause excessive locking)");
-				log(logMessage.toString(), MessageSeverity.ALERT);
-			}
 		}
 	}
 
@@ -983,8 +992,10 @@ public final class AiTemplateBuilder {
 
 	private void identifyCandidateModels(final Collection<TableStats> tables, final boolean isRowWidthWeightingEnabled) throws Exception {
 		final SortedSet<Long> sortedCardinalities = new TreeSet<Long>();
+		final SortedSet<Long> uniqueOperationFrequencies = new TreeSet<Long>();
 		for (final TableStats table : tables) {
 			sortedCardinalities.add(table.getPredictedFutureSize(isRowWidthWeightingEnabled));
+			uniqueOperationFrequencies.add(table.getWriteStatementCount());
 		}
 
 		for (final TableStats table : tables) {
@@ -994,10 +1005,14 @@ public final class AiTemplateBuilder {
 				table.setDistributionModelFreezed(true);
 				logTableDistributionModel(table, MessageSeverity.ALERT);
 			} else {
+				final double writesWeight = BooleanUtils.toInteger(isUsingWrites(table, this.enableUsingWrites));
+				final ImmutableMap<FlvName, Double> ruleWeights = ImmutableMap.<FlvName, Double> of(
+						FuzzyTableDistributionModel.Variables.WRITES_FLV_NAME, writesWeight
+						);
 				final List<FuzzyTableDistributionModel> modelsSortedByScore = FuzzyLinguisticVariable
-						.evaluateDistributionModels(
-								new Broadcast(table, sortedCardinalities, isRowWidthWeightingEnabled),
-								new Range(table, sortedCardinalities, isRowWidthWeightingEnabled));
+						.evaluateDistributionModels(ruleWeights,
+								new Broadcast(table, uniqueOperationFrequencies, sortedCardinalities, isRowWidthWeightingEnabled),
+								new Range(table, uniqueOperationFrequencies, sortedCardinalities, isRowWidthWeightingEnabled));
 
 				table.setTableDistributionModel(Collections.max(modelsSortedByScore,
 						FuzzyLinguisticVariable.getScoreComparator()));
@@ -1060,9 +1075,10 @@ public final class AiTemplateBuilder {
 
 			/* All Range tables with FK and without a range -> Broadcast. */
 			for (final TableStats table : tables) {
-				if ((table.getTableDistributionModel() instanceof Range) && !table.getBackwardRelationships().isEmpty()
+				final FuzzyTableDistributionModel tableModel = (FuzzyTableDistributionModel) table.getTableDistributionModel();
+				if ((tableModel instanceof Range) && !table.getBackwardRelationships().isEmpty()
 						&& !hasRangeForTable(topRangeToRangeTopRanges, table)) {
-					table.setTableDistributionModel(Broadcast.SINGLETON_TEMPLATE_ITEM);
+					table.setTableDistributionModel(new Broadcast(tableModel));
 				}
 			}
 
@@ -1110,7 +1126,7 @@ public final class AiTemplateBuilder {
 				}
 
 				final boolean hasRedistOperations = !getRedistOperations(table, joins, topRangeToRangeTopRanges).isEmpty();
-				final boolean mayCauseExcessiveLocking = hasExcessiveLocking(table, this.avoidAllWriteBroadcasting);
+				final boolean mayCauseExcessiveLocking = hasExcessiveLocking(table, this.enableUsingWrites);
 				if (!this.fallbackModel.isBroadcast()
 						|| !hasRedistOperations
 						|| mayCauseExcessiveLocking) {
@@ -1120,7 +1136,7 @@ public final class AiTemplateBuilder {
 						if (!hasRedistOperations) {
 							logMessage.append(" no redistribution required", MessageSeverity.ALERT.getColor());
 						} else if (mayCauseExcessiveLocking) {
-							logMessage.append(" broadcasting may cause excessive locking", MessageSeverity.ALERT.getColor());
+							logMessage.append(" broadcasting may lead to reduced concurrency", MessageSeverity.ALERT.getColor());
 						}
 						logMessage.append(" -> ");
 					}
@@ -1228,8 +1244,8 @@ public final class AiTemplateBuilder {
 				}
 			}
 
-			if (hasExcessiveBroadcastLocking(table, this.avoidAllWriteBroadcasting)) {
-				log("Locking on a frequently written broadcast table " + table.toString() + " may lead to reduced concurrency.", MessageSeverity.WARNING);
+			if (hasExcessiveBroadcastLocking(table, this.enableUsingWrites)) {
+				log("Broadcasting a frequently written table " + table.toString() + " may lead to reduced concurrency.", MessageSeverity.WARNING);
 			}
 
 			final MultiMap<RedistCause, Object> operations = getRedistOperations(table, joins, ranges);
@@ -1458,11 +1474,11 @@ public final class AiTemplateBuilder {
 			if (!(table.getTableDistributionModel() instanceof Range)) {
 				traversedNodes.add(table);
 				/* Change model first, then recurse to avoid cycles. */
-				table.setTableDistributionModel(Range.SINGLETON_TEMPLATE_ITEM);
+				table.setTableDistributionModel(new Range((FuzzyTableDistributionModel) table.getTableDistributionModel()));
 				makeBackwardTableTreeRange(table, traversedNodes);
 			}
 		}
-		root.setTableDistributionModel(Range.SINGLETON_TEMPLATE_ITEM);
+		root.setTableDistributionModel(new Range((FuzzyTableDistributionModel) root.getTableDistributionModel()));
 	}
 
 	private Set<TableStats> makeForwardTableTreeBroadcast(final TableStats root)
@@ -1479,11 +1495,11 @@ public final class AiTemplateBuilder {
 			if (!(table.getTableDistributionModel() instanceof Broadcast)) {
 				traversedNodes.add(table);
 				/* Change model first, then recurse to avoid cycles. */
-				table.setTableDistributionModel(Broadcast.SINGLETON_TEMPLATE_ITEM);
+				table.setTableDistributionModel(new Broadcast((FuzzyTableDistributionModel) table.getTableDistributionModel()));
 				makeForwardTableTreeBroadcast(table, traversedNodes);
 			}
 		}
-		root.setTableDistributionModel(Broadcast.SINGLETON_TEMPLATE_ITEM);
+		root.setTableDistributionModel(new Broadcast((FuzzyTableDistributionModel) root.getTableDistributionModel()));
 	}
 
 	private String toStringOfDelimitedColumnNames(final Set<TableColumn> columns) {
