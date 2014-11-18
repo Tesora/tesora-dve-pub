@@ -21,7 +21,6 @@ package com.tesora.dve.tools.aitemplatebuilder;
  * #L%
  */
 
-import java.util.Set;
 import java.util.SortedSet;
 
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
@@ -41,13 +40,13 @@ public final class Range extends FuzzyTableDistributionModel {
 		super(FCL_BLOCK_NAME, other.getVariables());
 	}
 
-	public Range(final TableStats match, final Set<Long> uniqueOperationFrequencies, final SortedSet<Long> sortedCardinalities,
+	public Range(final TableStats match, final SortedSet<Long> sortedWriteFrequencies, final SortedSet<Long> sortedCardinalities,
 			final boolean isRowWidthWeightingEnabled) {
-		super(FCL_BLOCK_NAME, match, uniqueOperationFrequencies, sortedCardinalities, isRowWidthWeightingEnabled);
+		super(FCL_BLOCK_NAME, match, sortedWriteFrequencies, sortedCardinalities, isRowWidthWeightingEnabled);
 	}
 
-	protected Range(final double pcOperations, final double pcOrderBy, final double pcWrites, final double pcCardinality) {
-		super(FCL_BLOCK_NAME, pcOperations, pcOrderBy, pcWrites, pcCardinality);
+	protected Range(final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+		super(FCL_BLOCK_NAME, pcOrderBy, pcWrites, pcCardinality);
 	}
 
 	@Override

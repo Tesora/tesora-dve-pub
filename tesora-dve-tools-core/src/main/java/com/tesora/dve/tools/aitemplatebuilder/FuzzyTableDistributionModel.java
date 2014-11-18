@@ -22,7 +22,6 @@ package com.tesora.dve.tools.aitemplatebuilder;
  */
 
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedSet;
 
 import com.google.common.collect.ImmutableMap;
@@ -31,14 +30,8 @@ import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.StatementType;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats.TableStats;
 
 public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariable implements TemplateModelItem {
-	
+
 	public enum Variables implements FlvName {
-		OPERATIONS_FLV_NAME {
-			@Override
-			public String get() {
-				return "operations";
-			}
-		},
 		SORTS_FLV_NAME {
 			@Override
 			public String get() {
@@ -65,7 +58,7 @@ public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariabl
 
 	protected FuzzyTableDistributionModel(final String fclBlockName,
 			final TableStats match,
-			final Set<Long> uniqueOperationFrequencies,
+			final SortedSet<Long> sortedWriteFrequencies,
 			final SortedSet<Long> sortedCardinalities,
 			final boolean isRowWidthWeightingEnabled) {
 		super(fclBlockName);
@@ -74,21 +67,22 @@ public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariabl
 		final long totalOperations = MathUtils.getOneAtLeast(match.getTotalStatementCount());
 		final double pcOrderBy = FuzzyLinguisticVariable.toPercent(totalOrderBy, totalOperations);
 
-		final double averageNumberOfOperations = MathUtils.getOneAtLeast(MathUtils.mean(uniqueOperationFrequencies));
-		final double pcOperations = FuzzyLinguisticVariable.toPercent(match.getTotalStatementCount(), averageNumberOfOperations);
+		final long writes = match.getWriteStatementCount();
+		final double pcWrites = FuzzyLinguisticVariable.toPercent(
+				CommonRange.findPositionFor(writes, sortedWriteFrequencies), sortedWriteFrequencies.size());
 
 		final long cardinality = match.getPredictedFutureSize(isRowWidthWeightingEnabled);
 		final double pcCardinality = FuzzyLinguisticVariable.toPercent(
 				CommonRange.findPositionFor(cardinality, sortedCardinalities), sortedCardinalities.size());
 
-		initializeVariables(pcOperations, pcOrderBy, match.getWritePercentage(), pcCardinality);
+		initializeVariables(pcOrderBy, pcWrites, pcCardinality);
 	}
 
 	protected FuzzyTableDistributionModel(final String fclBlockName,
-			final double pcOperations,
-			final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+			final double pcOrderBy,
+			final double pcWrites, final double pcCardinality) {
 		super(fclBlockName);
-		initializeVariables(pcOperations, pcOrderBy, pcWrites, pcCardinality);
+		initializeVariables(pcOrderBy, pcWrites, pcCardinality);
 	}
 
 	protected FuzzyTableDistributionModel(final String fclBlockName, final Map<FlvName, Double> variables) {
@@ -96,21 +90,19 @@ public abstract class FuzzyTableDistributionModel extends FuzzyLinguisticVariabl
 		this.setVariables(variables);
 	}
 
-	private void initializeVariables(final double pcOperations, final double pcOrderBy, final double pcWrites, final double pcCardinality) {
-		setVariables(this.buildVariableMap(pcOperations, pcOrderBy, pcWrites, pcCardinality));
+	private void initializeVariables(final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+		setVariables(this.buildVariableMap(pcOrderBy, pcWrites, pcCardinality));
 	}
 
 	public Map<FlvName, Double> getVariables() {
 		return this.buildVariableMap(
-				this.getVariableValue(Variables.OPERATIONS_FLV_NAME),
 				this.getVariableValue(Variables.SORTS_FLV_NAME),
 				this.getVariableValue(Variables.WRITES_FLV_NAME),
 				this.getVariableValue(Variables.CARDINALITY_FLV_NAME));
 	}
 
-	private Map<FlvName, Double> buildVariableMap(final double pcOperations, final double pcOrderBy, final double pcWrites, final double pcCardinality) {
+	private Map<FlvName, Double> buildVariableMap(final double pcOrderBy, final double pcWrites, final double pcCardinality) {
 		return ImmutableMap.<FlvName, Double> of(
-				Variables.OPERATIONS_FLV_NAME, pcOperations,
 				Variables.SORTS_FLV_NAME, pcOrderBy,
 				Variables.WRITES_FLV_NAME, pcWrites,
 				Variables.CARDINALITY_FLV_NAME, pcCardinality

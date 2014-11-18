@@ -40,9 +40,9 @@ END_FUZZIFY
 
 /** writes */
 FUZZIFY writes
-    TERM low := (0, 1) (20, 1) (50, 0);
-    TERM moderate := trian 20 50 80;
-    TERM high := (50, 0) (80, 1) (100, 1);
+    TERM low := (0, 1) (60, 1) (70, 0);
+    TERM moderate := (60, 0) (70, 1) (80, 1) (90, 0);
+    TERM high := (80, 0) (90, 1) (100, 1);
 END_FUZZIFY
 
 /** cardinality */
@@ -76,15 +76,9 @@ RULEBLOCK rules
     RULE sorts_3 : IF sorts IS high THEN desirability IS desirable;
     
     /* Write performance characteristics. */
-    RULE writes_1 : IF operations IS high AND writes IS low THEN desirability IS desirable;
-    RULE writes_2 : IF operations IS high AND writes IS moderate THEN desirability IS applicable;
-    RULE writes_3 : IF operations IS high AND writes IS high THEN desirability IS undesirable;
-    RULE writes_4 : IF operations IS moderate AND writes IS low THEN desirability IS desirable;
-    RULE writes_5 : IF operations IS moderate AND writes IS moderate THEN desirability IS applicable;
-    RULE writes_6 : IF operations IS moderate AND writes IS high THEN desirability IS applicable;
-    RULE writes_7 : IF operations IS low AND writes IS low THEN desirability IS desirable;
-    RULE writes_8 : IF operations IS low AND writes IS moderate THEN desirability IS desirable;
-    RULE writes_9 : IF operations IS low AND writes IS high THEN desirability IS applicable;
+	RULE writes_1 : IF writes IS low THEN desirability IS desirable;
+    RULE writes_2 : IF writes IS moderate THEN desirability IS applicable;
+    RULE writes_3 : IF writes IS high THEN desirability IS undesirable;
     
     /* Cardinality characteristics. */
     RULE cardinality_1 : IF cardinality IS low THEN desirability IS desirable;
@@ -124,9 +118,9 @@ FUZZIFY sorts
 END_FUZZIFY
 
 FUZZIFY writes
-    TERM low := (0, 1) (20, 1) (50, 0);
-    TERM moderate := trian 20 50 80;
-    TERM high := (50, 0) (80, 1) (100, 1);
+    TERM low := (0, 1) (60, 1) (70, 0);
+    TERM moderate := (60, 0) (70, 1) (80, 1) (90, 0);
+    TERM high := (80, 0) (90, 1) (100, 1);
 END_FUZZIFY
 
 FUZZIFY cardinality
@@ -153,15 +147,9 @@ RULEBLOCK rules
     RULE sorts_2 : IF sorts IS moderate THEN desirability IS applicable;
     RULE sorts_3 : IF sorts IS high THEN desirability IS undesirable;
     
-    RULE writes_1 : IF operations IS high AND writes IS low THEN desirability IS applicable;
-    RULE writes_2 : IF operations IS high AND writes IS moderate THEN desirability IS applicable;
-    RULE writes_3 : IF operations IS high AND writes IS high THEN desirability IS desirable;
-    RULE writes_4 : IF operations IS moderate AND writes IS low THEN desirability IS applicable;
-    RULE writes_5 : IF operations IS moderate AND writes IS moderate THEN desirability IS applicable;
-    RULE writes_6 : IF operations IS moderate AND writes IS high THEN desirability IS applicable;
-    RULE writes_7 : IF operations IS low AND writes IS low THEN desirability IS applicable;
-    RULE writes_8 : IF operations IS low AND writes IS moderate THEN desirability IS desirable;
-    RULE writes_9 : IF operations IS low AND writes IS high THEN desirability IS desirable;
+	RULE writes_1 : IF writes IS low THEN desirability IS applicable;
+    RULE writes_2 : IF writes IS moderate THEN desirability IS desirable;
+    RULE writes_3 : IF writes IS high THEN desirability IS desirable;
     
     RULE cardinality_1 : IF cardinality IS low THEN desirability IS applicable;
     RULE cardinality_2 : IF cardinality IS moderate THEN desirability IS desirable;

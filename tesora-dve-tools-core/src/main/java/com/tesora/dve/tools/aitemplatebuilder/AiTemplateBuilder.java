@@ -445,7 +445,7 @@ public final class AiTemplateBuilder {
 		if (table.hasDistributionModelFreezed()) {
 			value.append(" (").append("user defined").append(")");
 		}
-		
+
 		return value.toString();
 	}
 
@@ -625,15 +625,15 @@ public final class AiTemplateBuilder {
 		if (table.hasStatements() && (table.getWritePercentage() > 0.0)) {
 			// Make a copy of the table's current distribution model.
 			final Broadcast asBroadcast = new Broadcast((FuzzyTableDistributionModel) table.getTableDistributionModel());
-	
+
 			// Disable unwanted scoring parameters.
 			asBroadcast.setWeightOnRule(Variables.SORTS_FLV_NAME, 0.0);
 			asBroadcast.setWeightOnRule(Variables.CARDINALITY_FLV_NAME, 0.0);
-	
+
 			asBroadcast.evaluate();
 			return (asBroadcast.getScore() < MOSTLY_WRITTEN_THRESHOLD_SCORE);
 		}
-		
+
 		return false;
 	}
 
@@ -680,7 +680,7 @@ public final class AiTemplateBuilder {
 	private boolean isVerbose;
 	private boolean enableFksAsJoins;
 	private boolean enableIdentTuples;
-	private boolean avoidAllWriteBroadcasting;
+	private boolean enableUsingWrites;
 	private TemplateModelItem fallbackModel;
 
 	public AiTemplateBuilder(final CorpusStats schemaStats, final Template base, final TemplateModelItem fallbackModel, final PrintStream outputStream)
@@ -717,8 +717,8 @@ public final class AiTemplateBuilder {
 		this.enableIdentTuples = enableIdentTuples;
 	}
 
-	public void setAvoidAllWriteBroadcasting(final boolean avoidAllWriteBroadcasting) {
-		this.avoidAllWriteBroadcasting = avoidAllWriteBroadcasting;
+	public void setUseWrites(final boolean enableUsingWrites) {
+		this.enableUsingWrites = enableUsingWrites;
 	}
 
 	public void setFallbackModel(final TemplateModelItem model) {
@@ -992,10 +992,10 @@ public final class AiTemplateBuilder {
 
 	private void identifyCandidateModels(final Collection<TableStats> tables, final boolean isRowWidthWeightingEnabled) throws Exception {
 		final SortedSet<Long> sortedCardinalities = new TreeSet<Long>();
-		final Set<Long> uniqueOperationFrequencies = new HashSet<Long>();
+		final SortedSet<Long> uniqueOperationFrequencies = new TreeSet<Long>();
 		for (final TableStats table : tables) {
 			sortedCardinalities.add(table.getPredictedFutureSize(isRowWidthWeightingEnabled));
-			uniqueOperationFrequencies.add(table.getTotalStatementCount());
+			uniqueOperationFrequencies.add(table.getWriteStatementCount());
 		}
 
 		for (final TableStats table : tables) {
@@ -1005,7 +1005,7 @@ public final class AiTemplateBuilder {
 				table.setDistributionModelFreezed(true);
 				logTableDistributionModel(table, MessageSeverity.ALERT);
 			} else {
-				final double writesWeight = BooleanUtils.toInteger(isUsingWrites(table, this.avoidAllWriteBroadcasting));
+				final double writesWeight = BooleanUtils.toInteger(isUsingWrites(table, this.enableUsingWrites));
 				final ImmutableMap<FlvName, Double> ruleWeights = ImmutableMap.<FlvName, Double> of(
 						FuzzyTableDistributionModel.Variables.WRITES_FLV_NAME, writesWeight
 						);
@@ -1126,7 +1126,7 @@ public final class AiTemplateBuilder {
 				}
 
 				final boolean hasRedistOperations = !getRedistOperations(table, joins, topRangeToRangeTopRanges).isEmpty();
-				final boolean mayCauseExcessiveLocking = hasExcessiveLocking(table, this.avoidAllWriteBroadcasting);
+				final boolean mayCauseExcessiveLocking = hasExcessiveLocking(table, this.enableUsingWrites);
 				if (!this.fallbackModel.isBroadcast()
 						|| !hasRedistOperations
 						|| mayCauseExcessiveLocking) {
@@ -1136,7 +1136,7 @@ public final class AiTemplateBuilder {
 						if (!hasRedistOperations) {
 							logMessage.append(" no redistribution required", MessageSeverity.ALERT.getColor());
 						} else if (mayCauseExcessiveLocking) {
-							logMessage.append(" broadcasting may cause excessive locking", MessageSeverity.ALERT.getColor());
+							logMessage.append(" broadcasting may lead to reduced concurrency", MessageSeverity.ALERT.getColor());
 						}
 						logMessage.append(" -> ");
 					}
@@ -1244,8 +1244,8 @@ public final class AiTemplateBuilder {
 				}
 			}
 
-			if (hasExcessiveBroadcastLocking(table, this.avoidAllWriteBroadcasting)) {
-				log("Locking on a frequently written broadcast table " + table.toString() + " may lead to reduced concurrency.", MessageSeverity.WARNING);
+			if (hasExcessiveBroadcastLocking(table, this.enableUsingWrites)) {
+				log("Broadcasting a frequently written table " + table.toString() + " may lead to reduced concurrency.", MessageSeverity.WARNING);
 			}
 
 			final MultiMap<RedistCause, Object> operations = getRedistOperations(table, joins, ranges);
