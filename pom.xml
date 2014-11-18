@@ -154,6 +154,9 @@
 					<version>2.13</version>
 					<configuration>
 						<argLine>${maven.surefire.opts}</argLine>
+                        <systemPropertyVariables>
+                            <io.netty.leakDetectionLevel>ADVANCED</io.netty.leakDetectionLevel><!-- Change this to PARANOID to track every buffer allocation, rather than sampling.-->
+                        </systemPropertyVariables>
 					</configuration>
 					<executions>
 						<execution>
