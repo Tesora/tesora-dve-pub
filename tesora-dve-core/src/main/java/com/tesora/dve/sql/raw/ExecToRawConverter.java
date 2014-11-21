@@ -41,6 +41,7 @@ import com.tesora.dve.sql.raw.jaxb.DMLType;
 import com.tesora.dve.sql.raw.jaxb.DistVectColumn;
 import com.tesora.dve.sql.raw.jaxb.DistributionType;
 import com.tesora.dve.sql.raw.jaxb.DynamicGroupType;
+import com.tesora.dve.sql.raw.jaxb.KeyType;
 import com.tesora.dve.sql.raw.jaxb.ParameterType;
 import com.tesora.dve.sql.raw.jaxb.ProjectingStepType;
 import com.tesora.dve.sql.raw.jaxb.Rawplan;
@@ -49,6 +50,8 @@ import com.tesora.dve.sql.raw.jaxb.TargetTableType;
 import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEDynamicGroup;
+import com.tesora.dve.sql.schema.PEKey;
+import com.tesora.dve.sql.schema.PEKeyColumnBase;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.PETable;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -248,8 +251,12 @@ public final class ExecToRawConverter {
 		PEStorageGroup ofGroup = tab.getStorageGroup(sc);
 		PEStorageGroup actual = ofGroup.getPEStorageGroup(sc,sc.getValues());
 		out.setGroup(getGroupName(actual));
-		if (tab.isTempTable())
+		if (tab.isTempTable()) {
 			out.setDistvect(buildDistributionType(tab.getDistributionVector(sc)));
+			// also, declare keys
+			for(PEKey pek : tab.getKeys(sc)) 
+				out.getKey().add(buildKey(pek));
+		}
 		return out;
 	}
 	
@@ -279,6 +286,19 @@ public final class ExecToRawConverter {
 			}
 		}
 		return out;
+	}
+	
+	private KeyType buildKey(PEKey pek) {
+		KeyType kt = new KeyType();
+		kt.setName(pek.getName().getUnqualified().getUnquotedName().get());
+		if (pek.getConstraint() != null)
+			kt.setConstraint(pek.getConstraint().getSQL());
+		if (pek.getType() != null)
+			kt.setType(pek.getType().getSQL());
+		for(PEKeyColumnBase pekc : pek.getKeyColumns()) {
+			kt.getColumn().add(pekc.getName().getUnqualified().getUnquotedName().get());
+		}
+		return kt;
 	}
 	
 	private String parameterize(GenericSQLCommand in) throws PEException {

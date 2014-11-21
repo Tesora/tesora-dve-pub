@@ -29,23 +29,30 @@ package com.tesora.dve.sql.raw.jaxb;
  * #L%
  */
 
+import java.util.ArrayList;
+import java.util.List;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
 
 /**
- * <p>Java class for ParameterType complex type.
+ * <p>Java class for KeyType complex type.
  * 
  * <p>The following schema fragment specifies the expected content contained within this class.
  * 
  * <pre>
- * &lt;complexType name="ParameterType">
+ * &lt;complexType name="KeyType">
  *   &lt;complexContent>
  *     &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType">
+ *       &lt;sequence>
+ *         &lt;element name="column" type="{http://www.w3.org/2001/XMLSchema}string" maxOccurs="unbounded"/>
+ *       &lt;/sequence>
  *       &lt;attribute name="name" use="required" type="{http://www.w3.org/2001/XMLSchema}string" />
- *       &lt;attribute name="type" use="required" type="{}LiteralType" />
+ *       &lt;attribute name="constraint" type="{http://www.w3.org/2001/XMLSchema}string" />
+ *       &lt;attribute name="type" type="{http://www.w3.org/2001/XMLSchema}string" />
  *     &lt;/restriction>
  *   &lt;/complexContent>
  * &lt;/complexType>
@@ -54,13 +61,48 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "ParameterType")
-public class ParameterType {
+@XmlType(name = "KeyType", propOrder = {
+    "column"
+})
+public class KeyType {
 
+    @XmlElement(required = true)
+    protected List<String> column;
     @XmlAttribute(name = "name", required = true)
     protected String name;
-    @XmlAttribute(name = "type", required = true)
-    protected LiteralType type;
+    @XmlAttribute(name = "constraint")
+    protected String constraint;
+    @XmlAttribute(name = "type")
+    protected String type;
+
+    /**
+     * Gets the value of the column property.
+     * 
+     * <p>
+     * This accessor method returns a reference to the live list,
+     * not a snapshot. Therefore any modification you make to the
+     * returned list will be present inside the JAXB object.
+     * This is why there is not a <CODE>set</CODE> method for the column property.
+     * 
+     * <p>
+     * For example, to add a new item, do as follows:
+     * <pre>
+     *    getColumn().add(newItem);
+     * </pre>
+     * 
+     * 
+     * <p>
+     * Objects of the following type(s) are allowed in the list
+     * {@link String }
+     * 
+     * 
+     */
+    public List<String> getColumn() {
+        if (column == null) {
+            column = new ArrayList<String>();
+        }
+        return this.column;
+    }
 
     /**
      * Gets the value of the name property.
@@ -87,14 +129,38 @@ public class ParameterType {
     }
 
     /**
+     * Gets the value of the constraint property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link String }
+     *     
+     */
+    public String getConstraint() {
+        return constraint;
+    }
+
+    /**
+     * Sets the value of the constraint property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link String }
+     *     
+     */
+    public void setConstraint(String value) {
+        this.constraint = value;
+    }
+
+    /**
      * Gets the value of the type property.
      * 
      * @return
      *     possible object is
-     *     {@link LiteralType }
+     *     {@link String }
      *     
      */
-    public LiteralType getType() {
+    public String getType() {
         return type;
     }
 
@@ -103,10 +169,10 @@ public class ParameterType {
      * 
      * @param value
      *     allowed object is
-     *     {@link LiteralType }
+     *     {@link String }
      *     
      */
-    public void setType(LiteralType value) {
+    public void setType(String value) {
         this.type = value;
     }
 

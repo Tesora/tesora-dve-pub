@@ -250,6 +250,8 @@ public abstract class Statement extends StatementNode {
 		ep.getSequence().append(new EmptyExecutionStep(0,"filtered statement")); 
 		ep.setCacheable(true);
 		ConnectionValuesMap cvm = new ConnectionValuesMap();
+		if (sc.getValues() == null)
+			sc.getValueManager().getValues(sc);
 		cvm.addValues(ep,sc.getValues());
 		if (ep.isRoot()) {
 			RootExecutionPlan rep = (RootExecutionPlan) ep;

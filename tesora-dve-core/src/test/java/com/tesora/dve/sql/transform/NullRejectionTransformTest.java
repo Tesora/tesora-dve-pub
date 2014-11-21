@@ -133,5 +133,23 @@ public class NullRejectionTransformTest extends TransformTest {
 				"SELECT a.`afid` FROM `A` AS a INNER JOIN `B` AS b ON a.`aid` = b.`bid` WHERE b.`bsid` > 0");
 	}
 
+	@Test
+	public void testL() throws Throwable {
+		testRejection(new String[] {
+				"create table t1 (id int, what varchar(8), primary key (id)) static distribute on (id)",
+				"create table t2 (id2 int, what2 varchar(8), primary key (id2)) static distribute on (id2)",
+				"create table t3 (id3 int, what3 varchar(8), primary key (id3)) static distribute on (id3)",
+				"create table t4 (id4 int, what4 varchar(8), primary key (id4)) static distribute on (id4)",
+				"create table t5 (id5 int, what5 varchar(8), primary key (id5)) static distribute on (id5)"
+		},
+		"select t1.id, t2.what2, t3.what3, t4.what4, t5.what5 "
+				+"from t1 "
+				+"inner join t2 on t1.id=t2.id2 "
+				+"left outer join t3 on t2.id2=t3.id3 "
+				+"inner join t4 on t3.id3=t4.id4 "
+				+"left outer join t5 on t4.id4=t5.id5 "
+				+"order by t1.id",
+				null);
+	}
 
 }
