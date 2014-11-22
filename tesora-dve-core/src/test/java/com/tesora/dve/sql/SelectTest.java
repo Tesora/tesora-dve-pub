@@ -33,6 +33,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.tesora.dve.errmap.MySQLErrors;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.sql.util.ConnectionResource;
@@ -412,5 +413,39 @@ public class SelectTest extends SchemaTest {
 		// cache hit
 		conn.execute(String.format(format,5,6,7,8));
 		verifyNoDuplicates(conn.execute("select * from pe1668 order by id").getResults());
+	}
+
+	@Test
+	public void testPE1670() throws Throwable {
+		testStringToIntConversion("tinyint", Byte.class);
+		testStringToIntConversion("smallint", Integer.class);
+		testStringToIntConversion("mediumint", Integer.class);
+		testStringToIntConversion("int", Integer.class);
+		testStringToIntConversion("bigint", Long.class);
+	}
+
+	private void testStringToIntConversion(final String valueType, final Class<? extends Number> expectedType) throws Throwable {
+		Object[] expected = null;
+		if (Integer.class.equals(expectedType)) {
+			expected = br(nr, 0, nr, 2);
+		} else if (Byte.class.equals(expectedType)) {
+			expected = br(nr, Byte.valueOf((byte) 0), nr, Byte.valueOf((byte) 2));
+		} else if (Long.class.equals(expectedType)) {
+			expected = br(nr, 0L, nr, 2L);
+		} else {
+			throw new PECodingException("Unexpected type: " + String.valueOf(expectedType));
+		}
+
+		final String tableName = "pe1670_" + valueType;
+		conn.execute("DROP TABLE IF EXISTS `" + tableName + "`");
+		try {
+			conn.execute("CREATE RANGE `" + tableName + "_range` (" + valueType + ") PERSISTENT GROUP " + checkDDL.getPersistentGroup().getName());
+			conn.execute("CREATE TABLE `" + tableName + "` (`value` " + valueType + " NOT NULL DEFAULT '7') RANGE DISTRIBUTE ON (`value`) USING `" + tableName
+					+ "_range`");
+			conn.execute("INSERT INTO `" + tableName + "` VALUES (0), (1), (2), (3)");
+			conn.assertResults("SELECT `value` FROM `" + tableName + "` WHERE `value` IN ('', '4', '2', '5')", expected);
+		} finally {
+			conn.execute("DROP TABLE IF EXISTS `" + tableName + "`");
+		}
 	}
 }
