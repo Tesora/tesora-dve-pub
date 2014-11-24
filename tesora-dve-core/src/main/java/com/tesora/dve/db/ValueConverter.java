@@ -32,6 +32,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.time.DateUtils;
 
 import com.tesora.dve.common.PELongUtils;
@@ -162,7 +163,7 @@ public class ValueConverter {
 			String t = in.trim();
 			if (t.startsWith("+")) //NOPMD
 				t = t.substring(1);
-			return PELongUtils.decode(t);
+			return (NumberUtils.isNumber(t)) ? PELongUtils.decode(t) : 0;
 		}
 
 	}
@@ -175,7 +176,7 @@ public class ValueConverter {
 
 		@Override
 		protected Byte convertString(String in, int literalKind) throws Exception {
-			return Byte.valueOf(in);
+			return (NumberUtils.isNumber(in)) ? Byte.valueOf(in) : 0;
 		}
 
 		@Override
@@ -198,7 +199,7 @@ public class ValueConverter {
 
 		@Override
 		protected Short convertString(String in, int literalKind) throws Exception {
-			return Short.valueOf(in);
+			return (NumberUtils.isNumber(in)) ? Short.valueOf(in) : 0;
 		}
 
 		@Override
@@ -220,7 +221,7 @@ public class ValueConverter {
 
 		@Override
 		protected Long convertString(String in, int literalKind) throws Exception {
-			return Long.valueOf(in);
+			return (NumberUtils.isNumber(in)) ? Long.valueOf(in) : 0;
 		}
 
 	}
@@ -232,7 +233,7 @@ public class ValueConverter {
 
 		@Override
 		protected BigInteger convertString(String in, int literalKind) throws Exception {
-			return new BigInteger(in);
+			return (NumberUtils.isNumber(in)) ? new BigInteger(in) : BigInteger.valueOf(0);
 		}
 
 		@Override
