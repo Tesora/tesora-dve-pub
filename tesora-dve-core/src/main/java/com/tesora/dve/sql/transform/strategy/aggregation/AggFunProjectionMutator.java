@@ -26,8 +26,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -74,6 +74,8 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 					cm = new SummingMutator();
 				} else if (fn.isGroupConcat()) {
 					cm = new GroupConcatMutator();
+				} else if (fn.isVariance()) {
+					cm = new VarianceMutator();
 				} else {
 					throw new SchemaException(Pass.PLANNER, "Unknown agg fun kind: " + fc);
 				}
@@ -164,6 +166,91 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 		
 	}
 	
+	protected static class VarianceMutator extends AggFunMutator {
+
+		@Override
+		public List<ExpressionNode> adapt(SchemaContext sc, List<ExpressionNode> proj, MutatorState ms) {
+			final List<ExpressionNode> out = new ArrayList<ExpressionNode>();
+			final FunctionCall var = (FunctionCall) getProjectionEntry(proj, getBeforeOffset());
+			fn = var.getFunctionName();
+			quantifier = var.getSetQuantifier();
+
+			final ExpressionNode param = var.getParametersEdge().get(0);
+			final ExpressionNode countParam = (ExpressionNode) param.copy(null);
+			final ExpressionNode avgParam = (ExpressionNode) param.copy(null);
+			final ExpressionNode varParam = (ExpressionNode) param.copy(null);
+			out.add(countParam);
+			out.add(avgParam);
+			out.add(varParam);
+
+			return out;
+		}
+
+		@Override
+		public List<ExpressionNode> apply(List<ExpressionNode> proj, ApplyOption opts) {
+			final ExpressionNode countParam = getProjectionEntry(proj, getAfterOffsetBegin());
+			final ExpressionNode avgParam = getProjectionEntry(proj, getAfterOffsetBegin() + 1);
+			final ExpressionNode varParam = getProjectionEntry(proj, getAfterOffsetBegin() + 2);
+			if (opts.getMaxSteps() == 2) {
+				// 2.1 - count(x) n_i, avg(x) u_i, var_*(x) s2_i
+				if (opts.getCurrentStep() == 1) {
+					final FunctionCall n_i = new FunctionCall(FunctionName.makeCount(), countParam);
+					n_i.setSetQuantifier(quantifier);
+
+					final FunctionCall u_i = new FunctionCall(FunctionName.makeAvg(), avgParam);
+					u_i.setSetQuantifier(quantifier);
+
+					final FunctionCall s2_i = new FunctionCall(FunctionName.makeVariance(), varParam);
+					s2_i.setSetQuantifier(quantifier);
+
+					final List<ExpressionNode> out = new ArrayList<ExpressionNode>();
+					out.add(n_i);
+					out.add(u_i);
+					out.add(s2_i);
+					return out;
+				}
+
+				// 2.2 -
+				final FunctionCall n_i_u_i = new FunctionCall(FunctionName.makeMult(), countParam, avgParam);
+				final FunctionCall n_i_s2_i = new FunctionCall(FunctionName.makeMult(), countParam, varParam);
+				final FunctionCall sum_n_i = new FunctionCall(FunctionName.makeSum(), countParam);
+				final FunctionCall sum_n_i_u_i = new FunctionCall(FunctionName.makeSum(), n_i_u_i);
+				final FunctionCall gu = new FunctionCall(FunctionName.makeDivide(), sum_n_i_u_i, sum_n_i);
+
+				//				final FunctionCall var = (FunctionCall) getProjectionEntry(proj, getBeforeOffset());
+				//				final ExpressionNode param = var.getParametersEdge().get(0);
+				//				final SelectStatement guEvaluationStmt = new SelectStatement(new AliasInformation());
+				//				guEvaluationStmt.setProjection(Collections.<ExpressionNode> singletonList(new FunctionCall(FunctionName.makeAvg(), (ExpressionNode) param
+				//						.copy(null))));
+
+				final FunctionCall sum_n_i_s2_i = new FunctionCall(FunctionName.makeSum(), n_i_s2_i);
+				final FunctionCall u_i_minus_gu = new FunctionCall(FunctionName.makeMinus(), avgParam, gu);
+				final FunctionCall dAvg2 = new FunctionCall(FunctionName.makeMult(), u_i_minus_gu, u_i_minus_gu);
+				final FunctionCall n_i_dAvg2 = new FunctionCall(FunctionName.makeMult(), countParam, dAvg2);
+				final FunctionCall sum_n_i_dAvg2 = new FunctionCall(FunctionName.makeSum(), n_i_dAvg2);
+
+				final FunctionCall term_1 = new FunctionCall(FunctionName.makeDivide(), sum_n_i_s2_i, sum_n_i);
+				final FunctionCall term_2 = new FunctionCall(FunctionName.makeDivide(), sum_n_i_dAvg2, sum_n_i);
+
+				final FunctionCall total = new FunctionCall(FunctionName.makePlus(), term_1, term_2);
+
+				total.setGrouped();
+				return Collections.singletonList((ExpressionNode) total);
+			}
+			// TODO
+			// 1.1 - 
+			//			FunctionCall sum = new FunctionCall(FunctionName.makeSum(), first);
+			//			sum.setSetQuantifier(quantifier);
+			//			FunctionCall count = new FunctionCall(FunctionName.makeCount(), first);
+			//			count.setSetQuantifier(quantifier);
+			//			FunctionCall avg = new FunctionCall(FunctionName.makeDivide(), sum, count);
+			//			avg.setGrouped();
+			//			return Collections.singletonList((ExpressionNode) avg);
+			return null;
+		}
+
+	}
+
 	protected static class RecursingMutator extends AggFunMutator {
 
 		@Override

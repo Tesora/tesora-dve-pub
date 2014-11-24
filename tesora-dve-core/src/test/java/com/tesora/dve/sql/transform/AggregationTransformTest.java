@@ -21,9 +21,9 @@ package com.tesora.dve.sql.transform;
  * #L%
  */
 
+import org.junit.Assert;
+import org.junit.Test;
 
-import org.testng.annotations.Test;
-import org.testng.Assert;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
@@ -836,4 +836,15 @@ public class AggregationTransformTest extends TransformTest {
 		
 	}
 	
+	@Test
+	public void testPE761() throws Throwable {
+		final SchemaContext db = buildSchema(TestName.MULTI,
+				"CREATE TABLE `pe761` (`value` int) RANDOM DISTRIBUTE");
+
+		final String sql = "SELECT VARIANCE(`value`) FROM `pe761`";
+		stmtTest(db, sql, SelectStatement.class,
+				null);
+
+	}
+
 }

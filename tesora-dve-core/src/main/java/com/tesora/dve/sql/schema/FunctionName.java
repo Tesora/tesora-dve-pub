@@ -55,6 +55,7 @@ public class FunctionName extends UnqualifiedName {
 			|| isSum()
 			|| isMin()
 			|| isGroupConcat()
+			|| isVariance()
 			|| isUnsupportedAggregate();
 	}
 
@@ -64,13 +65,12 @@ public class FunctionName extends UnqualifiedName {
 			|| isSum()
 			|| isMin()
 			|| isGroupConcat()
+			|| isVariance()
 			|| isUnsupportedAggregate();
 	}
 	
 	private static final int[] unsupportedAggFuns = new int[] {
-		TokenTypes.BIT_AND, TokenTypes.BIT_OR, TokenTypes.BIT_XOR,
-		TokenTypes.STD, TokenTypes.STDDEV, TokenTypes.STDDEV_POP, TokenTypes.STDDEV_SAMP,
-		TokenTypes.VAR_POP, TokenTypes.VAR_SAMP, TokenTypes.VARIANCE 
+			TokenTypes.BIT_AND, TokenTypes.BIT_OR, TokenTypes.BIT_XOR
 	};
 	
 	public boolean isUnsupportedAggregate() {
@@ -155,6 +155,10 @@ public class FunctionName extends UnqualifiedName {
 		return tokenID == TokenTypes.AVG;
 	}
 	
+	public boolean isVariance() {
+		return tokenID == TokenTypes.VARIANCE;
+	}
+
 	public boolean isSum() {
 		return tokenID == TokenTypes.SUM;
 	}
@@ -259,6 +263,10 @@ public class FunctionName extends UnqualifiedName {
 		return new FunctionName("AVG", TokenTypes.AVG, false);
 	}
 	
+	public static FunctionName makeVariance() {
+		return new FunctionName("VARIANCE", TokenTypes.VARIANCE, false);
+	}
+
 	public static FunctionName makeCount() {
 		return new FunctionName("COUNT", TokenTypes.COUNT, false);
 	}
