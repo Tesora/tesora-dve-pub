@@ -100,17 +100,17 @@ public class ExplainTest extends SchemaTest {
 //		System.out.println(conn.printResults("explain " + SESSION_QUERY));
 		// explain reasons are slightly messed up right now
 		conn.assertResults("explain " + SESSION_QUERY,
-				br(nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute on su0_4","[su0_4]",ignore,getIgnore(),
-				   nr,"REDISTRIBUTE","checkg",getIgnore(),"Broadcast distribute","[t3s1]",ignore,/*DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE.getDescription(),*/getIgnore(),
-				   nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute on uu0_7","[uu0_7]",ignore,/*DMLExplainReason.LOOKUP_JOIN.getDescription(),*/getIgnore(),
+				br(nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute on su0_4","i:[su0_4]",ignore,getIgnore(),
+				   nr,"REDISTRIBUTE","checkg",getIgnore(),"Broadcast distribute","i:[t3s1]",ignore,/*DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE.getDescription(),*/getIgnore(),
+				   nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute on uu0_7","i:[uu0_7]",ignore,/*DMLExplainReason.LOOKUP_JOIN.getDescription(),*/getIgnore(),
 				   nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute","",ignore,/*DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT.getDescription(),*/getIgnore(),
 				   nr,"SELECT",null,null,"",null,ignore,/*DMLExplainReason.IN_MEMORY_LIMIT_NOT_APPLICABLE.getDescription(),*/getIgnore()));
 		conn.execute(SESSION_QUERY);
 //		System.out.println(conn.printResults("explain statistics=true " + SESSION_QUERY));
 		conn.assertResults("explain statistics=true " + SESSION_QUERY, 
-				br(nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute on su0_4","[su0_4]",ignore,2,4L,getIgnore(),getIgnore(),
-				   nr,"REDISTRIBUTE","checkg",getIgnore(),"Broadcast distribute","[t3s1]",ignore,/*DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE.getDescription(),*/2,4L,getIgnore(),getIgnore(),
-				   nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute on uu0_7","[uu0_7]",ignore,/*DMLExplainReason.LOOKUP_JOIN.getDescription(),*/2,4L,getIgnore(),getIgnore(),
+				br(nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute on su0_4","i:[su0_4]",ignore,2,4L,getIgnore(),getIgnore(),
+				   nr,"REDISTRIBUTE","checkg",getIgnore(),"Broadcast distribute","i:[t3s1]",ignore,/*DMLExplainReason.LOOKUP_JOIN_LOOKUP_TABLE.getDescription(),*/2,4L,getIgnore(),getIgnore(),
+				   nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute on uu0_7","i:[uu0_7]",ignore,/*DMLExplainReason.LOOKUP_JOIN.getDescription(),*/2,4L,getIgnore(),getIgnore(),
 				   nr,"REDISTRIBUTE",getIgnore(),getIgnore(),"Static distribute","",ignore,/*DMLExplainReason.LEFT_NO_WC_RIGHT_WC_NO_CONSTRAINT.getDescription(),*/2,4L,getIgnore(),getIgnore(),
 				   nr,"SELECT",null,null,"",null,ignore,/*DMLExplainReason.IN_MEMORY_LIMIT_NOT_APPLICABLE.getDescription(),*/2,6L,getIgnore(),getIgnore()));
 //		System.out.println(conn.printResults("explain noplan=true " + SESSION_QUERY));

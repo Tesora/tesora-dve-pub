@@ -149,7 +149,7 @@ public class NullRejectionTransformTest extends TransformTest {
 				+"inner join t4 on t3.id3=t4.id4 "
 				+"left outer join t5 on t4.id4=t5.id5 "
 				+"order by t1.id",
-				null);
+				"SELECT `t1`.`id`,`t2`.`what2`,`t3`.`what3`,`t4`.`what4`,`t5`.`what5` FROM `t1` INNER JOIN `t2` ON `t1`.`id` = `t2`.`id2` INNER JOIN `t3` ON `t2`.`id2` = `t3`.`id3` INNER JOIN `t4` ON `t3`.`id3` = `t4`.`id4` LEFT OUTER JOIN `t5` ON `t4`.`id4` = `t5`.`id5` ORDER BY `t1`.`id` ASC");
 	}
 
 }

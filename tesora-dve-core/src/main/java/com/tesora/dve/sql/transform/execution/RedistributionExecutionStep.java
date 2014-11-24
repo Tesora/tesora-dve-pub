@@ -343,23 +343,30 @@ public final class RedistributionExecutionStep extends
 		}
 
 		List<List<String>> indices = declarationHints.getIndexes();
-		if (indices == null) {
+		List<List<String>> uniques = declarationHints.getUniqueKeys();
+		if (indices == null && uniques == null) {
             return null;
         }
 
 		StringBuilder buf = new StringBuilder();
-		Iterator<List<String>> entries = indices.iterator();
-		while (entries.hasNext()) {
-			List<String> entry = entries.next();
-			buf.append(entry.toString());
-			if (entries.hasNext())
-				buf.append(",");
-		}
+		if (uniques != null && !uniques.isEmpty())
+			explainIndexHints("u",uniques,buf);
+		if (indices != null && !indices.isEmpty())
+			explainIndexHints("i",indices,buf);
 
 		return buf.toString();
 
     }
 
+    private void explainIndexHints(String prefix, List<List<String>> cols, StringBuilder buf) {
+    	buf.append(prefix).append(":");
+		for(Iterator<List<String>> iter = cols.iterator(); iter.hasNext();) {
+			buf.append(iter.next());
+			if (iter.hasNext())
+				buf.append(",");
+		}
+    }
+    
 	
 	@Override
 	public void prepareForCache() {
