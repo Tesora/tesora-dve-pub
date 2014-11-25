@@ -30,6 +30,8 @@
 	<xsd:complexType name="DynamicGroupType">
 		<xsd:attribute name="name" type="xsd:string" use="required"/>
 		<xsd:attribute name="size" type="GroupScaleType" use="required"/>
+		<!-- if the dyn group is on a pers group, the group.  the size is ignored. -->
+		<xsd:attribute name="pg" type="xsd:string"/>
 	</xsd:complexType>
 	
 	<xsd:simpleType name="GroupScaleType">

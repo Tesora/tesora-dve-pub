@@ -58,6 +58,8 @@ import com.tesora.dve.sql.raw.jaxb.DistKeyValue;
 import com.tesora.dve.sql.raw.jaxb.DistVectColumn;
 import com.tesora.dve.sql.raw.jaxb.DistributionType;
 import com.tesora.dve.sql.raw.jaxb.DynamicGroupType;
+import com.tesora.dve.sql.raw.jaxb.DynamicPersistentGroupType;
+import com.tesora.dve.sql.raw.jaxb.GroupType;
 import com.tesora.dve.sql.raw.jaxb.KeyType;
 import com.tesora.dve.sql.raw.jaxb.LiteralType;
 import com.tesora.dve.sql.raw.jaxb.ParameterType;
@@ -264,9 +266,18 @@ public class RawToExecConverter {
 	
 	private void declareDynGroups() {
 		for(DynamicGroupType dgt : raw.getDyngroup()) {
-			TempGroupPlaceholder tgph = new TempGroupPlaceholder(variablesContext,EnumConverter.convert(dgt.getSize()));
-			declaredDynGroups.put(dgt.getName(), tgph);
-		}
+			if (dgt.getPg() != null) {
+				PEStorageGroup pesg = findGroup(dgt.getPg());
+				try {
+					usedPersGroups.put(dgt.getName(), pesg.anySite(variablesContext));
+				} catch (PEException pe) {
+					throw new SchemaException(Pass.PLANNER, "Unable to build dynamic pers group " + dgt.getName(), pe);
+				}
+			} else {
+				TempGroupPlaceholder tgph = new TempGroupPlaceholder(variablesContext,EnumConverter.convert(dgt.getSize()));
+				declaredDynGroups.put(dgt.getName(), tgph);
+			}
+		}		
 	}
 	
 	private void buildPlan() {
