@@ -53,7 +53,7 @@ import com.tesora.dve.exceptions.PEException;
 
 public class MySqlPortal implements MySqlPortalService {
 	
-	private static final boolean USE_POOLED_BUFFERS = Boolean.getBoolean("com.tesora.dve.netty.usePooledBuffers");
+	private static final boolean USE_POOLED_BUFFERS = !(Boolean.getBoolean("com.tesora.dve.netty.disablePooledBuffers"));
 	private static final boolean PACKET_LOGGER = Boolean.getBoolean("MysqlPortal.packetLogger");
 
 	private static final Logger logger = Logger.getLogger(MySqlPortal.class);

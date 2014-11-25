@@ -71,7 +71,7 @@ import com.tesora.dve.worker.UserCredentials;
 
 public class MysqlConnection implements DBConnection, DBConnection.Monitor, CommandChannel {
 
-	public static final boolean USE_POOLED_BUFFERS = Boolean.getBoolean("com.tesora.dve.netty.usePooledBuffers");
+	public static final boolean USE_POOLED_BUFFERS = !(Boolean.getBoolean("com.tesora.dve.netty.disablePooledBuffers"));
 
 	private static final boolean PACKET_LOGGER = Boolean.getBoolean("MysqlConnection.packetLogger");
 
