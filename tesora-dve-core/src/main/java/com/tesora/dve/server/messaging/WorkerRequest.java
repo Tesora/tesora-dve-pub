@@ -151,7 +151,7 @@ public abstract class WorkerRequest extends RequestMessage implements GroupDispa
                 CompletionHandle<Boolean> deferred = dbConnection.getExceptionDeferringPromise();
                 String setTimestampSQL = "SET TIMESTAMP=" + referenceTime + ";";
                 MysqlMessage message = MSPComQueryRequestMessage.newMessage(new SQLCommand(CharsetUtil.UTF_8, setTimestampSQL).getBytes());
-                dbConnection.writeAndFlush(message, new PassFailProcessor(deferred));
+                dbConnection.write(message, new PassFailProcessor(deferred));//don't flush, since we are writing another packet right behind it.dve
             }
 
             targetWorker.writeAndFlush(dbConnection, outboundMessage, statementInterceptor);
