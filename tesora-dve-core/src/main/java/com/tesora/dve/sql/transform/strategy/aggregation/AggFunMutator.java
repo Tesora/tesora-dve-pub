@@ -21,15 +21,23 @@ package com.tesora.dve.sql.transform.strategy.aggregation;
  * #L%
  */
 
+import java.util.Collections;
+import java.util.Map;
+
 import com.tesora.dve.sql.expression.SetQuantifier;
+import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.transform.strategy.ColumnMutator;
 
 abstract class AggFunMutator extends ColumnMutator {
 	
+	protected final FunctionName fn;
 	protected SetQuantifier quantifier;
-	protected FunctionName fn;
 	
+	protected AggFunMutator(final FunctionName fn) {
+		this.fn = fn;
+	}
+
 	public boolean isDistinct() {
 		return SetQuantifier.DISTINCT == quantifier;
 	}
@@ -38,4 +46,17 @@ abstract class AggFunMutator extends ColumnMutator {
 		return false;
 	}
 	
+	public Map<AggFunMutator, ExpressionNode> getChildren() {
+		return Collections.EMPTY_MAP;
+	}
+
+	public final boolean hasChildren() {
+		final Map<AggFunMutator, ExpressionNode> children = this.getChildren();
+		return ((children != null) && !children.isEmpty());
+	}
+
+	public FunctionName getFunctionName() {
+		return this.fn;
+	}
+
 }

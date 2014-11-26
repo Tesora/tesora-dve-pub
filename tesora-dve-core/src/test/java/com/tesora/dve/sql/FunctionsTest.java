@@ -651,4 +651,10 @@ public class FunctionsTest extends SchemaTest {
 		//		conn.assertResults("SELECT STDDEV_POP(`value`) FROM `pe761`", br(nr, 1.1180));
 	}
 
+	@Test
+	public void testPower() throws Throwable {
+		conn.assertResults("SELECT POW(3, 2)", br(nr, 9.0));
+		conn.assertResults("SELECT POWER(3, 3)", br(nr, 27.0));
+	}
+
 }

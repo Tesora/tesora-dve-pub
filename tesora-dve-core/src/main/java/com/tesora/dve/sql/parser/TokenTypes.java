@@ -78,6 +78,7 @@ public final class TokenTypes {
 	public static final int COALESCE = PE.COALESCE;
 	public static final int EXISTS = PE.EXISTS;
 	public static final int RAND = PE.RAND;
+	public static final int POW = PE.POW;
 	
 	// used in translatorutils, utils, others
 	public static final int BOOLEAN = PE.BOOLEAN;

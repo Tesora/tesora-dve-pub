@@ -248,7 +248,11 @@ public class FunctionName extends UnqualifiedName {
 	}
 	
 	public static FunctionName makeSum() {
-		return new FunctionName("sum", TokenTypes.SUM, false);
+		return new FunctionName("SUM", TokenTypes.SUM, false);
+	}
+
+	public static FunctionName makePow() {
+		return new FunctionName("POW", TokenTypes.SUM, false);
 	}
 
 	public static FunctionName makeMax() {
@@ -326,6 +330,10 @@ public class FunctionName extends UnqualifiedName {
 	
 	public static FunctionName makeRand() {
 		return new FunctionName("RAND", TokenTypes.RAND, false);
+	}
+
+	public static FunctionName makeGroupConcat() {
+		return new FunctionName("GROUP_CONCAT", TokenTypes.GROUP_CONCAT, false);
 	}
 
 	@Override
