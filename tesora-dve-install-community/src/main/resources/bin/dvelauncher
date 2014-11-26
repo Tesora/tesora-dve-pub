@@ -24,7 +24,7 @@
 SELF_DIR=$(cd $(dirname "$0"); pwd)
 . $SELF_DIR/common.sh
 
-JAVA_GC_ARGS="-XX:+UseG1GC -XX:NewRatio=1"
+JAVA_GC_ARGS="-XX:+UseG1GC"
 #JAVA_GC_ARGS="-XX:+UseConcMarkSweepGC -XX:NewRatio=1"
 
 PROC_DESC="Tesora (TM) Database Virtualization Engine (R)"
