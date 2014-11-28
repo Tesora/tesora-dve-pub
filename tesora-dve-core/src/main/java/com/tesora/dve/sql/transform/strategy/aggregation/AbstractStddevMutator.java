@@ -16,39 +16,73 @@ import com.tesora.dve.sql.transform.strategy.MutatorState;
 abstract class AbstractStddevMutator extends AggFunMutator {
 
 	private final Map<AggFunMutator, ExpressionNode> children = new LinkedHashMap<AggFunMutator, ExpressionNode>();
+	
+	private final AbstractVarianceMutator varianceMutator;
 
 	protected AbstractStddevMutator(final FunctionName fn, final AbstractVarianceMutator varianceMutator) {
 		super(fn);
-		this.children.put(varianceMutator, null);
+		this.varianceMutator = varianceMutator;
+	}
+	
+	/*
+	 * We could have the variance as a child, but that would involve an extra redistribution.
+	 * We delegate the operations right on the variance instead.
+	 */
+	
+	@Override
+	public void setBeforeOffset(int v) {
+		this.varianceMutator.setBeforeOffset(v);
+	}
+	
+	@Override
+	public void setAfterOffsetBegin(int v) {
+		this.varianceMutator.setAfterOffsetBegin(v);
+	}
+	
+	@Override
+	public void setAfterOffsetEnd(int v) {
+		this.varianceMutator.setAfterOffsetEnd(v);
+	}
+	
+	@Override
+	public int getBeforeOffset() {
+		return this.varianceMutator.getBeforeOffset();
+	}
+	
+	@Override
+	public int getAfterOffsetBegin() {
+		return this.varianceMutator.getAfterOffsetBegin();
+	}
+	
+	@Override
+	public int getAfterOffsetEnd() {
+		return this.varianceMutator.getAfterOffsetEnd();
 	}
 
 	@Override
 	public List<ExpressionNode> adapt(SchemaContext sc, List<ExpressionNode> proj, MutatorState ms) {
-		final List<ExpressionNode> out = new ArrayList<ExpressionNode>();
-		final FunctionCall fc = (FunctionCall) getProjectionEntry(proj, getBeforeOffset());
-		quantifier = fc.getSetQuantifier();
-
-		final ExpressionNode param = fc.getParametersEdge().get(0);
-		final ExpressionNode varParam = (ExpressionNode) param.copy(null);
-		out.add(varParam);
-
-		return out;
+		return this.varianceMutator.adapt(sc, proj, ms);
+	}
+	
+	@Override
+	public boolean containsAfterOffset(int v) {
+		return this.varianceMutator.containsAfterOffset(v);
 	}
 
 	@Override
 	public List<ExpressionNode> apply(List<ExpressionNode> proj, ApplyOption opts) {
+		// Take SQRT of the variance's last step.
 		if (opts.isLastStep()) {
-			final ExpressionNode varianceResultExpr = this.children.values().iterator().next();
+			final ExpressionNode varianceResultExpr = this.varianceMutator.apply(proj, opts).get(0);
 			return Collections.<ExpressionNode> singletonList(new FunctionCall(FunctionName.makeSqrt(), varianceResultExpr));
 		}
 		
-		final ExpressionNode param = getProjectionEntry(proj, getAfterOffsetBegin());
-		return Collections.<ExpressionNode>singletonList(param);
+		return this.varianceMutator.apply(proj, opts);
 	}
 
 	@Override
 	public Map<AggFunMutator, ExpressionNode> getChildren() {
-		return this.children;
+		return this.varianceMutator.getChildren();
 	}
 
 }

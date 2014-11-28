@@ -884,23 +884,45 @@ public class AggregationTransformTest extends TransformTest {
 								.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION))
 				));
 	}
-	
-	@Test
-	public void testPE761_VarSamp() throws Throwable {
-		final SchemaContext db = buildSchema(TestName.MULTI,
-				"CREATE TABLE `pe761` (`value` int) RANDOM DISTRIBUTE");
-		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
-		final String sql = "SELECT VAR_SAMP(`value`) FROM `pe761`";
-		stmtTest(db, sql, SelectStatement.class, null);
-	}
 
 	@Test
-	public void testPE761_StddevPop() throws Throwable {
+	public void testPE761_StddevSamp() throws Throwable {
 		final SchemaContext db = buildSchema(TestName.MULTI,
 				"CREATE TABLE `pe761` (`value` int) RANDOM DISTRIBUTE");
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
-		final String sql = "SELECT STDDEV_POP(`value`) FROM `pe761`";
-		stmtTest(db, sql, SelectStatement.class, null);
+		final String sql = "SELECT STDDEV_SAMP(`value`) FROM `pe761`";
+		stmtTest(db, sql, SelectStatement.class, bes(
+				new ProjectingExpectedStep(ExecutionType.SELECT,
+						group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,
+						emptyDV,
+						emptyIndexes,
+					  "SELECT SUM( `pe761`.`value` )  AS func_8,COUNT( `pe761`.`value` )  AS func_9",
+					  "FROM `pe761`"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION)),
+					new ProjectingExpectedStep(ExecutionType.SELECT,
+						TransientExecutionEngine.AGGREGATION,"temp2",group,BroadcastDistributionModel.MODEL_NAME,
+						emptyDV,
+						emptyIndexes,
+					  "SELECT  (SUM( temp1.func_8 )  / SUM( temp1.func_9 ) )  AS func",
+					  "FROM temp1"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION)),
+					new ProjectingExpectedStep(ExecutionType.SELECT,
+						group,"temp3",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,
+						emptyDV,
+						emptyIndexes,
+					  "SELECT COUNT( `pe761`.`value` )  AS func_4,VAR_POP( `pe761`.`value` )  AS func_5,POW( AVG( `pe761`.`value` )  - temp2.func,2 )  AS func_6",
+					  "FROM `pe761`, temp2"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION)),
+					new ProjectingExpectedStep(ExecutionType.SELECT,
+						null,
+					  "SELECT SQRT(  (SUM( temp3.func_4 * temp3.func_5 )  /  (SUM( temp3.func_4 )  - 1)  + SUM( temp3.func_4 * temp3.func_6 )  /  (SUM( temp3.func_4 )  - 1) )  )  AS func",
+					  "FROM temp3"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION))
+				));
 	}
 
 }
