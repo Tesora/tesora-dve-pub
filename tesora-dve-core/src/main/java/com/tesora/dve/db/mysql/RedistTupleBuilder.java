@@ -182,7 +182,7 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, Redist
     public int getUpdateCount() throws Exception {
         if (logger.isDebugEnabled())
             logger.debug("redist # "+thisId+" , about to call completionPromise.sync(): " + completionPromise);
-        return completionPromise.sync();
+        return SynchronousListener.sync(completionPromise);
     }
 
     @Override

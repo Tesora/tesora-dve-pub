@@ -21,30 +21,15 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.concurrent.CompletionTarget;
+import com.tesora.dve.concurrent.SynchronousListener;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
 import io.netty.channel.EventLoopGroup;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.SortedMap;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.TreeMap;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -473,19 +458,22 @@ public class WorkerGroup {
 	
 	
 	public void execute(MappingSolution mappingSolution, final WorkerRequest req, final GroupDispatch resultConsumer) throws PEException {
-		syncWorkers(submit(mappingSolution, req, resultConsumer));
+		syncWorkers(submit(mappingSolution, req, resultConsumer,false));
 	}
 	
 	public static void executeOnAllGroups(Collection<WorkerGroup> allGroups, MappingSolution mappingSolution, WorkerRequest req, GroupDispatch resultConsumer) throws PEException {
 		List<Future<Worker>> workerFutures = new ArrayList<Future<Worker>>();
 		for (WorkerGroup wg : allGroups)
 			workerFutures.addAll(
-					wg.submit(mappingSolution, req, resultConsumer));
+					wg.submit(mappingSolution, req, resultConsumer,false));
 		syncWorkers(workerFutures);
 	}
 
 	public static void syncWorkers(Collection<Future<Worker>> workerFutures) throws PEException {
-		for (Future<Worker> f : workerFutures)
+		//wait for these to finish in reverse order, which reduces collisions with the producer.
+		ArrayList<Future<Worker>> workerList = new ArrayList<>(workerFutures);
+		Collections.reverse(workerList);
+		for (Future<Worker> f : workerList)
 			try {
 				f.get();
 			} catch (InterruptedException e) {
@@ -494,91 +482,110 @@ public class WorkerGroup {
 				throw new PEException("Worker exception", e.getCause());
 			}
 	}
+
+
 	public Collection<Future<Worker>> submit(MappingSolution mappingSolution,
 			final WorkerRequest req, final GroupDispatch resultConsumer)
 			throws PEException {
-		return submit(mappingSolution, req, resultConsumer, mappingSolution.computeSize(this));
+		return submit((MappingSolution) mappingSolution, (WorkerRequest) req, (GroupDispatch) resultConsumer, (int) mappingSolution.computeSize(this),false);
 	}
-	
-	
+
+	protected Collection<Future<Worker>> submit(MappingSolution mappingSolution,
+											 final WorkerRequest req, final GroupDispatch resultConsumer, boolean useSharedLatch)
+			throws PEException {
+		return submit((MappingSolution) mappingSolution, (WorkerRequest) req, (GroupDispatch) resultConsumer, (int) mappingSolution.computeSize(this),useSharedLatch);
+	}
+
 	public Collection<Future<Worker>> submit(MappingSolution mappingSolution,
 			final WorkerRequest req, final GroupDispatch resultConsumer, int senderCount)
 			throws PEException {
+		return submit(mappingSolution, req, resultConsumer, senderCount, false);
+	}
+
+	protected Collection<Future<Worker>> submit(MappingSolution mappingSolution, final WorkerRequest req, final GroupDispatch resultConsumer, int senderCount, boolean useSharedLatch) throws PEException {
 		resultConsumer.setSenderCount(senderCount);
-		Collection<Worker> workers = getTargetWorkers(mappingSolution);
-		ArrayList<Future<Worker>> workerFutures = new ArrayList<Future<Worker>>();
-        boolean firstWorker = true;
-        boolean firstMustRunSerial = mappingSolution.isWorkerSerializationRequired() && workers.size() > 1;
 
-        //TODO: it would be good to move this entire loop to the netty thread to avoid N cross thread queues, but the first worker sync and lazy database connect make that difficult. -sgossard
+		final Collection<Worker> workers = getTargetWorkers(mappingSolution);
+		final ArrayList<Future<Worker>> workerFutures = new ArrayList<Future<Worker>>();
+		final ArrayList<WorkerAndFuture> workersAndFutures = new ArrayList<>();
+
 		for (final Worker w: workers) {
-            final PEDefaultPromise<Worker> workerPromise = new PEDefaultPromise<>();
-            submitWork(w, req, resultConsumer, workerPromise);
-            Future<Worker> f = new Future<Worker>(){
-                volatile Worker wrk = null;
-                volatile Throwable t = null;
+			//make sure we have open connections for all targets, since connecting right now is synchronous, and we don't want to block an async netty thread.
+			ensureOpenConnection(w);
+
+			//construct a synchronous callback for each worker.
+			SynchronousListener<Worker> firstWorkerFuture = new SynchronousListener<>();
+			workersAndFutures.add(new WorkerAndFuture(w,firstWorkerFuture));
+			workerFutures.add(firstWorkerFuture);
+		}
+
+
+		final boolean firstMustRunSerial = mappingSolution.isWorkerSerializationRequired() && workers.size() > 1;
+
+		if (firstMustRunSerial){
+			//remove the first entry.
+			Iterator<WorkerAndFuture> iterator = workersAndFutures.iterator();
+			final WorkerAndFuture first = iterator.next();
+			final SynchronousListener<Worker> firstWorkerFuture = first.future;
+			iterator.remove();
+
+			final CompletionTarget<Worker> submitOtherWorkersOnSuccess = new CompletionTarget<Worker>() {
                 @Override
-                public boolean cancel(boolean mayInterruptIfRunning) {
-                    return false;
-                }
-
-                @Override
-                public boolean isCancelled() {
-                    return false;
-                }
-
-                @Override
-                public boolean isDone() {
-                    return wrk != null || t != null;
-                }
-
-                @Override
-                public synchronized Worker get() throws InterruptedException, ExecutionException {
-                    if (wrk != null)
-                        return wrk;
-
-                    if (t != null)
-                        throw new ExecutionException(t);
-
-                    try {
-                        wrk = workerPromise.sync();
-                        return wrk;
-                    } catch (Exception e){
-                        t = e;
-                        throw new ExecutionException(e);
+                public void success(Worker returnValue) {
+                    firstWorkerFuture.success(returnValue);
+					for (final WorkerAndFuture w: workersAndFutures) {
+                        submitWork(w.worker, req, resultConsumer,w.future);
                     }
-                }
+				}
 
                 @Override
-                public Worker get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-                    return get();
+                public void failure(Exception e) {
+                    firstWorkerFuture.failure(e);
                 }
             };
 
-            if (firstWorker && firstMustRunSerial) {
-				try {
-					f.get(); // let the first worker complete (and acquire locks) before starting subsequent workers
-				} catch (InterruptedException e) {
-					throw new PEException("Exception encountered synchronizing site updates", e);
-				} catch (ExecutionException e) {
-					throw new PEException("Exception encountered synchronizing site updates", e);
+			clientEventLoop.submit(new Runnable() {
+				@Override
+				public void run() {
+					submitWork(first.worker, req, resultConsumer, submitOtherWorkersOnSuccess);
 				}
-			}
+			});
 
-			firstWorker = false;
-			workerFutures.add(f);
+			// blocks this thread on success/fail of first task, and for failure throws related exception here.
+			try {
+                firstWorkerFuture.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new PEException("Exception encountered synchronizing site updates", e);
+            }
+		} else {
+			clientEventLoop.submit(new Runnable() {
+				@Override
+				public void run() {
+					for (final WorkerAndFuture w: workersAndFutures) {
+                        submitWork(w.worker, req, resultConsumer,w.future);
+                    }
+				}
+			});
 		}
+
 		return workerFutures;
 	}
 
-    private void submitWork(final Worker w, final WorkerRequest req, final GroupDispatch resultConsumer, final CompletionHandle<Worker> workerComplete) {
-        final long reqStartTime = System.currentTimeMillis();
-        final CompletionHandle<Boolean> promise = new PEDefaultPromise<Boolean>(){
+	private void submitWork(final Worker w, final WorkerRequest req, final GroupDispatch resultConsumer, final CompletionTarget<Worker> syncListener ) {
+        final CompletionHandle<Boolean> promise = buildSubmitHandle(w, req, syncListener);
+
+		req.withGroupDispatch(resultConsumer);
+		req.executeRequest(w, promise);
+    }
+
+	private PEDefaultPromise<Boolean> buildSubmitHandle(final Worker w, final WorkerRequest req, final CompletionTarget<Worker> syncListener) {
+		return new PEDefaultPromise<Boolean>(){
+            final long reqStartTime = System.currentTimeMillis();
             @Override
             public void success(Boolean returnValue) {
                 try {
-                    WorkerGroup.sendStatistics(w,req, System.currentTimeMillis() - reqStartTime);
-                    workerComplete.success(w);
+                    WorkerGroup.sendStatistics(w, req, System.currentTimeMillis() - reqStartTime);
+                    syncListener.success(w);
                 } catch (PEException e) {
                     this.failure(e);
                 }
@@ -592,34 +599,23 @@ public class WorkerGroup {
                         markForPurge();
                     }
                 } finally {
-                    workerComplete.failure(t);
+                    syncListener.failure(t);
                 }
             }
         };
+	}
 
-
-        try {
+	private void ensureOpenConnection(Worker w) {
+		try {
             //This call forces the worker to get a database connection immediately in the client thread, before we submit to the netty thread (where blocking would be bad).
             //TODO: the worker's lazy getConnection() call shouldn't block, any following calls should get chained off the pending connection. -sgossard
             w.getConnectionId();
         } catch (Exception e) {
             //any exception here needs to be ignored so the normal code path can fail just like it used to.
         }
+	}
 
-        clientEventLoop.submit(new Callable<Worker>() {
-//
-//        Singletons.require(HostService.class).submit(w.getName(), new Callable<Worker>() {
-            @Override
-            public Worker call() throws Exception {
-                req.withGroupDispatch(resultConsumer);
-                req.executeRequest(w, promise);
-                return w;
-            }
-        });
-
-    }
-
-    static void sendStatistics(Worker worker, WorkerRequest wReq, long execTime) throws PEException {
+	static void sendStatistics(Worker worker, WorkerRequest wReq, long execTime) throws PEException {
         LogSiteStatisticRequest sNotice = wReq.getStatisticsNotice();
         if (sNotice != null) {
             worker.site.annotateStatistics(sNotice);
@@ -1009,6 +1005,16 @@ public class WorkerGroup {
 	}
 
 	public void pushDebugContext() {
+	}
+
+	static class WorkerAndFuture {
+		Worker worker;
+		SynchronousListener<Worker> future;
+
+		public WorkerAndFuture(Worker worker, SynchronousListener<Worker> future) {
+			this.worker = worker;
+			this.future = future;
+		}
 	}
 
 }

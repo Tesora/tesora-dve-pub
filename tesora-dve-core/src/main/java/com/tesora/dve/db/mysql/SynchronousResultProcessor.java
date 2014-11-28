@@ -23,12 +23,13 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.concurrent.SynchronousCompletion;
+import com.tesora.dve.concurrent.SynchronousListener;
 
 /**
  *
  */
 public class SynchronousResultProcessor extends DefaultResultProcessor implements SynchronousCompletion<Boolean> {
-    SynchronousCompletion<Boolean> syncHandle;
+    PEDefaultPromise<Boolean> syncHandle;
     public SynchronousResultProcessor() {
         super( new PEDefaultPromise<Boolean>() );
         this.syncHandle = (PEDefaultPromise<Boolean>) promise;
@@ -36,6 +37,6 @@ public class SynchronousResultProcessor extends DefaultResultProcessor implement
 
     @Override
     public Boolean sync() throws Exception {
-        return syncHandle.sync();
+        return SynchronousListener.sync(syncHandle);
     }
 }

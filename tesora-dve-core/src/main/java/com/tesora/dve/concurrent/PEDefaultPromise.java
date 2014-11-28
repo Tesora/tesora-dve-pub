@@ -21,143 +21,175 @@ package com.tesora.dve.concurrent;
  * #L%
  */
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.log4j.Logger;
 
-public class PEDefaultPromise<T> implements CompletionTarget<T>, CompletionHandle<T>, SynchronousCompletion<T>, CompletionNotifier<T> {
-	
-	private static final int WAIT_TIMEOUT = 60 * 1000;
+public class PEDefaultPromise<T> implements CompletionTarget<T>, CompletionHandle<T>, CompletionNotifier<T> {
+	static final Object NO_RESULT = new Object();
 	
 	static Logger logger = Logger.getLogger( PEDefaultPromise.class );
 
 	static AtomicInteger nextId = new AtomicInteger();
 	int thisId = nextId.incrementAndGet();
-	
-	Set<CompletionTarget<T>> listeners = null;
-	
-	T returnValue;
-	Exception thrownException;
-	boolean waitersNotified = false;
 
+	AtomicReference<PromiseState> state = new AtomicReference<>(new PromiseState());
+
+	@SuppressWarnings("unchecked")
 	@Override
 	public void addListener(CompletionTarget<T> listener) {
-		synchronized (this) {
-			if (listeners == null)
-				listeners = new HashSet<CompletionTarget<T>>();
-			listeners.add(listener);
-		}
-	}
+		do {
+			PromiseState<T> current = state.get();
+			if (current.isFinished()) {
 
-	@Override
-	public void removeListener(CompletionTarget<T> listener) {
-		synchronized (this) {
-			listeners.remove(listener);			
-		}
-	}
+				if (current.isSuccess())
+					listener.success((T)current.result);
+				else
+					listener.failure(current.error);
 
-	@Override
-	public T sync() throws Exception {
-		T returnValue;
-		synchronized (this) {
-			if (logger.isDebugEnabled()) logger.debug(this + ".sync()");
-			while (!waitersNotified) {
-				try {
-					this.wait(WAIT_TIMEOUT);
-					if (!waitersNotified) {
-						if (logger.isDebugEnabled()) {
-							logger.debug(String.format("%s.sync() not released after %d ms", this, WAIT_TIMEOUT));
-						}
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				} catch (Exception t) {
-					thrownException = t;
-				}
+				break;
+			} else {
+				PromiseState next = new PromiseState(listener,current);
+				if (state.compareAndSet(current,next))
+					break;
 			}
-			if (logger.isDebugEnabled()) 
-				logger.debug(this + ".sync() released by " + 
-						((thrownException == null) ? ("return value " + this.returnValue) : ("exception " + thrownException.getMessage())));
-			if (thrownException != null)
-				throw thrownException;
-			
-			returnValue = this.returnValue;
-		}
-		return returnValue;
+		} while (true);
 	}
 
-	protected void setReturnValue(T returnValue) {
-		this.returnValue = returnValue;
-	}
-
+	@SuppressWarnings("unchecked")
 	@Override
 	public void success(T returnValue) {
-		synchronized (this) {
-			if (logger.isDebugEnabled()) logger.debug(this + ".success("+returnValue+")");
-//			if (executionComplete)
-//				throw new IllegalStateException(this.getClass().getSimpleName() + ".success() called multiple times");
+		do {
+			PromiseState<T> current = state.get();
+			if (current.isFinished())
+				break;
 
-			setReturnValue(returnValue);
-			
-			if (!waitersNotified) {
-				try {
-					if (listeners != null)
-						for (CompletionTarget<T> listener : listeners)
-							listener.success(returnValue);
-				} finally {
-					releaseWaiters();
-				}
+			PromiseState<T> next = new PromiseState<>(returnValue,current);
+			if (state.compareAndSet(current, next)) {
+				notifyListeners(next);
+				break;
 			}
+		} while (true);
+	}
+
+	private void notifyListeners(PromiseState<T> finishState) {
+		if (finishState.isSuccess())
+			notifySuccess(finishState);
+		else
+			notifyFailure(finishState);
+	}
+
+	@SuppressWarnings("unchecked")
+	private void notifySuccess(PromiseState<T> finishState) {
+		T result = (T)finishState.result;
+		while (finishState != null){
+			if (finishState.listener != null)
+				finishState.listener.success(result);
+			finishState = finishState.next;
 		}
 	}
 
+	private void notifyFailure(PromiseState<T> finishState) {
+		Exception error = finishState.error;
+		while (finishState != null){
+			if (finishState.listener != null)
+				finishState.listener.failure(error);
+			finishState = finishState.next;
+		}
+	}
+
+	@SuppressWarnings("unchecked")
 	@Override
 	public boolean trySuccess(T returnValue) {
-		boolean valueWasSet = false;
-		synchronized (this) {
-			if (!isFulfilled()) {
-				success(returnValue);
-				valueWasSet = true;
+		do {
+			PromiseState<T> current = state.get();
+			if (current.isFinished())
+				return false;
+
+			PromiseState<T> next = new PromiseState<>(returnValue,current);
+			if (state.compareAndSet(current, next)) {
+				notifyListeners(next);
+				break;
 			}
-		}
-		return valueWasSet;
+		} while (true);
+		return true;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void failure(Exception t) {
-		synchronized (this) {
-			if (logger.isDebugEnabled()) logger.debug(this + ".failure("+t.getMessage()+")", t);
-			if (!waitersNotified) {
-//				throw new IllegalStateException(this.getClass().getSimpleName() + ".failure() called multiple times (prev exception " + thrownException + ")", t);
+		do {
+			PromiseState<T> current = state.get();
+			if (current.isFinished())
+				break;
 
-				this.thrownException = t;
-
-				try {
-					if (listeners != null)
-						for (CompletionTarget<T> listener : listeners)
-							listener.failure(t);
-				} finally {
-					releaseWaiters();
-				}
+			PromiseState<T> next = new PromiseState<>(t,current);
+			if (state.compareAndSet(current, next)) {
+				notifyListeners(next);
+				break;
 			}
-		}
+		} while (true);
 	}
 
 	@Override
 	public boolean isFulfilled() {
-		return returnValue != null || thrownException != null;
-	}
-
-	private void releaseWaiters() {
-		waitersNotified = true;
-		this.notifyAll();
+		return state.get().isFinished();
 	}
 
 	@Override
 	public String toString() {
 		return "PEDefaultPromise{"+thisId+"}";
+	}
+
+
+
+	static class PromiseState<T> {
+		final Object result;
+		final Exception error;
+		final CompletionTarget<T> listener;
+		final PromiseState<T> next;
+
+		public PromiseState() {
+			this.result = NO_RESULT;
+			this.error = null;
+			this.listener = null;
+			this.next = null;
+		}
+
+		public PromiseState(CompletionTarget<T> listener, PromiseState<T> current) {
+			this.result = NO_RESULT;
+			this.error = null;
+			this.listener = listener;
+			this.next = current;
+		}
+
+		public PromiseState(T result, PromiseState<T> current) {
+			this.result = result;
+			this.error = null;
+			this.listener = null;
+			this.next = current;
+		}
+
+		public PromiseState(Exception error, PromiseState<T> current) {
+			this.result = NO_RESULT;
+			this.error = error;
+			this.listener = null;
+			this.next = current;
+		}
+
+		public boolean isFinished(){
+			return isError() || isSuccess();
+		}
+
+		public boolean isError(){
+			return error != null;
+		}
+
+		public boolean isSuccess(){
+			return result != NO_RESULT;
+		}
+
 	}
 
 }

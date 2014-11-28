@@ -21,6 +21,7 @@ package com.tesora.dve.worker;
  * #L%
  */
 
+import com.tesora.dve.concurrent.SynchronousListener;
 import com.tesora.dve.db.CommandChannel;
 import com.tesora.dve.db.DBConnection;
 import com.tesora.dve.db.GenericSQLCommand;
@@ -131,7 +132,7 @@ public class Worker implements GenericSQLCommand.DBNameResolver {
 			try {
                 PEDefaultPromise<Boolean> promise = new PEDefaultPromise<>();
 				resetStatement(promise);
-                promise.sync();
+                SynchronousListener.sync(promise);
 //				rollback(currentGlobalTransaction);
                 dircon_releaseConnection(lastException == null);
             } catch (Exception e) {

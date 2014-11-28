@@ -26,5 +26,4 @@ package com.tesora.dve.concurrent;
  */
 public interface CompletionNotifier<T> {
     void addListener(CompletionTarget<T> listener);
-    void removeListener(CompletionTarget<T> listener);
 }

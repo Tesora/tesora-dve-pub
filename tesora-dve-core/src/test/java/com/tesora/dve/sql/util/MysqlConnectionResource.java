@@ -21,6 +21,7 @@ package com.tesora.dve.sql.util;
  * #L%
  */
 
+import com.tesora.dve.concurrent.SynchronousListener;
 import io.netty.channel.EventLoopGroup;
 import io.netty.util.CharsetUtil;
 
@@ -125,7 +126,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
         results.getDispatchBundle(mysqlConn, sqlc, promise).writeAndFlush(mysqlConn);
-        promise.sync();
+		SynchronousListener.sync(promise);
 		
 		return new ProxyConnectionResourceResponse(results);
 	}
@@ -136,8 +137,8 @@ public class MysqlConnectionResource extends ConnectionResource {
 		MysqlPrepareStatementCollector collector = new MysqlPrepareStatementCollector();
 
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();		
-        collector.getDispatchBundle(mysqlConn, new SQLCommand(this.encoding, stmt), promise).writeAndFlush(mysqlConn);;        
-        promise.sync();
+        collector.getDispatchBundle(mysqlConn, new SQLCommand(this.encoding, stmt), promise).writeAndFlush(mysqlConn);;
+		SynchronousListener.sync(promise);
 		return collector.getPreparedStatement();
 	}
 
@@ -152,7 +153,7 @@ public class MysqlConnectionResource extends ConnectionResource {
 		SQLCommand sqlc = new SQLCommand(new GenericSQLCommand(this.encoding, "EXEC PREPARED"), parameters);
         PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();
         collector.getDispatchBundle(mysqlConn, sqlc, promise).writeAndFlush(mysqlConn);
-        promise.sync();
+		SynchronousListener.sync(promise);
 		
 		return new ProxyConnectionResourceResponse(collector);
 	}

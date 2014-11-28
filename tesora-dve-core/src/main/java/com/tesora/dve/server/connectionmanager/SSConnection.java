@@ -169,7 +169,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		}
 	};
 
-	private final AtomicInteger requestCounter = new AtomicInteger();
+	private int requestCounter = 0;
 
 	Map<StorageGroup, WorkerGroup> availableWG = new HashMap<StorageGroup, WorkerGroup>();
 	Map<StorageGroup, WorkerGroup> activeWG = new HashMap<StorageGroup, WorkerGroup>();
@@ -332,43 +332,29 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		T returnValue;
 
 		synchronized (this) {
-			pushDebugContext(nextRequestId());
+			requestCounter++;
+
+			if (genlock)
+                acquireGenerationLock();
 			try {
-				if (genlock)
-					acquireGenerationLock();
-				try {
-					executingInContext = true;
-					returnValue = task.call();
-				} finally {
-					if (transactionDepth == 0) {
-						if (genlock)
-							releaseGenerationLock();
-					}
-					purgeDynamicWorkerGroups();
+                executingInContext = true;
+                returnValue = task.call();
+            } finally {
+                if (transactionDepth == 0) {
+                    if (genlock)
+                        releaseGenerationLock();
+                }
+                purgeDynamicWorkerGroups();
 
-					//						setCatalogDAO(null).close();
-					nontxnLocks.release();
-					lastMessageProcessedTime = System.currentTimeMillis();
-					executingInContext = false;
-				}
+                //						setCatalogDAO(null).close();
+                nontxnLocks.release();
+                lastMessageProcessedTime = System.currentTimeMillis();
+                executingInContext = false;
+            }
 
-				doPostReplyProcessing();
-			} finally {
-			}
+			doPostReplyProcessing();
 		}
 		return returnValue;		
-	}
-	
-	private String nextRequestId() {
-		final int id;
-		if (requestCounter.compareAndSet(Integer.MAX_VALUE, 1))
-			id = 1;
-		else
-			id = requestCounter.incrementAndGet();
-		return Integer.toString(id);
-	}
-
-	private void pushDebugContext(final String requestId) {
 	}
 
 	private void acquireGenerationLock() {
@@ -470,7 +456,6 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	
 	@Override
 	public synchronized void onTimeout() {
-		
 		doSessionTimeoutCheck();
 	}
 
