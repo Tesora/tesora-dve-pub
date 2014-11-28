@@ -39,6 +39,10 @@ public class ApplyOption {
 		return step;
 	}
 	
+	public boolean isLastStep() {
+		return (this.step == this.maxSteps);
+	}
+
 	@Override
 	public String toString() {
 		return "ApplyOption(" + step + "," + maxSteps + ")";

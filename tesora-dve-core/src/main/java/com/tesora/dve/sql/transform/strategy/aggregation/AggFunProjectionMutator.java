@@ -24,7 +24,6 @@ package com.tesora.dve.sql.transform.strategy.aggregation;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -78,8 +77,14 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 					cm = new SummingMutator();
 				} else if (fn.isGroupConcat()) {
 					cm = new GroupConcatMutator();
-				} else if (fn.isVariance()) {
-					cm = new VarianceMutator();
+				} else if (fn.isStddevPop() || fn.isStd()) {
+					cm = new StddevPopMutator();
+				} else if (fn.isStddevSamp()) {
+					cm = new StddevSampMutator();
+				} else if (fn.isVarPop() || fn.isVariance()) {
+					cm = new VarPopMutator();
+				} else if (fn.isVarSamp()) {
+					cm = new VarSampMutator();
 				} else {
 					throw new SchemaException(Pass.PLANNER, "Unknown agg fun kind: " + fc);
 				}
@@ -173,91 +178,48 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 		
 	}
 	
-	protected static class VarianceMutator extends AggFunMutator {
-
-		private final Map<AggFunMutator, ExpressionNode> children = new LinkedHashMap<AggFunMutator, ExpressionNode>() {
-			private static final long serialVersionUID = -4636984875883190733L;
-
-			{
-				put(new AvgMutator(), null);
-			}
-		};
-
-		protected VarianceMutator() {
-			super(FunctionName.makeVariance());
+	protected static class VarPopMutator extends AbstractVarianceMutator {
+		
+		public static ExpressionNode buildDofSum(final ExpressionNode n_i) {
+			return new FunctionCall(FunctionName.makeSum(), n_i);
+		}
+		
+		protected VarPopMutator() {
+			super(FunctionName.makeVarPop());
 		}
 
 		@Override
-		public List<ExpressionNode> adapt(SchemaContext sc, List<ExpressionNode> proj, MutatorState ms) {
-			final List<ExpressionNode> out = new ArrayList<ExpressionNode>();
-			final FunctionCall var = (FunctionCall) getProjectionEntry(proj, getBeforeOffset());
-			quantifier = var.getSetQuantifier();
+		protected ExpressionNode buildDofExpression(final ExpressionNode n_i) {
+			return buildDofSum(n_i);
+		}
+	}
 
-			final ExpressionNode param = var.getParametersEdge().get(0);
-			final ExpressionNode countParam = (ExpressionNode) param.copy(null);
-			final ExpressionNode varParam = (ExpressionNode) param.copy(null);
-			final ExpressionNode dAvg2Param = (ExpressionNode) param.copy(null);
-			out.add(countParam);
-			out.add(varParam);
-			out.add(dAvg2Param);
-
-			return out;
+	protected static class VarSampMutator extends AbstractVarianceMutator {
+		
+		protected VarSampMutator() {
+			super(FunctionName.makeVarSamp());
 		}
 
 		@Override
-		public List<ExpressionNode> apply(List<ExpressionNode> proj, ApplyOption opts) {
-			final ExpressionNode countParam = getProjectionEntry(proj, getAfterOffsetBegin());
-			final ExpressionNode varParam = getProjectionEntry(proj, getAfterOffsetBegin() + 1);
-			final ExpressionNode dAvg2Param = getProjectionEntry(proj, getAfterOffsetBegin() + 2);
-			final ExpressionNode gu = this.children.values().iterator().next();
-
-			if (opts.getMaxSteps() == 2) {
-				// 2.1 - count(x) n_i, avg(x) u_i, var_*(x) s2_i, dAvg2
-				if (opts.getCurrentStep() == 1) {
-					final FunctionCall n_i = new FunctionCall(FunctionName.makeCount(), countParam);
-					n_i.setSetQuantifier(quantifier);
-
-					final FunctionCall s2_i = new FunctionCall(FunctionName.makeVariance(), varParam);
-					s2_i.setSetQuantifier(quantifier);
-
-					final FunctionCall u_i = new FunctionCall(FunctionName.makeAvg(), dAvg2Param);
-					final FunctionCall u_i_minus_gu = new FunctionCall(FunctionName.makeMinus(), u_i, gu);
-					final FunctionCall dAvg2 = new FunctionCall(FunctionName.makePow(), u_i_minus_gu, LiteralExpression.makeLongLiteral(2));
-					dAvg2.setSetQuantifier(quantifier);
-
-					final List<ExpressionNode> out = new ArrayList<ExpressionNode>();
-					out.add(n_i);
-					out.add(s2_i);
-					out.add(dAvg2);
-					return out;
-				}
-
-				// 2.2 -
-				final FunctionCall n_i_s2_i = new FunctionCall(FunctionName.makeMult(), countParam, varParam);
-				final FunctionCall sum_n_i = new FunctionCall(FunctionName.makeSum(), countParam);
-
-				final FunctionCall sum_n_i_s2_i = new FunctionCall(FunctionName.makeSum(), n_i_s2_i);
-				final FunctionCall n_i_dAvg2 = new FunctionCall(FunctionName.makeMult(), countParam, dAvg2Param);
-				final FunctionCall sum_n_i_dAvg2 = new FunctionCall(FunctionName.makeSum(), n_i_dAvg2);
-
-				final FunctionCall term_1 = new FunctionCall(FunctionName.makeDivide(), sum_n_i_s2_i, sum_n_i);
-				final FunctionCall term_2 = new FunctionCall(FunctionName.makeDivide(), sum_n_i_dAvg2, sum_n_i);
-
-				final FunctionCall total = new FunctionCall(FunctionName.makePlus(), term_1, term_2);
-
-				total.setGrouped();
-				return Collections.singletonList((ExpressionNode) total);
-			}
-
-			// TODO
-			return null;
+		protected ExpressionNode buildDofExpression(final ExpressionNode n_i) {
+			// Sample variance has one DOF less than the population variance.
+			final ExpressionNode n = VarPopMutator.buildDofSum(n_i);
+			final FunctionCall dof = new FunctionCall(FunctionName.makeMinus(), n, LiteralExpression.makeLongLiteral(1));
+			dof.setGrouped();
+			return dof;
 		}
+	}
 
-		@Override
-		public Map<AggFunMutator, ExpressionNode> getChildren() {
-			return this.children;
+	protected static class StddevPopMutator extends AbstractStddevMutator {
+		protected StddevPopMutator() {
+			super(FunctionName.makeStddevPop(), new VarPopMutator());
 		}
+	}
 
+	protected static class StddevSampMutator extends AbstractStddevMutator {
+		protected StddevSampMutator() {
+			super(FunctionName.makeStddevSamp(), new VarSampMutator());
+		}
 	}
 
 	protected static class MaxMutator extends RecursingMutator {

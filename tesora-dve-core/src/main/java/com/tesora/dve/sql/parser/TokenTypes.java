@@ -79,6 +79,7 @@ public final class TokenTypes {
 	public static final int EXISTS = PE.EXISTS;
 	public static final int RAND = PE.RAND;
 	public static final int POW = PE.POW;
+	public static final int SQRT = PE.SQRT;
 	
 	// used in translatorutils, utils, others
 	public static final int BOOLEAN = PE.BOOLEAN;

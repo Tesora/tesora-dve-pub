@@ -641,14 +641,14 @@ public class FunctionsTest extends SchemaTest {
 	public void testPE761() throws Throwable {
 		conn.execute("CREATE TABLE `pe761` (`value` int)");
 		conn.execute("INSERT INTO `pe761` VALUES (1), (2), (3), (4)");
-		//		conn.assertResults("SELECT VAR_SAMP(`value`) FROM `pe761`", br(nr, 1.6667));
-		conn.assertResults("SELECT VARIANCE(`value`) FROM `pe761`", br(nr, 1.2500));
-		//		conn.assertResults("SELECT VAR_POP(`value`) FROM `pe761`", br(nr, 1.2500));
-		//
-		//		conn.assertResults("SELECT STDDEV_SAMP(`value`) FROM `pe761`", br(nr, 1.2910));
-		//		conn.assertResults("SELECT STDDEV(`value`) FROM `pe761`", br(nr, 1.1180));
-		//		conn.assertResults("SELECT STD(`value`) FROM `pe761`", br(nr, 1.1180));
-		//		conn.assertResults("SELECT STDDEV_POP(`value`) FROM `pe761`", br(nr, 1.1180));
+		conn.assertResults("SELECT ROUND(VAR_SAMP(`value`), 4) FROM `pe761`", br(nr, 1.6667));
+		conn.assertResults("SELECT ROUND(VARIANCE(`value`), 4) FROM `pe761`", br(nr, 1.2500));
+		conn.assertResults("SELECT ROUND(VAR_POP(`value`), 4) FROM `pe761`", br(nr, 1.2500));
+
+		conn.assertResults("SELECT ROUND(STDDEV_SAMP(`value`), 4) FROM `pe761`", br(nr, 1.2910));
+		conn.assertResults("SELECT ROUND(STDDEV(`value`), 4) FROM `pe761`", br(nr, 1.1180));
+		conn.assertResults("SELECT ROUND(STD(`value`), 4) FROM `pe761`", br(nr, 1.1180));
+		conn.assertResults("SELECT ROUND(STDDEV_POP(`value`), 4) FROM `pe761`", br(nr, 1.1180));
 	}
 
 	@Test

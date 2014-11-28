@@ -55,6 +55,11 @@ public class FunctionName extends UnqualifiedName {
 			|| isSum()
 			|| isMin()
 			|| isGroupConcat()
+			|| isStddevPop()
+			|| isStddevSamp()
+			|| isStd()
+			|| isVarPop()
+			|| isVarSamp()
 			|| isVariance()
 			|| isUnsupportedAggregate();
 	}
@@ -65,6 +70,12 @@ public class FunctionName extends UnqualifiedName {
 			|| isSum()
 			|| isMin()
 			|| isGroupConcat()
+			|| isGroupConcat()
+			|| isStddevPop()
+			|| isStddevSamp()
+			|| isStd()
+			|| isVarPop()
+			|| isVarSamp()
 			|| isVariance()
 			|| isUnsupportedAggregate();
 	}
@@ -155,8 +166,28 @@ public class FunctionName extends UnqualifiedName {
 		return tokenID == TokenTypes.AVG;
 	}
 	
+	public boolean isVarPop() {
+		return tokenID == TokenTypes.VAR_POP;
+	}
+
+	public boolean isVarSamp() {
+		return tokenID == TokenTypes.VAR_SAMP;
+	}
+
 	public boolean isVariance() {
 		return tokenID == TokenTypes.VARIANCE;
+	}
+
+	public boolean isStddevPop() {
+		return tokenID == TokenTypes.STDDEV_POP;
+	}
+
+	public boolean isStddevSamp() {
+		return tokenID == TokenTypes.STDDEV_SAMP;
+	}
+
+	public boolean isStd() {
+		return tokenID == TokenTypes.STD;
 	}
 
 	public boolean isSum() {
@@ -252,7 +283,11 @@ public class FunctionName extends UnqualifiedName {
 	}
 
 	public static FunctionName makePow() {
-		return new FunctionName("POW", TokenTypes.SUM, false);
+		return new FunctionName("POW", TokenTypes.POW, false);
+	}
+
+	public static FunctionName makeSqrt() {
+		return new FunctionName("SQRT", TokenTypes.SQRT, false);
 	}
 
 	public static FunctionName makeMax() {
@@ -267,8 +302,28 @@ public class FunctionName extends UnqualifiedName {
 		return new FunctionName("AVG", TokenTypes.AVG, false);
 	}
 	
+	public static FunctionName makeVarPop() {
+		return new FunctionName("VAR_POP", TokenTypes.VAR_POP, false);
+	}
+
+	public static FunctionName makeVarSamp() {
+		return new FunctionName("VAR_SAMP", TokenTypes.VAR_SAMP, false);
+	}
+
 	public static FunctionName makeVariance() {
 		return new FunctionName("VARIANCE", TokenTypes.VARIANCE, false);
+	}
+
+	public static FunctionName makeStddevPop() {
+		return new FunctionName("STDDEV_POP", TokenTypes.STDDEV_POP, false);
+	}
+
+	public static FunctionName makeStddevSamp() {
+		return new FunctionName("STDDEV_SAMP", TokenTypes.STDDEV_SAMP, false);
+	}
+
+	public static FunctionName makeStd() {
+		return new FunctionName("STD", TokenTypes.STD, false);
 	}
 
 	public static FunctionName makeCount() {
