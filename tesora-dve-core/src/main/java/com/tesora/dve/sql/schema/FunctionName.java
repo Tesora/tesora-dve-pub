@@ -58,6 +58,7 @@ public class FunctionName extends UnqualifiedName {
 			|| isStddevPop()
 			|| isStddevSamp()
 			|| isStd()
+			|| isStddev()
 			|| isVarPop()
 			|| isVarSamp()
 			|| isVariance()
@@ -74,6 +75,7 @@ public class FunctionName extends UnqualifiedName {
 			|| isStddevPop()
 			|| isStddevSamp()
 			|| isStd()
+			|| isStddev()
 			|| isVarPop()
 			|| isVarSamp()
 			|| isVariance()
@@ -81,7 +83,7 @@ public class FunctionName extends UnqualifiedName {
 	}
 	
 	private static final int[] unsupportedAggFuns = new int[] {
-			TokenTypes.BIT_AND, TokenTypes.BIT_OR, TokenTypes.BIT_XOR
+		TokenTypes.BIT_AND, TokenTypes.BIT_OR, TokenTypes.BIT_XOR
 	};
 	
 	public boolean isUnsupportedAggregate() {
@@ -188,6 +190,10 @@ public class FunctionName extends UnqualifiedName {
 
 	public boolean isStd() {
 		return tokenID == TokenTypes.STD;
+	}
+	
+	public boolean isStddev() {
+		return tokenID == TokenTypes.STDDEV;
 	}
 
 	public boolean isSum() {
@@ -324,6 +330,10 @@ public class FunctionName extends UnqualifiedName {
 
 	public static FunctionName makeStd() {
 		return new FunctionName("STD", TokenTypes.STD, false);
+	}
+	
+	public static FunctionName makeStddev() {
+		return new FunctionName("STDDEV", TokenTypes.STDDEV, false);
 	}
 
 	public static FunctionName makeCount() {

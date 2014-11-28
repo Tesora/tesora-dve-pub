@@ -531,7 +531,7 @@ public class JoinTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);		
 		stmtTest(db,
-				"select count(*) from titles, states",
+				"select COUNT(*) from titles, states",
 				SelectStatement.class,
 				bes(
 						bpes(
@@ -547,10 +547,10 @@ public class JoinTransformTest extends TransformTest {
 							)
 						),
 						new ProjectingExpectedStep(
-						"SELECT count( * )  AS func FROM temp2, temp1",
+						"SELECT COUNT( * )  AS func FROM temp2, temp1",
 							TransientExecutionEngine.LARGE,"temp3",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
 						new ProjectingExpectedStep(
-						"SELECT CONVERT( sum( temp3.func ) ,SIGNED )  AS func_3 FROM temp3",
+						"SELECT CONVERT( SUM( temp3.func ) ,SIGNED )  AS func_3 FROM temp3",
 							null)
 					)
 		);

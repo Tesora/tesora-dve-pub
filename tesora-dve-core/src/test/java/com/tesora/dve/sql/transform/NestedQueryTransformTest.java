@@ -72,13 +72,13 @@ public class NestedQueryTransformTest extends TransformTest {
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT max( `orders`.`o_id` )  AS func_4",
+						  "SELECT MAX( `orders`.`o_id` )  AS func_4",
 						  "FROM `orders`",
 						  "WHERE  (`orders`.`o_w_id` = 1 and `orders`.`o_d_id` = 1 and `orders`.`o_c_id` = 1013)"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							TransientExecutionEngine.AGGREGATION,"temp2",group,BroadcastDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT max( temp1.func_4 )  AS func",
+						  "SELECT MAX( temp1.func_4 )  AS func",
 						  "FROM temp1"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
@@ -108,10 +108,10 @@ public class NestedQueryTransformTest extends TransformTest {
                 SelectStatement.class,
                 bes(
                         new ProjectingExpectedStep(ExecutionType.SELECT,
-                                "SELECT count( * )  AS func_7 FROM `second`",
+                                "SELECT COUNT( * )  AS func_7 FROM `second`",
                                 group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
                         new ProjectingExpectedStep(ExecutionType.SELECT,
-                                "SELECT CONVERT( sum( temp1.func_7 ) ,SIGNED )  AS func FROM temp1",
+                                "SELECT CONVERT( SUM( temp1.func_7 ) ,SIGNED )  AS func FROM temp1",
                                 TransientExecutionEngine.AGGREGATION,"temp2",group,BroadcastDistributionModel.MODEL_NAME,new String[] { }),
                         new ProjectingExpectedStep(ExecutionType.SELECT,
                                 "SELECT a.`id` AS id,a.`name` AS name FROM `first` AS a, temp2 WHERE a.`amount` <= temp2.func",

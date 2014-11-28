@@ -33,7 +33,6 @@ import com.tesora.dve.sql.util.ListSet;
 public class AggregationMutatorState extends MutatorState {
 
 	protected ListSet<AliasingEntry<SortingSpecification>> normalizedGroupBys;
-	protected ListSet<AliasingEntry<SortingSpecification>> originalGroupBys;
 	
 	public AggregationMutatorState(SchemaContext sc, SelectStatement ss) {
 		super(ss);
@@ -43,6 +42,10 @@ public class AggregationMutatorState extends MutatorState {
 	
 	public void clearGroupBys() {
 		getStatement().getGroupBysEdge().clear();
+	}
+	
+	public boolean hasGrouping() {
+		return !normalizedGroupBys.isEmpty();
 	}
 	
 	public ListSet<AliasingEntry<SortingSpecification>> getRequestedGrouping() {

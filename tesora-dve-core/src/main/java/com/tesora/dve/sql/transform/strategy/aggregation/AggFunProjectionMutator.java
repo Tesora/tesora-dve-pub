@@ -77,7 +77,7 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 					cm = new SummingMutator();
 				} else if (fn.isGroupConcat()) {
 					cm = new GroupConcatMutator();
-				} else if (fn.isStddevPop() || fn.isStd()) {
+				} else if (fn.isStddevPop() || fn.isStd() || fn.isStddev()) {
 					cm = new StddevPopMutator();
 				} else if (fn.isStddevSamp()) {
 					cm = new StddevSampMutator();

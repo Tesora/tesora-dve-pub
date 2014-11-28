@@ -186,12 +186,12 @@ public class PlanCachingTest extends TransformTest {
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT count( * )  AS func_4",
+						  "SELECT COUNT( * )  AS func_4",
 						  "FROM `testb`"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT CONVERT( sum( temp1.func_4 ) ,SIGNED )  AS func",
+						  "SELECT CONVERT( SUM( temp1.func_4 ) ,SIGNED )  AS func",
 						  "FROM temp1"
 						)
 					)
@@ -202,12 +202,12 @@ public class PlanCachingTest extends TransformTest {
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							group,"temp2",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT count( * )  AS func_4",
+						  "SELECT COUNT( * )  AS func_4",
 						  "FROM `testb`"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT CONVERT( sum( temp2.func_4 ) ,SIGNED )  AS func",
+						  "SELECT CONVERT( SUM( temp2.func_4 ) ,SIGNED )  AS func",
 						  "FROM temp2"
 						)
 					)

@@ -40,11 +40,14 @@ import com.tesora.dve.sql.node.expression.FunctionCall;
 import com.tesora.dve.sql.node.expression.TableInstance;
 import com.tesora.dve.sql.node.expression.TempTableInstance;
 import com.tesora.dve.sql.node.structural.FromTableReference;
+import com.tesora.dve.sql.node.structural.JoinSpecification;
+import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.DistributionVector;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
+import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
@@ -197,7 +200,7 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 	private ProjectingFeatureStep apply(PlannerContext pc,
 			ProjectingFeatureStep startAt,
 			List<ProjectionMutator> mutators,
-			MutatorState state, 
+			AggregationMutatorState state, 
 			int lastMutator, int firstMutator, ApplyOption options) throws PEException {
 		SelectStatement result = (SelectStatement) startAt.getPlannedStatement();
 		List<ExpressionNode> intermediate = result.getProjection();
@@ -219,6 +222,13 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 							final SchemaContext sc = pc.getContext();
 
 							final SelectStatement childEvaluationStmt = buildChildrenEvaluationStmt(result, parentMutator);
+							
+//							final List<SortingSpecification> originalGroups = new ArrayList<SortingSpecification>();
+//							for (final AliasingEntry<SortingSpecification> group: state.getRequestedGrouping()) {
+//								originalGroups.add(group.buildNew(group.getOriginalExpression()));
+//							}
+//							childEvaluationStmt.setGroupBy(originalGroups);
+							
 							childEvaluationStmt.normalize(sc);
 
 							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) childEvaluationStmt.plan(sc,
@@ -231,7 +241,6 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 											result.getStorageGroup(sc)),
 									null,
 									null);
-
 							startAt.addChild(plannedChildRedistStep);
 
 							final TempTable childResultsTable = plannedChildRedistStep.getTargetTempTable();
@@ -255,10 +264,14 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 								
 								// Append child temp tables to the initial parent's statement.
 								final List<FromTableReference> fromTables = new ArrayList<FromTableReference>(result.getTables());
-								if (result.getOrderBys().isEmpty()) {
-									fromTables.add(new FromTableReference(new TempTableInstance(sc, childResultsTable)));
+								final TempTableInstance childResultsTableInstance = new TempTableInstance(sc, childResultsTable);
+								if (!state.hasGrouping()) {
+									fromTables.add(new FromTableReference(childResultsTableInstance));
 								} else {
-//									new JoinedTable(new TempTableInstance(sc, childResultsTable), null, JoinSpecification.INNER_JOIN);
+									fromTables.add(new FromTableReference(childResultsTableInstance));
+//									final List<AliasingEntry<SortingSpecification>> grouping = state.getRequestedGrouping();
+//									final ExpressionNode joinOnExpr = new FunctionCall(FunctionName.makeEquals(), projEntry);
+//									new JoinedTable(childResultsTableInstance, null, JoinSpecification.INNER_JOIN);
 								}
 								result.setTables(fromTables);
 							}
