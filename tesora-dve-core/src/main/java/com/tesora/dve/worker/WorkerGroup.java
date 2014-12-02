@@ -427,6 +427,10 @@ public class WorkerGroup {
         Map<String,String> currentSessionVars = ssCon.getSessionVariables();
 
 		Collection<Worker> targetWorkers = getTargetWorkers(MappingSolution.AllWorkers);
+
+		if (targetWorkers.isEmpty())
+			return;
+
 		ChainedNotifier<Boolean> promise = null;
 		for (Worker w : targetWorkers) {
 			promise = ChainedNotifier.newInstance(promise); //chains results.
@@ -482,7 +486,9 @@ public class WorkerGroup {
 	}
 
 	public static void syncWorkers(Future<Worker> fut) throws PEException {
-		//wait for these to finish in reverse order, which reduces collisions with the producer.
+		if (fut == null)
+			return;
+
 		try {
 			fut.get();
 		} catch (InterruptedException e) {
@@ -522,6 +528,10 @@ public class WorkerGroup {
 
 		final Collection<Worker> workers = getTargetWorkers(mappingSolution);
 		final ArrayList<WorkerAndFuture> workersAndFutures = new ArrayList<>();
+
+		if (workers.isEmpty()){
+			return ChainedNotifier.noop(null);
+		}
 
 		ChainedNotifier<Worker> lastWorker = null;
 		for (final Worker w: workers) {

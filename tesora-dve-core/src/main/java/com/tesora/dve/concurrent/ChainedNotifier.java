@@ -45,6 +45,10 @@ public class ChainedNotifier<R> implements CompletionTarget<R>, CompletionHandle
         dependsOn.addListener(listenForParentFinish);
     }
 
+    protected ChainedNotifier(State<R> state) {
+        this.state = new AtomicReference<State<R>>( state );
+    }
+
 
     @Override
     public void addListener(CompletionTarget<R> listener) {
@@ -126,6 +130,10 @@ public class ChainedNotifier<R> implements CompletionTarget<R>, CompletionHandle
             return newInstance();
         else
             return new ChainedNotifier<>(dependsOn);
+    }
+
+    public static <V> ChainedNotifier<V> noop(V result){
+        return new ChainedNotifier<V>(new State<>(State.WaitState.SUCCESS,result,null,null,null));
     }
 
     @Override
