@@ -44,6 +44,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
@@ -82,6 +83,7 @@ import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
 import com.tesora.dve.sql.statement.session.SessionStatement;
 import com.tesora.dve.tools.analyzer.jaxb.DbAnalyzerCorpus;
+import com.tesora.dve.tools.analyzer.jaxb.HasStatement;
 import com.tesora.dve.tools.analyzer.jaxb.InsertTuples;
 import com.tesora.dve.tools.analyzer.jaxb.StatementInsertIntoValuesType;
 import com.tesora.dve.tools.analyzer.jaxb.StatementNonDMLType;

@@ -48,6 +48,7 @@ import org.apache.commons.lang.StringUtils;
 import com.google.common.collect.ImmutableSet;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.DBType;
+import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.PEUrl;
@@ -80,6 +81,9 @@ import com.tesora.dve.tools.analyzer.jaxb.AnalyzerType;
 import com.tesora.dve.tools.analyzer.jaxb.DatabasesType.Database;
 import com.tesora.dve.tools.analyzer.jaxb.DbAnalyzerCorpus;
 import com.tesora.dve.tools.analyzer.jaxb.DbAnalyzerReport;
+import com.tesora.dve.tools.analyzer.jaxb.HasStatement;
+import com.tesora.dve.tools.analyzer.jaxb.StatementNonDMLType;
+import com.tesora.dve.tools.analyzer.jaxb.StatementPopulationType;
 import com.tesora.dve.tools.analyzer.jaxb.TablesType.Table;
 import com.tesora.dve.tools.analyzer.sources.FileSource;
 import com.tesora.dve.tools.analyzer.sources.FrequenciesSource;
@@ -87,7 +91,7 @@ import com.tesora.dve.tools.analyzer.sources.JdbcSource;
 import com.tesora.dve.tools.analyzer.stats.BasicStatsVisitor;
 import com.tesora.dve.tools.analyzer.stats.StatementAnalyzer;
 
-public class DVEAnalyzerCLI extends CLIBuilder {
+public class DVEAnalyzerCLI extends CLIBuilder {	
 	public static final String REPORT_FILE_EXTENSION = ".report";
 	public static final String TEMPLATE_FILE_EXTENSION = ".template";
 	public static final String CORPUS_FILE_EXTENSION = ".corpus";
@@ -202,6 +206,10 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 				new String[] { "frequencies", "mysql" },
 				"<corpus file> <mysql log file> [<mysql log file> ...]",
 				"Perform frequency analysis on specified mysql log files, writing the output to the specified <corpus file>."));
+		registerCommand(new CommandType(
+				new String[] { "merge", "corpus" },
+				"<output corpus file> <merged file 1> <merged file 2> [<merged file> ...]",
+				"Merge multiple corpuses into a single file updating the counts on repeated statements."));
 
 		registerCommand(new CommandType(new String[] { "analyze", "corpus" }, "<corpus file>",
 				"Analyze statements in the specified corpus file."));
@@ -485,6 +493,58 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 
 	public void cmd_frequencies_mysql(Scanner scanner) throws Throwable {
 		this.executeFrequenciesCmdOnFileSources(scanner, "mysql");
+	}
+	
+	public void cmd_merge_corpus(Scanner scanner) throws Throwable {		
+		final File corpusFile = scanFile(scanner, "output corpus file");
+		final MultiMap<Class<?>, File> varargs = scanFilesByTypeOptionalMulti(scanner, Collections.<Class<?>>singleton(DbAnalyzerCorpus.class));
+		final Collection<File> mergedCorpusFiles = varargs.values();
+		if (mergedCorpusFiles.size() < 2) {
+			throw new PEException("You must provide at least two files for merging");
+		}
+		
+		final Map<String, HasStatement> nonDmlPopulations = new HashMap<String, HasStatement>();
+		final Map<String, HasStatement> dmlPopulations = new HashMap<String, HasStatement>();
+		final StringBuilder description = new StringBuilder();
+		for (final File cf : mergedCorpusFiles) {
+			final DbAnalyzerCorpus input = PEXmlUtils.unmarshalJAXB(cf, DbAnalyzerCorpus.class);
+			countCorpusStatements(input, nonDmlPopulations, dmlPopulations);
+			if (description.length() > 0) {
+				description.append("; ");
+			} else {
+				description.append("Formed by merging: ");
+			}
+			description.append(input.getDescription());
+		}
+		
+		final DbAnalyzerCorpus output = new DbAnalyzerCorpus();
+		output.getNonDml().addAll((Collection<? extends StatementNonDMLType>) nonDmlPopulations.values());
+		output.getPopulation().addAll((Collection<? extends StatementPopulationType>) dmlPopulations.values());
+		output.setDescription(description.toString());
+		
+		final String corpusString = PEXmlUtils.marshalJAXB(output);
+		writeToFileOrScreen(corpusFile, corpusString);
+	}
+	
+	private static void countCorpusStatements(final DbAnalyzerCorpus corpus, final Map<String, HasStatement> nonDml, final Map<String, HasStatement> dml) {
+		countFrequencies(corpus.getNonDml(), nonDml);
+		countFrequencies(corpus.getPopulation(), dml);
+	}
+	
+	private static <T extends HasStatement> void countFrequencies(final List<T> stmts, final Map<String, HasStatement> container) {
+		for (final T entry : stmts) {
+			bumpFrequency(entry, container);
+		}
+	}
+	
+	private static <T extends HasStatement> void bumpFrequency(final T item, final Map<String, T> container) {
+		final T entry = container.get(item.getStmt());
+		if (entry == null) {
+			container.put(item.getStmt(), item);
+		} else {
+			final int freq = entry.getFreq() + item.getFreq();
+			entry.setFreq(freq);
+		}
 	}
 
 	private StatementCounter getInitializedStatementCounter(final File corpusFile)

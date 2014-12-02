@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
@@ -38,12 +39,16 @@ import org.junit.Test;
 import com.tesora.dve.common.PEXmlUtils;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.SchemaTest;
+import com.tesora.dve.sql.statement.dml.InsertIntoValuesStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
+import com.tesora.dve.sql.statement.session.UseStatement;
 import com.tesora.dve.sql.util.DBHelperConnectionResource;
 import com.tesora.dve.sql.util.NativeDDL;
 import com.tesora.dve.sql.util.TestResource;
 import com.tesora.dve.standalone.PETest;
 import com.tesora.dve.tools.analyzer.jaxb.DbAnalyzerCorpus;
+import com.tesora.dve.tools.analyzer.jaxb.HasStatement;
+import com.tesora.dve.tools.analyzer.jaxb.StatementNonDMLType;
 import com.tesora.dve.tools.analyzer.jaxb.StatementPopulationType;
 
 public class DVEAnalyzerCLITest extends SchemaTest {
@@ -101,12 +106,41 @@ public class DVEAnalyzerCLITest extends SchemaTest {
 				new File(frequencyCorpus),
 				DbAnalyzerCorpus.class);
 
-		for (final StatementPopulationType statement : frequencyAnalysis
-				.getPopulation()) {
-			final String statementKind = statement.getKind();
-			if (expectedStatementCounts.containsKey(statementKind)) {
-				assertEquals(expectedStatementCounts.get(statementKind), Integer.valueOf(statement.getFreq()));
+		final Set<String> expectedStmtTypes = expectedStatementCounts.keySet();
+		final Map<String, Integer> actualStatementCounts = new HashMap<String, Integer>(expectedStatementCounts.size());
+		for (final StatementNonDMLType statement : frequencyAnalysis.getNonDml()) {
+			bumpStatementKindCount(statement, expectedStmtTypes, actualStatementCounts);
+		}
+		for (final StatementPopulationType statement : frequencyAnalysis.getPopulation()) {
+			bumpStatementKindCount(statement, expectedStmtTypes, actualStatementCounts);
+		}
+		
+		for (final String statementKind : expectedStatementCounts.keySet()) {
+			final Integer expected = expectedStatementCounts.get(statementKind);
+			final Integer actual = actualStatementCounts.get(statementKind);
+			assertEquals(expected, actual);
+		}
+	}
+	
+	private static void bumpStatementKindCount(final StatementNonDMLType statement, final Set<String> expectedStmtTypes, final Map<String, Integer> counter) {
+		bumpStatementKindCount(StatementNonDMLType.class.getSimpleName(), statement.getFreq(), expectedStmtTypes, counter);
+	}
+	
+	private static void bumpStatementKindCount(final StatementPopulationType statement, final Set<String> expectedStmtTypes, final Map<String, Integer> counter) {
+		final String statementKind = statement.getKind();
+		bumpStatementKindCount(statementKind, statement.getFreq(), expectedStmtTypes, counter);
+	}
+	
+	private static void bumpStatementKindCount(final String key, final int freq, final Set<String> expectedStmtTypes, final Map<String, Integer> counter) {
+		if (expectedStmtTypes.contains(key)) {
+			Integer count = counter.get(key);
+			final Integer stmtFreq = Integer.valueOf(freq);
+			if (count == null) {
+				count = stmtFreq;
+			} else {
+				count += stmtFreq;
 			}
+			counter.put(key, count);
 		}
 	}
 
@@ -149,6 +183,55 @@ public class DVEAnalyzerCLITest extends SchemaTest {
 		final Map<String, Integer> expectedStatementCounts = new HashMap<String, Integer>();
 		expectedStatementCounts.put(SelectStatement.class.getSimpleName(), 3);
 		assertStatementCounts(frequencyCorpus, expectedStatementCounts);
+	}
+	
+	@Test
+	public void testCorpusMerging() throws Throwable {
+		final DVEClientToolTestConsole console = new DVEClientToolTestConsole(new DVEAnalyzerCLI(null));
+		final String outputCorpus = getTempFile("output_corpus", null);
+		final String inputCorpus1 = getTempFile("input_corpus1",
+				Arrays.asList(
+						"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>",
+						"<dbAnalyzerCorpus description=\"FileSource using Type:mysql File:corpus1\">",
+						"    <population xsi:type=\"StatementNonInsertType\" literalCount=\"1\" db=\"magento_xl\" kind=\"SelectStatement\" freq=\"71060\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">",
+						"        <stmt>SELECT `salesrule_customer_group`.`customer_group_id` FROM `salesrule_customer_group` WHERE (rule_id = '5')",
+						"    </stmt>",
+						"    </population>",
+						"    <population xsi:type=\"StatementInsertIntoValuesType\" db=\"magento_xl\" kind=\"InsertIntoValuesStatement\" freq=\"1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">",
+						"        <insertPrefix>INSERT INTO `eav_entity_store` (`eav_entity_store`.`entity_type_id`,`eav_entity_store`.`store_id`,`eav_entity_store`.`increment_prefix`)</insertPrefix>",
+						"        <colWidth>3</colWidth>",
+						"        <population tupleCount=\"1\" tuplePop=\"1\"/>",
+						"    </population>",
+						"</dbAnalyzerCorpus>"
+						)
+				);
+		final String inputCorpus2 = getTempFile("input_corpus2",
+				Arrays.asList(
+						"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>",
+						"<dbAnalyzerCorpus description=\"FileSource using Type:mysql File:corpus2\">",
+						"    <population xsi:type=\"StatementNonInsertType\" literalCount=\"1\" db=\"magento_xl\" kind=\"SelectStatement\" freq=\"71060\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">",
+						"        <stmt>SELECT `salesrule_customer_group`.`customer_group_id` FROM `salesrule_customer_group` WHERE (rule_id = '5')",
+						"    </stmt>",
+						"    </population>",
+						"    <population xsi:type=\"StatementInsertIntoValuesType\" db=\"magento_xl\" kind=\"InsertIntoValuesStatement\" freq=\"874\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">",
+						"        <insertPrefix>INSERT INTO `enterprise_customer_sales_flat_quote_address` (`enterprise_customer_sales_flat_quote_address`.`entity_id`)</insertPrefix>",
+						"        <colWidth>1</colWidth>",
+						"        <population tupleCount=\"1\" tuplePop=\"874\"/>",
+						"    </population>",
+						"    <nonDml freq=\"6752\">",
+						"        <stmt>use magento_xl</stmt>",
+						"    </nonDml>",
+						"</dbAnalyzerCorpus>"
+						)
+				);
+		
+		console.executeCommand("merge corpus " + outputCorpus + " " + inputCorpus1 + " " + inputCorpus2, false);
+
+		final Map<String, Integer> expectedStatementCounts = new HashMap<String, Integer>();
+		expectedStatementCounts.put(SelectStatement.class.getSimpleName(), 142120);
+		expectedStatementCounts.put(InsertIntoValuesStatement.class.getSimpleName(), 875);
+		expectedStatementCounts.put(StatementNonDMLType.class.getSimpleName(), 6752);
+		assertStatementCounts(outputCorpus, expectedStatementCounts);
 	}
 
 	private String getTempFile(final String name, final List<String> lines) throws IOException {

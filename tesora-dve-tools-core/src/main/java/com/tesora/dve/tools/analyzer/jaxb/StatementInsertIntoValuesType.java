@@ -31,6 +31,7 @@ package com.tesora.dve.tools.analyzer.jaxb;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
@@ -142,5 +143,23 @@ public class StatementInsertIntoValuesType
         }
         return this.population;
     }
+
+	@Override
+	public String getStmt() {
+		return insertPrefix;
+	}
+
+	@Override
+	public void setStmt(String freq) {
+		this.setInsertPrefix(freq);
+	}
+	
+	@Override
+	public void setFreq(int freq) {
+		super.setFreq(freq);
+		for (final InsertTuples tuple : this.getPopulation()) {
+			tuple.setTuplePop(freq);
+		}
+	}
 
 }

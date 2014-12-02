@@ -130,14 +130,6 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link StatementPopulationType }
-     * 
-     */
-    public StatementPopulationType createStatementPopulationType() {
-        return new StatementPopulationType();
-    }
-
-    /**
      * Create an instance of {@link StatementNonDMLType }
      * 
      */

@@ -60,7 +60,7 @@ import javax.xml.bind.annotation.XmlType;
 @XmlType(name = "StatementNonDMLType", propOrder = {
     "stmt"
 })
-public class StatementNonDMLType {
+public class StatementNonDMLType implements HasStatement {
 
     @XmlElement(required = true)
     protected String stmt;

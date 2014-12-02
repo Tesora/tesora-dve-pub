@@ -33,6 +33,7 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlSeeAlso;
+import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.XmlType;
 
 
@@ -55,13 +56,14 @@ import javax.xml.bind.annotation.XmlType;
  * 
  * 
  */
+@XmlTransient
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "StatementPopulationType")
 @XmlSeeAlso({
     StatementNonInsertType.class,
     StatementInsertIntoValuesType.class
 })
-public class StatementPopulationType {
+public abstract class StatementPopulationType implements HasStatement {
 
     @XmlAttribute(name = "db", required = true)
     protected String db;
@@ -133,5 +135,8 @@ public class StatementPopulationType {
     public void setFreq(int value) {
         this.freq = value;
     }
+    
+    @Override
+    public abstract String getStmt();
 
 }
