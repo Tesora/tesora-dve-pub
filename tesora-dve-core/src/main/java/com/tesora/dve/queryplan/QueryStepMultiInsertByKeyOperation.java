@@ -78,7 +78,7 @@ public class QueryStepMultiInsertByKeyOperation extends QueryStepDMLOperation {
 		
 		resultConsumer.setRowAdjuster(dm.getInsertAdjuster());
 		beginExecution();
-		WorkerGroup.syncWorkers(wg.submit(WorkerGroup.MappingSolution.AllWorkers, req, resultConsumer, insertList.size()));
+		WorkerGroup.syncWorkers(wg.submit(WorkerGroup.MappingSolution.AllWorkers, req, resultConsumer, insertList.size()));//TODO: I'm a little weirded out that this passes the list size in for the worker count. -sgossard
 		endExecution(resultConsumer.getUpdateCount());
 	}
 

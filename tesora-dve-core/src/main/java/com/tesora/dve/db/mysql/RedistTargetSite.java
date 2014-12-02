@@ -185,7 +185,8 @@ public class RedistTargetSite implements AutoCloseable, CanFlowControl {
                         }
                     };
                     MysqlMessage message = MSPComPrepareStmtRequestMessage.newMessage(insertCommand.getSQL(), this.channel.lookupCurrentConnectionCharset());
-                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), prepareCollector1, new PEDefaultPromise<Boolean>());
+                    PEDefaultPromise<Boolean> promise = new PEDefaultPromise<Boolean>();//TODO: this promise is never inspected, because everything is wired into the collector.  Seems wasteful. -sgossard
+                    MysqlStmtPrepareCommand prepareCmd = new MysqlStmtPrepareCommand(this.channel,insertCommand.getSQL(), prepareCollector1, promise);
 
                     shouldPauseInput();
 

@@ -77,8 +77,7 @@ public class TempTableGenerator {
 								ssCon.getNonTransactionalContext(), 
 								new SQLCommand(ssCon.getSchemaContext(),"delete from " + exists.getName())
 								).onDatabase(database).forDDL();
-				Collection<Future<Worker>> f = wgForDDL.submit(MappingSolution.AllWorkers, preCleanupReq, DBEmptyTextResultConsumer.INSTANCE);
-				WorkerGroup.syncWorkers(f);
+				wgForDDL.execute(MappingSolution.AllWorkers, preCleanupReq, DBEmptyTextResultConsumer.INSTANCE);
 			} finally {
 				if (wgForDDL != targetWG)
 					WorkerGroupFactory.returnInstance(ssCon, wgForDDL);

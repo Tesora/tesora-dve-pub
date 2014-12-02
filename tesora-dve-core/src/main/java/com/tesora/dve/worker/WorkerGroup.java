@@ -21,8 +21,7 @@ package com.tesora.dve.worker;
  * #L%
  */
 
-import com.tesora.dve.concurrent.CompletionTarget;
-import com.tesora.dve.concurrent.SynchronousListener;
+import com.tesora.dve.concurrent.*;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
 import io.netty.channel.EventLoopGroup;
@@ -34,8 +33,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import com.tesora.dve.concurrent.CompletionHandle;
-import com.tesora.dve.concurrent.PEDefaultPromise;
 import com.tesora.dve.db.GroupDispatch;
 import com.tesora.dve.db.mysql.DefaultSetVariableBuilder;
 import com.tesora.dve.db.mysql.SharedEventLoopHolder;
@@ -322,16 +319,16 @@ public class WorkerGroup {
 		if (workerMap != null) {
 			if (logger.isDebugEnabled())
 				logger.debug("WorkerGroup executes cleanup steps: " + this);
-			execute(MappingSolution.AllWorkers, 
-							new ResetWorkerRequest(new SSContext(connectionId)), DBEmptyTextResultConsumer.INSTANCE);
-			List<Future<Worker>> activeWorkers = new ArrayList<Future<Worker>>();
+			ChainedNotifier<Worker> prev = submit((MappingSolution) MappingSolution.AllWorkers, (WorkerRequest) new ResetWorkerRequest(new SSContext(connectionId)), (GroupDispatch) DBEmptyTextResultConsumer.INSTANCE, (int) MappingSolution.AllWorkers.computeSize(this), null);
+
 			for (WorkerRequest req : cleanupSteps) {
-				activeWorkers.addAll(submit(MappingSolution.AllWorkers, req, DBEmptyTextResultConsumer.INSTANCE));
+				prev = submit(MappingSolution.AllWorkers, req, DBEmptyTextResultConsumer.INSTANCE, MappingSolution.AllWorkers.computeSize(this),prev);
 			}
-			syncWorkers(activeWorkers);
+			syncWorkers(prev);
 			cleanupSteps.clear();
 		}
-        bindToClientThread(null);
+		//NOTE: we don't clear the binding on a reset, there is a chance the same event will pick up the group and be able to re-use the binding.
+        //bindToClientThread(null);
 	}
 
     /**
@@ -429,11 +426,27 @@ public class WorkerGroup {
 	public void assureSessionVariables(SSConnection ssCon) throws PEException {
         Map<String,String> currentSessionVars = ssCon.getSessionVariables();
 
-        execute(
-                MappingSolution.AllWorkers,
-				new WorkerSetSessionVariableRequest(ssCon.getNonTransactionalContext(), currentSessionVars, new DefaultSetVariableBuilder()),
-				DBEmptyTextResultConsumer.INSTANCE
-        );
+		Collection<Worker> targetWorkers = getTargetWorkers(MappingSolution.AllWorkers);
+		ChainedNotifier<Boolean> promise = null;
+		for (Worker w : targetWorkers) {
+			promise = ChainedNotifier.newInstance(promise); //chains results.
+			w.updateSessionVariables(currentSessionVars, new DefaultSetVariableBuilder(), promise);
+		}
+		try {
+			promise.sync();
+		} catch (PEException e) {
+			throw e;
+		} catch (Exception e) {
+			if (e.getCause() instanceof PEException)
+				throw (PEException)e.getCause();
+			else
+				throw new PEException(e);
+		}
+//        execute(
+//                MappingSolution.AllWorkers,
+//				new WorkerSetSessionVariableRequest(ssCon.getNonTransactionalContext(), currentSessionVars, new DefaultSetVariableBuilder()),
+//				DBEmptyTextResultConsumer.INSTANCE
+//        );
 	}
 		
 	public void setDatabase(SSConnection ssCon, final PersistentDatabase uvd) throws PEException {
@@ -458,15 +471,25 @@ public class WorkerGroup {
 	
 	
 	public void execute(MappingSolution mappingSolution, final WorkerRequest req, final GroupDispatch resultConsumer) throws PEException {
-		syncWorkers(submit(mappingSolution, req, resultConsumer,false));
+		syncWorkers(submit((MappingSolution) mappingSolution, (WorkerRequest) req, (GroupDispatch) resultConsumer, (int) mappingSolution.computeSize(this), null));
 	}
-	
+
 	public static void executeOnAllGroups(Collection<WorkerGroup> allGroups, MappingSolution mappingSolution, WorkerRequest req, GroupDispatch resultConsumer) throws PEException {
-		List<Future<Worker>> workerFutures = new ArrayList<Future<Worker>>();
+		ChainedNotifier<Worker> prev = null;
 		for (WorkerGroup wg : allGroups)
-			workerFutures.addAll(
-					wg.submit(mappingSolution, req, resultConsumer,false));
-		syncWorkers(workerFutures);
+			prev = wg.submit((MappingSolution) mappingSolution, (WorkerRequest) req, (GroupDispatch) resultConsumer, (int) mappingSolution.computeSize(wg), prev);
+		syncWorkers(prev);
+	}
+
+	public static void syncWorkers(Future<Worker> fut) throws PEException {
+		//wait for these to finish in reverse order, which reduces collisions with the producer.
+		try {
+			fut.get();
+		} catch (InterruptedException e) {
+			throw new PEException("Worker operation interrupted", e);
+		} catch (ExecutionException e) {
+			throw new PEException("Worker exception", e.getCause());
+		}
 	}
 
 	public static void syncWorkers(Collection<Future<Worker>> workerFutures) throws PEException {
@@ -474,49 +497,47 @@ public class WorkerGroup {
 		ArrayList<Future<Worker>> workerList = new ArrayList<>(workerFutures);
 		Collections.reverse(workerList);
 		for (Future<Worker> f : workerList)
-			try {
-				f.get();
-			} catch (InterruptedException e) {
-				throw new PEException("Worker operation interrupted", e);
-			} catch (ExecutionException e) {
-				throw new PEException("Worker exception", e.getCause());
-			}
+			syncWorkers(f);
 	}
 
 
 	public Collection<Future<Worker>> submit(MappingSolution mappingSolution,
 			final WorkerRequest req, final GroupDispatch resultConsumer)
 			throws PEException {
-		return submit((MappingSolution) mappingSolution, (WorkerRequest) req, (GroupDispatch) resultConsumer, (int) mappingSolution.computeSize(this),false);
-	}
-
-	protected Collection<Future<Worker>> submit(MappingSolution mappingSolution,
-											 final WorkerRequest req, final GroupDispatch resultConsumer, boolean useSharedLatch)
-			throws PEException {
-		return submit((MappingSolution) mappingSolution, (WorkerRequest) req, (GroupDispatch) resultConsumer, (int) mappingSolution.computeSize(this),useSharedLatch);
+		Collection<Future<Worker>> results = new ArrayList<>();
+		results.add(submit((MappingSolution) mappingSolution, (WorkerRequest) req, (GroupDispatch) resultConsumer, (int) mappingSolution.computeSize(this),null));
+		return results;
 	}
 
 	public Collection<Future<Worker>> submit(MappingSolution mappingSolution,
 			final WorkerRequest req, final GroupDispatch resultConsumer, int senderCount)
 			throws PEException {
-		return submit(mappingSolution, req, resultConsumer, senderCount, false);
+		Collection<Future<Worker>> results = new ArrayList<>();
+		results.add(submit(mappingSolution, req, resultConsumer, senderCount, null));
+		return results;
 	}
 
-	protected Collection<Future<Worker>> submit(MappingSolution mappingSolution, final WorkerRequest req, final GroupDispatch resultConsumer, int senderCount, boolean useSharedLatch) throws PEException {
+	protected ChainedNotifier<Worker> submit(MappingSolution mappingSolution, final WorkerRequest req, final GroupDispatch resultConsumer, int senderCount, CompletionNotifier<Worker> previousDependency) throws PEException {
 		resultConsumer.setSenderCount(senderCount);
 
 		final Collection<Worker> workers = getTargetWorkers(mappingSolution);
-		final ArrayList<Future<Worker>> workerFutures = new ArrayList<Future<Worker>>();
 		final ArrayList<WorkerAndFuture> workersAndFutures = new ArrayList<>();
 
+		ChainedNotifier<Worker> lastWorker = null;
 		for (final Worker w: workers) {
 			//make sure we have open connections for all targets, since connecting right now is synchronous, and we don't want to block an async netty thread.
 			ensureOpenConnection(w);
 
 			//construct a synchronous callback for each worker.
-			SynchronousListener<Worker> firstWorkerFuture = new SynchronousListener<>();
-			workersAndFutures.add(new WorkerAndFuture(w,firstWorkerFuture));
-			workerFutures.add(firstWorkerFuture);
+			ChainedNotifier<Worker> workerFuture;
+			if (previousDependency == null)
+				workerFuture = new ChainedNotifier<>();
+			else
+				workerFuture = new ChainedNotifier<>(previousDependency);
+			previousDependency = workerFuture;
+			lastWorker = workerFuture;
+
+			workersAndFutures.add(new WorkerAndFuture(w,workerFuture,workerFuture));
 		}
 
 
@@ -526,21 +547,22 @@ public class WorkerGroup {
 			//remove the first entry.
 			Iterator<WorkerAndFuture> iterator = workersAndFutures.iterator();
 			final WorkerAndFuture first = iterator.next();
-			final SynchronousListener<Worker> firstWorkerFuture = first.future;
+			final CompletionTarget<Worker> firstWorkerTarget = first.target;
+			final Future<Worker> firstWorkerSync = first.sync;
 			iterator.remove();
 
 			final CompletionTarget<Worker> submitOtherWorkersOnSuccess = new CompletionTarget<Worker>() {
                 @Override
                 public void success(Worker returnValue) {
-                    firstWorkerFuture.success(returnValue);
+					firstWorkerTarget.success(returnValue);
 					for (final WorkerAndFuture w: workersAndFutures) {
-                        submitWork(w.worker, req, resultConsumer,w.future);
+                        submitWork(w.worker, req, resultConsumer,w.target);
                     }
 				}
 
                 @Override
                 public void failure(Exception e) {
-                    firstWorkerFuture.failure(e);
+					firstWorkerTarget.failure(e);
                 }
             };
 
@@ -553,7 +575,7 @@ public class WorkerGroup {
 
 			// blocks this thread on success/fail of first task, and for failure throws related exception here.
 			try {
-                firstWorkerFuture.get();
+				firstWorkerSync.get();
             } catch (InterruptedException | ExecutionException e) {
                 throw new PEException("Exception encountered synchronizing site updates", e);
             }
@@ -562,13 +584,13 @@ public class WorkerGroup {
 				@Override
 				public void run() {
 					for (final WorkerAndFuture w: workersAndFutures) {
-                        submitWork(w.worker, req, resultConsumer,w.future);
+                        submitWork(w.worker, req, resultConsumer,w.target);
                     }
 				}
 			});
 		}
 
-		return workerFutures;
+		return lastWorker;
 	}
 
 	private void submitWork(final Worker w, final WorkerRequest req, final GroupDispatch resultConsumer, final CompletionTarget<Worker> syncListener ) {
@@ -578,11 +600,11 @@ public class WorkerGroup {
 		req.executeRequest(w, promise);
     }
 
-	private PEDefaultPromise<Boolean> buildSubmitHandle(final Worker w, final WorkerRequest req, final CompletionTarget<Worker> syncListener) {
-		return new PEDefaultPromise<Boolean>(){
+	private CompletionHandle<Boolean> buildSubmitHandle(final Worker w, final WorkerRequest req, final CompletionTarget<Worker> syncListener) {
+		return new DefaultCompletionHandle<Boolean>(){
             final long reqStartTime = System.currentTimeMillis();
             @Override
-            public void success(Boolean returnValue) {
+            protected void onSuccess(Boolean returnValue) {
                 try {
                     WorkerGroup.sendStatistics(w, req, System.currentTimeMillis() - reqStartTime);
                     syncListener.success(w);
@@ -592,7 +614,7 @@ public class WorkerGroup {
             }
 
             @Override
-            public void failure(Exception t) {
+            protected void onFailure(Exception t) {
                 try{
                     w.setLastException(t);
                     if (t instanceof PEException && ((PEException)t).hasCause(PECommunicationsException.class)){
@@ -1009,11 +1031,19 @@ public class WorkerGroup {
 
 	static class WorkerAndFuture {
 		Worker worker;
-		SynchronousListener<Worker> future;
+		CompletionTarget<Worker> target;
+		Future<Worker> sync;
 
 		public WorkerAndFuture(Worker worker, SynchronousListener<Worker> future) {
 			this.worker = worker;
-			this.future = future;
+			this.target = future;
+			this.sync = future;
+		}
+
+		public WorkerAndFuture(Worker worker, CompletionTarget<Worker> target, Future<Worker> sync) {
+			this.worker = worker;
+			this.target = target;
+			this.sync = sync;
 		}
 	}
 

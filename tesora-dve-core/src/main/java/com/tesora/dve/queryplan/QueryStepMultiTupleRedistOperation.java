@@ -363,26 +363,14 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			//			MappingSolution sourceWorkerMapping = sourceDistModel.mapForQuery(wg, command);
 			WorkerExecuteRequest redistQueryRequest = 
 					new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), givenCommand).onDatabase(sourceDatabase);
-			if (logger.isDebugEnabled())
-				logger.debug(ssCon + ": Redist: preparing source query " + redistQueryRequest);
-			sourceWG.execute(sourceWorkerMapping, redistQueryRequest, selectCollector);
+
+			redistPrepareSourceQuery(sourceWG, ssCon, selectCollector, sourceWorkerMapping, redistQueryRequest);
 
 			// Create the temp table
 			final ColumnSet resultMetadata = givenTableHints.addAutoIncMetadata(selectCollector.getResultColumns());
 
 			if (givenTargetTable == null) {
-				if (cleanupWG == null)
-					cleanupWG = targetWG;
-				UserTable existing = null;
-				if (executeCounter > 0)
-					existing = createdTempTables[branch];
-				givenTargetTable = tableGenerator.createTable(ssCon, targetWG, cleanupWG,
-						givenTempHints, useSystemTempTable, givenTempTableName,
-						givenTargetUserDatabase, resultMetadata, givenTargetDistModel,existing);
-				if (executeCounter == 0)
-					createdTempTables[branch] = (UserTable) givenTargetTable;
-				if (logger.isDebugEnabled())
-					logger.debug(ssCon + ": Redist: Created temp table " + givenTargetTable);
+				givenTargetTable = redistBuildTempTable(useSystemTempTable, givenTempTableName, targetWG, givenTargetUserDatabase, givenTargetDistModel, givenTempHints, cleanupWG, tableGenerator, branch, ssCon, resultMetadata);
 				//				WorkerExecuteRequest lockReq = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), new SQLCommand("LOCK TABLES " + targetTable.getNameAsIdentifier() + " WRITE"));
 				//				targetWG.execute(MappingSolution.AllWorkers, lockReq, DBEmptyTextResultConsumer.INSTANCE);
 			}
@@ -420,29 +408,24 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
             RedistTupleBuilder newBuilder = new RedistTupleBuilder(c, distributeTableLike.getDistributionModel(), givenInsertOptions, givenTargetTable, maxTupleCount, maxDataSize, targetWG);
             newBuilder.setInsertIgnore(insertIgnore);
 
-            //TODO: It would be nicer if we didn't have to set database on all the target sites up front.
-			WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(givenTargetUserDatabase);
-            targetWG.execute(MappingSolution.AllWorkers, emptyRequest, NoopConsumer.SINGLETON);
+
+			redistUseTargetDatabase(targetWG, givenTargetUserDatabase, ssCon);
+
 
 			MysqlRedistTupleForwarder redistForwarder = 
 					new MysqlRedistTupleForwarder(
 							dv, givenTableHints,
 							useResultSetAliases, selectCollector.getPreparedStatement(), newBuilder);
-			if (logger.isDebugEnabled())
-				logger.debug(ssCon + ": Redist: starting redistribution: " + redistForwarder);
-			sourceWG.execute(sourceWorkerMapping, redistQueryRequest, redistForwarder);
-			if (logger.isDebugEnabled()) logger.debug("Redist sender completes");
+
+			redistExecuteSourceQuery(sourceWG, ssCon, sourceWorkerMapping, redistQueryRequest, redistForwarder);
 
 			// Everything is sent now, so sync up with the results handler
-			@SuppressWarnings("unused")
-			int recordsSent = redistForwarder.getNumRowsForwarded();
-			int recordsInserted = newBuilder.getUpdateCount();
+			int recordsInserted = redistWaitForUpdateCount(newBuilder, redistForwarder);
 			rowcount = recordsInserted;
-			
-			// Close the prepared statements
-			//			System.out.println("selectCollector " + selectCollector.getPreparedStatement());
-			sourceWG.execute(sourceWorkerMapping, new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(sourceDatabase), 
-					new MysqlStmtCloseDiscarder(selectCollector.getPreparedStatement()));
+
+			redistCloseSourePrepares(sourceWG, sourceDatabase, ssCon, selectCollector, sourceWorkerMapping);
+
+
 			//			System.out.println("insertCollector B " + insertCollector.getPreparedStatement());
 			//			targetWG.submit(MappingSolution.AllWorkers, emptyRequest, 
 			//					new MysqlStmtCloseDiscarder(insertCollector.getPreparedStatement()));
@@ -479,15 +462,68 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 			throw new PEException("Executing redist command: " + command, e);
 		} finally {
 			if (allocatedWG != null) {
-				if (logger.isDebugEnabled())
-					logger.debug("Redist deallocates: purge=" + allocatedWG.isMarkedForPurge() + ", wg="+ allocatedWG);
-				ssCon.returnWorkerGroup(allocatedWG);
+				redistReturnAllocatedGroup(allocatedWG, ssCon);
 			}
 		}
 		
 		totalRows += rowcount;
 		
 		return givenTargetTable;
+	}
+
+	private int redistWaitForUpdateCount(RedistTupleBuilder newBuilder, MysqlRedistTupleForwarder redistForwarder) throws Exception {
+		@SuppressWarnings("unused")
+        int recordsSent = redistForwarder.getNumRowsForwarded();
+		return newBuilder.getUpdateCount();
+	}
+
+	private void redistReturnAllocatedGroup(WorkerGroup allocatedWG, SSConnection ssCon) throws PEException {
+		if (logger.isDebugEnabled())
+            logger.debug("Redist deallocates: purge=" + allocatedWG.isMarkedForPurge() + ", wg="+ allocatedWG);
+		ssCon.returnWorkerGroup(allocatedWG);
+	}
+
+	private void redistCloseSourePrepares(WorkerGroup sourceWG, PersistentDatabase sourceDatabase, SSConnection ssCon, MysqlPrepareStatementCollector selectCollector, MappingSolution sourceWorkerMapping) throws PEException {
+		// Close the prepared statements
+		//			System.out.println("selectCollector " + selectCollector.getPreparedStatement());
+		sourceWG.execute(sourceWorkerMapping, new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(sourceDatabase),
+                new MysqlStmtCloseDiscarder(selectCollector.getPreparedStatement()));
+	}
+
+	private void redistExecuteSourceQuery(WorkerGroup sourceWG, SSConnection ssCon, MappingSolution sourceWorkerMapping, WorkerExecuteRequest redistQueryRequest, MysqlRedistTupleForwarder redistForwarder) throws PEException {
+		if (logger.isDebugEnabled())
+            logger.debug(ssCon + ": Redist: starting redistribution: " + redistForwarder);
+		sourceWG.execute(sourceWorkerMapping, redistQueryRequest, redistForwarder);
+		if (logger.isDebugEnabled()) logger.debug("Redist sender completes");
+	}
+
+	private void redistUseTargetDatabase(WorkerGroup targetWG, PersistentDatabase givenTargetUserDatabase, SSConnection ssCon) throws PEException {
+		//TODO: It would be nicer if we didn't have to set database on all the target sites up front.
+		WorkerExecuteRequest emptyRequest = new WorkerExecuteRequest(ssCon.getNonTransactionalContext(), SQLCommand.EMPTY).onDatabase(givenTargetUserDatabase);
+		targetWG.execute(MappingSolution.AllWorkers, emptyRequest, NoopConsumer.SINGLETON);
+	}
+
+	private PersistentTable redistBuildTempTable(boolean useSystemTempTable, String givenTempTableName, WorkerGroup targetWG, PersistentDatabase givenTargetUserDatabase, DistributionModel givenTargetDistModel, TempTableDeclHints givenTempHints, WorkerGroup cleanupWG, TempTableGenerator tableGenerator, int branch, SSConnection ssCon, ColumnSet resultMetadata) throws PEException {
+		PersistentTable givenTargetTable;
+		if (cleanupWG == null)
+            cleanupWG = targetWG;
+		UserTable existing = null;
+		if (executeCounter > 0)
+            existing = createdTempTables[branch];
+		givenTargetTable = tableGenerator.createTable(ssCon, targetWG, cleanupWG,
+                givenTempHints, useSystemTempTable, givenTempTableName,
+                givenTargetUserDatabase, resultMetadata, givenTargetDistModel,existing);
+		if (executeCounter == 0)
+            createdTempTables[branch] = (UserTable) givenTargetTable;
+		if (logger.isDebugEnabled())
+            logger.debug(ssCon + ": Redist: Created temp table " + givenTargetTable);
+		return givenTargetTable;
+	}
+
+	private void redistPrepareSourceQuery(WorkerGroup sourceWG, SSConnection ssCon, MysqlPrepareStatementCollector selectCollector, MappingSolution sourceWorkerMapping, WorkerExecuteRequest redistQueryRequest) throws PEException {
+		if (logger.isDebugEnabled())
+            logger.debug(ssCon + ": Redist: preparing source query " + redistQueryRequest);
+		sourceWG.execute(sourceWorkerMapping, redistQueryRequest, selectCollector);
 	}
 
 	static public SQLCommand getTableInsertStatement(final Charset connectionCharset, PersistentTable targetTable, SQLCommand insertOptions,
