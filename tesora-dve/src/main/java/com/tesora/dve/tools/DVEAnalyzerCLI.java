@@ -503,8 +503,8 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 			throw new PEException("You must provide at least two files for merging");
 		}
 		
-		final Map<String, HasStatement> nonDmlPopulations = new HashMap<String, HasStatement>();
-		final Map<String, HasStatement> dmlPopulations = new HashMap<String, HasStatement>();
+		final Map<String, StatementNonDMLType> nonDmlPopulations = new HashMap<String, StatementNonDMLType>();
+		final Map<String, StatementPopulationType> dmlPopulations = new HashMap<String, StatementPopulationType>();
 		final StringBuilder description = new StringBuilder();
 		for (final File cf : mergedCorpusFiles) {
 			final DbAnalyzerCorpus input = PEXmlUtils.unmarshalJAXB(cf, DbAnalyzerCorpus.class);
@@ -518,20 +518,20 @@ public class DVEAnalyzerCLI extends CLIBuilder {
 		}
 		
 		final DbAnalyzerCorpus output = new DbAnalyzerCorpus();
-		output.getNonDml().addAll((Collection<? extends StatementNonDMLType>) nonDmlPopulations.values());
-		output.getPopulation().addAll((Collection<? extends StatementPopulationType>) dmlPopulations.values());
+		output.getNonDml().addAll(nonDmlPopulations.values());
+		output.getPopulation().addAll(dmlPopulations.values());
 		output.setDescription(description.toString());
 		
 		final String corpusString = PEXmlUtils.marshalJAXB(output);
 		writeToFileOrScreen(corpusFile, corpusString);
 	}
 	
-	private static void countCorpusStatements(final DbAnalyzerCorpus corpus, final Map<String, HasStatement> nonDml, final Map<String, HasStatement> dml) {
-		countFrequencies(corpus.getNonDml(), nonDml);
-		countFrequencies(corpus.getPopulation(), dml);
+	private static void countCorpusStatements(final DbAnalyzerCorpus corpus, final Map<String, StatementNonDMLType> nonDmlPopulations, final Map<String, StatementPopulationType> dmlPopulations) {
+		countFrequencies(corpus.getNonDml(), nonDmlPopulations);
+		countFrequencies(corpus.getPopulation(), dmlPopulations);
 	}
 	
-	private static <T extends HasStatement> void countFrequencies(final List<T> stmts, final Map<String, HasStatement> container) {
+	private static <T extends HasStatement> void countFrequencies(final List<T> stmts, final Map<String, T> container) {
 		for (final T entry : stmts) {
 			bumpFrequency(entry, container);
 		}
