@@ -639,38 +639,37 @@ public class FunctionsTest extends SchemaTest {
 	
 	@Test
 	public void testPE761() throws Throwable {
-		conn.execute("CREATE TABLE `pe761_A` (`value` int)");
-		conn.execute("INSERT INTO `pe761_A` VALUES (1), (2), (3), (4)");
-		
-		conn.assertResults("SELECT ROUND(VAR_SAMP(`value`), 4) FROM `pe761_A`", br(nr, 1.6667));
-		conn.assertResults("SELECT ROUND(VARIANCE(`value`), 4) FROM `pe761_A`", br(nr, 1.2500));
-		conn.assertResults("SELECT ROUND(VAR_POP(`value`), 4) FROM `pe761_A`", br(nr, 1.2500));
-
-		conn.assertResults("SELECT ROUND(STDDEV_SAMP(`value`), 4) FROM `pe761_A`", br(nr, 1.2910));
-		conn.assertResults("SELECT ROUND(STDDEV(`value`), 4) FROM `pe761_A`", br(nr, 1.1180));
-		conn.assertResults("SELECT ROUND(STD(`value`), 4) FROM `pe761_A`", br(nr, 1.1180));
-		conn.assertResults("SELECT ROUND(STDDEV_POP(`value`), 4) FROM `pe761_A`", br(nr, 1.1180));
-		
-//		conn.execute("CREATE TABLE `pe761_B` (`id` int not null, `value` int)");
-//		conn.execute("INSERT INTO `pe761_B` VALUES (1, 1), (1, 2), (1, 3),"
-//				+ "(2, 4), (2, 5), (2, 6), (3, 7), (3, 8), (3, 9)");
+//		conn.execute("CREATE TABLE `pe761_A` (`value` int)");
+//		conn.execute("INSERT INTO `pe761_A` VALUES (1), (2), (3), (4)");
 //		
-//		conn.assertResults("SELECT ROUND(VAR_SAMP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
-//				br(nr, 1.6667, nr, 1.6667, nr, 1.6667));
-//		conn.assertResults("SELECT ROUND(VARIANCE(`value`), 4) FROM `pe761_B` GROUP BY `id`",
-//				br(nr, 1.2500, nr, 1.2500, nr, 1.2500));
-//		conn.assertResults("SELECT ROUND(VAR_POP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
-//				br(nr, 1.2500, nr, 1.2500, nr, 1.2500));
+//		conn.assertResults("SELECT ROUND(VAR_SAMP(`value`), 4) FROM `pe761_A`", br(nr, 1.6667));
+//		conn.assertResults("SELECT ROUND(VARIANCE(`value`), 4) FROM `pe761_A`", br(nr, 1.2500));
+//		conn.assertResults("SELECT ROUND(VAR_POP(`value`), 4) FROM `pe761_A`", br(nr, 1.2500));
 //
-//		conn.assertResults("SELECT ROUND(STDDEV_SAMP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
-//				br(nr, 1.2910, nr, 1.2910, nr, 1.2910));
-//		conn.assertResults("SELECT ROUND(STDDEV(`value`), 4) FROM `pe761_B` GROUP BY `id`",
-//				br(nr, 1.1180, nr, 1.1180, nr, 1.1180));
-//		conn.assertResults("SELECT ROUND(STD(`value`), 4) FROM `pe761_B` GROUP BY `id`",
-//				br(nr, 1.1180, nr, 1.1180, nr, 1.1180));
-//		conn.assertResults("SELECT ROUND(STDDEV_POP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
-//				br(nr, 1.1180, nr, 1.1180, nr, 1.1180));
+//		conn.assertResults("SELECT ROUND(STDDEV_SAMP(`value`), 4) FROM `pe761_A`", br(nr, 1.2910));
+//		conn.assertResults("SELECT ROUND(STDDEV(`value`), 4) FROM `pe761_A`", br(nr, 1.1180));
+//		conn.assertResults("SELECT ROUND(STD(`value`), 4) FROM `pe761_A`", br(nr, 1.1180));
+//		conn.assertResults("SELECT ROUND(STDDEV_POP(`value`), 4) FROM `pe761_A`", br(nr, 1.1180));
 		
+		conn.execute("CREATE TABLE `pe761_B` (`id` int not null, `value` int)");
+		conn.execute("INSERT INTO `pe761_B` VALUES (1, 1), (1, 2), (1, 3),"
+				+ "(2, 4), (2, 5), (2, 6), (3, 7), (3, 8), (3, 9)");
+		
+		conn.assertResults("SELECT ROUND(VAR_SAMP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 1.6667, nr, 1.6667, nr, 1.6667));
+		conn.assertResults("SELECT ROUND(VARIANCE(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 1.2500, nr, 1.2500, nr, 1.2500));
+		conn.assertResults("SELECT ROUND(VAR_POP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 1.2500, nr, 1.2500, nr, 1.2500));
+
+		conn.assertResults("SELECT ROUND(STDDEV_SAMP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 1.2910, nr, 1.2910, nr, 1.2910));
+		conn.assertResults("SELECT ROUND(STDDEV(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 1.1180, nr, 1.1180, nr, 1.1180));
+		conn.assertResults("SELECT ROUND(STD(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 1.1180, nr, 1.1180, nr, 1.1180));
+		conn.assertResults("SELECT ROUND(STDDEV_POP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 1.1180, nr, 1.1180, nr, 1.1180));
 	}
 
 	@Test

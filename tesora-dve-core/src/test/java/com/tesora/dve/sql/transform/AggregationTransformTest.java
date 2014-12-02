@@ -923,5 +923,14 @@ public class AggregationTransformTest extends TransformTest {
 					.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION))
 				));
 	}
+	
+	@Test
+	public void testPE761_VarSampWithGroupBy() throws Throwable {
+		final SchemaContext db = buildSchema(TestName.MULTI,
+				"CREATE TABLE `pe761` (`id` int not null, `value` int) RANDOM DISTRIBUTE");
+		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
+		final String sql = "SELECT VAR_SAMP(`value`) FROM `pe761` GROUP BY `id`";
+		stmtTest(db, sql, SelectStatement.class,null);
+	}
 
 }

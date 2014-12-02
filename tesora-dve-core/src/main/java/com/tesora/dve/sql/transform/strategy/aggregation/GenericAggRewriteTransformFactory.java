@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.SetQuantifier;
 import com.tesora.dve.sql.node.expression.AliasInstance;
@@ -56,6 +57,7 @@ import com.tesora.dve.sql.schema.TempTableCreateOptions;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.CopyVisitor;
+import com.tesora.dve.sql.transform.SchemaMapper;
 import com.tesora.dve.sql.transform.TableInstanceCollector;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
@@ -222,18 +224,28 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 							final SchemaContext sc = pc.getContext();
 
 							final SelectStatement childEvaluationStmt = buildChildrenEvaluationStmt(result, parentMutator);
-							
-//							final List<SortingSpecification> originalGroups = new ArrayList<SortingSpecification>();
-//							for (final AliasingEntry<SortingSpecification> group: state.getRequestedGrouping()) {
-//								originalGroups.add(group.buildNew(group.getOriginalExpression()));
-//							}
-//							childEvaluationStmt.setGroupBy(originalGroups);
+							final List<ColumnInstance> parentGroupCols = new ArrayList<ColumnInstance>();
+							if (state.hasGrouping()) {
+								final List<ExpressionNode> proj = new ArrayList<ExpressionNode>(childEvaluationStmt.getProjection());
+								final List<SortingSpecification> grouping = new ArrayList<SortingSpecification>();
+								for (final AliasingEntry<SortingSpecification> e : state.getRequestedGrouping()) {
+									final ExpressionNode original = e.getOriginalExpression();
+									final ColumnInstance ci = unwindAliases(original);
+									proj.add(ci);
+									grouping.add(e.buildNew(original));
+									parentGroupCols.add(ci);
+								}
+								childEvaluationStmt.setGroupBy(grouping);
+								
+								final SchemaMapper originalMapper = childEvaluationStmt.getMapper();
+								final SchemaMapper parentToTemp = new SchemaMapper(originalMapper.getOriginals(), childEvaluationStmt, originalMapper.getCopyContext());
+								childEvaluationStmt.setMapper(parentToTemp);
+							}
 							
 							childEvaluationStmt.normalize(sc);
-
-							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) childEvaluationStmt.plan(sc,
-									pc.getBehaviorConfiguration());
-
+							
+							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) TransformFactory.buildPlan(childEvaluationStmt, pc, DefaultFeaturePlannerFilter.INSTANCE);
+							
 							// Redist where the parent's initial step executes.
 							final RedistFeatureStep plannedChildRedistStep = plannedChildEvaluationStep.redist(pc,
 									this,
@@ -255,23 +267,28 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 							for (final AggFunMutator kid : parentMutator.getChildren().keySet()) {
 
 								// Update projection references available to the parent mutator.
-								ExpressionNode projEntry = plannedChildProjection.get(projIdx++);
 								// Unfold aliases to obtain the actual target column instance.
-								while (projEntry instanceof ExpressionAlias) {
-									projEntry = ((ExpressionAlias) projEntry).getTarget();
-								}
+								final ColumnInstance projEntry = unwindAliases(plannedChildProjection.get(projIdx++));
 								childExprs.put(kid, projEntry);
 								
 								// Append child temp tables to the initial parent's statement.
 								final List<FromTableReference> fromTables = new ArrayList<FromTableReference>(result.getTables());
 								final TempTableInstance childResultsTableInstance = new TempTableInstance(sc, childResultsTable);
+								
+								// No grouping => grand aggregation => single row join.
 								if (!state.hasGrouping()) {
 									fromTables.add(new FromTableReference(childResultsTableInstance));
 								} else {
-									fromTables.add(new FromTableReference(childResultsTableInstance));
-//									final List<AliasingEntry<SortingSpecification>> grouping = state.getRequestedGrouping();
-//									final ExpressionNode joinOnExpr = new FunctionCall(FunctionName.makeEquals(), projEntry);
-//									new JoinedTable(childResultsTableInstance, null, JoinSpecification.INNER_JOIN);
+									final List<ExpressionNode> joinConditions = new ArrayList<ExpressionNode>(parentGroupCols.size()); 
+									for (final ColumnInstance lhs : parentGroupCols) {
+										final ColumnInstance rhs = childEvaluationStmt.getMapper().copyForward(lhs);
+										final FunctionCall joinOnExpr = new FunctionCall(FunctionName.makeEquals(), lhs, rhs);
+										joinConditions.add(joinOnExpr);
+									}
+									
+									final ExpressionNode onClause = ExpressionUtils.safeBuildAnd(joinConditions);
+									final JoinedTable jt = new JoinedTable(childResultsTableInstance, onClause, JoinSpecification.INNER_JOIN);
+									fromTables.get(fromTables.size() - 1).addJoinedTable(jt);
 								}
 								result.setTables(fromTables);
 							}
@@ -288,6 +305,13 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 		if (emitting())
 			emit("after apply(" + lastMutator + ", " + firstMutator + ", "+ options + "): " + result.getSQL(pc.getContext()));
 		return startAt;
+	}
+	
+	private ColumnInstance unwindAliases(final ExpressionNode original) {
+		if (original instanceof ExpressionAlias) {
+			return unwindAliases(((ExpressionAlias) original).getTarget());
+		}
+		return (ColumnInstance) original;
 	}
 
 	private SelectStatement buildChildrenEvaluationStmt(final SelectStatement original, final AggFunMutator parentMutator) {
