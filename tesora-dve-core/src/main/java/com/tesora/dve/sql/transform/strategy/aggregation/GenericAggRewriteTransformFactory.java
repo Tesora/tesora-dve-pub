@@ -213,91 +213,7 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 
 			// Apply each mutator's children first so that it can use their results.
 			if (options.getCurrentStep() == 1) {
-				for (final ColumnMutator cm : pm.getMutators()) {
-					if (cm instanceof AggFunMutator) {
-						final AggFunMutator parentMutator = (AggFunMutator) cm;
-						// Evaluate the children and make their results available in the parent's initial step.
-						if (parentMutator.hasChildren()) {
-							if (emitting()) {
-								emit("planning children");
-							}
-
-							// Evaluate and redistribute the child results into temp tables.
-							final SchemaContext sc = pc.getContext();
-
-							final SelectStatement childEvaluationStmt = buildChildrenEvaluationStmt(result, parentMutator);
-							final List<ColumnInstance> parentGroupCols = new ArrayList<ColumnInstance>();
-							if (state.hasGrouping()) {
-								final List<ExpressionNode> proj = new ArrayList<ExpressionNode>(childEvaluationStmt.getProjection());
-								final List<SortingSpecification> grouping = new ArrayList<SortingSpecification>();
-								for (final AliasingEntry<SortingSpecification> e : state.getRequestedGrouping()) {
-									final ExpressionNode original = e.getOriginalExpression();
-									final ColumnInstance ci = unwindAliases(original);
-									proj.add(ci);
-									grouping.add(e.buildNew(original));
-									parentGroupCols.add(ci);
-								}
-								childEvaluationStmt.setProjection(proj);
-								childEvaluationStmt.setGroupBy(grouping);
-								
-								final SchemaMapper originalMapper = result.getMapper();
-								final SchemaMapper parentToTemp = new SchemaMapper(originalMapper.getOriginals(), childEvaluationStmt, originalMapper.getCopyContext());
-								childEvaluationStmt.setMapper(parentToTemp);
-							}
-							
-							childEvaluationStmt.normalize(sc);
-							
-							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) TransformFactory.buildPlan(childEvaluationStmt, pc, new ComplexFeaturePlannerFilter(Collections.EMPTY_SET, TransformFactory.allTransforms));
-							
-							// Redist where the parent's initial step executes.
-							final RedistFeatureStep plannedChildRedistStep = plannedChildEvaluationStep.redist(pc,
-									this,
-									new TempTableCreateOptions(Model.BROADCAST,
-											result.getStorageGroup(sc)),
-									null,
-									null);
-							startAt.addChild(plannedChildRedistStep);
-
-							final TempTable childResultsTable = plannedChildRedistStep.getTargetTempTable();
-							final SelectStatement childResultsProjectingStmt = childResultsTable.buildSelect(sc);
-							childResultsProjectingStmt.normalize(sc);
-
-							final List<ExpressionNode> plannedChildProjection = childResultsProjectingStmt.getProjection();
-							final Map<AggFunMutator, ExpressionNode> childExprs = parentMutator.getChildren();
-
-							// Make the results available in the parent's initial statement.
-							int projIdx = 0;
-							for (final AggFunMutator kid : parentMutator.getChildren().keySet()) {
-
-								// Update projection references available to the parent mutator.
-								// Unfold aliases to obtain the actual target column instance.
-								final ColumnInstance projEntry = unwindAliases(plannedChildProjection.get(projIdx++));
-								childExprs.put(kid, projEntry);
-								
-								// Append child temp tables to the initial parent's statement.
-								final List<FromTableReference> fromTables = new ArrayList<FromTableReference>(result.getTables());
-								final TempTableInstance childResultsTableInstance = new TempTableInstance(sc, childResultsTable);
-								
-								// No grouping => grand aggregation => single row join.
-								if (!state.hasGrouping()) {
-									fromTables.add(new FromTableReference(childResultsTableInstance));
-								} else {
-									final List<ExpressionNode> joinConditions = new ArrayList<ExpressionNode>(parentGroupCols.size()); 
-									for (final ColumnInstance lhs : parentGroupCols) {
-										final ColumnInstance rhs = childResultsProjectingStmt.getMapper().copyForward(lhs);
-										final FunctionCall joinOnExpr = new FunctionCall(FunctionName.makeEquals(), lhs, rhs);
-										joinConditions.add(joinOnExpr);
-									}
-									
-									final ExpressionNode onClause = ExpressionUtils.safeBuildAnd(joinConditions);
-									final JoinedTable jt = new JoinedTable(childResultsTableInstance, onClause, JoinSpecification.INNER_JOIN);
-									fromTables.get(fromTables.size() - 1).addJoinedTable(jt);
-								}
-								result.setTables(fromTables);
-							}
-						}
-					}
-				}
+				applyAllChildMutators(pc, startAt, state, result, pm);
 			}
 
 			intermediate = pm.apply(this, state, intermediate, options);
@@ -308,6 +224,109 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 		if (emitting())
 			emit("after apply(" + lastMutator + ", " + firstMutator + ", "+ options + "): " + result.getSQL(pc.getContext()));
 		return startAt;
+	}
+
+
+	/**
+	 * Plan all child projection mutators.
+	 */
+	private void applyAllChildMutators(final PlannerContext pc, final ProjectingFeatureStep currentPlan,
+			final AggregationMutatorState state, final SelectStatement currentStmt, final ProjectionMutator pm) throws PEException {
+		for (final ColumnMutator cm : pm.getMutators()) {
+			if (cm instanceof AggFunMutator) {
+				final AggFunMutator parentMutator = (AggFunMutator) cm;
+				applyChildMutators(pc, currentPlan, state, currentStmt, parentMutator);
+			}
+		}
+	}
+
+
+	/**
+	 * Plan all children of 'parentMutator' on statement 'currentStmt' and append the generated plans to 'currentPlan'.
+	 */
+	private void applyChildMutators(final PlannerContext pc, final ProjectingFeatureStep currentPlan,
+			final AggregationMutatorState state, final SelectStatement currentStmt, final AggFunMutator parentMutator)
+					throws PEException {
+		// Evaluate the children and make their results available in the parent's initial step.
+		if (parentMutator.hasChildren()) {
+			if (emitting()) {
+				emit("planning children");
+			}
+
+			// Evaluate and redistribute the child results into temp tables.
+			final SchemaContext sc = pc.getContext();
+
+			final SelectStatement childEvaluationStmt = buildChildrenEvaluationStmt(currentStmt, parentMutator);
+			final List<ColumnInstance> parentGroupCols = new ArrayList<ColumnInstance>();
+			if (state.hasGrouping()) {
+				final List<ExpressionNode> proj = new ArrayList<ExpressionNode>(childEvaluationStmt.getProjection());
+				final List<SortingSpecification> grouping = new ArrayList<SortingSpecification>();
+				for (final AliasingEntry<SortingSpecification> e : state.getRequestedGrouping()) {
+					final ExpressionNode original = e.getOriginalExpression();
+					final ColumnInstance ci = unwindAliases(original);
+					proj.add(ci);
+					grouping.add(e.buildNew(original));
+					parentGroupCols.add(ci);
+				}
+				childEvaluationStmt.setProjection(proj);
+				childEvaluationStmt.setGroupBy(grouping);
+				
+				final SchemaMapper originalMapper = currentStmt.getMapper();
+				final SchemaMapper parentToTemp = new SchemaMapper(originalMapper.getOriginals(), childEvaluationStmt, originalMapper.getCopyContext());
+				childEvaluationStmt.setMapper(parentToTemp);
+			}
+			
+			childEvaluationStmt.normalize(sc);
+			
+			final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) TransformFactory.buildPlan(childEvaluationStmt, pc, new ComplexFeaturePlannerFilter(Collections.EMPTY_SET, TransformFactory.allTransforms));
+			
+			// Redist where the parent's initial step executes.
+			final RedistFeatureStep plannedChildRedistStep = plannedChildEvaluationStep.redist(pc,
+					this,
+					new TempTableCreateOptions(Model.BROADCAST,
+							currentStmt.getStorageGroup(sc)),
+					null,
+					null);
+			currentPlan.addChild(plannedChildRedistStep);
+
+			final TempTable childResultsTable = plannedChildRedistStep.getTargetTempTable();
+			final SelectStatement childResultsProjectingStmt = childResultsTable.buildSelect(sc);
+			childResultsProjectingStmt.normalize(sc);
+
+			final List<ExpressionNode> plannedChildProjection = childResultsProjectingStmt.getProjection();
+			final Map<AggFunMutator, ExpressionNode> childExprs = parentMutator.getChildren();
+
+			// Make the results available in the parent's initial statement.
+			int projIdx = 0;
+			for (final AggFunMutator kid : parentMutator.getChildren().keySet()) {
+
+				// Update projection references available to the parent mutator.
+				// Unfold aliases to obtain the actual target column instance.
+				final ColumnInstance projEntry = unwindAliases(plannedChildProjection.get(projIdx++));
+				childExprs.put(kid, projEntry);
+				
+				// Append child temp tables to the initial parent's statement.
+				final List<FromTableReference> fromTables = new ArrayList<FromTableReference>(currentStmt.getTables());
+				final TempTableInstance childResultsTableInstance = new TempTableInstance(sc, childResultsTable);
+				
+				// No grouping => grand aggregation => single row join.
+				if (!state.hasGrouping()) {
+					fromTables.add(new FromTableReference(childResultsTableInstance));
+				} else {
+					final List<ExpressionNode> joinConditions = new ArrayList<ExpressionNode>(parentGroupCols.size()); 
+					for (final ColumnInstance lhs : parentGroupCols) {
+						final ColumnInstance rhs = childResultsProjectingStmt.getMapper().copyForward(lhs);
+						final FunctionCall joinOnExpr = new FunctionCall(FunctionName.makeEquals(), lhs, rhs);
+						joinConditions.add(joinOnExpr);
+					}
+					
+					final ExpressionNode onClause = ExpressionUtils.safeBuildAnd(joinConditions);
+					final JoinedTable jt = new JoinedTable(childResultsTableInstance, onClause, JoinSpecification.INNER_JOIN);
+					fromTables.get(fromTables.size() - 1).addJoinedTable(jt);
+				}
+				currentStmt.setTables(fromTables);
+			}
+		}
 	}
 	
 	private ColumnInstance unwindAliases(final ExpressionNode original) {
