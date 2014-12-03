@@ -59,7 +59,15 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, Redist
 
     ValveFlowControlSet upstreamSet = new ValveFlowControlSet();
 
-	final PEDefaultPromise<Integer> completionPromise = new PEDefaultPromise<>();
+    class CountHolder {
+        int sourceRows = 0;
+        int updatedRows = 0;
+        long sourceBytesTotal = 0;
+    }
+
+	final PEDefaultPromise<CountHolder> completionPromise = new PEDefaultPromise<>();
+
+    CountHolder counts = new CountHolder();
 
 	boolean lastPacketSent = false;
     boolean failedRedist = false;
@@ -135,6 +143,8 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, Redist
             mappingSolution = distModel.mapKeyForInsert(catalogDAO, targetWG.getGroup(), dv);
         }
 
+        counts.sourceRows += 1;
+        counts.sourceBytesTotal += binRow.sizeInBytes();
 
         //********************
         Long actualAutoInc = autoIncrBlocks == null ? null : autoIncrBlocks[0];
@@ -143,6 +153,9 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, Redist
             DecodedMeta autoIncFunc = new DecodedMeta(DBTypeBasedUtils.getMysqlTypeFunc(MyFieldType.FIELD_TYPE_LONGLONG));
             binRow = binRow.append(autoIncFunc, actualAutoInc);
         }
+
+
+
         boolean triggeredFlush = targetSet.sendInsert(mappingSolution, binRow);
         //********************
 
@@ -182,7 +195,18 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, Redist
     public int getUpdateCount() throws Exception {
         if (logger.isDebugEnabled())
             logger.debug("redist # "+thisId+" , about to call completionPromise.sync(): " + completionPromise);
-        return SynchronousListener.sync(completionPromise);
+        CountHolder holder = SynchronousListener.sync(completionPromise);
+        return holder.updatedRows;
+    }
+
+    public int getSourceRowCount() throws Exception {
+        CountHolder holder = SynchronousListener.sync(completionPromise);
+        return holder.sourceRows;
+    }
+
+    public long getSourceRowBytesTotal() throws Exception {
+        CountHolder holder = SynchronousListener.sync(completionPromise);
+        return holder.sourceBytesTotal;
     }
 
     @Override
@@ -262,12 +286,16 @@ public class RedistTupleBuilder implements RedistTargetSite.InsertPolicy, Redist
 
         boolean isProcessingComplete = lastPacketSent && !anySiteHasPending;
 		if (isProcessingComplete) {
-            int updatedRowsCount = (int) targetSet.getUpdatedRowCount();
-			if (logger.isDebugEnabled())
-				logger.debug("redist # "+thisId+" , redistribution of " + targetTable.displayName() + " complete - " + updatedRowsCount + " rows updated");
+
+            counts.updatedRows = (int) targetSet.getUpdatedRowCount();
+
+            if (logger.isDebugEnabled()) {
+                String formatted = String.format("redist # %s, redistribution of %s complete - source=%s, updated=%s, sourceBytes=%s", thisId, targetTable.displayName(), counts.sourceRows, counts.updatedRows, counts.sourceBytesTotal);
+                logger.debug(formatted);
+            }
             try{
                 targetSet.close();
-                completionPromise.trySuccess(updatedRowsCount);
+                completionPromise.trySuccess(counts);
             } catch (Exception e){
                 completionPromise.failure(e);
             }
