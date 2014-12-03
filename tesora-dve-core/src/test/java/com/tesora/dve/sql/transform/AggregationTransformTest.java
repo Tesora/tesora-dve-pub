@@ -22,6 +22,7 @@ package com.tesora.dve.sql.transform;
  */
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.tesora.dve.distribution.BroadcastDistributionModel;
@@ -558,18 +559,21 @@ public class AggregationTransformTest extends TransformTest {
 				sql,
 				SelectStatement.class,
 				bes(
-						new ProjectingExpectedStep(
-						"SELECT `A`.`fname` AS A1f0_10,`A`.`caller` AS A1c1_11 FROM `A` WHERE `A`.`caller` = 'main()' LIMIT 1",
-							group,"temp2",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
-						new ProjectingExpectedStep(
-						"SELECT temp2.A1f0_10 AS t3A0,temp2.A1c1_11 AS t3A1 FROM temp2 LIMIT 1",
-							TransientExecutionEngine.AGGREGATION,"temp3",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
-						new ProjectingExpectedStep(
-						"SELECT MAX( `A`.`wt` / `A`.`ct` )  AS func_10 FROM `A` WHERE `A`.`caller` = 'main()'",
-							group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
-						new ProjectingExpectedStep(
-						"SELECT temp3.t3A0 AS t4t0,temp3.t3A1 AS t4t1,MAX( temp1.func_10 )  AS func_6 FROM temp1, temp3",
-							null)
+						new ProjectingExpectedStep(ExecutionType.SELECT,
+							group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,
+							emptyDV,
+							emptyIndexes,
+						  "SELECT `A`.`fname` AS A1f0_6,`A`.`caller` AS A1c1_7,MAX( `A`.`wt` / `A`.`ct` )  AS func_8",
+						  "FROM `A`",
+						  "WHERE `A`.`caller` = 'main()'"
+						)
+						.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION)),
+						new ProjectingExpectedStep(ExecutionType.SELECT,
+							null,
+						  "SELECT temp1.A1f0_6 AS t2A0_7,temp1.A1c1_7 AS t2A1_8,MAX( temp1.func_8 )  AS func",
+						  "FROM temp1"
+						)
+						.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION))
 					));
 	}
 
@@ -784,6 +788,7 @@ public class AggregationTransformTest extends TransformTest {
 				null);
 	}
 
+	@Ignore
 	@Test
 	public void testPE1309() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
