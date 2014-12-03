@@ -235,9 +235,10 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 									grouping.add(e.buildNew(original));
 									parentGroupCols.add(ci);
 								}
+								childEvaluationStmt.setProjection(proj);
 								childEvaluationStmt.setGroupBy(grouping);
 								
-								final SchemaMapper originalMapper = childEvaluationStmt.getMapper();
+								final SchemaMapper originalMapper = result.getMapper();
 								final SchemaMapper parentToTemp = new SchemaMapper(originalMapper.getOriginals(), childEvaluationStmt, originalMapper.getCopyContext());
 								childEvaluationStmt.setMapper(parentToTemp);
 							}
