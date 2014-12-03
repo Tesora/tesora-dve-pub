@@ -24,29 +24,43 @@ package com.tesora.dve.sql.transform.strategy.aggregation;
 
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.expression.ColumnKey;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.expression.SetQuantifier;
 import com.tesora.dve.sql.node.expression.AliasInstance;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionAlias;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
+import com.tesora.dve.sql.node.expression.FunctionCall;
+import com.tesora.dve.sql.node.expression.TableInstance;
+import com.tesora.dve.sql.node.expression.TempTableInstance;
+import com.tesora.dve.sql.node.structural.FromTableReference;
+import com.tesora.dve.sql.node.structural.JoinSpecification;
+import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.node.structural.SortingSpecification;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.Column;
 import com.tesora.dve.sql.schema.DistributionVector;
+import com.tesora.dve.sql.schema.DistributionVector.Model;
+import com.tesora.dve.sql.schema.FunctionName;
 import com.tesora.dve.sql.schema.PEColumn;
 import com.tesora.dve.sql.schema.PEStorageGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.schema.DistributionVector.Model;
+import com.tesora.dve.sql.schema.TempTable;
 import com.tesora.dve.sql.schema.TempTableCreateOptions;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.CopyVisitor;
+import com.tesora.dve.sql.transform.SchemaMapper;
+import com.tesora.dve.sql.transform.TableInstanceCollector;
+import com.tesora.dve.sql.transform.behaviors.ComplexFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.strategy.ApplyOption;
@@ -55,13 +69,14 @@ import com.tesora.dve.sql.transform.strategy.ColumnMutator;
 import com.tesora.dve.sql.transform.strategy.ExecutionCost;
 import com.tesora.dve.sql.transform.strategy.FeaturePlannerIdentifier;
 import com.tesora.dve.sql.transform.strategy.GroupByRewriteTransformFactory;
+import com.tesora.dve.sql.transform.strategy.GroupByRewriteTransformFactory.AliasingEntry;
 import com.tesora.dve.sql.transform.strategy.MutatorState;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.ProjectionMutator;
 import com.tesora.dve.sql.transform.strategy.TransformFactory;
-import com.tesora.dve.sql.transform.strategy.GroupByRewriteTransformFactory.AliasingEntry;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
+import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;
 import com.tesora.dve.sql.util.ListSet;
 
 /*
@@ -189,12 +204,19 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 	private ProjectingFeatureStep apply(PlannerContext pc,
 			ProjectingFeatureStep startAt,
 			List<ProjectionMutator> mutators,
-			MutatorState state, 
+			AggregationMutatorState state, 
 			int lastMutator, int firstMutator, ApplyOption options) throws PEException {
 		SelectStatement result = (SelectStatement) startAt.getPlannedStatement();
 		List<ExpressionNode> intermediate = result.getProjection();
 		for(int i = lastMutator; i >= firstMutator; i--) {
-			intermediate = mutators.get(i).apply(this,state, intermediate, options);
+			final ProjectionMutator pm = mutators.get(i);
+
+			// Apply each mutator's children first so that it can use their results.
+			if (options.getCurrentStep() == 1) {
+				applyAllChildMutators(pc, startAt, state, result, pm);
+			}
+
+			intermediate = pm.apply(this, state, intermediate, options);
 		}
 		result.setSetQuantifier(null);
 		result.setProjection(intermediate);
@@ -202,6 +224,130 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 		if (emitting())
 			emit("after apply(" + lastMutator + ", " + firstMutator + ", "+ options + "): " + result.getSQL(pc.getContext()));
 		return startAt;
+	}
+
+
+	/**
+	 * Plan all child projection mutators.
+	 */
+	private void applyAllChildMutators(final PlannerContext pc, final ProjectingFeatureStep currentPlan,
+			final AggregationMutatorState state, final SelectStatement currentStmt, final ProjectionMutator pm) throws PEException {
+		for (final ColumnMutator cm : pm.getMutators()) {
+			if (cm instanceof AggFunMutator) {
+				final AggFunMutator parentMutator = (AggFunMutator) cm;
+				applyChildMutators(pc, currentPlan, state, currentStmt, parentMutator);
+			}
+		}
+	}
+
+
+	/**
+	 * Plan all children of 'parentMutator' on statement 'currentStmt' and append the generated plans to 'currentPlan'.
+	 */
+	private void applyChildMutators(final PlannerContext pc, final ProjectingFeatureStep currentPlan,
+			final AggregationMutatorState state, final SelectStatement currentStmt, final AggFunMutator parentMutator)
+					throws PEException {
+		// Evaluate the children and make their results available in the parent's initial step.
+		if (parentMutator.hasChildren()) {
+			if (emitting()) {
+				emit("planning children");
+			}
+
+			// Evaluate and redistribute the child results into temp tables.
+			final SchemaContext sc = pc.getContext();
+
+			final SelectStatement childEvaluationStmt = buildChildrenEvaluationStmt(currentStmt, parentMutator);
+			final List<ColumnInstance> parentGroupCols = new ArrayList<ColumnInstance>();
+			if (state.hasGrouping()) {
+				final List<ExpressionNode> proj = new ArrayList<ExpressionNode>(childEvaluationStmt.getProjection());
+				final List<SortingSpecification> grouping = new ArrayList<SortingSpecification>();
+				for (final AliasingEntry<SortingSpecification> e : state.getRequestedGrouping()) {
+					final ExpressionNode original = e.getOriginalExpression();
+					final ColumnInstance ci = unwindAliases(original);
+					proj.add(ci);
+					grouping.add(e.buildNew(original));
+					parentGroupCols.add(ci);
+				}
+				childEvaluationStmt.setProjection(proj);
+				childEvaluationStmt.setGroupBy(grouping);
+				
+				final SchemaMapper originalMapper = currentStmt.getMapper();
+				final SchemaMapper parentToTemp = new SchemaMapper(originalMapper.getOriginals(), childEvaluationStmt, originalMapper.getCopyContext());
+				childEvaluationStmt.setMapper(parentToTemp);
+			}
+			
+			childEvaluationStmt.normalize(sc);
+			
+			final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) TransformFactory.buildPlan(childEvaluationStmt, pc, new ComplexFeaturePlannerFilter(Collections.EMPTY_SET, TransformFactory.allTransforms));
+			
+			// Redist where the parent's initial step executes.
+			final RedistFeatureStep plannedChildRedistStep = plannedChildEvaluationStep.redist(pc,
+					this,
+					new TempTableCreateOptions(Model.BROADCAST,
+							currentStmt.getStorageGroup(sc)),
+					null,
+					null);
+			currentPlan.addChild(plannedChildRedistStep);
+
+			final TempTable childResultsTable = plannedChildRedistStep.getTargetTempTable();
+			final SelectStatement childResultsProjectingStmt = childResultsTable.buildSelect(sc);
+			childResultsProjectingStmt.normalize(sc);
+
+			final List<ExpressionNode> plannedChildProjection = childResultsProjectingStmt.getProjection();
+			final Map<AggFunMutator, ExpressionNode> childExprs = parentMutator.getChildren();
+
+			// Make the results available in the parent's initial statement.
+			int projIdx = 0;
+			for (final AggFunMutator kid : parentMutator.getChildren().keySet()) {
+
+				// Update projection references available to the parent mutator.
+				// Unfold aliases to obtain the actual target column instance.
+				final ColumnInstance projEntry = unwindAliases(plannedChildProjection.get(projIdx++));
+				childExprs.put(kid, projEntry);
+				
+				// Append child temp tables to the initial parent's statement.
+				final List<FromTableReference> fromTables = new ArrayList<FromTableReference>(currentStmt.getTables());
+				final TempTableInstance childResultsTableInstance = new TempTableInstance(sc, childResultsTable);
+				
+				// No grouping => grand aggregation => single row join.
+				if (!state.hasGrouping()) {
+					fromTables.add(new FromTableReference(childResultsTableInstance));
+				} else {
+					final List<ExpressionNode> joinConditions = new ArrayList<ExpressionNode>(parentGroupCols.size()); 
+					for (final ColumnInstance lhs : parentGroupCols) {
+						final ColumnInstance rhs = childResultsProjectingStmt.getMapper().copyForward(lhs);
+						final FunctionCall joinOnExpr = new FunctionCall(FunctionName.makeEquals(), lhs, rhs);
+						joinConditions.add(joinOnExpr);
+					}
+					
+					final ExpressionNode onClause = ExpressionUtils.safeBuildAnd(joinConditions);
+					final JoinedTable jt = new JoinedTable(childResultsTableInstance, onClause, JoinSpecification.INNER_JOIN);
+					fromTables.get(fromTables.size() - 1).addJoinedTable(jt);
+				}
+				currentStmt.setTables(fromTables);
+			}
+		}
+	}
+	
+	private ColumnInstance unwindAliases(final ExpressionNode original) {
+		if (original instanceof ExpressionAlias) {
+			return unwindAliases(((ExpressionAlias) original).getTarget());
+		}
+		return (ColumnInstance) original;
+	}
+
+	private SelectStatement buildChildrenEvaluationStmt(final SelectStatement original, final AggFunMutator parentMutator) {
+		final List<ExpressionNode> availableExprs = original.getProjection();
+		final ExpressionNode target = ColumnMutator.getProjectionEntry(availableExprs, parentMutator.getAfterOffsetBegin());
+		final SelectStatement childrenEvaluationStmt = CopyVisitor.copy(original);
+		final Set<AggFunMutator> children = parentMutator.getChildren().keySet();
+		final List<ExpressionNode> childExprs = new ArrayList<ExpressionNode>(children.size());
+		for (final AggFunMutator kid : children) {
+			childExprs.add(new FunctionCall(kid.getFunctionName(), (ExpressionNode) target.copy(null)));
+		}
+		childrenEvaluationStmt.setProjection(childExprs);
+
+		return childrenEvaluationStmt;
 	}
 
 	private boolean hasMultipleDistinctInDV(ProjectingFeatureStep currentStep, List<ColumnMutator> aggColumns) {
@@ -219,21 +365,25 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 	}
 
 	
-	private ProjectingFeatureStep redistToAggSite(PlannerContext pc, 
+	private ProjectingFeatureStep redistAndSelectFromAggSite(PlannerContext pc, 
 			ProjectingFeatureStep cc) throws PEException {
 		ProjectingFeatureStep out = 
-				cc.redist(pc, 
-						this,
-						new TempTableCreateOptions(Model.STATIC,
-								pc.getTempGroupManager().getGroup(true)),
-								null,
-								DMLExplainReason.AGGREGATION.makeRecord())
-				.buildNewProjectingStep(pc, 
+				redistToAggSite(pc, cc).buildNewProjectingStep(pc,
 						this, 
 						cc.getCost(), 
 						DMLExplainReason.AGGREGATION.makeRecord());
 		out.getPlannedStatement().normalize(pc.getContext());
 		return out;
+	}
+
+	private RedistFeatureStep redistToAggSite(PlannerContext pc,
+			ProjectingFeatureStep cc) throws PEException {
+		return cc.redist(pc,
+				this,
+				new TempTableCreateOptions(Model.STATIC,
+						pc.getTempGroupManager().getGroup(true)),
+				null,
+				DMLExplainReason.AGGREGATION.makeRecord());
 	}
 
 	private ProjectingFeatureStep redistForGrandAggDistinct(PlannerContext pc, ProjectingFeatureStep currentStep,
@@ -377,17 +527,17 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 			if (ndistinct == 0) {
 				// then, apply step1 on the correct distribution, redist to a temp site; this is apply mutators.size() - 1, 2
 				currentStep = apply(pc,currentStep,mutators,state,mutators.size() - 1, 1, new ApplyOption(1,2));
-				currentStep = redistToAggSite(pc, currentStep);
+				currentStep = redistAndSelectFromAggSite(pc, currentStep);
 				// then, apply step 2 on the agg site.  this is apply 1,0
 				currentStep = apply(pc,currentStep,mutators,state,1,0,new ApplyOption(2,2));
 			} else {
 				if (hasMultipleDistinctInDV(currentStep,aggFunMutator.getAggColumns())) {
-					currentStep = redistToAggSite(pc,currentStep);
+					currentStep = redistAndSelectFromAggSite(pc,currentStep);
 					currentStep = apply(pc,currentStep,mutators,state,mutators.size() - 1, 1, new ApplyOption(1,1));
 				} else {
 					currentStep = redistForGrandAggDistinct(pc,currentStep,mutators);
 					currentStep = apply(pc,currentStep,mutators,state,mutators.size() - 1,1,new ApplyOption(1,2));
-					currentStep = redistToAggSite(pc,currentStep);
+					currentStep = redistAndSelectFromAggSite(pc,currentStep);
 					// then, apply step 2 on the agg site.  this is apply 1,0
 					currentStep = apply(pc,currentStep,mutators,state,1,0,new ApplyOption(2,2));
 				}

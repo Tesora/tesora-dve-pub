@@ -21,15 +21,19 @@ package com.tesora.dve.sql.transform;
  * #L%
  */
 
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
-import org.testng.annotations.Test;
-import org.testng.Assert;
+import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.sql.SchemaTest;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
+import com.tesora.dve.sql.transform.execution.DMLExplainReason;
+import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.execution.ExecutionType;
 import com.tesora.dve.sql.util.TestName;
 
@@ -63,14 +67,14 @@ public class AggregationTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
-				"select max(version) from laws",
+				"select MAX(version) from laws",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT max( `laws`.`version` )  AS func_4 FROM `laws`",
+								"SELECT MAX( `laws`.`version` )  AS func_4 FROM `laws`",
 								group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME, new String[] {}),
 						new ProjectingExpectedStep(
-								"SELECT max( temp1.func_4 )  AS func FROM temp1",
+								"SELECT MAX( temp1.func_4 )  AS func FROM temp1",
 								null)));
 	}
 	
@@ -80,14 +84,14 @@ public class AggregationTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
-				"select min ( version ) from laws",
+				"select MIN ( version ) from laws",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT min( `laws`.`version` )  AS func_4 FROM `laws`",
+								"SELECT MIN( `laws`.`version` )  AS func_4 FROM `laws`",
 								group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME, new String[] {}),
 						new ProjectingExpectedStep(
-								"SELECT min( temp1.func_4 )  AS func FROM temp1",
+								"SELECT MIN( temp1.func_4 )  AS func FROM temp1",
 								null)));
 		
 	}
@@ -102,10 +106,10 @@ public class AggregationTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT count( * )  AS func_4 FROM `laws`",
+								"SELECT COUNT( * )  AS func_4 FROM `laws`",
 								group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME, new String[] {}),
 						new ProjectingExpectedStep(
-								"SELECT CONVERT( sum( temp1.func_4 ) ,SIGNED )  AS func FROM temp1",
+								"SELECT CONVERT( SUM( temp1.func_4 ) ,SIGNED )  AS func FROM temp1",
 								null)));
 		
 	}
@@ -116,14 +120,14 @@ public class AggregationTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
-				"select sum(version) from laws",
+				"select SUM(version) from laws",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT sum( `laws`.`version` )  AS func_4 FROM `laws`",
+								"SELECT SUM( `laws`.`version` )  AS func_4 FROM `laws`",
 								group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME, new String[] {}),
 						new ProjectingExpectedStep(
-								"SELECT sum( temp1.func_4 )  AS func FROM temp1",
+								"SELECT SUM( temp1.func_4 )  AS func FROM temp1",
 								null)));
 		
 	}
@@ -138,10 +142,10 @@ public class AggregationTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT sum( `laws`.`version` )  AS func_4,COUNT( `laws`.`version` )  AS func_5 FROM `laws`",
+								"SELECT SUM( `laws`.`version` )  AS func_4,COUNT( `laws`.`version` )  AS func_5 FROM `laws`",
 								group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME, new String[] {}),
 						new ProjectingExpectedStep(
-								"SELECT  (sum( temp1.func_4 )  / sum( temp1.func_5 ) )  AS func FROM temp1",
+								"SELECT  (SUM( temp1.func_4 )  / SUM( temp1.func_5 ) )  AS func FROM temp1",
 								null)
 				));
 	}
@@ -151,11 +155,11 @@ public class AggregationTransformTest extends TransformTest {
 	public void simpleSingleSumTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		stmtTest(db,
-				"select sum(version) from laws where id = 15",
+				"select SUM(version) from laws where id = 15",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT sum( `laws`.`version` )  AS func_5 FROM `laws` WHERE `laws`.`id` = 15",
+								"SELECT SUM( `laws`.`version` )  AS func_5 FROM `laws` WHERE `laws`.`id` = 15",
 								null )));
 	}
 
@@ -168,7 +172,7 @@ public class AggregationTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT count( * )  AS func_5 FROM `laws` WHERE `laws`.`id` = 15",
+								"SELECT COUNT( * )  AS func_5 FROM `laws` WHERE `laws`.`id` = 15",
 								null )));
 	}
 
@@ -177,11 +181,11 @@ public class AggregationTransformTest extends TransformTest {
 	public void simpleSingleMaxTest() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		stmtTest(db,
-				"select max(version) from laws where id = 15",
+				"select MAX(version) from laws where id = 15",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT max( `laws`.`version` )  AS func_5 FROM `laws` WHERE `laws`.`id` = 15",
+								"SELECT MAX( `laws`.`version` )  AS func_5 FROM `laws` WHERE `laws`.`id` = 15",
 								null )));
 	}
 
@@ -195,7 +199,7 @@ public class AggregationTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT  (sum( `laws`.`version` )  / COUNT( `laws`.`version` ) )  AS func_5 FROM `laws` WHERE `laws`.`id` = 15",
+								"SELECT  (SUM( `laws`.`version` )  / COUNT( `laws`.`version` ) )  AS func_5 FROM `laws` WHERE `laws`.`id` = 15",
 								null)));
 	}
 	
@@ -205,14 +209,14 @@ public class AggregationTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
-				"select l.state_id + l.title_id + max(l.version) from laws l",
+				"select l.state_id + l.title_id + MAX(l.version) from laws l",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT l.state_id + l.title_id AS func_6,max( l.version )  AS func_7 FROM `laws` AS l",
+								"SELECT l.`state_id` + l.`title_id` AS func_5,MAX( l.`version` )  AS func_6 FROM `laws` AS l",
 								group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME, new String[] {}),
 						new ProjectingExpectedStep(
-								"SELECT temp1.func_6 + max( temp1.func_7 )  AS func FROM temp1",
+								"SELECT temp1.func_5 + MAX( temp1.func_6 )  AS func FROM temp1",
 								null)));
 	}
 	
@@ -222,17 +226,17 @@ public class AggregationTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
-				"select min(version), max(version), avg(version), min(version) + max(version) from laws l",
+				"select MIN(version), MAX(version), avg(version), MIN(version) + MAX(version) from laws l",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT min( l.`version` )  AS func_7,max( l.`version` )  AS func_8,sum( l.`version` )  AS func_9,COUNT( l.`version` )  AS func_10,min( l.`version` )  AS func_11,max( l.`version` )  AS func_12",
+						  "SELECT MIN( l.`version` )  AS func_7,MAX( l.`version` )  AS func_8,SUM( l.`version` )  AS func_9,COUNT( l.`version` )  AS func_10,MIN( l.`version` )  AS func_11,MAX( l.`version` )  AS func_12",
 						  "FROM `laws` AS l"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT min( temp1.func_7 )  AS func,max( temp1.func_8 )  AS func_14, (sum( temp1.func_9 )  / sum( temp1.func_10 ) )  AS func_15,min( temp1.func_11 )  + max( temp1.func_12 )  AS func_16",
+						  "SELECT MIN( temp1.func_7 )  AS func,MAX( temp1.func_8 )  AS func_14, (SUM( temp1.func_9 )  / SUM( temp1.func_10 ) )  AS func_15,MIN( temp1.func_11 )  + MAX( temp1.func_12 )  AS func_16",
 						  "FROM temp1"
 						)
 					)
@@ -249,10 +253,10 @@ public class AggregationTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT count( * )  AS func_5 FROM `laws` WHERE `laws`.`version` > 1",
+								"SELECT COUNT( * )  AS func_5 FROM `laws` WHERE `laws`.`version` > 1",
 								group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME, new String[] {}),
 						new ProjectingExpectedStep(
-								"SELECT CONVERT( sum( temp1.func_5 ) ,SIGNED )  AS func FROM temp1",
+								"SELECT CONVERT( SUM( temp1.func_5 ) ,SIGNED )  AS func FROM temp1",
 								null)));
 	}
 	
@@ -265,10 +269,10 @@ public class AggregationTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-						"SELECT sum( l.`version` )  AS func_8,COUNT( l.`version` )  AS func_9,l.`state_id` AS ls1_10,l.`law` AS ll5_11 FROM `laws` AS l GROUP BY ll5_11 ASC",
-							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"ll5_11" }),
+						"SELECT SUM( l.`version` )  AS func_6,COUNT( l.`version` )  AS func_7,l.`state_id` AS ls1_8,l.`law` AS ll5_9 FROM `laws` AS l GROUP BY ll5_9 ASC",
+							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"ll5_9" }),
 						new ProjectingExpectedStep(
-						"SELECT  (sum( temp1.func_8 )  / sum( temp1.func_9 ) )  + temp1.ls1_10 AS func,temp1.ll5_11 AS t2l3_10 FROM temp1 GROUP BY t2l3_10 ASC",
+						"SELECT  (SUM( temp1.func_6 )  / SUM( temp1.func_7 ) )  + temp1.ls1_8 AS func,temp1.ll5_9 AS t2l3_10 FROM temp1 GROUP BY t2l3_10 ASC",
 							null)
 					));
 	}
@@ -281,7 +285,7 @@ public class AggregationTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT  (sum( l.`version` )  / COUNT( l.`version` ) )  + l.`state_id` AS func_11,l.`law` AS ll5_12 FROM `laws` AS l GROUP BY l.`id` ASC",
+								"SELECT  (SUM( l.`version` )  / COUNT( l.`version` ) )  + l.`state_id` AS func_9,l.`law` AS ll5_10 FROM `laws` AS l GROUP BY l.`id` ASC",
 								null)));
 	}
 
@@ -296,13 +300,13 @@ public class AggregationTransformTest extends TransformTest {
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"R1p2_11" }, new String[][] {{"R1p2_11"} },
-						  "SELECT count( `R`.`pb` )  AS func_9,`R`.`sid` AS R1s1_10,`R`.`pa` AS R1p2_11",
+						  "SELECT COUNT( `R`.`pb` )  AS func_9,`R`.`sid` AS R1s1_10,`R`.`pa` AS R1p2_11",
 						  "FROM `R`",
 						  "GROUP BY R1p2_11 ASC"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							TransientExecutionEngine.LARGE,"temp2",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT CONVERT( sum( temp1.func_9 ) ,SIGNED )  + 15 AS func,temp1.R1s1_10 AS t2R1_8,temp1.R1p2_11 AS t2R2_9",
+						  "SELECT CONVERT( SUM( temp1.func_9 ) ,SIGNED )  + 15 AS func,temp1.R1s1_10 AS t2R1_8,temp1.R1p2_11 AS t2R2_9",
 						  "FROM temp1",
 						  "GROUP BY t2R2_9 ASC"
 						),
@@ -331,12 +335,12 @@ public class AggregationTransformTest extends TransformTest {
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							TransientExecutionEngine.LARGE,"temp2",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT count( DISTINCT temp1.A1i0_4 )  AS func",
+						  "SELECT COUNT( DISTINCT temp1.A1i0_4 )  AS func",
 						  "FROM temp1"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT CONVERT( sum( temp2.func ) ,SIGNED )  AS func_3",
+						  "SELECT CONVERT( SUM( temp2.func ) ,SIGNED )  AS func_3",
 						  "FROM temp2"
 						)
 					)
@@ -352,10 +356,10 @@ public class AggregationTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT count( * )  AS func_4 FROM `A`",
+								"SELECT COUNT( * )  AS func_4 FROM `A`",
 								group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] {}),
 						new ProjectingExpectedStep(
-								"SELECT CONVERT( sum( temp1.func_4 ) ,SIGNED )  AS func FROM temp1",
+								"SELECT CONVERT( SUM( temp1.func_4 ) ,SIGNED )  AS func FROM temp1",
 								null)));
 	}
 
@@ -393,21 +397,21 @@ public class AggregationTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,aggTestSchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
-				"select max(pa), sid from A a group by sid having avg(pb) > 4",
+				"select MAX(pa), sid from A a group by sid having avg(pb) > 4",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"as1_11" }, new String[][] {{"as1_11"} },
-						  "SELECT max( a.`pa` )  AS func_10,a.`sid` AS as1_11,sum( a.`pb` )  AS func_12,COUNT( a.`pb` )  AS func_13",
+						  "SELECT MAX( a.`pa` )  AS func_10,a.`sid` AS as1_11,SUM( a.`pb` )  AS func_12,COUNT( a.`pb` )  AS func_13",
 						  "FROM `A` AS a",
 						  "GROUP BY as1_11 ASC"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT max( temp1.func_10 )  AS func,temp1.as1_11 AS t2a1_10",
+						  "SELECT MAX( temp1.func_10 )  AS func,temp1.as1_11 AS t2a1_10",
 						  "FROM temp1",
 						  "GROUP BY t2a1_10 ASC",
-						  "HAVING  (sum( temp1.func_12 )  / sum( temp1.func_13 ) )  > 4"
+						  "HAVING  (SUM( temp1.func_12 )  / SUM( temp1.func_13 ) )  > 4"
 						)
 					)
 					);
@@ -418,21 +422,21 @@ public class AggregationTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,aggTestSchema);		
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		stmtTest(db,
-				"select max(pa), sid, avg(pb) hc from A a group by sid having hc > 6",
+				"select MAX(pa), sid, avg(pb) hc from A a group by sid having hc > 6",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
-							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"as1_12" }, new String[][] {{"as1_12"} },
-						  "SELECT max( a.`pa` )  AS func_11,a.`sid` AS as1_12,sum( a.`pb` )  AS func_13,COUNT( a.`pb` )  AS func_14",
+							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"as1_11" }, new String[][] {{"as1_11"} },
+						  "SELECT MAX( a.`pa` )  AS func_10,a.`sid` AS as1_11,SUM( a.`pb` )  AS func_12,COUNT( a.`pb` )  AS func_13",
 						  "FROM `A` AS a",
-						  "GROUP BY as1_12 ASC"
+						  "GROUP BY as1_11 ASC"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT max( temp1.func_11 )  AS func,temp1.as1_12 AS t2a1_10, (sum( temp1.func_13 )  / sum( temp1.func_14 ) )  AS func_12",
+						  "SELECT MAX( temp1.func_10 )  AS func,temp1.as1_11 AS t2a1_10, (SUM( temp1.func_12 )  / SUM( temp1.func_13 ) )  AS func_11",
 						  "FROM temp1",
 						  "GROUP BY t2a1_10 ASC",
-						  "HAVING func_12 > 6"
+						  "HAVING func_11 > 6"
 						)
 					)
 					);
@@ -481,10 +485,10 @@ public class AggregationTransformTest extends TransformTest {
 						"SELECT DISTINCT `sbtest`.`id` AS s1i0_4 FROM `sbtest`",
 							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"s1i0_4" }),
 						new ProjectingExpectedStep(
-						"SELECT count( DISTINCT temp1.s1i0_4 )  AS func FROM temp1",
+						"SELECT COUNT( DISTINCT temp1.s1i0_4 )  AS func FROM temp1",
 							TransientExecutionEngine.LARGE,"temp2",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
 						new ProjectingExpectedStep(
-						"SELECT CONVERT( sum( temp2.func ) ,SIGNED )  AS func_3 FROM temp2",
+						"SELECT CONVERT( SUM( temp2.func ) ,SIGNED )  AS func_3 FROM temp2",
 							null)
 					));
 	}
@@ -494,11 +498,11 @@ public class AggregationTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,
 			"create table sbtest (id int, primary key (id) ) broadcast distribute");
 		stmtTest(db,
-				"select count(distinct id) from sbtest",
+				"select COUNT(distinct id) from sbtest",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-						"SELECT count( DISTINCT `sbtest`.`id` )  AS func FROM `sbtest`",
+						"SELECT COUNT( DISTINCT `sbtest`.`id` )  AS func FROM `sbtest`",
 							null)
 					));
 	}
@@ -514,12 +518,12 @@ public class AggregationTransformTest extends TransformTest {
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT count( DISTINCT `sbtest`.`id` )  AS func_4",
+						  "SELECT COUNT( DISTINCT `sbtest`.`id` )  AS func_4",
 						  "FROM `sbtest`"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT CONVERT( sum( temp1.func_4 ) ,SIGNED )  AS func",
+						  "SELECT CONVERT( SUM( temp1.func_4 ) ,SIGNED )  AS func",
 						  "FROM temp1"
 						)
 					));
@@ -535,10 +539,10 @@ public class AggregationTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-						"SELECT count( DISTINCT `sbtest`.`id` )  AS func_4 FROM `sbtest`",
+						"SELECT COUNT( DISTINCT `sbtest`.`id` )  AS func_4 FROM `sbtest`",
 							group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
 						new ProjectingExpectedStep(
-						"SELECT CONVERT( sum( temp1.func_4 ) ,SIGNED )  AS func FROM temp1",
+						"SELECT CONVERT( SUM( temp1.func_4 ) ,SIGNED )  AS func FROM temp1",
 							null)
 					));
 	}
@@ -550,23 +554,26 @@ public class AggregationTransformTest extends TransformTest {
 				+ "fname varchar(256), caller varchar(256), callee varchar(256), "
 				+ "ct int, wt int, cputime int, mu int, pmu int) random distribute ");
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
-		String sql = "select fname, caller, max(wt/ct) from A where caller = 'main()'";
+		String sql = "select fname, caller, MAX(wt/ct) from A where caller = 'main()'";
 		stmtTest(db,
 				sql,
 				SelectStatement.class,
 				bes(
-						new ProjectingExpectedStep(
-						"SELECT `A`.`fname` AS A1f0_10,`A`.`caller` AS A1c1_11 FROM `A` WHERE `A`.`caller` = 'main()' LIMIT 1",
-							group,"temp2",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
-						new ProjectingExpectedStep(
-						"SELECT temp2.A1f0_10 AS t3A0,temp2.A1c1_11 AS t3A1 FROM temp2 LIMIT 1",
-							TransientExecutionEngine.AGGREGATION,"temp3",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
-						new ProjectingExpectedStep(
-						"SELECT max( `A`.`wt` / `A`.`ct` )  AS func_10 FROM `A` WHERE `A`.`caller` = 'main()'",
-							group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
-						new ProjectingExpectedStep(
-						"SELECT temp3.t3A0 AS t4t0,temp3.t3A1 AS t4t1,max( temp1.func_10 )  AS func_6 FROM temp1, temp3",
-							null)
+						new ProjectingExpectedStep(ExecutionType.SELECT,
+							group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,
+							emptyDV,
+							emptyIndexes,
+						  "SELECT `A`.`fname` AS A1f0_6,`A`.`caller` AS A1c1_7,MAX( `A`.`wt` / `A`.`ct` )  AS func_8",
+						  "FROM `A`",
+						  "WHERE `A`.`caller` = 'main()'"
+						)
+						.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION)),
+						new ProjectingExpectedStep(ExecutionType.SELECT,
+							null,
+						  "SELECT temp1.A1f0_6 AS t2A0_7,temp1.A1c1_7 AS t2A1_8,MAX( temp1.func_8 )  AS func",
+						  "FROM temp1"
+						)
+						.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION))
 					));
 	}
 
@@ -577,7 +584,7 @@ public class AggregationTransformTest extends TransformTest {
 				+ "fname varchar(256), caller varchar(256), callee varchar(256), "
 				+ "ct int, wt int, cputime int, mu int, pmu int) random distribute ");
 //		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
-		String sql = "select max(wt/ct) + cputime, caller from A where caller = 'main()'";
+		String sql = "select MAX(wt/ct) + cputime, caller from A where caller = 'main()'";
 		stmtTest(db,
 				sql,
 				SelectStatement.class,
@@ -591,19 +598,19 @@ public class AggregationTransformTest extends TransformTest {
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		// notice that the order by is on foo.id, so it should be put into the projection
 		stmtTest(db,
-				"select max(id) as id, pid as pid, sid as sid from foo group by pid, sid order by foo.id",
+				"select MAX(id) as id, pid as pid, sid as sid from foo group by pid, sid order by foo.id",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"f1p1_13","f1s2_14" }, 
 							new String[][] {{"f1p1_13","f1s2_14"} },
-						  "SELECT max( `foo`.`id` )  AS func,`foo`.`pid` AS f1p1_13,`foo`.`sid` AS f1s2_14,`foo`.`id` AS f1i0_15",
+						  "SELECT MAX( `foo`.`id` )  AS func,`foo`.`pid` AS f1p1_13,`foo`.`sid` AS f1s2_14,`foo`.`id` AS f1i0_15",
 						  "FROM `foo`",
 						  "GROUP BY f1p1_13 ASC, f1s2_14 ASC"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							TransientExecutionEngine.LARGE,"temp2",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT max( temp1.func )  AS func_9,temp1.f1p1_13 AS t2f1_10,temp1.f1s2_14 AS t2f2_11,temp1.f1i0_15 AS t2f3_12",
+						  "SELECT MAX( temp1.func )  AS func_9,temp1.f1p1_13 AS t2f1_10,temp1.f1s2_14 AS t2f2_11,temp1.f1i0_15 AS t2f3_12",
 						  "FROM temp1",
 						  "GROUP BY t2f1_10 ASC, t2f2_11 ASC"
 						),
@@ -622,21 +629,21 @@ public class AggregationTransformTest extends TransformTest {
 		SchemaContext db = buildSchema(TestName.MULTI,
 					"create table foo (id int, pid int, sid int) random distribute");
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
-		// notice that the order by is on id - that is, the max(id) column
+		// notice that the order by is on id - that is, the MAX(id) column
 		stmtTest(db,
-				"select max(id) as id, pid as pid, sid as sid from foo group by pid, sid order by id",
+				"select MAX(id) as id, pid as pid, sid as sid from foo group by pid, sid order by id",
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"f1p1_9","f1s2_10" }, 
 							new String[][] {{"f1p1_9","f1s2_10" } },
-						  "SELECT max( `foo`.`id` )  AS func,`foo`.`pid` AS f1p1_9,`foo`.`sid` AS f1s2_10",
+						  "SELECT MAX( `foo`.`id` )  AS func,`foo`.`pid` AS f1p1_9,`foo`.`sid` AS f1s2_10",
 						  "FROM `foo`",
 						  "GROUP BY f1p1_9 ASC, f1s2_10 ASC"
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							TransientExecutionEngine.LARGE,"temp2",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }, new String[][] { },
-						  "SELECT max( temp1.func )  AS func_7,temp1.f1p1_9 AS t2f1_8,temp1.f1s2_10 AS t2f2_9",
+						  "SELECT MAX( temp1.func )  AS func_7,temp1.f1p1_9 AS t2f1_8,temp1.f1s2_10 AS t2f2_9",
 						  "FROM temp1",
 						  "GROUP BY t2f1_8 ASC, t2f2_9 ASC"
 						),
@@ -665,8 +672,7 @@ public class AggregationTransformTest extends TransformTest {
 	@Test
 	public void testPE288() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,leftySchema);
-		String[] unsupported = new String[] { "bit_and", "bit_or", "bit_xor", "std", "stddev_pop",
-				"stddev_samp", "stddev", "var_pop", "var_samp", "variance" };
+		String[] unsupported = new String[] { "bit_and", "bit_or", "bit_xor" };
 		for(String f : unsupported) {
 			try {
 				stmtTest(db,
@@ -696,7 +702,7 @@ public class AggregationTransformTest extends TransformTest {
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT count( DISTINCT temp1.t1i0_6,temp1.t1f1_7,temp1.t1s2_8 )  AS func",
+						  "SELECT COUNT( DISTINCT temp1.t1i0_6,temp1.t1f1_7,temp1.t1s2_8 )  AS func",
 						  "FROM temp1"
 						)
 					)
@@ -715,7 +721,7 @@ public class AggregationTransformTest extends TransformTest {
 						"SELECT a.`sid` AS as1_8 FROM `A` AS a",
 							group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,new String[] {"as1_8" }),
 						new ProjectingExpectedStep(
-						"SELECT temp1.as1_8 AS t2a0_3,count( temp1.as1_8 )  AS func,count( DISTINCT temp1.as1_8 )  AS func_5 FROM temp1 GROUP BY t2a0_3 ASC",
+						"SELECT temp1.as1_8 AS t2a0_3,COUNT( temp1.as1_8 )  AS func,COUNT( DISTINCT temp1.as1_8 )  AS func_5 FROM temp1 GROUP BY t2a0_3 ASC",
 							TransientExecutionEngine.LARGE,"temp2",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,new String[] { }),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 						"SELECT temp2.t2a0_3 AS t3t0,temp2.func AS t3f1,temp2.func_5 AS t3f2 FROM temp2 ORDER BY t3t0 ASC",
@@ -738,7 +744,7 @@ public class AggregationTransformTest extends TransformTest {
 						),
 						new ProjectingExpectedStep(ExecutionType.SELECT,
 							null,
-						  "SELECT temp1.as1_4 AS t2a0_5, (sum( DISTINCT temp1.ap2_6 )  / COUNT( DISTINCT temp1.ap2_6 ) )  AS func",
+						  "SELECT temp1.as1_4 AS t2a0_5, (SUM( DISTINCT temp1.ap2_6 )  / COUNT( DISTINCT temp1.ap2_6 ) )  AS func",
 						  "FROM temp1",
 						  "GROUP BY t2a0_5 ASC"
 						)
@@ -782,6 +788,7 @@ public class AggregationTransformTest extends TransformTest {
 				null);
 	}
 
+	@Ignore
 	@Test
 	public void testPE1309() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,
@@ -828,7 +835,7 @@ public class AggregationTransformTest extends TransformTest {
 				+"KEY `idx_cache_cache_type` (`id_ref_cache_type`) "
 				+") ENGINE=InnoDB AUTO_INCREMENT=5751741 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci range distribute on (id_ref_cache_type) using openrange");
 		
-		String sql = "select id_cache_exec, id_ref_cache_type, max(end_time) as max_end_time "
+		String sql = "select id_cache_exec, id_ref_cache_type, MAX(end_time) as max_end_time "
 				+"from mydb.cache_exec where id_ref_cache_exec_status = 2 and id_ref_cache_type in (1,2) "
 				+"and id_ref_cache_exec_type in (1,2) group by id_ref_cache_type order by max_end_time asc";
 		stmtTest(db,sql,SelectStatement.class,
@@ -836,4 +843,99 @@ public class AggregationTransformTest extends TransformTest {
 		
 	}
 	
+	@Test
+	public void testPE761_VarPop() throws Throwable {
+		final SchemaContext db = buildSchema(TestName.MULTI,
+				"CREATE TABLE `pe761` (`value` int) RANDOM DISTRIBUTE");
+		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
+		final String sql = "SELECT VAR_POP(`value`) FROM `pe761`";
+		stmtTest(db, sql, SelectStatement.class,
+				null);
+	}
+
+	@Test
+	public void testPE761_StddevSamp() throws Throwable {
+		final SchemaContext db = buildSchema(TestName.MULTI,
+				"CREATE TABLE `pe761` (`value` int) RANDOM DISTRIBUTE");
+		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
+		final String sql = "SELECT STDDEV_SAMP(`value`) FROM `pe761`";
+		stmtTest(db, sql, SelectStatement.class, bes(
+				new ProjectingExpectedStep(ExecutionType.SELECT,
+						group,"temp1",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,
+						emptyDV,
+						emptyIndexes,
+					  "SELECT SUM( `pe761`.`value` )  AS func_8,COUNT( `pe761`.`value` )  AS func_9",
+					  "FROM `pe761`"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION)),
+					new ProjectingExpectedStep(ExecutionType.SELECT,
+						TransientExecutionEngine.AGGREGATION,"temp2",group,BroadcastDistributionModel.MODEL_NAME,
+						emptyDV,
+						emptyIndexes,
+					  "SELECT  (SUM( temp1.func_8 )  / SUM( temp1.func_9 ) )  AS func",
+					  "FROM temp1"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION)),
+					new ProjectingExpectedStep(ExecutionType.SELECT,
+						group,"temp3",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,
+						emptyDV,
+						emptyIndexes,
+					  "SELECT COUNT( `pe761`.`value` )  AS func_4,VAR_POP( `pe761`.`value` )  AS func_5,POW( AVG( `pe761`.`value` )  - temp2.func,2 )  AS func_6",
+					  "FROM `pe761`, temp2"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION)),
+					new ProjectingExpectedStep(ExecutionType.SELECT,
+						null,
+					  "SELECT SQRT(  (SUM( temp3.func_4 * temp3.func_5 )  /  (SUM( temp3.func_4 )  - 1)  + SUM( temp3.func_4 * temp3.func_6 )  /  (SUM( temp3.func_4 )  - 1) )  )  AS func",
+					  "FROM temp3"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.AGGREGATION))
+				));
+	}
+	
+	@Test
+	public void testPE761_VarSampWithGroupBy() throws Throwable {
+		final SchemaContext db = buildSchema(TestName.MULTI,
+				"CREATE TABLE `pe761` (`id` int not null, `value` int) RANDOM DISTRIBUTE");
+		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
+		final String sql = "SELECT VAR_SAMP(`value`) FROM `pe761` GROUP BY `id`";
+		stmtTest(db, sql, SelectStatement.class, bes(
+				new ProjectingExpectedStep(ExecutionType.SELECT,
+						group,"temp1",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
+						new String[] {"p1i0_15" },
+						new String[][] {{"p1i0_15"} },
+					  "SELECT SUM( `pe761`.`value` )  AS func_13,COUNT( `pe761`.`value` )  AS func_14,`pe761`.`id` AS p1i0_15",
+					  "FROM `pe761`",
+					  "GROUP BY p1i0_15 ASC"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.WRONG_DISTRIBUTION)),
+					new ProjectingExpectedStep(ExecutionType.SELECT,
+						TransientExecutionEngine.LARGE,"temp2",group,BroadcastDistributionModel.MODEL_NAME,
+						emptyDV,
+						emptyIndexes,
+					  "SELECT  (SUM( temp1.func_13 )  / SUM( temp1.func_14 ) )  AS func,temp1.p1i0_15 AS t2p2_8",
+					  "FROM temp1",
+					  "GROUP BY t2p2_8 ASC"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.WRONG_DISTRIBUTION)),
+					new ProjectingExpectedStep(ExecutionType.SELECT,
+						group,"temp3",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
+						new String[] {"p1i0_9" },
+						new String[][] {{"p1i0_9"} },
+					  "SELECT COUNT( `pe761`.`value` )  AS func_6,VAR_POP( `pe761`.`value` )  AS func_7,POW( AVG( `pe761`.`value` )  - temp2.func,2 )  AS func_8,`pe761`.`id` AS p1i0_9",
+					  "FROM `pe761`",
+					  "INNER JOIN temp2 ON `pe761`.`id` = temp2.t2p2_8",
+					  "GROUP BY p1i0_9 ASC"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.WRONG_DISTRIBUTION)),
+					new ProjectingExpectedStep(ExecutionType.SELECT,
+						null,
+					  "SELECT  (SUM( temp3.func_6 * temp3.func_7 )  /  (SUM( temp3.func_6 )  - 1)  + SUM( temp3.func_6 * temp3.func_8 )  /  (SUM( temp3.func_6 )  - 1) )  AS func",
+					  "FROM temp3",
+					  "GROUP BY temp3.p1i0_9 ASC"
+					)
+					.withExplain(new DMLExplainRecord(DMLExplainReason.WRONG_DISTRIBUTION))
+				));
+	}
+
 }

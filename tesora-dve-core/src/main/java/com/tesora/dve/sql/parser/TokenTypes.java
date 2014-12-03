@@ -21,7 +21,6 @@ package com.tesora.dve.sql.parser;
  * #L%
  */
 
-import com.tesora.dve.sql.parser.PE;
 
 public final class TokenTypes {
 
@@ -32,13 +31,6 @@ public final class TokenTypes {
 	public static final int BIT_AND = PE.BIT_AND;
 	public static final int BIT_OR = PE.BIT_OR;
 	public static final int BIT_XOR = PE.BIT_XOR;
-	public static final int STD = PE.STD;
-	public static final int STDDEV = PE.STDDEV;
-	public static final int STDDEV_POP = PE.STDDEV_POP;
-	public static final int STDDEV_SAMP = PE.STDDEV_SAMP;
-	public static final int VAR_POP = PE.VAR_POP;
-	public static final int VAR_SAMP = PE.VAR_SAMP;
-	public static final int VARIANCE = PE.VARIANCE;
 	
 	// used in function name - test of various sorts
 	public static final int AND = PE.AND;
@@ -57,6 +49,13 @@ public final class TokenTypes {
 	public static final int DATABASE = PE.DATABASE;
 	public static final int COUNT = PE.COUNT;
 	public static final int AVG = PE.AVG;
+	public static final int STD = PE.STD;
+	public static final int STDDEV = PE.STDDEV;
+	public static final int STDDEV_POP = PE.STDDEV_POP;
+	public static final int STDDEV_SAMP = PE.STDDEV_SAMP;
+	public static final int VAR_POP = PE.VAR_POP;
+	public static final int VAR_SAMP = PE.VAR_SAMP;
+	public static final int VARIANCE = PE.VARIANCE;
 	public static final int SUM = PE.SUM;
 	public static final int MIN = PE.MIN;
 	public static final int IS = PE.IS;
@@ -79,6 +78,8 @@ public final class TokenTypes {
 	public static final int COALESCE = PE.COALESCE;
 	public static final int EXISTS = PE.EXISTS;
 	public static final int RAND = PE.RAND;
+	public static final int POW = PE.POW;
+	public static final int SQRT = PE.SQRT;
 	
 	// used in translatorutils, utils, others
 	public static final int BOOLEAN = PE.BOOLEAN;

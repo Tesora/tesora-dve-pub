@@ -26,8 +26,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.ExpressionUtils;
 import com.tesora.dve.sql.node.expression.ColumnInstance;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
@@ -64,8 +64,10 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 			if (EngineConstant.AGGFUN.has(actual)) {
 				FunctionCall fc = (FunctionCall) actual;
 				FunctionName fn = fc.getFunctionName();
-				if (fn.isMax() || fn.isMin()) {
-					cm = new RecursingMutator();
+				if (fn.isMax()) {
+					cm = new MaxMutator();
+				} else if (fn.isMin()) {
+					cm = new MinMutator();
 				} else if (fn.isAverage()) {
 					cm = new AvgMutator();
 				} else if (fn.isCount()) {
@@ -74,6 +76,14 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 					cm = new SummingMutator();
 				} else if (fn.isGroupConcat()) {
 					cm = new GroupConcatMutator();
+				} else if (fn.isStddevPop() || fn.isStd() || fn.isStddev()) {
+					cm = new StddevPopMutator();
+				} else if (fn.isStddevSamp()) {
+					cm = new StddevSampMutator();
+				} else if (fn.isVarPop() || fn.isVariance()) {
+					cm = new VarPopMutator();
+				} else if (fn.isVarSamp()) {
+					cm = new VarSampMutator();
 				} else {
 					throw new SchemaException(Pass.PLANNER, "Unknown agg fun kind: " + fc);
 				}
@@ -115,11 +125,14 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 	
 	protected static class AvgMutator extends AggFunMutator {
 
+		protected AvgMutator() {
+			super(FunctionName.makeAvg());
+		}
+
 		@Override
 		public List<ExpressionNode> adapt(SchemaContext sc, List<ExpressionNode> proj, MutatorState ms) {
 			ArrayList<ExpressionNode> out = new ArrayList<ExpressionNode>();
 			FunctionCall avg = (FunctionCall) getProjectionEntry(proj, getBeforeOffset());
-			fn = avg.getFunctionName();
 			quantifier = avg.getSetQuantifier();
 			ExpressionNode param = avg.getParametersEdge().get(0);
 			ExpressionNode sumParam = (ExpressionNode) param.copy(null);
@@ -164,35 +177,70 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 		
 	}
 	
-	protected static class RecursingMutator extends AggFunMutator {
-
-		@Override
-		public List<ExpressionNode> adapt(SchemaContext sc, List<ExpressionNode> proj, MutatorState ms) {
-			FunctionCall fc = (FunctionCall) getProjectionEntry(proj, getBeforeOffset());
-			fn = fc.getFunctionName();
-			quantifier = fc.getSetQuantifier();
-			return Collections.singletonList((ExpressionNode)fc.getParametersEdge().get(0).copy(null));
-		}
-
-		@Override
-		public List<ExpressionNode> apply(List<ExpressionNode> proj, ApplyOption opts) {
-			ExpressionNode param = getProjectionEntry(proj, getAfterOffsetBegin());
-			FunctionCall nfc = new FunctionCall(fn, param);
-			nfc.setSetQuantifier(quantifier);
-			return Collections.singletonList((ExpressionNode)nfc);
-		}
+	protected static class VarPopMutator extends AbstractVarianceMutator {
 		
+		protected VarPopMutator() {
+			super(FunctionName.makeVarPop());
+		}
+
+		@Override
+		protected ExpressionNode buildDofExpression(final ExpressionNode n_i, final boolean isSingleSite) {
+			return AbstractVarianceMutator.buildSumOverSites(n_i, isSingleSite);
+		}
 	}
-	
+
+	protected static class VarSampMutator extends AbstractVarianceMutator {
+		
+		protected VarSampMutator() {
+			super(FunctionName.makeVarSamp());
+		}
+
+		@Override
+		protected ExpressionNode buildDofExpression(final ExpressionNode n_i, final boolean isSingleSite) {
+			// Sample variance has one DOF less than the population variance.
+			final ExpressionNode n = AbstractVarianceMutator.buildSumOverSites(n_i, isSingleSite);
+			final FunctionCall dof = new FunctionCall(FunctionName.makeMinus(), n, LiteralExpression.makeLongLiteral(1));
+			dof.setGrouped();
+			return dof;
+		}
+	}
+
+	protected static class StddevPopMutator extends AbstractStddevMutator {
+		protected StddevPopMutator() {
+			super(FunctionName.makeStddevPop(), new VarPopMutator());
+		}
+	}
+
+	protected static class StddevSampMutator extends AbstractStddevMutator {
+		protected StddevSampMutator() {
+			super(FunctionName.makeStddevSamp(), new VarSampMutator());
+		}
+	}
+
+	protected static class MaxMutator extends RecursingMutator {
+		protected MaxMutator() {
+			super(FunctionName.makeMax());
+		}
+	}
+
+	protected static class MinMutator extends RecursingMutator {
+		protected MinMutator() {
+			super(FunctionName.makeMin());
+		}
+	}
+
 	protected static class CountMutator extends AggFunMutator {
 
 		private Wildcard wc;
+
+		protected CountMutator() {
+			super(FunctionName.makeCount());
+		}
 
 		@Override
 		public List<ExpressionNode> adapt(SchemaContext sc, List<ExpressionNode> proj, MutatorState ms) {
 			ExpressionNode param = getProjectionEntry(proj, getBeforeOffset());
 			FunctionCall fc = (FunctionCall) param;
-			fn = fc.getFunctionName();
 			quantifier = fc.getSetQuantifier();
 			List<ExpressionNode> out = new ArrayList<ExpressionNode>();
 			ExpressionNode arg = fc.getParametersEdge().get(0);
@@ -256,11 +304,14 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 	protected static class SummingMutator extends AggFunMutator {
 
 		
+		protected SummingMutator() {
+			super(FunctionName.makeSum());
+		}
+
 		@Override
 		public List<ExpressionNode> adapt(SchemaContext sc, List<ExpressionNode> proj, MutatorState ms) {
 			ExpressionNode param = getProjectionEntry(proj, getBeforeOffset());
 			FunctionCall fc = (FunctionCall) param;
-			fn = fc.getFunctionName();
 			quantifier = fc.getSetQuantifier();
 			ExpressionNode arg = fc.getParametersEdge().get(0);
 			return Collections.singletonList(arg);
@@ -290,21 +341,24 @@ public class AggFunProjectionMutator extends ProjectionMutator {
 
 		// group concat - we do the columns only in the first pass
 		// and then reapply the concat afterwards
-		
+
 		private String separator;
+		
+		protected GroupConcatMutator() {
+			super(FunctionName.makeGroupConcat());
+		}
 		
 		@Override
 		public List<ExpressionNode> adapt(SchemaContext sc, List<ExpressionNode> proj, MutatorState ms) {
 			ExpressionNode param = getProjectionEntry(proj, getBeforeOffset());
 			GroupConcatCall fc = (GroupConcatCall) param;
-			fn = fc.getFunctionName();
 			separator = fc.getSeparator();
 			return fc.getParameters();
 		}
 
 		@Override
 		public List<ExpressionNode> apply(List<ExpressionNode> proj, ApplyOption opts) {
-			if (opts.getMaxSteps() == opts.getCurrentStep()) {
+			if (opts.isLastStep()) {
 				ExpressionNode param = getProjectionEntry(proj, getAfterOffsetBegin());
 				GroupConcatCall gcc = new GroupConcatCall(fn, Collections.singletonList(param),null,separator);
 				return Collections.singletonList((ExpressionNode)gcc);				

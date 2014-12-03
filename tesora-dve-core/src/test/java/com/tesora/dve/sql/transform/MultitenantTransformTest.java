@@ -269,7 +269,7 @@ public class MultitenantTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT count( * )  AS func FROM `D` AS d WHERE  (d.did = 1 AND d.`___mtid` = 42)",
+								"SELECT COUNT( * )  AS func FROM `D` AS d WHERE  (d.did = 1 AND d.`___mtid` = 42)",
 								null)));
 	}
 	@Test
@@ -294,10 +294,10 @@ public class MultitenantTransformTest extends TransformTest {
 				SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(
-								"SELECT count( * )  AS func_4 FROM `A`",
+								"SELECT COUNT( * )  AS func_4 FROM `A`",
 								group,"temp1",TransientExecutionEngine.AGGREGATION,STATIC, new String[] {}),
 						new ProjectingExpectedStep(
-								"SELECT CONVERT( sum( temp1.func_4 ) ,SIGNED )  AS func FROM temp1",
+								"SELECT CONVERT( SUM( temp1.func_4 ) ,SIGNED )  AS func FROM temp1",
 								null)));
 	}
 

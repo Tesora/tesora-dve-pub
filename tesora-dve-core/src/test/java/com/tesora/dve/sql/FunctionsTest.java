@@ -637,4 +637,45 @@ public class FunctionsTest extends SchemaTest {
 				br(nr, 0l, "one", nr, 0l, "two", nr, 0l, "four", nr, 0l, "five"));
 	}
 	
+	@Test
+	public void testPE761() throws Throwable {
+		conn.execute("CREATE TABLE `pe761_A` (`value` int)");
+		conn.execute("INSERT INTO `pe761_A` VALUES (1), (2), (3), (4)");
+		
+		conn.assertResults("SELECT ROUND(VAR_SAMP(`value`), 4) FROM `pe761_A`", br(nr, 1.6667));
+		conn.assertResults("SELECT ROUND(VARIANCE(`value`), 4) FROM `pe761_A`", br(nr, 1.2500));
+		conn.assertResults("SELECT ROUND(VAR_POP(`value`), 4) FROM `pe761_A`", br(nr, 1.2500));
+
+		conn.assertResults("SELECT ROUND(STDDEV_SAMP(`value`), 4) FROM `pe761_A`", br(nr, 1.2910));
+		conn.assertResults("SELECT ROUND(STDDEV(`value`), 4) FROM `pe761_A`", br(nr, 1.1180));
+		conn.assertResults("SELECT ROUND(STD(`value`), 4) FROM `pe761_A`", br(nr, 1.1180));
+		conn.assertResults("SELECT ROUND(STDDEV_POP(`value`), 4) FROM `pe761_A`", br(nr, 1.1180));
+		
+		conn.execute("CREATE TABLE `pe761_B` (`id` int not null, `value` int)");
+		conn.execute("INSERT INTO `pe761_B` VALUES (1, 1), (1, 2), (1, 3),"
+				+ "(2, 4), (2, 5), (2, 6), (3, 7), (3, 8), (3, 9)");
+		
+		conn.assertResults("SELECT ROUND(VAR_SAMP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 1.0, nr, 1.0, nr, 1.0));
+		conn.assertResults("SELECT ROUND(VARIANCE(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 0.6667, nr, 0.6667, nr, 0.6667));
+		conn.assertResults("SELECT ROUND(VAR_POP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 0.6667, nr, 0.6667, nr, 0.6667));
+
+		conn.assertResults("SELECT ROUND(STDDEV_SAMP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 1.0, nr, 1.0, nr, 1.0));
+		conn.assertResults("SELECT ROUND(STDDEV(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 0.8165, nr, 0.8165, nr, 0.8165));
+		conn.assertResults("SELECT ROUND(STD(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 0.8165, nr, 0.8165, nr, 0.8165));
+		conn.assertResults("SELECT ROUND(STDDEV_POP(`value`), 4) FROM `pe761_B` GROUP BY `id`",
+				br(nr, 0.8165, nr, 0.8165, nr, 0.8165));
+	}
+
+	@Test
+	public void testPower() throws Throwable {
+		conn.assertResults("SELECT POW(3, 2)", br(nr, 9.0));
+		conn.assertResults("SELECT POWER(3, 3)", br(nr, 27.0));
+	}
+
 }

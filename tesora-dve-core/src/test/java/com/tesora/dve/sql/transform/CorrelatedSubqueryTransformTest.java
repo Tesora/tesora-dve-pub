@@ -56,7 +56,7 @@ public class CorrelatedSubqueryTransformTest extends TransformTest {
 	public void testProjA() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI, dataTestSchema);
 		PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
-		String sql = "select r.id, (select avg(l.c) from A l where l.b = r.c) from S r where r.c in (2,3) and r.e in (7,8)";
+		String sql = "select r.id, (select AVG(l.c) from A l where l.b = r.c) from S r where r.c in (2,3) and r.e in (7,8)";
 		stmtTest(db,sql,SelectStatement.class,
 				bes(
 						new ProjectingExpectedStep(ExecutionType.SELECT,
@@ -79,7 +79,7 @@ public class CorrelatedSubqueryTransformTest extends TransformTest {
 							group,"temp3",TransientExecutionEngine.MEDIUM,StaticDistributionModel.MODEL_NAME,
 							new String[] {"lb4_10" },
 							new String[][] {{"lb4_10"} },
-						  "SELECT sum( l.`c` )  AS func_8,COUNT( l.`c` )  AS func_9,l.`b` AS lb4_10",
+						  "SELECT SUM( l.`c` )  AS func_8,COUNT( l.`c` )  AS func_9,l.`b` AS lb4_10",
 						  "FROM `A` AS l, temp2",
 						  "WHERE l.`b` = temp2.t4r1",
 						  "GROUP BY lb4_10 ASC"
@@ -89,7 +89,7 @@ public class CorrelatedSubqueryTransformTest extends TransformTest {
 							TransientExecutionEngine.MEDIUM,"temp4",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,
 							emptyDV,
 							new String[][] {{"t6l2_8"} },
-						  "SELECT  (sum( temp3.func_8 )  / sum( temp3.func_9 ) )  AS func,temp3.lb4_10 AS t6l2_8",
+						  "SELECT  (SUM( temp3.func_8 )  / SUM( temp3.func_9 ) )  AS func,temp3.lb4_10 AS t6l2_8",
 						  "FROM temp3",
 						  "GROUP BY t6l2_8 ASC"
 						)
@@ -140,7 +140,7 @@ public class CorrelatedSubqueryTransformTest extends TransformTest {
 							group,"temp3",TransientExecutionEngine.MEDIUM,StaticDistributionModel.MODEL_NAME,
 							new String[] {"iai0_9" },
 							new String[][] {{"iai0_9"} },
-						  "SELECT max( ia.`sid` )  AS func_8,ia.`id` AS iai0_9",
+						  "SELECT MAX( ia.`sid` )  AS func_8,ia.`id` AS iai0_9",
 						  "FROM `IA` AS ia, temp2",
 						  "WHERE ia.`id` = temp2.t5o2",
 						  "GROUP BY iai0_9 ASC"
@@ -150,7 +150,7 @@ public class CorrelatedSubqueryTransformTest extends TransformTest {
 							TransientExecutionEngine.MEDIUM,"temp4",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,
 							emptyDV,
 							new String[][] {{"t7i1_6"} },
-						  "SELECT max( temp3.func_8 )  AS func,temp3.iai0_9 AS t7i1_6",
+						  "SELECT MAX( temp3.func_8 )  AS func,temp3.iai0_9 AS t7i1_6",
 						  "FROM temp3",
 						  "GROUP BY t7i1_6 ASC"
 						)
@@ -159,7 +159,7 @@ public class CorrelatedSubqueryTransformTest extends TransformTest {
 							group,"temp5",TransientExecutionEngine.MEDIUM,StaticDistributionModel.MODEL_NAME,
 							new String[] {"ibi0_9" },
 							new String[][] {{"ibi0_9"} },
-						  "SELECT max( ib.`sid` )  AS func_8,ib.`id` AS ibi0_9",
+						  "SELECT MAX( ib.`sid` )  AS func_8,ib.`id` AS ibi0_9",
 						  "FROM `IB` AS ib, temp2",
 						  "WHERE ib.`id` = temp2.t5o2",
 						  "GROUP BY ibi0_9 ASC"
@@ -169,7 +169,7 @@ public class CorrelatedSubqueryTransformTest extends TransformTest {
 							TransientExecutionEngine.MEDIUM,"temp6",TransientExecutionEngine.AGGREGATION,StaticDistributionModel.MODEL_NAME,
 							emptyDV,
 							new String[][] {{"t10i1_6"} },
-						  "SELECT max( temp5.func_8 )  AS func,temp5.ibi0_9 AS t10i1_6",
+						  "SELECT MAX( temp5.func_8 )  AS func,temp5.ibi0_9 AS t10i1_6",
 						  "FROM temp5",
 						  "GROUP BY t10i1_6 ASC"
 						)
