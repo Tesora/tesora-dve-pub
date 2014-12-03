@@ -245,7 +245,8 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 							
 							childEvaluationStmt.normalize(sc);
 							
-							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) TransformFactory.buildPlan(childEvaluationStmt, pc, DefaultFeaturePlannerFilter.INSTANCE);
+//							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) TransformFactory.buildPlan(childEvaluationStmt, pc, DefaultFeaturePlannerFilter.INSTANCE);
+							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) childEvaluationStmt.plan(sc, sc.getBehaviorConfiguration());
 							
 							// Redist where the parent's initial step executes.
 							final RedistFeatureStep plannedChildRedistStep = plannedChildEvaluationStep.redist(pc,
@@ -282,7 +283,7 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 								} else {
 									final List<ExpressionNode> joinConditions = new ArrayList<ExpressionNode>(parentGroupCols.size()); 
 									for (final ColumnInstance lhs : parentGroupCols) {
-										final ColumnInstance rhs = childEvaluationStmt.getMapper().copyForward(lhs);
+										final ColumnInstance rhs = childResultsProjectingStmt.getMapper().copyForward(lhs);
 										final FunctionCall joinOnExpr = new FunctionCall(FunctionName.makeEquals(), lhs, rhs);
 										joinConditions.add(joinOnExpr);
 									}

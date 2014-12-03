@@ -930,7 +930,33 @@ public class AggregationTransformTest extends TransformTest {
 				"CREATE TABLE `pe761` (`id` int not null, `value` int) RANDOM DISTRIBUTE");
 		final PEPersistentGroup group = db.getCurrentDatabase().getDefaultStorage(db);
 		final String sql = "SELECT VAR_SAMP(`value`) FROM `pe761` GROUP BY `id`";
-		stmtTest(db, sql, SelectStatement.class,null);
+		stmtTest(db, sql, SelectStatement.class, bes(
+						new ProjectingExpectedStep(ExecutionType.SELECT,
+							group,"temp1",group,BroadcastDistributionModel.MODEL_NAME,
+							emptyDV,
+							emptyIndexes,
+						  "SELECT AVG( `pe761`.`value` )  AS func_10,`pe761`.`id` AS p1i0_11",
+						  "FROM `pe761`",
+						  "GROUP BY p1i0_11 ASC"
+						),
+						new ProjectingExpectedStep(ExecutionType.SELECT,
+							group,"temp2",TransientExecutionEngine.LARGE,StaticDistributionModel.MODEL_NAME,
+							new String[] {"p1i0_9" },
+							new String[][] {{"p1i0_9"} },
+						  "SELECT COUNT( `pe761`.`value` )  AS func_6,VAR_POP( `pe761`.`value` )  AS func_7,POW( AVG( `pe761`.`value` )  - temp1.func_10,2 )  AS func_8,`pe761`.`id` AS p1i0_9",
+						  "FROM `pe761`",
+						  "INNER JOIN temp1 ON `pe761`.`id` = temp1.p1i0_11",
+						  "GROUP BY p1i0_9 ASC"
+						)
+						.withExplain(new DMLExplainRecord(DMLExplainReason.WRONG_DISTRIBUTION)),
+						new ProjectingExpectedStep(ExecutionType.SELECT,
+							null,
+						  "SELECT  (SUM( temp2.func_6 * temp2.func_7 )  /  (SUM( temp2.func_6 )  - 1)  + SUM( temp2.func_6 * temp2.func_8 )  /  (SUM( temp2.func_6 )  - 1) )  AS func",
+						  "FROM temp2",
+						  "GROUP BY temp2.p1i0_9 ASC"
+						)
+						.withExplain(new DMLExplainRecord(DMLExplainReason.WRONG_DISTRIBUTION))
+					));
 	}
 
 }
