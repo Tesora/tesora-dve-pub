@@ -136,33 +136,9 @@ public abstract class Agent {
 		return plugin.sendAndReceive(e);
 	}
 
-	public ResponseMessage receive() throws PEException
-	{
-		return plugin.receive();
-	}
-	
-	public <T> Envelope getNextEnvelopeByType(Class<T> msgType) throws PEException {
-		return plugin.getNextEnvelopeByType(msgType);
-	}
-	
-	/**
-	 * Many messages just return a GenericRespose.  We consume them
-	 * but with throw an exception relayed from the message receiver.
-	 * @param count number of messages to consume
-	 * @throws PEException
-	 */
-	public void consumeReplies(int count) throws PEException {
-		while(count-- > 0)
-			receive();
-	}
-
 	public void send(Envelope e) throws PEException
 	{
 		plugin.send(e);
-	}
-	
-	public void sendSynchronous(Envelope envelope) throws PEException {
-		plugin.sendSynchronous(envelope);
 	}
 
 	public abstract void onMessage(Envelope e) throws PEException;

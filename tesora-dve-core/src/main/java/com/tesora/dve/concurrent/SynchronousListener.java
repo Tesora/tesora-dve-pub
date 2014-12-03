@@ -81,9 +81,13 @@ public class SynchronousListener<S> implements CompletionTarget<S>, SynchronousC
     }
 
     public S sync() throws Exception {
+        return sync(false);
+    }
+
+    public S sync(boolean canInterrupt) throws Exception {
 
         synchronized (localMonitor){
-            waitUntilFinished();
+            waitUntilFinished(canInterrupt);
 
             if (state == WaitState.SUCCESS)
                 return result;
@@ -92,13 +96,14 @@ public class SynchronousListener<S> implements CompletionTarget<S>, SynchronousC
         }
     }
 
-    private void waitUntilFinished() throws InterruptedException {
+    private void waitUntilFinished(boolean canInterrupt) throws InterruptedException {
         while (state == WaitState.UNFINISHED){
             try {
                 peopleWaiting ++;
                 localMonitor.wait(WAIT_TIMEOUT);
             } catch (InterruptedException ie) {
-                //TODO: should we actually do anything if interrupted?
+                if (canInterrupt)
+                    throw new InterruptedException();
             }finally {
                 peopleWaiting --;
             }

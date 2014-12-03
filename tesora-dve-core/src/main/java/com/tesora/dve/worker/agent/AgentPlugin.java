@@ -46,19 +46,6 @@ public interface AgentPlugin {
 	 */
 	void send(Envelope e) throws PEException;
 
-	void sendSynchronous(Envelope envelope) throws PEException;
-
-	/**
-	 * Receives a message from the Send/Receive/Respone queue and 
-	 * returns it as a <code>ResponseMessage</code>.  If the message
-	 * received encodes an exception captured on the remote site,
-	 * the exception will be rethrown.
-	 * 
-	 * @return the <b>ResponseMessage</b> received
-	 * @throws PEException
-	 * @throws PEException
-	 */
-	ResponseMessage receive() throws PEException;
 
 	/**
 	 * Convenience method that wraps a send and receive.
@@ -95,8 +82,6 @@ public interface AgentPlugin {
 			throws PEException;
 
 	Envelope newEnvelope(Object o);
-
-	public <T> Envelope getNextEnvelopeByType(Class<T> msgType) throws PEException;
 	
 //	AgentPlugin newInstance(String name) throws PEException;
 //

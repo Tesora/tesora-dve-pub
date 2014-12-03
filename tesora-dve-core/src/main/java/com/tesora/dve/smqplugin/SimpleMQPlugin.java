@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.tesora.dve.concurrent.ChainedNotifier;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.RemoteException;
@@ -51,6 +52,7 @@ public class SimpleMQPlugin implements AgentPlugin {
 		String toAddress;
 		long exceptionFrame;
 		long sequence;
+		ChainedNotifier<ResponseMessage> response = new ChainedNotifier<>();
 		
 		public SMQEnvelope(Object payload) {
 			this.payload = payload;
@@ -112,6 +114,14 @@ public class SimpleMQPlugin implements AgentPlugin {
 		public String getReplyAddress() {
 			return getFromAddress();
 		}
+
+		protected void deliverResponse(ResponseMessage msg){
+			response.success(msg);
+		}
+
+		protected ResponseMessage sync(boolean canInterrupt) throws Exception {
+			return response.sync(canInterrupt);
+		}
 	}
 	
 	ArrayBlockingQueue<SMQEnvelope> receiveQueue = new ArrayBlockingQueue<SimpleMQPlugin.SMQEnvelope>(100000);
@@ -167,7 +177,7 @@ public class SimpleMQPlugin implements AgentPlugin {
 	
 	static public void stopServices() throws Exception {
 	}
-	
+
 	static public void dispatch(String toAddress, Object message) throws PEException {
 		if (false == toAddress.isEmpty()) {
 			SMQEnvelope env = (SMQEnvelope) new SMQEnvelope(message).to(toAddress);
@@ -214,64 +224,29 @@ public class SimpleMQPlugin implements AgentPlugin {
 		}
 	}
 
-	@Override
-	public void sendSynchronous(Envelope e) throws PEException {
-		SMQEnvelope env = (SMQEnvelope) e;
-		send(env);
-		ArrayBlockingQueue<SMQEnvelope> replyQueue = agentMap.get(env.getFromAddress());
-		while (replyQueue.isEmpty())
-			try { Thread.sleep(5); } catch (InterruptedException e1) {}
-	}
 
 	private void markForTermination() {
 		markedForTermination = true;
 	}
 
 	@Override
-	public ResponseMessage receive() throws PEException {
-		ResponseMessage resp = null;
-		while (resp == null) {
-			try {
-				if (loggerDebug)
-					logger.debug(new StringBuilder(theAgent.getName()).append(".receive is waiting on ")
-							.append(getReplyAddress()));
-				SMQEnvelope returnEnv = getNextMessage();
-				if (returnEnv.getExceptionFrame() != theAgent.getExceptionFrame()) {
-					logger.debug("DISCARDED due to wrong exception frame: " + returnEnv.toString());
-					continue;
-				}
-				resp = (ResponseMessage) returnEnv.getPayload();
-				if (resp.hasException()) {
-					theAgent.nextExceptionFrame();
-					throw new RemoteException(theAgent.getName(), resp.getException());
-				}
-				if (loggerDebug)
-					logger.debug(returnEnv.display(new StringBuilder(theAgent.getName()).append(" received ")));
-			} catch (InterruptedException e) {
-				markForTermination();
-				throw new PEException("receive operation interrupted", e);
-			} catch (PEException e) {
-				throw e;
-			}
+	public ResponseMessage sendAndReceive(Envelope msg) throws PEException {
+		SMQEnvelope env = (SMQEnvelope) msg;
+		env.from(getReplyAddress());
+		send(env);
+		try {
+			return env.sync(true);
+		} catch (InterruptedException ie){
+			markForTermination();
+			throw new PEException("receive operation interrupted", ie);
+		}catch (PEException e) {
+			throw e;
+		} catch (Exception e){
+			if (e.getCause() instanceof PEException)
+				throw (PEException)e.getCause();
+			else
+				throw new PEException(e);
 		}
-		return resp;
-	}
-
-	private SMQEnvelope getNextMessage() throws InterruptedException {
-		SMQEnvelope returnEnv = null;
-		returnEnv = replyQueue.take();
-//		while (returnEnv == null) {
-//			returnEnv = replyQueue.poll(10, TimeUnit.MICROSECONDS);
-//		}
-		
-		return returnEnv;
-	}
-
-	@Override
-	public ResponseMessage sendAndReceive(Envelope e) throws PEException {
-		e.from(getReplyAddress());
-		send(e);
-		return receive();
 	}
 
 	@Override
@@ -303,43 +278,12 @@ public class SimpleMQPlugin implements AgentPlugin {
 	public void returnResponse(Envelope requestEnvelope, ResponseMessage resp)
 			throws PEException {
 		SMQEnvelope env = (SMQEnvelope) requestEnvelope;
-		if (env.getFromAddress() != null) {
-			try {
-				SMQEnvelope retEnv = new SMQEnvelope(env, resp);
-				retEnv.to(env.getFromAddress()).from(getAddress());
-				retEnv.setExceptionFrame(env.getExceptionFrame());
-				agentMap.get(retEnv.getToAddress()).put(retEnv);
-				if (loggerDebug)
-					// TODO remove this try-catch after we find this bug
-					try {
-					logger.debug(retEnv.display(new StringBuilder(theAgent.getName())
-							.append(" sent reply ")));
-					} catch (Throwable t) {
-						logger.fatal("**********\nSend envelope: " + requestEnvelope + "\nReply envelope: " + retEnv,t);
-					}
-			} catch (InterruptedException e1) {
-				markForTermination();
-				throw new PEException("returnResponse operation interrupted", e1);
-			}
-		}
+		env.deliverResponse(resp);
 	}
 
 	@Override
 	public Envelope newEnvelope(Object o) {
 		return new SMQEnvelope(o);
-	}
-
-	@Override
-	public <T> Envelope getNextEnvelopeByType(Class<T> msgType) throws PEException {
-		SMQEnvelope returnEnv = null;
-		SMQEnvelope nextEnv = receiveQueue.peek();
-		if (nextEnv != null && msgType.isInstance(nextEnv.getPayload()))
-			try {
-				returnEnv = receiveQueue.take();
-			} catch (InterruptedException e) {
-				throw new PEException("returnResponse operation interrupted", e);
-			}
-		return returnEnv;
 	}
 
 }

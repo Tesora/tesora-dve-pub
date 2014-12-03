@@ -143,6 +143,13 @@ public class ChainedNotifier<R> implements CompletionTarget<R>, CompletionHandle
         return syncListener.sync();
     }
 
+
+    public R sync(boolean canInterrupt) throws Exception {
+        SynchronousListener<R> syncListener = new SynchronousListener<R>();
+        this.addListener(syncListener);
+        return syncListener.sync(canInterrupt);
+    }
+
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
         return false;
