@@ -24,6 +24,7 @@ package com.tesora.dve.sql.transform.strategy.aggregation;
 
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,7 @@ import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.CopyVisitor;
 import com.tesora.dve.sql.transform.SchemaMapper;
 import com.tesora.dve.sql.transform.TableInstanceCollector;
+import com.tesora.dve.sql.transform.behaviors.ComplexFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.strategy.ApplyOption;
@@ -245,8 +247,7 @@ public class GenericAggRewriteTransformFactory  extends TransformFactory {
 							
 							childEvaluationStmt.normalize(sc);
 							
-//							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) TransformFactory.buildPlan(childEvaluationStmt, pc, DefaultFeaturePlannerFilter.INSTANCE);
-							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) childEvaluationStmt.plan(sc, sc.getBehaviorConfiguration());
+							final ProjectingFeatureStep plannedChildEvaluationStep = (ProjectingFeatureStep) TransformFactory.buildPlan(childEvaluationStmt, pc, new ComplexFeaturePlannerFilter(Collections.EMPTY_SET, TransformFactory.allTransforms));
 							
 							// Redist where the parent's initial step executes.
 							final RedistFeatureStep plannedChildRedistStep = plannedChildEvaluationStep.redist(pc,
