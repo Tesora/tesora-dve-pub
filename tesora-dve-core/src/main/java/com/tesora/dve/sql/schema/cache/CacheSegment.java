@@ -34,43 +34,52 @@ public enum CacheSegment {
 	 * The uncategorized cache is everything not stored in a particular cache
 	 * i.e. databases, persistent groups, persistent sites, users, privileges, etc.
 	 */
-	UNCATEGORIZED(KnownVariables.CACHE_LIMIT,""),
+	UNCATEGORIZED(KnownVariables.CACHE_LIMIT,"",true),
 	/*
 	 * Tenant scopes
 	 */
-	SCOPE(KnownVariables.SCOPE_CACHE_LIMIT,"scope"),
+	SCOPE(KnownVariables.SCOPE_CACHE_LIMIT,"scope",true),
 	/*
 	 * Tenants
 	 */
-	TENANT(KnownVariables.TENANT_CACHE_LIMIT,"tenant"),
+	TENANT(KnownVariables.TENANT_CACHE_LIMIT,"tenant",true),
 	/*
 	 * Tables.  In multitenant mode this is the backing tables; in regular mode it's just tables.
 	 */
-	TABLE(KnownVariables.TABLE_CACHE_LIMIT,"table"),
+	TABLE(KnownVariables.TABLE_CACHE_LIMIT,"table",true),
 	/*
 	 * Plans.  In multitenant mode this is on backing table plans; otherwise regular plans.
 	 */
-	PLAN(KnownVariables.PLAN_CACHE_LIMIT,"plan"),
+	PLAN(KnownVariables.PLAN_CACHE_LIMIT,"plan",false),
 	/*
 	 * Raw plans.  We use a separate limit so that they don't clutter up the general area.
 	 */
-	RAWPLAN(KnownVariables.RAW_PLAN_CACHE_LIMIT,"raw_plan"),
+	RAWPLAN(KnownVariables.RAW_PLAN_CACHE_LIMIT,"raw_plan",false),
 	/* 
 	 * Templates.  We use a separate segment so that modifying templates doesn't flush the cache.
 	 * Modifying a template only effects create stmts anyways.
 	 */
-	TEMPLATE(KnownVariables.TEMPLATE_CACHE_LIMIT,"template"),
+	TEMPLATE(KnownVariables.TEMPLATE_CACHE_LIMIT,"template",true),
 	/*
 	 * Prepared statements.  This is the global max.  Prepared statements are valid by connection only.
 	 */
-	PREPARED(KnownVariables.MAX_PREPARED_STMT_COUNT,"prepared_stmt");
+	PREPARED(KnownVariables.MAX_PREPARED_STMT_COUNT,"prepared_stmt",false),
+	/*
+	 * Runtime query statistics cache.  This is the global max - we will store no more than this amount
+	 * in each server AS WELL AS in the catalog.
+	 */
+	QSTATS(KnownVariables.QSTAT_CACHE_LIMIT,"query_statistics",false);
 	
 	private final VariableHandler<Long> variable;
 	private final String statusVariableSuffix;
+	// due to the loading architecture, we are starting to overload the enum.  this is true
+	// when this segment is part of the general cache.  some segments are specially cached.
+	private final boolean generalCache;
 		
-	private CacheSegment(VariableHandler<Long> variable, String statusVariableSuffix) {
+	private CacheSegment(VariableHandler<Long> variable, String statusVariableSuffix, boolean general) {
 		this.variable = variable;
 		this.statusVariableSuffix = statusVariableSuffix;
+		this.generalCache = general;
 	}
 	
 	public String getVariableName() {
@@ -83,6 +92,10 @@ public enum CacheSegment {
 	
 	public VariableHandler<Long> getVariable() {
 		return variable;
+	}
+	
+	public boolean isGeneralCache() {
+		return generalCache;
 	}
 	
 	public static CacheSegment lookupSegment(String varname) {

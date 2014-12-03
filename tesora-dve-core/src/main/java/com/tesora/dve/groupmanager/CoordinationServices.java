@@ -23,6 +23,8 @@ package com.tesora.dve.groupmanager;
 
 import com.tesora.dve.locking.ClusterLock;
 import com.tesora.dve.lockmanager.LockManager;
+import com.tesora.dve.sql.schema.cache.qstat.RuntimeQueryStatistic;
+import com.tesora.dve.sql.schema.cache.qstat.RuntimeQueryStatistic.RuntimeQueryCacheKey;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -75,4 +77,5 @@ public interface CoordinationServices extends MembershipViewSource {
 	String getGlobalVariable(String name);
 
 	void setGlobalVariable(String name, String value);
+	
 }

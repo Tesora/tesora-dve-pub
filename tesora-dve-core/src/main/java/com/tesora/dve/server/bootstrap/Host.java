@@ -67,6 +67,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupMessageEndpoint;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
+import com.tesora.dve.sql.schema.cache.qstat.RuntimeQueryStatisticsCache;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.upgrade.CatalogVersions;
 import com.tesora.dve.variable.status.StatusVariableHandler;
@@ -169,6 +170,7 @@ public class Host implements HostService {
 	private Properties props;
 
 	private final VariableManager variables;
+	private final RuntimeQueryStatisticsCache queryStats;
 	
 	private VariableHandlerDynamicMBean globalConfigMBean = new VariableHandlerDynamicMBean();
 
@@ -236,6 +238,8 @@ public class Host implements HostService {
 				c.close();
 			}
 			
+			queryStats = new RuntimeQueryStatisticsCache();
+			
 			startTime = System.currentTimeMillis();
 			
 		} catch (Throwable e) {
@@ -276,6 +280,8 @@ public class Host implements HostService {
 			infoSchema = InformationSchemas.build(dbNative,null,props);
 			if (startCatalog)
 				variables.initialize(null);
+			
+			queryStats = new RuntimeQueryStatisticsCache();
 		} catch (Exception e) {
             throw new RuntimeException("Failed to start DVE server - " + e.getMessage(), e);
 		}
@@ -565,5 +571,10 @@ public class Host implements HostService {
 			return null;
 		}
 		return ssConProxy;
+	}
+
+	@Override
+	public RuntimeQueryStatisticsCache getQueryStatisticsCache() {
+		return queryStats;
 	}
 }

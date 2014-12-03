@@ -574,6 +574,18 @@ public class KnownVariables implements VariableConstants {
 				}
 
 			};
+	public static final VariableHandler<Long> QSTAT_CACHE_LIMIT =
+			new VariableHandler<Long>("qstat_cache_limit",
+					integralConverter,
+					globalScope,
+					1000L,
+					dveOnly,
+					"Maximum query statistics cache size (in entries)") {
+				@Override
+				public void onGlobalValueChange(Long newValue) throws PEException {
+					SchemaSourceFactory.setCacheSegmentLimit(CacheSegment.lookupSegment(getName()), newValue.intValue());
+				}
+			};
 	public static final VariableHandler<Long> TEMPLATE_CACHE_LIMIT =
 			new VariableHandler<Long>("template_cache_limit",
 					integralConverter,
@@ -826,6 +838,7 @@ public class KnownVariables implements VariableConstants {
 			RAW_PLAN_CACHE_LIMIT,
 			TEMPLATE_CACHE_LIMIT,
 			MAX_PREPARED_STMT_COUNT,
+			QSTAT_CACHE_LIMIT,
 			REDIST_MAX_COLUMNS,
 			REDIST_MAX_SIZE,
 			WAIT_TIMEOUT,

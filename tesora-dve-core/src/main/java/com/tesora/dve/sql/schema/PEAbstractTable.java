@@ -47,6 +47,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
+import com.tesora.dve.sql.schema.PEDatabase.DatabaseCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
@@ -457,7 +458,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 	public Name getDatabaseName(SchemaContext sc) {
 		return getDatabase(sc).getName();
 	}
-	
+
 	// also for temp table support
 	public MultitenantMode getEnclosingDatabaseMTMode(SchemaContext sc) {
 		Database<?> db = getDatabase(sc);
@@ -466,6 +467,11 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 			return pedb.getMTMode();
 		}
 		return MultitenantMode.OFF;
+	}
+
+	// runtime statistics support
+	public SchemaCacheKey<PEDatabase> getDatabaseCacheKey() {
+		return db.getCacheKey();
 	}
 	
 	public void setDeclaration(SchemaContext sc, PEAbstractTable<?> basedOn) {

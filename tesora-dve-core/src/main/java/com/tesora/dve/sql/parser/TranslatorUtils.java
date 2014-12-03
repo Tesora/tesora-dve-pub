@@ -2401,6 +2401,9 @@ public class TranslatorUtils extends Utils implements ValueSource {
 						} else {
 							kind = VariableScopeKind.GLOBAL;
 						}
+					} else {
+						// hedge - make it be a session variable
+						kind = VariableScopeKind.SESSION;
 					}
 				} else {
 					kind = VariableScopeKind.USER;
@@ -3845,6 +3848,8 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	@SuppressWarnings("unchecked")
 	public Statement buildShowStatus(Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
+		if (pc.getCapability() != Capability.FULL)
+			return new SchemaQueryStatement(false, "status", Collections.EMPTY_LIST, true, null);
 		DirectShowStatusInformation ist = (DirectShowStatusInformation) Singletons.require(HostService.class).getInformationSchema().lookupShowTable(
 				new UnqualifiedName("status"));
 
@@ -3852,8 +3857,6 @@ public class TranslatorUtils extends Utils implements ValueSource {
 				.getFirst());
 		ExpressionNode whereExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getSecond());
-		if (pc.getCapability() == Capability.PARSING_ONLY)
-			return new SchemaQueryStatement(false, "status", Collections.EMPTY_LIST, true, null);
 		return ist.buildShowPlural(pc, null, likeExpr, whereExpr, null);
 	}
 

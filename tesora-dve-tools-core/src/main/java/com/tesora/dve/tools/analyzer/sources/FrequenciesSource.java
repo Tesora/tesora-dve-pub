@@ -66,6 +66,7 @@ public class FrequenciesSource extends AnalyzerSource {
 
 			if ((cdb == null) || !cdb.equals(spt.getDb())) {
 				cdb = spt.getDb();
+				if (cdb == null) continue; // unknown database
 				pi.parseOneLine(li, "use " + cdb);
 			}
 			if (InsertIntoValuesStatement.class.getSimpleName().equals(spt.getKind())) {

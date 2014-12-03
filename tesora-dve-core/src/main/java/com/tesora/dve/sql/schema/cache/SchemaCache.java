@@ -67,7 +67,7 @@ public class SchemaCache implements SchemaSource, RemovalListener<SchemaCacheKey
 		tloaded_baseline = new CacheStats[values.length];
 
 		for(CacheSegment cs : values) {
-			if (cs == CacheSegment.PLAN)
+			if (!cs.isGeneralCache())
 				continue;
 			tloaded[cs.ordinal()] = buildCache(limits.getLimit(cs));
 			tloaded_baseline[cs.ordinal()] = null;
