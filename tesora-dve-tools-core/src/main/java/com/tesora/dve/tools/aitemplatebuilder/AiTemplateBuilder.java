@@ -1365,15 +1365,23 @@ public final class AiTemplateBuilder {
 
 		/*
 		 * Make sure there are no Broadcast -> Range relationships (c) by making
-		 * both tables Range.
+		 * both tables Range or Broadcast if cannot range (user defined).
 		 */
 		for (final TableStats table : tables) {
-			if (!table.hasDistributionModelFreezed() && (table.getTableDistributionModel() instanceof Range)) {
+			if (table.getTableDistributionModel() instanceof Range) {
 				for (final TableStats childTable : table.getReferencingForeignTables()) {
 					if (childTable.getTableDistributionModel() instanceof Broadcast) {
-						final Set<TableStats> affectedTables = makeBackwardTableTreeRange(childTable);
-						log("FK forced range: range table '" + table.getFullTableName() + "' is referenced by a broadcast table '"
-								+ childTable.getFullTableName() + "'. Had to range '" + affectedTables.size() + "' table(s).", MessageSeverity.ALERT);
+						if (!childTable.hasDistributionModelFreezed()) {
+							final Set<TableStats> affectedTables = makeBackwardTableTreeRange(childTable);
+							log("FK forced range: range table '" + table.getFullTableName() + "' is referenced by a broadcast table '"
+									+ childTable.getFullTableName() + "'. Had to range '" + affectedTables.size() + "' table(s).", MessageSeverity.ALERT);
+						} else {
+							final Set<TableStats> forcedBroadcastTables = makeForwardTableTreeBroadcast(childTable);
+							log("FK forced broadcast: Could not range table '" + childTable.getFullTableName() + "' (user defined). Had to broadcast '" + forcedBroadcastTables.size()
+									+ "' table(s) with total size of '"
+									+ CorpusStats.computeTotalSizeKb(forcedBroadcastTables) + "KB'", MessageSeverity.WARNING);
+							forcedBroadcastTables.addAll(forcedBroadcastTables);
+						}
 					}
 				}
 			}
@@ -1499,7 +1507,15 @@ public final class AiTemplateBuilder {
 				makeForwardTableTreeBroadcast(table, traversedNodes);
 			}
 		}
-		root.setTableDistributionModel(new Broadcast((FuzzyTableDistributionModel) root.getTableDistributionModel()));
+		
+		if (!root.hasDistributionModelFreezed() || root.getTableDistributionModel().isBroadcast()) {
+			root.setTableDistributionModel(new Broadcast((FuzzyTableDistributionModel) root.getTableDistributionModel()));
+		} else {
+			// We cannot safely collocate due to user defined model constraints.
+			// There is likely a non-resolvable cycle in the base template models.
+			// Skip this table and proceed like normal with whatever the user gave us.
+			log("Could not broadcast table '" + root.getFullTableName() + "' (user defined). The resultant template may not be collocated.", MessageSeverity.SEVERE);
+		}
 	}
 
 	private String toStringOfDelimitedColumnNames(final Set<TableColumn> columns) {
