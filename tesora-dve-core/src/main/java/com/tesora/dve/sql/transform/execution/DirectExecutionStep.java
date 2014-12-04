@@ -59,7 +59,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 	
 	protected final DMLExplainRecord explainHelp;
 	
-	protected StepExecutionStatistics stats = new StepExecutionStatistics();
+	protected SimpleStepExecutionStatistics stats = new SimpleStepExecutionStatistics();
 	
 	public DirectExecutionStep(Database<?> db, PEStorageGroup storageGroup, ExecutionType givenType, 
 			DistributionVector vector, DistributionKey distKey, GenericSQLCommand command,
@@ -213,18 +213,19 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 		return (requiresReferenceTimestamp ? cv.getCurrentTimestamp() : 0);
 	}
 	
-	public StepExecutionStatistics getReportStatistics() {
+	public SimpleStepExecutionStatistics getReportStatistics() {
 		return stats;
 	}
 	
-	public StepExecutionStatistics getStepStatistics(SchemaContext sc) {
+	// for nonredist, we check for stepwise stats.  for redist we always collect.
+	public SimpleStepExecutionStatistics getStepStatistics(SchemaContext sc) {
 		if (KnownVariables.STEPWISE_STATISTICS.getValue(sc.getConnection().getVariableSource()).booleanValue())
 			return stats;
 		return null;
 	}
 	
 	public void clearStatistics() {
-		stats = new StepExecutionStatistics();
+		stats = new SimpleStepExecutionStatistics();
 	}
 		
 	public DMLExplainRecord getExplainHint() {
@@ -238,7 +239,7 @@ public abstract class DirectExecutionStep extends ExecutionStep {
 		super.addExplainColumns(sc, cv, rr, opts);
 		addStepExplainColumns(sc,cv, rr, opts);
 		if (opts.isStatistics()) {
-			StepExecutionStatistics t = stats;
+			SimpleStepExecutionStatistics t = stats;
 			if (t != null) 
 				t.addColumns(rr);
 		}

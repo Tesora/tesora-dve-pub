@@ -122,7 +122,7 @@ public abstract class ExecutionStep implements HasPlanning {
 		ConnectionValues cv = cvm.getValues(containing);
 		addExplainColumns(sc,cv,rr,opts);
 		// add any nulls that are needed
-		int width = RootExecutionPlan.basicExplainColumns.length + (opts.isStatistics() ? StepExecutionStatistics.statsExplainColumns.length : 0); 
+		int width = RootExecutionPlan.basicExplainColumns.length + (opts.isStatistics() ? SimpleStepExecutionStatistics.statsExplainColumns.length : 0); 
 		int diff = width - 1 - rr.getRow().size();
 		for(int i = 0; i < diff; i++)
 			rr.addResultColumn(null,true);

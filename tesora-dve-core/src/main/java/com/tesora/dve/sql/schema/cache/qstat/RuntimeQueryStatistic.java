@@ -5,6 +5,8 @@ import java.util.LinkedList;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.PersistentQueryStatistic;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEAbstractTable.TableCacheKey;
 import com.tesora.dve.sql.schema.cache.CacheSegment;
@@ -110,6 +112,7 @@ public class RuntimeQueryStatistic extends Persistable<RuntimeQueryStatistic, Pe
 
 	@Override
 	protected void updateExisting(SchemaContext sc, PersistentQueryStatistic p) throws PEException {
+		Singletons.require(HostService.class).getQueryStatisticsCache().updatePersistent((RuntimeQueryCacheKey) getCacheKey(), p);
 	}
 
 	
@@ -155,7 +158,6 @@ public class RuntimeQueryStatistic extends Persistable<RuntimeQueryStatistic, Pe
 			this.query = q;
 		}
 		
-		// in practice we will use a different lookup, I think
 		@Override
 		public int hashCode() {
 			int acc = addIntHash(initHash(RuntimeQueryStatistic.class,query.hashCode()),db.hashCode());

@@ -26,8 +26,7 @@ public class QueryStatisticsMessage extends GroupMessage {
 	
 	@Override
 	void execute(HostService hostService) {
-		// TODO Auto-generated method stub
-
+		hostService.getQueryStatisticsCache().onHistoricalUnit(key, unit);
 	}
 
 	@Override

@@ -25,11 +25,11 @@ package com.tesora.dve.queryplan;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.sql.transform.execution.StepExecutionStatistics;
+import com.tesora.dve.sql.transform.execution.SimpleStepExecutionStatistics;
 
 public abstract class QueryStepDMLOperation extends QueryStepOperation {
 
-	StepExecutionStatistics statistics;
+	SimpleStepExecutionStatistics statistics;
 	long before;
 	
 	protected final PersistentDatabase database;
@@ -40,7 +40,7 @@ public abstract class QueryStepDMLOperation extends QueryStepOperation {
 		this.database = pdb;
 	}
 	
-	public void setStatistics(StepExecutionStatistics stats) {
+	public void setStatistics(SimpleStepExecutionStatistics stats) {
 		this.statistics = stats;
 	}
 	

@@ -27,8 +27,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.sql.schema.cache.qstat.StepExecutionStatistics;
 
-public class StepExecutionStatistics {
+public class SimpleStepExecutionStatistics implements StepExecutionStatistics {
 
 	protected final AtomicLong elapsed;
 	protected final AtomicInteger calls;
@@ -37,7 +38,7 @@ public class StepExecutionStatistics {
 	// for redist - rows from the src select
 	protected final AtomicLong rows;
 	
-	public StepExecutionStatistics() {
+	public SimpleStepExecutionStatistics() {
 		this.elapsed = new AtomicLong(0);
 		this.calls = new AtomicInteger(0);
 		this.rows = new AtomicLong(0);

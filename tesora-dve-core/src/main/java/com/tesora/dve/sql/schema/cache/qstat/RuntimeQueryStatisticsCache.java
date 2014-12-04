@@ -2,13 +2,18 @@ package com.tesora.dve.sql.schema.cache.qstat;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.tesora.dve.common.catalog.PersistentQueryStatistic;
+import com.tesora.dve.groupmanager.CacheInvalidationMessage;
+import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.QueryStatisticsMessage;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.cache.qstat.RuntimeQueryStatistic.RuntimeQueryCacheKey;
 
 public class RuntimeQueryStatisticsCache {
 
 	// will make this configurable soon
-	private static final long window = 10;
+	static final long window = 10;
 	
 	private final ConcurrentHashMap<RuntimeQueryCacheKey,CacheEntry> entries;
 	
@@ -22,6 +27,12 @@ public class RuntimeQueryStatisticsCache {
 		return e.getCurrentAvg();
 	}
 	
+	public void updatePersistent(RuntimeQueryCacheKey rqck, PersistentQueryStatistic pqs) {
+		CacheEntry e = entries.get(rqck);
+		if (e == null) return;
+		e.updatePersistent(pqs);
+	}
+	
 	public void onMeasurement(RuntimeQueryCacheKey rqck, long rows) {
 		CacheEntry e = entries.get(rqck);
 		if (e == null) {
@@ -31,7 +42,7 @@ public class RuntimeQueryStatisticsCache {
 		}
 		if (e.onMeasurement(rows)) {
 			QueryStatisticsMessage qsm = e.buildMessage(rqck);
-			// do something to send this
+	        Singletons.require(GroupTopicPublisher.class).publish(qsm);
 		}
 	}
 	
@@ -42,35 +53,5 @@ public class RuntimeQueryStatisticsCache {
 			entries.put(rqck,e);
 		}
 		e.onHistory(unit);
-	}
-	
-	private static class CacheEntry {
-		
-		private final CurrentStatisticUnit current;
-		private final HistoricalQueryStatistics global;
-		
-		public CacheEntry() {
-			this.current = new CurrentStatisticUnit();
-			this.global = new HistoricalQueryStatistics();
-		}
-		
-		public long getCurrentAvg() {
-			return (current.getAvgRows() + global.getCurrentAvg())/2;
-		}
-		
-		public boolean onMeasurement(long rows) {
-			long c = this.current.onMeasurement(rows);
-			return (c > window);
-		}
-
-		public void onHistory(HistoricalStatisticUnit hsu) {
-			global.onHistoricalUnit(hsu);
-		}
-		
-		public QueryStatisticsMessage buildMessage(RuntimeQueryCacheKey ck) {
-			QueryStatisticsMessage out = current.buildMessage(ck);
-			current.reset();
-			return out;
-		}
 	}
 }

@@ -9,4 +9,7 @@ public interface StatisticMeasurement extends Serializable {
 	// number of calls this unit represents
 	public abstract long getCalls();
 	
+	// total execution time of this unit
+	public abstract long getExecTime();
+	
 }

@@ -167,7 +167,7 @@ public abstract class ExecutionPlan implements HasPlanning {
 		ColumnSet cs = new ColumnSet();
 		addExplainColumnHeaders(cs);
 		if (opts.isStatistics()) 
-			StepExecutionStatistics.addColumnHeaders(cs);
+			SimpleStepExecutionStatistics.addColumnHeaders(cs);
 		List<ResultRow> rows = new ArrayList<ResultRow>();
 		explain(sc,cv, this, rows,opts);
 		return new IntermediateResultSet(cs,rows);

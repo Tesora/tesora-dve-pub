@@ -156,6 +156,8 @@ public final class RedistributionExecutionStep extends
 		this.enforceScalarValue = mustEnforceScalarValue;
 		this.insertIgnore = insertIgnore;
 		this.generator = tempTableGenerator;
+		// if there's query stats key, use a query stats collector
+		
 	}
 
 	private RedistributionExecutionStep(SchemaContext sc, Database<?> db, PEStorageGroup storageGroup, String sql, DistributionVector sourceVect,
@@ -373,5 +375,9 @@ public final class RedistributionExecutionStep extends
 		if (targetTable != null)
 			targetTable.setFrozen();
 		super.prepareForCache();
+	}
+	
+	public SimpleStepExecutionStatistics getStepStatistics(SchemaContext sc) {
+		return stats;
 	}
 }

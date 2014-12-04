@@ -43,7 +43,7 @@ import com.tesora.dve.sql.transform.execution.DDLQueryExecutionStep;
 import com.tesora.dve.sql.transform.execution.RebuiltPlan;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
-import com.tesora.dve.sql.transform.execution.StepExecutionStatistics;
+import com.tesora.dve.sql.transform.execution.SimpleStepExecutionStatistics;
 import com.tesora.dve.sql.util.UnaryProcedure;
 
 public class ShowPlanCacheStatement extends SchemaQueryStatement {
@@ -67,7 +67,7 @@ public class ShowPlanCacheStatement extends SchemaQueryStatement {
 
 		RootExecutionPlan.addExplainColumnHeaders(cs);
 		if (stats)
-			StepExecutionStatistics.addColumnHeaders(cs);
+			SimpleStepExecutionStatistics.addColumnHeaders(cs);
 		es.append(new DDLQueryExecutionStep("PLAN CACHE",new IntermediateResultSet(cs,rows)));
 	}
 
