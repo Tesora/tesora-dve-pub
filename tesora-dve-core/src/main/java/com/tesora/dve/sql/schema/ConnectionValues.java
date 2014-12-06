@@ -50,8 +50,9 @@ import com.tesora.dve.sql.util.ResizableArray;
 public class ConnectionValues implements ValueSource {
 
 	private EnumMap<ConstantType,ResizableArray<Object>> constantValues = new EnumMap<ConstantType,ResizableArray<Object>>(ConstantType.class);
-	
-	private AutoIncrementBlock autoincs = null;
+
+	// may have more than one if we have a compound stmt list
+	private ResizableArray<AutoIncrementBlock> autoincs = new ResizableArray<AutoIncrementBlock>();
 
 	private Long tenantID = null;
 	// set if this tenant id represents a container tenant.
@@ -102,7 +103,10 @@ public class ConnectionValues implements ValueSource {
 		}
 		tenantID = other.tenantID;
 		tempTables = new ArrayList<UnqualifiedName>(other.tempTables);
-		autoincs = (other.autoincs == null ? null : other.autoincs.makeCopy());
+		for(int i = 0; i < other.autoincs.size(); i++) {
+			AutoIncrementBlock o = other.autoincs.get(i);
+			autoincs.set(i, (o == null ? null : o.makeCopy()));
+		}
 		autoincValues = new ResizableArray<Long>(other.autoincValues.size());
 		placeholderGroups = new ArrayList<PEStorageGroup>(other.placeholderGroups);
 		uuids = new ArrayList<String>(other.uuids);
@@ -219,23 +223,46 @@ public class ConnectionValues implements ValueSource {
 	}
 	
 	public void allocateAutoIncBlock(TableKey tk) {
-		if (autoincs != null) throw new SchemaException(Pass.SECOND, "Duplicate autoinc block");
-		autoincs = new AutoIncrementBlock(types,tk);
-	}
-
-	public AutoIncrementLiteralExpression allocateAutoInc() {
-		if (autoincs == null) throw new SchemaException(Pass.SECOND, "Missing autoinc block");
-		return autoincs.allocateAutoIncrementExpression(this);
+		// still do the duplicate check, however have to traverse the resize array
+		for(int i = 0; i < autoincs.size(); i++) {
+			AutoIncrementBlock block = autoincs.get(i);
+			if (block == null) continue;
+			if (block.getTableKey().equals(tk))
+				throw new SchemaException(Pass.SECOND, "Duplicate autoinc block");				
+		}
+		int index = autoincs.size();
+		autoincs.set(index, new AutoIncrementBlock(types,tk, index));
 	}
 	
-	public void registerSpecifiedAutoinc(ConstantExpression dle) {
-		if (autoincs == null) throw new SchemaException(Pass.SECOND, "Missing autoinc block");
-		autoincs.registerSpecifiedAutoInc(dle);
+	public AutoIncrementLiteralExpression allocateAutoInc(TableKey tk) {
+		for(int i= 0; i < autoincs.size(); i++) {
+			AutoIncrementBlock block = autoincs.get(i);
+			if (block == null) continue;
+			if (block.getTableKey().equals(tk)) {
+				return block.allocateAutoIncrementExpression(this);
+			}
+		}
+		throw new SchemaException(Pass.SECOND, "Missing autoinc block");
+	}
+	
+	public void registerSpecifiedAutoinc(TableKey tk, ConstantExpression dle) {
+		for(int i= 0; i < autoincs.size(); i++) {
+			AutoIncrementBlock block = autoincs.get(i);
+			if (block == null) continue;
+			if (block.getTableKey().equals(tk)) {
+				block.registerSpecifiedAutoInc(dle);
+				return;
+			}
+		}
+		throw new SchemaException(Pass.SECOND, "Missing autoinc block");
 	}
 	
 	public void handleAutoincrementValues(SchemaContext sc) {
-		if (autoincs == null) return;
-		autoincs.compute(sc, this);
+		for(int i= 0; i < autoincs.size(); i++) {
+			AutoIncrementBlock block = autoincs.get(i);
+			if (block == null) continue;
+			block.compute(sc, this);
+		}
 	}
 
 	public Object getAutoincValue(IAutoIncrementLiteralExpression expr) {

@@ -31,12 +31,16 @@ import com.tesora.dve.sql.transform.CopyContext;
 
 public class AutoIncrementLiteralExpression extends DelegatingLiteralExpression implements IAutoIncrementLiteralExpression {
 
-	public AutoIncrementLiteralExpression(ConnectionValues cv, int position) {
+	private final int blockIndex;
+	
+	public AutoIncrementLiteralExpression(ConnectionValues cv, int position, int blockIndex) {
 		super(TokenTypes.Unsigned_Large_Integer,null,cv,position,null);
+		this.blockIndex = blockIndex;
 	}
 	
 	protected AutoIncrementLiteralExpression(DelegatingLiteralExpression dle) {
 		super(dle);
+		this.blockIndex = ((AutoIncrementLiteralExpression)dle).getBlockIndex();
 	}
 	
 	@Override
@@ -51,12 +55,17 @@ public class AutoIncrementLiteralExpression extends DelegatingLiteralExpression 
 
 	@Override
 	public ILiteralExpression getCacheExpression() {
-		return new CachedAutoIncrementLiteralExpression(getValueType(), position);
+		return new CachedAutoIncrementLiteralExpression(getValueType(), position, blockIndex);
 	}
 	
 	@Override
 	public ConstantType getConstantType() {
 		return ConstantType.AUTOINCREMENT_LITERAL;
+	}
+
+	@Override
+	public int getBlockIndex() {
+		return blockIndex;
 	}
 
 }

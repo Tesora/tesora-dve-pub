@@ -45,6 +45,7 @@ import com.tesora.dve.variables.KnownVariables;
 public class AutoIncrementBlock {
 	
 	private final TableKey table;
+	private final int blockIndex;
 	private TableScope scope = null;
 	// maintain the original order of specified and generated values - this allows us to do late allocation even in the
 	// case where specified values mean for the current stmt that a value must be generated.
@@ -52,17 +53,23 @@ public class AutoIncrementBlock {
 	private List<IAutoIncrementLiteralExpression> generated = new ArrayList<IAutoIncrementLiteralExpression>();
 	private final ValueManager containing;
 	
-	public AutoIncrementBlock(ValueManager vm, TableKey tk) {
+	public AutoIncrementBlock(ValueManager vm, TableKey tk, int blockIndex) {
 		table = tk.makeFrozen();
+		this.blockIndex = blockIndex;
 		if (tk instanceof MTTableKey)
 			scope = ((MTTableKey)tk).getScope();
 		containing = vm;
 	}
 
+	public TableKey getTableKey() {
+		return table;
+	}
+	
 	private AutoIncrementBlock(AutoIncrementBlock other) {
 		table = other.table;
 		scope = other.scope;
-		containing = other.containing;	
+		containing = other.containing;
+		this.blockIndex = other.blockIndex;
 		// generated is only used during planning - once we're frozen we don't need it
 		generated = null;
 		inorder = new ArrayList<IConstantExpression>();
@@ -75,7 +82,7 @@ public class AutoIncrementBlock {
 	}
 	
 	public AutoIncrementLiteralExpression allocateAutoIncrementExpression(ConnectionValues cv) {
-		AutoIncrementLiteralExpression aile = new AutoIncrementLiteralExpression(cv,generated.size());
+		AutoIncrementLiteralExpression aile = new AutoIncrementLiteralExpression(cv,generated.size(),blockIndex);
 		generated.add(aile);
 		inorder.add(aile);
 		return aile;

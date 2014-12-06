@@ -348,6 +348,41 @@ public class TriggerDMLTest extends SchemaTest {
 		conn.execute("insert into pe1674 (b,c,d,e) values ('default','0','general/region/display_all','1')");
 	}
 	
+	@Test
+	public void testBlech() throws Throwable {
+		conn.execute("create table blech ("
+				+"entity_id int unsigned not null auto_increment, " 
+				+"entity_type_id smallint unsigned not null,"		
+				+"attribute_set_id smallint unsigned not null default '0',"		
+				+"parent_id int unsigned not null,"					
+				+"path varchar(255) not null,"					
+				+"position int not null,"						
+				+"level int not null,"							
+				+"children_count int not null,"							
+				+"primary key(entity_id)) broadcast distribute");
+		conn.execute("create table eurcc ("
+				+"version_id bigint unsigned not null auto_increment,"
+				+"entity_id int not null,"
+				+"primary key (version_id))");
+		conn.execute("create table ccpcc ("
+				+"version_id bigint unsigned not null auto_increment,"
+				+"category_id int not null,"
+				+"primary key (version_id))");
+		conn.execute("create table ccfc ("
+				+"version_id bigint unsigned not null auto_increment,"
+				+"entity_id int not null,"
+				+"primary key (version_id))");
+		conn.execute("create trigger blech_after_insert AFTER INSERT ON blech FOR EACH ROW "
+				+"BEGIN "
+				+"  INSERT IGNORE INTO eurcc (entity_id) VALUES (NEW.entity_id);"
+				+"  INSERT IGNORE INTO ccpcc (category_id) VALUES (NEW.entity_id);"
+				+"  INSERT IGNORE INTO ccfc (entity_id) VALUES (NEW.entity_id);"
+				+"END");
+		conn.execute("insert into blech "
+				+"(entity_type_id,parent_id,path,position,level,children_count,entity_id) "
+				+"VALUES ('3','0','1', '0', '0', '0', '1')");
+	}
+	
 	private void createTriggerTestHelperTables(String prefix) throws Throwable {
 		String helperFormat = 
 				"create table %s_helper (id int unsigned not null auto_increment, status smallint not null, primary key (id)) broadcast distribute";

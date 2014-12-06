@@ -31,6 +31,7 @@ import com.tesora.dve.sql.node.LanguageNode;
 import com.tesora.dve.sql.node.MultiEdge;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
+import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
@@ -92,6 +93,8 @@ public class CompoundStatementList extends CompoundStatement implements FeatureP
 		MultiFeatureStep out = new MultiFeatureStep(this) {
 			
 		};
+		// each stmt should get it's own ValueManager, which should be ok as we specified 
+		// actual literals
 		for(Statement s : stmts) {
 			if (s.isCompound()) {
 				CompoundStatement cs = (CompoundStatement) s;

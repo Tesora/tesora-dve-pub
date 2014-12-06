@@ -214,14 +214,14 @@ public class ValueManager {
 		getValues(sc).allocateAutoIncBlock(tk);
 	}
 	
-	public AutoIncrementLiteralExpression allocateAutoInc(SchemaContext sc) {
+	public AutoIncrementLiteralExpression allocateAutoInc(SchemaContext sc, TableKey tk) {
 		checkFrozen("allocate autoincrement value");
-		return getValues(sc).allocateAutoInc();
+		return getValues(sc).allocateAutoInc(tk);
 	}
 	
-	public void registerSpecifiedAutoinc(SchemaContext sc, ConstantExpression dle) {
+	public void registerSpecifiedAutoinc(SchemaContext sc, ConstantExpression dle, TableKey tk) {
 		checkFrozen("register explicit autoincrement value");
-		getValues(sc).registerSpecifiedAutoinc(dle);
+		getValues(sc).registerSpecifiedAutoinc(tk,dle);
 	}
 	
 	public void registerLateSortedInsert(LateSortedInsert lsi) {

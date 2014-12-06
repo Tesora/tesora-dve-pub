@@ -28,8 +28,11 @@ import com.tesora.dve.sql.schema.cache.IAutoIncrementLiteralExpression;
 public class CachedAutoIncrementLiteralExpression extends
 		CachedDelegatingLiteralExpression implements IAutoIncrementLiteralExpression {
 
-	public CachedAutoIncrementLiteralExpression(int type, int offset) {
+	private final int blockIndex;
+	
+	public CachedAutoIncrementLiteralExpression(int type, int offset, int blockIndex) {
 		super(type,offset,null);
+		this.blockIndex = blockIndex;
 	}
 	
 	@Override
@@ -40,6 +43,11 @@ public class CachedAutoIncrementLiteralExpression extends
 	@Override
 	public ConstantType getConstantType() {
 		return ConstantType.AUTOINCREMENT_LITERAL;
+	}
+
+	@Override
+	public int getBlockIndex() {
+		return blockIndex;
 	}
 
 }

@@ -31,6 +31,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.TransformException;
+import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.node.Edge;
 import com.tesora.dve.sql.node.EdgeName;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -300,8 +301,11 @@ public class InsertIntoValuesStatement extends InsertStatement implements Update
 
 	public static class AutoincrementValueHandler extends ValueHandler {
 		
+		private final TableKey tk;
+		
 		public AutoincrementValueHandler(InsertIntoValuesStatement stmt, PEColumn col) {
 			super(stmt,col);
+			tk = stmt.getTableInstance().getTableKey();
 		}
 
 		@Override
@@ -317,14 +321,14 @@ public class InsertIntoValuesStatement extends InsertStatement implements Update
 					if (AutoIncrementBlock.requiresAllocation(litex,sc.getValues(), mode))
 						return handleMissing(sc);
 				} 
-				sc.getValueManager().registerSpecifiedAutoinc(sc,ce);
+				sc.getValueManager().registerSpecifiedAutoinc(sc,ce,tk);
 				return v;
 			}
 		}
 		
 		@Override
 		public ExpressionNode handleMissing(SchemaContext sc) {
-			return sc.getValueManager().allocateAutoInc(sc);
+			return sc.getValueManager().allocateAutoInc(sc,tk);
 		}
 	}
 	

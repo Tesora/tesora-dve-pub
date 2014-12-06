@@ -23,4 +23,6 @@ package com.tesora.dve.sql.schema.cache;
 
 public interface IAutoIncrementLiteralExpression extends IDelegatingLiteralExpression {
 
+	public int getBlockIndex();
+	
 }
