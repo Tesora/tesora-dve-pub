@@ -55,7 +55,8 @@ public class QueryStepTriggerBranchOperation extends QueryStepOperation {
 			if (indexValues.size() == 1) {
 				final int branchIndex = Integer.parseInt(indexValues.get(0));
 				final QueryStepOperation targetOperation = this.branchOperations.get(branchIndex);
-				targetOperation.execute(estate, resultConsumer);
+				if (targetOperation != null)
+					targetOperation.execute(estate, resultConsumer);
 				return;
 			}
 		}

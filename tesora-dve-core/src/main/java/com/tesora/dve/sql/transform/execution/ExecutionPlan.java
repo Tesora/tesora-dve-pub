@@ -37,6 +37,8 @@ import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.sql.ParserException.Pass;
+import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.raw.ExecToRawConverter;
 import com.tesora.dve.sql.schema.ConnectionValues;
 import com.tesora.dve.sql.schema.ExplainOptions;
@@ -106,6 +108,8 @@ public abstract class ExecutionPlan implements HasPlanning {
 	// convert the tree such that the last execution step is the single query step
 	// and all others are dependent steps.
 	protected static QueryStepOperation collapseOperationList(List<QueryStepOperation> ops) {
+		if (ops.isEmpty())
+			throw new SchemaException(Pass.PLANNER, "Invalid collapse");
 		QueryStepOperation end = ops.remove(ops.size() - 1);
 		for(QueryStepOperation qs : ops)
 			end.addRequirement(qs);

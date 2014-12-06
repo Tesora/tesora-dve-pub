@@ -129,7 +129,7 @@ public class ValueConverter {
 	private static class StringConverter extends Converter<String> {
 
 		public StringConverter() {
-			super(String.class, new int[] { Types.CHAR, Types.NCHAR, Types.NVARCHAR, Types.VARCHAR }, new int[] {
+			super(String.class, new int[] { Types.CHAR, Types.NCHAR, Types.NVARCHAR, Types.VARCHAR, Types.LONGVARCHAR }, new int[] {
 					TokenTypes.Character_String_Literal, TokenTypes.National_Character_String_Literal,
 					TokenTypes.Bit_String_Literal, TokenTypes.Hex_String_Literal, TokenTypes.NULL });
 		}

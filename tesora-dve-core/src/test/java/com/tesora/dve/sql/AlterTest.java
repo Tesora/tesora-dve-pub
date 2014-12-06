@@ -1333,4 +1333,20 @@ public class AlterTest extends SchemaTest {
 			}
 		}.assertError(SchemaException.class, MySQLErrors.tooLongTableFieldCommentFormatter, "c3", 1024L);
 	}
+	
+	@Test
+	public void testPE1671() throws Throwable {
+		conn.execute("drop table if exists pe1671");
+		conn.execute("create table pe1671(url_rewrite_id int unsigned not null auto_increment, request_path varchar(255) not null,  "
+				+"target_path varchar(255) not null, is_system smallint unsigned not null, guid varchar(32) not null, "
+				+"identifier varchar(255) not null, inc int unsigned not null, value_id int unsigned not null, "
+				+"primary key (`url_rewrite_id`)) broadcast distribute");
+		conn.execute("alter table pe1671 add column store_id smallint unsigned not null");
+		conn.execute("alter table pe1671 add column entity_type smallint unsigned not null");
+		conn.execute("alter table pe1671 add unique `snowflake` (request_path, store_id, entity_type)");
+		conn.execute("alter table pe1671 drop index `snowflake`, add unique `snowflake` (request_path, store_id, entity_type)");
+		conn.execute("alter table pe1671 drop index `snowflake`, add unique `snowflake` (request_path, store_id, entity_type)");
+		conn.execute("alter table pe1671 drop index `snowflake`, add unique `snowflake` (request_path, store_id, entity_type)");
+	}
+	
 }

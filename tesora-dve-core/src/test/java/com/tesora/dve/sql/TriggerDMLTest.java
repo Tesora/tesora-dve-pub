@@ -21,6 +21,7 @@ package com.tesora.dve.sql;
  * #L%
  */
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.After;
@@ -30,6 +31,8 @@ import org.junit.Test;
 
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
+import com.tesora.dve.sql.SchemaTest.StatementMirrorProc;
+import com.tesora.dve.sql.util.MirrorTest;
 import com.tesora.dve.sql.util.PEDDL;
 import com.tesora.dve.sql.util.PortalDBHelperConnectionResource;
 import com.tesora.dve.sql.util.ProjectDDL;
@@ -291,4 +294,69 @@ public class TriggerDMLTest extends SchemaTest {
 		
 	}
 	
+	@Test
+	public void testPE1672() throws Throwable {
+		conn.execute("create table pe1672 ("
+				+"attribute_id smallint unsigned not null,"
+				+"is_searchable smallint unsigned not null,"
+				+"is_visible_in_advanced_search smallint unsigned not null,"
+				+"is_filterable smallint unsigned not null,"
+				+"is_filterable_in_search smallint unsigned not null,"
+				+"used_for_sort_by smallint unsigned not null,"
+				+"is_used_for_promo_rules smallint unsigned not null,"
+				+"primary key (attribute_id)) broadcast distribute"
+				);
+		createTriggerTestHelperTables("pe1672");
+		conn.execute("create trigger pe1672_after_insert after insert on pe1672 for each row "
+				+"BEGIN CASE (NEW.is_searchable = 1) OR (NEW.is_visible_in_advanced_search = 1) OR (NEW.is_filterable > 0) "
+				+"  OR (NEW.is_filterable_in_search = 1) OR (NEW.used_for_sort_by = 1) OR (NEW.is_used_for_promo_rules = 1) "
+				+"  WHEN TRUE THEN BEGIN UPDATE pe1672_helper as y inner join pe1672_helper_event as ye on y.id = ye.id set "
+				+"       y.status = 2 where (event_id = 5); END; ELSE BEGIN END; END CASE; END");
+		conn.execute("insert into pe1672 (attribute_id, is_searchable, is_visible_in_advanced_search, is_filterable, is_filterable_in_search, "
+				+"used_for_sort_by, is_used_for_promo_rules) values ('134','0','0','0','0','0','0')");
+	}
+	
+	
+	@Test
+	public void testPE1674() throws Throwable {
+		conn.execute("create table pe1674( "
+				+"a int unsigned not null auto_increment,"  // config_id
+				+"b varchar(8) not null,"					// scope
+				+"c int not null,"							// scope_id
+				+"d varchar(255) not null,"					// path
+				+"e text null,"								// value
+				+"primary key (a)) engine=innodb charset=utf8 collate=utf8_general_ci");
+		createTriggerTestHelperTables("pe1674");
+		conn.execute("create trigger pe1674_after_insert after insert on pe1674 for each row BEGIN "
+				+"CASE (NEW.d = 'catalog/price/scope') "
+				+"WHEN TRUE THEN "
+				+"  BEGIN UPDATE pe1674_helper as h inner join pe1674_helper_event as he on h.id=he.id set h.status = 2 where event_id = 13; END; "
+				+"ELSE BEGIN END; END CASE; "
+				+"CASE (NEW.d = 'cataloginventory/options/show_out_of_stock') OR (NEW.d = 'cataloginventory/item_options/manage_stock') "
+				+"WHEN TRUE THEN "
+				+"  BEGIN UPDATE pe1674_helper as h inner join pe1674_helper_event as he on h.id=he.id set h.status = 2 where event_id = 14; END; "
+				+"ELSE BEGIN END; END CASE; "
+				+"CASE (NEW.d = 'catalog/frontend/flat_catalog_product') AND (NEW.e = 1) "
+				+"WHEN TRUE THEN "
+				+"  BEGIN UPDATE pe1674_helper as h inner join pe1674_helper_event as he on h.id=he.id set h.status = 2 where event_id = 15; END; "
+				+"ELSE BEGIN END; END CASE; "
+				+"CASE (NEW.d = 'catalog/frontend/flat_catalog_category') AND (NEW.e = 1) "
+				+"WHEN TRUE THEN "
+				+"  BEGIN UPDATE pe1674_helper as h inner join pe1674_helper_event as he on h.id=he.id set h.status = 2 where event_id = 16; END; "
+				+"ELSE BEGIN END; END CASE; "
+				+"END");
+		conn.execute("insert into pe1674 (b,c,d,e) values ('default','0','general/region/display_all','1')");
+	}
+	
+	private void createTriggerTestHelperTables(String prefix) throws Throwable {
+		String helperFormat = 
+				"create table %s_helper (id int unsigned not null auto_increment, status smallint not null, primary key (id)) broadcast distribute";
+		String helperEventFormat =
+				"create table %s_helper_event (some_id int unsigned not null auto_increment, event_id int unsigned not null, "
+						+"id int unsigned not null, primary key (some_id)) broadcast distribute";
+				
+		conn.execute(String.format(helperFormat,prefix));
+		conn.execute(String.format(helperEventFormat,prefix));
+		
+	}
 }

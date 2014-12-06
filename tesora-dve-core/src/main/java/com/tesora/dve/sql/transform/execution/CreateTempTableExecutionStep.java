@@ -62,7 +62,7 @@ public class CreateTempTableExecutionStep extends ExecutionStep {
 
 	@Override
 	public void getSQL(SchemaContext sc, ConnectionValuesMap cvm, ExecutionPlan containing, List<String> buf, EmitOptions opts) {
-		buf.add("EXPLICIT TEMP TABLE: " +	Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(sc, sc.getValues(), theTable));
+		buf.add("EXPLICIT TEMP TABLE: " +	Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(sc, cvm.getValues(containing), theTable));
 	}
 
 	

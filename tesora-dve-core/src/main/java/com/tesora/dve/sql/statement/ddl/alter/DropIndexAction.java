@@ -42,6 +42,10 @@ public class DropIndexAction extends AlterTableAction {
 		key = pek;
 	}
 	
+	public PEKey getKey() {
+		return key;
+	}
+	
 	public Name getIndexName() {
 		if (key.getSymbol() != null) {
 			if (key.isForeign()) {

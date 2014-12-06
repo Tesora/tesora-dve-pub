@@ -194,6 +194,8 @@ public abstract class ExecutionStep implements HasPlanning {
 			HasPlanning toSchedule) throws PEException {
 		List<QueryStepOperation> sub = new ArrayList<QueryStepOperation>();
 		toSchedule.schedule(opts, sub, null, sc, cvm, containing);
+		if (sub.isEmpty())
+			return null;
 		return ExecutionPlan.collapseOperationList(sub);
 	}
 

@@ -68,9 +68,11 @@ import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.modifiers.TableModifier;
 import com.tesora.dve.sql.schema.types.Type;
+import com.tesora.dve.sql.statement.ddl.alter.AddIndexAction;
 import com.tesora.dve.sql.statement.ddl.alter.AlterTableAction;
 import com.tesora.dve.sql.statement.ddl.alter.AlterTableAction.ClonableAlterTableAction;
 import com.tesora.dve.sql.statement.ddl.alter.ConvertToAction;
+import com.tesora.dve.sql.statement.ddl.alter.DropIndexAction;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep.Action;
 import com.tesora.dve.sql.transform.execution.ComplexDDLExecutionStep;
@@ -172,7 +174,27 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 	@Override
 	public List<CatalogEntity> getDeleteObjects(SchemaContext pc) throws PEException {
 		ArrayList<CatalogEntity> ret = new ArrayList<CatalogEntity>();
-		List<AlterTableAction> use = (finalActions != null ? finalActions : actions);
+		List<AlterTableAction> use = new ArrayList<AlterTableAction>((finalActions != null ? finalActions : actions));
+		// if we have an drop index/add index where the defs are the same, elide the drop index
+		// we only do this if they are next to each other.
+		for(int i = 0; i < use.size(); i++) {
+			AlterTableAction ith = use.get(i);
+			if (ith instanceof DropIndexAction) {
+				DropIndexAction dia = (DropIndexAction) ith;
+				if ((i+1) < use.size()) {
+					AlterTableAction jth = use.get(i+1);
+					if (jth instanceof AddIndexAction) {
+						AddIndexAction aia = (AddIndexAction) jth;
+						String differs = dia.getKey().differs(pc, aia.getNewIndex(), true);
+						if (differs == null) {
+							use.remove(i);
+							i--;
+						}
+					}
+				}
+			}
+		}
+		
 		for(AlterTableAction aa : use)
 			ret.addAll(aa.getDeleteObjects(pc));
 		return ret;
