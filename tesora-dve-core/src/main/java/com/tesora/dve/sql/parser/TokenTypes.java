@@ -47,6 +47,7 @@ public final class TokenTypes {
 	public static final int Not_Equals_Operator = PE.Not_Equals_Operator;
 	public static final int MAX = PE.MAX;
 	public static final int DATABASE = PE.DATABASE;
+	public static final int SCHEMA = PE.SCHEMA;
 	public static final int COUNT = PE.COUNT;
 	public static final int AVG = PE.AVG;
 	public static final int STD = PE.STD;

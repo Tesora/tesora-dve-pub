@@ -81,6 +81,7 @@ public class EngineConstant {
 	public static final EngineToken EQUALS = new EngineToken("=",TokenTypes.Equals_Operator);
 	public static final EngineToken EXISTS = new EngineToken("EXISTS",TokenTypes.EXISTS);
 	public static final EngineToken DATABASE = new EngineToken("DATABASE",TokenTypes.DATABASE);
+	public static final EngineToken SCHEMA = new EngineToken("SCHEMA",TokenTypes.SCHEMA);
 	public static final EngineToken IN = new EngineToken("IN",TokenTypes.IN);
 	public static final EngineToken NOTIN = new EngineToken("NOT IN",TokenTypes.NOTIN);
 	public static final EngineToken SUM = new EngineToken("SUM",TokenTypes.SUM);

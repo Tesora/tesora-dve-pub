@@ -2028,7 +2028,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		FunctionCall fc = new FunctionCall(unqualifiedName,
 				(params == null ? Collections.EMPTY_LIST : params), sq,
 				SourceLocation.make(tree));
-		if (EngineConstant.FUNCTION.has(fc, EngineConstant.DATABASE)) {
+		if (EngineConstant.FUNCTION.has(fc, EngineConstant.DATABASE) || EngineConstant.FUNCTION.has(fc, EngineConstant.SCHEMA)) {
 			forceUncacheable(ValueManager.CacheStatus.NOCACHE_DYNAMIC_FUNCTION);
 			Database<?> peds = pc.getCurrentDatabase(false);
 			if (peds == null)

@@ -877,6 +877,7 @@ known_function_name returns [FunctionName fn] options {k=1;}:
   f=(SUBSTRING
   | COALESCE
   | DATABASE
+  | SCHEMA
   | FOUND_ROWS
   | IF
   | IFNULL

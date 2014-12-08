@@ -50,6 +50,14 @@ public class SessionRewriteTransformTest extends TransformTest {
 	}
 	
 	@Test
+	public void testPE1675() throws Throwable {
+		SchemaContext db = buildSchema(TestName.MULTI,schema);
+		stmtTest(db, "select schema()",
+				SelectStatement.class,
+				bes(new AdhocResultsSessionExpectedStep()));
+	}
+	
+	@Test
 	public void testComplexTransientDatabase() throws Throwable {
 		SchemaContext db = buildSchema(TestName.MULTI,schema);
 		stmtTest(db, "select concat('my',database())",
