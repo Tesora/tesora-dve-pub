@@ -259,7 +259,7 @@ public class PEDropTableStatement extends
 		ListOfPairs<SchemaCacheKey<?>,InvalidationScope> actions = new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
 		for(TableKey tk : tableKeys)
 			if (!tk.isUserlandTemporaryTable())
-				actions.add(tk.getAbstractTable().getCacheKey(), InvalidationScope.CASCADE);
+				actions.add(tk.getAbstractTable().getCacheKey(), InvalidationScope.GLOBAL);
 		cacheInvalidationRecord = new CacheInvalidationRecord(actions);
 		
 		return cacheInvalidationRecord;

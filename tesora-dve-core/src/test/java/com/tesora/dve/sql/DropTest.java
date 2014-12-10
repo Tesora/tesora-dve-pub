@@ -527,4 +527,23 @@ public class DropTest extends SchemaTest {
 			conn.disconnect();
 		}
 	}
+	
+	@Test
+	public void testPE1676() throws Throwable {
+		try {
+			sysDDL.clearCreated();
+			sysDDL.create(conn);
+			
+			conn.execute("CREATE TABLE `C` (`id` INT NOT NULL, `fid` INT NOT NULL, PRIMARY KEY(`id`)) BROADCAST DISTRIBUTE");
+			conn.execute("CREATE TABLE `P` (`id` INT NOT NULL, `fid` INT NOT NULL, PRIMARY KEY(`id`), CONSTRAINT `PtoC` FOREIGN KEY (`id`) REFERENCES `C` (`id`) ON DELETE CASCADE ON UPDATE CASCADE) RANDOM DISTRIBUTE");
+			conn.execute("INSERT INTO `C` VALUES (1, 2), (2, 3), (3, 4)");
+			conn.execute("INSERT INTO `P` SELECT * FROM `C`");
+			conn.execute("DROP TABLE IF EXISTS `P`");
+			
+			conn.execute("UPDATE `C` SET `C`.`id` = '0' WHERE `C`.`fid` > 3");
+		} finally {
+			sysDDL.destroy(conn);
+			conn.disconnect();
+		}
+	}
 }
