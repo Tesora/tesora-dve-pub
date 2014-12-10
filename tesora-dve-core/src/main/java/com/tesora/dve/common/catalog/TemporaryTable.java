@@ -31,6 +31,8 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
+
+import com.tesora.dve.server.global.HostService;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
@@ -39,7 +41,6 @@ import com.tesora.dve.groupmanager.GroupManager;
 import com.tesora.dve.groupmanager.GroupMembershipListener;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.server.bootstrap.Host;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;
 import com.tesora.dve.singleton.Singletons;
 
@@ -159,7 +160,7 @@ public class TemporaryTable implements CatalogEntity {
 			if (MembershipEventType.MEMBER_REMOVED == eventType &&
 					inetSocketAddress.equals(GroupManager.getCoordinationServices().getMemberAddress())) {
 				// toss all my connections
-				Singletons.require(Host.class).execute(new Runnable() {
+				Singletons.require(HostService.class).execute(new Runnable() {
 
 					@Override
 					public void run() {

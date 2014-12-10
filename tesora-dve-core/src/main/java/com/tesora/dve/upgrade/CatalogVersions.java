@@ -30,6 +30,8 @@ import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PELogUtils;
+import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.bootstrap.Host;
 import com.tesora.dve.server.global.HostService;
@@ -159,11 +161,15 @@ public class CatalogVersions {
 	}	
 	
 	public static void upgradeToLatest(Properties props, InformationCallback stdout) throws PEException {
-        if (Singletons.lookup(HostService.class) == null) {
-			props.put(DBHelper.CONN_DRIVER_CLASS, PEConstants.MYSQL_DRIVER_CLASS);
-			// we can't start the catalog here - otherwise we would modify it while sitting on it
-			new Host(props, false /* startCatalog */);
+		//make sure we have host services started, but no catalog.
+        if (Singletons.lookup(HostService.class) == null){
+			throw new PECodingException("An unexpected problem occurred while trying to access the required host services.");
 		}
+
+		if (CatalogDAO.CatalogDAOFactory.isSetup()){
+		throw new PEException("An existing catalog service is currently running, please restart and try the upgrade again.");
+		}
+
 		Upgrader upgrader = new Upgrader(props);
 		upgrader.upgrade(stdout);
 	}

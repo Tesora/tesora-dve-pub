@@ -38,6 +38,9 @@ import javax.management.MBeanOperationInfo;
 import javax.management.MBeanParameterInfo;
 import javax.management.ObjectName;
 
+import com.tesora.dve.server.bootstrap.Host;
+import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 
@@ -728,6 +731,12 @@ public class DVEConfigCLI extends CLIBuilder {
 
 				if ((line != null) && (line.equalsIgnoreCase("y") || line.equalsIgnoreCase("yes"))) {
 					printlnDots("Starting DVE catalog upgrade at '" + catalogLocation + "'");
+					//this Host initialization was pulled out of CatalogVersions to break a dependency cycle between Host and CatalogVersions.
+					if (Singletons.lookup(HostService.class) == null){
+						props.put(DBHelper.CONN_DRIVER_CLASS, PEConstants.MYSQL_DRIVER_CLASS);
+						// we can't start the catalog here - otherwise we would modify it while sitting on it
+						new Host(props, false /* startCatalog */);  //TODO: the startCatalog flag has a bad smell.  HostService needs further decomposition. -sgossard
+					}
 					CatalogVersions.upgradeToLatest(props,DVEConfigCLI.this);
 					printlnDots("Catalog upgrade complete");
 				}
