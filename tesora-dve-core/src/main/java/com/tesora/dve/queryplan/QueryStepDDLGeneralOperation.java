@@ -25,13 +25,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.tesora.dve.common.catalog.*;
+import com.tesora.dve.distribution.BroadcastDistributionModel;
+import com.tesora.dve.distribution.RangeDistributionModel;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.CatalogEntity;
-import com.tesora.dve.common.catalog.PersistentDatabase;
-import com.tesora.dve.common.catalog.StorageGroup;
-import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -46,14 +45,22 @@ import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 
 	private static final Logger logger = Logger.getLogger( QueryStepDDLGeneralOperation.class );
-		
+
 	PersistentDatabase database;
 	protected DDLCallback entities;
 	protected Boolean commitOverride = null;
+	protected CatalogModificationExecutionStep.Action action;
+	protected DistributionModel optionalModel;
 	
 	public QueryStepDDLGeneralOperation(StorageGroup sg, PersistentDatabase execCtxDBName) throws PEException {
+		this(sg,execCtxDBName,null,null);
+	}
+
+	public QueryStepDDLGeneralOperation(StorageGroup sg, PersistentDatabase execCtxDBName, CatalogModificationExecutionStep.Action action, DistributionModel optionalModel) throws PEException {
 		super((sg == null ? nullStorageGroup : sg));
 		this.database = execCtxDBName;
+		this.action = action;
+		this.optionalModel = optionalModel;
 	}
 
 	public QueryStepDDLGeneralOperation withCommitOverride(Boolean v) {
@@ -79,6 +86,10 @@ public class QueryStepDDLGeneralOperation extends QueryStepOperation {
 		try {
 			if (!sql.isEmpty()) {
 				WorkerRequest req = new WorkerExecuteRequest(estate.getConnection().getNonTransactionalContext(), sql).onDatabase(database);
+				if (CatalogModificationExecutionStep.Action.ALTER == action && BroadcastDistributionModel.SINGLETON.equals(optionalModel)) {
+					resultConsumer.setRowAdjuster(BroadcastDistributionModel.SINGLETON.getUpdateAdjuster());//replicated, need to divide row count by site count.
+				} else
+					resultConsumer.setRowAdjuster(RangeDistributionModel.SINGLETON.getUpdateAdjuster());//return sum of rows modified.
 				wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 			}
 		} catch (Throwable t) {

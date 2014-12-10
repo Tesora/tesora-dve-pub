@@ -24,25 +24,14 @@ package com.tesora.dve.sql.transform.execution;
 import java.util.List;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.queryplan.QueryStepAlterDatabaseOperation;
-import com.tesora.dve.queryplan.QueryStepCreateDatabaseOperation;
-import com.tesora.dve.queryplan.QueryStepCreateUserOperation;
-import com.tesora.dve.queryplan.QueryStepDDLOperation;
-import com.tesora.dve.queryplan.QueryStepDropDatabaseOperation;
-import com.tesora.dve.queryplan.QueryStepGrantPrivilegesOperation;
-import com.tesora.dve.queryplan.QueryStepOperation;
+import com.tesora.dve.queryplan.*;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.messaging.SQLCommand;
-import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.PEDatabase;
-import com.tesora.dve.sql.schema.PEPriviledge;
-import com.tesora.dve.sql.schema.PEStorageGroup;
-import com.tesora.dve.sql.schema.PEUser;
-import com.tesora.dve.sql.schema.Persistable;
-import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.schema.*;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 import com.tesora.dve.sql.schema.cache.InvalidationScope;
 import com.tesora.dve.sql.util.Functional;
@@ -124,7 +113,15 @@ public class SimpleDDLExecutionStep extends CatalogModificationExecutionStep {
 					qsteps.add(new QueryStepGrantPrivilegesOperation(sg, priv.getPersistent(sc),getCacheInvalidation(sc)));
 			}
 		}
-		QueryStepDDLOperation qso = buildOperation(sc,cv);
+
+		QueryStepDDLOperation qso;
+		if (rootEntity instanceof PETable){
+			PETable tab = (PETable)rootEntity;
+			DistributionModel optionalDistModel = tab.getDistributionVector(sc).getModel().getSingleton();
+			qso = new QueryStepDDLOperation(sg,getPersistentDatabase(),sql,getCacheInvalidation(sc),action,optionalDistModel);
+		} else
+			qso = buildOperation(sc,cv);
+
 		for(CatalogEntity ce : getEntities()) {
 			qso.addCatalogUpdate(ce);
 		}

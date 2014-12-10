@@ -24,12 +24,10 @@ package com.tesora.dve.queryplan;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.tesora.dve.common.catalog.*;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.CatalogEntity;
-import com.tesora.dve.common.catalog.PersistentDatabase;
-import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
@@ -45,7 +43,13 @@ public class QueryStepDDLOperation extends QueryStepDDLGeneralOperation {
 		catalogEntities = new StaticEntityGenerator(command,invalidationRecord);
 		setEntities(catalogEntities);
 	}
-	
+
+	public QueryStepDDLOperation(StorageGroup sg, PersistentDatabase db, SQLCommand command, CacheInvalidationRecord invalidationRecord, CatalogModificationExecutionStep.Action action, DistributionModel optionalDistModel) throws PEException {
+		super(sg, db,action,optionalDistModel);
+		catalogEntities = new StaticEntityGenerator(command,invalidationRecord);
+		setEntities(catalogEntities);
+	}
+
 	public void addCatalogUpdate(CatalogEntity catEntity) {
 		catalogEntities.addUpdate(catEntity);
 	}

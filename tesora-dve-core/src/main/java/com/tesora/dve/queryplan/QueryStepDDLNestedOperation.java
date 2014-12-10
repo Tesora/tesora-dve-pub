@@ -22,11 +22,13 @@ package com.tesora.dve.queryplan;
  */
 
 import com.tesora.dve.common.catalog.CatalogDAO;
+import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.messaging.SQLCommand;
+import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.worker.WorkerGroup;
 
 public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
@@ -34,7 +36,11 @@ public class QueryStepDDLNestedOperation extends QueryStepDDLGeneralOperation {
 	protected NestedOperationDDLCallback nestedOp;
 	
 	public QueryStepDDLNestedOperation(StorageGroup sg, PersistentDatabase execCtxDBName, NestedOperationDDLCallback cb) throws PEException {
-		super(sg, execCtxDBName);
+		this(sg,execCtxDBName,cb,null,null);
+	}
+
+	public QueryStepDDLNestedOperation(StorageGroup sg, PersistentDatabase execCtxDBName, NestedOperationDDLCallback cb,CatalogModificationExecutionStep.Action action, DistributionModel model) throws PEException {
+		super(sg, execCtxDBName,action,model);
 		nestedOp = cb;
 		setEntities(cb);
 	}

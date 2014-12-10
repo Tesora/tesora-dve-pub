@@ -29,12 +29,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.tesora.dve.common.catalog.*;
 import org.apache.commons.collections.ListUtils;
 
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.CatalogEntity;
-import com.tesora.dve.common.catalog.TableState;
-import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -296,7 +293,8 @@ public class PEAlterTableStatement extends PEAlterStatement<PETable> {
 				final PETable targetTable = this.getTarget();
 				final ComplexAlterTableActionCallback actionCallback = new ComplexAlterTableActionCallback(targetTable, convertAction,
 						convertAction.getColumnMetadataContainer(),sc.getValues());
-				es.append(new ComplexDDLExecutionStep(targetTable.getPEDatabase(sc), targetTable.getStorageGroup(sc), targetTable, Action.ALTER, actionCallback));
+				DistributionModel targetDistModel = targetTable.getDistributionVector(sc).getModel().getSingleton();
+				es.append(new ComplexDDLExecutionStep(targetTable.getPEDatabase(sc), targetTable.getStorageGroup(sc), targetTable, Action.ALTER, actionCallback, targetDistModel));
 			}
 		}
 	}

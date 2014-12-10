@@ -289,6 +289,23 @@ public class BugsMirrorTest extends SchemaMirrorTest {
 	}
 
 	@Test
+	public void testAlterWithBroadcastReturnsModifiedRowCount() throws Throwable {
+		final ArrayList<MirrorTest> tests = new ArrayList<MirrorTest>();
+
+		tests.add(new StatementMirrorProc("drop table if exists test_alter_bc"));
+		tests.add(new StatementMirrorProc("create table test_alter_bc (a INT, b INT, c INT) /*#dve broadcast distribute */"));
+		tests.add(new StatementMirrorProc("insert into test_alter_bc values (1, 2, 3)"));
+		tests.add(new StatementMirrorProc("insert into test_alter_bc values (2, 3, 4)"));
+		tests.add(new StatementMirrorProc("insert into test_alter_bc values (3, 4, 5)"));
+		tests.add(new StatementMirrorProc("insert into test_alter_bc values (4, 5, 6)"));
+
+		tests.add(new StatementMirrorProc("alter table test_alter_bc add d INT after b, add e INT after d, add f INT after e")); //should return 4 rows, not 4*sites.
+		tests.add(new StatementMirrorFun("select * from test_alter_bc order by a"));
+
+		runTest(tests);
+	}
+
+	@Test
 	public void testPE1480Modify() throws Throwable {
 		final ArrayList<MirrorTest> schema = new ArrayList<MirrorTest>();
 		schema.add(new StatementMirrorProc("drop table if exists pe1480_modify"));

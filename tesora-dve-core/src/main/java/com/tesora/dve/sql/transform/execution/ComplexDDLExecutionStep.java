@@ -23,6 +23,7 @@ package com.tesora.dve.sql.transform.execution;
 
 import java.util.List;
 
+import com.tesora.dve.common.catalog.DistributionModel;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepDDLGeneralOperation;
@@ -40,12 +41,19 @@ import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
 public class ComplexDDLExecutionStep extends CatalogModificationExecutionStep {
 
 	private DDLCallback cb;
+	private DistributionModel optionalModel;
 	private Boolean commitOverride = null;
 	
 	public ComplexDDLExecutionStep(PEDatabase db, PEStorageGroup tsg,
-			Persistable<?, ?> root, Action act, DDLCallback callback) {
+			Persistable<?, ?> root, Action act, DDLCallback callback, DistributionModel model) {
 		super(db, tsg, root, act);
 		cb = callback;
+		this.optionalModel = model;
+	}
+
+	public ComplexDDLExecutionStep(PEDatabase db, PEStorageGroup tsg,
+								   Persistable<?, ?> root, Action act, DDLCallback callback) {
+		this(db, tsg, root, act, callback,null);
 	}
 
 	@Override
@@ -55,9 +63,9 @@ public class ComplexDDLExecutionStep extends CatalogModificationExecutionStep {
 		QueryStepDDLGeneralOperation qso = null;
 		StorageGroup sg = getStorageGroup(sc,cvm.getValues(containing));
 		if (cb instanceof NestedOperationDDLCallback) {
-			qso = new QueryStepDDLNestedOperation(sg,getPersistentDatabase(),(NestedOperationDDLCallback)cb);
+			qso = new QueryStepDDLNestedOperation(sg,getPersistentDatabase(),(NestedOperationDDLCallback)cb,action,optionalModel);
 		} else {
-			qso = new QueryStepDDLGeneralOperation(sg,getPersistentDatabase());
+			qso = new QueryStepDDLGeneralOperation(sg,getPersistentDatabase(),action,optionalModel);
 			qso.setEntities(cb);
 		}
 		if (commitOverride != null)
