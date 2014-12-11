@@ -24,6 +24,7 @@ package com.tesora.dve.sql.statement.ddl;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -67,7 +68,8 @@ public class PEDropTableStatement extends
 
 	protected Set<CatalogEntity> deletes = null;
 	protected Set<CatalogEntity> updates = null;
-
+	protected Set<PEAbstractTable<?>> referenced = null;
+	
 	private List<TableKey> tableKeys;
 	private List<Name> unknownTables;
 
@@ -82,7 +84,6 @@ public class PEDropTableStatement extends
 		this.tableKeys = new ArrayList<TableKey>(tks);
 		this.unknownTables = unknownTbls;
 		this.temporary = temporary;
-		getInvalidationRecord(sc);
 	}
 	
 	public PEDropTableStatement(PEDropTableStatement base) {
@@ -134,7 +135,7 @@ public class PEDropTableStatement extends
 
 	protected static void compute(SchemaContext pc, 
 			Set<CatalogEntity> deletes, Set<CatalogEntity> updates, 
-			List<TableKey> keys, boolean ignoreFKChecks) throws PEException {
+			List<TableKey> keys, Set<PEAbstractTable<?>> referencedTables, boolean ignoreFKChecks) throws PEException {
 		if (keys.isEmpty()) return;
 		if (!deletes.isEmpty()) return;
 		for(TableKey tk : keys) {
@@ -142,7 +143,7 @@ public class PEDropTableStatement extends
 			appendChildTriggersToCollection(pc, tab, deletes);
 			List<PEForeignKey> effectedForeignKeys = new ArrayList<PEForeignKey>();
 			if (!tk.isUserlandTemporaryTable())
-				checkForeignKeys(pc, tab, effectedForeignKeys, ignoreFKChecks);
+				checkForeignKeys(pc, tab, effectedForeignKeys, referencedTables, ignoreFKChecks);
 			pc.beginSaveContext();
 			try {
 				if (tk.isUserlandTemporaryTable()) {
@@ -173,9 +174,10 @@ public class PEDropTableStatement extends
 									+ cont.getName().getSQL() + " which is not empty");
 						}
 					}
-					for(PEForeignKey pefk : effectedForeignKeys) 
+					for(PEForeignKey pefk : effectedForeignKeys) {
 						// this should be persisting the whole table, not the key
 						updates.add(pefk.persistTree(pc));
+					}
 				} 
 			} finally {
 				pc.endSaveContext();
@@ -194,18 +196,31 @@ public class PEDropTableStatement extends
 		if (tableKeys.isEmpty()) return;
 		if (deletes != null) return; 
 		deletes = new HashSet<CatalogEntity>();
-		updates = new HashSet<CatalogEntity>();		
-		compute(pc,deletes,updates,tableKeys,ignoreFKChecks);
+		updates = new HashSet<CatalogEntity>();
+		referenced = new HashSet<PEAbstractTable<?>>();
+		compute(pc,deletes,updates,tableKeys,referenced, ignoreFKChecks);
 	}
 	
 	protected static void checkForeignKeys(SchemaContext pc, PETable targetTable, 
-			List<PEForeignKey> updatedKeys, boolean ignoreFKChecks) {
+			List<PEForeignKey> updatedKeys, Set<PEAbstractTable<?>> referencedTables, boolean ignoreFKChecks) {
+		emitReferencedTables(pc, targetTable, referencedTables);
 		MultiMap<PETable, PEForeignKey> referencing = pc.findFKSReferencing(targetTable);
-		if (referencing.isEmpty()) return;
-		// otherwise we have to fix up the pertinent fks to use strings instead of fk refs
-		for(PEForeignKey pefk : referencing.values()) {
-			pefk.revertToForward(pc);
-			updatedKeys.add(pefk);
+		if (!referencing.isEmpty()) {
+			// otherwise we have to fix up the pertinent fks to use strings instead of fk refs
+			for(PEForeignKey pefk : referencing.values()) {
+				pefk.revertToForward(pc);
+				updatedKeys.add(pefk);
+			}
+		}
+	}
+	
+	private static void emitReferencedTables(final SchemaContext pc, final PETable targetTable, final Set<PEAbstractTable<?>> container) {
+		for (final PEForeignKey fk : targetTable.getForeignKeys(pc)) {
+			final PEAbstractTable<?> child = fk.getTargetTable(pc);
+			// The child may have already been dropped in a multi-table statement. 
+			if (child != null) {
+				container.add(child);
+			}
 		}
 	}
 	
@@ -243,9 +258,11 @@ public class PEDropTableStatement extends
 	
 	@Override
 	protected ExecutionStep buildStep(SchemaContext pc) throws PEException {
+		final List<CatalogEntity> updates = getCatalogObjects(pc);
+		final List<CatalogEntity> deletes = getDeleteObjects(pc);
 		return new ComplexDDLExecutionStep(getDatabase(pc), getStorageGroup(pc), getRoot(), getAction(),
 				new DropTableCallback(pc,getSQLCommand(pc),getInvalidationRecord(pc),
-						getCatalogObjects(pc),getDeleteObjects(pc)));
+						updates,deletes));
 	}
 	
 	@Override
@@ -257,9 +274,15 @@ public class PEDropTableStatement extends
 			return cacheInvalidationRecord;
 
 		ListOfPairs<SchemaCacheKey<?>,InvalidationScope> actions = new ListOfPairs<SchemaCacheKey<?>,InvalidationScope>();
-		for(TableKey tk : tableKeys)
-			if (!tk.isUserlandTemporaryTable())
-				actions.add(tk.getAbstractTable().getCacheKey(), InvalidationScope.GLOBAL);
+		for(TableKey tk : tableKeys) {
+			if (!tk.isUserlandTemporaryTable()) {
+				actions.add(tk.getAbstractTable().getCacheKey(), InvalidationScope.CASCADE);
+			}
+		}
+		
+		for (final PEAbstractTable<?> child : referenced) {
+			actions.add(child.getCacheKey(), InvalidationScope.LOCAL);
+		}
 		cacheInvalidationRecord = new CacheInvalidationRecord(actions);
 		
 		return cacheInvalidationRecord;
