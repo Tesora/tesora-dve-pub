@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -42,6 +43,7 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.schema.DatabaseLock;
+import com.tesora.dve.sql.schema.PEAbstractTable;
 import com.tesora.dve.sql.schema.PEForeignKey;
 import com.tesora.dve.sql.schema.PEKey;
 import com.tesora.dve.sql.schema.PETable;
@@ -191,6 +193,7 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 		private final String databaseName;
 		private final ListSet<CatalogEntity> deletedEntities;
 		private final ListSet<CatalogEntity> updatedEntities;
+		private final Set<PEAbstractTable<?>> referencedTables;
 		private final CacheInvalidationRecord record;
 		private final SQLCommand sql;
 		
@@ -200,6 +203,7 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 			this.databaseName = ((TableCacheKey)toDrop.getAbstractTable().getCacheKey()).getDatabaseName();
 			this.deletedEntities = new ListSet<CatalogEntity>();
 			this.updatedEntities = new ListSet<CatalogEntity>();
+			this.referencedTables = new ListSet<PEAbstractTable<?>>();
 			this.record = new CacheInvalidationRecord(toDrop.getCacheKey(),InvalidationScope.CASCADE);
 			this.sql = sql;
 		}
@@ -236,7 +240,10 @@ public class PEDropTenantTableStatement extends PEDropTableStatement {
 			if (n.longValue() == 0) {
 				List<TableKey> freshTKs = new ArrayList<TableKey>();
 				freshTKs.add(TableKey.make(sc,reloaded,1));
-				PEDropTableStatement.compute(sc, deletedEntities, updatedEntities, freshTKs, true);
+				PEDropTableStatement.compute(sc, deletedEntities, updatedEntities, freshTKs, referencedTables, true);
+				for (final PEAbstractTable<?> referenced : referencedTables) {
+					this.record.addInvalidateAction(referenced.getCacheKey(), InvalidationScope.LOCAL);
+				}
 			} else {
 				// still has references - this becomes a noop
 			}
