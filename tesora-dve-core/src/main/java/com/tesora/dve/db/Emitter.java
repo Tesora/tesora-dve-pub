@@ -1553,17 +1553,18 @@ public abstract class Emitter {
 	}
 
 	public String emitConstantExprValue(IConstantExpression expr, Object value) {
-		boolean stringLit = false;
+		boolean needsQuoting = false;
 		String any = null;
 		if (expr instanceof ILiteralExpression) {
 			ILiteralExpression ile = (ILiteralExpression) expr;
 			if (ile.getCharsetHint() != null)
 				any = ile.getCharsetHint().getUnquotedName().get();
-			stringLit = ile.isStringLiteral();
+			needsQuoting = ile.isStringLiteral();
 		} else if (expr instanceof LateBindingConstantExpression) {
 			LateBindingConstantExpression lbce = (LateBindingConstantExpression) expr;
-			if (lbce.getType().isStringType())
-				stringLit = true;
+			final Type lbtype = lbce.getType();
+			if (lbtype.isStringType() || lbtype.isTimestampType())
+				needsQuoting = true;
 		}
 		String tok = null;
 		if (value instanceof String) {
@@ -1573,7 +1574,7 @@ public abstract class Emitter {
 		} else {
 			tok = String.valueOf(value);
 		}
-		if (value != null && stringLit) {
+		if (value != null && needsQuoting) {
 			tok = "'" + tok + "'";
 		}
 		if (any != null) return any + tok;
