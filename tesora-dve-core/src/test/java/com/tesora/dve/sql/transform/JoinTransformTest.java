@@ -35,6 +35,7 @@ import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.schema.PEPersistentGroup;
 import com.tesora.dve.sql.schema.SchemaContext;
+import com.tesora.dve.sql.statement.dml.InsertIntoSelectStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.RootExecutionPlan;
@@ -784,5 +785,46 @@ public class JoinTransformTest extends TransformTest {
 				SelectStatement.class,
 				null);
 		
+	}
+	
+	@Ignore
+	@Test
+	public void testPE1678() throws Throwable {
+		final SchemaContext db = buildSchema(TestName.MULTI,
+				"CREATE RANGE IF NOT EXISTS magento_xl_catalog_category_product_range (int) PERSISTENT GROUP g1",
+				"CREATE RANGE IF NOT EXISTS magento_xl_catalog_product_entity_int_range (smallint, int) PERSISTENT GROUP g1",
+				"CREATE RANGE IF NOT EXISTS magento_xl_catalog_product_website_range (int) PERSISTENT GROUP g1",
+				
+				"CREATE TABLE `catalog_category_product_cat_tmp` ( `category_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT 'Category ID', `product_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT 'Product ID', `position` int(11) DEFAULT NULL COMMENT 'Position', `is_parent` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Is Parent', `store_id` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Store ID', `visibility` smallint(5) unsigned NOT NULL COMMENT 'Visibility', PRIMARY KEY (`category_id`,`product_id`,`store_id`)"
+				+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8  COMMENT 'Catalog Category Product Index Tmp' COMMENT 'Catalog Category Product Index Tmp' /*#dve  RANDOM DISTRIBUTE */",
+
+				"CREATE TABLE `catalog_category_entity` ( `entity_id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Entity ID', `entity_type_id` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Entity Type ID', `attribute_set_id` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Attriute Set ID', `parent_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT 'Parent Category ID', `created_at` timestamp NULL DEFAULT NULL COMMENT 'Creation Time', `updated_at` timestamp NULL DEFAULT NULL COMMENT 'Update Time', `path` varchar(255) NOT NULL COMMENT 'Tree Path', `position` int(11) NOT NULL COMMENT 'Position', `level` int(11) NOT NULL DEFAULT '0' COMMENT 'Tree Level', `children_count` int(11) NOT NULL COMMENT 'Child Count', PRIMARY KEY (`entity_id`), KEY `IDX_CATALOG_CATEGORY_ENTITY_LEVEL` (`level`), KEY `IDX_CATALOG_CATEGORY_ENTITY_PATH_ENTITY_ID` (`path`,`entity_id`)"
+				+ ") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8  COMMENT 'Catalog Category Table' COMMENT 'Catalog Category Table' /*#dve  BROADCAST DISTRIBUTE */",
+
+				"CREATE TABLE `catalog_category_product` ( `category_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT 'Category ID', `product_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT 'Product ID', `position` int(11) NOT NULL DEFAULT '0' COMMENT 'Position', PRIMARY KEY (`category_id`,`product_id`), KEY `IDX_CATALOG_CATEGORY_PRODUCT_PRODUCT_ID` (`product_id`)"
+				+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8  COMMENT 'Catalog Product To Category Linkage Table' COMMENT 'Catalog Product To Category Linkage Table' /*#dve  RANGE DISTRIBUTE ON (`product_id`) USING `magento_xl_catalog_category_product_range` */",
+
+				"CREATE TABLE `catalog_product_website` ( `product_id` int(10) unsigned NOT NULL COMMENT 'Product ID', `website_id` smallint(5) unsigned NOT NULL COMMENT 'Website ID', PRIMARY KEY (`product_id`,`website_id`), KEY `IDX_CATALOG_PRODUCT_WEBSITE_WEBSITE_ID` (`website_id`)"
+				+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8  COMMENT 'Catalog Product To Website Linkage Table' COMMENT 'Catalog Product To Website Linkage Table' /*#dve  RANGE DISTRIBUTE ON (`product_id`) USING `magento_xl_catalog_product_website_range` */",
+
+				"CREATE TABLE `catalog_product_entity_int` ( `value_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Value ID', `entity_type_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT 'Entity Type ID', `attribute_id` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Attribute ID', `store_id` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Store ID', `entity_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT 'Entity ID', `value` int(11) DEFAULT NULL COMMENT 'Value', PRIMARY KEY (`value_id`), UNIQUE KEY `UNQ_CATALOG_PRODUCT_ENTITY_INT_ENTITY_ID_ATTRIBUTE_ID_STORE_ID` (`entity_id`,`attribute_id`,`store_id`), KEY `IDX_CATALOG_PRODUCT_ENTITY_INT_ATTRIBUTE_ID` (`attribute_id`), KEY `IDX_CATALOG_PRODUCT_ENTITY_INT_STORE_ID` (`store_id`), KEY `IDX_CATALOG_PRODUCT_ENTITY_INT_ENTITY_ID` (`entity_id`)"
+				+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8  COMMENT 'Catalog Product Integer Attribute Backend Table' COMMENT 'Catalog Product Integer Attribute Backend Table' /*#dve  RANGE DISTRIBUTE ON (`attribute_id`, `entity_id`) USING `magento_xl_catalog_product_entity_int_range` */",
+				
+				"CREATE TABLE `catalog_category_entity_int` (  `value_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Value ID',  `entity_type_id` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Entity Type ID',  `attribute_id` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Attribute ID',  `store_id` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Store ID',  `entity_id` int(10) unsigned NOT NULL DEFAULT '0' COMMENT 'Entity ID',  `value` int(11) DEFAULT NULL COMMENT 'Value',  PRIMARY KEY (`value_id`),  UNIQUE KEY `UNQ_CAT_CTGR_ENTT_INT_ENTT_TYPE_ID_ENTT_ID_ATTR_ID_STORE_ID` (`entity_type_id`,`entity_id`,`attribute_id`,`store_id`),  KEY `IDX_CATALOG_CATEGORY_ENTITY_INT_ENTITY_ID` (`entity_id`),  KEY `IDX_CATALOG_CATEGORY_ENTITY_INT_ATTRIBUTE_ID` (`attribute_id`),  KEY `IDX_CATALOG_CATEGORY_ENTITY_INT_STORE_ID` (`store_id`)"
+				+ ") ENGINE=InnoDB DEFAULT CHARSET=utf8  COMMENT 'Catalog Category Integer Attribute Backend Table' COMMENT 'Catalog Category Integer Attribute Backend Table' /*#dve  BROADCAST DISTRIBUTE */"
+				);
+		
+		final PEPersistentGroup group = getGroup(db);
+		final String sql = "INSERT IGNORE INTO `catalog_category_product_cat_tmp` (`category_id`, `product_id`, `position`, `is_parent`, `store_id`, `visibility`) SELECT `cc`.`entity_id` AS `category_id`, `ccp`.`product_id`, ccp.position + 10000 AS `position`, 0 AS `is_parent`, 1 AS `store_id`, IFNULL(cpvs.value, cpvd.value) AS `visibility` FROM `catalog_category_entity` AS `cc`"
+				+ " INNER JOIN `catalog_category_entity` AS `cc2` ON cc2.path LIKE CONCAT(`cc`.`path`, '/%') AND cc.entity_id NOT IN (1)"
+				+ " INNER JOIN `catalog_category_product` AS `ccp` ON ccp.category_id = cc2.entity_id"
+				+ " INNER JOIN `catalog_product_website` AS `cpw` ON cpw.product_id = ccp.product_id"
+				+ " INNER JOIN `catalog_product_entity_int` AS `cpsd` ON cpsd.entity_id = ccp.product_id AND cpsd.store_id = 0 AND cpsd.attribute_id = 96"
+				+ " LEFT JOIN `catalog_product_entity_int` AS `cpss` ON cpss.entity_id = ccp.product_id AND cpss.attribute_id = cpsd.attribute_id AND cpss.store_id = 1"
+				+ " INNER JOIN `catalog_product_entity_int` AS `cpvd` ON cpvd.entity_id = ccp.product_id AND cpvd.store_id = 0 AND cpvd.attribute_id = 102"
+				+ " LEFT JOIN `catalog_product_entity_int` AS `cpvs` ON cpvs.entity_id = ccp.product_id AND cpvs.attribute_id = cpvd.attribute_id AND cpvs.store_id = 1"
+				+ " INNER JOIN `catalog_category_entity_int` AS `ccad` ON ccad.entity_id = cc.entity_id AND ccad.store_id = 0 AND ccad.attribute_id = 51"
+				+ " LEFT JOIN `catalog_category_entity_int` AS `ccas` ON ccas.entity_id = cc.entity_id AND ccas.attribute_id = ccad.attribute_id AND ccas.store_id = 1 WHERE (cpw.website_id = '1') AND (IFNULL(cpss.value, cpsd.value) = 1) AND (IFNULL(cpvs.value, cpvd.value) IN (4, 2)) AND (IFNULL(ccas.value, ccad.value) = 1) AND (cc.entity_id IN ('1', '2'))";
+		stmtTest(db,sql,InsertIntoSelectStatement.class, null);
 	}
 }
