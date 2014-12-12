@@ -41,6 +41,7 @@ public final class AnalyzerOptions {
 	public static final String ENABLE_TEMPLATE_WILDCARDS = "enable_template_wildcards";
 	public static final String ENABLE_VERBOSE_GENERATOR = "enable_verbose_generator";
 	public static final String DEFAULT_GENERATOR_FALLBACK_MODEL = "default_fallback_model";
+	public static final String USE_SORT_COUNTS = "use_sort_counts";
 	public static final String USE_WRITE_COUNTS = "use_write_counts";
 	public static final String CORPUS_SCALE_FACTOR = "corpus_scale_factor";
 	public static final String FK_AS_JOIN = "fk_as_join";
@@ -72,11 +73,17 @@ public final class AnalyzerOptions {
 				"Default distribution model used for non-collocatable tables. Use '" + Broadcast.SINGLETON_TEMPLATE_ITEM.getTemplateItemName()
 						+ "' for better performance and '" + Range.SINGLETON_TEMPLATE_ITEM.getTemplateItemName() + "' for reduced storage footprint.",
 				Broadcast.SINGLETON_TEMPLATE_ITEM.getTemplateItemName()));
+		options.add(new AnalyzerOption(USE_SORT_COUNTS,
+				"Sorting of non-broadcast tables requires redistribution."
+				+ " The cost of the operation on large data sets is significant."
+				+ " It is generally advantageous to avoid ranging heavily sorted tables."
+						+ " Include 'order by' counts in distribution model scoring.",
+				true));
 		options.add(new AnalyzerOption(USE_WRITE_COUNTS,
-				"It can be sometimes advantageous to avoid broadcasting of heavily written tables."
+				"It is generally advantageous to avoid broadcasting of heavily written tables."
 						+ " Include write counts in distribution model scoring."
-						+ " By default only for engines that do not support row-locking.",
-				false));
+						+ " Only for engines that do not support row-locking if disabled.",
+				true));
 		options.add(new AnalyzerOption(
 				CORPUS_SCALE_FACTOR,
 				"This constant controls how far into the future will the template generator extrapolate table cardinalities.",
@@ -146,6 +153,10 @@ public final class AnalyzerOptions {
 
 	public TemplateModelItem getGeneratorDefaultFallbackModel() throws PEException {
 		return AiTemplateBuilder.getModelForName(getValue(DEFAULT_GENERATOR_FALLBACK_MODEL).toString());
+	}
+	
+	public boolean isUsingSortsEnabled() {
+		return getBooleanValue(USE_SORT_COUNTS);
 	}
 
 	public boolean isUsingWritesEnabled() {

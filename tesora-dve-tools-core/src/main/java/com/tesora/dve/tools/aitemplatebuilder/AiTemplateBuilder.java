@@ -680,6 +680,7 @@ public final class AiTemplateBuilder {
 	private boolean isVerbose;
 	private boolean enableFksAsJoins;
 	private boolean enableIdentTuples;
+	private boolean enableUsingSorts;
 	private boolean enableUsingWrites;
 	private TemplateModelItem fallbackModel;
 
@@ -715,6 +716,10 @@ public final class AiTemplateBuilder {
 
 	public void setUseIdentTuples(final boolean enableIdentTuples) {
 		this.enableIdentTuples = enableIdentTuples;
+	}
+	
+	public void setUseSorts(final boolean enableUsingSorts) {
+		this.enableUsingSorts = enableUsingSorts;
 	}
 
 	public void setUseWrites(final boolean enableUsingWrites) {
@@ -1005,8 +1010,10 @@ public final class AiTemplateBuilder {
 				table.setDistributionModelFreezed(true);
 				logTableDistributionModel(table, MessageSeverity.ALERT);
 			} else {
+				final double sortsWeight = BooleanUtils.toInteger(this.enableUsingSorts);
 				final double writesWeight = BooleanUtils.toInteger(isUsingWrites(table, this.enableUsingWrites));
 				final ImmutableMap<FlvName, Double> ruleWeights = ImmutableMap.<FlvName, Double> of(
+						FuzzyTableDistributionModel.Variables.SORTS_FLV_NAME, sortsWeight,
 						FuzzyTableDistributionModel.Variables.WRITES_FLV_NAME, writesWeight
 						);
 				final List<FuzzyTableDistributionModel> modelsSortedByScore = FuzzyLinguisticVariable
