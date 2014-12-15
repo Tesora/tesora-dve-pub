@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<template name="sysbench">
+	<requirement>
+		<declaration>create range if not exists id_range (integer) persistent group #sg#
+		</declaration>
+	</requirement>
+
+	<tabletemplate range="id_range" match="sbtest.*" model="Range">
+		<column>id</column>
+	</tabletemplate>
+</template>

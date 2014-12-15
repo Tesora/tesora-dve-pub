@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<template name="magento_ce_19">
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_catalog_product_entity_int_range (smallint, int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_catalog_product_entity_text_range (smallint, int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_catalog_product_entity_varchar_range (smallint, int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_catalogsearch_fulltext_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_core_session_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_importexport_importdata_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_index_event_range (bigint) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_log_url_info_range (bigint) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_log_visitor_info_range (bigint) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_log_visitor_range (bigint) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_report_event_range (bigint) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_sales_flat_quote_item_option_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS magento_sales_flat_quote_shipping_rate_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <tabletemplate match="admin_assert" model="Broadcast"/>
+    <tabletemplate match="admin_role" model="Broadcast"/>
+    <tabletemplate match="admin_rule" model="Broadcast"/>
+    <tabletemplate match="admin_user" model="Broadcast"/>
+    <tabletemplate match="adminnotification_inbox" model="Broadcast"/>
+    <tabletemplate match="api2_acl_attribute" model="Broadcast"/>
+    <tabletemplate match="api2_acl_role" model="Broadcast"/>
+    <tabletemplate match="api2_acl_rule" model="Broadcast"/>
+    <tabletemplate match="api2_acl_user" model="Broadcast"/>
+    <tabletemplate match="api_assert" model="Broadcast"/>
+    <tabletemplate match="api_role" model="Broadcast"/>
+    <tabletemplate match="api_rule" model="Broadcast"/>
+    <tabletemplate match="api_session" model="Broadcast"/>
+    <tabletemplate match="api_user" model="Broadcast"/>
+    <tabletemplate match="captcha_log" model="Broadcast"/>
+    <tabletemplate match="catalog_category_anc_categs_index_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_category_anc_categs_index_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_category_anc_products_index_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_category_anc_products_index_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_category_entity" model="Broadcast"/>
+    <tabletemplate match="catalog_category_entity_datetime" model="Broadcast"/>
+    <tabletemplate match="catalog_category_entity_decimal" model="Broadcast"/>
+    <tabletemplate match="catalog_category_entity_int" model="Broadcast"/>
+    <tabletemplate match="catalog_category_entity_text" model="Broadcast"/>
+    <tabletemplate match="catalog_category_entity_varchar" model="Broadcast"/>
+    <tabletemplate match="catalog_category_flat_store_1" model="Broadcast"/>
+    <tabletemplate match="catalog_category_flat_store_2" model="Broadcast"/>
+    <tabletemplate match="catalog_category_flat_store_3" model="Broadcast"/>
+    <tabletemplate match="catalog_category_flat_store_4" model="Broadcast"/>
+    <tabletemplate match="catalog_category_product" model="Broadcast"/>
+    <tabletemplate match="catalog_category_product_index" model="Broadcast"/>
+    <tabletemplate match="catalog_category_product_index_enbl_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_category_product_index_enbl_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_category_product_index_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_compare_item" model="Broadcast"/>
+    <tabletemplate match="catalog_eav_attribute" model="Broadcast"/>
+    <tabletemplate match="catalog_product_bundle_option" model="Broadcast"/>
+    <tabletemplate match="catalog_product_bundle_option_value" model="Broadcast"/>
+    <tabletemplate match="catalog_product_bundle_price_index" model="Broadcast"/>
+    <tabletemplate match="catalog_product_bundle_selection" model="Broadcast"/>
+    <tabletemplate match="catalog_product_bundle_selection_price" model="Broadcast"/>
+    <tabletemplate match="catalog_product_bundle_stock_index" model="Broadcast"/>
+    <tabletemplate match="catalog_product_enabled_index" model="Broadcast"/>
+    <tabletemplate match="catalog_product_entity" model="Broadcast"/>
+    <tabletemplate match="catalog_product_entity_datetime" model="Broadcast"/>
+    <tabletemplate match="catalog_product_entity_decimal" model="Broadcast"/>
+    <tabletemplate match="catalog_product_entity_gallery" model="Broadcast"/>
+    <tabletemplate match="catalog_product_entity_group_price" model="Broadcast"/>
+    <tabletemplate match="catalog_product_entity_int" model="Range" range="magento_catalog_product_entity_int_range">
+        <column>attribute_id</column>
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="catalog_product_entity_media_gallery" model="Broadcast"/>
+    <tabletemplate match="catalog_product_entity_media_gallery_value" model="Broadcast"/>
+    <tabletemplate match="catalog_product_entity_text" model="Range" range="magento_catalog_product_entity_text_range">
+        <column>attribute_id</column>
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="catalog_product_entity_tier_price" model="Broadcast"/>
+    <tabletemplate match="catalog_product_entity_varchar" model="Range" range="magento_catalog_product_entity_varchar_range">
+        <column>attribute_id</column>
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="catalog_product_flat_1" model="Broadcast"/>
+    <tabletemplate match="catalog_product_flat_2" model="Broadcast"/>
+    <tabletemplate match="catalog_product_flat_3" model="Broadcast"/>
+    <tabletemplate match="catalog_product_flat_4" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_eav" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_eav_decimal" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_eav_decimal_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_eav_decimal_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_eav_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_eav_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_group_price" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_bundle_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_bundle_opt_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_bundle_opt_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_bundle_sel_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_bundle_sel_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_bundle_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_cfg_opt_agr_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_cfg_opt_agr_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_cfg_opt_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_cfg_opt_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_downlod_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_downlod_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_final_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_final_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_opt_agr_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_opt_agr_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_opt_idx" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_opt_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_price_tmp" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_tier_price" model="Broadcast"/>
+    <tabletemplate match="catalog_product_index_website" model="Broadcast"/>
+    <tabletemplate match="catalog_product_link" model="Broadcast"/>
+    <tabletemplate match="catalog_product_link_attribute" model="Broadcast"/>
+    <tabletemplate match="catalog_product_link_attribute_decimal" model="Broadcast"/>
+    <tabletemplate match="catalog_product_link_attribute_int" model="Broadcast"/>
+    <tabletemplate match="catalog_product_link_attribute_varchar" model="Broadcast"/>
+    <tabletemplate match="catalog_product_link_type" model="Broadcast"/>
+    <tabletemplate match="catalog_product_option" model="Broadcast"/>
+    <tabletemplate match="catalog_product_option_price" model="Broadcast"/>
+    <tabletemplate match="catalog_product_option_title" model="Broadcast"/>
+    <tabletemplate match="catalog_product_option_type_price" model="Broadcast"/>
+    <tabletemplate match="catalog_product_option_type_title" model="Broadcast"/>
+    <tabletemplate match="catalog_product_option_type_value" model="Broadcast"/>
+    <tabletemplate match="catalog_product_relation" model="Broadcast"/>
+    <tabletemplate match="catalog_product_super_attribute" model="Broadcast"/>
+    <tabletemplate match="catalog_product_super_attribute_label" model="Broadcast"/>
+    <tabletemplate match="catalog_product_super_attribute_pricing" model="Broadcast"/>
+    <tabletemplate match="catalog_product_super_link" model="Broadcast"/>
+    <tabletemplate match="catalog_product_website" model="Broadcast"/>
+    <tabletemplate match="cataloginventory_stock" model="Broadcast"/>
+    <tabletemplate match="cataloginventory_stock_item" model="Broadcast"/>
+    <tabletemplate match="cataloginventory_stock_status" model="Broadcast"/>
+    <tabletemplate match="cataloginventory_stock_status_idx" model="Broadcast"/>
+    <tabletemplate match="cataloginventory_stock_status_tmp" model="Broadcast"/>
+    <tabletemplate match="catalogrule" model="Broadcast"/>
+    <tabletemplate match="catalogrule_affected_product" model="Broadcast"/>
+    <tabletemplate match="catalogrule_customer_group" model="Broadcast"/>
+    <tabletemplate match="catalogrule_group_website" model="Broadcast"/>
+    <tabletemplate match="catalogrule_product" model="Broadcast"/>
+    <tabletemplate match="catalogrule_product_price" model="Broadcast"/>
+    <tabletemplate match="catalogrule_website" model="Broadcast"/>
+    <tabletemplate match="catalogsearch_fulltext" model="Range" range="magento_catalogsearch_fulltext_range">
+        <column>fulltext_id</column>
+    </tabletemplate>
+    <tabletemplate match="catalogsearch_query" model="Broadcast"/>
+    <tabletemplate match="catalogsearch_result" model="Broadcast"/>
+    <tabletemplate match="checkout_agreement" model="Broadcast"/>
+    <tabletemplate match="checkout_agreement_store" model="Broadcast"/>
+    <tabletemplate match="chronopay_api_debug" model="Broadcast"/>
+    <tabletemplate match="cms_block" model="Broadcast"/>
+    <tabletemplate match="cms_block_store" model="Broadcast"/>
+    <tabletemplate match="cms_page" model="Broadcast"/>
+    <tabletemplate match="cms_page_store" model="Broadcast"/>
+    <tabletemplate match="core_cache" model="Broadcast"/>
+    <tabletemplate match="core_cache_option" model="Broadcast"/>
+    <tabletemplate match="core_cache_tag" model="Broadcast"/>
+    <tabletemplate match="core_config_data" model="Broadcast"/>
+    <tabletemplate match="core_email_queue" model="Broadcast"/>
+    <tabletemplate match="core_email_queue_recipients" model="Broadcast"/>
+    <tabletemplate match="core_email_template" model="Broadcast"/>
+    <tabletemplate match="core_flag" model="Broadcast"/>
+    <tabletemplate match="core_layout_link" model="Broadcast"/>
+    <tabletemplate match="core_layout_update" model="Broadcast"/>
+    <tabletemplate match="core_resource" model="Broadcast"/>
+    <tabletemplate match="core_session" model="Range" range="magento_core_session_range">
+        <column>session_id</column>
+    </tabletemplate>
+    <tabletemplate match="core_store" model="Broadcast"/>
+    <tabletemplate match="core_store_group" model="Broadcast"/>
+    <tabletemplate match="core_translate" model="Broadcast"/>
+    <tabletemplate match="core_url_rewrite" model="Broadcast"/>
+    <tabletemplate match="core_variable" model="Broadcast"/>
+    <tabletemplate match="core_variable_value" model="Broadcast"/>
+    <tabletemplate match="core_website" model="Broadcast"/>
+    <tabletemplate match="coupon_aggregated" model="Broadcast"/>
+    <tabletemplate match="coupon_aggregated_order" model="Broadcast"/>
+    <tabletemplate match="coupon_aggregated_updated" model="Broadcast"/>
+    <tabletemplate match="cron_schedule" model="Broadcast"/>
+    <tabletemplate match="customer_address_entity" model="Broadcast"/>
+    <tabletemplate match="customer_address_entity_datetime" model="Broadcast"/>
+    <tabletemplate match="customer_address_entity_decimal" model="Broadcast"/>
+    <tabletemplate match="customer_address_entity_int" model="Broadcast"/>
+    <tabletemplate match="customer_address_entity_text" model="Broadcast"/>
+    <tabletemplate match="customer_address_entity_varchar" model="Broadcast"/>
+    <tabletemplate match="customer_eav_attribute" model="Broadcast"/>
+    <tabletemplate match="customer_eav_attribute_website" model="Broadcast"/>
+    <tabletemplate match="customer_entity" model="Broadcast"/>
+    <tabletemplate match="customer_entity_datetime" model="Broadcast"/>
+    <tabletemplate match="customer_entity_decimal" model="Broadcast"/>
+    <tabletemplate match="customer_entity_int" model="Broadcast"/>
+    <tabletemplate match="customer_entity_text" model="Broadcast"/>
+    <tabletemplate match="customer_entity_varchar" model="Broadcast"/>
+    <tabletemplate match="customer_form_attribute" model="Broadcast"/>
+    <tabletemplate match="customer_group" model="Broadcast"/>
+    <tabletemplate match="cybermut_api_debug" model="Broadcast"/>
+    <tabletemplate match="dataflow_batch" model="Broadcast"/>
+    <tabletemplate match="dataflow_batch_export" model="Broadcast"/>
+    <tabletemplate match="dataflow_batch_import" model="Broadcast"/>
+    <tabletemplate match="dataflow_import_data" model="Broadcast"/>
+    <tabletemplate match="dataflow_profile" model="Broadcast"/>
+    <tabletemplate match="dataflow_profile_history" model="Broadcast"/>
+    <tabletemplate match="dataflow_session" model="Broadcast"/>
+    <tabletemplate match="design_change" model="Broadcast"/>
+    <tabletemplate match="directory_country" model="Broadcast"/>
+    <tabletemplate match="directory_country_format" model="Broadcast"/>
+    <tabletemplate match="directory_country_region" model="Broadcast"/>
+    <tabletemplate match="directory_country_region_name" model="Broadcast"/>
+    <tabletemplate match="directory_currency_rate" model="Broadcast"/>
+    <tabletemplate match="downloadable_link" model="Broadcast"/>
+    <tabletemplate match="downloadable_link_price" model="Broadcast"/>
+    <tabletemplate match="downloadable_link_purchased" model="Broadcast"/>
+    <tabletemplate match="downloadable_link_purchased_item" model="Broadcast"/>
+    <tabletemplate match="downloadable_link_title" model="Broadcast"/>
+    <tabletemplate match="downloadable_sample" model="Broadcast"/>
+    <tabletemplate match="downloadable_sample_title" model="Broadcast"/>
+    <tabletemplate match="eav_attribute" model="Broadcast"/>
+    <tabletemplate match="eav_attribute_group" model="Broadcast"/>
+    <tabletemplate match="eav_attribute_label" model="Broadcast"/>
+    <tabletemplate match="eav_attribute_option" model="Broadcast"/>
+    <tabletemplate match="eav_attribute_option_value" model="Broadcast"/>
+    <tabletemplate match="eav_attribute_set" model="Broadcast"/>
+    <tabletemplate match="eav_entity" model="Broadcast"/>
+    <tabletemplate match="eav_entity_attribute" model="Broadcast"/>
+    <tabletemplate match="eav_entity_datetime" model="Broadcast"/>
+    <tabletemplate match="eav_entity_decimal" model="Broadcast"/>
+    <tabletemplate match="eav_entity_int" model="Broadcast"/>
+    <tabletemplate match="eav_entity_store" model="Broadcast"/>
+    <tabletemplate match="eav_entity_text" model="Broadcast"/>
+    <tabletemplate match="eav_entity_type" model="Broadcast"/>
+    <tabletemplate match="eav_entity_varchar" model="Broadcast"/>
+    <tabletemplate match="eav_form_element" model="Broadcast"/>
+    <tabletemplate match="eav_form_fieldset" model="Broadcast"/>
+    <tabletemplate match="eav_form_fieldset_label" model="Broadcast"/>
+    <tabletemplate match="eav_form_type" model="Broadcast"/>
+    <tabletemplate match="eav_form_type_entity" model="Broadcast"/>
+    <tabletemplate match="eway_api_debug" model="Broadcast"/>
+    <tabletemplate match="flo2cash_api_debug" model="Broadcast"/>
+    <tabletemplate match="gift_message" model="Broadcast"/>
+    <tabletemplate match="googlecheckout_notification" model="Broadcast"/>
+    <tabletemplate match="googleoptimizer_code" model="Broadcast"/>
+    <tabletemplate match="googleshopping_attributes" model="Broadcast"/>
+    <tabletemplate match="googleshopping_items" model="Broadcast"/>
+    <tabletemplate match="googleshopping_types" model="Broadcast"/>
+    <tabletemplate match="ideal_api_debug" model="Broadcast"/>
+    <tabletemplate match="importexport_importdata" model="Range" range="magento_importexport_importdata_range">
+        <column>id</column>
+    </tabletemplate>
+    <tabletemplate match="index_event" model="Range" range="magento_index_event_range">
+        <column>event_id</column>
+    </tabletemplate>
+    <tabletemplate match="index_process" model="Broadcast"/>
+    <tabletemplate match="index_process_event" model="Range" range="magento_index_event_range">
+        <column>event_id</column>
+    </tabletemplate>
+    <tabletemplate match="log_customer" model="Broadcast"/>
+    <tabletemplate match="log_quote" model="Broadcast"/>
+    <tabletemplate match="log_summary" model="Broadcast"/>
+    <tabletemplate match="log_summary_type" model="Broadcast"/>
+    <tabletemplate match="log_url" model="Random"/>
+    <tabletemplate match="log_url_info" model="Range" range="magento_log_url_info_range">
+        <column>url_id</column>
+    </tabletemplate>
+    <tabletemplate match="log_visitor" model="Range" range="magento_log_visitor_range">
+        <column>visitor_id</column>
+    </tabletemplate>
+    <tabletemplate match="log_visitor_info" model="Range" range="magento_log_visitor_info_range">
+        <column>visitor_id</column>
+    </tabletemplate>
+    <tabletemplate match="log_visitor_online" model="Broadcast"/>
+    <tabletemplate match="newsletter_problem" model="Broadcast"/>
+    <tabletemplate match="newsletter_queue" model="Broadcast"/>
+    <tabletemplate match="newsletter_queue_link" model="Broadcast"/>
+    <tabletemplate match="newsletter_queue_store_link" model="Broadcast"/>
+    <tabletemplate match="newsletter_subscriber" model="Broadcast"/>
+    <tabletemplate match="newsletter_template" model="Broadcast"/>
+    <tabletemplate match="oauth_consumer" model="Broadcast"/>
+    <tabletemplate match="oauth_nonce" model="Broadcast"/>
+    <tabletemplate match="oauth_token" model="Broadcast"/>
+    <tabletemplate match="paybox_api_debug" model="Broadcast"/>
+    <tabletemplate match="paybox_question_number" model="Broadcast"/>
+    <tabletemplate match="paypal_cert" model="Broadcast"/>
+    <tabletemplate match="paypal_payment_transaction" model="Broadcast"/>
+    <tabletemplate match="paypal_settlement_report" model="Broadcast"/>
+    <tabletemplate match="paypal_settlement_report_row" model="Broadcast"/>
+    <tabletemplate match="persistent_session" model="Broadcast"/>
+    <tabletemplate match="poll" model="Broadcast"/>
+    <tabletemplate match="poll_answer" model="Broadcast"/>
+    <tabletemplate match="poll_store" model="Broadcast"/>
+    <tabletemplate match="poll_vote" model="Broadcast"/>
+    <tabletemplate match="product_alert_price" model="Broadcast"/>
+    <tabletemplate match="product_alert_stock" model="Broadcast"/>
+    <tabletemplate match="protx_api_debug" model="Broadcast"/>
+    <tabletemplate match="rating" model="Broadcast"/>
+    <tabletemplate match="rating_entity" model="Broadcast"/>
+    <tabletemplate match="rating_option" model="Broadcast"/>
+    <tabletemplate match="rating_option_vote" model="Broadcast"/>
+    <tabletemplate match="rating_option_vote_aggregated" model="Broadcast"/>
+    <tabletemplate match="rating_store" model="Broadcast"/>
+    <tabletemplate match="rating_title" model="Broadcast"/>
+    <tabletemplate match="report_compared_product_index" model="Broadcast"/>
+    <tabletemplate match="report_event" model="Range" range="magento_report_event_range">
+        <column>event_id</column>
+    </tabletemplate>
+    <tabletemplate match="report_event_types" model="Broadcast"/>
+    <tabletemplate match="report_viewed_product_aggregated_daily" model="Broadcast"/>
+    <tabletemplate match="report_viewed_product_aggregated_monthly" model="Broadcast"/>
+    <tabletemplate match="report_viewed_product_aggregated_yearly" model="Broadcast"/>
+    <tabletemplate match="report_viewed_product_index" model="Broadcast"/>
+    <tabletemplate match="review" model="Broadcast"/>
+    <tabletemplate match="review_detail" model="Broadcast"/>
+    <tabletemplate match="review_entity" model="Broadcast"/>
+    <tabletemplate match="review_entity_summary" model="Broadcast"/>
+    <tabletemplate match="review_status" model="Broadcast"/>
+    <tabletemplate match="review_store" model="Broadcast"/>
+    <tabletemplate match="sales_bestsellers_aggregated_daily" model="Broadcast"/>
+    <tabletemplate match="sales_bestsellers_aggregated_monthly" model="Broadcast"/>
+    <tabletemplate match="sales_bestsellers_aggregated_yearly" model="Broadcast"/>
+    <tabletemplate match="sales_billing_agreement" model="Broadcast"/>
+    <tabletemplate match="sales_billing_agreement_order" model="Broadcast"/>
+    <tabletemplate match="sales_flat_creditmemo" model="Broadcast"/>
+    <tabletemplate match="sales_flat_creditmemo_comment" model="Broadcast"/>
+    <tabletemplate match="sales_flat_creditmemo_grid" model="Broadcast"/>
+    <tabletemplate match="sales_flat_creditmemo_item" model="Broadcast"/>
+    <tabletemplate match="sales_flat_invoice" model="Broadcast"/>
+    <tabletemplate match="sales_flat_invoice_comment" model="Broadcast"/>
+    <tabletemplate match="sales_flat_invoice_grid" model="Broadcast"/>
+    <tabletemplate match="sales_flat_invoice_item" model="Broadcast"/>
+    <tabletemplate match="sales_flat_order" model="Broadcast"/>
+    <tabletemplate match="sales_flat_order_address" model="Broadcast"/>
+    <tabletemplate match="sales_flat_order_grid" model="Broadcast"/>
+    <tabletemplate match="sales_flat_order_item" model="Broadcast"/>
+    <tabletemplate match="sales_flat_order_payment" model="Broadcast"/>
+    <tabletemplate match="sales_flat_order_status_history" model="Broadcast"/>
+    <tabletemplate match="sales_flat_quote" model="Broadcast"/>
+    <tabletemplate match="sales_flat_quote_address" model="Broadcast"/>
+    <tabletemplate match="sales_flat_quote_address_item" model="Broadcast"/>
+    <tabletemplate match="sales_flat_quote_item" model="Broadcast"/>
+    <tabletemplate match="sales_flat_quote_item_option" model="Range" range="magento_sales_flat_quote_item_option_range">
+        <column>option_id</column>
+    </tabletemplate>
+    <tabletemplate match="sales_flat_quote_payment" model="Broadcast"/>
+    <tabletemplate match="sales_flat_quote_shipping_rate" model="Range" range="magento_sales_flat_quote_shipping_rate_range">
+        <column>rate_id</column>
+    </tabletemplate>
+    <tabletemplate match="sales_flat_shipment" model="Broadcast"/>
+    <tabletemplate match="sales_flat_shipment_comment" model="Broadcast"/>
+    <tabletemplate match="sales_flat_shipment_grid" model="Broadcast"/>
+    <tabletemplate match="sales_flat_shipment_item" model="Broadcast"/>
+    <tabletemplate match="sales_flat_shipment_track" model="Broadcast"/>
+    <tabletemplate match="sales_invoiced_aggregated" model="Broadcast"/>
+    <tabletemplate match="sales_invoiced_aggregated_order" model="Broadcast"/>
+    <tabletemplate match="sales_order_aggregated_created" model="Broadcast"/>
+    <tabletemplate match="sales_order_aggregated_updated" model="Broadcast"/>
+    <tabletemplate match="sales_order_status" model="Broadcast"/>
+    <tabletemplate match="sales_order_status_label" model="Broadcast"/>
+    <tabletemplate match="sales_order_status_state" model="Broadcast"/>
+    <tabletemplate match="sales_order_tax" model="Broadcast"/>
+    <tabletemplate match="sales_order_tax_item" model="Broadcast"/>
+    <tabletemplate match="sales_payment_transaction" model="Broadcast"/>
+    <tabletemplate match="sales_recurring_profile" model="Broadcast"/>
+    <tabletemplate match="sales_recurring_profile_order" model="Broadcast"/>
+    <tabletemplate match="sales_refunded_aggregated" model="Broadcast"/>
+    <tabletemplate match="sales_refunded_aggregated_order" model="Broadcast"/>
+    <tabletemplate match="sales_shipping_aggregated" model="Broadcast"/>
+    <tabletemplate match="sales_shipping_aggregated_order" model="Broadcast"/>
+    <tabletemplate match="salesrule" model="Broadcast"/>
+    <tabletemplate match="salesrule_coupon" model="Broadcast"/>
+    <tabletemplate match="salesrule_coupon_usage" model="Broadcast"/>
+    <tabletemplate match="salesrule_customer" model="Broadcast"/>
+    <tabletemplate match="salesrule_customer_group" model="Broadcast"/>
+    <tabletemplate match="salesrule_label" model="Broadcast"/>
+    <tabletemplate match="salesrule_product_attribute" model="Broadcast"/>
+    <tabletemplate match="salesrule_website" model="Broadcast"/>
+    <tabletemplate match="sendfriend_log" model="Broadcast"/>
+    <tabletemplate match="shipping_tablerate" model="Broadcast"/>
+    <tabletemplate match="sitemap" model="Broadcast"/>
+    <tabletemplate match="social_facebook_actions" model="Broadcast"/>
+    <tabletemplate match="strikeiron_tax_rate" model="Broadcast"/>
+    <tabletemplate match="tag" model="Broadcast"/>
+    <tabletemplate match="tag_properties" model="Broadcast"/>
+    <tabletemplate match="tag_relation" model="Broadcast"/>
+    <tabletemplate match="tag_summary" model="Broadcast"/>
+    <tabletemplate match="tax_calculation" model="Broadcast"/>
+    <tabletemplate match="tax_calculation_rate" model="Broadcast"/>
+    <tabletemplate match="tax_calculation_rate_title" model="Broadcast"/>
+    <tabletemplate match="tax_calculation_rule" model="Broadcast"/>
+    <tabletemplate match="tax_class" model="Broadcast"/>
+    <tabletemplate match="tax_order_aggregated_created" model="Broadcast"/>
+    <tabletemplate match="tax_order_aggregated_updated" model="Broadcast"/>
+    <tabletemplate match="weee_discount" model="Broadcast"/>
+    <tabletemplate match="weee_tax" model="Broadcast"/>
+    <tabletemplate match="widget" model="Broadcast"/>
+    <tabletemplate match="widget_instance" model="Broadcast"/>
+    <tabletemplate match="widget_instance_page" model="Broadcast"/>
+    <tabletemplate match="widget_instance_page_layout" model="Broadcast"/>
+    <tabletemplate match="wishlist" model="Broadcast"/>
+    <tabletemplate match="wishlist_item" model="Broadcast"/>
+    <tabletemplate match="wishlist_item_option" model="Broadcast"/>
+    <tabletemplate match="xmlconnect_application" model="Broadcast"/>
+    <tabletemplate match="xmlconnect_config_data" model="Broadcast"/>
+    <tabletemplate match="xmlconnect_history" model="Broadcast"/>
+    <tabletemplate match="xmlconnect_images" model="Broadcast"/>
+    <tabletemplate match="xmlconnect_notification_template" model="Broadcast"/>
+    <tabletemplate match="xmlconnect_queue" model="Broadcast"/>
+</template>

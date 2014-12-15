@@ -1409,7 +1409,7 @@ public abstract class LogFileTest extends SchemaTest implements MirrorExceptionH
 		}
 	}
 
-	protected static class PELogFileRunner extends AbstractRunner {
+	public static class PELogFileRunner extends AbstractRunner {
 
 		public PELogFileRunner(TestConfigurationParameters tc, LogFileTest parent) {
 			super(tc, parent);
@@ -1425,7 +1425,7 @@ public abstract class LogFileTest extends SchemaTest implements MirrorExceptionH
 		}
 	}
 
-	protected static class NativeLogFileRunner extends AbstractRunner {
+	public static class NativeLogFileRunner extends AbstractRunner {
 
 		public NativeLogFileRunner(TestConfigurationParameters tc, LogFileTest parent) {
 			super(tc, parent);

@@ -809,15 +809,18 @@ public final class AiTemplateBuilder {
 				if (isRangeTableItem(tableItem)) {
 					final TableStats table = this.schemaStats.findTable(new QualifiedName(tableItem.getMatch()));
 					if (table != null) {
-						final String rangeName = tableItem.getRange();
-						UserDefinedCommonRange range = baseRanges.get(rangeName);
-						if (range == null) {
-							range = new UserDefinedCommonRange(rangeName, isSafeMode);
-							baseRanges.put(rangeName, range);
+						final List<String> userDefinedDv = tableItem.getColumn();
+						if ((userDefinedDv != null) && !userDefinedDv.isEmpty()) {
+							final String rangeName = tableItem.getRange();
+							UserDefinedCommonRange range = baseRanges.get(rangeName);
+							if (range == null) {
+								range = new UserDefinedCommonRange(rangeName, isSafeMode);
+								baseRanges.put(rangeName, range);
+							}
+	
+							final Set<String> dv = new LinkedHashSet<String>(tableItem.getColumn());
+							range.addUserDefinedDistribution(table, dv);
 						}
-
-						final Set<String> dv = new LinkedHashSet<String>(tableItem.getColumn());
-						range.addUserDefinedDistribution(table, dv);
 					}
 				}
 			}
@@ -1202,10 +1205,12 @@ public final class AiTemplateBuilder {
 					}
 				}
 
-				/* Fall back. */
+				/*
+				 * Fall back.
+				 * Frozen Range distribution model at this stage means we have to make the table Random. 
+				 */
 				if (newRange == null) {
-					table.setTableDistributionModel((this.fallbackModel.isBroadcast() && !mayCauseExcessiveLocking) ? Broadcast.SINGLETON_TEMPLATE_ITEM
-							: Random.SINGLETON_TEMPLATE_ITEM);
+					table.setTableDistributionModel((!table.hasDistributionModelFreezed() && this.fallbackModel.isBroadcast() && !mayCauseExcessiveLocking) ? Broadcast.SINGLETON_TEMPLATE_ITEM : Random.SINGLETON_TEMPLATE_ITEM);
 					logMessage.append("no suitable range columns found", MessageSeverity.WARNING.getColor());
 				}
 

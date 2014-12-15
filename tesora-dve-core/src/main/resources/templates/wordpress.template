@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<template name="wordpress">
+	<requirement>
+		<declaration>create range user_range (bigint(20)) persistent group #sg#
+		</declaration>
+	</requirement>
+	<requirement>
+		<declaration>create range post_range (bigint(20)) persistent group #sg#
+		</declaration>
+	</requirement>
+
+	<tabletemplate range="user_range" match="wp_users" model="Range">
+		<column>ID</column>
+	</tabletemplate>
+	<tabletemplate range="user_range" match="wp_links" model="Range">
+		<column>link_owner</column>
+	</tabletemplate>
+	<tabletemplate range="user_range" match="wp_usermeta" model="Range">
+		<column>user_id</column>
+	</tabletemplate>
+
+	<tabletemplate range="post_range" match="wp_posts" model="Range">
+		<column>ID</column>
+	</tabletemplate>
+	<tabletemplate range="post_range" match="wp_comments" model="Range">
+		<column>comment_post_ID</column>
+	</tabletemplate>
+	<tabletemplate range="post_range" match="wp_postmeta" model="Range">
+		<column>post_id</column>
+	</tabletemplate>
+
+	<tabletemplate match="wp_commentmeta" model="Broadcast" />
+	<tabletemplate match="wp_options" model="Broadcast" />
+	<tabletemplate match="wp_terms" model="Broadcast" />
+	<tabletemplate match="wp_term_relationships" model="Broadcast" />
+	<tabletemplate match="wp_term_taxonomy" model="Broadcast" />
+
+</template>

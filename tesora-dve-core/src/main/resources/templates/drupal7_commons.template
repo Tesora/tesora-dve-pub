@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<template name="drupal7_commons">
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_block_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_entity_comment_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_entity_message_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_entity_message_type_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_entity_node_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_entity_og_membership_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_entity_user_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_field_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_form_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_menu_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_page_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_path_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_views_data_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_users_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <tabletemplate match="actions" model="Broadcast"/>
+    <tabletemplate match="advancedqueue" model="Broadcast"/>
+    <tabletemplate match="advancedqueue_tags" model="Broadcast"/>
+    <tabletemplate match="authmap" model="Broadcast"/>
+    <tabletemplate match="batch" model="Broadcast"/>
+    <tabletemplate match="block" model="Broadcast"/>
+    <tabletemplate match="block_custom" model="Broadcast"/>
+    <tabletemplate match="block_node_type" model="Broadcast"/>
+    <tabletemplate match="block_role" model="Broadcast"/>
+    <tabletemplate match="blocked_ips" model="Broadcast"/>
+    <tabletemplate match="cache" model="Range" range="drupal_cache_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_block" model="Range" range="drupal_cache_block_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_bootstrap" model="Broadcast"/>
+    <tabletemplate match="cache_entity_comment" model="Range" range="drupal_cache_entity_comment_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_entity_file" model="Broadcast"/>
+    <tabletemplate match="cache_entity_message" model="Range" range="drupal_cache_entity_message_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_entity_message_type" model="Range" range="drupal_cache_entity_message_type_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_entity_message_type_category" model="Broadcast"/>
+    <tabletemplate match="cache_entity_node" model="Range" range="drupal_cache_entity_node_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_entity_og_membership" model="Range" range="drupal_cache_entity_og_membership_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_entity_og_membership_type" model="Broadcast"/>
+    <tabletemplate match="cache_entity_registration" model="Broadcast"/>
+    <tabletemplate match="cache_entity_registration_state" model="Broadcast"/>
+    <tabletemplate match="cache_entity_registration_type" model="Broadcast"/>
+    <tabletemplate match="cache_entity_taxonomy_term" model="Broadcast"/>
+    <tabletemplate match="cache_entity_taxonomy_vocabulary" model="Broadcast"/>
+    <tabletemplate match="cache_entity_user" model="Range" range="drupal_cache_entity_user_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_field" model="Range" range="drupal_cache_field_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_filter" model="Broadcast"/>
+    <tabletemplate match="cache_form" model="Range" range="drupal_cache_form_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_image" model="Broadcast"/>
+    <tabletemplate match="cache_libraries" model="Broadcast"/>
+    <tabletemplate match="cache_menu" model="Range" range="drupal_cache_menu_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_metatag" model="Broadcast"/>
+    <tabletemplate match="cache_page" model="Range" range="drupal_cache_page_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_path" model="Range" range="drupal_cache_path_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_rules" model="Broadcast"/>
+    <tabletemplate match="cache_token" model="Broadcast"/>
+    <tabletemplate match="cache_views" model="Broadcast"/>
+    <tabletemplate match="cache_views_data" model="Range" range="drupal_cache_views_data_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="ckeditor_input_format" model="Broadcast"/>
+    <tabletemplate match="ckeditor_settings" model="Broadcast"/>
+    <tabletemplate match="comment" model="Broadcast"/>
+    <tabletemplate match="ctools_css_cache" model="Broadcast"/>
+    <tabletemplate match="ctools_object_cache" model="Broadcast"/>
+    <tabletemplate match="date_format_locale" model="Broadcast"/>
+    <tabletemplate match="date_format_type" model="Broadcast"/>
+    <tabletemplate match="date_formats" model="Broadcast"/>
+    <tabletemplate match="facetapi" model="Broadcast"/>
+    <tabletemplate match="field_config" model="Broadcast"/>
+    <tabletemplate match="field_config_instance" model="Broadcast"/>
+    <tabletemplate match="field_data_body" model="Broadcast"/>
+    <tabletemplate match="field_data_comment_body" model="Broadcast"/>
+    <tabletemplate match="field_data_field_address" model="Broadcast"/>
+    <tabletemplate match="field_data_field_bio" model="Broadcast"/>
+    <tabletemplate match="field_data_field_date" model="Broadcast"/>
+    <tabletemplate match="field_data_field_facebook_url" model="Broadcast"/>
+    <tabletemplate match="field_data_field_group_logo" model="Broadcast"/>
+    <tabletemplate match="field_data_field_linkedin_url" model="Broadcast"/>
+    <tabletemplate match="field_data_field_location" model="Broadcast"/>
+    <tabletemplate match="field_data_field_logo" model="Broadcast"/>
+    <tabletemplate match="field_data_field_message_rendered_body" model="Broadcast"/>
+    <tabletemplate match="field_data_field_message_rendered_subject" model="Broadcast"/>
+    <tabletemplate match="field_data_field_name_first" model="Broadcast"/>
+    <tabletemplate match="field_data_field_name_last" model="Broadcast"/>
+    <tabletemplate match="field_data_field_number_of_attendees" model="Broadcast"/>
+    <tabletemplate match="field_data_field_offsite_url" model="Broadcast"/>
+    <tabletemplate match="field_data_field_organizers" model="Broadcast"/>
+    <tabletemplate match="field_data_field_radioactivity" model="Broadcast"/>
+    <tabletemplate match="field_data_field_registration" model="Broadcast"/>
+    <tabletemplate match="field_data_field_registration_type" model="Broadcast"/>
+    <tabletemplate match="field_data_field_related_question" model="Broadcast"/>
+    <tabletemplate match="field_data_field_target_comments" model="Broadcast"/>
+    <tabletemplate match="field_data_field_target_nodes" model="Broadcast"/>
+    <tabletemplate match="field_data_field_target_users" model="Broadcast"/>
+    <tabletemplate match="field_data_field_topics" model="Broadcast"/>
+    <tabletemplate match="field_data_field_twitter_url" model="Broadcast"/>
+    <tabletemplate match="field_data_group_group" model="Broadcast"/>
+    <tabletemplate match="field_data_message_subscribe_email" model="Broadcast"/>
+    <tabletemplate match="field_data_message_text" model="Broadcast"/>
+    <tabletemplate match="field_data_og_group_ref" model="Broadcast"/>
+    <tabletemplate match="field_data_og_membership_request" model="Broadcast"/>
+    <tabletemplate match="field_data_og_user_group_ref" model="Broadcast"/>
+    <tabletemplate match="field_data_og_user_node" model="Broadcast"/>
+    <tabletemplate match="field_revision_body" model="Broadcast"/>
+    <tabletemplate match="field_revision_comment_body" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_address" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_bio" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_date" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_facebook_url" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_group_logo" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_linkedin_url" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_location" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_logo" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_message_rendered_body" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_message_rendered_subject" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_name_first" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_name_last" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_number_of_attendees" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_offsite_url" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_organizers" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_radioactivity" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_registration" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_registration_type" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_related_question" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_target_comments" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_target_nodes" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_target_users" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_topics" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_twitter_url" model="Broadcast"/>
+    <tabletemplate match="field_revision_group_group" model="Broadcast"/>
+    <tabletemplate match="field_revision_message_subscribe_email" model="Broadcast"/>
+    <tabletemplate match="field_revision_message_text" model="Broadcast"/>
+    <tabletemplate match="field_revision_og_group_ref" model="Broadcast"/>
+    <tabletemplate match="field_revision_og_membership_request" model="Broadcast"/>
+    <tabletemplate match="field_revision_og_user_group_ref" model="Broadcast"/>
+    <tabletemplate match="field_revision_og_user_node" model="Broadcast"/>
+    <tabletemplate match="file_managed" model="Broadcast"/>
+    <tabletemplate match="file_usage" model="Broadcast"/>
+    <tabletemplate match="filter" model="Broadcast"/>
+    <tabletemplate match="filter_format" model="Broadcast"/>
+    <tabletemplate match="flag_content" model="Broadcast"/>
+    <tabletemplate match="flag_counts" model="Broadcast"/>
+    <tabletemplate match="flag_types" model="Broadcast"/>
+    <tabletemplate match="flags" model="Broadcast"/>
+    <tabletemplate match="flood" model="Broadcast"/>
+    <tabletemplate match="history" model="Broadcast"/>
+    <tabletemplate match="image_effects" model="Broadcast"/>
+    <tabletemplate match="image_styles" model="Broadcast"/>
+    <tabletemplate match="menu_custom" model="Broadcast"/>
+    <tabletemplate match="menu_links" model="Broadcast"/>
+    <tabletemplate match="menu_router" model="Broadcast"/>
+    <tabletemplate match="message" model="Broadcast"/>
+    <tabletemplate match="message_type" model="Broadcast"/>
+    <tabletemplate match="message_type_category" model="Broadcast"/>
+    <tabletemplate match="metatag" model="Broadcast"/>
+    <tabletemplate match="metatag_config" model="Broadcast"/>
+    <tabletemplate match="node" model="Broadcast"/>
+    <tabletemplate match="node_access" model="Broadcast"/>
+    <tabletemplate match="node_comment_statistics" model="Broadcast"/>
+    <tabletemplate match="node_revision" model="Broadcast"/>
+    <tabletemplate match="node_type" model="Broadcast"/>
+    <tabletemplate match="og_membership" model="Broadcast"/>
+    <tabletemplate match="og_membership_type" model="Broadcast"/>
+    <tabletemplate match="og_role" model="Broadcast"/>
+    <tabletemplate match="og_role_permission" model="Broadcast"/>
+    <tabletemplate match="og_users_roles" model="Broadcast"/>
+    <tabletemplate match="page_manager_handlers" model="Broadcast"/>
+    <tabletemplate match="page_manager_pages" model="Broadcast"/>
+    <tabletemplate match="page_manager_weights" model="Broadcast"/>
+    <tabletemplate match="panelizer_defaults" model="Broadcast"/>
+    <tabletemplate match="panelizer_entity" model="Broadcast"/>
+    <tabletemplate match="panels_display" model="Broadcast"/>
+    <tabletemplate match="panels_layout" model="Broadcast"/>
+    <tabletemplate match="panels_pane" model="Broadcast"/>
+    <tabletemplate match="panels_renderer_pipeline" model="Broadcast"/>
+    <tabletemplate match="poll" model="Broadcast"/>
+    <tabletemplate match="poll_choice" model="Broadcast"/>
+    <tabletemplate match="poll_vote" model="Broadcast"/>
+    <tabletemplate match="queue" model="Broadcast"/>
+    <tabletemplate match="quicktabs" model="Broadcast"/>
+    <tabletemplate match="radioactivity_decay_profile" model="Broadcast"/>
+    <tabletemplate match="radioactivity_deferred_incidents" model="Broadcast"/>
+    <tabletemplate match="radioactivity_flood_map" model="Broadcast"/>
+    <tabletemplate match="rate_bot_agent" model="Broadcast"/>
+    <tabletemplate match="rate_bot_ip" model="Broadcast"/>
+    <tabletemplate match="rdf_mapping" model="Broadcast"/>
+    <tabletemplate match="realname" model="Broadcast"/>
+    <tabletemplate match="redirect" model="Broadcast"/>
+    <tabletemplate match="registration" model="Broadcast"/>
+    <tabletemplate match="registration_entity" model="Broadcast"/>
+    <tabletemplate match="registration_state" model="Broadcast"/>
+    <tabletemplate match="registration_type" model="Broadcast"/>
+    <tabletemplate match="registry" model="Broadcast"/>
+    <tabletemplate match="registry_file" model="Broadcast"/>
+    <tabletemplate match="role" model="Broadcast"/>
+    <tabletemplate match="role_permission" model="Broadcast"/>
+    <tabletemplate match="rules_config" model="Broadcast"/>
+    <tabletemplate match="rules_dependencies" model="Broadcast"/>
+    <tabletemplate match="rules_tags" model="Broadcast"/>
+    <tabletemplate match="rules_trigger" model="Broadcast"/>
+    <tabletemplate match="search_dataset" model="Broadcast"/>
+    <tabletemplate match="search_index" model="Broadcast"/>
+    <tabletemplate match="search_node_links" model="Broadcast"/>
+    <tabletemplate match="search_total" model="Broadcast"/>
+    <tabletemplate match="semaphore" model="Broadcast"/>
+    <tabletemplate match="sequences" model="Broadcast"/>
+    <tabletemplate match="sessions" model="Broadcast"/>
+    <tabletemplate match="shortcut_set" model="Broadcast"/>
+    <tabletemplate match="shortcut_set_users" model="Broadcast"/>
+    <tabletemplate match="system" model="Broadcast"/>
+    <tabletemplate match="taxonomy_index" model="Broadcast"/>
+    <tabletemplate match="taxonomy_term_data" model="Broadcast"/>
+    <tabletemplate match="taxonomy_term_hierarchy" model="Broadcast"/>
+    <tabletemplate match="taxonomy_vocabulary" model="Broadcast"/>
+    <tabletemplate match="url_alias" model="Broadcast"/>
+    <tabletemplate match="users" model="Range" range="drupal_users_range">
+        <column>uid</column>
+    </tabletemplate>
+    <tabletemplate match="users_roles" model="Broadcast"/>
+    <tabletemplate match="variable" model="Broadcast"/>
+    <tabletemplate match="views_display" model="Broadcast"/>
+    <tabletemplate match="views_view" model="Broadcast"/>
+    <tabletemplate match="votingapi_cache" model="Broadcast"/>
+    <tabletemplate match="votingapi_vote" model="Broadcast"/>
+    <tabletemplate match="watchdog" model="Broadcast"/>
+</template>

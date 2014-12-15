@@ -172,7 +172,7 @@ public class ClientTestNG extends PETest {
 
 	@Test
 	public void templateTest() throws Exception {
-		dbHelper.executeQuery(new TemplateBuilder("drupal7")
+		dbHelper.executeQuery(new TemplateBuilder("drupal7_commons")
 			.withRequirement("create range if not exists block_range (int) persistent group #sg#")
 			.withRequirement("create range if not exists field_range (varchar,int) persistent group #sg#")
 			.toCreateStatement());
