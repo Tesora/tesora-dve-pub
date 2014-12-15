@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+
+import com.tesora.dve.charset.*;
 import org.antlr.runtime.Lexer;
 import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.CommonTree;
@@ -38,8 +40,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 
-import com.tesora.dve.charset.NativeCharSetCatalog;
-import com.tesora.dve.charset.NativeCollationCatalog;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.ConstraintType;
@@ -2444,7 +2444,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 					throw new SchemaException(Pass.FIRST, "Must specify a character set");
 				}
 				String value = (String)le.getValue(pc.getValues());
-				if (Singletons.require(HostService.class).getCharSetNative().getCharSetCatalog().findCharSetByName(value) == null) {
+				if (Singletons.require(CharSetNative.class).getCharSetCatalog().findCharSetByName(value) == null) {
 					// character set not supported
 					throw new SchemaException(Pass.FIRST, "Cannot set an unsupported character set: " + value);
 				}
@@ -4272,14 +4272,14 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	public NativeCharSetCatalog getNativeCharSetCatalog() { 
 		if (supportedCharSets == null) {
-			supportedCharSets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
+			supportedCharSets = Singletons.require(NativeCharSetCatalog.class);
 		}
 		return supportedCharSets;
 	}
 	
 	public NativeCollationCatalog getNativeCollationCatalog() { 
 		if (supportedCollations == null) {
-			supportedCollations = Singletons.require(HostService.class).getDBNative().getSupportedCollations();
+			supportedCollations = Singletons.require(NativeCollationCatalog.class);
 		}
 		return supportedCollations;
 	}

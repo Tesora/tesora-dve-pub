@@ -30,8 +30,6 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.charset.NativeCollationCatalog;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
-import com.tesora.dve.charset.mysql.MysqlNativeCollationCatalog;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.catalog.User;
 import com.tesora.dve.common.catalog.UserColumn;
@@ -58,41 +56,14 @@ public class MysqlNative extends DBNative {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = Logger.getLogger(MysqlNative.class);
 
-	private final NativeCharSetCatalog supportedCharsets = getCharSetCatalog();
-	private final NativeCollationCatalog supportedCollations = getCollationCatalog();
+	private final NativeCharSetCatalog supportedCharsets;
+	private final NativeCollationCatalog supportedCollations;
 
-	private static NativeCharSetCatalog getCharSetCatalog() {
-		try {
-			final NativeCharSetCatalog charSetCatalog = new MysqlNativeCharSetCatalog();
-			charSetCatalog.load();
-			return charSetCatalog;
-		} catch (final PEException pe) {
-			// The PEException here just indicates that the catalog hasn't been started..
-			// will grab the default charsets in this case and eat the exception 
-			return NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL);
-		} catch (final Exception e) {
-			logger.error("Failed to load supported character sets from the catalog. Using default values instead.",e);
-			return NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL);
-		}
-	}
-	
-	private static NativeCollationCatalog getCollationCatalog() {
-		try {
-			final NativeCollationCatalog collationCatalog = new MysqlNativeCollationCatalog();
-			collationCatalog.load();
-			return collationCatalog;
-		} catch (final PEException pe) {
-			// The PEException here just indicates that the catalog hasn't been started..
-			// will grab the default collations in this case and eat the exception 
-			return NativeCollationCatalog.getDefaultCollationCatalog(DBType.MYSQL);
-		} catch (final Exception e) {
-			logger.error("Failed to load supported collations from the catalog. Using default values instead.",e);
-			return NativeCollationCatalog.getDefaultCollationCatalog(DBType.MYSQL);
-		}
-	}
 
-	public MysqlNative() throws PEException {
-		setDbType(DBType.MYSQL);
+	public MysqlNative(NativeCharSetCatalog charSetCat, NativeCollationCatalog nativeColCat, DBType dbType) throws PEException {
+		this.supportedCharsets = charSetCat;
+		this.supportedCollations = nativeColCat;
+		super.setDbType(dbType);
 		setIdentifierQuoteChar(MysqlNativeConstants.MYSQL_IDENTIFIER_QUOTE_CHAR);
 		setLiteralQuoteChar(MysqlNativeConstants.MYSQL_LITERAL_QUOTE_CHAR);
 		MysqlNativeTypeCatalog types = new MysqlNativeTypeCatalog();

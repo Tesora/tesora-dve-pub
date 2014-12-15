@@ -1,4 +1,4 @@
-package com.tesora.dve.charset.mysql;
+package com.tesora.dve.charset;
 
 /*
  * #%L
@@ -21,19 +21,15 @@ package com.tesora.dve.charset.mysql;
  * #L%
  */
 
-import com.tesora.dve.charset.CharSetNative;
-import com.tesora.dve.exceptions.PEException;
-
-public class MysqlCharSetNative extends CharSetNative {
-    
-	private static final long serialVersionUID = 1L;
-
-	public MysqlCharSetNative() throws PEException {
-		this(new MysqlNativeCharSetCatalog());
-	}
-
-	protected MysqlCharSetNative(MysqlNativeCharSetCatalog tc) throws PEException {
-		setCharSetCatalog(tc);
+public class MysqlNativeCharSetCatalog {
+	
+	public static NativeCharSetCatalog DEFAULT_CATALOG;
+	static {
+		DEFAULT_CATALOG = new NativeCharSetCatalogImpl();
+		DEFAULT_CATALOG.addCharSet(MysqlNativeCharSet.ASCII);
+		DEFAULT_CATALOG.addCharSet(MysqlNativeCharSet.LATIN1);
+		DEFAULT_CATALOG.addCharSet(MysqlNativeCharSet.UTF8);
+		DEFAULT_CATALOG.addCharSet(MysqlNativeCharSet.UTF8MB4);
 	}
 
 }

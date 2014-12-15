@@ -38,6 +38,7 @@ import java.util.concurrent.Future;
 import javax.management.DynamicMBean;
 import javax.management.ObjectName;
 
+import com.tesora.dve.charset.*;
 import com.tesora.dve.clock.*;
 import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.server.connectionmanager.SSConnection;
@@ -50,7 +51,6 @@ import org.apache.log4j.Logger;
 import com.fasterxml.uuid.EthernetAddress;
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.impl.TimeBasedGenerator;
-import com.tesora.dve.charset.CharSetNative;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.PEConstants;
@@ -163,8 +163,6 @@ public class Host implements HostService {
 	private Long startTime;
 	
 	private Project project;
-	private DBNative dbNative;
-	private CharSetNative charSetNative;
 	
 	private Properties props;
 
@@ -214,8 +212,12 @@ public class Host implements HostService {
 			
 			DBType dbType = DBType.fromDriverClass(props.getProperty(DBHelper.CONN_DRIVER_CLASS));
 
-			dbNative = DBNative.DBNativeFactory.newInstance(dbType);
-			charSetNative = CharSetNative.CharSetNativeFactory.newInstance(dbType);
+			DBNative dbNative = DBNative.DBNativeFactory.newInstance(dbType);
+			Singletons.replace(DBNative.class,dbNative);
+			Singletons.replace(NativeCharSetCatalog.class,dbNative.getSupportedCharSets());
+			Singletons.replace(NativeCollationCatalog.class,dbNative.getSupportedCollations());
+			boolean startCatalog = true;
+			Singletons.replace(CharSetNative.class, initializeCharsetNative(dbType, startCatalog));//TODO: the only purpose of CharSetNative appears to be holding an alternate NativeCharSetCatalog? -sgossard.
 
 			// we have to set this up early for the variables
 			broadcaster = new GroupMessageEndpoint("broadcast");
@@ -241,6 +243,36 @@ public class Host implements HostService {
 		} catch (Throwable e) {
             throw new RuntimeException("Failed to start DVE server - " + e.getMessage(), e);
 		}
+	}
+
+	private static CharSetNative initializeCharsetNative(DBType dbType, boolean startCatalog) throws PEException {
+		CharSetNative charSetNative = null;
+
+		NativeCharSetCatalog catalog;
+		switch (dbType) {
+            case MYSQL:
+            case MARIADB:
+                if (startCatalog) {
+                    catalog = new NativeCharSetCatalogImpl();
+					if ( !CatalogDAOFactory.isSetup() )
+                        throw new PEException("Cannot load character sets from the catalog as the catalog is not setup.");
+
+					CatalogDAO catalog1 = CatalogDAOFactory.newInstance();
+					try {
+                        DBNative.loadFromCatalog(catalog1, catalog);
+                    } finally {
+                        catalog1.close();
+                    }
+				} else {
+                    catalog = MysqlNativeCharSetCatalog.DEFAULT_CATALOG;
+                    //don't load, it's already populated correctly.
+                }
+                break;
+            default:
+                throw new PEException("Attempt to create new character set native instance using invalid database type " + dbType);
+        }
+		charSetNative = new CharSetNativeImpl(catalog);
+		return charSetNative;
 	}
 
 	/**
@@ -270,8 +302,11 @@ public class Host implements HostService {
 			String driver = DBHelper.loadDriver(props.getProperty(DBHelper.CONN_DRIVER_CLASS));
 			
 			DBType dbType = DBType.fromDriverClass(driver);
-			dbNative = DBNative.DBNativeFactory.newInstance(dbType);
-			charSetNative = CharSetNative.CharSetNativeFactory.newInstance(dbType, startCatalog);
+			DBNative dbNative = DBNative.DBNativeFactory.newInstance(dbType);
+			Singletons.replace(DBNative.class,dbNative);
+			Singletons.replace(NativeCharSetCatalog.class,dbNative.getSupportedCharSets());
+			Singletons.replace(NativeCollationCatalog.class,dbNative.getSupportedCollations());
+			Singletons.replace(CharSetNative.class, initializeCharsetNative(dbType, startCatalog));//TODO: the only purpose of CharSetNative appears to be holding an alternate NativeCharSetCatalog? -sgossard.
 			
 			infoSchema = InformationSchemas.build(dbNative,null,props);
 			if (startCatalog)
@@ -372,13 +407,8 @@ public class Host implements HostService {
 	}
 
     public DBNative getDBNative() {
-        return dbNative;
+        return Singletons.require(DBNative.class);
     }
-
-	@Override
-    public CharSetNative getCharSetNative() {
-		return charSetNative;
-	}
 
 	@Override
     public String getDefaultProjectName() {

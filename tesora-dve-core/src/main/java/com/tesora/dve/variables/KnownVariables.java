@@ -24,10 +24,7 @@ package com.tesora.dve.variables;
 import java.util.EnumSet;
 import java.util.Locale;
 
-import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.NativeCollation;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
+import com.tesora.dve.charset.*;
 import com.tesora.dve.clock.TimingServiceConfiguration;
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.common.catalog.AutoIncrementTracker;
@@ -376,7 +373,7 @@ public class KnownVariables implements VariableConstants {
 		@Override
 		public void setGlobalValue(VariableStoreSource conn, String value) throws PEException {
 			final NativeCharSet parentCharSet =
-					Singletons.require(HostService.class).getDBNative().getSupportedCharSets().findCharSetByCollation(PEStringUtils.dequote(value));
+					Singletons.require(NativeCharSetCatalog.class).findCharSetByCollation(PEStringUtils.dequote(value));
 			if (parentCharSet != null) {
 				super.setGlobalValue(conn, value);
 				final String parentCharSetValue = parentCharSet.getName();
@@ -391,7 +388,7 @@ public class KnownVariables implements VariableConstants {
 		@Override
 		public void setSessionValue(VariableStoreSource conn, String value) throws PEException {
 			final NativeCharSet parentCharSet =
-					Singletons.require(HostService.class).getDBNative().getSupportedCharSets().findCharSetByCollation(PEStringUtils.dequote(value));
+					Singletons.require(NativeCharSetCatalog.class).findCharSetByCollation(PEStringUtils.dequote(value));
 			if (parentCharSet != null) {
 				super.setSessionValue(conn, value);
 				final String parentCharSetValue = parentCharSet.getName();
@@ -413,7 +410,7 @@ public class KnownVariables implements VariableConstants {
 		@Override
 		public void setGlobalValue(VariableStoreSource conn, String value) throws PEException {
 			final NativeCollation defaultCollation =
-					Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(PEStringUtils.dequote(value));
+					Singletons.require(NativeCollationCatalog.class).findDefaultCollationForCharSet(PEStringUtils.dequote(value));
 			if (defaultCollation != null) {
 				super.setGlobalValue(conn, value);
 				final String defaultCollationValue = defaultCollation.getName();
@@ -428,7 +425,7 @@ public class KnownVariables implements VariableConstants {
 		@Override
 		public void setSessionValue(VariableStoreSource conn, String value) throws PEException {
 			final NativeCollation defaultCollation =
-					Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(PEStringUtils.dequote(value));
+					Singletons.require(NativeCollationCatalog.class).findDefaultCollationForCharSet(PEStringUtils.dequote(value));
 			if (defaultCollation != null) {
 				super.setSessionValue(conn, value);
 				final String defaultCollationValue = defaultCollation.getName();

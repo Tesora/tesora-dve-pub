@@ -25,14 +25,11 @@ import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.sql.ParameterMetaData;
 import java.sql.SQLException;
+import java.util.List;
 
-import com.tesora.dve.charset.NativeCharSetCatalog;
-import com.tesora.dve.charset.NativeCollationCatalog;
+import com.tesora.dve.charset.*;
 import com.tesora.dve.common.DBType;
-import com.tesora.dve.common.catalog.PersistentTable;
-import com.tesora.dve.common.catalog.User;
-import com.tesora.dve.common.catalog.UserColumn;
-import com.tesora.dve.db.mysql.MariaDBNative;
+import com.tesora.dve.common.catalog.*;
 import com.tesora.dve.db.mysql.MysqlNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
@@ -41,9 +38,11 @@ import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.sql.schema.ForeignKeyAction;
 import com.tesora.dve.sql.schema.types.Type;
 import com.tesora.dve.variables.VariableStoreSource;
+import org.apache.log4j.Logger;
 
 public abstract class DBNative implements Serializable {
 	private static final long serialVersionUID = 1L;
+	private static final Logger logger = Logger.getLogger(MysqlNative.class);
 
 	public static final String DVE_SITENAME_VAR = "dve_sitename";
 
@@ -136,8 +135,10 @@ public abstract class DBNative implements Serializable {
 		this.resultHandler = resultHandler;
 	}
 
+	//TODO: Only used at bootstrap, should eventually get inverted/injected -sgossard.
 	public abstract NativeCharSetCatalog getSupportedCharSets();
 
+	//TODO: Only used at bootstrap, should eventually get inverted/injected -sgossard.
 	public abstract NativeCollationCatalog getSupportedCollations();
 
 	/**
@@ -229,18 +230,96 @@ public abstract class DBNative implements Serializable {
 	public static class DBNativeFactory {
 		public static DBNative newInstance(DBType dbType) throws PEException {
 			DBNative dbNative = null;
-
+			NativeCharSetCatalog nativeCharCat = getCharSetCatalog();
+			NativeCollationCatalog nativeColCat = getCollationCatalog();
 			switch (dbType) {
 			case MYSQL:
-				dbNative = new MysqlNative();
+				dbNative = new MysqlNative(nativeCharCat,nativeColCat, DBType.MYSQL);
 				break;
 			case MARIADB:
-				dbNative = new MariaDBNative();
+				dbNative = new MysqlNative(nativeCharCat,nativeColCat, DBType.MARIADB);
 				break;
 			default:
 				throw new PEException("Attempt to create new instance using invalid database type " + dbType);
 			}
 			return dbNative;
+		}
+	}
+
+	private static NativeCharSetCatalog getCharSetCatalog() {
+		try {
+			final NativeCharSetCatalog charSetCatalog = new NativeCharSetCatalogImpl();
+			if ( !CatalogDAO.CatalogDAOFactory.isSetup() )
+                throw new PEException("Cannot load character sets from the catalog as the catalog is not setup.");
+
+			CatalogDAO catalog = CatalogDAO.CatalogDAOFactory.newInstance();
+			try {
+                loadFromCatalog(catalog, charSetCatalog);
+            } finally {
+                catalog.close();
+            }
+			return charSetCatalog;
+		} catch (final PEException pe) {
+			// The PEException here just indicates that the catalog hasn't been started..
+			// will grab the default charsets in this case and eat the exception
+			return NativeCharSetCatalogImpl.getDefaultCharSetCatalog(DBType.MYSQL);
+		} catch (final Exception e) {
+			logger.error("Failed to load supported character sets from the catalog. Using default values instead.",e);
+			return NativeCharSetCatalogImpl.getDefaultCharSetCatalog(DBType.MYSQL);
+		}
+	}
+
+	public static void loadFromCatalog(CatalogDAO catalog, NativeCharSetCatalog ncsc) throws PEException {
+		List<CharacterSets> characterSets = catalog.findAllCharacterSets();
+		if (characterSets.size() > 0) {
+			for(CharacterSets cs : characterSets) {
+				ncsc.addCharSet(new MysqlNativeCharSet(cs.getId(), cs.getCharacterSetName(), cs.getDescription(), cs.getMaxlen(), Charset.forName(cs.getPeCharacterSetName())));
+			}
+		}
+	}
+
+	public static void saveToCatalog(CatalogDAO c, NativeCharSetCatalog ncsc) {
+		for (NativeCharSet ncs : ncsc.findAllNativeCharsets()) {
+			CharacterSets cs = new CharacterSets(ncs.getId(), ncs.getName(), ncs.getDescription(),
+					ncs.getMaxLen(), ncs.getJavaCharset().name());
+			c.persistToCatalog(cs);
+		}
+	}
+
+	private static NativeCollationCatalog getCollationCatalog() {
+		try {
+			final NativeCollationCatalog collationCatalog = new NativeCollationCatalogImpl();
+			loadCollationsFromCatalog(collationCatalog);
+			return collationCatalog;
+		} catch (final PEException pe) {
+			// The PEException here just indicates that the catalog hasn't been started..
+			// will grab the default collations in this case and eat the exception
+			return NativeCollationCatalogImpl.getDefaultCollationCatalog(DBType.MYSQL);
+		} catch (final Exception e) {
+			logger.error("Failed to load supported collations from the catalog. Using default values instead.",e);
+			return NativeCollationCatalogImpl.getDefaultCollationCatalog(DBType.MYSQL);
+		}
+	}
+
+	public static void loadCollationsFromCatalog(NativeCollationCatalog ncc) throws PEException {
+		if ( !CatalogDAO.CatalogDAOFactory.isSetup() )
+			throw new PEException("Cannot load collations from the catalog as the catalog is not setup.");
+
+		CatalogDAO catalog = CatalogDAO.CatalogDAOFactory.newInstance();
+		try {
+			List<Collations> collations = catalog.findAllCollations();
+			if (collations.size() > 0) {
+				for(Collations collation : collations) {
+					ncc.addCollation(new MysqlNativeCollation(collation.getName(),
+							collation.getCharacterSetName(),
+							collation.getCollationId(),
+							collation.getIsDefault(),
+							collation.getIsCompiled(),
+							collation.getSortlen()));
+				}
+			}
+		} finally {
+			catalog.close();
 		}
 	}
 

@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
+import com.tesora.dve.charset.MysqlNativeCharSet;
 import com.tesora.dve.db.mysql.MysqlPrepareStatementForwarder;
 import com.tesora.dve.db.mysql.MyPrepStmtConnectionContext;
 import com.tesora.dve.db.mysql.libmy.MyPreparedStatement;

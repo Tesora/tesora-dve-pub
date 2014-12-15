@@ -35,7 +35,7 @@ import java.util.concurrent.Callable;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
+import com.tesora.dve.charset.MysqlNativeCharSet;
 import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.DBMetadata;
 import com.tesora.dve.db.NativeType;

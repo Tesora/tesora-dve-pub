@@ -27,7 +27,7 @@ import com.tesora.dve.db.mysql.portal.protocol.MSPComInitDBRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPComQueryRequestMessage;
 import com.tesora.dve.db.mysql.portal.protocol.MSPMessage;
 import io.netty.channel.ChannelHandlerContext;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
+import com.tesora.dve.charset.MysqlNativeCharSet;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 

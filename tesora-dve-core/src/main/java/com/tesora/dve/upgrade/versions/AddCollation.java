@@ -28,7 +28,7 @@ import java.util.List;
 import org.apache.commons.lang.BooleanUtils;
 
 import com.tesora.dve.charset.NativeCollation;
-import com.tesora.dve.charset.mysql.MysqlNativeCollationCatalog;
+import com.tesora.dve.charset.MysqlNativeCollationCatalog;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.exceptions.PEException;

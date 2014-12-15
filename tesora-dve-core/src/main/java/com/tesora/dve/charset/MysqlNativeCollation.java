@@ -1,4 +1,4 @@
-package com.tesora.dve.charset.mysql;
+package com.tesora.dve.charset;
 
 /*
  * #%L
@@ -20,8 +20,6 @@ package com.tesora.dve.charset.mysql;
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  * #L%
  */
-
-import com.tesora.dve.charset.NativeCollation;
 
 public class MysqlNativeCollation extends NativeCollation {
 

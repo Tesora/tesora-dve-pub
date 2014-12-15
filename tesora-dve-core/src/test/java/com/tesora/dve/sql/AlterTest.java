@@ -29,14 +29,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import com.tesora.dve.charset.*;
 import org.apache.commons.lang.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.NativeCharSetCatalog;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.catalog.TemplateMode;
 import com.tesora.dve.db.mysql.MysqlNativeType;
@@ -47,7 +46,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.modifiers.TypeModifier;
 import com.tesora.dve.sql.schema.types.BasicType;
@@ -408,19 +406,19 @@ public class AlterTest extends SchemaTest {
 	
 	@Test
 	public void testPE1276() throws Throwable {
-        final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
+        final NativeCharSetCatalog supportedCharsets = Singletons.require(NativeCharSetCatalog.class);
 		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8");
 		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII");
 		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1");
 
 		executeAlterCharsetCollateTest("pe1276_charset", ascii.getName(), null);
-		executeAlterCharsetCollateTest("pe1276_collate", null, Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
-		executeAlterCharsetCollateTest("pe1276_both", latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
+		executeAlterCharsetCollateTest("pe1276_collate", null, Singletons.require(NativeCollationCatalog.class).findDefaultCollationForCharSet(latin1.getName()).getName());
+		executeAlterCharsetCollateTest("pe1276_both", latin1.getName(), Singletons.require(NativeCollationCatalog.class).findDefaultCollationForCharSet(latin1.getName()).getName());
 
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-				executeAlterCharsetCollateTest("pe1276_ex1", utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations().findDefaultCollationForCharSet(latin1.getName()).getName());
+				executeAlterCharsetCollateTest("pe1276_ex1", utf8.getName(), Singletons.require(NativeCollationCatalog.class).findDefaultCollationForCharSet(latin1.getName()).getName());
 			}
 		}.assertError(SchemaException.class, MySQLErrors.collationCharsetMismatchFormatter, "latin1_swedish_ci", "utf8");
 
@@ -470,23 +468,23 @@ public class AlterTest extends SchemaTest {
 
 	@Test
 	public void testPE1501() throws Throwable {
-		final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
+		final NativeCharSetCatalog supportedCharsets = Singletons.require(NativeCharSetCatalog.class);
 		final NativeCharSet utf8 = supportedCharsets.findCharSetByName("UTF8");
 		final NativeCharSet ascii = supportedCharsets.findCharSetByName("ASCII");
 		final NativeCharSet latin1 = supportedCharsets.findCharSetByName("LATIN1");
 
 		final String db = checkDDL.getDatabaseName();
 		executeAlterCharsetCollateTest(db, "pe1501_charset", ascii.getName(), null);
-		executeAlterCharsetCollateTest(db, "pe1501_collate", null, Singletons.require(HostService.class).getDBNative().getSupportedCollations()
+		executeAlterCharsetCollateTest(db, "pe1501_collate", null, Singletons.require(NativeCollationCatalog.class)
 				.findDefaultCollationForCharSet(latin1.getName()).getName());
-		executeAlterCharsetCollateTest(db, "pe1501_both", latin1.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations()
+		executeAlterCharsetCollateTest(db, "pe1501_both", latin1.getName(), Singletons.require(NativeCollationCatalog.class)
 				.findDefaultCollationForCharSet(latin1.getName()).getName());
 		executeAlterCharsetCollateTest(db, "pe1501_nothing", null, null);
 
 		new ExpectedSqlErrorTester() {
 			@Override
 			public void test() throws Throwable {
-				executeAlterCharsetCollateTest(db, "pe1501_ex1", utf8.getName(), Singletons.require(HostService.class).getDBNative().getSupportedCollations()
+				executeAlterCharsetCollateTest(db, "pe1501_ex1", utf8.getName(), Singletons.require(NativeCollationCatalog.class)
 						.findDefaultCollationForCharSet(latin1.getName()).getName());
 			}
 		}.assertError(SchemaException.class, MySQLErrors.collationCharsetMismatchFormatter, "latin1_swedish_ci", "utf8");

@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import com.tesora.dve.charset.NativeCharSetCatalogImpl;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 
@@ -403,8 +404,8 @@ public class CatalogHelper {
 
 		// load the default character sets
 		String driver = DBHelper.loadDriver(catalogProperties.getProperty(DBHelper.CONN_DRIVER_CLASS));
-		NativeCharSetCatalog csCatalog = NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.fromDriverClass(driver));
-		csCatalog.save(c);
+		NativeCharSetCatalog csCatalog = NativeCharSetCatalogImpl.getDefaultCharSetCatalog(DBType.fromDriverClass(driver));
+		DBNative.saveToCatalog(c, csCatalog);
 
 		// Create the engines
 		for (Engines engines : Engines.getDefaultEngines()) {

@@ -1,4 +1,4 @@
-package com.tesora.dve.charset.standalone;
+package com.tesora.dve.charset;
 
 /*
  * #%L
@@ -21,30 +21,16 @@ package com.tesora.dve.charset.standalone;
  * #L%
  */
 
-import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.exceptions.PEException;
-
-public class StandaloneMysqlNativeCharSetCatalog extends MysqlNativeCharSetCatalog {
-
-	private static final long serialVersionUID = 1L;
-
-	public StandaloneMysqlNativeCharSetCatalog() {
-		super();
-	}
+public class MysqlNativeCollationCatalog {
 	
-	@Override
-	public void load() throws PEException {
-		for (MysqlNativeCharSet mncs : MysqlNativeCharSet.supportedCharSets) {
-			addCharSet(mncs);
+	public static NativeCollationCatalog DEFAULT_CATALOG;
+	static {
+		DEFAULT_CATALOG = new NativeCollationCatalogImpl();
+		for(MysqlNativeCollation collation : MysqlNativeCollation.supportedCollations) {
+			DEFAULT_CATALOG.addCollation(collation);
 		}
-	}
+	};
 
-	@Override
-	public void save(CatalogDAO c) {
-		// do nothing as this implementation does not use the catalog
-	}
 
-	
+
 }

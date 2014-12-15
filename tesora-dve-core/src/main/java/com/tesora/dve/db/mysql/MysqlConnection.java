@@ -22,6 +22,7 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.charset.NativeCharSetCatalog;
+import com.tesora.dve.charset.NativeCharSetCatalogImpl;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.concurrent.CompletionHandle;
 import com.tesora.dve.concurrent.DelegatingCompletionHandle;
@@ -61,7 +62,6 @@ import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
 import com.tesora.dve.db.mysql.portal.protocol.MysqlClientAuthenticationHandler;
 import com.tesora.dve.db.mysql.portal.protocol.StreamValve;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.variables.KnownVariables;
@@ -167,7 +167,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
 		.handler(new ChannelInitializer<Channel>() {
 			@Override
 			protected void initChannel(Channel ch) throws Exception {
-				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL), targetCharset);
+				authHandler = new MysqlClientAuthenticationHandler(new UserCredentials(userid, password), clientCapabilities, NativeCharSetCatalogImpl.getDefaultCharSetCatalog(DBType.MYSQL), targetCharset);
 
                 if (PACKET_LOGGER)
                     ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
@@ -528,7 +528,7 @@ public class MysqlConnection implements DBConnection, DBConnection.Monitor, Comm
     }
 
 	public Charset lookupCurrentConnectionCharset() {
-		final NativeCharSetCatalog charSetcatalog = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
+		final NativeCharSetCatalog charSetcatalog = Singletons.require(NativeCharSetCatalog.class);
 		final String currentConnectionCharsetName = PEStringUtils.dequote(currentSessionVariables.get(KnownVariables.CHARACTER_SET_CLIENT.getName()));
 		if (currentConnectionCharsetName == null) {
 			return KnownVariables.CHARACTER_SET_CLIENT.getGlobalValue(null).getJavaCharset();

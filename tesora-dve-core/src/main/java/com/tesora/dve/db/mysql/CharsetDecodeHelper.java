@@ -22,7 +22,7 @@ package com.tesora.dve.db.mysql;
  */
 
 import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
+import com.tesora.dve.charset.MysqlNativeCharSetCatalog;
 import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;

@@ -1,4 +1,4 @@
-package com.tesora.dve.charset.mysql;
+package com.tesora.dve.charset;
 
 /*
  * #%L
@@ -22,8 +22,6 @@ package com.tesora.dve.charset.mysql;
  */
 
 import java.nio.charset.Charset;
-
-import com.tesora.dve.charset.NativeCharSet;
 
 public class MysqlNativeCharSet extends NativeCharSet {
 	

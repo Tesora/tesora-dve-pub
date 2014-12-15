@@ -26,7 +26,6 @@ import java.nio.charset.Charset;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
 public abstract class NativeCharSet implements Serializable {
@@ -87,7 +86,7 @@ public abstract class NativeCharSet implements Serializable {
 	}
 
 	public boolean isCompatibleWith(final String collation) {
-		final String charsetName = Singletons.require(HostService.class).getDBNative().getSupportedCharSets().findCharSetByCollation(collation)
+		final String charsetName = Singletons.require(NativeCharSetCatalog.class).findCharSetByCollation(collation)
 				.getName();
 		return StringUtils.equalsIgnoreCase(name, charsetName);
 	}

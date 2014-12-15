@@ -21,7 +21,7 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.charset.NativeCharSetCatalog;
+import com.tesora.dve.charset.NativeCharSetCatalogImpl;
 import com.tesora.dve.clock.*;
 import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.catalog.StorageSite;
@@ -111,7 +111,7 @@ public class MysqlCommandSenderHandler extends ChannelDuplexHandler {
     private Charset getServerCharset(ChannelHandlerContext ctx) {
         //TODO: can't this just be statically bound? Looking it up off the channel attributes feels dirty.-sgossard
 		if (serverCharset == null)
-			serverCharset = ctx.channel().attr(MysqlClientAuthenticationHandler.HANDSHAKE_KEY).get().getServerCharset( NativeCharSetCatalog.getDefaultCharSetCatalog(DBType.MYSQL) );
+			serverCharset = ctx.channel().attr(MysqlClientAuthenticationHandler.HANDSHAKE_KEY).get().getServerCharset( NativeCharSetCatalogImpl.getDefaultCharSetCatalog(DBType.MYSQL) );
 		return serverCharset;
 	}
 

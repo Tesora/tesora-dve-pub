@@ -22,7 +22,7 @@ package com.tesora.dve.db.mysql.portal;
  */
 
 import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
+import com.tesora.dve.charset.MysqlNativeCharSet;
 import com.tesora.dve.clock.*;
 import com.tesora.dve.common.PECharsetUtils;
 import com.tesora.dve.db.mysql.MysqlLoadDataInfileRequestCollector;

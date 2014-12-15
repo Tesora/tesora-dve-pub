@@ -25,7 +25,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
 
 import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
+import com.tesora.dve.charset.MysqlNativeCharSetCatalog;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.mysql.common.MysqlHandshake;
 import com.tesora.dve.db.mysql.libmy.MyErrorResponse;

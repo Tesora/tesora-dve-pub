@@ -26,7 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
-import com.tesora.dve.charset.mysql.MysqlNativeCollation;
+import com.tesora.dve.charset.MysqlNativeCollation;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.CatalogDAO;

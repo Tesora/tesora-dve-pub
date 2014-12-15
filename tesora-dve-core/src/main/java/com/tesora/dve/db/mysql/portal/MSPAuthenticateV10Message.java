@@ -27,7 +27,7 @@ import io.netty.util.CharsetUtil;
 import java.util.concurrent.ExecutorService;
 
 import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.mysql.MysqlNativeCharSetCatalog;
+import com.tesora.dve.charset.MysqlNativeCharSetCatalog;
 import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.mysql.libmy.MyErrorResponse;
 import com.tesora.dve.db.mysql.libmy.MyMessage;

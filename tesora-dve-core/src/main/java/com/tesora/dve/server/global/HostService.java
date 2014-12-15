@@ -72,8 +72,6 @@ public interface HostService {
 
     void setProject(Project p);
 
-    CharSetNative getCharSetNative();
-
     String getDefaultProjectName();
 
     List<Pair<String,String>> getStatusVariables(CatalogDAO c) throws PEException;

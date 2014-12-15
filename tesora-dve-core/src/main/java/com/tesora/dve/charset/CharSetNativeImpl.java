@@ -1,4 +1,4 @@
-package com.tesora.dve.db.mysql;
+package com.tesora.dve.charset;
 
 /*
  * #%L
@@ -21,29 +21,22 @@ package com.tesora.dve.db.mysql;
  * #L%
  */
 
-import com.tesora.dve.common.DBType;
-import com.tesora.dve.exceptions.PEException;
+import java.io.Serializable;
 
-public class MariaDBNative extends MysqlNative {
+public class CharSetNativeImpl implements Serializable, CharSetNative {
 
 	private static final long serialVersionUID = 1L;
 
-//	public class PEMariaDBDataSource extends MySQLDataSource implements PEDataSource {
-//
-//		@Override
-//		public void setEncoding(String encoding) {
-//		}
-//
-//		@Override
-//		public String getEncoding() {
-//			return null;
-//		}
-//
-//	}
-	
-	public MariaDBNative() throws PEException {
-		super();
-		setDbType(DBType.MARIADB);
+	private NativeCharSetCatalog charSetCatalog;
+
+	public CharSetNativeImpl(NativeCharSetCatalog charSetCatalog) {
+		this.charSetCatalog = charSetCatalog;
+	}
+
+
+	@Override
+	public NativeCharSetCatalog getCharSetCatalog() {
+		return charSetCatalog;
 	}
 
 }

@@ -36,7 +36,7 @@ import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
 
-import com.tesora.dve.charset.mysql.MysqlNativeCharSet;
+import com.tesora.dve.charset.MysqlNativeCharSet;
 import com.tesora.dve.db.mysql.libmy.MyEOFPktResponse;
 import com.tesora.dve.db.mysql.libmy.MyTextDataResponse;
 import com.tesora.dve.exceptions.PEException;

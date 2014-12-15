@@ -31,8 +31,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.NativeCharSetCatalog;
+import com.tesora.dve.charset.*;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.TemplateMode;
@@ -603,7 +602,7 @@ public class SchemaTest extends PETest {
 			return getDefaultCharSetAndCollationNames();
 		}
 
-		final NativeCharSetCatalog supportedCharsets = Singletons.require(HostService.class).getDBNative().getSupportedCharSets();
+		final NativeCharSetCatalog supportedCharsets = Singletons.require(NativeCharSetCatalog.class);
 		NativeCharSet expectedCharSet = null;
 		if (charSetName != null) {
 			expectedCharSet = supportedCharsets.findCharSetByName(charSetName);
@@ -620,7 +619,7 @@ public class SchemaTest extends PETest {
 			stmt.append(" COLLATE ").append(collationName);
 		} else {
 			if (expectedCharSet != null) {
-				expectedCollationName = Singletons.require(HostService.class).getDBNative().getSupportedCollations()
+				expectedCollationName = Singletons.require(NativeCollationCatalog.class)
 						.findDefaultCollationForCharSet(expectedCharSet.getName()).getName();
 			}
 		}
