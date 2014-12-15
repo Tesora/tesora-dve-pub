@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<template name="drupal7_commerce">
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_field_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_form_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_menu_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_path_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_cache_views_data_range (varchar) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_commerce_line_item_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_commerce_order_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_commerce_payment_transaction_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_data_commerce_customer_billing_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_data_commerce_customer_shipping_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_data_commerce_display_path_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_data_commerce_order_total_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_data_commerce_product_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_data_commerce_total_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_data_commerce_unit_price_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_data_message_commerce_line_item_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_data_message_commerce_order_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_customer_address_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_customer_billing_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_customer_shipping_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_discounts_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_display_path_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_line_items_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_order_total_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_product_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_total_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_commerce_unit_price_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_message_commerce_line_item_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_field_revision_message_commerce_order_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_message_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <requirement>
+        <declaration>CREATE RANGE IF NOT EXISTS drupal_users_range (int) PERSISTENT GROUP #sg#</declaration>
+    </requirement>
+    <tabletemplate match="actions" model="Broadcast"/>
+    <tabletemplate match="advanced_help_index" model="Broadcast"/>
+    <tabletemplate match="authmap" model="Broadcast"/>
+    <tabletemplate match="batch" model="Broadcast"/>
+    <tabletemplate match="block" model="Broadcast"/>
+    <tabletemplate match="block_current_search" model="Broadcast"/>
+    <tabletemplate match="block_custom" model="Broadcast"/>
+    <tabletemplate match="block_node_type" model="Broadcast"/>
+    <tabletemplate match="block_role" model="Broadcast"/>
+    <tabletemplate match="blocked_ips" model="Broadcast"/>
+    <tabletemplate match="cache" model="Broadcast"/>
+    <tabletemplate match="cache_block" model="Broadcast"/>
+    <tabletemplate match="cache_bootstrap" model="Broadcast"/>
+    <tabletemplate match="cache_commerce_shipping_rates" model="Random"/>
+    <tabletemplate match="cache_entity_message" model="Broadcast"/>
+    <tabletemplate match="cache_entity_message_type" model="Broadcast"/>
+    <tabletemplate match="cache_entity_message_type_category" model="Broadcast"/>
+    <tabletemplate match="cache_field" model="Range" range="drupal_cache_field_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_filter" model="Broadcast"/>
+    <tabletemplate match="cache_form" model="Range" range="drupal_cache_form_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_image" model="Broadcast"/>
+    <tabletemplate match="cache_libraries" model="Broadcast"/>
+    <tabletemplate match="cache_menu" model="Range" range="drupal_cache_menu_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_page" model="Broadcast"/>
+    <tabletemplate match="cache_path" model="Range" range="drupal_cache_path_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="cache_rules" model="Broadcast"/>
+    <tabletemplate match="cache_token" model="Broadcast"/>
+    <tabletemplate match="cache_update" model="Broadcast"/>
+    <tabletemplate match="cache_views" model="Broadcast"/>
+    <tabletemplate match="cache_views_data" model="Range" range="drupal_cache_views_data_range">
+        <column>cid</column>
+    </tabletemplate>
+    <tabletemplate match="comment" model="Broadcast"/>
+    <tabletemplate match="commerce_addressbook_defaults" model="Broadcast"/>
+    <tabletemplate match="commerce_autosku_patterns" model="Broadcast"/>
+    <tabletemplate match="commerce_calculated_price" model="Broadcast"/>
+    <tabletemplate match="commerce_checkout_pane" model="Broadcast"/>
+    <tabletemplate match="commerce_customer_profile" model="Broadcast"/>
+    <tabletemplate match="commerce_customer_profile_revision" model="Broadcast"/>
+    <tabletemplate match="commerce_discount" model="Broadcast"/>
+    <tabletemplate match="commerce_discount_offer" model="Broadcast"/>
+    <tabletemplate match="commerce_flat_rate_service" model="Broadcast"/>
+    <tabletemplate match="commerce_line_item" model="Range" range="drupal_commerce_line_item_range">
+        <column>line_item_id</column>
+    </tabletemplate>
+    <tabletemplate match="commerce_order" model="Range" range="drupal_commerce_order_range">
+        <column>revision_id</column>
+    </tabletemplate>
+    <tabletemplate match="commerce_order_revision" model="Range" range="drupal_commerce_order_range">
+        <column>revision_id</column>
+    </tabletemplate>
+    <tabletemplate match="commerce_payment_transaction" model="Range" range="drupal_commerce_payment_transaction_range">
+        <column>order_id</column>
+    </tabletemplate>
+    <tabletemplate match="commerce_payment_transaction_revision" model="Broadcast"/>
+    <tabletemplate match="commerce_paypal_ipn" model="Broadcast"/>
+    <tabletemplate match="commerce_product" model="Broadcast"/>
+    <tabletemplate match="commerce_product_revision" model="Broadcast"/>
+    <tabletemplate match="commerce_product_type" model="Broadcast"/>
+    <tabletemplate match="commerce_tax_rate" model="Broadcast"/>
+    <tabletemplate match="commerce_tax_type" model="Broadcast"/>
+    <tabletemplate match="connector_info" model="Broadcast"/>
+    <tabletemplate match="connector_user" model="Broadcast"/>
+    <tabletemplate match="countries_country" model="Broadcast"/>
+    <tabletemplate match="ctools_css_cache" model="Broadcast"/>
+    <tabletemplate match="ctools_object_cache" model="Broadcast"/>
+    <tabletemplate match="current_search" model="Broadcast"/>
+    <tabletemplate match="date_format_locale" model="Broadcast"/>
+    <tabletemplate match="date_format_type" model="Broadcast"/>
+    <tabletemplate match="date_formats" model="Broadcast"/>
+    <tabletemplate match="facetapi" model="Broadcast"/>
+    <tabletemplate match="feeds_importer" model="Broadcast"/>
+    <tabletemplate match="feeds_item" model="Broadcast"/>
+    <tabletemplate match="feeds_log" model="Broadcast"/>
+    <tabletemplate match="feeds_push_subscriptions" model="Broadcast"/>
+    <tabletemplate match="feeds_source" model="Broadcast"/>
+    <tabletemplate match="feeds_tamper" model="Broadcast"/>
+    <tabletemplate match="field_config" model="Broadcast"/>
+    <tabletemplate match="field_config_instance" model="Broadcast"/>
+    <tabletemplate match="field_data_body" model="Broadcast"/>
+    <tabletemplate match="field_data_comment_body" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_customer_address" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_customer_billing" model="Range" range="drupal_field_data_commerce_customer_billing_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_commerce_customer_shipping" model="Range" range="drupal_field_data_commerce_customer_shipping_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_commerce_discount_date" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_discount_offer" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_discounts" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_display_path" model="Range" range="drupal_field_data_commerce_display_path_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_commerce_fixed_amount" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_free_products" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_free_shipping" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_line_items" model="Range" range="drupal_commerce_line_item_range">
+        <column>commerce_line_items_line_item_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_commerce_order_total" model="Range" range="drupal_field_data_commerce_order_total_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_commerce_percentage" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_price" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_product" model="Range" range="drupal_field_data_commerce_product_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_commerce_shipping_service" model="Broadcast"/>
+    <tabletemplate match="field_data_commerce_total" model="Range" range="drupal_field_data_commerce_total_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_commerce_unit_price" model="Range" range="drupal_field_data_commerce_unit_price_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_field_bag_size" model="Broadcast"/>
+    <tabletemplate match="field_data_field_blog_category" model="Broadcast"/>
+    <tabletemplate match="field_data_field_brand" model="Broadcast"/>
+    <tabletemplate match="field_data_field_category" model="Broadcast"/>
+    <tabletemplate match="field_data_field_category_color" model="Broadcast"/>
+    <tabletemplate match="field_data_field_collection" model="Broadcast"/>
+    <tabletemplate match="field_data_field_color" model="Broadcast"/>
+    <tabletemplate match="field_data_field_gender" model="Broadcast"/>
+    <tabletemplate match="field_data_field_hat_size" model="Broadcast"/>
+    <tabletemplate match="field_data_field_headline" model="Broadcast"/>
+    <tabletemplate match="field_data_field_image" model="Broadcast"/>
+    <tabletemplate match="field_data_field_images" model="Broadcast"/>
+    <tabletemplate match="field_data_field_link" model="Broadcast"/>
+    <tabletemplate match="field_data_field_product" model="Broadcast"/>
+    <tabletemplate match="field_data_field_shoe_size" model="Broadcast"/>
+    <tabletemplate match="field_data_field_storage_capacity" model="Broadcast"/>
+    <tabletemplate match="field_data_field_tagline" model="Broadcast"/>
+    <tabletemplate match="field_data_field_tags" model="Broadcast"/>
+    <tabletemplate match="field_data_field_top_size" model="Broadcast"/>
+    <tabletemplate match="field_data_inline_conditions" model="Broadcast"/>
+    <tabletemplate match="field_data_message_commerce_body" model="Broadcast"/>
+    <tabletemplate match="field_data_message_commerce_line_item" model="Range" range="drupal_field_data_message_commerce_line_item_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_message_commerce_order" model="Range" range="drupal_field_data_message_commerce_order_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_data_message_commerce_payment" model="Broadcast"/>
+    <tabletemplate match="field_data_message_order_display_name" model="Broadcast"/>
+    <tabletemplate match="field_data_message_text" model="Broadcast"/>
+    <tabletemplate match="field_data_title_field" model="Broadcast"/>
+    <tabletemplate match="field_revision_body" model="Broadcast"/>
+    <tabletemplate match="field_revision_comment_body" model="Broadcast"/>
+    <tabletemplate match="field_revision_commerce_customer_address" model="Range" range="drupal_field_revision_commerce_customer_address_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_commerce_customer_billing" model="Range" range="drupal_field_revision_commerce_customer_billing_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_commerce_customer_shipping" model="Range" range="drupal_field_revision_commerce_customer_shipping_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_commerce_discount_date" model="Broadcast"/>
+    <tabletemplate match="field_revision_commerce_discount_offer" model="Broadcast"/>
+    <tabletemplate match="field_revision_commerce_discounts" model="Range" range="drupal_field_revision_commerce_discounts_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_commerce_display_path" model="Range" range="drupal_field_revision_commerce_display_path_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_commerce_fixed_amount" model="Broadcast"/>
+    <tabletemplate match="field_revision_commerce_free_products" model="Broadcast"/>
+    <tabletemplate match="field_revision_commerce_free_shipping" model="Broadcast"/>
+    <tabletemplate match="field_revision_commerce_line_items" model="Range" range="drupal_field_revision_commerce_line_items_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_commerce_order_total" model="Range" range="drupal_field_revision_commerce_order_total_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_commerce_percentage" model="Broadcast"/>
+    <tabletemplate match="field_revision_commerce_price" model="Broadcast"/>
+    <tabletemplate match="field_revision_commerce_product" model="Range" range="drupal_field_revision_commerce_product_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_commerce_shipping_service" model="Broadcast"/>
+    <tabletemplate match="field_revision_commerce_total" model="Range" range="drupal_field_revision_commerce_total_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_commerce_unit_price" model="Range" range="drupal_field_revision_commerce_unit_price_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_field_bag_size" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_blog_category" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_brand" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_category" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_category_color" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_collection" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_color" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_gender" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_hat_size" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_headline" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_image" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_images" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_link" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_product" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_shoe_size" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_storage_capacity" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_tagline" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_tags" model="Broadcast"/>
+    <tabletemplate match="field_revision_field_top_size" model="Broadcast"/>
+    <tabletemplate match="field_revision_inline_conditions" model="Broadcast"/>
+    <tabletemplate match="field_revision_message_commerce_body" model="Broadcast"/>
+    <tabletemplate match="field_revision_message_commerce_line_item" model="Range" range="drupal_field_revision_message_commerce_line_item_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_message_commerce_order" model="Range" range="drupal_field_revision_message_commerce_order_range">
+        <column>entity_id</column>
+    </tabletemplate>
+    <tabletemplate match="field_revision_message_commerce_payment" model="Broadcast"/>
+    <tabletemplate match="field_revision_message_order_display_name" model="Broadcast"/>
+    <tabletemplate match="field_revision_message_text" model="Broadcast"/>
+    <tabletemplate match="field_revision_title_field" model="Broadcast"/>
+    <tabletemplate match="file_managed" model="Broadcast"/>
+    <tabletemplate match="file_usage" model="Broadcast"/>
+    <tabletemplate match="filter" model="Broadcast"/>
+    <tabletemplate match="filter_format" model="Broadcast"/>
+    <tabletemplate match="flood" model="Broadcast"/>
+    <tabletemplate match="history" model="Broadcast"/>
+    <tabletemplate match="image_effects" model="Broadcast"/>
+    <tabletemplate match="image_styles" model="Broadcast"/>
+    <tabletemplate match="job_schedule" model="Broadcast"/>
+    <tabletemplate match="menu_custom" model="Broadcast"/>
+    <tabletemplate match="menu_links" model="Broadcast"/>
+    <tabletemplate match="menu_router" model="Broadcast"/>
+    <tabletemplate match="message" model="Range" range="drupal_message_range">
+        <column>mid</column>
+    </tabletemplate>
+    <tabletemplate match="message_type" model="Broadcast"/>
+    <tabletemplate match="message_type_category" model="Broadcast"/>
+    <tabletemplate match="migrate_log" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartadpush" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartbagscases" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartblogpost" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartcollection" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartdrinks" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstarthats" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartnodebags_cases" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartnodedrinks" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartnodehats" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartnodeshoes" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartnodestorage_devices" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartnodetops" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartpages" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartshoes" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartslideshow" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstartstorage" model="Broadcast"/>
+    <tabletemplate match="migrate_map_commercekickstarttops" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartadpush" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartbagscases" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartblogpost" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartcollection" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartdrinks" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstarthats" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartnodebags_cases" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartnodedrinks" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartnodehats" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartnodeshoes" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartnodestorage_devices" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartnodetops" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartpages" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartshoes" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartslideshow" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstartstorage" model="Broadcast"/>
+    <tabletemplate match="migrate_message_commercekickstarttops" model="Broadcast"/>
+    <tabletemplate match="migrate_status" model="Broadcast"/>
+    <tabletemplate match="node" model="Broadcast"/>
+    <tabletemplate match="node_access" model="Broadcast"/>
+    <tabletemplate match="node_comment_statistics" model="Broadcast"/>
+    <tabletemplate match="node_revision" model="Broadcast"/>
+    <tabletemplate match="node_type" model="Broadcast"/>
+    <tabletemplate match="oauth_common_consumer" model="Broadcast"/>
+    <tabletemplate match="oauth_common_context" model="Broadcast"/>
+    <tabletemplate match="oauth_common_nonce" model="Broadcast"/>
+    <tabletemplate match="oauth_common_provider_consumer" model="Broadcast"/>
+    <tabletemplate match="oauth_common_provider_token" model="Broadcast"/>
+    <tabletemplate match="oauth_common_token" model="Broadcast"/>
+    <tabletemplate match="oauthconnector_connections" model="Broadcast"/>
+    <tabletemplate match="oauthconnector_fields" model="Broadcast"/>
+    <tabletemplate match="oauthconnector_provider" model="Broadcast"/>
+    <tabletemplate match="queue" model="Broadcast"/>
+    <tabletemplate match="registry" model="Broadcast"/>
+    <tabletemplate match="registry_file" model="Broadcast"/>
+    <tabletemplate match="role" model="Broadcast"/>
+    <tabletemplate match="role_permission" model="Broadcast"/>
+    <tabletemplate match="rules_config" model="Broadcast"/>
+    <tabletemplate match="rules_dependencies" model="Broadcast"/>
+    <tabletemplate match="rules_tags" model="Broadcast"/>
+    <tabletemplate match="rules_trigger" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_changed" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_created" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_blog_category" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_blog_category_name" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_brand" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_brand_name" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_category" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_category_name" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_collection" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_collection_name" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_gender" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_gender_name" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_commerce_price_a_1" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_commerce_price_a_2" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_commerce_price_amo" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_bag_size" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_bag_size_nam" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_color" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_color_name" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_hat_size" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_hat_size_nam" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_shoe_size" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_shoe_size_na" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_storage_ca_1" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_storage_capa" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_top_size" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_product_field_top_size_nam" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_tags" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_field_tags_name" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_nid" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_search_api_aggregation_1" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_search_api_aggregation_2" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_search_api_aggregation_3" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_search_api_aggregation_4" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_search_api_aggregation_5" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_search_api_aggregation_6" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_search_api_aggregation_7" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_search_api_language" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_status" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_title_field" model="Broadcast"/>
+    <tabletemplate match="search_api_db_product_display_type" model="Broadcast"/>
+    <tabletemplate match="search_api_index" model="Broadcast"/>
+    <tabletemplate match="search_api_item" model="Broadcast"/>
+    <tabletemplate match="search_api_server" model="Broadcast"/>
+    <tabletemplate match="search_api_sort" model="Broadcast"/>
+    <tabletemplate match="semaphore" model="Broadcast"/>
+    <tabletemplate match="sequences" model="Broadcast"/>
+    <tabletemplate match="sessions" model="Broadcast"/>
+    <tabletemplate match="system" model="Broadcast"/>
+    <tabletemplate match="taxonomy_index" model="Broadcast"/>
+    <tabletemplate match="taxonomy_menu" model="Broadcast"/>
+    <tabletemplate match="taxonomy_term_data" model="Broadcast"/>
+    <tabletemplate match="taxonomy_term_hierarchy" model="Broadcast"/>
+    <tabletemplate match="taxonomy_vocabulary" model="Broadcast"/>
+    <tabletemplate match="url_alias" model="Broadcast"/>
+    <tabletemplate match="users" model="Range" range="drupal_users_range">
+        <column>uid</column>
+    </tabletemplate>
+    <tabletemplate match="users_roles" model="Broadcast"/>
+    <tabletemplate match="variable" model="Broadcast"/>
+    <tabletemplate match="views_display" model="Broadcast"/>
+    <tabletemplate match="views_view" model="Broadcast"/>
+    <tabletemplate match="vtab8" model="Broadcast"/>
+</template>

@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<template name="allbroadcast">
+	<tabletemplate match=".*" model="Broadcast" />
+</template>
