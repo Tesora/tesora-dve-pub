@@ -176,7 +176,7 @@ public class ClientTestNG extends PETest {
 			.withRequirement("create range if not exists block_range (int) persistent group #sg#")
 			.withRequirement("create range if not exists field_range (varchar,int) persistent group #sg#")
 			.toCreateStatement());
-		assertFalse(dbHelper.executeQuery("CREATE DATABASE d7test USING TEMPLATE drupal7 STRICT"));
+		assertFalse(dbHelper.executeQuery("CREATE DATABASE d7test USING TEMPLATE drupal7_commons STRICT"));
 		assertTrue(dbHelper.executeQuery("SHOW RANGES"));
 		assertEquals(2, countResultSetRows(dbHelper.getResultSet()));
 	}
