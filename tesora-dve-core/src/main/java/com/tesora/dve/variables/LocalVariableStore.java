@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
 public class LocalVariableStore extends AbstractVariableStore {
@@ -70,7 +69,7 @@ public class LocalVariableStore extends AbstractVariableStore {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public Map<String,String> getView() {
 		HashMap<String,String> out = new HashMap<String,String>();
-		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
 		for(VariableHandler vh : vm.getSessionHandlers()) {
 			// specifically those that are passthrough (only)
 			if (vh.getOptions().contains(VariableOption.PASSTHROUGH))

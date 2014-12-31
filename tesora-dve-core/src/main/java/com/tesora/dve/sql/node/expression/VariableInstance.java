@@ -22,7 +22,7 @@ package com.tesora.dve.sql.node.expression;
  */
 
 import com.tesora.dve.exceptions.PEMappedException;
-import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.variables.VariableService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
@@ -72,7 +72,7 @@ public class VariableInstance extends ExpressionNode {
 		if (getScope().getKind() == VariableScopeKind.USER)
 			return new UserVariableAccessor(variableName.get());
 		else try {
-			VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+			VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
 			return new VariableAccessor(vm.lookupMustExist(sc.getConnection().getVariableSource(),variableName.get()),
 					getScope());
 		} catch (PEMappedException pe) {

@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.variables.VariableService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
@@ -95,7 +95,7 @@ public interface SiteProviderPlugin {
 
 				providerMap.put(providerName, spp);
 
-                Singletons.require(HostService.class).addScopedConfig(providerName, spp.getVariableConfiguration());
+                Singletons.require(VariableService.class).addScopedConfig(providerName, spp.getVariableConfiguration());
 			} catch (Exception e) {
 				throw new PEException("Cannot instantiate SiteProvider '" + providerClass + "'", e);
 			}

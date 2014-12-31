@@ -29,7 +29,6 @@ import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.OnGlobalConfigChangeMessage;
 import com.tesora.dve.locking.ClusterLock;
 import com.tesora.dve.lockmanager.LockClient;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
 /*
@@ -125,7 +124,7 @@ public class ServerGlobalVariableStore extends AbstractVariableStore implements 
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public LocalVariableStore buildNewLocalStore() {
-		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
 		LocalVariableStore out = new LocalVariableStore();
 		for(VariableHandler vh : vm.getAllHandlers()) {
 			out.setInternal(vh, getReference(vh).get());

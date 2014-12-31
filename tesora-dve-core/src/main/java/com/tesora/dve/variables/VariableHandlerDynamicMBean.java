@@ -38,7 +38,6 @@ import javax.management.ReflectionException;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 
@@ -81,7 +80,7 @@ public class VariableHandlerDynamicMBean implements DynamicMBean {
 		SSConnectionProxy prox = null;
 		
 		try { 
-			prox = Singletons.require(HostService.class).getRootProxy();
+			prox = Singletons.require(RootProxyService.class).getRootProxy();
 			variable.setGlobalValue(prox.getConnection(),(String)value);
 		} catch (Throwable t) {
 			throw new InvalidAttributeValueException("Failed to set value on variable: " + attribute.getName() + " (" + t.getMessage() + ")");
@@ -122,7 +121,7 @@ public class VariableHandlerDynamicMBean implements DynamicMBean {
 
 		
 		try {
-			prox = Singletons.require(HostService.class).getRootProxy();
+			prox = Singletons.require(RootProxyService.class).getRootProxy();
 			for (Attribute attr : attrs) {
 				String name = attr.getName();
 				Object value = attr.getValue();

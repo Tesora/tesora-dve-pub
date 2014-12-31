@@ -27,7 +27,7 @@ import java.util.Map;
 
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PENotFoundException;
-import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.variables.VariableService;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.variables.VariableManager;
@@ -61,7 +61,7 @@ public class DefaultSetVariableBuilder implements SetVariableSQLBuilder {
         @Override
 	public SQLCommand generateSql(final Charset connectionCharset) throws PENotFoundException {
             String setStatement = null;
-            VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+            VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
             int clause = 0;
 
             for (Map.Entry<String,String> entry : entries.entrySet()) {

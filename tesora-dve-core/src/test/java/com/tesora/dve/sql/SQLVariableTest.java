@@ -32,6 +32,7 @@ import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.tesora.dve.variables.VariableService;
 import org.apache.commons.lang.StringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -719,7 +720,7 @@ public class SQLVariableTest extends SchemaTest {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	public void testGlobalPushdown() throws Throwable {
-		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
 		DBHelper helper = null;
 		
 		String execFormat = "set global %s = %s";
@@ -747,7 +748,7 @@ public class SQLVariableTest extends SchemaTest {
 	
 	@Test
 	public void testAccess() throws Throwable {
-		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
 		testAccess(vm.lookupMustExist(null,"tx_isolation"),new Values("REPEATABLE-READ","SERIALIZABLE","READ-COMMITTED"));
 		testAccess(vm.lookupMustExist(null,"adaptive_cleanup_interval"), new Values("1000","5000","10000"));
 		testAccess(vm.lookupMustExist(null,"cost_based_planning"),new Values("YES","NO"));

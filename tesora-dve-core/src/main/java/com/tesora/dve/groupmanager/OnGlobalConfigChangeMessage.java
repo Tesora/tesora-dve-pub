@@ -22,6 +22,7 @@ package com.tesora.dve.groupmanager;
  */
 
 import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.variables.VariableService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
@@ -51,10 +52,10 @@ public class OnGlobalConfigChangeMessage extends GroupMessage {
 	@Override
 	void execute(HostService hostService) {
 		try {
-			VariableHandler handler = Singletons.require(HostService.class).getVariableManager().lookup(variableName);
+			VariableHandler handler = Singletons.require(VariableService.class).getVariableManager().lookup(variableName);
 			if (handler == null) {
 				if (newVariable)
-					handler = Singletons.require(HostService.class).getVariableManager().postInitializationAddVariable(variableName);
+					handler = Singletons.require(VariableService.class).getVariableManager().postInitializationAddVariable(variableName);
 			}
 			if (handler == null) {
 				logger.error("OnGlobalConfigChangeMessage handler not found for variable '" + variableName + "'");

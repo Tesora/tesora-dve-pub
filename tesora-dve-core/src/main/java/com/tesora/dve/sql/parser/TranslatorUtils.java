@@ -34,6 +34,7 @@ import java.util.TreeMap;
 
 import com.tesora.dve.charset.*;
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.variables.VariableService;
 import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import org.antlr.runtime.Lexer;
 import org.antlr.runtime.Token;
@@ -73,7 +74,6 @@ import com.tesora.dve.queryplan.QueryStepGeneralOperation.AdhocOperation;
 import com.tesora.dve.resultset.ColumnInfo;
 import com.tesora.dve.resultset.ProjectionInfo;
 import com.tesora.dve.server.connectionmanager.UserXid;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.siteprovider.SiteProviderPlugin;
 import com.tesora.dve.siteprovider.SiteProviderPlugin.SiteProviderFactory;
@@ -2395,7 +2395,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 					 */
 					final String varName = n.getUnqualified().getUnquotedName().get();
 					final VariableHandler<?> exists =
-							Singletons.require(HostService.class).getVariableManager().lookup(varName);
+							Singletons.require(VariableService.class).getVariableManager().lookup(varName);
 					if (exists != null) {
 						if (exists.getScopes().contains(VariableScopeKind.SESSION)) {
 							kind = VariableScopeKind.SESSION;
@@ -2480,7 +2480,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		pc.getPolicyContext().checkRootPermission("create a new system variable");
 		String varName = newName.getUnqualified().getUnquotedName().get();
 		VariableHandler exists =
-				Singletons.require(HostService.class).getVariableManager().lookup(varName);
+				Singletons.require(VariableService.class).getVariableManager().lookup(varName);
 		if (exists != null)
 			throw new SchemaException(Pass.SECOND,"Variable " + newName + " already exists");
 		return AddGlobalVariableStatement.decode(pc, varName, options);

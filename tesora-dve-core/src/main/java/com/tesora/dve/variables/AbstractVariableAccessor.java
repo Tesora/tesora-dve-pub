@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.VariableScopeKind;
@@ -64,7 +63,7 @@ public abstract class AbstractVariableAccessor {
 		} else if (scope.getKind() == VariableScopeKind.SESSION 
 				|| scope.getKind() == VariableScopeKind.GLOBAL) {
 			HashMap<String,String> strings = new HashMap<String,String>();
-			VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+			VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
 			// there are some wierd rules here:
 			// if scope=global, only get global values
 			// if scope=session:
@@ -84,11 +83,11 @@ public abstract class AbstractVariableAccessor {
 			convert(strings,scope.getKind().name(),out);
 		} else if (scope.getKind() == VariableScopeKind.SCOPED) {
 			if (scope.getScopeName() == null || "".equals(scope.getScopeName())) {
-                for(String sn : Singletons.require(HostService.class).getScopedVariableScopeNames()) {
-                    convert(Singletons.require(HostService.class).getScopedVariables(sn), sn, out);
+                for(String sn : Singletons.require(VariableService.class).getScopedVariableScopeNames()) {
+                    convert(Singletons.require(VariableService.class).getScopedVariables(sn), sn, out);
 				}
 			} else {
-				convert(Singletons.require(HostService.class).getScopedVariables(scope.getScopeName()), scope.getScopeName(), out);
+				convert(Singletons.require(VariableService.class).getScopedVariables(scope.getScopeName()), scope.getScopeName(), out);
 			}
 		} else {
 			throw new PEException("Unknown scope kind: " + scope.getKind());

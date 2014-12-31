@@ -21,6 +21,7 @@ package com.tesora.dve.server.connectionmanager;
  * #L%
  */
 
+import com.tesora.dve.variables.VariableService;
 import io.netty.channel.Channel;
 
 import java.util.ArrayList;
@@ -1019,7 +1020,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 	}
 
 	public void setSessionVariable(String variableName, String value) throws PEException {
-		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
 
 		VariableHandler<?> vh = vm.lookupMustExist(this,variableName);
 		vh.setSessionValue(this, value);

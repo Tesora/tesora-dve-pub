@@ -25,8 +25,8 @@ package com.tesora.dve.queryplan;
 import com.tesora.dve.common.catalog.StorageGroup;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.variables.VariableService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.VariableScopeKind;
@@ -63,15 +63,15 @@ public class QueryStepSetScopedVariableOperation extends
 		SSConnection ssCon = estate.getConnection();
 		String nv = accessor.getValue(ssCon, wg);
 		if (VariableScopeKind.GLOBAL == scope.getKind()) {
-			Singletons.require(HostService.class).getVariableManager().lookupMustExist(ssCon,variableName).setGlobalValue(ssCon,nv);
+			Singletons.require(VariableService.class).getVariableManager().lookupMustExist(ssCon,variableName).setGlobalValue(ssCon,nv);
 		} else if (VariableScopeKind.SESSION == scope.getKind()) {
 			ssCon.setSessionVariable(variableName, nv);
 		} else if (VariableScopeKind.USER == scope.getKind()) {
 			ssCon.setUserVariable(variableName, nv);
 		} else if (VariableScopeKind.PERSISTENT == scope.getKind()) {
-			Singletons.require(HostService.class).getVariableManager().lookupMustExist(ssCon,variableName).setPersistentValue(ssCon, nv);
+			Singletons.require(VariableService.class).getVariableManager().lookupMustExist(ssCon,variableName).setPersistentValue(ssCon, nv);
 		} else {
-            Singletons.require(HostService.class).setScopedVariable(scope.getScopeName(), variableName, nv);
+            Singletons.require(VariableService.class).setScopedVariable(scope.getScopeName(), variableName, nv);
 		}
 	}
 

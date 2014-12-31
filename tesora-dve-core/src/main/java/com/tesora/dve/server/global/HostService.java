@@ -22,16 +22,8 @@ package com.tesora.dve.server.global;
  */
 
 import com.fasterxml.uuid.impl.TimeBasedGenerator;
-import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
-import com.tesora.dve.sql.infoschema.InformationSchema;
-import com.tesora.dve.sql.infoschema.InformationSchemaService;
-import com.tesora.dve.sql.infoschema.InformationSchemas;
-import com.tesora.dve.variables.ScopedVariables;
-import com.tesora.dve.variables.VariableManager;
+import com.tesora.dve.variables.VariableService;
 
-import java.util.Collection;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -72,14 +64,6 @@ public interface HostService {
 
     int getPortalPort(Properties props);
 
-    Collection<String> getScopedVariableScopeNames();
-
-    Map<String, String> getScopedVariables(String scopeName) throws PEException;
-
-    void setScopedVariable(String scopeName, String variableName, String value) throws PEException;
-
-    void addScopedConfig(String scopeName, ScopedVariables config);
-
     long getDBConnectionTimeout();
 
     TimeBasedGenerator getUuidGenerator();
@@ -97,8 +81,5 @@ public interface HostService {
     void execute(String name, Runnable task);
 
     void onGarbageEvent();
-    
-    VariableManager getVariableManager();
-    
-    SSConnectionProxy getRootProxy() throws PEException;
+
 }

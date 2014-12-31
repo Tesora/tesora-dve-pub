@@ -28,6 +28,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.SQLException;
 
+import com.tesora.dve.variables.VariableService;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
@@ -125,7 +126,7 @@ public class VariableTest extends PETest {
 
 	@Test(expected = PEMappedException.class)
 	public void globalVariableNotExistsTest() throws PEException {
-		Singletons.require(HostService.class).getVariableManager().lookupMustExist(null,"no-such-variable");
+		Singletons.require(VariableService.class).getVariableManager().lookupMustExist(null,"no-such-variable");
 	}
 
 	@Test
@@ -323,7 +324,7 @@ public class VariableTest extends PETest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void setGroupConcatMaxLen() throws Throwable {
-		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
 		VariableHandler<Long> var = (VariableHandler<Long>) vm.lookupMustExist(null,"group_concat_max_len"); 
 		assertEquals(new Long(1024), var.getSessionValue(ssConnection));
 		var.setSessionValue(ssConnection, "5");

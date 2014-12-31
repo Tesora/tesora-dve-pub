@@ -35,7 +35,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepFilterOperation.OperationFilter;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.variables.VariableService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
@@ -109,7 +109,7 @@ public class SessionSetVariableStatement extends SessionStatement implements Cac
 		List<SetExpression> sets = new ArrayList<SetExpression>(exprs);
 		exprs.clear();
 		
-		VariableManager vm = Singletons.require(HostService.class).getVariableManager();
+		VariableManager vm = Singletons.require(VariableService.class).getVariableManager();
 		
 		for(SetExpression se : sets) {
 			if (se.getKind() == SetExpression.Kind.TRANSACTION_ISOLATION) {

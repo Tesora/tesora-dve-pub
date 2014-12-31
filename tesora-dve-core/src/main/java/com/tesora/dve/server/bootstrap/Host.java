@@ -44,6 +44,7 @@ import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.db.mysql.portal.StatusVariableService;
+import com.tesora.dve.variables.*;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import org.apache.log4j.Logger;
@@ -72,13 +73,8 @@ import com.tesora.dve.upgrade.CatalogVersions;
 import com.tesora.dve.variable.status.StatusVariableHandler;
 import com.tesora.dve.variable.status.StatusVariableHandlerDynamicMBean;
 import com.tesora.dve.variable.status.StatusVariables;
-import com.tesora.dve.variables.ScopedVariableHandler;
-import com.tesora.dve.variables.ScopedVariables;
-import com.tesora.dve.variables.ServerGlobalVariableStore;
-import com.tesora.dve.variables.VariableHandlerDynamicMBean;
-import com.tesora.dve.variables.VariableManager;
 
-public class Host implements HostService, StatusVariableService {
+public class Host implements HostService, StatusVariableService, RootProxyService, VariableService {
     protected static Logger logger = Logger.getLogger(Host.class);
 
 	private static final String MBEAN_GLOBAL_CONFIG = "com.tesora.dve:name=ConfigVariables";
@@ -183,6 +179,9 @@ public class Host implements HostService, StatusVariableService {
         registerTimingService();
         Singletons.replace(HostService.class, singleton);
 		Singletons.replace(StatusVariableService.class,singleton);
+		Singletons.replace(RootProxyService.class,singleton);
+		Singletons.replace(VariableService.class,singleton);
+
         if (this instanceof BootstrapHost){
             //dirty, but works around issue where initializers were accessing Bootstrap singleton before this constructor exited and bootstrap constructor had time to register sub-interface. -sgossard
             Singletons.replace(BootstrapHostService.class, (BootstrapHost)singleton);
@@ -310,6 +309,8 @@ public class Host implements HostService, StatusVariableService {
 		singleton = this;
         Singletons.replace(HostService.class, singleton);
 		Singletons.replace(StatusVariableService.class,singleton);
+		Singletons.replace(RootProxyService.class,singleton);
+		Singletons.replace(VariableService.class,singleton);
 	}
 
     public void registerTimingService() {

@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.variables.VariableService;
 import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import org.antlr.runtime.TokenStream;
 
@@ -898,7 +899,7 @@ public class SchemaContext {
 		
 		public NullConnectionContext(CatalogDAO c) {
 			dao = c;
-			Singletons.require(HostService.class).getVariableManager().initialiseTransient(globalVariables);
+			Singletons.require(VariableService.class).getVariableManager().initialiseTransient(globalVariables);
 			sessionVariables = globalVariables.buildNewLocalStore();
 		}
 		
