@@ -24,6 +24,7 @@ package com.tesora.dve.queryplan;
 import java.nio.charset.Charset;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.NoopConsumer;
 import com.tesora.dve.db.mysql.RedistTupleBuilder;
 import com.tesora.dve.server.global.HostService;
@@ -531,12 +532,12 @@ public class QueryStepMultiTupleRedistOperation extends QueryStepDMLOperation {
 		StringBuffer query = new StringBuffer("insert ");
 				if (ignore) query.append(" ignore ");
         query.append("into ")
-				.append(Singletons.require(HostService.class).getDBNative().getNameForQuery(targetTable))
+				.append(Singletons.require(DBNative.class).getNameForQuery(targetTable))
 				.append('(')
-				.append(Singletons.require(HostService.class).getDBNative().getNameForQuery(targetTableColumns.getColumn(1)));
+				.append(Singletons.require(DBNative.class).getNameForQuery(targetTableColumns.getColumn(1)));
 		StringBuffer tuplesString = new StringBuffer("(?");
 		for (int i = 1; i < targetTableColumns.size(); ++i) {
-            query.append(", ").append(Singletons.require(HostService.class).getDBNative().getNameForQuery(targetTableColumns.getColumn(i + 1)));
+            query.append(", ").append(Singletons.require(DBNative.class).getNameForQuery(targetTableColumns.getColumn(i + 1)));
 			tuplesString.append(",?");
 		}
 		tuplesString.append(')');

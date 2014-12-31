@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnMetadata;
 import com.tesora.dve.resultset.ColumnSet;
@@ -156,15 +157,15 @@ public class DirectShowCreateTable extends DirectShowSchemaTable {
 					KnownVariables.OMIT_DIST_COMMENTS.getValue(sc.getConnection().getVariableSource()).booleanValue();
 			
 			if (tschema.isTable())
-                buf.append(Singletons.require(HostService.class).getDBNative().getEmitter().emitExternalCreateTableStatement(sc,sc.getValues(),tschema.asTable(),omitDistVect));
+                buf.append(Singletons.require(DBNative.class).getEmitter().emitExternalCreateTableStatement(sc,sc.getValues(),tschema.asTable(),omitDistVect));
 			else {
 				buf.append("CREATE ");
-                Singletons.require(HostService.class).getDBNative().getEmitter().emitViewDeclaration(sc, sc.getValues(), tschema.asView().getView(sc), null, buf);
+                Singletons.require(DBNative.class).getEmitter().emitViewDeclaration(sc, sc.getValues(), tschema.asView().getView(sc), null, buf);
 			}
 				
 			ColumnSet cs = new ColumnSet();
 			try {
-                String varcharTypeName = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(java.sql.Types.VARCHAR, true).getTypeName();
+                String varcharTypeName = Singletons.require(DBNative.class).getTypeCatalog().findType(java.sql.Types.VARCHAR, true).getTypeName();
 				cs.addColumn(buildColumnMetadata(tschema.isTable() ? "Table" : "View",255,varcharTypeName, java.sql.Types.VARCHAR));
 				cs.addColumn(buildColumnMetadata(tschema.isTable() ? "Create Table" : "Create View",255,varcharTypeName, java.sql.Types.VARCHAR));
 				if (tschema.isView()) {

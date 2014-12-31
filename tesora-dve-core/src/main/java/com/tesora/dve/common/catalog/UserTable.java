@@ -47,6 +47,7 @@ import javax.persistence.OneToOne;
 import javax.persistence.OrderBy;
 import javax.persistence.Table;
 
+import com.tesora.dve.db.DBNative;
 import org.hibernate.annotations.ForeignKey;
 
 import com.tesora.dve.common.PEConstants;
@@ -252,7 +253,7 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	}
 	
 	public String getNameAsIdentifier() {
-        return Singletons.require(HostService.class).getDBNative().getNameForQuery(this);
+        return Singletons.require(DBNative.class).getNameForQuery(this);
 	}
 
 	public void setName(String n) {
@@ -267,11 +268,11 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 			if (useSystemTemp)
 				createSql.append("TEMPORARY ");
             createSql.append("TABLE ")
-					.append(Singletons.require(HostService.class).getDBNative().getNameForQuery(this))
+					.append(Singletons.require(DBNative.class).getNameForQuery(this))
 					.append(" (")
-					.append(Singletons.require(HostService.class).getDBNative().getColumnDefForQuery(getUserColumns().get(0)));
+					.append(Singletons.require(DBNative.class).getColumnDefForQuery(getUserColumns().get(0)));
 			for (int i = 1; i < getUserColumns().size(); ++i) {
-                createSql.append(",").append(Singletons.require(HostService.class).getDBNative().getColumnDefForQuery(getUserColumns().get(i)));
+                createSql.append(",").append(Singletons.require(DBNative.class).getColumnDefForQuery(getUserColumns().get(i)));
 			}
 			if (tempTable) {
 				for(Key k : keys) {
@@ -310,7 +311,7 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	
 	public static SQLCommand getDropTableStmt(final VariableStoreSource vs, String tableName, boolean ifExists) {
 		return new SQLCommand(vs, "DROP TABLE " + (ifExists ? "IF EXISTS " : "")
-				+ Singletons.require(HostService.class).getDBNative().quoteIdentifier(tableName));
+				+ Singletons.require(DBNative.class).quoteIdentifier(tableName));
 	}
 
 	public void addUserColumn(UserColumn uc) {
@@ -731,7 +732,7 @@ public class UserTable implements CatalogEntity, HasAutoIncrementTracker, NamedC
 	}
 	
 	public SQLCommand getTruncateStatement(final VariableStoreSource vs) {
-		return new SQLCommand(vs, "TRUNCATE " + Singletons.require(HostService.class).getDBNative().getNameForQuery(this));
+		return new SQLCommand(vs, "TRUNCATE " + Singletons.require(DBNative.class).getNameForQuery(this));
 	}
 
 	public UserView getView() {

@@ -59,7 +59,7 @@ public final class CharsetCollationModifierBuilder {
 	 */
 	private static Pair<String, String> buildCharsetCollationNamePair(final String charsetName, final String collationName,
 			final NativeCharSetCatalog availableCharsets, final NativeCollationCatalog availableCollations) {
-	    final DBNative db = Singletons.require(HostService.class).getDBNative();
+	    final DBNative db = Singletons.require(DBNative.class);
 		if ((charsetName == null) && (collationName == null)) { // Use server defaults.
 			final String defaultCharSet = db.getDefaultServerCharacterSet();
 			final String defaultCollation = db.getDefaultServerCollation();

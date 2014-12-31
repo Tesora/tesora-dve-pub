@@ -667,7 +667,7 @@ public class GenericSQLCommand {
 			return this;
 		}
 
-		final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+		final Emitter emitter = Singletons.require(DBNative.class).getEmitter();
 		
 		final FragmentTable resolvedFragments = new FragmentTable(this.commandFragments);
 		for (final OffsetEntry oe : resolvedFragments.viewIndexEntries()) {

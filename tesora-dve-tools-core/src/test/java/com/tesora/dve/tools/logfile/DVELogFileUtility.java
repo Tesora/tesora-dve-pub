@@ -22,6 +22,7 @@ package com.tesora.dve.tools.logfile;
  */
 
 
+import com.tesora.dve.db.DBNative;
 import io.netty.util.CharsetUtil;
 
 import java.io.BufferedReader;
@@ -173,7 +174,7 @@ public class DVELogFileUtility {
 			if (pe) {
 				FileParser.convertPELog(fis, fos, force);
 			} else {
-				final NativeTypeCatalog types = Singletons.require(HostService.class).getDBNative().getTypeCatalog();
+				final NativeTypeCatalog types = Singletons.require(DBNative.class).getTypeCatalog();
 				ConvertingParserInvoker withContext = new ConvertingParserInvoker(fos,force) {
 					@Override
 					public SchemaContext buildContext() {

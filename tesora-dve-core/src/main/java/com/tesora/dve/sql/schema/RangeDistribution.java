@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringUtils;
@@ -157,7 +158,7 @@ public class RangeDistribution extends Persistable<RangeDistribution, Distributi
 			Type t = titer.next();
 			if (!t.isAcceptableColumnTypeForRangeType(c.getType())) {
 				StringBuilder buf = new StringBuilder();
-                Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+                Emitter emitter = Singletons.require(DBNative.class).getEmitter();
 				buf.append("Column ");
 				emitter.emitDeclaration(sc,sc.getValues(), c, buf);
 				buf.append(" cannot be used with range ").append(getName().getSQL()).append(", incompatible type: ");

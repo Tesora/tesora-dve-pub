@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.StringUtils;
@@ -100,8 +101,8 @@ public class AliasInformation {
 		Name prefix = inprefix;
 		if (inprefix == null) prefix = new UnqualifiedName("");
 		UnqualifiedName un = prefix.getUnqualified();
-        if ( un.get().length() >= Singletons.require(HostService.class).getDBNative().getMaxAliasNameLen()) {
-            int maxLenLessSuffix = Singletons.require(HostService.class).getDBNative().getMaxAliasNameLen() - 4;
+        if ( un.get().length() >= Singletons.require(DBNative.class).getMaxAliasNameLen()) {
+            int maxLenLessSuffix = Singletons.require(DBNative.class).getMaxAliasNameLen() - 4;
 			un = shortenAlias(un.get(), maxLenLessSuffix);
 		}
 		if (addAlias(un.get()))

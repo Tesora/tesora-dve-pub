@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import com.tesora.dve.charset.*;
+import com.tesora.dve.db.DBNative;
 import org.antlr.runtime.Lexer;
 import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.CommonTree;
@@ -1444,7 +1445,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			throw new SchemaException(Pass.SECOND, "Persistent site "
 					+ persistentSiteName.getSQL() + " already exists.");
 		// the jdbcURL probably still has the quotes on - have to strip those
-        String stripped = Singletons.require(HostService.class).getDBNative().getValueConverter().convertStringLiteral(url);
+        String stripped = Singletons.require(DBNative.class).getValueConverter().convertStringLiteral(url);
 		// convert it into the other format
 		List<Pair<Name,LiteralExpression>> opts = new ArrayList<Pair<Name,LiteralExpression>>();
 		opts.add(buildConfigOption(new UnqualifiedName("URL"),LiteralExpression.makeStringLiteral(stripped)));
@@ -1716,7 +1717,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public TypeModifier buildComparisonModifier(String className) {
-        String stripped = Singletons.require(HostService.class).getDBNative().getValueConverter()
+        String stripped = Singletons.require(DBNative.class).getValueConverter()
 				.convertStringLiteral(className);
 		return new StringTypeModifier(TypeModifierKind.COMPARISON, stripped);
 	}
@@ -2523,7 +2524,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public TableModifier buildCommentTableModifier(final Name tableName, final String s) throws SchemaException {
-		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableCommentLength();
+		final long maxAllowedLength = Singletons.require(DBNative.class).getMaxTableCommentLength();
 		if (s.length() > maxAllowedLength) {
 			throw new SchemaException(new ErrorInfo(AvailableErrors.TOO_LONG_TABLE_COMMENT, tableName.getUnqualified().getUnquotedName().get(), maxAllowedLength));
 		}
@@ -2532,7 +2533,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	}
 	
 	public Comment buildTableFieldComment(final Name fieldName, final String s) throws SchemaException {
-		final long maxAllowedLength = Singletons.require(HostService.class).getDBNative().getMaxTableFieldCommentLength();
+		final long maxAllowedLength = Singletons.require(DBNative.class).getMaxTableFieldCommentLength();
 		if (s.length() > maxAllowedLength) {
 			throw new SchemaException(new ErrorInfo(AvailableErrors.TOO_LONG_TABLE_FIELD_COMMENT, fieldName.getUnquotedName().get(), maxAllowedLength));
 		}
@@ -3269,7 +3270,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		Name rhs = transcodingName;
 		if (castToType != null) {
 			StringBuilder buf = new StringBuilder();
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitConvertTypeDeclaration(castToType, buf);
+            Singletons.require(DBNative.class).getEmitter().emitConvertTypeDeclaration(castToType, buf);
 			rhs = new UnqualifiedName(buf.toString());
 		}
 		return new ConvertFunctionCall(toConvert,rhs,(transcodingName != null));

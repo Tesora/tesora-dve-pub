@@ -24,6 +24,7 @@ package com.tesora.dve.db.mysql.libmy;
 import java.sql.Types;
 
 import com.tesora.dve.common.catalog.UserColumn;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MyFieldType;
 import com.tesora.dve.db.mysql.MysqlNativeConstants;
 import com.tesora.dve.db.mysql.MysqlNativeType;
@@ -170,7 +171,7 @@ public class TestColumnDef {
 	public long getMaxLen(int charSetLen) {
 		MysqlNativeType colNativeType;
 		try {
-            colNativeType = (MysqlNativeType) Singletons.require(HostService.class).getDBNative().findType(getNativeType());
+            colNativeType = (MysqlNativeType) Singletons.require(DBNative.class).findType(getNativeType());
 			if (colNativeType.isStringType()) {
 				return maxLen * charSetLen;
 			}

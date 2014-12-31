@@ -27,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.expression.TableKey;
@@ -181,7 +182,7 @@ public class StatementAnalysis<T extends DMLStatement> {
 				final Name qname = pec.getName().postfix(pec.getTable().getName());
 				final StringBuilder buf = new StringBuilder();
 				if (pec instanceof PEColumn) {
-					Singletons.require(HostService.class).getDBNative().getEmitter().emitDeclaration(((PEColumn) pec).getType(), (PEColumn) pec, buf, false);
+					Singletons.require(DBNative.class).getEmitter().emitDeclaration(((PEColumn) pec).getType(), (PEColumn) pec, buf, false);
 				}
 				lines.add(indent + "   " + qname.getSQL() + " " + buf.toString());
 			}

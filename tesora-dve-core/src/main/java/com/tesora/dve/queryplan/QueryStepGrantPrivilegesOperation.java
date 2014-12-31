@@ -21,6 +21,7 @@ package com.tesora.dve.queryplan;
  * #L%
  */
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
@@ -65,7 +66,7 @@ public class QueryStepGrantPrivilegesOperation extends QueryStepOperation {
 		
 		if (estate.hasActiveTransaction())
             throw new PEException("Cannot execute DDL within active transaction: GRANT PRIVILEDGES ON " + database.getName() + ".* TO " +
-                    Singletons.require(HostService.class).getDBNative().getUserDeclaration(user, false));
+                    Singletons.require(DBNative.class).getUserDeclaration(user, false));
 		
 		CatalogDAO c = estate.getCatalogDAO();
 		c.begin();
@@ -83,7 +84,7 @@ public class QueryStepGrantPrivilegesOperation extends QueryStepOperation {
 			// registered to back out the DDL we are about to execute in the 
 			// event of a failure after the DDL is executed but before the txn is committed.
 
-            WorkerRequest req = new WorkerGrantPrivilegesRequest(estate.getNonTransactionalContext(), database.getName(), Singletons.require(HostService.class).getDBNative().getUserDeclaration(user, true));
+            WorkerRequest req = new WorkerGrantPrivilegesRequest(estate.getNonTransactionalContext(), database.getName(), Singletons.require(DBNative.class).getUserDeclaration(user, true));
 			wg.execute(MappingSolution.AllWorkers, req, resultConsumer);
 			
 			c.commit();

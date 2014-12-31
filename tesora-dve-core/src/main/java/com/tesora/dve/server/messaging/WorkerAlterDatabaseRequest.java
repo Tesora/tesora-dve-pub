@@ -21,6 +21,7 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
+import com.tesora.dve.db.DBNative;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.UserDatabase;
@@ -55,7 +56,7 @@ public class WorkerAlterDatabaseRequest extends WorkerRequest {
 		final String defaultCharSet = alteredDatabase.getDefaultCharacterSetName();
 		final String defaultCollation = alteredDatabase.getDefaultCollationName();
 
-		final SQLCommand ddl = Singletons.require(HostService.class).getDBNative()
+		final SQLCommand ddl = Singletons.require(DBNative.class)
 				.getAlterDatabaseStmt(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), onSiteName, defaultCharSet, defaultCollation);
         this.execute(w,ddl,promise);		
 	}

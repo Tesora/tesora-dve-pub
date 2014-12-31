@@ -22,6 +22,7 @@ package com.tesora.dve.sql.node.expression;
  */
 
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -55,7 +56,7 @@ public class Parameter extends ConstantExpression implements IParameter {
 	
 	@Override
 	public Object convert(ConnectionValues cv, Type type) {
-        return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(getValue(cv), type);
+        return Singletons.require(DBNative.class).getValueConverter().convert(getValue(cv), type);
 	}
 	
 	@Override

@@ -24,6 +24,7 @@ package com.tesora.dve.externalservice;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
@@ -62,7 +63,7 @@ public class ExternalServiceContextImpl implements ExternalServiceContext {
 			externalService = null;
 			try {
 				c = CatalogDAOFactory.newInstance();
-                HostService hostSvc = Singletons.require(HostService.class);
+				DBNative dbNat = Singletons.require(DBNative.class);
 				if (c.findDatabase(getExternalService().getDataStoreName(), false) == null) {
 					// see if we already have an allRandom template, and if so, don't bother creating it
 					if (!hasAllRandom(getServerDBConnection()))
@@ -71,8 +72,8 @@ public class ExternalServiceContextImpl implements ExternalServiceContext {
 							String.format("create database %s default persistent group %s using template allRandom default character set = %s default collate = %s",
 									getExternalService().getDataStoreName(),
 									PEConstants.SYSTEM_GROUP_NAME,
-									hostSvc.getDBNative().getDefaultServerCharacterSet(),
-                                    hostSvc.getDBNative().getDefaultServerCollation()));
+									dbNat.getDefaultServerCharacterSet(),
+									dbNat.getDefaultServerCollation()));
 				}
 
 			} catch (Throwable e) {

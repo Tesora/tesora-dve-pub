@@ -245,7 +245,7 @@ public class SSConnection extends Agent implements WorkerGroup.Manager, LockClie
 		connectionCount.nonBlockingAcquire();
         currentConnId = GroupManager.getCoordinationServices().registerConnection(Singletons.require(HostService.class).getHostName() + "." + getName());
 		PerHostConnectionManager.INSTANCE.registerConnection(currentConnId, this);
-        dbNative = Singletons.require(HostService.class).getDBNative();
+        dbNative = Singletons.require(DBNative.class);
 		connHandshake = new SSConnectionHandshake(currentConnId);
 		schemaContext = SchemaContext.createContext(this);
 		

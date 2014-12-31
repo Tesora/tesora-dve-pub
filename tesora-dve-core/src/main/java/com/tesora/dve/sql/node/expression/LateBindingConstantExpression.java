@@ -21,6 +21,7 @@ package com.tesora.dve.sql.node.expression;
  * #L%
  */
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.LanguageNode;
@@ -73,7 +74,7 @@ public class LateBindingConstantExpression extends ConstantExpression {
 	public Object convert(ConnectionValues cv, Type type) {
 		Object val = getValue(cv);
 		if (val == null) return null;
-        return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(val, type);
+        return Singletons.require(DBNative.class).getValueConverter().convert(val, type);
 	}
 
 	@Override

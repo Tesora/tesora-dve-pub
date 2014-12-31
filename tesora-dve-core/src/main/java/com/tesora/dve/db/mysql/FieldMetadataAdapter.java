@@ -23,6 +23,7 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.MysqlNativeCharSetCatalog;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.db.mysql.libmy.MyFieldPktResponse;
 import com.tesora.dve.exceptions.PECodingException;
@@ -120,7 +121,7 @@ public class FieldMetadataAdapter {
         MyFieldType fieldType = columnDefPacket.getColumn_type();
         MysqlNativeType mnt;
         try {
-            mnt = ((MysqlNative) Singletons.require(HostService.class).getDBNative()).getNativeTypeFromMyFieldType(fieldType, flags, maxDataLen);
+            mnt = ((MysqlNative) Singletons.require(DBNative.class)).getNativeTypeFromMyFieldType(fieldType, flags, maxDataLen);
         } catch (PEException e) {
             throw new PECodingException("Couldn't lookup native type", e);
         }

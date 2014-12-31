@@ -232,7 +232,7 @@ public class BasicType implements Type {
 	@Override
 	public String getName() {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitDeclaration(this, null, buf, false);
+        Singletons.require(DBNative.class).getEmitter().emitDeclaration(this, null, buf, false);
 		return buf.toString();
 	}
 	
@@ -529,15 +529,15 @@ public class BasicType implements Type {
 	public static Type buildFromLiteralExpression(SchemaContext sc, LiteralExpression literal) throws PEException {
 		if (literal.isNumericLiteral()) {
 			if (literal.isFloatLiteral()) {
-                NativeType nt = Singletons.require(HostService.class).getDBNative().findType("DECIMAL");
+                NativeType nt = Singletons.require(DBNative.class).findType("DECIMAL");
 				return BasicType.buildType(nt, 0, (int)nt.getPrecision(), nt.getMaximumScale(), Collections.EMPTY_LIST);
 			}
 			// assume integer
-            return BasicType.buildType(java.sql.Types.BIGINT, 21, Singletons.require(HostService.class).getDBNative());
+            return BasicType.buildType(java.sql.Types.BIGINT, 21, Singletons.require(DBNative.class));
 		}
 		// get the length of the string
 		String value = (String)(literal.getValue(sc.getValues()));
-        return BasicType.buildType(java.sql.Types.VARCHAR, value.length(), Singletons.require(HostService.class).getDBNative());
+        return BasicType.buildType(java.sql.Types.VARCHAR, value.length(), Singletons.require(DBNative.class));
 	}
 	
 	public static Type getLongType(NativeTypeCatalog typeCatalog) {
@@ -700,10 +700,10 @@ public class BasicType implements Type {
 					ns = 1;
 				UnqualifiedName cs = t.getCharset();
 				if (cs == null)
-                    cs = new UnqualifiedName(Singletons.require(HostService.class).getDBNative().getDefaultServerCharacterSet());
+                    cs = new UnqualifiedName(Singletons.require(DBNative.class).getDefaultServerCharacterSet());
 				UnqualifiedName coll = t.getCollation();
 				if (coll == null)
-                    coll = new UnqualifiedName(Singletons.require(HostService.class).getDBNative().getDefaultServerBinaryCollation());
+                    coll = new UnqualifiedName(Singletons.require(DBNative.class).getDefaultServerBinaryCollation());
 				String comparator = t.getComparison();
 				if (comparator != null)
 					return new ComparisonType(t.getBaseType(),t.flags,ns,cs,coll,comparator);

@@ -56,7 +56,7 @@ public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder
 
 		outboundCtx.write(new MSPResultSetResponse(metadata.size()));
 
-		DBNative dbNative = Singletons.require(HostService.class).getDBNative();
+		DBNative dbNative = Singletons.require(DBNative.class);
 		NativeTypeCatalog nativeTypeCatalog = dbNative.getTypeCatalog();
 
 		for (ColumnMetadata cm : metadata.getColumnList()) {
@@ -67,7 +67,7 @@ public class MysqlTextResultForwarder extends MysqlDemultiplexingResultForwarder
 		outboundCtx.write(new MyEOFPktResponse());
 
 		for (ResultRow row : rows) {
-			NativeResultHandler resultHandler = Singletons.require(HostService.class).getDBNative().getResultHandler();
+			NativeResultHandler resultHandler = Singletons.require(DBNative.class).getResultHandler();
 			outboundCtx.write(new MyTextDataResponse(resultHandler,metadata, row));
 		}
 		outboundCtx.flush();

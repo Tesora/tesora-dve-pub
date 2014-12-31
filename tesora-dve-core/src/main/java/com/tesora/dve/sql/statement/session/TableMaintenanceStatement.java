@@ -24,6 +24,7 @@ package com.tesora.dve.sql.statement.session;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.QueryStepOperation;
@@ -103,7 +104,7 @@ public class TableMaintenanceStatement extends SessionStatement {
 	@Override
 	public void plan(SchemaContext pc, ExecutionSequence es, BehaviorConfiguration config) throws PEException {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitTableMaintenanceStatement(pc, pc.getValues(), this, buf, -1);
+        Singletons.require(DBNative.class).getEmitter().emitTableMaintenanceStatement(pc, pc.getValues(), this, buf, -1);
 		// we only allow on a single Persistent Group, so grab the first one
 		PEPersistentGroup sg = tableInstanceList.get(0).getAbstractTable().getPersistentStorage(pc);
 		es.append(new TableMaintenanceExecutionStep(pc.getCurrentDatabase(), sg, buf.toString()));

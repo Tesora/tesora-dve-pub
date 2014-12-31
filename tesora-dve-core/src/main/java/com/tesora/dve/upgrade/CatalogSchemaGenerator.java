@@ -31,6 +31,7 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.Metamodel;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.hibernate.cfg.Configuration;
@@ -93,8 +94,8 @@ public class CatalogSchemaGenerator {
 	public static String[] buildTestCurrentInfoSchema() throws PEException {
         InformationSchemas info = Singletons.require(HostService.class).getInformationSchema();
         List<PersistedEntity> ents = info.buildEntities(1001, 2002,
-				Singletons.require(HostService.class).getDBNative().getDefaultServerCharacterSet(),
-				Singletons.require(HostService.class).getDBNative().getDefaultServerCollation());
+				Singletons.require(DBNative.class).getDefaultServerCharacterSet(),
+				Singletons.require(DBNative.class).getDefaultServerCollation());
 		InsertEngine ie = new InsertEngine(ents, null);
 		return ie.dryrun().toArray(new String[0]);
 	}

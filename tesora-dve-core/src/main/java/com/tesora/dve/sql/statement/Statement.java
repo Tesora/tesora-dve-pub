@@ -32,6 +32,7 @@ import com.tesora.dve.common.PECharsetUtils;
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.PersistentSite;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.db.GenericSQLCommand;
@@ -124,13 +125,13 @@ public abstract class Statement extends StatementNode {
 		if (sc.getOptions() != null && sc.getOptions().isInfoSchemaView())
 			emitter = new MysqlEmitter();
 		else
-			emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+			emitter = Singletons.require(DBNative.class).getEmitter();
         return getSQL(sc,  emitter, opts, preserveParamMarkers);
 	}
 		
 	public String getSQL(SchemaContext sc, EmitOptions opts, boolean preserveParamMarkers) {
 		if (opts == null) return getSQL(sc);
-        return getSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), opts, preserveParamMarkers);
+        return getSQL(sc, Singletons.require(DBNative.class).getEmitter(), opts, preserveParamMarkers);
 	}
 	
 	public String getSQL(SchemaContext sc) {
@@ -173,7 +174,7 @@ public abstract class Statement extends StatementNode {
 			if (opts == null) opts = EmitOptions.NONE.addMultilinePretty("  ");
 			else opts = opts.addMultilinePretty("  ");
 		}
-        return getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), opts);
+        return getGenericSQL(sc, Singletons.require(DBNative.class).getEmitter(), opts);
 	}
 	
 
@@ -205,7 +206,7 @@ public abstract class Statement extends StatementNode {
 		ProjectionInfo projection = null;
 		if (s.isDML()) {
 			DMLStatement dmls = (DMLStatement) s;
-            logFormat =	dmls.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), null);
+            logFormat =	dmls.getGenericSQL(sc, Singletons.require(DBNative.class).getEmitter(), null);
 			projection = dmls.getProjectionMetadata(sc);
 		} else {
 			logFormat = new GenericSQLCommand(sc, s.getSQL(sc));
@@ -223,7 +224,7 @@ public abstract class Statement extends StatementNode {
 		if (s.isDML()) {
 			DMLStatement dmls = (DMLStatement) s;
             currentPlan.getSequence().append(new PrepareExecutionStep(dmls.getDatabase(sc), pesg,
-					dmls.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), null)));
+					dmls.getGenericSQL(sc, Singletons.require(DBNative.class).getEmitter(), null)));
 			tableKeys = dmls.getDerivedInfo().getAllTableKeys();
 		} else {
 			currentPlan.getSequence().append(new PrepareExecutionStep(s.getDatabase(sc), pesg, new GenericSQLCommand(sc, s.getSQL(sc))));
@@ -434,7 +435,7 @@ public abstract class Statement extends StatementNode {
 				if (le.isStringLiteral()) {
 					// le is a string - we're going to flip it back into bytes and try it against the target character set
 					// if that fails, then we replace it, otherwise not so much
-                    byte[] bytes =	Singletons.require(HostService.class).getDBNative().getValueConverter().convertBinaryLiteral(le.getValue(pc.getValues()));
+                    byte[] bytes =	Singletons.require(DBNative.class).getValueConverter().convertBinaryLiteral(le.getValue(pc.getValues()));
 					// String raw = (String) le.getValue();
 					String maybe = PECharsetUtils.getString(bytes, targ, true);
 					if (maybe != null)

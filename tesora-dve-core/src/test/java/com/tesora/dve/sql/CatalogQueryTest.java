@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -131,8 +132,8 @@ public class CatalogQueryTest extends SchemaTest {
 		testCommand(conn,"database",dbs,"cqtdb",0,br(nr,"cqtdb"),false);
 		testCommand(conn,"schema",dbs,"cqtdb",0,br(nr,"cqtdb"),false);
 
-        String defaultCharSet = Singletons.require(HostService.class).getDBNative().getDefaultServerCharacterSet();
-        String defaultCollation = Singletons.require(HostService.class).getDBNative().getDefaultServerCollation();
+        String defaultCharSet = Singletons.require(DBNative.class).getDefaultServerCharacterSet();
+        String defaultCollation = Singletons.require(DBNative.class).getDefaultServerCollation();
 
 		Object[] dbgenres = br(nr,"cqtdb","cqtps", SchemaTest.getIgnore(), SchemaTest.getIgnore(),"off","strict",defaultCharSet,defaultCollation,
 				nr,PEConstants.INFORMATION_SCHEMA_DBNAME,PEConstants.INFORMATION_SCHEMA_GROUP_NAME, SchemaTest.getIgnore(), SchemaTest.getIgnore(),"off","strict",defaultCharSet,defaultCollation,
@@ -686,7 +687,7 @@ public class CatalogQueryTest extends SchemaTest {
 
             nonRootConn.assertResults(
 					"SELECT DEFAULT_CHARACTER_SET_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '" + project.getDatabaseName() + "' LIMIT 1;",
-					br(nr, Singletons.require(HostService.class).getDBNative().getDefaultServerCharacterSet()));
+					br(nr, Singletons.require(DBNative.class).getDefaultServerCharacterSet()));
 
 		} finally {
 			nonRootConn.disconnect();

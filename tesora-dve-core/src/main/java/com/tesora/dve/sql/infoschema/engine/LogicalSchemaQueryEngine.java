@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.tesora.dve.db.DBNative;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.PEConstants;
@@ -204,7 +205,7 @@ public class LogicalSchemaQueryEngine {
 					ColumnInfo ci = pi.getColumnInfo(i+1);
 					LogicalQuery.buildNativeType(cs,ci.getName(),ci.getAlias(),help);					
 				} else {
-                    NativeType nt = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(type.getDataType(), true);
+                    NativeType nt = Singletons.require(DBNative.class).getTypeCatalog().findType(type.getDataType(), true);
                 	ColumnMetadata cmd = new ColumnMetadata();
                     if (nameColumn.getTable() != null && nameColumn.getTable().getView() == InfoView.INFORMATION) {
                     	cmd.setDbName(nameColumn.getTable().getDatabase(sc).getName().getUnquotedName().get());
@@ -246,7 +247,7 @@ public class LogicalSchemaQueryEngine {
 	public static FeatureStep buildStep(SchemaContext sc, LogicalQuery lq, FeaturePlanner planner, final ProjectionInfo pi) {
 		SelectStatement toExecute = lq.getQuery();
 		final PEDatabase catalogSchema = Singletons.require(HostService.class).getInformationSchema().getCatalogSchema();
-		final GenericSQLCommand gsql = toExecute.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), EmitOptions.NONE);
+		final GenericSQLCommand gsql = toExecute.getGenericSQL(sc, Singletons.require(DBNative.class).getEmitter(), EmitOptions.NONE);
 				
 		// look up the system group now - we have to use the actual item
 		final PEPersistentGroup sg = sc.findStorageGroup(new UnqualifiedName(PEConstants.SYSTEM_GROUP_NAME));

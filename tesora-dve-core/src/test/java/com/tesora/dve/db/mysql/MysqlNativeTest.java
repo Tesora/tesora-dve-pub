@@ -28,6 +28,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.Types;
 
+import com.tesora.dve.db.DBNative;
 import org.apache.log4j.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -59,9 +60,9 @@ public class MysqlNativeTest {
 
 	@Test
 	public void testNativeTypeCatalog() throws PEException {
-        NativeType charType = Singletons.require(HostService.class).getDBNative().findType("CHAR"); // look up by top level name
-        NativeType intType = Singletons.require(HostService.class).getDBNative().findType("INTEGER"); // look up by synonymn
-        NativeType blobType = Singletons.require(HostService.class).getDBNative().findType("LONGBLOB"); // look up by synonymn
+        NativeType charType = Singletons.require(DBNative.class).findType("CHAR"); // look up by top level name
+        NativeType intType = Singletons.require(DBNative.class).findType("INTEGER"); // look up by synonymn
+        NativeType blobType = Singletons.require(DBNative.class).findType("LONGBLOB"); // look up by synonymn
 
 		assertTrue(charType.getDataType() == Types.CHAR);
 		assertTrue(charType.requiresQuotes());
@@ -76,7 +77,7 @@ public class MysqlNativeTest {
 
 	@Test(expected = PEException.class)
 	public void testFindUnknownType() throws PEException {
-        Singletons.require(HostService.class).getDBNative().findType("UNKNOWN TYPE");
+        Singletons.require(DBNative.class).findType("UNKNOWN TYPE");
 	}
 
 	/*
@@ -136,11 +137,11 @@ public class MysqlNativeTest {
 		ResultSet rs = stmt.executeQuery("SELECT col1, col2, col3, col4, col5 FROM native_syntax_test where 0=1"); // NOPMD by doug on 30/11/12 3:13 PM
 		ResultSetMetaData rsmd = rs.getMetaData();
 
-        UserColumn ucRSMD1 = new UserColumn(Singletons.require(HostService.class).getDBNative().getResultSetColumnInfo(rsmd, null, 1));
-        UserColumn ucRSMD2 = new UserColumn(Singletons.require(HostService.class).getDBNative().getResultSetColumnInfo(rsmd, null, 2));
-        UserColumn ucRSMD3 = new UserColumn(Singletons.require(HostService.class).getDBNative().getResultSetColumnInfo(rsmd, null, 3));
-        UserColumn ucRSMD4 = new UserColumn(Singletons.require(HostService.class).getDBNative().getResultSetColumnInfo(rsmd, null, 4));
-        UserColumn ucRSMD5 = new UserColumn(Singletons.require(HostService.class).getDBNative().getResultSetColumnInfo(rsmd, null, 5));
+        UserColumn ucRSMD1 = new UserColumn(Singletons.require(DBNative.class).getResultSetColumnInfo(rsmd, null, 1));
+        UserColumn ucRSMD2 = new UserColumn(Singletons.require(DBNative.class).getResultSetColumnInfo(rsmd, null, 2));
+        UserColumn ucRSMD3 = new UserColumn(Singletons.require(DBNative.class).getResultSetColumnInfo(rsmd, null, 3));
+        UserColumn ucRSMD4 = new UserColumn(Singletons.require(DBNative.class).getResultSetColumnInfo(rsmd, null, 4));
+        UserColumn ucRSMD5 = new UserColumn(Singletons.require(DBNative.class).getResultSetColumnInfo(rsmd, null, 5));
 
 		assertTrue(ut1.getUserColumn("col1").getDataType() == ucRSMD1.getDataType());
 		assertTrue(ut1.getUserColumn("col2").getDataType() == ucRSMD2.getDataType());
@@ -818,7 +819,7 @@ public class MysqlNativeTest {
 						+ MysqlNativeConstants.FLDPKT_FLAG_ZEROFILL + MysqlNativeConstants.FLDPKT_FLAG_NUM, 4), MysqlType.YEAR),
 		};
 
-        MysqlNative msn = (MysqlNative) Singletons.require(HostService.class).getDBNative();
+        MysqlNative msn = (MysqlNative) Singletons.require(DBNative.class);
 		int i = 0;
 		MysqlNativeType mnt;
 		for (TestData rec : testData) {

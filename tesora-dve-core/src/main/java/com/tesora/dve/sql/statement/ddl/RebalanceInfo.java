@@ -23,6 +23,7 @@ package com.tesora.dve.sql.statement.ddl;
 
 import java.util.Collections;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.GenericSQLCommand;
 import com.tesora.dve.db.Emitter.EmitOptions;
@@ -51,14 +52,14 @@ public abstract class RebalanceInfo {
 
 	protected SQLCommand getCommand(Statement stmt) {
 		EmitOptions opts = EmitOptions.NONE.addQualifiedTables();
-        GenericSQLCommand gsql = stmt.getGenericSQL(cntxt, Singletons.require(HostService.class).getDBNative().getEmitter(), opts);
+        GenericSQLCommand gsql = stmt.getGenericSQL(cntxt, Singletons.require(DBNative.class).getEmitter(), opts);
 		return gsql.resolve(cntxt.getValues(),true,null).getSQLCommand();			
 	}
 	
 	protected SQLCommand getInsertPrefix(final InsertIntoValuesStatement iivs) {
 		try {
 			EmitOptions opts = EmitOptions.NONE.addQualifiedTables();
-			Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+			Emitter emitter = Singletons.require(DBNative.class).getEmitter();
 			emitter.setOptions(opts);
 			final GenericSQLCommand prefix = new EmitterInvoker(emitter) {
 				@Override

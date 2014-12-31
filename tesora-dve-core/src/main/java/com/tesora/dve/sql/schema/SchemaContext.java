@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.tesora.dve.db.DBNative;
 import org.antlr.runtime.TokenStream;
 
 import com.tesora.dve.common.MultiMap;
@@ -140,7 +141,7 @@ public class SchemaContext {
 			throw new IllegalArgumentException("Wrong constructor for null connection");
 		ConnectionContext cc = buildConnectionContext(conn);
 		return new SchemaContext(new DAOContext(cc),cc, 
-				Singletons.require(HostService.class).getDBNative().getTypeCatalog(),Capability.FULL);
+				Singletons.require(DBNative.class).getTypeCatalog(),Capability.FULL);
 	}
 	
 	public static SchemaContext createContext(CatalogDAO dao, NativeTypeCatalog typeCatalog) {

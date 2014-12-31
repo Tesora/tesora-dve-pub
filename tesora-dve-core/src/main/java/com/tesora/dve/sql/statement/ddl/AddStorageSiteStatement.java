@@ -42,7 +42,7 @@ import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepAddGenerationOperation;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
 import com.tesora.dve.server.connectionmanager.SSConnection;
-import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.messaging.SQLCommand;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
@@ -345,7 +345,7 @@ public class AddStorageSiteStatement extends PEAlterStatement<PEPersistentGroup>
 		
 		private SQLCommand getCommand(SchemaContext sc, Statement s) {
 			EmitOptions opts = EmitOptions.NONE.addQualifiedTables();
-	        GenericSQLCommand gsql = s.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), opts);
+	        GenericSQLCommand gsql = s.getGenericSQL(sc, Singletons.require(DBNative.class).getEmitter(), opts);
 			return gsql.resolve(sc.getValues(),null).getSQLCommand();			
 		}
 

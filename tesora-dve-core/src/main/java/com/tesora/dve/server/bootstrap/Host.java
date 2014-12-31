@@ -406,10 +406,6 @@ public class Host implements HostService {
 		project = p;
 	}
 
-    public DBNative getDBNative() {
-        return Singletons.require(DBNative.class);
-    }
-
 	@Override
     public String getDefaultProjectName() {
 		return props.getProperty("defaultproject", Project.DEFAULT);
@@ -545,11 +541,6 @@ public class Host implements HostService {
 	@Override
     public void resetServerUptime() {
 		startTime = System.currentTimeMillis();
-	}
-
-	@Override
-    public ExecutorService getExecutorService() {
-		return executorService;
 	}
 	
 	@Override

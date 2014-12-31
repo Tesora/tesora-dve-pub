@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.uuid.impl.TimeBasedGenerator;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -337,7 +338,7 @@ public class ConnectionValues implements ValueSource {
 			Type any = types.getLiteralType(dle);
 			Object value = getLiteralValue(dle.getPosition());
 			if (any != null && value != null)
-                return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(value, any);
+                return Singletons.require(DBNative.class).getValueConverter().convert(value, any);
 			return value;
 		} catch (Throwable t) {
 			throw new SchemaException(Pass.PLANNER, "Literal for index " + dle.getPosition() + " is invalid",t);

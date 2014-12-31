@@ -38,6 +38,7 @@ import com.tesora.dve.common.catalog.TableState;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MysqlEmitter;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.lockmanager.LockSpecification;
@@ -488,7 +489,7 @@ public abstract class PEAbstractTable<T> extends Persistable<T, UserTable> imple
 	
 	@Override
 	protected UserTable createEmptyNew(SchemaContext pc) throws PEException {
-        String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, pc.getValues(), this);
+        String persistName = Singletons.require(DBNative.class).getEmitter().getPersistentName(pc, pc.getValues(), this);
 		UserDatabase pdb = this.db.get(pc).persistTree(pc);
 		DistributionModel dm = dv.persistTree(pc);
 		PersistentGroup sg = null;

@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.tesora.dve.db.DBNative;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
@@ -434,7 +435,7 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 	@Override
 	protected UserColumn lookup(SchemaContext sc) throws PEException {
 		UserTable ut = ofTable.persistTree(sc);
-        String persName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(this);
+        String persName = Singletons.require(DBNative.class).getEmitter().getPersistentName(this);
 		return ut.getUserColumn(persName);
 	}
 
@@ -446,8 +447,8 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 
 	@Override
 	protected UserColumn createEmptyNew(SchemaContext pc) throws PEException {
-        String persName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(this);
-        UserColumn uc = Singletons.require(HostService.class).getDBNative().updateUserColumn(null, type);
+        String persName = Singletons.require(DBNative.class).getEmitter().getPersistentName(this);
+        UserColumn uc = Singletons.require(DBNative.class).updateUserColumn(null, type);
 		uc.setName(persName);
 		pc.getSaveContext().add(this,uc);
 		return uc;
@@ -600,13 +601,13 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 	}
 
 	private void updateExistingInternal(SchemaContext pc, UserColumn uc) {
-        String persName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(this);
+        String persName = Singletons.require(DBNative.class).getEmitter().getPersistentName(this);
 		uc.setName(persName);
 		uc.setFlags(flags);
 		uc.setHashPosition(dvposition);
 		uc.setCDV_Position(cdv_position);
 		addTypeModifiers(uc);
-        Singletons.require(HostService.class).getDBNative().updateUserColumn(uc, type);
+        Singletons.require(DBNative.class).updateUserColumn(uc, type);
 		
 	}
 	
@@ -770,7 +771,7 @@ public class PEColumn extends Persistable<PEColumn, UserColumn>
 			rr.addResultColumn(getName().getUnquotedName().get());
 			UserColumn uc = new UserColumn();
 			updateExistingInternal(sc,uc);
-			rr.addResultColumn(Singletons.require(HostService.class).getDBNative().getDataTypeForQuery(uc));
+			rr.addResultColumn(Singletons.require(DBNative.class).getDataTypeForQuery(uc));
 			rr.addResultColumn(isNullable() ? "YES" : "NO");
 			
 			String kp = "";

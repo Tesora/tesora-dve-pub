@@ -27,6 +27,7 @@ import java.util.List;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.User;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -76,7 +77,7 @@ public class PECreateUserStatement extends
 		for(PEUser peu : toCreate) {
 			StringBuilder buf = new StringBuilder();
 			buf.append("CREATE USER ");
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitUserDeclaration(peu, buf);
+            Singletons.require(DBNative.class).getEmitter().emitUserDeclaration(peu, buf);
 
 			final FlushPrivilegesStatement flush = new FlushPrivilegesStatement();
 			flush.plan(pc, es, null);

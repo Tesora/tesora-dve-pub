@@ -31,6 +31,7 @@ import com.tesora.dve.common.catalog.AutoIncrementTracker;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.common.catalog.TemplateMode;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MySQLTransactionIsolation;
 import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
@@ -361,7 +362,7 @@ public class KnownVariables implements VariableConstants {
 
 						@Override
 						public String convertToInternal(String varName, String in) throws PEException {
-							Singletons.require(HostService.class).getDBNative().assertValidCollation(in);
+							Singletons.require(DBNative.class).assertValidCollation(in);
 							return in;
 						}
 
@@ -754,7 +755,7 @@ public class KnownVariables implements VariableConstants {
 
 						@Override
 						public String convertToInternal(String varName, String in) throws PEException {
-							Singletons.require(HostService.class).getDBNative().assertValidCharacterSet(in);
+							Singletons.require(DBNative.class).assertValidCharacterSet(in);
 							return in;
 						}
 					},
@@ -767,7 +768,7 @@ public class KnownVariables implements VariableConstants {
 
 						@Override
 						public String convertToInternal(String varName, String in) throws PEException {
-							Singletons.require(HostService.class).getDBNative().assertValidCollation(in);
+							Singletons.require(DBNative.class).assertValidCollation(in);
 							return in;
 						}
 					},

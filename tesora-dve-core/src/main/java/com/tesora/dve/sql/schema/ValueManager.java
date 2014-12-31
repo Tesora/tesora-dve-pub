@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.LateBoundConstants;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
@@ -256,7 +257,7 @@ public class ValueManager {
 		ConnectionValues cv = basicReset(sc);
 		for(int i = 0; i < literalValues.size(); i++) {
 			IDelegatingLiteralExpression dle = literals.get(i);
-            Object intermediate = Singletons.require(HostService.class).getDBNative().getValueConverter().convertLiteral(literalValues.get(i).getText(), dle.getValueType());
+            Object intermediate = Singletons.require(DBNative.class).getValueConverter().convertLiteral(literalValues.get(i).getText(), dle.getValueType());
 			cv.setLiteralValue(i, intermediate);
 		}
 		cv.handleAutoincrementValues(sc);

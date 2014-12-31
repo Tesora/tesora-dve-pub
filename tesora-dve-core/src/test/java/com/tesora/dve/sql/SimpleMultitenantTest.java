@@ -38,6 +38,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.tesora.dve.db.DBNative;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -181,7 +182,7 @@ public class SimpleMultitenantTest extends MultitenantTest {
 		// find the db with name
 		UserDatabase edb = cat.findDatabase("mtdb");
 		SchemaContext sc = SchemaContext.createContext(cat,
-				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
+				Singletons.require(DBNative.class).getTypeCatalog());
 		sc.setOptions(ParserOptions.NONE);
 		PEDatabase ped = sc.findPEDatabase(new UnqualifiedName("mtdb"));
 		sc.setCurrentDatabase(ped);

@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -77,7 +78,7 @@ public class DBEnumTypeTest extends PETest {
 							unsigned = true;
 					}
 				}
-				NativeTypeCatalog typeCatalog = Singletons.require(HostService.class).getDBNative().getTypeCatalog(); 
+				NativeTypeCatalog typeCatalog = Singletons.require(DBNative.class).getTypeCatalog();
 				NativeType expBackType = BasicType.lookupNativeType(expBackTypeStr,typeCatalog);
 				Integer expSta = Integer.valueOf(sizingStr);
 				String typeName = MysqlType.ENUM.toString();

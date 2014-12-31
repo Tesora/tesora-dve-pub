@@ -42,6 +42,7 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 
+import com.tesora.dve.db.DBNative;
 import org.hibernate.annotations.ForeignKey;
 
 import com.tesora.dve.exceptions.PEException;
@@ -280,7 +281,7 @@ public class UserDatabase implements CatalogEntity, PersistentDatabase {
 	
 	public String getDefaultCharacterSetName() {
         return (this.defaultCharacterSetName == null) ?
-				Singletons.require(HostService.class).getDBNative().getDefaultServerCharacterSet() : this.defaultCharacterSetName;
+				Singletons.require(DBNative.class).getDefaultServerCharacterSet() : this.defaultCharacterSetName;
 	}
 
 	public void setDefaultCharacterSetName(String value) {
@@ -289,7 +290,7 @@ public class UserDatabase implements CatalogEntity, PersistentDatabase {
 
 	public String getDefaultCollationName() {
         return (this.defaultCollationName == null) ?
-				Singletons.require(HostService.class).getDBNative().getDefaultServerCollation() : this.defaultCollationName;
+				Singletons.require(DBNative.class).getDefaultServerCollation() : this.defaultCollationName;
 	}
 
 	public void setDefaultCollationName(String value) {

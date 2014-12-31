@@ -22,6 +22,7 @@ package com.tesora.dve.server.messaging;
  */
 
 import com.tesora.dve.concurrent.CompletionHandle;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
@@ -48,7 +49,7 @@ public class WorkerDropDatabaseRequest extends WorkerRequest {
 	public void executeRequest(final Worker w, CompletionHandle<Boolean> promise) {
 
 		String localizedDBName = UserDatabase.getNameOnSite(databaseName, w.getWorkerSite());
-		SQLCommand ddl = Singletons.require(HostService.class).getDBNative()
+		SQLCommand ddl = Singletons.require(DBNative.class)
 				.getDropDatabaseStmt(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), localizedDBName);
         this.execute(w, ddl, promise);
 	}

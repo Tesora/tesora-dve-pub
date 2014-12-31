@@ -27,6 +27,7 @@ import java.util.List;
 
 import com.tesora.dve.common.catalog.PersistentGroup;
 import com.tesora.dve.common.catalog.StorageGroup;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -83,7 +84,7 @@ public class SubqueryTable extends PETable {
 				newColumns.add(new TempColumn(sc,ci.getColumn().getName(),ci.getColumn().getType()));
 			} else if ((en instanceof LiteralExpression) || (en instanceof FunctionCall)) {
 				StringBuilder buf = new StringBuilder();
-                Singletons.require(HostService.class).getDBNative().getEmitter().emitExpression(sc, sc.getValues(), en, buf);
+                Singletons.require(DBNative.class).getEmitter().emitExpression(sc, sc.getValues(), en, buf);
 				Name name = new UnqualifiedName(buf.toString());
 				newColumns.add(new TempColumn(sc,name.getQuotedName(),TempColumnType.TEMP_TYPE));
 			} else if (en instanceof WildcardTable) {

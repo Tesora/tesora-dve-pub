@@ -84,7 +84,7 @@ public class MysqlNative extends DBNative {
 	}
 
 	public MysqlNativeType getNativeTypeFromMyFieldType(MyFieldType mft, int flags, long maxLen) throws PEException {
-		final MysqlNativeTypeCatalog typeCatalog = (MysqlNativeTypeCatalog) Singletons.require(HostService.class).getDBNative().getTypeCatalog();
+		final MysqlNativeTypeCatalog typeCatalog = (MysqlNativeTypeCatalog) Singletons.require(DBNative.class).getTypeCatalog();
 		return typeCatalog.findType(mft, flags, maxLen, true);
 	}
 

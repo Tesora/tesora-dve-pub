@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 
+import com.tesora.dve.db.DBNative;
 import org.apache.commons.codec.binary.Hex;
 
 import com.tesora.dve.common.MultiMap;
@@ -1054,7 +1055,7 @@ public class PETable extends PEAbstractTable<PETable> implements HasComment {
 
 		@Override
 		public String getNameAsIdentifier() {
-            return Singletons.require(HostService.class).getDBNative().getNameForQuery(this);
+            return Singletons.require(DBNative.class).getNameForQuery(this);
 		}
 
 		@Override

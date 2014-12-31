@@ -23,6 +23,7 @@ package com.tesora.dve.db.mysql;
 
 import com.tesora.dve.charset.NativeCharSet;
 import com.tesora.dve.charset.MysqlNativeCharSetCatalog;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.portal.protocol.MyBackendDecoder;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
@@ -35,7 +36,7 @@ public class CharsetDecodeHelper implements MyBackendDecoder.CharsetDecodeHelper
     public boolean typeSupported(MyFieldType fieldType, short flags, int maxDataLen) {
         boolean supported;MysqlNativeType mnt;
         try {
-            mnt = ((MysqlNative) Singletons.require(HostService.class).getDBNative()).getNativeTypeFromMyFieldType(fieldType, flags, maxDataLen);
+            mnt = ((MysqlNative) Singletons.require(DBNative.class)).getNativeTypeFromMyFieldType(fieldType, flags, maxDataLen);
         } catch (PEException e) {
             throw new PECodingException("Couldn't lookup native type", e);
         }

@@ -21,6 +21,7 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
+import com.tesora.dve.db.DBNative;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.comms.client.messages.MessageType;
@@ -52,7 +53,7 @@ public class WorkerGrantPrivilegesRequest extends WorkerRequest {
 	@Override
 	public void executeRequest(final Worker w, CompletionHandle<Boolean> promise)  {
 
-		SQLCommand ddl = Singletons.require(HostService.class).getDBNative()
+		SQLCommand ddl = Singletons.require(DBNative.class)
 				.getGrantPriviledgesCommand(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), userDeclaration, "*");
 		this.execute(w,ddl,promise);
 	}

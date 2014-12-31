@@ -35,6 +35,7 @@ import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 
@@ -116,7 +117,7 @@ public class UserColumn implements CatalogEntity, PersistentColumn {
 
 	// Create a UserColumn entity from a ColumnMetadata object
 	public UserColumn ( ColumnMetadata cm ) throws PEException {
-        Singletons.require(HostService.class).getDBNative().convertColumnMetadataToUserColumn(cm, this);
+        Singletons.require(DBNative.class).convertColumnMetadataToUserColumn(cm, this);
 	}
 	
 	public ColumnMetadata getColumnMetadata() {
@@ -193,7 +194,7 @@ public class UserColumn implements CatalogEntity, PersistentColumn {
 	}   
 
 	public String getNameAsIdentifier() {
-        return Singletons.require(HostService.class).getDBNative().getNameForQuery(this);
+        return Singletons.require(DBNative.class).getNameForQuery(this);
 	}
 	
 	public String getQueryName() {
@@ -408,7 +409,7 @@ public class UserColumn implements CatalogEntity, PersistentColumn {
 	public ResultRow getShowResultRow(CatalogQueryOptions cqo) throws PEException {
 		ResultRow rr = new ResultRow();
 		rr.addResultColumn(this.name, false);
-        String type = Singletons.require(HostService.class).getDBNative().getDataTypeForQuery(this);
+        String type = Singletons.require(DBNative.class).getDataTypeForQuery(this);
 		rr.addResultColumn(type, false);
 		rr.addResultColumn(isNullable() ? "YES" : "NO");
 		rr.addResultColumn(this.isPrimaryKeyPart()? "PRI" : "" );
@@ -423,7 +424,7 @@ public class UserColumn implements CatalogEntity, PersistentColumn {
 	}
 	
 	public String getShowType() throws PEException {
-        return Singletons.require(HostService.class).getDBNative().getDataTypeForQuery(this);
+        return Singletons.require(DBNative.class).getDataTypeForQuery(this);
 	}
 
 	public String getShowKey() {

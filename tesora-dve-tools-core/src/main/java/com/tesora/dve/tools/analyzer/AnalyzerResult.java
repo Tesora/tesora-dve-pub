@@ -23,6 +23,7 @@ package com.tesora.dve.tools.analyzer;
 
 import java.io.PrintStream;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.server.global.HostService;
@@ -57,7 +58,7 @@ public abstract class AnalyzerResult {
 
 	public void printTables(final PrintStream ps) {
 		if (stmt != null) {
-			final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+			final Emitter emitter = Singletons.require(DBNative.class).getEmitter();
 			emitter.setOptions(EmitOptions.PEMETADATA);
 
 			ps.println("Tables:");

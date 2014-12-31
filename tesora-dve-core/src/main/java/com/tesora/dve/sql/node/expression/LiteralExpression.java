@@ -22,6 +22,7 @@ package com.tesora.dve.sql.node.expression;
  */
 
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException;
@@ -193,7 +194,7 @@ public abstract class LiteralExpression extends ConstantExpression implements IL
 	public Object convert(ConnectionValues cv, Type type) {
 		if (isNullLiteral())
 			return null;
-        return Singletons.require(HostService.class).getDBNative().getValueConverter().convert(getValue(cv), type);
+        return Singletons.require(DBNative.class).getValueConverter().convert(getValue(cv), type);
 	}
 
 	@Override

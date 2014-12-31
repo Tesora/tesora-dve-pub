@@ -24,6 +24,7 @@ package com.tesora.dve.sql.statement.ddl;
 import java.util.List;
 
 import com.tesora.dve.common.catalog.CatalogEntity;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.messaging.SQLCommand;
@@ -110,7 +111,7 @@ public class GrantStatement extends DDLStatement {
 		String sql = "";
 		if (privilege.isGlobal() || true) {
 			StringBuilder buf = new StringBuilder();
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitGrantStatement(this, buf);
+            Singletons.require(DBNative.class).getEmitter().emitGrantStatement(this, buf);
 			sql = buf.toString();
 		}
 		return new SimpleDDLExecutionStep(getDatabase(pc), getStorageGroup(pc), getRoot(), getAction(), new SQLCommand(pc, sql),

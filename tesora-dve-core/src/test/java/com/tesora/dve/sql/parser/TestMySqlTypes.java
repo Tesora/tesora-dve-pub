@@ -23,6 +23,7 @@ package com.tesora.dve.sql.parser;
 
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.server.global.HostService;
@@ -34,7 +35,7 @@ public class TestMySqlTypes extends TestTypes {
 
 	@Override
 	public List<NativeType> getNativeTypes() {
-        NativeTypeCatalog ntc = Singletons.require(HostService.class).getDBNative().getTypeCatalog();
+        NativeTypeCatalog ntc = Singletons.require(DBNative.class).getTypeCatalog();
 		return Functional.select(ntc.getTypesByName().values(), new UnaryPredicate<NativeType>() {
 
 			@Override

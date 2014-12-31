@@ -48,6 +48,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.MultiMap;
@@ -267,7 +268,7 @@ public class StatementCounter extends Analyzer {
 			trackNonDML(s, sql);
 			return;
 		}
-		final Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+		final Emitter emitter = Singletons.require(DBNative.class).getEmitter();
 		emitter.setOptions(emitOptions);
 		final StringBuilder buf = new StringBuilder();
 		final DMLStatement dmls = (DMLStatement) s;

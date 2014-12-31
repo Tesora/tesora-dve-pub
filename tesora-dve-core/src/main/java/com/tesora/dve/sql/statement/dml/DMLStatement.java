@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.tesora.dve.common.PEConstants;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.errmap.AvailableErrors;
@@ -270,7 +271,7 @@ public abstract class DMLStatement extends Statement implements CacheableStateme
 			if (!(tk.getTable() instanceof PEAbstractTable)) continue;
 			if (tk.getAbstractTable().isVirtualTable()) continue;
 			if (!tabs.add(tk.getAbstractTable())) continue;
-            Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+            Emitter emitter = Singletons.require(DBNative.class).getEmitter();
 			emitter.setOptions(EmitOptions.PEMETADATA);
 			PEAbstractTable<?> peat = tk.getAbstractTable();
 			if (peat.isView() && peat.asView().getView(sc).isMerge(sc,peat.asView())) {

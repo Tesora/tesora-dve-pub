@@ -22,6 +22,7 @@ package com.tesora.dve.dbc;
  */
 
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
@@ -262,6 +263,6 @@ public class ServerDBConnection {
 	}
 	
 	private DBMetadata populateDBMetadata() {
-        return Singletons.require(HostService.class).getDBNative().getDBMetadata();
+        return Singletons.require(DBNative.class).getDBMetadata();
 	}
 }

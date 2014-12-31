@@ -25,6 +25,7 @@ package com.tesora.dve.sql.statement.session;
 import java.util.List;
 
 import com.tesora.dve.common.MultiMap;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.StaticDistributionModel;
 import com.tesora.dve.exceptions.PEException;
@@ -70,13 +71,13 @@ public class AnalyzeTablesStatement extends TableMaintenanceStatement {
 			// build the sql
 			AnalyzeTablesStatement temp = new AnalyzeTablesStatement(option, tabs);
 			StringBuilder buf = new StringBuilder();
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitTableMaintenanceStatement(pc, pc.getValues(), temp, buf, -1);
+            Singletons.require(DBNative.class).getEmitter().emitTableMaintenanceStatement(pc, pc.getValues(), temp, buf, -1);
 			// we only allow on a single Persistent Group, so grab the first one
 			PEPersistentGroup sg = tabs.get(0).getAbstractTable().getPersistentStorage(pc);
 			final String sql = buf.toString();
 			buf = new StringBuilder();
 			AnalyzeKeysStatement aks = new AnalyzeKeysStatement(tabs);
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitAnalyzeKeysStatement(pc, pc.getValues(), aks, buf, -1);
+            Singletons.require(DBNative.class).getEmitter().emitAnalyzeKeysStatement(pc, pc.getValues(), aks, buf, -1);
 			final String aksStmt = buf.toString();
 			es.append(new TransientSessionExecutionStep(db, sg, sql, false, true, new AdhocOperation() {
 

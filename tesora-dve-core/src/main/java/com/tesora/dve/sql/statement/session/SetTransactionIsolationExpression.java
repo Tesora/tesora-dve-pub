@@ -24,6 +24,7 @@ package com.tesora.dve.sql.statement.session;
 import java.sql.Connection;
 import java.util.Locale;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
@@ -78,7 +79,7 @@ public class SetTransactionIsolationExpression extends SetExpression {
 		}
 		
 		public String getHostSQL() throws PEException {
-            return Singletons.require(HostService.class).getDBNative().convertTransactionIsolationLevel(jdbcIsolationLevel);
+            return Singletons.require(DBNative.class).convertTransactionIsolationLevel(jdbcIsolationLevel);
 		}
 		
 		public static IsolationLevel convert(String in) {

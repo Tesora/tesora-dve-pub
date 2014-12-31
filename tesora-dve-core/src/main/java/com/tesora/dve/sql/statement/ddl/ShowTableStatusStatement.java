@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.exceptions.PEException;
@@ -91,7 +92,7 @@ public class ShowTableStatusStatement extends DelegatingDDLStatement {
 		if (likeClause != null) {
 			StringBuilder buf = new StringBuilder();
 			buf.append("SHOW TABLE STATUS LIKE ");
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitExpression(sc, sc.getValues(),likeClause, buf, -1);
+            Singletons.require(DBNative.class).getEmitter().emitExpression(sc, sc.getValues(),likeClause, buf, -1);
 			return buf.toString();
 		} else 
 			return "show table status ...";

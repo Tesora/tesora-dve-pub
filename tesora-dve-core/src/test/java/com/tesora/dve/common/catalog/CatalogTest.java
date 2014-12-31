@@ -35,6 +35,7 @@ import java.util.Properties;
 
 import com.tesora.dve.charset.NativeCollationCatalog;
 import com.tesora.dve.charset.NativeCollationCatalogImpl;
+import com.tesora.dve.db.DBNative;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.junit.After;
@@ -158,8 +159,8 @@ public class CatalogTest extends PETest {
 			assertNotNull(sg1);
 			c.commit();
 			c.begin();
-            c.createDatabase("MyCatalog", sg1, Singletons.require(HostService.class).getDBNative().getDefaultServerCharacterSet(),
-					Singletons.require(HostService.class).getDBNative().getDefaultServerCollation());
+            c.createDatabase("MyCatalog", sg1, Singletons.require(DBNative.class).getDefaultServerCharacterSet(),
+					Singletons.require(DBNative.class).getDefaultServerCollation());
 			c.commit();
 
 			// testCreateUserTable

@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.antlr.runtime.CommonToken;
@@ -551,7 +552,7 @@ public class Utils {
         	if (litex instanceof DelegatingLiteralExpression) {
         		DelegatingLiteralExpression odle = (DelegatingLiteralExpression) litex;
                 DelegatingLiteralExpression dle =
-            			utils.replaceLiteral(odle, newTokType, SourceLocation.make(ntok), Singletons.require(HostService.class).getDBNative().getValueConverter().convertLiteral(ntok.getText(), newTokType));
+            			utils.replaceLiteral(odle, newTokType, SourceLocation.make(ntok), Singletons.require(DBNative.class).getValueConverter().convertLiteral(ntok.getText(), newTokType));
             	newlit = dle;
         	} else {
         		newlit = utils.buildLiteral(ntok);

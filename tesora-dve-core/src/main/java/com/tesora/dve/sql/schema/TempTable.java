@@ -36,6 +36,7 @@ import com.tesora.dve.common.catalog.IndexType;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.TempTableDeclHints;
 import com.tesora.dve.server.global.HostService;
@@ -69,7 +70,7 @@ public final class TempTable extends PETable {
     static final TempColumnType NULL_COLUMN_TYPE = new TempColumnType(
             BasicType.buildType("SMALLINT", 0,
                     Collections.singletonList(new TypeModifier(TypeModifierKind.UNSIGNED)),
-                    Singletons.require(HostService.class).getDBNative().getTypeCatalog()).normalize()
+                    Singletons.require(DBNative.class).getTypeCatalog()).normalize()
     );
 
 	// the select this was based on
@@ -148,7 +149,7 @@ public final class TempTable extends PETable {
 		for(PEColumn pec : onCols) {
 			if (pec.getType().getBaseType() == null || pec.getType().isStringType() || pec.getType().isBinaryType())
 				continue;
-			if (kc.size() >= Singletons.require(HostService.class).getDBNative().getMaxNumColsInIndex()) {
+			if (kc.size() >= Singletons.require(DBNative.class).getMaxNumColsInIndex()) {
 				break;
 			}
 			kc.add(new PEKeyColumn(pec,null,-1L));
@@ -471,7 +472,7 @@ public final class TempTable extends PETable {
 	
 	@Override
 	protected UserTable createEmptyNew(SchemaContext pc) throws PEException {
-		String persistName = Singletons.require(HostService.class).getDBNative().getEmitter().getPersistentName(pc, pc.getValues(), this);
+		String persistName = Singletons.require(DBNative.class).getEmitter().getPersistentName(pc, pc.getValues(), this);
 		UserDatabase pdb = (getPEDatabase(pc) != null ? getPEDatabase(pc).persistTree(pc) : null);
 		DistributionModel dm = getDistributionVector(pc).persistTree(pc);
 		UserTable ut = pc.getCatalog().createTempTable(pdb, persistName, dm);

@@ -21,6 +21,7 @@ package com.tesora.dve.server.messaging;
  * #L%
  */
 
+import com.tesora.dve.db.DBNative;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.catalog.PersistentDatabase;
@@ -59,10 +60,9 @@ public class WorkerCreateDatabaseRequest extends WorkerRequest {
 		final String onSiteName = newDatabase.getNameOnSite(w.getWorkerSite());
 
         final SQLCommand ddl = Singletons
-                .require(HostService.class)
-                .getDBNative()
+                .require(DBNative.class)
                 .getCreateDatabaseStmt(PerHostConnectionManager.INSTANCE.lookupConnection(this.getConnectionId()), onSiteName, ifNotExists, defaultCharSet,
-                        defaultCollation);
+						defaultCollation);
         
 		this.execute(w, ddl, promise);
 	}

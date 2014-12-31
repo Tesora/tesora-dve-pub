@@ -25,6 +25,7 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.NativeType;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
@@ -60,10 +61,10 @@ public class LogicalQuery {
 	
 	public static void buildNativeType(ColumnSet cs, String colName, String colAlias, Object in) throws PEException {
 		if (in instanceof String) {
-            NativeType nt = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(java.sql.Types.VARCHAR, true);
+            NativeType nt = Singletons.require(DBNative.class).getTypeCatalog().findType(java.sql.Types.VARCHAR, true);
 			cs.addColumn(colAlias, 255, nt.getTypeName(), java.sql.Types.VARCHAR);
 		} else if (in instanceof BigInteger) {
-            NativeType nt = Singletons.require(HostService.class).getDBNative().getTypeCatalog().findType(java.sql.Types.BIGINT, true);
+            NativeType nt = Singletons.require(DBNative.class).getTypeCatalog().findType(java.sql.Types.BIGINT, true);
 			cs.addColumn(colAlias, 32, nt.getTypeName(), java.sql.Types.BIGINT);
 		} else {
 			throw new PEException("Fill me in: type guess for result column type: " + in);

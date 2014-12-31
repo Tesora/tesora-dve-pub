@@ -36,6 +36,7 @@ import java.util.Stack;
 import java.util.TreeSet;
 
 import com.tesora.dve.common.MultiMap;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.Column;
@@ -309,7 +310,7 @@ public class BasicStatsVisitor implements StatsVisitor {
 			for (final Pair<Integer, Column<?>> p : identColumns.getDescendingCountOrder()) {
 				final StringBuilder buf = new StringBuilder();
 				if (p.getSecond() instanceof PEColumn) {
-					Singletons.require(HostService.class).getDBNative().getEmitter().emitDeclaration(((PEColumn) p.getSecond()).getType(),
+					Singletons.require(DBNative.class).getEmitter().emitDeclaration(((PEColumn) p.getSecond()).getType(),
 							(PEColumn) p.getSecond(), buf, false);
 				}
 				ps.println(i2 + "[" + p.getFirst() + "]: " + p.getSecond().getName().getSQL() + " " + buf.toString());

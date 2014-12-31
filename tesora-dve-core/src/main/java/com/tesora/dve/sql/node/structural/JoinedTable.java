@@ -25,6 +25,7 @@ package com.tesora.dve.sql.node.structural;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.Edge;
@@ -131,7 +132,7 @@ public class JoinedTable extends StructuralNode {
 	
 	public String toString(SchemaContext sc) {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitJoinedTable(sc, sc.getValues(),this, buf,-1);
+        Singletons.require(DBNative.class).getEmitter().emitJoinedTable(sc, sc.getValues(),this, buf,-1);
 		return buf.toString();		
 	}
 

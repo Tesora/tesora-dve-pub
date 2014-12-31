@@ -25,6 +25,7 @@ package com.tesora.dve.sql.node.expression;
 import java.util.Collections;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
@@ -83,7 +84,7 @@ public abstract class ExpressionNode extends LanguageNode {
 	
 	public String toString(SchemaContext sc) {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitExpression(sc,(sc == null ? null : sc.getValues()),this, buf);
+        Singletons.require(DBNative.class).getEmitter().emitExpression(sc,(sc == null ? null : sc.getValues()),this, buf);
 		return buf.toString();		
 	}
 	

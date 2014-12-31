@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
@@ -273,7 +273,7 @@ public class AdaptiveMultitenantSchemaPolicyContext extends SchemaPolicyContext 
 		String passthroughSQL = null;
 		if (passthrough != null) {
 			StringBuilder buf = new StringBuilder();
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitAlterAction(getSchemaContext(),
+            Singletons.require(DBNative.class).getEmitter().emitAlterAction(getSchemaContext(),
             		getSchemaContext().getValues(),passthrough, buf);
 			passthroughSQL = buf.toString();
 		}
@@ -281,7 +281,7 @@ public class AdaptiveMultitenantSchemaPolicyContext extends SchemaPolicyContext 
 		if (passthrough != null && actionable != null) {
 			StringBuilder buf = new StringBuilder();
 			buf.append("Currently unable to execute ");
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitAlterAction(getSchemaContext(),
+            Singletons.require(DBNative.class).getEmitter().emitAlterAction(getSchemaContext(),
             		getSchemaContext().getValues(),
             		actionable, buf);
 			buf.append(" and ").append(passthroughSQL).append(" in the same alter statement");

@@ -24,6 +24,7 @@ package com.tesora.dve.sql.transform.execution;
 import java.util.Iterator;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.catalog.HasAutoIncrementTracker;
@@ -149,7 +150,7 @@ public final class RedistributionExecutionStep extends
 		requiresReferenceTimestamp = sql.getDerivedInfo().doSetTimestampVariable();
 		if (onDupKey != null && !onDupKey.isEmpty()) {
 			StringBuilder buf = new StringBuilder();
-            Singletons.require(HostService.class).getDBNative().getEmitter().emitInsertSuffix(sc, sc.getValues(), onDupKey, buf);
+            Singletons.require(DBNative.class).getEmitter().emitInsertSuffix(sc, sc.getValues(), onDupKey, buf);
             // should think about moving this into schedule
 			redistOnDupKey = new SQLCommand(sc, buf.toString());
 		}

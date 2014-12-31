@@ -98,7 +98,7 @@ public class PEQueryVariablesStatement extends DDLStatement {
 		TempGroupManager tgm = new TempGroupManager(); 
 		PEStorageGroup aggSite = tgm.getGroup(true);
 		List<PEColumn> columns = new ArrayList<PEColumn>();
-		DBNative dbn = Singletons.require(HostService.class).getDBNative();
+		DBNative dbn = Singletons.require(DBNative.class);
 		// we're going to hard code the definition, since this is all bespoke anyhow
 		columns.add(new TempColumn(pc,new UnqualifiedName("variable_name"),BasicType.buildType(java.sql.Types.VARCHAR,64, dbn)));
 		columns.add(new TempColumn(pc,new UnqualifiedName("variable_value"),BasicType.buildType(java.sql.Types.VARCHAR,1024,dbn)));

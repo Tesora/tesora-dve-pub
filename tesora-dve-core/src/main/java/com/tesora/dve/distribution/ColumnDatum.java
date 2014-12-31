@@ -23,6 +23,7 @@ package com.tesora.dve.distribution;
 
 import java.io.Serializable;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.commons.lang.ArrayUtils;
@@ -78,8 +79,8 @@ public class ColumnDatum implements Serializable, IColumnDatum {
 		Comparable<?> valueForCompare = (Comparable<?>) value;
 		if (MysqlNativeType.MysqlType.DATETIME.toString().equals(col.getNativeType())) {
 			if (value instanceof String) {
-                valueForCompare = (Comparable<?>) Singletons.require(HostService.class).getDBNative().getValueConverter().convert(
-						(String)value, BasicType.getDateTimeType(Singletons.require(HostService.class).getDBNative().getTypeCatalog()));
+                valueForCompare = (Comparable<?>) Singletons.require(DBNative.class).getValueConverter().convert(
+						(String)value, BasicType.getDateTimeType(Singletons.require(DBNative.class).getTypeCatalog()));
 			}
 		}
 		else

@@ -22,6 +22,8 @@ package com.tesora.dve.sql;
  */
 
 import java.util.Collections;
+
+import com.tesora.dve.db.DBNative;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -125,7 +127,7 @@ public class EmitterTest extends SchemaTest {
 	private void testOptions(Statement stmt, EmitOptions opts) throws Throwable {
 		pcr.execute("use " + oDDL.getDatabaseName());
 		SchemaContext sc = pcr.getBackingConnection().getSchemaContext();
-		GenericSQLCommand gsql = stmt.getGenericSQL(sc, Singletons.require(HostService.class).getDBNative().getEmitter(), opts);
+		GenericSQLCommand gsql = stmt.getGenericSQL(sc, Singletons.require(DBNative.class).getEmitter(), opts);
 		SQLCommand sqlc = gsql.resolve(sc.getValues(), true, null).getSQLCommand();
 		String sql = sqlc.getSQL();
 		dbh.execute(sql);

@@ -36,10 +36,7 @@ import com.tesora.dve.common.catalog.PersistentDatabase;
 import com.tesora.dve.common.catalog.TemporaryTable;
 import com.tesora.dve.common.catalog.UserColumn;
 import com.tesora.dve.common.catalog.UserTable;
-import com.tesora.dve.db.DBEmptyTextResultConsumer;
-import com.tesora.dve.db.DBResultConsumer;
-import com.tesora.dve.db.GroupDispatch;
-import com.tesora.dve.db.NativeType;
+import com.tesora.dve.db.*;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.queryplan.QueryStepDDLNestedOperation.NestedOperationDDLCallback;
@@ -300,7 +297,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 				BigDecimal bd = new BigDecimal(value);
 				NativeType nt = null;
 				try {
-					nt = Singletons.require(HostService.class).getDBNative().findType("DECIMAL");
+					nt = Singletons.require(DBNative.class).findType("DECIMAL");
 				} catch (PEException pe) {
 					throw new SchemaException(Pass.FIRST, "Unable to load decimal type",pe);
 				}
@@ -617,7 +614,7 @@ public class PECreateTableAsSelectStatement extends PECreateTableStatement {
 		}
 		
 		public String buildCreateTableStatement(UserTable theTable, boolean useSystemTempTable) throws PEException {
-			String out = Singletons.require(HostService.class).getDBNative().getEmitter().emitCreateTableStatement(context, context.getValues(), getTable());
+			String out = Singletons.require(DBNative.class).getEmitter().emitCreateTableStatement(context, context.getValues(), getTable());
 			return out;
 		}
 		

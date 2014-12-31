@@ -29,6 +29,7 @@ import java.util.List;
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.common.catalog.ConstraintType;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.MysqlNativeType;
 import com.tesora.dve.db.mysql.MysqlNativeType.MysqlType;
 import com.tesora.dve.db.mysql.MysqlNativeTypeCatalog;
@@ -93,7 +94,7 @@ public class DirectInfoSchema extends ComplexCatalogVersion {
 		} catch (SQLException sqle) {
 			throw new PEException("Unable to prepare update statement",sqle);
 		}
-		MysqlNativeTypeCatalog ntc = (MysqlNativeTypeCatalog) Singletons.require(HostService.class).getDBNative().getTypeCatalog();
+		MysqlNativeTypeCatalog ntc = (MysqlNativeTypeCatalog) Singletons.require(DBNative.class).getTypeCatalog();
 		for(int i = 0; i < columns.size(); i++) {
 			if (i % 100 == 0) 
 				stdout.println("Converted " + i + " columns");

@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
@@ -142,10 +143,10 @@ public abstract class TestParser {
 				LanguageNode parent = t.getParent();
 				if (parent == null) {
 					StringBuilder buf = new StringBuilder();
-                    Singletons.require(HostService.class).getDBNative().getEmitter().emitTraversable(null,null,t, buf);
+                    Singletons.require(DBNative.class).getEmitter().emitTraversable(null,null,t, buf);
 					String nodeDesc = buf.toString();
 					buf = new StringBuilder();
-                    Singletons.require(HostService.class).getDBNative().getEmitter().emitTraversable(null,null,root, buf);
+                    Singletons.require(DBNative.class).getEmitter().emitTraversable(null,null,root, buf);
 					fail("Unparented node: " + nodeDesc + " of: " + buf.toString());
 				}
 			}

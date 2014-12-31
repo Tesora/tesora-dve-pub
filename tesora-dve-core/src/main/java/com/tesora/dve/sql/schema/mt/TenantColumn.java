@@ -25,6 +25,7 @@ package com.tesora.dve.sql.schema.mt;
 import java.util.Collections;
 
 import com.tesora.dve.common.catalog.UserColumn;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.PEColumn;
@@ -40,7 +41,7 @@ public class TenantColumn extends PEColumn {
 	public static final String TENANT_COLUMN = "___mtid";
 	public static final Type TENANT_COLUMN_TYPE = BasicType.buildType("int", 10,
 			Collections.singletonList(new TypeModifier(TypeModifierKind.UNSIGNED)),
-			Singletons.require(HostService.class).getDBNative().getTypeCatalog()).normalize();
+			Singletons.require(DBNative.class).getTypeCatalog()).normalize();
 
 	private static final UnqualifiedName tenantColumnName = new UnqualifiedName("`" + TENANT_COLUMN + "`");
 

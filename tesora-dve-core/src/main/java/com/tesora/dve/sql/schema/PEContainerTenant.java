@@ -26,6 +26,7 @@ import java.util.List;
 import com.tesora.dve.common.catalog.CatalogEntity;
 import com.tesora.dve.common.catalog.ContainerTenant;
 import com.tesora.dve.common.catalog.ITenant;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.global.HostService;
@@ -162,7 +163,7 @@ public class PEContainerTenant extends
 	
 	public static String buildDiscriminantValue(SchemaContext sc, ConnectionValues cv, List<Pair<PEColumn,LiteralExpression>> orderedValues) { 
 		StringBuilder buf = new StringBuilder();
-        Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+        Emitter emitter = Singletons.require(DBNative.class).getEmitter();
 		for(Pair<PEColumn,LiteralExpression> p : orderedValues) {
 			if (buf.length() > 0)
 				buf.append(",");

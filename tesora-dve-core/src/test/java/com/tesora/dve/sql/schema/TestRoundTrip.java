@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import com.tesora.dve.db.DBNative;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -72,7 +73,7 @@ public class TestRoundTrip extends PETest {
 	
 	private static SchemaContext buildContext(CatalogDAO c) throws Exception {
 		SchemaContext pc = SchemaContext.createContext(c,
-				Singletons.require(HostService.class).getDBNative().getTypeCatalog());
+				Singletons.require(DBNative.class).getTypeCatalog());
 		pc.getConnection().getVariableSource().getGlobalVariableStore().setValue(KnownVariables.TEMPLATE_MODE, TemplateMode.OPTIONAL);
 		return pc;
 	}
@@ -188,7 +189,7 @@ public class TestRoundTrip extends PETest {
 		roundTrip("create persistent site s5 url='jdbc:mysql://s5/db1' user='floyd' password='woof'", null);
 		roundTrip("create persistent group sg3 add s5", null);
 		roundTrip("create database mydb3 default persistent group sg3", null);
-        NativeTypeCatalog tc = Singletons.require(HostService.class).getDBNative().getTypeCatalog();
+        NativeTypeCatalog tc = Singletons.require(DBNative.class).getTypeCatalog();
 		StringBuilder buf = new StringBuilder();
 		buf.append("CREATE TABLE typeRoundTrip ( ").append(PEConstants.LINE_SEPARATOR);
 		int counter = 0;

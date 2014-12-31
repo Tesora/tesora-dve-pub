@@ -791,7 +791,7 @@ public abstract class Emitter {
 		}
 		buf.append(")");
 
-		final DBNative nativeDb = Singletons.require(HostService.class).getDBNative();
+		final DBNative nativeDb = Singletons.require(DBNative.class);
 		final ForeignKeyAction onDeleteFkAction = key.getDeleteAction();
 		final ForeignKeyAction onUpdateFkAction = key.getUpdateAction();
 		if ((onDeleteFkAction != null) && (onDeleteFkAction != nativeDb.getDefaultOnDeleteAction())) {

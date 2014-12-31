@@ -29,6 +29,7 @@ import java.util.Map;
 
 import com.tesora.dve.common.MultiMap;
 import com.tesora.dve.common.catalog.PersistentSite;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.Emitter;
 import com.tesora.dve.db.Emitter.EmitOptions;
 import com.tesora.dve.db.Emitter.EmitterInvoker;
@@ -93,7 +94,7 @@ public class LateSortedInsert {
 	}
 	
 	private void emitJITInsert(final SchemaContext sc, final ConnectionValues cv, final List<JustInTimeInsert> out, final DistributionKey dk, final List<List<ExpressionNode>> asList) throws PEException {
-		Emitter emitter = Singletons.require(HostService.class).getDBNative().getEmitter();
+		Emitter emitter = Singletons.require(DBNative.class).getEmitter();
 		final GenericSQLCommand prefix = new EmitterInvoker(emitter) {
 			@Override
 			protected void emitStatement(final SchemaContext sc, final StringBuilder buf) {

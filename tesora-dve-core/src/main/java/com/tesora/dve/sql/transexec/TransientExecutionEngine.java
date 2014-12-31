@@ -61,6 +61,7 @@ import com.tesora.dve.common.catalog.UserDatabase;
 import com.tesora.dve.common.catalog.UserTable;
 import com.tesora.dve.common.catalog.UserTrigger;
 import com.tesora.dve.common.catalog.UserView;
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.NativeTypeCatalog;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.DistributionRange;
@@ -182,7 +183,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	private final ConnectionMessageManager messages = new ConnectionMessageManager();
 	
 	public TransientExecutionEngine(String ttkern) {
-		this(ttkern, Singletons.require(HostService.class).getDBNative().getTypeCatalog());
+		this(ttkern, Singletons.require(DBNative.class).getTypeCatalog());
 	}
 	
 	public TransientExecutionEngine(String ttkern, NativeTypeCatalog types) {

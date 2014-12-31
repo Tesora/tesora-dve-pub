@@ -22,10 +22,8 @@ package com.tesora.dve.server.global;
  */
 
 import com.fasterxml.uuid.impl.TimeBasedGenerator;
-import com.tesora.dve.charset.CharSetNative;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.Project;
-import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
@@ -39,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 /**
@@ -110,8 +107,6 @@ public interface HostService {
 
     void resetServerUptime();
 
-    ExecutorService getExecutorService();
-
     <T> Future<T> submit(Callable<T> task);
 
     <T> Future<T> submit(String name, Callable<T> task);
@@ -121,8 +116,6 @@ public interface HostService {
     void execute(String name, Runnable task);
 
     void onGarbageEvent();
-
-    DBNative getDBNative();
     
     VariableManager getVariableManager();
     

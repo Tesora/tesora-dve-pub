@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import com.tesora.dve.db.DBNative;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.node.Edge;
@@ -122,7 +123,7 @@ public class FromTableReference extends StructuralNode {
 	
 	public String toString(SchemaContext sc) {
 		StringBuilder buf = new StringBuilder();
-        Singletons.require(HostService.class).getDBNative().getEmitter().emitFromTableReference(sc, sc.getValues(),this, buf,-1);
+        Singletons.require(DBNative.class).getEmitter().emitFromTableReference(sc, sc.getValues(),this, buf,-1);
 		return buf.toString();		
 	}
 
