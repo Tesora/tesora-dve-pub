@@ -61,11 +61,6 @@ public class DAOPersistProvider implements PersistProvider {
 			throw new PEException("Unable to execute '" + sql + "'",sqle);
 		}
 	}
-
-	@Override
-	public List<ResultRow> query(DMLStatement dmls) throws PEException {
-		return null;
-	}
 	
 	private static class InsertWork implements Work {
 

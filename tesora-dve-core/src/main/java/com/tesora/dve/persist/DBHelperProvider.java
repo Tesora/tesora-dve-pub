@@ -51,9 +51,4 @@ public class DBHelperProvider implements PersistProvider {
 		return null;
 	}
 
-	@Override
-	public List<ResultRow> query(DMLStatement dmls) throws PEException {
-		return null;
-	}
-
 }
