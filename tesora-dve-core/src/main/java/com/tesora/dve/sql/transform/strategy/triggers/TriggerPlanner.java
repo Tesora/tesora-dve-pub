@@ -23,7 +23,6 @@ package com.tesora.dve.sql.transform.strategy.triggers;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,10 +51,8 @@ import com.tesora.dve.sql.statement.dml.InsertStatement;
 import com.tesora.dve.sql.statement.dml.SelectStatement;
 import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilter;
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
-import com.tesora.dve.sql.transform.execution.ExecutionPlan;
 import com.tesora.dve.sql.transform.execution.ExecutionSequence;
 import com.tesora.dve.sql.transform.execution.ExecutionStep;
-import com.tesora.dve.sql.transform.execution.HasPlanning;
 import com.tesora.dve.sql.transform.execution.TriggerExecutionStep;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.TransformFactory;
@@ -68,14 +65,6 @@ import com.tesora.dve.sql.transform.strategy.featureplan.RedistributionFlags;
 import com.tesora.dve.sql.util.ListSet;
 
 public abstract class TriggerPlanner extends TransformFactory {
-
-	public static HasPlanning buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
-		final ExecutionSequence sub = new ExecutionSequence(parentPlan);
-		step.schedule(pc, sub, new HashSet<FeatureStep>());
-		if (sub.getSteps().size() == 1)
-			return sub.getSteps().get(0);
-		return sub;
-	}
 
 	protected PETableTriggerPlanningEventInfo getTriggerInfo(PlannerContext context, TableKey tk, TriggerEvent event) {
 		if (tk.getAbstractTable().isView()) return null;
@@ -199,10 +188,10 @@ public abstract class TriggerPlanner extends TransformFactory {
 			rowsTable.schedule(sc, es, scheduled);
 			TriggerExecutionStep step = new TriggerExecutionStep(onTable.getPEDatabase(sc.getContext()),
 					onTable.getStorageGroup(sc.getContext()),
-					(ExecutionStep)buildSubSequence(sc,actual,es.getPlan()),
-					(before == null ? null : buildSubSequence(sc,before,es.getPlan())),
-					(after == null ? null : buildSubSequence(sc,after,es.getPlan())),
-					(ExecutionStep)buildSubSequence(sc,rowQuery,es.getPlan()),
+					(ExecutionStep) ExecutionSequence.buildSubSequence(sc, actual, es.getPlan()),
+					(before == null ? null : ExecutionSequence.buildSubSequence(sc, before, es.getPlan())),
+					(after == null ? null : ExecutionSequence.buildSubSequence(sc, after, es.getPlan())),
+					(ExecutionStep) ExecutionSequence.buildSubSequence(sc, rowQuery, es.getPlan()),
 					handlers);
 			es.append(step);
 		}

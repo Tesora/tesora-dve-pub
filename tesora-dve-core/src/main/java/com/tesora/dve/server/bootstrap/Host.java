@@ -44,6 +44,7 @@ import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.global.StatusVariableService;
+import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.variables.*;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.infoschema.InformationSchemaService;
@@ -76,6 +77,11 @@ import com.tesora.dve.variable.status.StatusVariables;
 
 public class Host implements HostService, StatusVariableService, RootProxyService, VariableService {
     protected static Logger logger = Logger.getLogger(Host.class);
+
+	static {
+		//this is done statically, to install it if someone just touches the Host class, even indirectly.
+		Singletons.replace(BehaviorConfiguration.class,new DefaultBehaviorConfiguration());
+	}
 
 	private static final String MBEAN_GLOBAL_CONFIG = "com.tesora.dve:name=ConfigVariables";
 	private static final String MBEAN_GLOBAL_STATUS = "com.tesora.dve:name=StatusVariables";

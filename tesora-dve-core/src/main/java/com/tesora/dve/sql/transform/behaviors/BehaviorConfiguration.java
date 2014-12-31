@@ -26,6 +26,8 @@ import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 
 public interface BehaviorConfiguration extends FeaturePlannerBehavior {
+	//NOTE: implementations of this class should be stateless/immutable, since the default behavior is installed as a single
+	//instance into the singletons registry.
 
 	/*
 	 * Find appropriate feature planners based on context & stmt.  You can override this to add feature planners arbitrarily.

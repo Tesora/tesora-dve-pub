@@ -26,11 +26,7 @@ import java.util.List;
 import com.tesora.dve.sql.node.expression.ExpressionNode;
 import com.tesora.dve.sql.node.test.EngineConstant;
 import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.sql.transform.strategy.ColumnMutator;
-import com.tesora.dve.sql.transform.strategy.CompoundExpressionColumnMutator;
-import com.tesora.dve.sql.transform.strategy.MutatorState;
-import com.tesora.dve.sql.transform.strategy.PassThroughMutator;
-import com.tesora.dve.sql.transform.strategy.ProjectionMutator;
+import com.tesora.dve.sql.transform.strategy.*;
 
 public class CompoundExpressionProjectionMutator extends ProjectionMutator {
 

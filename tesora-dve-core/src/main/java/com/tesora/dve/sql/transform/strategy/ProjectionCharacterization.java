@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.transform.strategy.aggregation;
+package com.tesora.dve.sql.transform.strategy;
 
 /*
  * #%L

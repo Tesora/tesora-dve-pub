@@ -33,6 +33,7 @@ import com.tesora.dve.sql.node.structural.FromTableReference;
 import com.tesora.dve.sql.node.structural.JoinedTable;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.transform.SchemaMapper;
+import com.tesora.dve.sql.transform.strategy.IndexCollector;
 import com.tesora.dve.sql.util.ListSet;
 
 public class JoinBufferEntry extends BufferEntry {

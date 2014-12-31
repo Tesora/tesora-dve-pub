@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.transform.behaviors.defaults;
+package com.tesora.dve.server.bootstrap;
 
 /*
  * #%L
@@ -36,6 +36,7 @@ import com.tesora.dve.sql.statement.dml.UnionStatement;
 import com.tesora.dve.sql.statement.dml.UpdateStatement;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.transform.behaviors.FeaturePlanTransformerBehavior;
+import com.tesora.dve.sql.transform.behaviors.defaults.DefaultPostPlanningFeaturePlanTransformer;
 import com.tesora.dve.sql.transform.strategy.ContainerBaseTableRewriteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.DegenerateExecuteTransformFactory;
 import com.tesora.dve.sql.transform.strategy.DeleteRewriteTransformFactory;
@@ -74,6 +75,7 @@ import com.tesora.dve.sql.transform.strategy.triggers.UpdateTriggerPlanner;
  * specify this class as the target, then modify as needed.
  */
 public final class DefaultBehaviorConfiguration implements BehaviorConfiguration {
+	//NOTE: this class should be stateless, since it is installed as a shared object in the Singletons registry.
 
 	// TODO:
 	// make single copies of all of the planners, and the arrays

@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.transform.strategy.aggregation;
+package com.tesora.dve.sql.transform.strategy;
 
 /*
  * #%L
@@ -29,7 +29,7 @@ import com.tesora.dve.sql.transform.AggFunCollector;
 import com.tesora.dve.sql.transform.ColumnInstanceCollector;
 import com.tesora.dve.sql.util.ListSet;
 
-class ColumnCharacterization {
+public class ColumnCharacterization {
 	
 	protected ExpressionAlias entry;
 	protected ListSet<ColumnInstance> usedColumns;

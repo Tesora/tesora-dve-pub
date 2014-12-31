@@ -316,10 +316,10 @@ public class InsertIntoValuesTriggerPlanner extends TriggerPlanner {
 			populateStep.schedule(sc,es,scheduled);
 			TriggerExecutionStep step = new TriggerExecutionStep(onTable.getPEDatabase(sc.getContext()),
 					onTable.getStorageGroup(sc.getContext()),
-					(ExecutionStep)buildSubSequence(sc,actualStep,es.getPlan()),
-					(beforeStep == null ? null : buildSubSequence(sc,beforeStep,es.getPlan())),
-					(afterStep == null ? null : buildSubSequence(sc,afterStep,es.getPlan())),
-					(ExecutionStep)buildSubSequence(sc,rowQuery,es.getPlan()),
+					(ExecutionStep) ExecutionSequence.buildSubSequence(sc, actualStep, es.getPlan()),
+					(beforeStep == null ? null : ExecutionSequence.buildSubSequence(sc, beforeStep, es.getPlan())),
+					(afterStep == null ? null : ExecutionSequence.buildSubSequence(sc, afterStep, es.getPlan())),
+					(ExecutionStep) ExecutionSequence.buildSubSequence(sc, rowQuery, es.getPlan()),
 					handlers);
 			es.append(step);
 		}

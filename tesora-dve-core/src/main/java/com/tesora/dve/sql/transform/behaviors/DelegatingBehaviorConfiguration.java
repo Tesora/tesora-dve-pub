@@ -21,8 +21,8 @@ package com.tesora.dve.sql.transform.behaviors;
  * #L%
  */
 
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.statement.dml.DMLStatement;
-import com.tesora.dve.sql.transform.behaviors.defaults.DefaultBehaviorConfiguration;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 
@@ -36,7 +36,7 @@ public class DelegatingBehaviorConfiguration implements BehaviorConfiguration {
 	
 	public DelegatingBehaviorConfiguration(BehaviorConfiguration target) {
 		if (target == null)
-			this.target = new DefaultBehaviorConfiguration();
+			this.target = Singletons.require(BehaviorConfiguration.class);
 		else
 			this.target = target;
 	}

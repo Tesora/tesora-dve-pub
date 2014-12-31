@@ -52,7 +52,6 @@ import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeaturePlanner;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.MultiFeatureStep;
-import com.tesora.dve.sql.transform.strategy.triggers.TriggerPlanner;
 
 public class CaseStatement extends CompoundStatement implements FeaturePlanner {
 
@@ -158,11 +157,11 @@ public class CaseStatement extends CompoundStatement implements FeaturePlanner {
 				schedulePrefix(pc, es, scheduled);
 
 				final ExecutionPlan parentPlan = es.getPlan();
-				final HasPlanning caseEvaluationStep = TriggerPlanner.buildSubSequence(pc, getSelfChildren().get(0), parentPlan); // CASE branch evaluation
+				final HasPlanning caseEvaluationStep = ExecutionSequence.buildSubSequence(pc, getSelfChildren().get(0), parentPlan); // CASE branch evaluation
 				final List<HasPlanning> branchOperationSteps = new ArrayList<HasPlanning>(numCases);
 				final int numChildren = getSelfChildren().size();
 				for (int i = 1; i < numChildren; i++) {
-					branchOperationSteps.add(TriggerPlanner.buildSubSequence(pc, getSelfChildren().get(i), parentPlan));
+					branchOperationSteps.add(ExecutionSequence.buildSubSequence(pc, getSelfChildren().get(i), parentPlan));
 				}
 
 				es.append(new TriggerBranchExecutionStep(getDatabase(pc), getStorageGroup(sc),

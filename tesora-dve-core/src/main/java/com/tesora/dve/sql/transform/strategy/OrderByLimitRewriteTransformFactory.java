@@ -56,7 +56,6 @@ import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeaturePlannerFilt
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.strategy.GroupByRewriteTransformFactory.AliasingEntry;
-import com.tesora.dve.sql.transform.strategy.aggregation.ProjectionCharacterization;
 import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;

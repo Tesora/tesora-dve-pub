@@ -52,6 +52,7 @@ import com.tesora.dve.sql.transform.behaviors.defaults.DefaultFeatureStepBuilder
 import com.tesora.dve.sql.transform.execution.DMLExplainReason;
 import com.tesora.dve.sql.transform.execution.DMLExplainRecord;
 import com.tesora.dve.sql.transform.strategy.ExecutionCost;
+import com.tesora.dve.sql.transform.strategy.IndexCollector;
 import com.tesora.dve.sql.transform.strategy.PlannerContext;
 import com.tesora.dve.sql.transform.strategy.featureplan.ProjectingFeatureStep;
 import com.tesora.dve.sql.transform.strategy.featureplan.RedistFeatureStep;

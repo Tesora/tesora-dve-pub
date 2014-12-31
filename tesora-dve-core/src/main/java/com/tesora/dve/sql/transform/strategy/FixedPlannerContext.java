@@ -21,9 +21,9 @@ package com.tesora.dve.sql.transform.strategy;
  * #L%
  */
 
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
-import com.tesora.dve.sql.transform.behaviors.defaults.DefaultBehaviorConfiguration;
 
 public class FixedPlannerContext {
 
@@ -37,7 +37,7 @@ public class FixedPlannerContext {
 		this.tempGroupManager = new TempGroupManager();
 		this.sanity = new TempTableSanity();
 		if (config == null)
-			this.behaviors = new DefaultBehaviorConfiguration();
+			this.behaviors = Singletons.require(BehaviorConfiguration.class);
 		else
 			this.behaviors = config;
 	}

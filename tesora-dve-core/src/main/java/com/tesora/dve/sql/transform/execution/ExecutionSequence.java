@@ -23,6 +23,7 @@ package com.tesora.dve.sql.transform.execution;
 
 
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +39,8 @@ import com.tesora.dve.sql.schema.ExplainOptions;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.ValueManager;
 import com.tesora.dve.sql.schema.cache.CacheInvalidationRecord;
+import com.tesora.dve.sql.transform.strategy.PlannerContext;
+import com.tesora.dve.sql.transform.strategy.featureplan.FeatureStep;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.UnaryFunction;
 import com.tesora.dve.sql.util.UnaryPredicate;
@@ -54,7 +57,15 @@ public class ExecutionSequence extends ExecutionStep {
 		steps = new LinkedList<HasPlanning>();
 		plan = p;
 	}
-	
+
+	public static HasPlanning buildSubSequence(PlannerContext pc, FeatureStep step, ExecutionPlan parentPlan) throws PEException {
+		final ExecutionSequence sub = new ExecutionSequence(parentPlan);
+		step.schedule(pc, sub, new HashSet<FeatureStep>());
+		if (sub.getSteps().size() == 1)
+			return sub.getSteps().get(0);
+		return sub;
+	}
+
 	public void append(HasPlanning es) {
 		if (es == null) return;
 		steps.add(es);
