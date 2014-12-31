@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.sql.infoschema.*;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.PEConstants;
@@ -46,10 +47,6 @@ import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
-import com.tesora.dve.sql.infoschema.InfoView;
-import com.tesora.dve.sql.infoschema.InformationSchemaColumn;
-import com.tesora.dve.sql.infoschema.InformationSchemaException;
-import com.tesora.dve.sql.infoschema.InformationSchemaTable;
 import com.tesora.dve.sql.infoschema.direct.DirectInformationSchemaColumn;
 import com.tesora.dve.sql.infoschema.direct.DirectVariablesTable;
 import com.tesora.dve.sql.infoschema.direct.ViewInformationSchemaTable;
@@ -246,7 +243,7 @@ public class LogicalSchemaQueryEngine {
 	
 	public static FeatureStep buildStep(SchemaContext sc, LogicalQuery lq, FeaturePlanner planner, final ProjectionInfo pi) {
 		SelectStatement toExecute = lq.getQuery();
-		final PEDatabase catalogSchema = Singletons.require(HostService.class).getInformationSchema().getCatalogSchema();
+		final PEDatabase catalogSchema = Singletons.require(InformationSchemaService.class).getCatalogSchema();
 		final GenericSQLCommand gsql = toExecute.getGenericSQL(sc, Singletons.require(DBNative.class).getEmitter(), EmitOptions.NONE);
 				
 		// look up the system group now - we have to use the actual item

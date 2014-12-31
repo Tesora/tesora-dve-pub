@@ -22,18 +22,15 @@ package com.tesora.dve.server.global;
  */
 
 import com.fasterxml.uuid.impl.TimeBasedGenerator;
-import com.tesora.dve.common.catalog.CatalogDAO;
-import com.tesora.dve.common.catalog.Project;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
+import com.tesora.dve.sql.infoschema.InformationSchema;
+import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
-import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.variables.ScopedVariables;
 import com.tesora.dve.variables.VariableManager;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Callable;
@@ -51,8 +48,6 @@ public interface HostService {
 
     void setNotificationManagerAddress(String notificationManagerAddress);
 
-    String getTransactionManagerAddress();
-
     String getStatisticsManagerAddress();
 
     void setStatisticsManagerAddress(String statisticsManagerAddress);
@@ -65,29 +60,17 @@ public interface HostService {
 
     String getHostName();
 
-    Project getProject();
-
-    void setProject(Project p);
-
     String getDefaultProjectName();
-
-    List<Pair<String,String>> getStatusVariables(CatalogDAO c) throws PEException;
-
-    String getStatusVariable(CatalogDAO c, String variableName) throws PEException;
 
     String getServerVersion();
 
     String getServerVersionComment();
-
-    String getDveVersion(SSConnection ssCon) throws PEException;
 
     String getDveServerVersion();
 
     String getDveServerVersionComment();
 
     int getPortalPort(Properties props);
-
-    String getScopedVariable(String scopeName, String variableName) throws PEException;
 
     Collection<String> getScopedVariableScopeNames();
 
@@ -96,8 +79,6 @@ public interface HostService {
     void setScopedVariable(String scopeName, String variableName, String value) throws PEException;
 
     void addScopedConfig(String scopeName, ScopedVariables config);
-
-    InformationSchemas getInformationSchema();
 
     long getDBConnectionTimeout();
 

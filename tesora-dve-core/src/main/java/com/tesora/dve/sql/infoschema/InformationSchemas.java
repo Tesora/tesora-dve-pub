@@ -59,7 +59,7 @@ import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.upgrade.CatalogSchemaGenerator;
 
-public final class InformationSchemas {
+public final class InformationSchemas implements InformationSchemaService {
 
 	protected final InformationSchema infoSchema;
 	protected final ShowView show;
@@ -73,26 +73,32 @@ public final class InformationSchemas {
 		this.catalog = pdb;
 	}
 	
+	@Override
 	public InformationSchema getInfoSchema() {
 		return infoSchema;
 	}
 
+	@Override
 	public PEDatabase getCatalogSchema() {
 		return this.catalog;
 	}
 
+	@Override
 	public ShowView getShowSchema() {
 		return this.show;
 	}
 	
+	@Override
 	public ShowSchemaBehavior lookupShowTable(UnqualifiedName unq) {
 		return getShowSchema().lookupTable(unq);
 	}
 	
+	@Override
 	public MysqlSchema getMysqlSchema() {
 		return this.mysql;
 	}
 	
+	@Override
 	public List<PersistedEntity> buildEntities(int groupid, int modelid, String charSet, String collation) throws PEException {
 		CatalogSchema cs = new CatalogSchema();
 		ArrayList<PersistedEntity> acc = new ArrayList<PersistedEntity>();
@@ -132,6 +138,7 @@ public final class InformationSchemas {
 		}
 	}
 	
+	@Override
 	public InformationSchemaDatabase buildPEDatabase(SchemaContext sc, UserDatabase udb) {
 		if (InfoView.INFORMATION.getUserDatabaseName().equals(udb.getName()))
 			return new InformationSchemaDatabase(sc, udb, infoSchema);

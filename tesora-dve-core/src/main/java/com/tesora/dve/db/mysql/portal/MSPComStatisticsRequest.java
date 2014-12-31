@@ -56,11 +56,11 @@ public class MSPComStatisticsRequest extends MSPActionBase {
 
 			MyStatisticsResponse statResp = new MyStatisticsResponse();
 
-            HostService hostService = Singletons.require(HostService.class);
+            StatusVariableService statusVariableService = Singletons.require(StatusVariableService.class);
 
-			statResp.setThreads(Long.valueOf(hostService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_THREAD_COUNT)));
-			statResp.setUptime(Long.valueOf(hostService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_UPTIME)));
-			statResp.setQuestions(Long.valueOf(hostService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_QUESTIONS)));
+			statResp.setThreads(Long.valueOf(statusVariableService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_THREAD_COUNT)));
+			statResp.setUptime(Long.valueOf(statusVariableService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_UPTIME)));
+			statResp.setQuestions(Long.valueOf(statusVariableService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_QUESTIONS)));
 			//			statResp.setSlowQueries(Long.valueOf(Host.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_SLOW_QUERIES)));
 
 			// we are going to use QPS over the last minute for now as it is all

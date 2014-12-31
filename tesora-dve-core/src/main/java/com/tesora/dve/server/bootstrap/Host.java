@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 import javax.management.DynamicMBean;
@@ -41,11 +40,12 @@ import javax.management.ObjectName;
 import com.tesora.dve.charset.*;
 import com.tesora.dve.clock.*;
 import com.tesora.dve.groupmanager.GroupTopicPublisher;
-import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.db.mysql.portal.StatusVariableService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import org.apache.log4j.Logger;
 
 import com.fasterxml.uuid.EthernetAddress;
@@ -72,14 +72,13 @@ import com.tesora.dve.upgrade.CatalogVersions;
 import com.tesora.dve.variable.status.StatusVariableHandler;
 import com.tesora.dve.variable.status.StatusVariableHandlerDynamicMBean;
 import com.tesora.dve.variable.status.StatusVariables;
-import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.ScopedVariableHandler;
 import com.tesora.dve.variables.ScopedVariables;
 import com.tesora.dve.variables.ServerGlobalVariableStore;
 import com.tesora.dve.variables.VariableHandlerDynamicMBean;
 import com.tesora.dve.variables.VariableManager;
 
-public class Host implements HostService {
+public class Host implements HostService, StatusVariableService {
     protected static Logger logger = Logger.getLogger(Host.class);
 
 	private static final String MBEAN_GLOBAL_CONFIG = "com.tesora.dve:name=ConfigVariables";
@@ -130,15 +129,6 @@ public class Host implements HostService {
 	@Override
     public void setNotificationManagerAddress(String notificationManagerAddress) {
 		this.notificationManagerAddress = notificationManagerAddress;
-	}	
-	
-	protected void setTransactionManagerAddress(String address) {
-		transactionManagerAddress = address;
-	}
-
-	@Override
-    public String getTransactionManagerAddress() {
-		return transactionManagerAddress;
 	}
 
 	@Override
@@ -191,7 +181,8 @@ public class Host implements HostService {
 		
 		singleton = this;
         registerTimingService();
-        Singletons.replace(HostService.class, singleton); 
+        Singletons.replace(HostService.class, singleton);
+		Singletons.replace(StatusVariableService.class,singleton);
         if (this instanceof BootstrapHost){
             //dirty, but works around issue where initializers were accessing Bootstrap singleton before this constructor exited and bootstrap constructor had time to register sub-interface. -sgossard
             Singletons.replace(BootstrapHostService.class, (BootstrapHost)singleton);
@@ -233,6 +224,7 @@ public class Host implements HostService {
 				variables.initializeDynamicMBeanHandlers(globalConfigMBean);
 
 				infoSchema = InformationSchemas.build(dbNative, c, props);
+				Singletons.replace(InformationSchemaService.class,infoSchema);
 
 			} finally {
 				c.close();
@@ -309,6 +301,7 @@ public class Host implements HostService {
 			Singletons.replace(CharSetNative.class, initializeCharsetNative(dbType, startCatalog));//TODO: the only purpose of CharSetNative appears to be holding an alternate NativeCharSetCatalog? -sgossard.
 			
 			infoSchema = InformationSchemas.build(dbNative,null,props);
+			Singletons.replace(InformationSchemaService.class, infoSchema);
 			if (startCatalog)
 				variables.initialize(null);
 		} catch (Exception e) {
@@ -316,6 +309,7 @@ public class Host implements HostService {
 		}
 		singleton = this;
         Singletons.replace(HostService.class, singleton);
+		Singletons.replace(StatusVariableService.class,singleton);
 	}
 
     public void registerTimingService() {
@@ -396,14 +390,9 @@ public class Host implements HostService {
 		return hostName;
 	}
 
-    @Override
-    public Project getProject() {
+
+    protected Project getProject() {
 		return project;
-	}
-	
-	@Override
-    public void setProject(Project p) {
-		project = p;
 	}
 
 	@Override
@@ -441,14 +430,6 @@ public class Host implements HostService {
 		}
 		return versionComment;
 	}
-
-	@Override
-    public String getDveVersion(SSConnection ssCon) throws PEException {
-		if (dveVersion == null) {
-			return KnownVariables.VERSION.getGlobalValue(null);
-		}
-		return dveVersion;
-	}
 	
 	@Override
     public String getDveServerVersion() {
@@ -473,12 +454,7 @@ public class Host implements HostService {
 
 		throw new PEException("No variable configuration defined for provider " + providerName);    	
     }
-    
-	@Override
-    public String getScopedVariable(String scopeName, String variableName) throws PEException {
-		return getScopedConfig(scopeName).getScopedVariableHandler(variableName).getValue();
-	}
-	
+
 	@Override
     public Collection<String> getScopedVariableScopeNames() {
 		return scopedVariables.keySet();
@@ -503,11 +479,6 @@ public class Host implements HostService {
     public void addScopedConfig(String scopeName, ScopedVariables variableConfig) {
 		if (variableConfig == null) return;
 		scopedVariables.put(scopeName,variableConfig);
-	}
-
-	@Override
-    public InformationSchemas getInformationSchema() {
-		return infoSchema;
 	}
 
 	@Override

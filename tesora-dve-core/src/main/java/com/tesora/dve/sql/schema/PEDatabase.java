@@ -41,6 +41,7 @@ import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ParserException.Pass;
 import com.tesora.dve.sql.SchemaException;
+import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.util.Pair;
@@ -350,7 +351,7 @@ public class PEDatabase extends Persistable<PEDatabase, UserDatabase> implements
 			UserDatabase udb = sc.getCatalog().findUserDatabase(persistName);
 			if (udb == null)
 				return null;
-            Database<?> peds = Singletons.require(HostService.class).getInformationSchema().buildPEDatabase(sc, udb);
+            Database<?> peds = Singletons.require(InformationSchemaService.class).buildPEDatabase(sc, udb);
 			if (peds == null) 
 				peds = PEDatabase.load(udb, sc);
 			return peds;

@@ -25,6 +25,7 @@ import java.util.List;
 
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import org.junit.Test;
 
 import com.tesora.dve.persist.InsertEngine;
@@ -42,7 +43,7 @@ public class InfoSchemaInit extends TransformTest {
 
 	@Test
 	public void testShow() {
-        InformationSchemas schema = Singletons.require(HostService.class).getInformationSchema();
+		InformationSchemaService schema = Singletons.require(InformationSchemaService.class);
 		System.out.println("Show tables:");
 		for(InformationSchemaTable list : schema.getShowSchema().getTables(null)) {
 			System.out.println(list);
@@ -53,7 +54,7 @@ public class InfoSchemaInit extends TransformTest {
 	
 	@Test
 	public void testInfoSchema() {
-        InformationSchemas schema = Singletons.require(HostService.class).getInformationSchema();
+		InformationSchemaService schema = Singletons.require(InformationSchemaService.class);
 		System.out.println("Info schema tables:");
 		for(InformationSchemaTable list : schema.getInfoSchema().getTables(null)) {
 			System.out.println(list);
@@ -64,7 +65,7 @@ public class InfoSchemaInit extends TransformTest {
 
 	@Test
 	public void testMysqlSchema() {
-        InformationSchemas schema = Singletons.require(HostService.class).getInformationSchema();
+        InformationSchemaService schema = Singletons.require(InformationSchemaService.class);
 		System.out.println("Mysql tables:");
 		for(InformationSchemaTable list : schema.getMysqlSchema().getTables(null)) {
 			System.out.println(list);
@@ -75,7 +76,7 @@ public class InfoSchemaInit extends TransformTest {
 	
 	@Test
 	public void testGen() throws Throwable {
-        InformationSchemas schema = Singletons.require(HostService.class).getInformationSchema();
+        InformationSchemaService schema = Singletons.require(InformationSchemaService.class);
 		List<PersistedEntity> ents = schema.buildEntities(1, 2, "mycharset", "mycollation");
 		InsertEngine ie = new InsertEngine(ents,null);
 		List<String> gen = ie.dryrun();

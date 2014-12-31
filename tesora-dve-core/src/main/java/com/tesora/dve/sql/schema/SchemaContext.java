@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import org.antlr.runtime.TokenStream;
 
 import com.tesora.dve.common.MultiMap;
@@ -159,7 +160,7 @@ public class SchemaContext {
 
 	public static Database<?> loadDB(SchemaContext pc, UserDatabase db) {
 		if (db == null) return null;
-        Database<?> peds = Singletons.require(HostService.class).getInformationSchema().buildPEDatabase(pc, db);
+        Database<?> peds = Singletons.require(InformationSchemaService.class).buildPEDatabase(pc, db);
 		if (peds == null)
 			peds = PEDatabase.load(db, pc);
 		return peds;

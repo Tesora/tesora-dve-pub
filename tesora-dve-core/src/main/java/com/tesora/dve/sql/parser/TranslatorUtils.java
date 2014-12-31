@@ -34,6 +34,7 @@ import java.util.TreeMap;
 
 import com.tesora.dve.charset.*;
 import com.tesora.dve.db.DBNative;
+import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import org.antlr.runtime.Lexer;
 import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.CommonTree;
@@ -1239,8 +1240,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 	public Statement buildShowCreateDatabaseQuery(String onInfoSchemaTable,
 			Name objectName, Boolean ifNotExists) {
-        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
-				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
+        ShowSchemaBehavior ist = Singletons.require(InformationSchemaService.class).lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);
@@ -2715,8 +2715,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 
 		// TODO:
 		// handle !resolve
-        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
-				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
+        ShowSchemaBehavior ist = Singletons.require(InformationSchemaService.class).lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);
@@ -2729,7 +2728,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			pushScope();
 			scope.buildTableInstance(n, new UnqualifiedName("a"), null, pc, null);
 		} else {
-			ShowSchemaBehavior sst = Singletons.require(HostService.class).getInformationSchema()
+			ShowSchemaBehavior sst = Singletons.require(InformationSchemaService.class)
 					.lookupShowTable((UnqualifiedName) n);
 			if (sst == null)
 				throw new SchemaException(Pass.SECOND, "No such table: "					
@@ -2738,7 +2737,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			pushScope();
 			// we put in an alias anyways
 			scope.buildTableInstance(ist.getName(), new UnqualifiedName("a"),
-					Singletons.require(HostService.class).getInformationSchema().getShowSchema(), pc, null);
+					Singletons.require(InformationSchemaService.class).getShowSchema(), pc, null);
 		}
 	}
 
@@ -2756,8 +2755,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 		if (pc.getCapability() == Capability.PARSING_ONLY && !pc.getCatalog().isPersistent())
 			return new EmptyStatement("no catalog queries with transient execution engine");
 
-        ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
-				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
+        ShowSchemaBehavior ist = Singletons.require(InformationSchemaService.class).lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);
@@ -3846,8 +3844,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	
 	@SuppressWarnings("unchecked")
 	public Statement buildShowStatus(Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
-		DirectShowStatusInformation ist = (DirectShowStatusInformation) Singletons.require(HostService.class).getInformationSchema().lookupShowTable(
-				new UnqualifiedName("status"));
+		DirectShowStatusInformation ist = (DirectShowStatusInformation) Singletons.require(InformationSchemaService.class).lookupShowTable(new UnqualifiedName("status"));
 
 		ExpressionNode likeExpr = (likeOrWhere == null ? null : likeOrWhere
 				.getFirst());
@@ -3861,9 +3858,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 	@SuppressWarnings("unchecked")
 	public Statement buildShowVariables(VariableScope ivs,
 			Pair<ExpressionNode, ExpressionNode> likeOrWhere) {
-        DirectShowVariablesTable ist = (DirectShowVariablesTable) Singletons.require(HostService.class).
-				getInformationSchema().lookupShowTable(
-						new UnqualifiedName("variables"));
+        DirectShowVariablesTable ist = (DirectShowVariablesTable) Singletons.require(InformationSchemaService.class).lookupShowTable(new UnqualifiedName("variables"));
 		VariableScope vs = ivs;
 		if (vs == null)
 			vs = new VariableScope(VariableScopeKind.SESSION);
@@ -3880,8 +3875,7 @@ public class TranslatorUtils extends Utils implements ValueSource {
 			List<Name> scoping, Pair<ExpressionNode, ExpressionNode> likeOrWhere, Token full) {
 		if (pc.getCapability() == Capability.PARSING_ONLY && !pc.getCatalog().isPersistent())
 			return new EmptyStatement("no catalog queries with transient execution engine");
-		ShowSchemaBehavior ist = Singletons.require(HostService.class).getInformationSchema()
-				.lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
+		ShowSchemaBehavior ist = Singletons.require(InformationSchemaService.class).lookupShowTable(new UnqualifiedName(onInfoSchemaTable));
 		if (ist == null)
 			throw new MigrationException("Need to add info schema table for "
 					+ onInfoSchemaTable);

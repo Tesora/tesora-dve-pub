@@ -145,7 +145,7 @@ public class InformationSchemaDatabase implements Database<InformationSchemaTabl
 			UserDatabase udb = sc.getCatalog().findUserDatabase(name);
 			if (udb == null)
 				return null;
-            Database<?> peds = Singletons.require(HostService.class).getInformationSchema().buildPEDatabase(sc, udb);
+            Database<?> peds = Singletons.require(InformationSchemaService.class).buildPEDatabase(sc, udb);
 			if (peds == null)
 				throw new IllegalStateException("Unable to load info schema view");
 			return peds;
