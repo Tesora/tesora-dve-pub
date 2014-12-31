@@ -43,7 +43,7 @@ import com.tesora.dve.groupmanager.GroupTopicPublisher;
 import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.server.global.HostService;
-import com.tesora.dve.db.mysql.portal.StatusVariableService;
+import com.tesora.dve.server.global.StatusVariableService;
 import com.tesora.dve.variables.*;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.infoschema.InformationSchemaService;
@@ -402,7 +402,7 @@ public class Host implements HostService, StatusVariableService, RootProxyServic
 	}
 
 	@Override
-    public List<Pair<String,String>> getStatusVariables(CatalogDAO c) throws PEException {
+    public List<Pair<String,String>> getStatusVariables() throws PEException {
 		List<Pair<String,String>> out = new ArrayList<Pair<String,String>>();
 
 		for(StatusVariableHandler svh : StatusVariables.getStatusVariables()) {
@@ -413,7 +413,7 @@ public class Host implements HostService, StatusVariableService, RootProxyServic
 	}
 
 	@Override
-    public String getStatusVariable(CatalogDAO c, String variableName) throws PEException {
+    public String getStatusVariable(String variableName) throws PEException {
 		return StatusVariables.lookup(variableName, true).getValue();
 	}
 	

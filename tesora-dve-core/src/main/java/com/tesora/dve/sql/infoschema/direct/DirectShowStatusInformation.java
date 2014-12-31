@@ -34,7 +34,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.IntermediateResultSet;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.db.mysql.portal.StatusVariableService;
+import com.tesora.dve.server.global.StatusVariableService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.ParserException.Pass;
@@ -111,7 +111,7 @@ public class DirectShowStatusInformation extends DirectShowSchemaTable {
 	}
 
 	private List<Pair<String,String>> getCurrentStatusValues(SchemaContext sc) throws PEException {
-        return Singletons.require(StatusVariableService.class).getStatusVariables(sc.getCatalog().getDAO());
+        return Singletons.require(StatusVariableService.class).getStatusVariables();
 	}
 
 	private ColumnSet buildColumnSet() {

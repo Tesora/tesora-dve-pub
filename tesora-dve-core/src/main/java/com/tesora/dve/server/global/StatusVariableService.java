@@ -1,4 +1,4 @@
-package com.tesora.dve.db.mysql.portal;
+package com.tesora.dve.server.global;
 
 /*
  * #%L
@@ -31,7 +31,7 @@ import java.util.List;
  *
  */
 public interface StatusVariableService {
-    List<Pair<String,String>> getStatusVariables(CatalogDAO c) throws PEException;
+    List<Pair<String,String>> getStatusVariables() throws PEException;
 
-    String getStatusVariable(CatalogDAO c, String variableName) throws PEException;
+    String getStatusVariable(String variableName) throws PEException;
 }

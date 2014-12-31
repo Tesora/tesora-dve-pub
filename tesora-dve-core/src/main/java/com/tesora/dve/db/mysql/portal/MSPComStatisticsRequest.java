@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 
 import com.tesora.dve.db.mysql.portal.protocol.MSPMessage;
 import com.tesora.dve.server.global.HostService;
+import com.tesora.dve.server.global.StatusVariableService;
 import com.tesora.dve.singleton.Singletons;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -58,9 +59,9 @@ public class MSPComStatisticsRequest extends MSPActionBase {
 
             StatusVariableService statusVariableService = Singletons.require(StatusVariableService.class);
 
-			statResp.setThreads(Long.valueOf(statusVariableService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_THREAD_COUNT)));
-			statResp.setUptime(Long.valueOf(statusVariableService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_UPTIME)));
-			statResp.setQuestions(Long.valueOf(statusVariableService.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_QUESTIONS)));
+			statResp.setThreads(Long.valueOf(statusVariableService.getStatusVariable(MysqlNativeConstants.MYSQL_THREAD_COUNT)));
+			statResp.setUptime(Long.valueOf(statusVariableService.getStatusVariable(MysqlNativeConstants.MYSQL_UPTIME)));
+			statResp.setQuestions(Long.valueOf(statusVariableService.getStatusVariable(MysqlNativeConstants.MYSQL_QUESTIONS)));
 			//			statResp.setSlowQueries(Long.valueOf(Host.getStatusVariable(ssCon.getCatalogDAO(), MysqlNativeConstants.MYSQL_SLOW_QUERIES)));
 
 			// we are going to use QPS over the last minute for now as it is all
