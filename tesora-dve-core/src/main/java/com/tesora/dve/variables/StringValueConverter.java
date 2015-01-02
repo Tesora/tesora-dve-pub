@@ -25,8 +25,7 @@ import java.sql.Types;
 
 import com.tesora.dve.common.PEStringUtils;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.collector.ResultCollector;
-import com.tesora.dve.resultset.collector.ResultCollector.ResultCollectorFactory;
+import com.tesora.dve.variables.ResultCollector.ResultCollectorFactory;
 
 public class StringValueConverter extends ValueMetadata<String> {
 

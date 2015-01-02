@@ -26,8 +26,7 @@ import java.sql.Types;
 import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.collector.ResultCollector;
-import com.tesora.dve.resultset.collector.ResultCollector.ResultCollectorFactory;
+import com.tesora.dve.variables.ResultCollector.ResultCollectorFactory;
 import com.tesora.dve.sql.SchemaException;
 
 public class IntegralValueConverter extends ValueMetadata<Long> {

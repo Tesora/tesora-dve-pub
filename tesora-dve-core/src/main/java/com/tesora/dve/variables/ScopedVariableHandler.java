@@ -27,10 +27,9 @@ import java.util.Arrays;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultChunk;
-import com.tesora.dve.resultset.collector.ResultCollector;
 import com.tesora.dve.resultset.ResultColumn;
 import com.tesora.dve.resultset.ResultRow;
-import com.tesora.dve.resultset.collector.ResultCollector.ResultCollectorFactory;
+import com.tesora.dve.variables.ResultCollector.ResultCollectorFactory;
 
 
 public abstract class ScopedVariableHandler  {

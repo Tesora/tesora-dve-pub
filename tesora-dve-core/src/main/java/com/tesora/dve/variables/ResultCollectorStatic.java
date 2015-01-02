@@ -1,4 +1,4 @@
-package com.tesora.dve.resultset.collector;
+package com.tesora.dve.variables;
 
 /*
  * #%L

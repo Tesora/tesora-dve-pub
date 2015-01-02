@@ -37,7 +37,7 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.db.DBResultConsumer;
 import com.tesora.dve.distribution.IKeyValue;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.collector.ResultCollector;
+import com.tesora.dve.variables.ResultCollector;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.GetWorkerRequest;
 import com.tesora.dve.server.messaging.SQLCommand;

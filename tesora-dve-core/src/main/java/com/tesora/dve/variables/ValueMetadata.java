@@ -24,8 +24,7 @@ package com.tesora.dve.variables;
 import java.sql.Types;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.resultset.collector.ResultCollector;
-import com.tesora.dve.resultset.collector.ResultCollector.ResultCollectorFactory;
+import com.tesora.dve.variables.ResultCollector.ResultCollectorFactory;
 
 public abstract class ValueMetadata<Type> {
 
