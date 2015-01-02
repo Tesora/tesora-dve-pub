@@ -24,6 +24,7 @@ package com.tesora.dve.locking.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.tesora.dve.locking.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,11 +32,7 @@ import com.tesora.dve.cas.CopyOnInvoke;
 import com.tesora.dve.cas.EngineControl;
 import com.tesora.dve.debug.DebugHandle;
 import com.tesora.dve.debug.Debuggable;
-import com.tesora.dve.groupmanager.MembershipView;
-import com.tesora.dve.locking.ClusterLock;
-import com.tesora.dve.locking.GlobalLockState;
-import com.tesora.dve.locking.LocalLockState;
-import com.tesora.dve.locking.LockMode;
+import com.tesora.dve.membership.MembershipView;
 import com.tesora.dve.locking.LocalLockState.Latch;
 import com.tesora.dve.lockmanager.LockClient;
 import com.tesora.dve.resultset.ResultRow;

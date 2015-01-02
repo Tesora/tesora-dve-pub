@@ -31,10 +31,14 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.tesora.dve.lockmanager.LockManager;
+import com.tesora.dve.locking.impl.CoordinationServices;
+import com.tesora.dve.membership.GroupMembershipListener;
+import com.tesora.dve.membership.GroupTopic;
+import com.tesora.dve.membership.MembershipView;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 
-import com.tesora.dve.groupmanager.GroupMembershipListener.MembershipEventType;
+import com.tesora.dve.membership.GroupMembershipListener.MembershipEventType;
 import com.tesora.dve.locking.ClusterLock;
 import com.tesora.dve.locking.impl.ClusterLockManager;
 

@@ -24,6 +24,8 @@ package com.tesora.dve.groupmanager;
 import com.google.common.collect.Sets;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.ServerRegistration;
+import com.tesora.dve.locking.impl.CoordinationServices;
+import com.tesora.dve.membership.MembershipView;
 
 import java.net.InetSocketAddress;
 import java.util.*;

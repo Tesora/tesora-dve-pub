@@ -38,7 +38,7 @@ import com.tesora.dve.externalservice.ExternalServiceContext;
 import com.tesora.dve.externalservice.ExternalServiceContextImpl;
 import com.tesora.dve.externalservice.ExternalServicePlugin;
 import com.tesora.dve.groupmanager.GroupManager;
-import com.tesora.dve.groupmanager.GroupMembershipListener.MembershipEventType;
+import com.tesora.dve.membership.GroupMembershipListener.MembershipEventType;
 import com.tesora.dve.mysqlapi.MyClientConnectionContext;
 
 public class MyReplicationSlaveService implements ExternalServicePlugin {

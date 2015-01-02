@@ -21,6 +21,9 @@ package com.tesora.dve.groupmanager;
  * #L%
  */
 
+import com.tesora.dve.membership.GroupTopic;
+import com.tesora.dve.membership.GroupTopicListener;
+import com.tesora.dve.membership.GroupTopicPublisher;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;

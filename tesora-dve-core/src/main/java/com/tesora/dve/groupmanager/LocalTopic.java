@@ -21,6 +21,8 @@ package com.tesora.dve.groupmanager;
  * #L%
  */
 
+import com.tesora.dve.membership.GroupTopic;
+import com.tesora.dve.membership.GroupTopicListener;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.log4j.Logger;
 

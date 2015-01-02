@@ -38,7 +38,7 @@ import org.apache.log4j.Logger;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
-import com.tesora.dve.groupmanager.GroupMembershipListener;
+import com.tesora.dve.membership.GroupMembershipListener;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;
 import com.tesora.dve.server.connectionmanager.PerHostConnectionManager;

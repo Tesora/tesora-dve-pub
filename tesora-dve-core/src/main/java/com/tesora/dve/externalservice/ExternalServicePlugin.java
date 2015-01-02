@@ -25,7 +25,7 @@ package com.tesora.dve.externalservice;
 import java.net.InetSocketAddress;
 
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.groupmanager.GroupMembershipListener.MembershipEventType;
+import com.tesora.dve.membership.GroupMembershipListener.MembershipEventType;
 
 public interface ExternalServicePlugin {
 	void initialize(ExternalServiceContext ctxt) throws PEException;

@@ -42,7 +42,7 @@ import com.tesora.dve.db.mysql.common.DataTypeValueFunc;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.groupmanager.GroupManager;
-import com.tesora.dve.groupmanager.GroupTopicPublisher;
+import com.tesora.dve.membership.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.PurgeDistributionRangeCache;
 import com.tesora.dve.locking.ClusterLock;
 import com.tesora.dve.queryplan.ExecutionState;

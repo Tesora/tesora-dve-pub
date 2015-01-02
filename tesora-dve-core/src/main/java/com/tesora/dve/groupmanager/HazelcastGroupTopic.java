@@ -25,6 +25,8 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
+import com.tesora.dve.membership.GroupTopic;
+import com.tesora.dve.membership.GroupTopicListener;
 
 public class HazelcastGroupTopic<M> implements GroupTopic<M> {
 	

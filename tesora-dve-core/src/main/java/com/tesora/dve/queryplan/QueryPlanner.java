@@ -32,7 +32,7 @@ import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PESQLException;
 import com.tesora.dve.groupmanager.CacheInvalidationMessage;
-import com.tesora.dve.groupmanager.GroupTopicPublisher;
+import com.tesora.dve.membership.GroupTopicPublisher;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;

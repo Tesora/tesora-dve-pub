@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
-import com.tesora.dve.groupmanager.GroupTopicPublisher;
+import com.tesora.dve.membership.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.OnGlobalConfigChangeMessage;
 import com.tesora.dve.locking.ClusterLock;
 import com.tesora.dve.lockmanager.LockClient;

@@ -46,7 +46,7 @@ import com.tesora.dve.common.UserVisibleDatabase;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.groupmanager.GroupTopicPublisher;
+import com.tesora.dve.membership.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.SiteFailureMessage;
 import com.tesora.dve.resultset.ColumnSet;
 import com.tesora.dve.resultset.ResultRow;

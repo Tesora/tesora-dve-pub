@@ -1,4 +1,4 @@
-package com.tesora.dve.groupmanager;
+package com.tesora.dve.locking.impl;
 
 /*
  * #%L
@@ -23,6 +23,10 @@ package com.tesora.dve.groupmanager;
 
 import com.tesora.dve.locking.ClusterLock;
 import com.tesora.dve.lockmanager.LockManager;
+import com.tesora.dve.membership.GroupMembershipListener;
+import com.tesora.dve.membership.GroupTopic;
+import com.tesora.dve.membership.MembershipView;
+import com.tesora.dve.membership.MembershipViewSource;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;

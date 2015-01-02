@@ -31,8 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Test;
 
-import com.tesora.dve.groupmanager.GroupTopicListener;
-import com.tesora.dve.groupmanager.LocalTopic;
+import com.tesora.dve.membership.GroupTopicListener;
 
 public class LocalTopicTest implements GroupTopicListener<LocalTopicTest.MessageType>{
 	

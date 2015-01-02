@@ -23,7 +23,8 @@ package com.tesora.dve.groupmanager;
 
 import com.hazelcast.core.MembershipEvent;
 import com.hazelcast.core.MembershipListener;
-import com.tesora.dve.groupmanager.GroupMembershipListener.MembershipEventType;
+import com.tesora.dve.membership.GroupMembershipListener;
+import com.tesora.dve.membership.GroupMembershipListener.MembershipEventType;
 
 public class HazelcastMembershipListener implements MembershipListener {
 	

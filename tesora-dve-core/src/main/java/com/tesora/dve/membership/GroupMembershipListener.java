@@ -1,4 +1,4 @@
-package com.tesora.dve.groupmanager;
+package com.tesora.dve.membership;
 
 /*
  * #%L
@@ -21,8 +21,12 @@ package com.tesora.dve.groupmanager;
  * #L%
  */
 
-import com.tesora.dve.groupmanager.MembershipView;
+import java.net.InetSocketAddress;
 
-public interface MembershipViewSource {
-    MembershipView getMembershipView();
+public interface GroupMembershipListener {
+	
+	enum MembershipEventType { MEMBER_ADDED, MEMBER_ACTIVE, MEMBER_REMOVED }
+	
+	void onMembershipEvent(MembershipEventType eventType, InetSocketAddress inetSocketAddress);
+
 }

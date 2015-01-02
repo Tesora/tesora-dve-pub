@@ -1,4 +1,4 @@
-package com.tesora.dve.locking.impl;
+package com.tesora.dve.locking;
 
 /*
  * #%L
@@ -21,16 +21,14 @@ package com.tesora.dve.locking.impl;
  * #L%
  */
 
-import com.tesora.dve.locking.LockMode;
-
 import java.net.InetSocketAddress;
 
 
 public class IntentEntry implements Comparable<IntentEntry> {
-    InetSocketAddress member;
-    long published;
-    long lastUnlockedOrAcquired;
-    LockMode state;
+    public InetSocketAddress member;
+    public long published;
+    public long lastUnlockedOrAcquired;
+    public LockMode state;
 
     public IntentEntry(InetSocketAddress member,LockMode state,long published) {
         this(member,state,published,published);

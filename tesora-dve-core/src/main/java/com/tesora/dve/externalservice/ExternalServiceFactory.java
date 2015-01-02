@@ -34,7 +34,7 @@ import org.apache.log4j.Logger;
 
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.groupmanager.GroupManager;
-import com.tesora.dve.groupmanager.GroupMembershipListener.MembershipEventType;
+import com.tesora.dve.membership.GroupMembershipListener.MembershipEventType;
 
 public class ExternalServiceFactory {
 	private static Logger logger = Logger.getLogger(ExternalServiceFactory.class);

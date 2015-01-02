@@ -37,6 +37,10 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.tesora.dve.locking.impl.CoordinationServices;
+import com.tesora.dve.membership.GroupMembershipListener;
+import com.tesora.dve.membership.GroupTopic;
+import com.tesora.dve.membership.GroupTopicListener;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 

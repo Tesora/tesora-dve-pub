@@ -37,6 +37,10 @@ import java.util.concurrent.locks.Lock;
 
 import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.lockmanager.LockManager;
+import com.tesora.dve.locking.impl.CoordinationServices;
+import com.tesora.dve.membership.GroupMembershipListener;
+import com.tesora.dve.membership.GroupTopic;
+import com.tesora.dve.membership.MembershipView;
 import com.tesora.dve.singleton.Singletons;
 import org.apache.log4j.Logger;
 

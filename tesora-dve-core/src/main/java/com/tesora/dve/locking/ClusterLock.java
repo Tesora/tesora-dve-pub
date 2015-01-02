@@ -22,9 +22,8 @@ package com.tesora.dve.locking;
  */
 
 import com.tesora.dve.debug.Debuggable;
-import com.tesora.dve.groupmanager.GroupTopicListener;
-import com.tesora.dve.groupmanager.MembershipView;
-import com.tesora.dve.locking.impl.IntentEntry;
+import com.tesora.dve.membership.GroupTopicListener;
+import com.tesora.dve.membership.MembershipView;
 import com.tesora.dve.lockmanager.LockClient;
 import com.tesora.dve.resultset.ResultRow;
 

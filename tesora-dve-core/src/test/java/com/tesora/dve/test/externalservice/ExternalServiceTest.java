@@ -42,7 +42,7 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.externalservice.ExternalServiceContext;
 import com.tesora.dve.externalservice.ExternalServiceFactory;
 import com.tesora.dve.externalservice.ExternalServicePlugin;
-import com.tesora.dve.groupmanager.GroupMembershipListener.MembershipEventType;
+import com.tesora.dve.membership.GroupMembershipListener.MembershipEventType;
 import com.tesora.dve.server.bootstrap.BootstrapHost;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;

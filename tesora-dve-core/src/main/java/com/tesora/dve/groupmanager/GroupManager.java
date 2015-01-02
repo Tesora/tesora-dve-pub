@@ -31,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 
+import com.tesora.dve.locking.impl.CoordinationServices;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.DBHelper;

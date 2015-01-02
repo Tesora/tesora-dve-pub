@@ -1,4 +1,4 @@
-package com.tesora.dve.groupmanager;
+package com.tesora.dve.membership;
 
 /*
  * #%L
@@ -21,10 +21,6 @@ package com.tesora.dve.groupmanager;
  * #L%
  */
 
-public interface GroupTopic<M> extends GroupTopicPublisher<M> {
-
-	void addMessageListener(GroupTopicListener<M> listener);
-	
-	void removeMessageListener(GroupTopicListener<M> listener);
-
+public interface GroupTopicPublisher<M> {
+    void publish(M message);
 }

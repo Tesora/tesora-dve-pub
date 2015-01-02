@@ -23,8 +23,9 @@ package com.tesora.dve.locking.impl;
 
 import com.tesora.dve.clock.MonotonicLongClock;
 import com.tesora.dve.debug.DebugHandle;
-import com.tesora.dve.groupmanager.GroupTopic;
-import com.tesora.dve.groupmanager.MembershipView;
+import com.tesora.dve.locking.IntentEntry;
+import com.tesora.dve.membership.GroupTopic;
+import com.tesora.dve.membership.MembershipView;
 import com.tesora.dve.locking.GlobalLockState;
 import com.tesora.dve.locking.LockMode;
 

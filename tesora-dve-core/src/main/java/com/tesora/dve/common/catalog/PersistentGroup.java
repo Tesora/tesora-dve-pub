@@ -40,7 +40,7 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.distribution.*;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.groupmanager.GroupTopicPublisher;
+import com.tesora.dve.membership.GroupTopicPublisher;
 import com.tesora.dve.groupmanager.PurgeWorkerGroupCaches;
 import com.tesora.dve.queryplan.ExecutionState;
 import com.tesora.dve.resultset.ColumnSet;

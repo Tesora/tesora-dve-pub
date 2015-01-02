@@ -21,9 +21,6 @@ package com.tesora.dve.locking;
  * #L%
  */
 
-import com.tesora.dve.locking.LockMode;
-import com.tesora.dve.locking.impl.IntentEntry;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

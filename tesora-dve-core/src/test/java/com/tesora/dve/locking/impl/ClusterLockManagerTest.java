@@ -26,10 +26,12 @@ import com.tesora.dve.cas.ConcurrentReferenceMap;
 import com.tesora.dve.cas.StateFactory;
 import com.tesora.dve.groupmanager.*;
 import com.tesora.dve.locking.*;
-import com.tesora.dve.locking.impl.ClusterLockManager;
-import com.tesora.dve.locking.impl.IntentEntry;
 import com.tesora.dve.lockmanager.LockClient;
 
+import com.tesora.dve.membership.GroupMembershipListener;
+import com.tesora.dve.membership.GroupTopic;
+import com.tesora.dve.membership.MembershipView;
+import com.tesora.dve.membership.MembershipViewSource;
 import org.jmock.Expectations;
 import org.jmock.Sequence;
 import org.jmock.auto.Mock;
