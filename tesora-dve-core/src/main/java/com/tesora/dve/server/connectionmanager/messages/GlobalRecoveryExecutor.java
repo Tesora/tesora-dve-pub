@@ -34,7 +34,7 @@ import com.tesora.dve.db.DBEmptyTextResultConsumer;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.messaging.WorkerRecoverSiteRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
-import com.tesora.dve.server.transactionmanager.Transaction2PCTracker;
+import com.tesora.dve.server.connectionmanager.Transaction2PCTracker;
 import com.tesora.dve.worker.WorkerGroup;
 import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 import com.tesora.dve.worker.WorkerGroup.WorkerGroupFactory;

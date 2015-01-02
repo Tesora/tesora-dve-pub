@@ -61,7 +61,7 @@ import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.server.global.MySqlPortalService;
 import com.tesora.dve.server.statistics.manager.StatisticsManager;
-import com.tesora.dve.server.transactionmanager.Transaction2PCTracker;
+import com.tesora.dve.server.connectionmanager.Transaction2PCTracker;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.siteprovider.SiteProviderContextInitialisation;
 import com.tesora.dve.siteprovider.SiteProviderPlugin.SiteProviderContext;

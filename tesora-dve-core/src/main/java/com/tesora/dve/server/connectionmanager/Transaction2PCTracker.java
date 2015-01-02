@@ -1,4 +1,4 @@
-package com.tesora.dve.server.transactionmanager;
+package com.tesora.dve.server.connectionmanager;
 
 /*
  * #%L

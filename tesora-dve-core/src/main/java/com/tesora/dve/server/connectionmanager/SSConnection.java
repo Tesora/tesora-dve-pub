@@ -106,7 +106,6 @@ import com.tesora.dve.server.messaging.WorkerExecuteRequest;
 import com.tesora.dve.server.messaging.WorkerPrepareRequest;
 import com.tesora.dve.server.messaging.WorkerRequest;
 import com.tesora.dve.server.messaging.WorkerRollbackRequest;
-import com.tesora.dve.server.transactionmanager.Transaction2PCTracker;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.schema.ConnectionContext;
 import com.tesora.dve.sql.schema.Database;
