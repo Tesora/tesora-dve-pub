@@ -23,11 +23,8 @@ package com.tesora.dve.dbc;
 
 
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.SchemaException;
-
-import io.netty.channel.ChannelHandlerContext;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,20 +32,15 @@ import java.util.concurrent.Callable;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.tesora.dve.charset.NativeCharSet;
-import com.tesora.dve.charset.MysqlNativeCharSet;
 import com.tesora.dve.comms.client.messages.ResponseMessage;
 import com.tesora.dve.db.DBMetadata;
 import com.tesora.dve.db.NativeType;
-import com.tesora.dve.db.mysql.MysqlLoadDataInfileRequestCollector;
 import com.tesora.dve.db.mysql.PEMysqlErrorException;
 import com.tesora.dve.errmap.ErrorMapper;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.server.connectionmanager.SSConnection;
 import com.tesora.dve.server.connectionmanager.messages.AddConnectParametersExecutor;
 import com.tesora.dve.server.connectionmanager.messages.ExecuteRequestExecutor;
-import com.tesora.dve.server.connectionmanager.loaddata.LoadDataBlockExecutor;
-import com.tesora.dve.server.connectionmanager.loaddata.LoadDataRequestExecutor;
 import com.tesora.dve.worker.MysqlTextResultChunkProvider;
 import com.tesora.dve.worker.MysqlTextResultCollector;
 import com.tesora.dve.worker.UserCredentials;
@@ -189,66 +181,7 @@ public class ServerDBConnection {
 			throw new PEException(t);
 		}
 	}
-	
-	public void executeLoadDataRequest(
-			ChannelHandlerContext channelHandlerContext,
-			byte[] query) throws SQLException {
-		MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(channelHandlerContext);
-		try {
-			loadDataRequestExecuteInContext(channelHandlerContext, resultConsumer, query);
-			if (resultConsumer.getFileName() == null) {
-				throw new SQLException(new PEException("Cannot handle load data statement: " + new String(query)));
-			}
-		} catch (Throwable t) {
-			throw new SQLException(t);
-		}
-	}
-	
-	private void loadDataRequestExecuteInContext(final ChannelHandlerContext channelHandlerContext, final MysqlLoadDataInfileRequestCollector resultConsumer, final byte[] query)
-			throws PEException, Throwable {
-		final NativeCharSet clientCharSet = MysqlNativeCharSet.UTF8;
-		Throwable t = ssCon.executeInContext(new Callable<Throwable>() {
-			public Throwable call() {
-				try {
-					LoadDataRequestExecutor.execute(channelHandlerContext, ssCon, resultConsumer, clientCharSet.getJavaCharset(), query);
-				} catch (Throwable e) {
-					return e;
-				}
-				return null;
-			}
-		});
-		if (t != null && t.getCause() != null) {
-			throw new PEException(t);
-		}
-	}
 
-	public void executeLoadDataBlock(
-			ChannelHandlerContext channelHandlerContext,
-			byte[] readData) throws SQLException {
-		try {
-			loadDataBlockExecuteInContext(channelHandlerContext, readData);
-		} catch (Throwable t) {
-			throw new SQLException(t);
-		}
-	}
-
-	private void loadDataBlockExecuteInContext(final ChannelHandlerContext channelHandlerContext, final byte[] readData)
-			throws PEException, Throwable {
-		Throwable t = ssCon.executeInContext(new Callable<Throwable>() {
-			public Throwable call() {
-				try {
-					LoadDataBlockExecutor.executeInsert(channelHandlerContext, ssCon, 
-							LoadDataBlockExecutor.processDataBlock(channelHandlerContext, ssCon, readData));
-				} catch (Throwable e) {
-					return e;
-				}
-				return null;
-			}
-		});
-		if (t != null && t.getCause() != null) {
-			throw new PEException(t);
-		}
-	}
 
 	public NativeType findType(String nativeTypeName) throws SQLException {
 		try {

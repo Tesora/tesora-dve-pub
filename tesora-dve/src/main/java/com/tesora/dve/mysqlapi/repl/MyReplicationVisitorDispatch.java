@@ -22,11 +22,18 @@ package com.tesora.dve.mysqlapi.repl;
  */
 
 import com.google.common.primitives.UnsignedLong;
+import com.tesora.dve.charset.MysqlNativeCharSet;
+import com.tesora.dve.charset.NativeCharSet;
+import com.tesora.dve.db.mysql.MysqlLoadDataInfileRequestCollector;
 import com.tesora.dve.dbc.ServerDBConnection;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.mysqlapi.repl.messages.*;
+import com.tesora.dve.server.connectionmanager.SSConnection;
+import com.tesora.dve.server.connectionmanager.loaddata.LoadDataBlockExecutor;
+import com.tesora.dve.server.connectionmanager.loaddata.LoadDataRequestExecutor;
 import com.tesora.dve.sql.util.Pair;
 import com.tesora.dve.variable.VariableConstants;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -37,6 +44,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.concurrent.Callable;
 
 /**
  *
@@ -47,6 +55,55 @@ public class MyReplicationVisitorDispatch implements ReplicationVisitorTarget {
 
     public MyReplicationVisitorDispatch(MyReplicationSlaveService plugin) {
         this.plugin = plugin;
+    }
+
+    public static void executeLDB(ServerDBConnection dbCon, final ChannelHandlerContext channelHandlerContext, final byte[] readData) throws SQLException {
+        try {
+            final SSConnection ssCon1 = dbCon.getSSConn();
+            Throwable t = ssCon1.executeInContext(new Callable<Throwable>() {
+                public Throwable call() {
+                    try {
+                        LoadDataBlockExecutor.executeInsert(channelHandlerContext, ssCon1,
+                                LoadDataBlockExecutor.processDataBlock(channelHandlerContext, ssCon1, readData));
+                    } catch (Throwable e) {
+                        return e;
+                    }
+                    return null;
+                }
+            });
+            if (t != null && t.getCause() != null) {
+throw new PEException(t);
+}
+        } catch (Throwable t) {
+            throw new SQLException(t);
+        }
+    }
+
+    public static void executeLDR(ServerDBConnection serverDBConnection, final ChannelHandlerContext channelHandlerContext, final byte[] query) throws SQLException {
+        final MysqlLoadDataInfileRequestCollector resultConsumer = new MysqlLoadDataInfileRequestCollector(channelHandlerContext);
+        try {
+            final NativeCharSet clientCharSet = MysqlNativeCharSet.UTF8;
+            final SSConnection ssCon1 = serverDBConnection.getSSConn();
+            Throwable t = ssCon1.executeInContext(new Callable<Throwable>() {
+                public Throwable call() {
+                    try {
+                        LoadDataRequestExecutor.execute(channelHandlerContext, ssCon1, resultConsumer, clientCharSet.getJavaCharset(), query);
+                    } catch (Throwable e) {
+                        return e;
+                    }
+                    return null;
+                }
+            });
+
+            if (t != null && t.getCause() != null) {
+throw new PEException(t);
+}
+            if (resultConsumer.getFileName() == null) {
+                throw new SQLException(new PEException("Cannot handle load data statement: " + new String(query)));
+            }
+        } catch (Throwable t) {
+            throw new SQLException(t);
+        }
     }
 
     @Override
@@ -135,7 +192,7 @@ public class MyReplicationVisitorDispatch implements ReplicationVisitorTarget {
             // set the TIMESTAMP variable to the master statement execution time
             conn.executeUpdate("set " + VariableConstants.REPL_SLAVE_TIMESTAMP_NAME + "=" + packet.getCommonHeader().getTimestamp());
 
-            conn.executeLoadDataRequest(plugin.getClientConnectionContext().getCtx(), origQuery.getBytes(CharsetUtil.UTF_8));
+            executeLDR(conn, plugin.getClientConnectionContext().getCtx(), origQuery.getBytes(CharsetUtil.UTF_8));
 
             // start throwing down the bytes from the load data infile
             File infile = plugin.getInfileHandler().getInfile(packet.getFileId());
@@ -146,11 +203,11 @@ public class MyReplicationVisitorDispatch implements ReplicationVisitorTarget {
                 in = new FileInputStream(infile);
                 int len = in.read(readData);
                 do {
-                    conn.executeLoadDataBlock(plugin.getClientConnectionContext().getCtx(),
-                            (len == MyExecuteLoadLogEvent.MAX_BUFFER_LEN) ? readData : ArrayUtils.subarray(readData, 0, len));
+                    final byte[] readData1 = (len == MyExecuteLoadLogEvent.MAX_BUFFER_LEN) ? readData : ArrayUtils.subarray(readData, 0, len);
+                    executeLDB(conn, plugin.getClientConnectionContext().getCtx(), readData1);
                     len = in.read(readData);
                 } while (len > -1);
-                conn.executeLoadDataBlock(plugin.getClientConnectionContext().getCtx(), ArrayUtils.EMPTY_BYTE_ARRAY);
+                executeLDB(conn, plugin.getClientConnectionContext().getCtx(), ArrayUtils.EMPTY_BYTE_ARRAY);
             } finally {
                 IOUtils.closeQuietly(in);
                 plugin.getInfileHandler().cleanUp();
