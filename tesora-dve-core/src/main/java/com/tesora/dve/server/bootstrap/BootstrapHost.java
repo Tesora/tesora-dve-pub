@@ -265,7 +265,7 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 
 		ErrorMapper.initialize();
 		
-		Agent.setPluginProvider(SimpleMQPlugin.class);
+		Agent.setPluginProvider(SimpleMQPlugin.PROVIDER);
 		Agent.startServices(props);
 
 		BootstrapHost host = new BootstrapHost(bootstrapClass.getName(), props);

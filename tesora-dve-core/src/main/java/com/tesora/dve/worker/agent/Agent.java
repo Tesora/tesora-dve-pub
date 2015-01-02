@@ -21,7 +21,6 @@ package com.tesora.dve.worker.agent;
  * #L%
  */
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -39,10 +38,7 @@ public abstract class Agent {
 	protected long exceptionFrame = 0;
 	protected String name;
 
-	private static Method pluginNewInstance;
-	private static Method pluginStartServices;
-	private static Method pluginStopServices;
-	private static Method pluginDispatch;
+	private static PluginProvider<?> provider;
 	
 	AgentPlugin plugin;
 
@@ -58,18 +54,15 @@ public abstract class Agent {
 	
 	protected void initialize() throws PEException {
 		try {
-			plugin = (AgentPlugin) pluginNewInstance.invoke(null, new Object[] {this});
+			plugin = provider.newInstance(this);
 		} catch (Exception e) {
 			throw new PEException("Unable to instantiate new AgentPlugin", e);
 		}
 	}
 
-	public static void setPluginProvider(Class<? extends AgentPlugin> pluginProvider) throws PEException {
+	public static void setPluginProvider(PluginProvider<? extends AgentPlugin> pluginProvider) throws PEException {
 		try {
-			Agent.pluginNewInstance = pluginProvider.getMethod("newInstance", new Class[] { Agent.class });
-			Agent.pluginStartServices = pluginProvider.getMethod("startServices", new Class[] { Properties.class });
-			Agent.pluginStopServices = pluginProvider.getMethod("stopServices", new Class[] { });
-			Agent.pluginDispatch = pluginProvider.getMethod("dispatch", new Class[] { String.class, Object.class });
+			provider = pluginProvider;
 		} catch (Exception e) {
 			throw new PEException("Cannot find newInstance() method in AgentPlugin", e);
 		}
@@ -77,7 +70,7 @@ public abstract class Agent {
 	
 	public static void startServices(Properties props) throws PEException {
 		try {
-			pluginStartServices.invoke(null, new Object[] { props });
+			provider.startServices(props);
 		} catch (Exception e) {
 			throw new PEException("Unable to start Agent services", e);
 		}
@@ -85,8 +78,8 @@ public abstract class Agent {
 	
 	public static void stopServices() throws PEException {
 		try {
-			if(pluginStopServices != null)
-				pluginStopServices.invoke(null, new Object[] { });
+			if(provider != null)
+				provider.stopServices();
 		} catch (Exception e) {
 			throw new PEException("Unable to stop Agent services", e);
 		}
@@ -99,7 +92,7 @@ public abstract class Agent {
 	 */
 	public static void dispatch(String toAddress, Object message) throws PEException {
 		try {
-			pluginDispatch.invoke(null, new Object[] { toAddress, message });
+			provider.dispatch(toAddress,message);
 		} catch (Exception e) {
 			throw new PEException("Unable to dispatch envelope", e);
 		}

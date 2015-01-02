@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.tesora.dve.concurrent.ChainedNotifier;
+import com.tesora.dve.worker.agent.PluginProvider;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.RemoteException;
@@ -39,7 +40,8 @@ import com.tesora.dve.worker.agent.Agent;
 import com.tesora.dve.worker.agent.AgentPlugin;
 
 public class SimpleMQPlugin implements AgentPlugin {
-	
+	public static final PluginProvider<SimpleMQPlugin> PROVIDER = new SimpleMQProvider();
+
 	static Logger logger = Logger.getLogger(Agent.class);
 	static final boolean loggerDebug = logger.isDebugEnabled();
 
@@ -168,7 +170,7 @@ public class SimpleMQPlugin implements AgentPlugin {
 		listenerThread.start();
 	}
 
-	public static AgentPlugin newInstance(Agent theAgent) throws PEException {
+	public static SimpleMQPlugin newInstance(Agent theAgent) throws PEException {
 		return new SimpleMQPlugin(theAgent);
 	}
 
@@ -286,4 +288,25 @@ public class SimpleMQPlugin implements AgentPlugin {
 		return new SMQEnvelope(o);
 	}
 
+	private static final class SimpleMQProvider implements PluginProvider<SimpleMQPlugin> {
+		@Override
+		public SimpleMQPlugin newInstance(Agent theAgent) throws PEException {
+			return SimpleMQPlugin.newInstance(theAgent);
+		}
+
+		@Override
+		public void startServices(Properties props) throws Exception {
+			SimpleMQPlugin.startServices(props);
+		}
+
+		@Override
+		public void stopServices() throws Exception {
+			SimpleMQPlugin.stopServices();
+		}
+
+		@Override
+		public void dispatch(String toAddress, Object message) throws PEException {
+			SimpleMQPlugin.dispatch(toAddress,message);
+		}
+	}
 }
