@@ -26,8 +26,7 @@ import java.io.Serializable;
 import com.tesora.dve.errmap.AvailableErrors;
 import com.tesora.dve.errmap.ErrorInfo;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
-import com.tesora.dve.sql.schema.SchemaContext;
-import com.tesora.dve.variables.KnownVariables;
+import com.tesora.dve.singleton.Singletons;
 
 public class ParserException extends PEMappedRuntimeException {
 
@@ -79,10 +78,8 @@ public class ParserException extends PEMappedRuntimeException {
 
 	@Override
 	public boolean hasLocation() {
-		// ugh, what a freaking hack, but I don't want to add a callback everywhere
-		SchemaContext current = SchemaContext.threadContext.get();
-		return (current != null && current.getCatalog().isPersistent() &&
-				KnownVariables.ERROR_MIGRATOR.getGlobalValue(null));
+		ErrorHandlingService errorService = Singletons.lookup(ErrorHandlingService.class);
+		return errorService != null && errorService.useVerboseErrorHandling();
 	}
-		
+
 }
