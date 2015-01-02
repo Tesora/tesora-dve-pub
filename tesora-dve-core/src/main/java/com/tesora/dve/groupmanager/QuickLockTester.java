@@ -1,4 +1,4 @@
-package com.tesora.dve.locking.impl;
+package com.tesora.dve.groupmanager;
 
 /*
  * #%L
@@ -41,15 +41,14 @@ import com.tesora.dve.clock.WalltimeNanos;
 import com.tesora.dve.debug.DebugHandle;
 import com.tesora.dve.debug.Debuggable;
 import com.tesora.dve.debug.StringDebugger;
-import com.tesora.dve.groupmanager.HazelcastGroupTopic;
-import com.tesora.dve.groupmanager.HazelcastMembershipListener;
+import com.tesora.dve.locking.impl.ClusterLockManager;
+import com.tesora.dve.locking.impl.CoordinationServices;
 import com.tesora.dve.membership.MembershipView;
 import com.tesora.dve.membership.MembershipViewSource;
-import com.tesora.dve.groupmanager.SimpleMembershipView;
 import com.tesora.dve.locking.ClusterLock;
 import com.tesora.dve.lockmanager.LockClient;
 
-public class QuickTester {
+public class QuickLockTester {
 
     AtomicReference<Thread> exclusiveOwner = new AtomicReference<Thread>(null);
     AtomicInteger readerCount = new AtomicInteger(0);
@@ -241,7 +240,7 @@ public class QuickTester {
     }
 
     private void startHammerOn(ClusterLockManager lockMgr, ExecutorService exec, CountDownLatch startLatch, CountDownLatch finishLatch) {
-        ClusterLock lock = lockMgr.generateLockEngine(lockName);
+        ClusterLock lock = lockMgr.getClusterLock(lockName);
 //        ClusterLock5 lock = new ClusterLock5(hz.getName(), coordServices);
         locks.add(lock);
 
@@ -251,7 +250,7 @@ public class QuickTester {
     }
 
     public static void main(String[] args) throws Exception {
-        new QuickTester().call();
+        new QuickLockTester().call();
         System.exit(1);
     }
 

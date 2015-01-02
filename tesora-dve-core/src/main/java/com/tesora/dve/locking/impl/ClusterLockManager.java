@@ -95,7 +95,7 @@ public class ClusterLockManager implements GroupTopicListener<ClusterLockManager
      * all future messages about cluster state.  Typically called inside the coordination service constructor, but needs to be called
      * externally if one of the constructors that does not register listeners is used.
      */
-    protected void onStart(){
+    public void onStart(){
         //This would be so much easier if Hazelcast topics had some concept of topic membership (IE, jBoss service views). 
         this.sharedLockTopic.publish( new LockInitMessage( memberTracker.getMembershipView().getMyAddress() ) );
     }
