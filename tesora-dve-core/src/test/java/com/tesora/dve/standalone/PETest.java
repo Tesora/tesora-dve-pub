@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import com.tesora.dve.server.bootstrap.BootstrapWiring;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.log4j.Logger;
 import org.junit.AfterClass;
@@ -86,6 +87,10 @@ import com.tesora.dve.worker.DBConnectionParameters;
  * 
  */
 public class PETest extends PEBaseTest {
+	static {
+		//does some static registration into singletons, to ensure some services are always present for any test.
+		BootstrapWiring.rewire();
+	}
 
 	protected static CatalogDAO catalogDAO = null;
 	protected static BootstrapHost bootHost = null;

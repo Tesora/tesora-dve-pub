@@ -1,11 +1,11 @@
-package com.tesora.dve.upgrade;
+package com.tesora.dve.sql.infoschema.spi;
 
 /*
  * #%L
  * Tesora Inc.
  * Database Virtualization Engine
  * %%
- * Copyright (C) 2011 - 2014 Tesora Inc.
+ * Copyright (C) 2011 - 2015 Tesora Inc.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -21,17 +21,15 @@ package com.tesora.dve.upgrade;
  * #L%
  */
 
-import com.tesora.dve.common.DBHelper;
-import com.tesora.dve.common.InformationCallback;
+import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.exceptions.PEException;
 
-// implementors know the version they represent, and how to upgrade from the previous version.
-public interface CatalogVersion {
+import java.util.Properties;
 
-	abstract public int getSchemaVersion();
-	
-	abstract public boolean hasInfoSchemaUpgrade();
-
-	abstract public void upgrade(DBHelper helper, InformationCallback stdout) throws PEException;
-	
+/**
+ *
+ */
+public interface CatalogGenerator {
+    String[] buildCreateCurrentSchema(CatalogDAO c, Properties catalogProperties) throws PEException;
+    void installCurrentSchema(CatalogDAO c, Properties catalogProperties) throws PEException;
 }

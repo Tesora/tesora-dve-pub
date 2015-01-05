@@ -40,9 +40,11 @@ import com.tesora.dve.errmap.FormattedErrorInfo;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PEMappedRuntimeException;
 import com.tesora.dve.persist.PersistedEntity;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.infoschema.direct.DirectSchemaBuilder;
 import com.tesora.dve.sql.infoschema.persist.CatalogCollationEntity;
 import com.tesora.dve.sql.infoschema.persist.CatalogSchema;
+import com.tesora.dve.sql.infoschema.spi.CatalogGenerator;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
 import com.tesora.dve.sql.schema.Name;
@@ -57,7 +59,6 @@ import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
 import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.sql.util.Pair;
-import com.tesora.dve.upgrade.CatalogSchemaGenerator;
 
 public final class InformationSchemas implements InformationSchemaService {
 
@@ -159,8 +160,9 @@ public final class InformationSchemas implements InformationSchemaService {
 		pdb.setID(-1);
 		
 		tee.setCurrentDatabase(pdb);
-		
-		String[] decls = CatalogSchemaGenerator.buildCreateCurrentSchema(c,catalogProps);
+
+		CatalogGenerator generator = Singletons.require(CatalogGenerator.class);
+		String[] decls = generator.buildCreateCurrentSchema(c,catalogProps);
 		for(String s : decls) {
 			if (s.startsWith("create")) {
 				sc.refresh(true);

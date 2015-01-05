@@ -28,36 +28,14 @@ import java.util.TreeMap;
 
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.common.InformationCallback;
-import com.tesora.dve.common.PEConstants;
 import com.tesora.dve.common.PELogUtils;
 import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.server.bootstrap.Host;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.util.Functional;
-import com.tesora.dve.upgrade.versions.AdaptiveAutoIncrementVersion;
-import com.tesora.dve.upgrade.versions.AddCharsetIds;
-import com.tesora.dve.upgrade.versions.AddCollation;
-import com.tesora.dve.upgrade.versions.AddTemplateMode;
-import com.tesora.dve.upgrade.versions.AddViewsVersion;
-import com.tesora.dve.upgrade.versions.ColumnCardinality;
-import com.tesora.dve.upgrade.versions.CreateTableOptionsVersion;
-import com.tesora.dve.upgrade.versions.DirectInfoSchema;
-import com.tesora.dve.upgrade.versions.EncryptPasswordsVersion;
-import com.tesora.dve.upgrade.versions.ExtraInfoSchemaColumnsColumns;
-import com.tesora.dve.upgrade.versions.GlobalVariablesVersion;
-import com.tesora.dve.upgrade.versions.InfoSchemaServerTable;
-import com.tesora.dve.upgrade.versions.InfoSchemaTypeChanges;
-import com.tesora.dve.upgrade.versions.InfoSchemaUpgradeVersion;
-import com.tesora.dve.upgrade.versions.MTForeignKeys;
-import com.tesora.dve.upgrade.versions.MatchTemplateVersion;
-import com.tesora.dve.upgrade.versions.RawPlans;
-import com.tesora.dve.upgrade.versions.RebrandingVersion;
-import com.tesora.dve.upgrade.versions.TriggersVersion;
-import com.tesora.dve.upgrade.versions.UserSecurityVersion;
-import com.tesora.dve.upgrade.versions.UserlandTemporaryTables;
+import com.tesora.dve.upgrade.versions.*;
 
 // these are the currently known version numbers.  if we come across a catalog with an older version
 // number then we must dump and load.
@@ -92,7 +70,7 @@ public class CatalogVersions {
 		TRIGGERS(new TriggersVersion(46)),
 		ADD_MISSING_COLLATIONS(new InfoSchemaUpgradeVersion(47));
 		
-		private final CatalogVersion upgradeModule; 
+		private final CatalogVersion upgradeModule;
 		
 		private CatalogVersionNumber(CatalogVersion upgradeModule) {
 			this.upgradeModule = upgradeModule;

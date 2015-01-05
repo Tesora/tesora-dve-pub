@@ -30,7 +30,9 @@ import com.tesora.dve.common.DBType;
 import com.tesora.dve.common.InformationCallback;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.sql.infoschema.InfoSchemaUpgrader;
 import com.tesora.dve.upgrade.CatalogVersions.CatalogVersionNumber;
+import com.tesora.dve.upgrade.versions.CatalogVersion;
 
 // The upgrader upgrades the catalog from the persistent current version to the current version of the tool.
 public class Upgrader {

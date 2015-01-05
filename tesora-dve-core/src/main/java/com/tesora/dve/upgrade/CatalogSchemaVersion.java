@@ -28,6 +28,7 @@ import java.util.List;
 
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.exceptions.PEException;
+import com.tesora.dve.upgrade.versions.CatalogVersion;
 
 // the in memory representation of the single row in pe_version.
 public class CatalogSchemaVersion {

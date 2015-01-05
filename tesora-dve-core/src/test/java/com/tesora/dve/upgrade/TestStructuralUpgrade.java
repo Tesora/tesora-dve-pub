@@ -28,6 +28,7 @@ import java.util.List;
 
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.upgrade.versions.CatalogVersion;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;

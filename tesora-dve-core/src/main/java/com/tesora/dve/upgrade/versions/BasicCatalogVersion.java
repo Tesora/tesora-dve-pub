@@ -27,8 +27,7 @@ import java.util.Collections;
 
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.exceptions.PEException;
-import com.tesora.dve.upgrade.CatalogVersion;
-import com.tesora.dve.upgrade.InfoSchemaUpgrader;
+import com.tesora.dve.sql.infoschema.InfoSchemaUpgrader;
 
 public abstract class BasicCatalogVersion implements CatalogVersion {
 

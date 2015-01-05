@@ -1,4 +1,4 @@
-package com.tesora.dve.upgrade;
+package com.tesora.dve.sql.infoschema;
 
 /*
  * #%L

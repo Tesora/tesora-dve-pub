@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.infoschema.spi.CatalogGenerator;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -53,13 +54,7 @@ public class UpgradeCodeNeededTest extends PETest {
 	public void testCurrentVersionStructureAgainstGold() throws Throwable {
 		int latestVersion = CatalogVersions.getCurrentVersion().getSchemaVersion();
 		String[] lastKnown = UpgradeTestUtils.getGoldVersion(latestVersion);
-		CatalogDAO c = CatalogDAOFactory.newInstance();
-		String[] current = null;
-		try {
-            current = CatalogSchemaGenerator.buildCreateCurrentSchema(c, Singletons.require(HostService.class).getProperties());
-		} finally {
-			c.close();
-		}
+		String[] current = generateCatalog();
 		Pattern thanksHibernate = Pattern.compile("(alter table )(\\w+)( add index )(\\w+)(.*add constraint )(\\w+)(.*)");
 		assertEquals("number of stmts in schema ddl",lastKnown.length, current.length - 1);
 		for(int i = 0; i < current.length - 1; i++) {
@@ -87,10 +82,20 @@ public class UpgradeCodeNeededTest extends PETest {
 			}
 		}
 	}
-	
-	
-	
-	
+
+	public String[] generateCatalog() throws PEException {
+		CatalogDAO c = CatalogDAOFactory.newInstance();
+		String[] current = null;
+		try {
+			CatalogGenerator generator = Singletons.require(CatalogGenerator.class);
+            current = generator.buildCreateCurrentSchema(c, Singletons.require(HostService.class).getProperties()); //TODO: this looks like we are only looking up the host to get something for the catalog. -sgossard
+		} finally {
+			c.close();
+		}
+		return current;
+	}
+
+
 	@Test
 	public void testCurrentVersionContentsAgainstGold() throws Throwable {
 		int latestVersion = CatalogVersions.getCurrentVersion().getSchemaVersion();
@@ -112,13 +117,7 @@ public class UpgradeCodeNeededTest extends PETest {
 			if (filename == null)
 				throw new PEException("Must specify a directory via -D" + propDirName + " prior to running writeCurrentSchemaGold.");
 			int latestVersion = CatalogVersions.getCurrentVersion().getSchemaVersion();
-			CatalogDAO c = CatalogDAOFactory.newInstance();
-			String[] current = null;
-			try {
-                current = CatalogSchemaGenerator.buildCreateCurrentSchema(c, Singletons.require(HostService.class).getProperties());
-			} finally {
-				c.close();
-			}
+			String[] current = generateCatalog();
 			writeFile(filename, "catalog_version" + latestVersion + ".sql",current,current.length - 1);			
 			current = CatalogSchemaGenerator.buildTestCurrentInfoSchema();
 			writeFile(filename, "infoschema_version" + latestVersion + ".sql",current,current.length);			

@@ -31,6 +31,8 @@ import java.util.Map;
 import java.util.Properties;
 
 import com.tesora.dve.charset.NativeCharSetCatalogImpl;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.infoschema.spi.CatalogGenerator;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 
@@ -72,7 +74,6 @@ import com.tesora.dve.siteprovider.onpremise.jaxb.OnPremiseSiteProviderConfig;
 import com.tesora.dve.siteprovider.onpremise.jaxb.PoolConfig;
 import com.tesora.dve.sql.infoschema.InformationSchemas;
 import com.tesora.dve.sql.util.Pair;
-import com.tesora.dve.upgrade.CatalogSchemaGenerator;
 import com.tesora.dve.variables.KnownVariables;
 import com.tesora.dve.variables.VariableHandler;
 import com.tesora.dve.variables.VariableManager;
@@ -423,7 +424,8 @@ public class CatalogHelper {
 	}
 
 	protected void createSchema(CatalogDAO c) throws PEException {
-		CatalogSchemaGenerator.installCurrentSchema(c, catalogProperties);
+		CatalogGenerator generator = Singletons.require(CatalogGenerator.class);
+		generator.installCurrentSchema(c, catalogProperties);
 	}
 	
 	public void deleteAllServerRegistration() throws PEException {

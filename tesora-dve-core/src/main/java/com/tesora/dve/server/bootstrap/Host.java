@@ -44,9 +44,6 @@ import com.tesora.dve.server.connectionmanager.SSConnectionProxy;
 import com.tesora.dve.server.global.BootstrapHostService;
 import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.server.global.StatusVariableService;
-import com.tesora.dve.sql.ErrorHandlingService;
-import com.tesora.dve.sql.schema.ErrorHandlingServiceImpl;
-import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.variables.*;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.infoschema.InformationSchemaService;
@@ -82,8 +79,7 @@ public class Host implements HostService, StatusVariableService, RootProxyServic
 
 	static {
 		//this is done statically, to install it if someone just touches the Host class, even indirectly.
-		Singletons.replace(BehaviorConfiguration.class,new DefaultBehaviorConfiguration());
-		Singletons.replace(ErrorHandlingService.class, new ErrorHandlingServiceImpl() );
+		BootstrapWiring.rewire();
 	}
 
 	private static final String MBEAN_GLOBAL_CONFIG = "com.tesora.dve:name=ConfigVariables";

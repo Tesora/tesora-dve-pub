@@ -1,4 +1,4 @@
-package com.tesora.dve.upgrade;
+package com.tesora.dve.upgrade.versions;
 
 /*
  * #%L
@@ -21,24 +21,17 @@ package com.tesora.dve.upgrade;
  * #L%
  */
 
-import com.tesora.dve.upgrade.versions.CatalogVersion;
-import com.tesora.dve.upgrade.versions.GlobalVariablesValidator;
+import com.tesora.dve.common.DBHelper;
+import com.tesora.dve.common.InformationCallback;
+import com.tesora.dve.exceptions.PEException;
 
-// specifically concerned with testing the state of the catalog after an upgrade
-public class CatalogStateValidation {
+// implementors know the version they represent, and how to upgrade from the previous version.
+public interface CatalogVersion {
 
-	// line your validators up here
-	private static final CatalogStateValidator validators[] = new CatalogStateValidator[] {
-		new GlobalVariablesValidator()
-	};
+	abstract public int getSchemaVersion();
 	
-	public static CatalogStateValidator findValidator(CatalogVersion forVersion) {
-		for(CatalogStateValidator csv : validators) {
-			if (forVersion == csv.getVersionNumber().getCatalogVersion())
-				return csv;
-		}
-		return null;
-	}
-	
+	abstract public boolean hasInfoSchemaUpgrade();
+
+	abstract public void upgrade(DBHelper helper, InformationCallback stdout) throws PEException;
 	
 }

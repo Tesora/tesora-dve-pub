@@ -32,8 +32,8 @@ import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.Metamodel;
 
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.infoschema.spi.CatalogGenerator;
 import com.tesora.dve.sql.infoschema.InformationSchemaService;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.dialect.Dialect;
@@ -43,13 +43,13 @@ import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.persist.InsertEngine;
 import com.tesora.dve.persist.PersistedEntity;
-import com.tesora.dve.sql.infoschema.InformationSchemas;
 
 // responsible for yanking the sql out of hibernate and adding our own modifications.  catalog sql is always
 // created via this class.
 public class CatalogSchemaGenerator {
+	public static final CatalogGenerator GENERATOR = new CatalogGeneratorImpl();
 	
-	public static void installCurrentSchema(CatalogDAO c, Properties catalogProperties) throws PEException {
+	private static void installCurrentSchema(CatalogDAO c, Properties catalogProperties) throws PEException {
 		String[] commands = buildCreateCurrentSchema(c, catalogProperties);
 		DBHelper helper = new DBHelper(catalogProperties);
 		installSchema(helper, commands);
@@ -68,7 +68,7 @@ public class CatalogSchemaGenerator {
 		}		
 	}
 	
-	public static String[] buildCreateCurrentSchema(CatalogDAO c, Properties catalogProperties) throws PEException {
+	private static String[] buildCreateCurrentSchema(CatalogDAO c, Properties catalogProperties) throws PEException {
 		ArrayList<String> buf = new ArrayList<String>();
 		EntityManagerFactory emf = c.getEntityManager().getEntityManagerFactory();
 		Configuration cfg = new Configuration();
@@ -100,5 +100,19 @@ public class CatalogSchemaGenerator {
 		InsertEngine ie = new InsertEngine(ents, null);
 		return ie.dryrun().toArray(new String[0]);
 	}
-	
+
+	private static class CatalogGeneratorImpl implements CatalogGenerator {
+
+		@Override
+		public String[] buildCreateCurrentSchema(CatalogDAO c, Properties catalogProperties) throws PEException {
+			return CatalogSchemaGenerator.buildCreateCurrentSchema(c,catalogProperties);
+		}
+
+		@Override
+		public void installCurrentSchema(CatalogDAO c, Properties catalogProperties) throws PEException {
+			CatalogSchemaGenerator.installCurrentSchema(c,catalogProperties);
+		}
+
+
+	}
 }
