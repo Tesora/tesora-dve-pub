@@ -28,6 +28,7 @@ import java.util.Properties;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import com.tesora.dve.common.catalog.CatalogURL;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -212,7 +213,7 @@ public class BootstrapHost extends Host implements BootstrapHostMBean, Bootstrap
 		// Attempt to load the JDBC driver - fail early if it isn't available
 		DBHelper.loadDriver(props.getProperty(DBHelper.CONN_DRIVER_CLASS));
 
-		props.put(DBHelper.CONN_URL, CatalogHelper.buildCatalogBaseUrlFrom(props).toString());
+		props.put(DBHelper.CONN_URL, CatalogURL.buildCatalogBaseUrlFrom(props.getProperty(DBHelper.CONN_URL)).toString());
 		props.put(DBHelper.CONN_DBNAME,  database);
 		DBHelper helper = new DBHelper(props);
 		int catalogAccessible = 1;

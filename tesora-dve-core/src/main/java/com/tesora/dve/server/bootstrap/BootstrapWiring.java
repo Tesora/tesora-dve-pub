@@ -25,6 +25,8 @@ import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.ErrorHandlingService;
 import com.tesora.dve.sql.infoschema.spi.CatalogGenerator;
 import com.tesora.dve.sql.schema.ErrorHandlingServiceImpl;
+import com.tesora.dve.sql.transexec.spi.TransientEngineFactory;
+import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.upgrade.CatalogSchemaGenerator;
 
@@ -37,5 +39,6 @@ public class BootstrapWiring {
         Singletons.replace(BehaviorConfiguration.class, new DefaultBehaviorConfiguration());
         Singletons.replace(ErrorHandlingService.class, new ErrorHandlingServiceImpl() );
         Singletons.replace(CatalogGenerator.class, CatalogSchemaGenerator.GENERATOR);
+        Singletons.replace(TransientEngineFactory.class, TransientExecutionEngine.FACTORY);
     }
 }

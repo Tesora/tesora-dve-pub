@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import com.tesora.dve.charset.NativeCharSetCatalogImpl;
+import com.tesora.dve.common.catalog.*;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.infoschema.spi.CatalogGenerator;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -44,22 +45,7 @@ import com.tesora.dve.common.PECryptoUtils;
 import com.tesora.dve.common.PEFileUtils;
 import com.tesora.dve.common.PEUrl;
 import com.tesora.dve.common.PEXmlUtils;
-import com.tesora.dve.common.catalog.CatalogDAO;
 import com.tesora.dve.common.catalog.CatalogDAO.CatalogDAOFactory;
-import com.tesora.dve.common.catalog.DAOPersistProvider;
-import com.tesora.dve.common.catalog.DistributionModel;
-import com.tesora.dve.common.catalog.DynamicGroupClass;
-import com.tesora.dve.common.catalog.DynamicPolicy;
-import com.tesora.dve.common.catalog.Engines;
-import com.tesora.dve.common.catalog.ExternalService;
-import com.tesora.dve.common.catalog.PersistentGroup;
-import com.tesora.dve.common.catalog.PersistentSite;
-import com.tesora.dve.common.catalog.PersistentTemplate;
-import com.tesora.dve.common.catalog.Project;
-import com.tesora.dve.common.catalog.Provider;
-import com.tesora.dve.common.catalog.ServerRegistration;
-import com.tesora.dve.common.catalog.SiteInstance;
-import com.tesora.dve.common.catalog.VariableConfig;
 import com.tesora.dve.db.DBNative;
 import com.tesora.dve.distribution.BroadcastDistributionModel;
 import com.tesora.dve.distribution.ContainerDistributionModel;
@@ -87,36 +73,6 @@ public class CatalogHelper {
 
 	private String rootUser;
 	private String rootPassword;
-	
-	/**
-	 * @see public static PEUrl buildCatalogBaseUrlFrom(String) throws
-	 *      PEException
-	 */
-	public static PEUrl buildCatalogBaseUrlFrom(final Properties catalogProperties) throws PEException {
-		return buildCatalogBaseUrlFrom(catalogProperties.getProperty(DBHelper.CONN_URL));
-	}
-
-	/**
-	 * Clear any existing query and path and append the required connection
-	 * properties.
-	 */
-	public static PEUrl buildCatalogBaseUrlFrom(final String otherUrl) throws PEException {
-		final PEUrl baseUrl = PEUrl.fromUrlString(otherUrl);
-		baseUrl.setPath(null);
-		baseUrl.clearQuery();
-		baseUrl.setQueryOptions(buildRequiredConnectionProperties());
-
-		return baseUrl;
-	}
-	
-	private static Properties buildRequiredConnectionProperties() {
-		final Properties connectionSettings = new Properties();
-		connectionSettings.put("useUnicode", "true");
-		connectionSettings.put("characterEncoding", "utf8");
-		connectionSettings.put("connectionCollation", "utf8_general_ci");
-
-		return connectionSettings;
-	}
 
 	public CatalogHelper(Class<?> bootClass) throws PEException {
 		catalogProperties = PEFileUtils.loadPropertiesFile(bootClass, PEConstants.CONFIG_FILE_NAME);
@@ -158,7 +114,7 @@ public class CatalogHelper {
 	}
 
 	public String getCatalogBaseUrl() throws PEException {
-		return buildCatalogBaseUrlFrom(catalogProperties).toString();
+		return CatalogURL.buildCatalogBaseUrlFrom(catalogProperties.getProperty(DBHelper.CONN_URL)).toString();
 	}
 
 	public String getCatalogDBName() throws PEException {

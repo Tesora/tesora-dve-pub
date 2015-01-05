@@ -30,6 +30,7 @@ import com.tesora.dve.db.DBNative;
 import com.tesora.dve.db.mysql.common.ColumnAttributes;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.resultset.ResultRow;
+import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.sql.infoschema.InfoView;
 import com.tesora.dve.sql.infoschema.InformationSchemaBuilder;
 import com.tesora.dve.sql.infoschema.InformationSchema;
@@ -44,7 +45,8 @@ import com.tesora.dve.sql.schema.PEDatabase;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.schema.VariableScope;
-import com.tesora.dve.sql.transexec.TransientExecutionEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngineFactory;
 import com.tesora.dve.sql.schema.VariableScopeKind;
 /*
  * Holds all the sql strings that back info schema tables.
@@ -75,7 +77,7 @@ public class DirectSchemaBuilder implements InformationSchemaBuilder {
 			MysqlSchema mysqlSchema, DBNative dbn) throws PEException {
 		if (catalogSchema == null) // transient case, but we aren't doing any info schema queries then anyhow
 			return;
-		TransientExecutionEngine tee = new TransientExecutionEngine(catalogSchema.getName().get(),dbn.getTypeCatalog());
+		TransientEngine tee = Singletons.require(TransientEngineFactory.class).create(catalogSchema.getName().get(),dbn.getTypeCatalog());
 		SchemaContext sc = tee.getPersistenceContext();
 
 		EnumMap<InfoView,AbstractInformationSchema> schemaByView = new EnumMap<InfoView,AbstractInformationSchema>(InfoView.class);

@@ -1,4 +1,4 @@
-package com.tesora.dve.sql.transexec;
+package com.tesora.dve.sql.schema;
 
 /*
  * #%L

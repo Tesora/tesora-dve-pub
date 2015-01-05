@@ -28,6 +28,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.transexec.spi.TransientEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngineFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -42,7 +45,6 @@ import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.cache.SchemaSourceFactory;
 import com.tesora.dve.sql.statement.dml.MultiTableDMLStatement;
-import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.util.TestName;
 import com.tesora.dve.standalone.PETest;
 
@@ -157,13 +159,13 @@ public class TransientSchemaTest extends SchemaTest {
 		return sql;
 	}
 	
-	public final TransientExecutionEngine newExecutionEngine(TestName tn) {
+	public final TransientEngine newExecutionEngine(TestName tn) {
 		SchemaSourceFactory.reset();
-		return new TransientExecutionEngine(ttkern);
+		return Singletons.require(TransientEngineFactory.class).create(ttkern);
 	}
 	
-	public TransientExecutionEngine buildExecutionEngine(String[] in, TestName tn) throws Throwable {
-		TransientExecutionEngine tee = newExecutionEngine(tn);
+	public TransientEngine buildExecutionEngine(String[] in, TestName tn) throws Throwable {
+		TransientEngine tee = newExecutionEngine(tn);
 		tee.parse(in);
 		return tee;
 	}	

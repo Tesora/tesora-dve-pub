@@ -76,7 +76,6 @@ import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.sql.schema.mt.PETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
 import com.tesora.dve.sql.schema.mt.TableScope.ScopeCacheKey;
-import com.tesora.dve.sql.transexec.TransientGlobalVariableStore;
 import com.tesora.dve.sql.transform.behaviors.BehaviorConfiguration;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;

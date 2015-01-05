@@ -28,9 +28,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.tesora.dve.db.DBNative;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.transexec.TransientExecutionEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngineFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -176,14 +176,14 @@ public abstract class TestParser {
 
 	protected static class SimulatingInvoker extends ParserInvoker {
 
-		private TransientExecutionEngine tee;
+		private TransientEngine tee;
 		private int consecutiveExceptions;
 		private FeatureVisitor features;
 		
 		public SimulatingInvoker(ParserOptions opts) throws Throwable {
 			super(opts);
 			// TODO Auto-generated constructor stub
-			tee = new TransientExecutionEngine("foo");
+			tee = Singletons.require(TransientEngineFactory.class).create("foo");
 			tee.parse(metaschema_decl);
 			SchemaContext pc = tee.getPersistenceContext();
 			// we'll be accessing the backing classes, so go ahead and create them now

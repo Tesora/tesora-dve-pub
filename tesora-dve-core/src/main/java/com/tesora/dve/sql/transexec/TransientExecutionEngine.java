@@ -74,7 +74,6 @@ import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.infomessage.ConnectionMessageManager;
 import com.tesora.dve.lockmanager.LockSpecification;
 import com.tesora.dve.lockmanager.LockType;
-import com.tesora.dve.server.global.HostService;
 import com.tesora.dve.singleton.Singletons;
 import com.tesora.dve.siteprovider.onpremise.OnPremiseSiteProvider;
 import com.tesora.dve.sql.ParserException.Pass;
@@ -82,27 +81,10 @@ import com.tesora.dve.sql.SchemaException;
 import com.tesora.dve.sql.expression.TableKey;
 import com.tesora.dve.sql.parser.InvokeParser;
 import com.tesora.dve.sql.parser.ParserOptions;
-import com.tesora.dve.sql.schema.CatalogContext;
-import com.tesora.dve.sql.schema.ConnectionContext;
-import com.tesora.dve.sql.schema.ConnectionValues;
-import com.tesora.dve.sql.schema.Database;
+import com.tesora.dve.sql.schema.*;
 import com.tesora.dve.sql.schema.DistributionVector.Model;
-import com.tesora.dve.sql.schema.Capability;
-import com.tesora.dve.sql.schema.Name;
-import com.tesora.dve.sql.schema.PEContainerTenant;
-import com.tesora.dve.sql.schema.PEDatabase;
-import com.tesora.dve.sql.schema.PEDynamicGroup;
-import com.tesora.dve.sql.schema.PEForeignKey;
-import com.tesora.dve.sql.schema.PEProject;
-import com.tesora.dve.sql.schema.PEStorageGroup;
-import com.tesora.dve.sql.schema.PETable;
-import com.tesora.dve.sql.schema.PEUser;
-import com.tesora.dve.sql.schema.Persistable;
-import com.tesora.dve.sql.schema.SchemaContext;
 import com.tesora.dve.sql.schema.SchemaContext.DistKeyOpType;
 import com.tesora.dve.sql.schema.SchemaContext.PersistContext;
-import com.tesora.dve.sql.schema.StructuralUtils;
-import com.tesora.dve.sql.schema.VariableScope;
 import com.tesora.dve.sql.schema.cache.EntityCacheKey;
 import com.tesora.dve.sql.schema.cache.PersistentCacheKey;
 import com.tesora.dve.sql.schema.cache.SchemaCacheKey;
@@ -127,6 +109,8 @@ import com.tesora.dve.sql.statement.session.SetVariableExpression;
 import com.tesora.dve.sql.statement.session.UseContainerStatement;
 import com.tesora.dve.sql.statement.session.UseDatabaseStatement;
 import com.tesora.dve.sql.statement.session.UseStatement;
+import com.tesora.dve.sql.transexec.spi.TransientEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngineFactory;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListSet;
 import com.tesora.dve.sql.util.UnaryFunction;
@@ -143,8 +127,8 @@ import com.tesora.dve.worker.WorkerGroup.MappingSolution;
 /*
  * Essentially a mock class of the full engine; used in tests, upgrader, analyzer.
  */
-public class TransientExecutionEngine implements CatalogContext, ConnectionContext, VariableStoreSource {
-
+public class TransientExecutionEngine implements CatalogContext, ConnectionContext, VariableStoreSource, TransientEngine {
+	public static final TransientEngineFactory FACTORY = new TransientEngineFactoryImpl();
 	private SchemaContext tpc;
 	private List<PersistentSite> sites = new ArrayList<PersistentSite>();
 	private List<PersistentGroup> groups = new ArrayList<PersistentGroup>();
@@ -181,12 +165,13 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 	private Database<?> currentDatabase = null;
 	
 	private final ConnectionMessageManager messages = new ConnectionMessageManager();
-	
-	public TransientExecutionEngine(String ttkern) {
+
+
+	protected TransientExecutionEngine(String ttkern) {
 		this(ttkern, Singletons.require(DBNative.class).getTypeCatalog());
 	}
 	
-	public TransientExecutionEngine(String ttkern, NativeTypeCatalog types) {
+	protected TransientExecutionEngine(String ttkern, NativeTypeCatalog types) {
 		try {
 			VariableManager.getManager().initialiseTransient(globalVariables);
 			sessionVariables = globalVariables.buildNewLocalStore();
@@ -218,6 +203,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		}
 	}
 
+	@Override
 	public SchemaContext getPersistenceContext() {
 		return tpc;
 	}
@@ -1183,6 +1169,7 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		return null;
 	}
 	
+	@Override
 	public void setCurrentDatabase(Database<?> db) {
 		this.currentDatabase = db;
 	}
@@ -1235,4 +1222,15 @@ public class TransientExecutionEngine implements CatalogContext, ConnectionConte
 		return null;
 	}
 
+	private static class TransientEngineFactoryImpl implements TransientEngineFactory {
+		@Override
+		public TransientEngine create(String ttkern) {
+			return new TransientExecutionEngine(ttkern);
+		}
+
+		@Override
+		public TransientEngine create(String ttkern, NativeTypeCatalog types) {
+			return new TransientExecutionEngine(ttkern, types);
+		}
+	}
 }

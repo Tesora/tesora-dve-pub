@@ -81,7 +81,7 @@ import com.tesora.dve.sql.schema.cache.SchemaEdge;
 import com.tesora.dve.sql.schema.mt.HollowTableVisibility;
 import com.tesora.dve.sql.schema.mt.IPETenant;
 import com.tesora.dve.sql.schema.mt.TableScope;
-import com.tesora.dve.sql.transexec.TransientGlobalVariableStore;
+import com.tesora.dve.sql.schema.TransientGlobalVariableStore;
 import com.tesora.dve.variables.AbstractVariableAccessor;
 import com.tesora.dve.variables.GlobalVariableStore;
 import com.tesora.dve.variables.KnownVariables;

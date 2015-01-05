@@ -56,7 +56,8 @@ import com.tesora.dve.sql.schema.UnqualifiedName;
 import com.tesora.dve.sql.statement.Statement;
 import com.tesora.dve.sql.statement.ddl.DDLStatement;
 import com.tesora.dve.sql.statement.ddl.PECreateTableStatement;
-import com.tesora.dve.sql.transexec.TransientExecutionEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngineFactory;
 import com.tesora.dve.sql.transform.execution.CatalogModificationExecutionStep;
 import com.tesora.dve.sql.util.Pair;
 
@@ -151,7 +152,8 @@ public final class InformationSchemas implements InformationSchemaService {
 	private static PEDatabase buildCatalogSchema(CatalogDAO c, DBNative dbn, Properties catalogProps) throws Throwable {
 		if (c == null) return null; // for now
 		String database = catalogProps.getProperty(DBHelper.CONN_DBNAME, PEConstants.CATALOG);
-		TransientExecutionEngine tee = new TransientExecutionEngine(database,dbn.getTypeCatalog());
+
+		TransientEngine tee = Singletons.require(TransientEngineFactory.class).create(database,dbn.getTypeCatalog());
 		ParserOptions opts = ParserOptions.TEST.setResolve().setIgnoreMissingUser();
 		SchemaContext sc = tee.getPersistenceContext();
 		

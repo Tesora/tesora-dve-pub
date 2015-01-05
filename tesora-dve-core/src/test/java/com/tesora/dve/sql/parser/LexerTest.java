@@ -23,13 +23,16 @@ package com.tesora.dve.sql.parser;
 
 import static org.junit.Assert.assertEquals;
 
+import com.tesora.dve.server.bootstrap.BootstrapWiring;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.transexec.spi.TransientEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngineFactory;
 import org.antlr.runtime.Token;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.tesora.dve.server.connectionmanager.TestHost;
-import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.sql.util.BinaryProcedure;
 import com.tesora.dve.sql.util.Functional;
 import com.tesora.dve.sql.util.ListOfPairs;
@@ -38,6 +41,9 @@ import com.tesora.dve.standalone.PETest;
 
 
 public class LexerTest {
+	static {
+		BootstrapWiring.rewire();
+	}
 
 	@BeforeClass
 	public static void setup() throws Exception {
@@ -61,7 +67,7 @@ public class LexerTest {
 	}
 
 	private void one(String line, int...tokens) throws Throwable {
-		TransientExecutionEngine tee = new TransientExecutionEngine("lextest");
+		TransientEngine tee = Singletons.require(TransientEngineFactory.class).create("lextest");
 		Utils utils = new Utils(ParserOptions.TEST);
 		sql2003Lexer lex = InvokeParser.buildLexer(InvokeParser.buildInputState(line,tee.getPersistenceContext()), utils);
 		ListOfPairs<Integer,String> actuals = new ListOfPairs<Integer,String>();

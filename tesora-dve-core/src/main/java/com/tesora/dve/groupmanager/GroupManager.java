@@ -32,12 +32,12 @@ import java.util.Map;
 import java.util.Properties;
 
 import com.tesora.dve.locking.impl.CoordinationServices;
+import com.tesora.dve.common.catalog.CatalogURL;
 import org.apache.log4j.Logger;
 
 import com.tesora.dve.common.DBHelper;
 import com.tesora.dve.lockmanager.LockManager;
 import com.tesora.dve.singleton.Singletons;
-import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.variable.VariableConstants;
 
 public class GroupManager {
@@ -86,7 +86,7 @@ public class GroupManager {
 		
 		try { 
 			Class.forName(driverManagerName);
-			Connection con = DriverManager.getConnection(CatalogHelper.buildCatalogBaseUrlFrom(url).toString(), userId, password);
+			Connection con = DriverManager.getConnection(CatalogURL.buildCatalogBaseUrlFrom(url).toString(), userId, password);
 			try {
 				Statement stmt = con.createStatement();
 				ResultSet rs = stmt.executeQuery("select value from " + database + ".varconfig where name = '" + VariableConstants.GROUP_SERVICE_NAME + "'");

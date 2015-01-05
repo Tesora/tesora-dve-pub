@@ -56,7 +56,6 @@ import com.tesora.dve.exceptions.PECodingException;
 import com.tesora.dve.exceptions.PEException;
 import com.tesora.dve.exceptions.PENotFoundException;
 import com.tesora.dve.groupmanager.GroupManager;
-import com.tesora.dve.sql.transexec.CatalogHelper;
 import com.tesora.dve.sql.util.Functional;
 
 public class CatalogDAO {
@@ -1227,7 +1226,7 @@ public class CatalogDAO {
 			final Properties props = new Properties(p);
 			props.putAll(p);
 			
-			final PEUrl peUrl = CatalogHelper.buildCatalogBaseUrlFrom(url);
+			final PEUrl peUrl = CatalogURL.buildCatalogBaseUrlFrom(url);
 			
 			final String dbName = props.getProperty(DBHelper.CONN_DBNAME);
 			props.remove(DBHelper.CONN_DBNAME);

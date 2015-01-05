@@ -27,6 +27,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import com.tesora.dve.server.bootstrap.BootstrapWiring;
+import com.tesora.dve.singleton.Singletons;
+import com.tesora.dve.sql.transexec.spi.TransientEngine;
+import com.tesora.dve.sql.transexec.spi.TransientEngineFactory;
 import org.apache.commons.lang.StringUtils;
 
 import com.tesora.dve.common.PECharsetUtils;
@@ -61,19 +65,21 @@ import com.tesora.dve.sql.statement.session.UseDatabaseStatement;
 import com.tesora.dve.sql.statement.session.UseStatement;
 import com.tesora.dve.sql.statement.session.UseTenantStatement;
 import com.tesora.dve.sql.template.jaxb.Template;
-import com.tesora.dve.sql.transexec.TransientExecutionEngine;
 import com.tesora.dve.tools.aitemplatebuilder.CorpusStats;
 import com.tesora.dve.tools.analyzer.jaxb.DatabasesType.Database;
 import com.tesora.dve.tools.analyzer.jaxb.DbAnalyzerReport;
 import com.tesora.dve.tools.analyzer.jaxb.TablesType.Table;
 
 public abstract class Analyzer {
+	static {
+		BootstrapWiring.rewire();
+	}
 
 	private static final int TRANSIENT_SITE_NUM = 2;
 	private static final String TRANSIENT_SITE_USER = "root";
 	private static final String TRANSIENT_SITE_PASS = "password";
 
-	protected final TransientExecutionEngine tee;
+	protected final TransientEngine tee;
 	private final AnalyzerOptions options;
 	protected final AnalyzerInvoker invoker;
 	protected AnalyzerSource currentSource;
@@ -285,8 +291,8 @@ public abstract class Analyzer {
 		return new SourcePosition(li);
 	}
 
-	private TransientExecutionEngine buildExecutionEngine(final int numPersistentSites) throws Throwable {
-		final TransientExecutionEngine engine = new TransientExecutionEngine("atemp");
+	private TransientEngine buildExecutionEngine(final int numPersistentSites) throws Throwable {
+		final TransientEngine engine = Singletons.require(TransientEngineFactory.class).create("atemp");
 
 		final List<String> persistentSiteNames = new ArrayList<String>();
 		final List<String> persistentDeclarations = new ArrayList<String>();
